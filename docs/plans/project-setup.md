@@ -7,20 +7,21 @@ sentence-transformers, Streamlit) arrive with their own feature branches, not he
 
 ## Checklist
 
-- [ ] Scaffold uv project (src layout, package `docchat`), driven by a red→green
+- [x] Scaffold uv project (src layout, package `docchat`), driven by a red→green
       smoke test proving the test runner and package wiring work
-- [ ] Configure toolchain in `pyproject.toml`: ruff (format + lint), ty, pytest;
+- [x] Configure toolchain in `pyproject.toml`: ruff (format + lint), ty, pytest;
       all four gates run clean
-- [ ] Add test watch mode (fast unit tier reruns on every save)
-- [ ] Write `README.md` (what the project is, how to set up and run the gates)
-- [ ] Install git hooks: pre-commit (format check, lint, types, unit tests),
-      commit-msg (Conventional Commits)
-- [ ] Set up CI mirroring the hooks (format check, lint, type check, tests)
-- [ ] Write `CLAUDE.md`: commands + architecture rules (dependency rule, ports &
+- [x] Add test watch mode (fast unit tier reruns on every save): `uv run ptw .`
+- [x] Write `README.md` (what the project is, how to set up and run the gates)
+- [x] Install git hooks: pre-commit (format check, lint, types, unit tests),
+      commit-msg (Conventional Commits) — both rejection paths verified live
+- [x] Set up CI mirroring the hooks (format check, lint, type check, tests)
+- [x] Write `CLAUDE.md`: commands + architecture rules (dependency rule, ports &
       adapters, TDD workflow pointers)
-- [ ] Define AI subagents in `.claude/agents/`: `ai-architect`, `ai-code-reviewer`,
+- [x] Define AI subagents in `.claude/agents/`: `ai-architect`, `ai-code-reviewer`,
       `ai-researcher`
-- [ ] AI skills for the stack available (astral uv/ruff/ty + Streamlit skills)
+- [x] AI skills for the stack available (astral uv/ruff/ty + Streamlit skills
+      installed as Claude Code plugins)
 
 ## Acceptance
 
