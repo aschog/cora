@@ -1,0 +1,32 @@
+# Mirrors .githooks/pre-commit: format check, lint, type check, unit tests.
+# The integration tier (pytest -m integration) gets its own job once the
+# first integration tests exist (knowledge-base feature branch).
+name: CI
+
+on: [push]
+
+jobs:
+  quality-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      - name: Format check
+        run: uv run ruff format --check .
+
+      - name: Lint
+        run: uv run ruff check .
+
+      - name: Type check
+        run: uv run ty check
+
+      - name: Unit tests
+        run: uv run pytest -q
