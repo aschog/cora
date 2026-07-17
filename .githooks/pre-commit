@@ -1,0 +1,16 @@
+#!/bin/sh
+# Quality gates: format check, lint, type check, unit tests.
+# Mirrored by CI (.github/workflows/ci.yml).
+set -e
+
+echo "pre-commit: ruff format --check"
+uv run ruff format --check .
+
+echo "pre-commit: ruff check"
+uv run ruff check .
+
+echo "pre-commit: ty check"
+uv run ty check
+
+echo "pre-commit: pytest (unit tier)"
+uv run pytest -q
