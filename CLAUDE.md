@@ -2,22 +2,14 @@
 
 NotebookLM-style RAG chatbot with domain plugins. Package: `docchat` (src layout).
 Read `docs/plans/webapp-overview.md` (architecture) and `docs/workflow.md`
-(TDD workflow) before making changes.
+(TDD workflow) before making changes. Setup and all development commands
+(gates, test tiers, watch mode) live in `README.md`.
 
-## Commands
+## Tooling rules
 
-```sh
-uv run pytest                 # unit tests (default; fast, no network/models/UI)
-uv run pytest -m integration  # integration tier (real Chroma, embeddings, Streamlit)
-uv run pytest -m llm          # manual only; real OpenRouter, never in CI
-uv run ptw .                  # watch mode for the TDD loop
-uv run ruff format .          # format
-uv run ruff check .           # lint
-uv run ty check               # type check
-```
-
-Always run tools through `uv run`. Add dependencies with `uv add` (runtime) or
-`uv add --dev` (tooling) — never edit the lockfile or use pip.
+- Always run tools through `uv run`; never call `python`/`pytest` directly.
+- Add dependencies with `uv add` (runtime) or `uv add --dev` (tooling) —
+  never edit the lockfile or use pip.
 
 ## Architecture rules
 

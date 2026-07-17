@@ -26,9 +26,9 @@ git config core.hooksPath .githooks       # enable pre-commit + commit-msg hooks
 
 ```sh
 uv run ptw .                  # test watch mode (unit tier, reruns on save)
-uv run pytest                 # unit tests (default tier)
-uv run pytest -m integration  # integration tier (real Chroma/embeddings)
-uv run pytest -m llm          # manual acceptance (needs OPENROUTER_API_KEY)
+uv run pytest                 # unit tests (default; fast, no network/models/UI)
+uv run pytest -m integration  # integration tier (real Chroma, embeddings, Streamlit)
+uv run pytest -m llm          # manual acceptance only, never in CI (needs OPENROUTER_API_KEY)
 uv run ruff format .          # format
 uv run ruff check .           # lint
 uv run ty check               # type check
