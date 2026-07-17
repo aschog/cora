@@ -2,14 +2,9 @@
 
 ## 1. Vision
 
-A minimal "chat with your documents" web application (NotebookLM-like, pi-agent-simple).
-The core is **domain-agnostic**: users upload documents, the app answers questions about
+A minimal "chat with your documents" web application. The core is **domain-agnostic**: users upload documents, the app answers questions about
 them with sources. Domain specialisation is achieved exclusively through **plugins** — a
 plugin turns the generic app into a specialist (reference plugin: **fitness coach**).
-
-Built for the Turing College Sprint 2 requirements: RAG with embeddings + chunking +
-similarity search, ≥3 domain tools via tool calling, domain-specific prompts and security
-measures, LangChain + OpenRouter, Streamlit UI showing sources / tool results / progress.
 
 ## 2. Guiding principles
 
@@ -82,17 +77,17 @@ knowledge base of training/nutrition notes.
 
 ## 5. Design patterns employed
 
-| Pattern | Where | Why |
-|---|---|---|
-| **Ports & Adapters** | whole system | testability, replaceable frontend, swappable infra |
-| **Plugin architecture** (registry + declarative contract) | domain specialisation | extensibility requirement; domains without core changes |
-| **Strategy** | embedder / retriever / chat-model ports | swap Chroma↔in-memory, real↔fake LLM per environment |
-| **Facade** | knowledge base | one simple entry point over load→chunk→embed→store |
-| **Chain of Responsibility** | validation pipeline | composable core + plugin rules; future prompt-injection guard slots in as one more rule |
-| **Composition Root / Factory** | app assembly | single wiring point; tests wire fakes instead |
-| **Value Objects** (immutable data) | messages, chunks, tool calls/results, responses | predictable, trivially assertable in tests |
-| **Observer (callback)** | progress events from orchestrator | UI progress indicators without the core knowing Streamlit |
-| **Adapter** | OpenRouter/LangChain, Chroma, embeddings | quarantine version churn; one file per volatile dependency |
+| Pattern | Where | Why | Reference |
+|---|---|---|---|
+| **Ports & Adapters** | whole system | testability, replaceable frontend, swappable infra | [Cockburn (original)](https://alistair.cockburn.us/hexagonal-architecture/) |
+| **Plugin architecture** (registry + declarative contract) | domain specialisation | extensibility requirement; domains without core changes | [Fowler, P of EAA](https://martinfowler.com/eaaCatalog/plugin.html) |
+| **Strategy** | embedder / retriever / chat-model ports | swap Chroma↔in-memory, real↔fake LLM per environment | [Refactoring.Guru](https://refactoring.guru/design-patterns/strategy) |
+| **Facade** | knowledge base | one simple entry point over load→chunk→embed→store | [Refactoring.Guru](https://refactoring.guru/design-patterns/facade) |
+| **Chain of Responsibility** | validation pipeline | composable core + plugin rules; future prompt-injection guard slots in as one more rule | [Refactoring.Guru](https://refactoring.guru/design-patterns/chain-of-responsibility) |
+| **Composition Root / Factory** | app assembly | single wiring point; tests wire fakes instead | [Seemann (original)](https://blog.ploeh.dk/2011/07/28/CompositionRoot/) |
+| **Value Objects** (immutable data) | messages, chunks, tool calls/results, responses | predictable, trivially assertable in tests | [Fowler, bliki](https://martinfowler.com/bliki/ValueObject.html) |
+| **Observer (callback)** | progress events from orchestrator | UI progress indicators without the core knowing Streamlit | [Refactoring.Guru](https://refactoring.guru/design-patterns/observer) |
+| **Adapter** | OpenRouter/LangChain, Chroma, embeddings | quarantine version churn; one file per volatile dependency | [Refactoring.Guru](https://refactoring.guru/design-patterns/adapter) |
 
 Deliberately **not** used: LangChain chains/agents/LCEL (the LLM adapter is the whole
 LangChain surface), pip entry-points for plugins (import-by-name convention is enough),
@@ -101,12 +96,14 @@ streaming responses, async (no concurrency need at this scale).
 ## 6. Runtime flows
 
 **Ingestion flow** (with UI progress at each step):
+
 ```
 upload → validate (type, size) → extract text → chunk (overlapping, boundary-aware)
       → embed → store in vector DB with provenance (source, position) → listed as source
 ```
 
 **Chat flow:**
+
 ```
 user input → validation pipeline (core rules + plugin rules; friendly rejection)
           → similarity search over knowledge base (top-k chunks)
@@ -128,11 +125,11 @@ ever reaches the user as a stack trace.
 
 | Concern | Choice | Rationale |
 |---|---|---|
-| Language / packaging | Python + uv | course track; fast modern tooling |
-| LLM access | LangChain over OpenRouter (OpenAI-compatible) | graded requirement; pinned minor version, confined to one adapter |
+| Language / packaging | Python + uv | spec requirement; fast modern tooling |
+| LLM access | LangChain over OpenRouter (OpenAI-compatible) | spec requirement; pinned minor version, confined to one adapter |
 | Vector store | Chroma, embedded & persistent | no server to run; persists across restarts |
 | Embeddings | local sentence-transformers | free, offline, deterministic tests; only paid dependency stays OpenRouter chat |
-| Frontend | Streamlit | course track; thin shell by design |
+| Frontend | Streamlit | spec requirement; thin shell by design |
 | Quality gates | ruff (format+lint), ty (types), pytest | TDD workflow toolchain |
 | Config | environment variables (.env) | 12-factor; API keys never in code or repo |
 
@@ -183,7 +180,7 @@ red → green → refactor. Order is bottom-up so every branch stands on tested 
 
 | Risk | Mitigation |
 |---|---|
-| LangChain version churn (v1 breakage warned in the brief) | pin minor version; single-adapter confinement; translation logic unit-tested |
+| LangChain version churn (known v1 interface breakage) | pin minor version; single-adapter confinement; translation logic unit-tested |
 | OpenRouter quirks (model tool-call support, 402/429, malformed tool JSON) | configurable known-good default model; defensive parsing; typed friendly errors |
 | Streamlit rerun model breaking chat state | engine cached as a resource; history in session state; upload dedupe by content hash |
 | Heavy embedding model slowing the TDD loop | lazy loading; fakes in unit tier; model tests marked slow |
