@@ -13,4 +13,6 @@ def chunk_text(
 ) -> list[Chunk]:
     if not text.strip():
         return []
+    if len(text) <= chunk_size:
+        return [Chunk(text=text, source=source, index=0, offset=0)]
     raise NotImplementedError
