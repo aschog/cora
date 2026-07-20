@@ -55,8 +55,8 @@ Every item is one red → green → refactor cycle; commit each green step (`doc
 - [x] extracted text is normalized: CRLF becomes LF, surrounding whitespace is trimmed, runs of 3+ blank lines collapse to one paragraph break
 
 **Loaders — txt / md**
-- [ ] UTF-8 txt bytes decode to their text
-- [ ] undecodable bytes under a `.txt` name raise the unreadable-file error
+- [x] UTF-8 txt bytes decode to their text
+- [x] undecodable bytes under a `.txt` name raise the unreadable-file error
 - [ ] md bytes load like txt, markup preserved verbatim
 
 **Loaders — pdf** (`uv add pypdf` — pinned `>=6.14,<7` — as part of the first red step below)
