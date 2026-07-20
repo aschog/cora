@@ -1,7 +1,8 @@
 import pytest
 
 from docchat.errors import UnreadableFileError
-from docchat.loaders import LOADERS, load_txt
+from docchat.loaders import LOADERS, load_pdf, load_txt
+from pdf_fixtures import make_pdf_bytes
 
 
 def test_utf8_txt_bytes_decode_to_text() -> None:
@@ -26,6 +27,12 @@ def test_txt_and_md_extensions_have_loaders() -> None:
 
 def test_loader_keys_are_lowercase() -> None:
     assert all(ext == ext.lower() for ext in LOADERS)
+
+
+def test_single_page_pdf_round_trips_through_loader() -> None:
+    data = make_pdf_bytes("Hello from a generated PDF.")
+
+    assert load_pdf(data, "doc.pdf").strip() == "Hello from a generated PDF."
 
 
 def test_md_bytes_load_with_markup_preserved() -> None:
