@@ -21,8 +21,8 @@ def chunk_text(
     if not text.strip():
         return []
 
-    pieces = _split(text, chunk_size, _SEPARATORS)
-    return _locate(pieces, text, source)
+    pieces = _split(text, chunk_size - overlap, _SEPARATORS)
+    return _locate(pieces, text, source, overlap)
 
 
 def _split(text: str, chunk_size: int, separators: list[str]) -> list[str]:
@@ -58,12 +58,20 @@ def _split(text: str, chunk_size: int, separators: list[str]) -> list[str]:
     return pieces
 
 
-def _locate(pieces: list[str], text: str, source: str) -> list[Chunk]:
-    """Attach provenance by finding each piece's position in the source text."""
+def _locate(pieces: list[str], text: str, source: str, overlap: int) -> list[Chunk]:
+    """Attach provenance and overlap by locating each piece in the source text.
+
+    Each piece is found at its position in the source, then extended backwards
+    by ``overlap`` characters so its head repeats the previous chunk's tail.
+    """
     chunks: list[Chunk] = []
     cursor = 0
     for index, piece in enumerate(pieces):
-        offset = text.find(piece, cursor)
-        chunks.append(Chunk(text=piece, source=source, index=index, offset=offset))
-        cursor = offset + len(piece)
+        base_offset = text.find(piece, cursor)
+        end = base_offset + len(piece)
+        cursor = end
+        start = max(0, base_offset - overlap) if index else base_offset
+        chunks.append(
+            Chunk(text=text[start:end], source=source, index=index, offset=start)
+        )
     return chunks

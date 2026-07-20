@@ -1,3 +1,5 @@
+import itertools
+
 import pytest
 
 from docchat.chunk import Chunk
@@ -57,6 +59,20 @@ def test_unbroken_run_longer_than_chunk_size_is_hard_split() -> None:
 
     assert [chunk.text for chunk in chunks] == ["A" * 100, "A" * 100, "A" * 50]
     assert "".join(chunk.text for chunk in chunks) == text
+
+
+def test_consecutive_chunks_overlap_by_configured_amount() -> None:
+    text = "".join(chr(ord("a") + (i % 26)) for i in range(300))
+    chunk_size, overlap = 100, 20
+
+    chunks = chunk_text(
+        text, source="notes.txt", chunk_size=chunk_size, overlap=overlap
+    )
+
+    assert len(chunks) > 1
+    assert all(len(chunk.text) <= chunk_size for chunk in chunks)
+    for prev, nxt in itertools.pairwise(chunks):
+        assert nxt.text[:overlap] == prev.text[-overlap:]
 
 
 def test_long_text_splits_into_multiple_chunks_within_budget() -> None:
