@@ -34,7 +34,7 @@ From the architecture plan (§4 Ingestion, §6 ingestion flow & error philosophy
 Every item is one red → green → refactor cycle; commit each green step (`docs/workflow.md` Phase 2). Read each item as *"write a test that shows …"*.
 
 **Errors (the hierarchy is born here)**
-- [ ] the application base error exposes a user-presentable message
+- [x] the application base error exposes a user-presentable message
 - [ ] the four ingestion errors (unsupported type, too large, empty document, unreadable file) are subtypes of the base error and their messages name the offending file
 
 **Chunk value object**
