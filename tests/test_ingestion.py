@@ -1,8 +1,13 @@
 import pytest
 
-from docchat.errors import FileTooLargeError, UnsupportedFileTypeError
+from docchat.errors import (
+    EmptyDocumentError,
+    FileTooLargeError,
+    UnsupportedFileTypeError,
+)
 from docchat.ingestion import ingest
 from docchat.loaders import LOADERS
+from pdf_fixtures import make_pdf_bytes
 
 
 def test_unsupported_extension_lists_supported_formats() -> None:
@@ -32,3 +37,17 @@ def test_oversized_file_is_rejected_before_parsing() -> None:
         ingest(undecodable_and_oversized, "notes.txt", max_bytes=50)
 
     assert "notes.txt" in excinfo.value.user_message
+
+
+def test_whitespace_only_txt_raises_empty_document_error() -> None:
+    with pytest.raises(EmptyDocumentError) as excinfo:
+        ingest(b"   \n\t  \n", "blank.txt")
+
+    assert "blank.txt" in excinfo.value.user_message
+
+
+def test_image_only_pdf_raises_empty_document_error() -> None:
+    data = make_pdf_bytes("", "")
+
+    with pytest.raises(EmptyDocumentError):
+        ingest(data, "scanned.pdf")
