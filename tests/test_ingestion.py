@@ -1,6 +1,6 @@
 import pytest
 
-from docchat.errors import UnsupportedFileTypeError
+from docchat.errors import FileTooLargeError, UnsupportedFileTypeError
 from docchat.ingestion import ingest
 from docchat.loaders import LOADERS
 
@@ -23,3 +23,12 @@ def test_extension_matching_is_case_insensitive() -> None:
 def test_filename_without_extension_is_rejected() -> None:
     with pytest.raises(UnsupportedFileTypeError):
         ingest(b"data", "README")
+
+
+def test_oversized_file_is_rejected_before_parsing() -> None:
+    undecodable_and_oversized = b"\xff\xfe" * 100
+
+    with pytest.raises(FileTooLargeError) as excinfo:
+        ingest(undecodable_and_oversized, "notes.txt", max_bytes=50)
+
+    assert "notes.txt" in excinfo.value.user_message
