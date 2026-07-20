@@ -38,7 +38,7 @@ Every item is one red → green → refactor cycle; commit each green step (`doc
 - [x] the four ingestion errors (unsupported type, too large, empty document, unreadable file) are subtypes of the base error and their messages name the offending file
 
 **Chunk value object**
-- [ ] a chunk is an immutable value: equal by content (text + provenance), mutation attempts fail
+- [x] a chunk is an immutable value: equal by content (text + provenance), mutation attempts fail
 
 **Chunker (pure, bottom of the stack)**
 - [ ] chunking empty text yields no chunks
