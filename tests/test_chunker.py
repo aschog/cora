@@ -50,6 +50,15 @@ def test_splits_at_word_boundaries_when_no_line_breaks() -> None:
     assert [chunk.text for chunk in chunks] == [word1, word2]
 
 
+def test_unbroken_run_longer_than_chunk_size_is_hard_split() -> None:
+    text = "A" * 250
+
+    chunks = chunk_text(text, source="notes.txt", chunk_size=100, overlap=0)
+
+    assert [chunk.text for chunk in chunks] == ["A" * 100, "A" * 100, "A" * 50]
+    assert "".join(chunk.text for chunk in chunks) == text
+
+
 def test_long_text_splits_into_multiple_chunks_within_budget() -> None:
     text = ". ".join(f"sentence number {n}" for n in range(200))
 
