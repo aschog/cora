@@ -49,7 +49,7 @@ Every item is one red → green → refactor cycle; commit each green step (`doc
 - [x] text without paragraph breaks splits at line breaks, and without those at word boundaries
 - [x] one unbroken run of characters longer than the chunk size is hard-split rather than looping or overflowing
 - [x] consecutive chunks overlap by the configured amount (tail of chunk *n* reappears at the head of chunk *n+1*)
-- [ ] chunk indices are consecutive from zero and each chunk's offset locates its text in the source
+- [x] chunk indices are consecutive from zero and each chunk's offset locates its text in the source
 
 **Text cleaning**
 - [ ] extracted text is normalized: CRLF becomes LF, surrounding whitespace is trimmed, runs of 3+ blank lines collapse to one paragraph break
