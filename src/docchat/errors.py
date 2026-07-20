@@ -11,3 +11,32 @@ class DocChatError(Exception):
     def __init__(self, user_message: str) -> None:
         super().__init__(user_message)
         self.user_message = user_message
+
+
+class IngestionError(DocChatError):
+    """A document could not be ingested; the message names the file.
+
+    Subclasses set ``reason`` to describe the specific failure.
+    """
+
+    reason = "the file could not be ingested."
+
+    def __init__(self, filename: str) -> None:
+        super().__init__(f"Could not process '{filename}': {self.reason}")
+        self.filename = filename
+
+
+class UnsupportedFileTypeError(IngestionError):
+    reason = "unsupported file type."
+
+
+class FileTooLargeError(IngestionError):
+    reason = "the file is too large."
+
+
+class EmptyDocumentError(IngestionError):
+    reason = "the document has no readable text."
+
+
+class UnreadableFileError(IngestionError):
+    reason = "the file is corrupted or unreadable."

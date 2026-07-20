@@ -35,7 +35,7 @@ Every item is one red → green → refactor cycle; commit each green step (`doc
 
 **Errors (the hierarchy is born here)**
 - [x] the application base error exposes a user-presentable message
-- [ ] the four ingestion errors (unsupported type, too large, empty document, unreadable file) are subtypes of the base error and their messages name the offending file
+- [x] the four ingestion errors (unsupported type, too large, empty document, unreadable file) are subtypes of the base error and their messages name the offending file
 
 **Chunk value object**
 - [ ] a chunk is an immutable value: equal by content (text + provenance), mutation attempts fail
