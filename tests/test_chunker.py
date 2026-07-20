@@ -30,6 +30,26 @@ def test_splits_at_paragraph_break_near_size_limit() -> None:
     assert [chunk.text for chunk in chunks] == [para1, para2]
 
 
+def test_splits_at_line_breaks_when_no_paragraph_breaks() -> None:
+    line1 = "A" * 40
+    line2 = "B" * 40
+    text = f"{line1}\n{line2}"
+
+    chunks = chunk_text(text, source="notes.txt", chunk_size=50, overlap=0)
+
+    assert [chunk.text for chunk in chunks] == [line1, line2]
+
+
+def test_splits_at_word_boundaries_when_no_line_breaks() -> None:
+    word1 = "A" * 40
+    word2 = "B" * 40
+    text = f"{word1} {word2}"
+
+    chunks = chunk_text(text, source="notes.txt", chunk_size=50, overlap=0)
+
+    assert [chunk.text for chunk in chunks] == [word1, word2]
+
+
 def test_long_text_splits_into_multiple_chunks_within_budget() -> None:
     text = ". ".join(f"sentence number {n}" for n in range(200))
 

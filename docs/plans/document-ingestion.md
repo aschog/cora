@@ -46,7 +46,7 @@ Every item is one red → green → refactor cycle; commit each green step (`doc
 - [x] invalid parameters (non-positive chunk size, overlap ≥ chunk size) are rejected as programmer errors
 - [x] long text splits into multiple chunks, each within the size budget
 - [x] a paragraph break near the size limit becomes the split point (no mid-sentence cut when `\n\n` is available)
-- [ ] text without paragraph breaks splits at line breaks, and without those at word boundaries
+- [x] text without paragraph breaks splits at line breaks, and without those at word boundaries
 - [ ] one unbroken run of characters longer than the chunk size is hard-split rather than looping or overflowing
 - [ ] consecutive chunks overlap by the configured amount (tail of chunk *n* reappears at the head of chunk *n+1*)
 - [ ] chunk indices are consecutive from zero and each chunk's offset locates its text in the source
