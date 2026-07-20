@@ -70,8 +70,8 @@ Every item is one red → green → refactor cycle; commit each green step (`doc
 - [x] extension matching is case-insensitive and a filename without an extension is rejected as unsupported
 - [x] bytes over the size limit (a parameter with a default) raise the too-large error before any parsing
 - [x] a document that is empty after extraction (whitespace-only txt, image-only pdf) raises the empty-document error
-- [ ] the entry point works end-to-end: txt bytes + filename yield ordered chunks whose source name is the filename
-- [ ] the entry point works end-to-end for a fixture-generated PDF, provenance intact
+- [x] the entry point works end-to-end: txt bytes + filename yield ordered chunks whose source name is the filename
+- [x] the entry point works end-to-end for a fixture-generated PDF, provenance intact
 
 ## Trade-offs considered / rejected alternatives
 

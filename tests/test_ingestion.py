@@ -51,3 +51,25 @@ def test_image_only_pdf_raises_empty_document_error() -> None:
 
     with pytest.raises(EmptyDocumentError):
         ingest(data, "scanned.pdf")
+
+
+def test_ingest_txt_yields_ordered_chunks_named_by_filename() -> None:
+    text = "\n\n".join(f"Paragraph {n} with several words." for n in range(80))
+
+    chunks = ingest(text.encode(), "notes.txt")
+
+    assert len(chunks) > 1
+    assert all(chunk.source == "notes.txt" for chunk in chunks)
+    assert [chunk.index for chunk in chunks] == list(range(len(chunks)))
+
+
+def test_ingest_pdf_end_to_end_with_provenance() -> None:
+    data = make_pdf_bytes("First page content.", "Second page content.")
+
+    chunks = ingest(data, "doc.pdf")
+
+    assert chunks
+    assert all(chunk.source == "doc.pdf" for chunk in chunks)
+    combined = " ".join(chunk.text for chunk in chunks)
+    assert "First page content." in combined
+    assert "Second page content." in combined
