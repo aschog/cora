@@ -66,7 +66,7 @@ Every item is one red → green → refactor cycle; commit each green step (`doc
 - [x] corrupt PDF bytes raise the unreadable-file error (pypdf's exception never escapes)
 
 **Validation + entry point (top of the stack)**
-- [ ] an unsupported extension raises the unsupported-type error whose message lists the supported formats
+- [x] an unsupported extension raises the unsupported-type error whose message lists the supported formats
 - [ ] extension matching is case-insensitive and a filename without an extension is rejected as unsupported
 - [ ] bytes over the size limit (a parameter with a default) raise the too-large error before any parsing
 - [ ] a document that is empty after extraction (whitespace-only txt, image-only pdf) raises the empty-document error

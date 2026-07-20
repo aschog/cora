@@ -4,6 +4,8 @@ Every error carries a user-presentable message; the UI shell renders it
 verbatim, so no failure ever reaches the user as a stack trace.
 """
 
+from collections.abc import Iterable
+
 
 class DocChatError(Exception):
     """Base error for all application failures."""
@@ -28,6 +30,12 @@ class IngestionError(DocChatError):
 
 class UnsupportedFileTypeError(IngestionError):
     reason = "unsupported file type."
+
+    def __init__(self, filename: str, supported: Iterable[str] = ()) -> None:
+        formats = ", ".join(sorted(supported))
+        if formats:
+            self.reason = f"unsupported file type (supported: {formats})."
+        super().__init__(filename)
 
 
 class FileTooLargeError(IngestionError):
