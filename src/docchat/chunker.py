@@ -19,4 +19,9 @@ def chunk_text(
         return []
     if len(text) <= chunk_size:
         return [Chunk(text=text, source=source, index=0, offset=0)]
-    raise NotImplementedError
+    return [
+        Chunk(
+            text=text[start : start + chunk_size], source=source, index=i, offset=start
+        )
+        for i, start in enumerate(range(0, len(text), chunk_size))
+    ]

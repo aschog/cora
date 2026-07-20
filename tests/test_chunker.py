@@ -20,6 +20,15 @@ def test_whitespace_only_text_yields_no_chunks() -> None:
     assert chunk_text("   \n\t  ", source="notes.txt") == []
 
 
+def test_long_text_splits_into_multiple_chunks_within_budget() -> None:
+    text = ". ".join(f"sentence number {n}" for n in range(200))
+
+    chunks = chunk_text(text, source="notes.txt", chunk_size=100, overlap=20)
+
+    assert len(chunks) > 1
+    assert all(len(chunk.text) <= 100 for chunk in chunks)
+
+
 @pytest.mark.parametrize("chunk_size", [0, -1])
 def test_non_positive_chunk_size_is_rejected(chunk_size: int) -> None:
     with pytest.raises(ValueError):
