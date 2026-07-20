@@ -11,6 +11,10 @@ def chunk_text(
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     overlap: int = DEFAULT_OVERLAP,
 ) -> list[Chunk]:
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
+    if not 0 <= overlap < chunk_size:
+        raise ValueError("overlap must be non-negative and smaller than chunk_size")
     if not text.strip():
         return []
     if len(text) <= chunk_size:
