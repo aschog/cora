@@ -52,7 +52,7 @@ Every item is one red → green → refactor cycle; commit each green step (`doc
 - [x] chunk indices are consecutive from zero and each chunk's offset locates its text in the source
 
 **Text cleaning**
-- [ ] extracted text is normalized: CRLF becomes LF, surrounding whitespace is trimmed, runs of 3+ blank lines collapse to one paragraph break
+- [x] extracted text is normalized: CRLF becomes LF, surrounding whitespace is trimmed, runs of 3+ blank lines collapse to one paragraph break
 
 **Loaders — txt / md**
 - [ ] UTF-8 txt bytes decode to their text
