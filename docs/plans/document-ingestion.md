@@ -41,7 +41,7 @@ Every item is one red → green → refactor cycle; commit each green step (`doc
 - [x] a chunk is an immutable value: equal by content (text + provenance), mutation attempts fail
 
 **Chunker (pure, bottom of the stack)**
-- [ ] chunking empty text yields no chunks
+- [x] chunking empty text yields no chunks
 - [ ] text shorter than the chunk size yields exactly one chunk containing the full text, with source name, index 0, offset 0
 - [ ] invalid parameters (non-positive chunk size, overlap ≥ chunk size) are rejected as programmer errors
 - [ ] long text splits into multiple chunks, each within the size budget
