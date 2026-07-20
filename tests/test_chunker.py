@@ -75,6 +75,19 @@ def test_consecutive_chunks_overlap_by_configured_amount() -> None:
         assert nxt.text[:overlap] == prev.text[-overlap:]
 
 
+def test_offsets_stay_valid_when_source_has_separator_runs() -> None:
+    text = "  ".join(f"word{n}" for n in range(400))
+
+    chunks = chunk_text(text, source="notes.txt", chunk_size=100, overlap=20)
+
+    assert all(chunk.text for chunk in chunks)
+    offsets = [chunk.offset for chunk in chunks]
+    assert offsets == sorted(offsets)
+    assert all(offset >= 0 for offset in offsets)
+    for chunk in chunks:
+        assert text[chunk.offset : chunk.offset + len(chunk.text)] == chunk.text
+
+
 def test_chunk_indices_are_consecutive_and_offsets_locate_text() -> None:
     text = "\n\n".join(f"Paragraph number {n} with some words." for n in range(30))
 

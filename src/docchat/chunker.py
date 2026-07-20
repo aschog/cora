@@ -21,55 +21,67 @@ def chunk_text(
     if not text.strip():
         return []
 
-    pieces = _split(text, chunk_size - overlap, _SEPARATORS)
-    return _locate(pieces, text, source, overlap)
+    spans = _split(text, 0, chunk_size - overlap, _SEPARATORS)
+    return _to_chunks(spans, text, source, overlap)
 
 
-def _split(text: str, chunk_size: int, separators: list[str]) -> list[str]:
-    """Recursively split text into pieces no larger than chunk_size.
+def _split(
+    text: str, base: int, chunk_size: int, separators: list[str]
+) -> list[tuple[int, int]]:
+    """Recursively split text into (start, end) spans no larger than chunk_size.
 
-    Packs adjacent fragments greedily at the coarsest separator that fits;
-    any fragment still too large is recursively split at the next finer one.
+    Spans are positions in the original text, so each piece is always an exact
+    substring. Packs adjacent fragments greedily at the coarsest separator that
+    fits; any fragment still too large is split at the next finer one. ``base``
+    is the offset of ``text`` within the original.
     """
     if len(text) <= chunk_size:
-        return [text]
+        return [(base, base + len(text))]
 
     separator, *finer = separators
     if separator == "":
-        return [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+        return [
+            (base + i, base + min(i + chunk_size, len(text)))
+            for i in range(0, len(text), chunk_size)
+        ]
 
-    fragments = [f for f in text.split(separator) if f]
-    pieces: list[str] = []
-    current = ""
-    for fragment in fragments:
-        candidate = f"{current}{separator}{fragment}" if current else fragment
-        if len(candidate) <= chunk_size:
-            current = candidate
+    spans: list[tuple[int, int]] = []
+    start: int | None = None
+    end = 0
+    for fragment, offset in _fragments(text, separator):
+        frag_end = offset + len(fragment)
+        if start is not None and frag_end - start <= chunk_size:
+            end = frag_end
             continue
-        if current:
-            pieces.append(current)
+        if start is not None:
+            spans.append((base + start, base + end))
         if len(fragment) > chunk_size:
-            pieces.extend(_split(fragment, chunk_size, finer))
-            current = ""
+            spans.extend(_split(fragment, base + offset, chunk_size, finer))
+            start = None
         else:
-            current = fragment
-    if current:
-        pieces.append(current)
-    return pieces
+            start, end = offset, frag_end
+    if start is not None:
+        spans.append((base + start, base + end))
+    return spans
 
 
-def _locate(pieces: list[str], text: str, source: str, overlap: int) -> list[Chunk]:
-    """Attach provenance and overlap by locating each piece in the source text.
+def _fragments(text: str, separator: str) -> list[tuple[str, int]]:
+    """Yield each non-empty fragment with its start offset within ``text``."""
+    fragments: list[tuple[str, int]] = []
+    offset = 0
+    for fragment in text.split(separator):
+        if fragment:
+            fragments.append((fragment, offset))
+        offset += len(fragment) + len(separator)
+    return fragments
 
-    Each piece is found at its position in the source, then extended backwards
-    by ``overlap`` characters so its head repeats the previous chunk's tail.
-    """
+
+def _to_chunks(
+    spans: list[tuple[int, int]], text: str, source: str, overlap: int
+) -> list[Chunk]:
+    """Turn spans into chunks, extending each after the first back by overlap."""
     chunks: list[Chunk] = []
-    cursor = 0
-    for index, piece in enumerate(pieces):
-        base_offset = text.find(piece, cursor)
-        end = base_offset + len(piece)
-        cursor = end
+    for index, (base_offset, end) in enumerate(spans):
         start = max(0, base_offset - overlap) if index else base_offset
         chunks.append(
             Chunk(text=text[start:end], source=source, index=index, offset=start)
