@@ -128,7 +128,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 **Legend:** **(int)** = `@pytest.mark.integration` (real infrastructure, CI tier). Everything else is unit tier.
 
 #### Retrieved-chunk value object
-- [ ] a retrieved chunk is immutable: text + provenance + score, equal by content, mutation fails
+- [x] a retrieved chunk is immutable: text + provenance + score, equal by content, mutation fails
 
 #### Fake embedder
 - [ ] maps texts to deterministic fixed-dim vectors: identical text → identical vector, different texts differ, a batch embeds element-wise
