@@ -13,6 +13,8 @@ class KnowledgeBase:
 
     def add_file(self, data: bytes, filename: str) -> int:
         file_hash = hashlib.sha256(data).hexdigest()
+        if self.retriever.contains(file_hash):
+            return 0
         chunks = ingest(data, filename)
         vectors = self.embedder.embed([chunk.text for chunk in chunks])
         self.retriever.add(chunks, vectors, file_hash)

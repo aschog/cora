@@ -57,3 +57,30 @@ def test_list_sources_returns_each_source_once(
     kb.add_file(("second document " * 100).encode(), "two.md")
 
     assert kb.list_sources() == ["one.txt", "two.md"]
+
+
+class _CountingEmbedder:
+    def __init__(self) -> None:
+        self._inner = FakeEmbedder()
+        self.calls = 0
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        self.calls += 1
+        return self._inner.embed(texts)
+
+
+def test_re_adding_identical_bytes_is_a_no_op(retriever: FakeRetriever) -> None:
+    data = ("same content " * 100).encode()
+    embedder = _CountingEmbedder()
+    kb = KnowledgeBase(embedder=embedder, retriever=retriever)
+
+    first = kb.add_file(data, "doc.txt")
+    second = kb.add_file(data, "doc.txt")
+
+    assert first >= 1
+    assert second == 0
+    assert embedder.calls == 1
+    assert kb.list_sources() == ["doc.txt"]
+
+    stored = retriever.query(FakeEmbedder().embed(["probe"])[0], k=first + 5)
+    assert len(stored) == first

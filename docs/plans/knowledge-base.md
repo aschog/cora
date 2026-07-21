@@ -144,7 +144,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] `search` returns the top-k relevant chunks, ordered, with provenance + score (a query equal to a chunk's text retrieves that chunk first — proves query and docs share one embedder)
 - [x] `search` on an empty KB returns no hits, no error
 - [x] `list_sources` returns each source once across multiple files
-- [ ] re-adding identical bytes is a no-op: no duplicate chunks, source listed once, embedder not called again
+- [x] re-adding identical bytes is a no-op: no duplicate chunks, source listed once, embedder not called again
 - [ ] a rejected ingestion (unsupported / empty / oversized) propagates its typed error unchanged
 
 #### Errors
