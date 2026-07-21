@@ -131,7 +131,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] a retrieved chunk is immutable: text + provenance + score, equal by content, mutation fails
 
 #### Fake embedder
-- [ ] maps texts to deterministic fixed-dim vectors: identical text → identical vector, different texts differ, a batch embeds element-wise
+- [x] maps texts to deterministic fixed-dim vectors: identical text → identical vector, different texts differ, a batch embeds element-wise
 
 #### Fake retriever
 - [ ] querying an empty retriever yields no hits, no error
