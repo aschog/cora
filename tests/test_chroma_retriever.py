@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from docchat.chunk import Chunk
+from docchat.errors import RetrievalError
 from fakes import FakeEmbedder
 
 if TYPE_CHECKING:
@@ -76,3 +77,15 @@ def test_chroma_re_adds_with_same_ids_do_not_duplicate(
 
     hits = chroma_retriever.query(embedder.embed(["a"])[0], k=10)
     assert len(hits) == 2
+
+
+def test_chroma_failure_surfaces_as_retrieval_error(
+    chroma_retriever: "ChromaRetriever", make_chunk: Callable[..., Chunk]
+) -> None:
+    embedder = FakeEmbedder()
+    chroma_retriever.add(
+        [make_chunk("a", index=0)], embedder.embed(["a"]), file_hash="h"
+    )
+
+    with pytest.raises(RetrievalError):
+        chroma_retriever.query([0.1, 0.2, 0.3], k=1)

@@ -1,9 +1,24 @@
+from collections.abc import Callable
+from functools import wraps
 from typing import cast
 
 import chromadb
+from chromadb.errors import ChromaError
 
 from docchat.chunk import Chunk
+from docchat.errors import RetrievalError
 from docchat.retrieval import RetrievedChunk
+
+
+def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
+    @wraps(method)
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
+        try:
+            return method(*args, **kwargs)
+        except ChromaError as error:
+            raise RetrievalError() from error
+
+    return wrapper
 
 
 class ChromaRetriever:
@@ -13,6 +28,7 @@ class ChromaRetriever:
             name=collection, configuration={"hnsw": {"space": "cosine"}}
         )
 
+    @_translate_errors
     def add(
         self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
     ) -> None:
@@ -31,6 +47,7 @@ class ChromaRetriever:
             ],
         )
 
+    @_translate_errors
     def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
         result = self._collection.query(
             query_embeddings=[list(query_vector)],
@@ -55,12 +72,14 @@ class ChromaRetriever:
             )
         ]
 
+    @_translate_errors
     def sources(self) -> list[str]:
         metadatas = self._collection.get(include=["metadatas"])["metadatas"] or []
         return list(
             dict.fromkeys(cast(str, metadata["source"]) for metadata in metadatas)
         )
 
+    @_translate_errors
     def contains(self, file_hash: str) -> bool:
         found = self._collection.get(where={"file_hash": file_hash}, limit=1)
         return len(found["ids"]) > 0
