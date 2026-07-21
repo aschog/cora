@@ -1,6 +1,9 @@
 from collections.abc import Callable
 
+import pytest
+
 from docchat.chunk import Chunk
+from docchat.errors import EmptyDocumentError, UnsupportedFileTypeError
 from docchat.ingestion import ingest
 from docchat.knowledge_base import KnowledgeBase
 from fakes import FakeEmbedder, FakeRetriever
@@ -84,3 +87,15 @@ def test_re_adding_identical_bytes_is_a_no_op(retriever: FakeRetriever) -> None:
 
     stored = retriever.query(FakeEmbedder().embed(["probe"])[0], k=first + 5)
     assert len(stored) == first
+
+
+def test_add_file_propagates_ingestion_errors_unchanged(
+    embedder: FakeEmbedder, retriever: FakeRetriever
+) -> None:
+    kb = KnowledgeBase(embedder=embedder, retriever=retriever)
+
+    with pytest.raises(UnsupportedFileTypeError):
+        kb.add_file(b"data", "sheet.xlsx")
+
+    with pytest.raises(EmptyDocumentError):
+        kb.add_file(b"   ", "blank.txt")

@@ -145,7 +145,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] `search` on an empty KB returns no hits, no error
 - [x] `list_sources` returns each source once across multiple files
 - [x] re-adding identical bytes is a no-op: no duplicate chunks, source listed once, embedder not called again
-- [ ] a rejected ingestion (unsupported / empty / oversized) propagates its typed error unchanged
+- [x] a rejected ingestion (unsupported / empty / oversized) propagates its typed error unchanged
 
 #### Errors
 - [ ] the adapter error categories (embedding failed, retrieval failed) are `DocChatError` subtypes with user messages
