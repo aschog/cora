@@ -1,4 +1,4 @@
-from fakes import FakeEmbedder
+from fakes import FakeEmbedder, FakeRetriever
 
 
 def test_fake_embedder_is_deterministic() -> None:
@@ -31,3 +31,9 @@ def test_fake_embedder_embeds_a_batch_element_wise() -> None:
     batch = embedder.embed(["x", "y"])
 
     assert batch == [embedder.embed(["x"])[0], embedder.embed(["y"])[0]]
+
+
+def test_fake_retriever_query_on_empty_store_returns_no_hits() -> None:
+    retriever = FakeRetriever()
+
+    assert retriever.query([0.1, 0.2, 0.3], k=3) == []

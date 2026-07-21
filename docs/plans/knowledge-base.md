@@ -134,7 +134,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] maps texts to deterministic fixed-dim vectors: identical text → identical vector, different texts differ, a batch embeds element-wise
 
 #### Fake retriever
-- [ ] querying an empty retriever yields no hits, no error
+- [x] querying an empty retriever yields no hits, no error
 - [ ] returns stored records ordered most-relevant-first by cosine similarity, capped at k, each hit carrying provenance + score
 - [ ] k larger than the store returns every record, and the closest vector ranks first
 - [ ] `sources` lists each stored source once, and `contains` reports whether a content hash is present (drives `list_sources` and dedupe)
