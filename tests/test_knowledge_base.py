@@ -47,3 +47,13 @@ def test_search_on_empty_knowledge_base_returns_no_hits(
     kb = KnowledgeBase(embedder=embedder, retriever=retriever)
 
     assert kb.search("anything", k=5) == []
+
+
+def test_list_sources_returns_each_source_once(
+    embedder: FakeEmbedder, retriever: FakeRetriever
+) -> None:
+    kb = KnowledgeBase(embedder=embedder, retriever=retriever)
+    kb.add_file(("first document " * 100).encode(), "one.txt")
+    kb.add_file(("second document " * 100).encode(), "two.md")
+
+    assert kb.list_sources() == ["one.txt", "two.md"]

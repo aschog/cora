@@ -21,3 +21,6 @@ class KnowledgeBase:
     def search(self, query: str, k: int) -> list[RetrievedChunk]:
         [query_vector] = self.embedder.embed([query])
         return self.retriever.query(query_vector, k)
+
+    def list_sources(self) -> list[str]:
+        return self.retriever.sources()
