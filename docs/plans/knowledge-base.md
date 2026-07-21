@@ -163,4 +163,4 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] **(int)** encodes texts to 384-dim unit vectors, and identical text → identical vector
 
 #### End-to-end
-- [ ] **(int)** the facade wired with both real adapters ingests a doc and retrieves the relevant chunk, provenance intact
+- [x] **(int)** the facade wired with both real adapters ingests a doc and retrieves the relevant chunk, provenance intact
