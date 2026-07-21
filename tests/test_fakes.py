@@ -1,3 +1,4 @@
+from docchat.chunk import Chunk
 from fakes import FakeEmbedder, FakeRetriever
 
 
@@ -37,3 +38,21 @@ def test_fake_retriever_query_on_empty_store_returns_no_hits() -> None:
     retriever = FakeRetriever()
 
     assert retriever.query([0.1, 0.2, 0.3], k=3) == []
+
+
+def test_fake_retriever_ranks_hits_by_cosine_similarity_capped_at_k() -> None:
+    embedder = FakeEmbedder()
+    retriever = FakeRetriever()
+    chunks = [
+        Chunk(text="alpha", source="a.txt", index=0, offset=0),
+        Chunk(text="beta", source="a.txt", index=1, offset=10),
+        Chunk(text="gamma", source="a.txt", index=2, offset=20),
+    ]
+    retriever.add(chunks, embedder.embed([c.text for c in chunks]), file_hash="h")
+
+    [query_vector] = embedder.embed(["beta"])
+    hits = retriever.query(query_vector, k=2)
+
+    assert len(hits) == 2
+    assert hits[0].chunk == chunks[1]
+    assert hits[0].score >= hits[1].score
