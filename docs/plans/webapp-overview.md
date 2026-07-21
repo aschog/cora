@@ -78,6 +78,32 @@ LangChain appears in exactly one adapter — nowhere else.
 
 A domain plugin is **data, not behaviour**: a declarative bundle the core consumes.
 
+```mermaid
+classDiagram
+  class Plugin {
+    <<data bundle>>
+    +system_prompt
+    +tools
+    +validation_rules
+    +seed_docs (optional)
+  }
+  class Tool {
+    +name
+    +description
+    +parameter_schema
+    +run() pure
+  }
+  class ValidationRule {
+    +apply(input)
+  }
+  Plugin *-- "≥3" Tool
+  Plugin *-- "*" ValidationRule
+  ChatOrchestrator ..> Plugin : reads system prompt
+  ToolRuntime ..> Tool : executes
+  ValidationPipeline ..> ValidationRule : chains after core rules
+  KnowledgeBase ..> Plugin : loads seed docs
+```
+
 | Plugin provides | Used by | Fulfils requirement |
 |---|---|---|
 | Domain system prompt(s) | Chat Orchestrator | domain-specific prompts & responses |
@@ -113,22 +139,61 @@ streaming responses, async (no concurrency need at this scale).
 
 **Ingestion flow** (with UI progress at each step):
 
-```
-upload → validate (type, size) → extract text → chunk (overlapping, boundary-aware)
-      → embed → store in vector DB with provenance (source, position) → listed as source
+```mermaid
+sequenceDiagram
+  actor User
+  participant UI as Streamlit UI
+  participant KB as Knowledge-base facade
+  participant ING as Ingestion
+  participant EMB as Embedder port
+  participant VS as Retriever port (Chroma)
+
+  User->>UI: upload file (txt/md/pdf)
+  UI->>KB: add_file(bytes, name)
+  KB->>ING: validate + extract text
+  alt unsupported / oversized / empty
+    ING-->>UI: typed error (friendly message)
+  else ok
+    ING->>ING: chunk (overlapping, boundary-aware)
+    ING-->>KB: chunks + provenance
+    KB->>EMB: embed(chunks)
+    EMB-->>KB: vectors
+    KB->>VS: store(vectors + provenance)
+    KB-->>UI: source listed
+  end
+  Note over UI: progress shown at each step
 ```
 
 **Chat flow:**
 
-```
-user input → validation pipeline (core rules + plugin rules; friendly rejection)
-          → similarity search over knowledge base (top-k chunks)
-          → prompt assembly: plugin system prompt + numbered context + citation instructions
-          → LLM turn ──▶ tool calls requested? ──▶ Tool Runtime executes each safely,
-          ▲                                        results fed back to the LLM
-          └──── bounded loop (hard cap on rounds) ◀┘
-          → response object: answer + retrieved sources + tool results
-          → UI renders answer, sources panel, tool-call details
+```mermaid
+sequenceDiagram
+  actor User
+  participant UI as Streamlit UI
+  participant VAL as Validation pipeline
+  participant ORCH as Chat orchestrator
+  participant KB as Knowledge base
+  participant LLM as LLM port
+  participant TOOL as Tool runtime
+
+  User->>UI: question
+  UI->>VAL: user input
+  alt invalid (empty, too long, plugin rule)
+    VAL-->>UI: friendly rejection
+  else valid
+    VAL->>ORCH: clean input
+    ORCH->>KB: similarity search (top-k)
+    KB-->>ORCH: context chunks
+    ORCH->>LLM: plugin prompt + numbered context + citation rules
+    loop bounded rounds (hard cap)
+      LLM-->>ORCH: tool calls requested
+      ORCH->>TOOL: execute each safely
+      TOOL-->>ORCH: results (failures as data)
+      ORCH->>LLM: feed results back
+    end
+    LLM-->>ORCH: final answer
+    ORCH-->>UI: answer + sources + tool results
+  end
 ```
 
 **Error philosophy:** one small exception hierarchy; every failure category
