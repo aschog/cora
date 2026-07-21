@@ -88,28 +88,29 @@ sequenceDiagram
 
 ### Key decisions
 
+Each decision names the alternative it was chosen over.
+
 - **Two ports** (Ports & Adapters / Strategy) — each is a separate, independently fakeable interface.
-- **Embedding lives in the facade**, above the retriever port:
+- **Embedding lives in the facade**, not inside the retriever adapter (which would couple both dependencies, force the fake to embed, and risk documents and queries using different models):
     - the facade owns both embed calls, so documents and queries share one embedder
     - the retriever stays a thin store over Chroma's precomputed-`embeddings=` path, so Chroma's own model never runs
-- **Ports speak relevance scores**, not raw distances (higher = more relevant):
+- **Ports speak relevance scores**, not raw distances (which are metric-specific — a normalized score, higher = more relevant, keeps core, fake, and UI on one convention):
     - the fake computes cosine similarity directly
     - the Chroma adapter translates its distance metric into the same convention
     - cosine space with unit-normalized vectors, chosen deliberately
-- **Retrieved chunk = value object** — text + provenance (source, index, offset) + score, immutable:
+- **Retrieved chunk = value object** — text + provenance (source, index, offset) + score, immutable (a richer provenance or a separate store-record type is unnecessary, as these fields already map straight to metadata):
     - equality by content
     - the direct input to citation rendering
     - extends the existing `Chunk` value-object pattern
 - **Facade holds no technology** — depends only on the two ports:
     - tests wire the fakes
     - the composition root (item 6) wires the real adapters
-- **Dedupe via stdlib `hashlib`**:
+- **Dedupe via stdlib `hashlib`**, first-write-wins with `add` rather than `upsert` (content-hash ids already make re-adds idempotent, so `add` is the simpler contract):
     - hash the file bytes
     - chunk ids = hash + index (deterministic)
     - skip before embedding when the hash is already stored
-    - first-write-wins (`add`)
     - store the hash as a string metadata field
-- **Confinement**:
+- **Confinement**, never via Chroma's own embedding function (which would download a second model, split the embedding source, and break confinement):
     - `chromadb` and `sentence-transformers` each live in exactly one module
     - the embedder lazy-loads its model on first use, so import stays cheap and the model stays out of the unit tier
     - adapters catch their library's exceptions and re-raise typed errors
@@ -156,13 +157,3 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 
 #### End-to-end
 - [ ] **(int)** the facade wired with both real adapters ingests a doc and retrieves the relevant chunk, provenance intact
-
----
-
-## Rejected alternatives
-
-- **Embedding inside the retriever adapter** — couples both dependencies, forces the fake to embed, and risks documents and queries using different models.
-- **`upsert` over `add`** — content-hash ids make both idempotent, so first-write-wins is the simpler contract.
-- **Chroma's own embedding function** — downloads a second model, splits the embedding source, and breaks confinement.
-- **Raw distances through the port** — metric-specific, whereas a normalized score keeps core, fake, and UI on one convention.
-- **Richer provenance / a distinct store-record type** — `source, index, offset` already suffice and map straight to metadata.
