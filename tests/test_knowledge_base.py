@@ -39,3 +39,11 @@ def test_search_returns_the_relevant_chunk_first(
     assert len(hits) == 1
     assert hits[0].chunk == chunks[1]
     assert hits[0].chunk.source == "doc.txt"
+
+
+def test_search_on_empty_knowledge_base_returns_no_hits(
+    embedder: FakeEmbedder, retriever: FakeRetriever
+) -> None:
+    kb = KnowledgeBase(embedder=embedder, retriever=retriever)
+
+    assert kb.search("anything", k=5) == []
