@@ -21,20 +21,36 @@ plugin turns the generic app into a specialist (reference plugin: **fitness coac
 
 The system is a hexagon: pure domain logic in the middle, technology at the edges.
 
+```mermaid
+flowchart LR
+  UI["Streamlit UI<br/>(shell)"]
+  PL["Domain plugins<br/>(data)"]
+
+  subgraph CORE["Core — pure Python, no framework imports"]
+    direction TB
+    ORCH["Chat orchestration"]
+    ING["Ingestion"]
+    VAL["Validation pipeline"]
+    TOOLS["Tool runtime"]
+    KB["Knowledge-base facade"]
+    LP(["LLM port"])
+    RP(["Retriever port"])
+    EP(["Embedder port"])
+  end
+
+  LC["LangChain /<br/>OpenRouter"]
+  CH["Chroma"]
+  ST["sentence-transformers"]
+
+  UI -- drives --> CORE
+  PL -- configures --> CORE
+  LP -. bound to .-> LC
+  RP -. bound to .-> CH
+  EP -. bound to .-> ST
 ```
-                      ┌───────────────────────────────┐
-   driving side       │            CORE               │      driven side
-                      │                               │
- ┌────────────┐       │  Chat Orchestration           │      ┌─────────────────┐
- │ Streamlit  │──────▶│  Ingestion (load, chunk)      │─────▶│ LLM Port ────────▶ LangChain/OpenRouter
- │ UI (shell) │       │  Validation pipeline          │      │ Retriever Port ──▶ Chroma
- └────────────┘       │  Tool execution               │      │ Embedder Port ───▶ sentence-transformers
- ┌────────────┐       │  Knowledge-base facade        │      └─────────────────┘
- │ Domain     │──────▶│                               │
- │ Plugins    │       │  (pure Python, no framework   │
- └────────────┘       │   imports, fully unit-tested) │
-                      └───────────────────────────────┘
-```
+
+*Driving side (left) drives the core; the core owns the three ports; driven adapters
+(right) implement them and are swapped for in-memory fakes in tests.*
 
 - **Ports** are narrow interfaces owned by the core (chat model, retriever, embedder).
 - **Adapters** implement them with real technology and are swappable: the UI adapter

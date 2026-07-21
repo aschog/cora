@@ -60,11 +60,14 @@ project. Every phase should be an atomic commit.
 
 ## Phase 3 — Review (before merge)
 
-- [ ] Push the branch — backs up the local auto-commits and kicks off CI
+- [ ] Push the branch and **open a PR** — backs up the local auto-commits and
+      kicks off CI; the PR is the review vehicle (diff, CI status, discussion)
 - [ ] Run `ai-code-reviewer` on the **accumulated branch diff** (not single commits)
-- [ ] **Fix every finding** — route each fix back through the Phase 2 TDD loop
-      (test first, if the finding is behavioral); nothing merges as "TODO later"
-- [ ] Re-run the review until it comes back clean
+- [ ] **Human review** of the PR — the AI review is input, not a substitute; a
+      person signs off on the diff before it can merge
+- [ ] **Fix every finding** (AI or human) — route each fix back through the Phase 2
+      TDD loop (test first, if the finding is behavioral); nothing merges as "TODO later"
+- [ ] Re-run the review until it comes back clean and **CI is green on the PR**
 
 ---
 
