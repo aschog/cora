@@ -47,6 +47,8 @@ classDiagram
       <<interface>>
       +add()
       +query()
+      +sources()
+      +contains()
     }
   }
   KnowledgeBase --> Embedder : delegates
@@ -90,7 +92,8 @@ sequenceDiagram
 
 Each decision names the alternative it was chosen over.
 
-- **Two ports** (Ports & Adapters / Strategy) — each is a separate, independently fakeable interface.
+- **Two ports** (Ports & Adapters / Strategy) — each is a separate, independently fakeable interface:
+    - the retriever also exposes read operations (`sources`, `contains`) so the facade can list sources and dedupe by reading the store back, with no second persistence layer
 - **Embedding lives in the facade**, not inside the retriever adapter (which would couple both dependencies, force the fake to embed, and risk documents and queries using different models):
     - the facade owns both embed calls, so documents and queries share one embedder
     - the retriever stays a thin store over Chroma's precomputed-`embeddings=` path, so Chroma's own model never runs
@@ -108,8 +111,9 @@ Each decision names the alternative it was chosen over.
 - **Dedupe via stdlib `hashlib`**, first-write-wins with `add` rather than `upsert` (content-hash ids already make re-adds idempotent, so `add` is the simpler contract):
     - hash the file bytes
     - chunk ids = hash + index (deterministic)
-    - skip before embedding when the hash is already stored
+    - skip before embedding when the retriever already `contains` that hash
     - store the hash as a string metadata field
+    - keyed on content, so identical bytes under a different filename are the same document (first filename wins)
 - **Confinement**, never via Chroma's own embedding function (which would download a second model, split the embedding source, and break confinement):
     - `chromadb` and `sentence-transformers` each live in exactly one module
     - the embedder lazy-loads its model on first use, so import stays cheap and the model stays out of the unit tier
@@ -133,6 +137,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [ ] querying an empty retriever yields no hits, no error
 - [ ] returns stored records ordered most-relevant-first by cosine similarity, capped at k, each hit carrying provenance + score
 - [ ] k larger than the store returns every record, and the closest vector ranks first
+- [ ] `sources` lists each stored source once, and `contains` reports whether a content hash is present (drives `list_sources` and dedupe)
 
 #### Facade (against both fakes)
 - [ ] `add_file` ingests, embeds every chunk once, and stores one record per chunk with provenance, reporting how many chunks were added
@@ -146,7 +151,9 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [ ] the adapter error categories (embedding failed, retrieval failed) are `DocChatError` subtypes with user messages
 
 #### Chroma adapter — `uv add 'chromadb>=1.5,<2'` at the first red step
+- [ ] **(int)** a `conftest.py` fixture gives each test a temp dir + unique collection, so Chroma state never leaks
 - [ ] **(int)** round-trips with our own precomputed embeddings (no Chroma embedding function): query returns records ordered by relevance with provenance + scores
+- [ ] **(int)** `sources` and `contains` read stored metadata back (drive `list_sources` and dedupe against real Chroma)
 - [ ] **(int)** records persist across a fresh client on the same directory
 - [ ] **(int)** content-hash ids make re-adds idempotent (no duplication)
 - [ ] **(int)** a Chroma failure surfaces as the typed retrieval error
