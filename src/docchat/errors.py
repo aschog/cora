@@ -48,3 +48,18 @@ class EmptyDocumentError(IngestionError):
 
 class UnreadableFileError(IngestionError):
     reason = "the file is corrupted or unreadable."
+
+
+class AdapterError(DocChatError):
+    message = "The document service is temporarily unavailable. Please try again."
+
+    def __init__(self) -> None:
+        super().__init__(self.message)
+
+
+class EmbeddingError(AdapterError):
+    message = "Could not generate embeddings for the document. Please try again."
+
+
+class RetrievalError(AdapterError):
+    message = "The knowledge base is temporarily unavailable. Please try again."

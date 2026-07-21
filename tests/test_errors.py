@@ -1,10 +1,13 @@
 import pytest
 
 from docchat.errors import (
+    AdapterError,
     DocChatError,
+    EmbeddingError,
     EmptyDocumentError,
     FileTooLargeError,
     IngestionError,
+    RetrievalError,
     UnreadableFileError,
     UnsupportedFileTypeError,
 )
@@ -37,3 +40,18 @@ def test_ingestion_error_message_names_the_offending_file(
 
     assert "budget.xlsx" in error.user_message
     assert error.filename == "budget.xlsx"
+
+
+ADAPTER_ERRORS = [EmbeddingError, RetrievalError]
+
+
+@pytest.mark.parametrize("error_type", ADAPTER_ERRORS)
+def test_adapter_error_is_a_docchat_error(error_type: type[AdapterError]) -> None:
+    assert issubclass(error_type, DocChatError)
+
+
+@pytest.mark.parametrize("error_type", ADAPTER_ERRORS)
+def test_adapter_error_carries_a_user_message(
+    error_type: type[AdapterError],
+) -> None:
+    assert error_type().user_message
