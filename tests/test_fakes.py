@@ -1,21 +1,7 @@
-import pytest
+from collections.abc import Callable
 
 from docchat.chunk import Chunk
 from fakes import FakeEmbedder, FakeRetriever
-
-
-@pytest.fixture
-def embedder() -> FakeEmbedder:
-    return FakeEmbedder()
-
-
-@pytest.fixture
-def retriever() -> FakeRetriever:
-    return FakeRetriever()
-
-
-def _chunk(text: str, source: str = "a.txt", index: int = 0, offset: int = 0) -> Chunk:
-    return Chunk(text=text, source=source, index=index, offset=offset)
 
 
 def _add(
@@ -60,9 +46,9 @@ def test_fake_retriever_query_on_empty_store_returns_no_hits(
 
 
 def test_fake_retriever_ranks_hits_by_cosine_similarity_capped_at_k(
-    embedder: FakeEmbedder, retriever: FakeRetriever
+    embedder: FakeEmbedder, retriever: FakeRetriever, make_chunk: Callable[..., Chunk]
 ) -> None:
-    chunks = [_chunk("alpha"), _chunk("beta"), _chunk("gamma")]
+    chunks = [make_chunk("alpha"), make_chunk("beta"), make_chunk("gamma")]
     _add(retriever, embedder, chunks)
 
     [query_vector] = embedder.embed(["beta"])
@@ -74,9 +60,9 @@ def test_fake_retriever_ranks_hits_by_cosine_similarity_capped_at_k(
 
 
 def test_fake_retriever_returns_every_record_when_k_exceeds_store(
-    embedder: FakeEmbedder, retriever: FakeRetriever
+    embedder: FakeEmbedder, retriever: FakeRetriever, make_chunk: Callable[..., Chunk]
 ) -> None:
-    chunks = [_chunk("alpha"), _chunk("beta")]
+    chunks = [make_chunk("alpha"), make_chunk("beta")]
     _add(retriever, embedder, chunks)
 
     [query_vector] = embedder.embed(["alpha"])
@@ -87,13 +73,13 @@ def test_fake_retriever_returns_every_record_when_k_exceeds_store(
 
 
 def test_fake_retriever_lists_each_source_once(
-    embedder: FakeEmbedder, retriever: FakeRetriever
+    embedder: FakeEmbedder, retriever: FakeRetriever, make_chunk: Callable[..., Chunk]
 ) -> None:
-    _add(retriever, embedder, [_chunk("a", source="one.txt")], file_hash="h1")
+    _add(retriever, embedder, [make_chunk("a", source="one.txt")], file_hash="h1")
     _add(
         retriever,
         embedder,
-        [_chunk("b", source="two.txt"), _chunk("c", source="two.txt", index=1)],
+        [make_chunk("b", source="two.txt"), make_chunk("c", source="two.txt", index=1)],
         file_hash="h2",
     )
 
@@ -101,9 +87,9 @@ def test_fake_retriever_lists_each_source_once(
 
 
 def test_fake_retriever_contains_reports_known_hashes(
-    embedder: FakeEmbedder, retriever: FakeRetriever
+    embedder: FakeEmbedder, retriever: FakeRetriever, make_chunk: Callable[..., Chunk]
 ) -> None:
-    _add(retriever, embedder, [_chunk("a", source="one.txt")], file_hash="h1")
+    _add(retriever, embedder, [make_chunk("a", source="one.txt")], file_hash="h1")
 
     assert retriever.contains("h1")
     assert not retriever.contains("h2")
