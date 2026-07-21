@@ -155,7 +155,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] **(int)** round-trips with our own precomputed embeddings (no Chroma embedding function): query returns records ordered by relevance with provenance + scores
 - [x] **(int)** `sources` and `contains` read stored metadata back (drive `list_sources` and dedupe against real Chroma)
 - [x] **(int)** records persist across a fresh client on the same directory
-- [ ] **(int)** content-hash ids make re-adds idempotent (no duplication)
+- [x] **(int)** content-hash ids make re-adds idempotent (no duplication)
 - [ ] **(int)** a Chroma failure surfaces as the typed retrieval error
 
 #### sentence-transformers adapter — `uv add 'sentence-transformers>=5.3,<6'` at the first red step
