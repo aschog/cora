@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 pytestmark = pytest.mark.integration
@@ -12,3 +14,20 @@ def test_embedder_loads_the_model_lazily() -> None:
     embedder.embed(["hello"])
 
     assert embedder._model is not None
+
+
+def test_embedder_produces_384_dim_unit_vectors() -> None:
+    from docchat.sentence_transformer_embedder import SentenceTransformerEmbedder
+
+    embedder = SentenceTransformerEmbedder()
+
+    hello, world = embedder.embed(["hello", "world"])
+
+    assert len(hello) == 384
+    assert hello != world
+    assert math.isclose(math.sqrt(sum(x * x for x in hello)), 1.0, abs_tol=1e-5)
+
+    again = embedder.embed(["hello"])[0]
+    assert all(
+        math.isclose(a, b, abs_tol=1e-5) for a, b in zip(hello, again, strict=True)
+    )
