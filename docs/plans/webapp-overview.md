@@ -22,35 +22,48 @@ plugin turns the generic app into a specialist (reference plugin: **fitness coac
 The system is a hexagon: pure domain logic in the middle, technology at the edges.
 
 ```mermaid
-flowchart LR
-  UI["Streamlit UI<br/>(shell)"]
-  PL["Domain plugins<br/>(data)"]
+C4Container
+  title Ports & Adapters — container view
 
-  subgraph CORE["Core — pure Python, no framework imports"]
-    direction TB
-    ORCH["Chat orchestration"]
-    ING["Ingestion"]
-    VAL["Validation pipeline"]
-    TOOLS["Tool runtime"]
-    KB["Knowledge-base facade"]
-    LP(["LLM port"])
-    RP(["Retriever port"])
-    EP(["Embedder port"])
-  end
+  Person(user, "User", "Uploads docs, asks questions")
 
-  LC["LangChain /<br/>OpenRouter"]
-  CH["Chroma"]
-  ST["sentence-transformers"]
+  System_Boundary(app, "RAG chatbot") {
+    Container(ui, "Streamlit UI", "Streamlit", "Thin shell: upload, chat, sources, progress")
+    Container(plugins, "Domain plugins", "Data bundles", "Prompt, tools, rules, seed docs")
 
-  UI -- drives --> CORE
-  PL -- configures --> CORE
-  LP -. bound to .-> LC
-  RP -. bound to .-> CH
-  EP -. bound to .-> ST
+    Container_Boundary(core, "Core — pure Python, no framework imports") {
+      Component(orch, "Chat orchestration", "", "Validate, retrieve, prompt, run tools")
+      Component(kb, "Knowledge-base facade", "", "Load, chunk, embed, store")
+      Component(ports, "LLM / Retriever / Embedder ports", "narrow interfaces", "Owned by the core")
+    }
+  }
+
+  System_Ext(llm, "OpenRouter", "LLM provider")
+  ContainerDb_Ext(chroma, "Chroma", "Embedded vector store")
+  System_Ext(st, "sentence-transformers", "Local embeddings")
+
+  Rel(user, ui, "Uses")
+  Rel(ui, orch, "Drives", "core API")
+  Rel(plugins, orch, "Configures")
+  Rel(orch, kb, "Retrieves via")
+  Rel(orch, ports, "Calls")
+  Rel(kb, ports, "Uses")
+  Rel(ports, llm, "LLM port bound via", "LangChain")
+  Rel(ports, chroma, "Retriever port bound to")
+  Rel(ports, st, "Embedder port bound to")
+
+  UpdateElementStyle(orch, $bgColor="#134e6f", $borderColor="#1f78b4", $fontColor="#ffffff")
+  UpdateElementStyle(kb, $bgColor="#134e6f", $borderColor="#1f78b4", $fontColor="#ffffff")
+  UpdateElementStyle(ports, $bgColor="#8c4b00", $borderColor="#d98a1f", $fontColor="#ffffff")
+  UpdateRelStyle(ports, llm, $textColor="#c86b0a", $lineColor="#c86b0a")
+  UpdateRelStyle(ports, chroma, $textColor="#c86b0a", $lineColor="#c86b0a")
+  UpdateRelStyle(ports, st, $textColor="#c86b0a", $lineColor="#c86b0a")
+  UpdateLayoutConfig($c4ShapeInRow="2", $c4BoundaryInRow="1")
 ```
 
-*Driving side (left) drives the core; the core owns the three ports; driven adapters
-(right) implement them and are swapped for in-memory fakes in tests.*
+*The driving side (user, UI, plugins) drives the core; the core owns the three ports
+(amber — the replaceable seam); driven adapters (external systems) implement them via
+the amber bindings and are swapped for in-memory fakes in tests.*
 
 - **Ports** are narrow interfaces owned by the core (chat model, retriever, embedder).
 - **Adapters** implement them with real technology and are swappable: the UI adapter
