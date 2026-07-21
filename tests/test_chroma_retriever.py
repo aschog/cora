@@ -49,3 +49,17 @@ def test_chroma_reads_back_sources_and_contains(
     assert sorted(chroma_retriever.sources()) == ["one.txt", "two.txt"]
     assert chroma_retriever.contains("h1")
     assert not chroma_retriever.contains("h3")
+
+
+def test_chroma_records_persist_across_a_fresh_client(
+    make_chroma: "Callable[[], ChromaRetriever]", make_chunk: Callable[..., Chunk]
+) -> None:
+    embedder = FakeEmbedder()
+    chunk = make_chunk("persisted", index=0)
+    make_chroma().add([chunk], embedder.embed(["persisted"]), file_hash="h")
+
+    reopened = make_chroma()
+    hits = reopened.query(embedder.embed(["persisted"])[0], k=1)
+
+    assert len(hits) == 1
+    assert hits[0].chunk == chunk

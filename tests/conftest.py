@@ -1,4 +1,3 @@
-import uuid
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -42,7 +41,17 @@ def make_chunk() -> Callable[..., Chunk]:
 
 
 @pytest.fixture
-def chroma_retriever(tmp_path: Path) -> "ChromaRetriever":
-    from docchat.chroma_retriever import ChromaRetriever
+def make_chroma(tmp_path: Path) -> "Callable[[], ChromaRetriever]":
+    def _make() -> "ChromaRetriever":
+        from docchat.chroma_retriever import ChromaRetriever
 
-    return ChromaRetriever(path=str(tmp_path), collection=f"kb-{uuid.uuid4().hex}")
+        return ChromaRetriever(path=str(tmp_path), collection="documents")
+
+    return _make
+
+
+@pytest.fixture
+def chroma_retriever(
+    make_chroma: "Callable[[], ChromaRetriever]",
+) -> "ChromaRetriever":
+    return make_chroma()
