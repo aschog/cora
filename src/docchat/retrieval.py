@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Protocol
 
 from docchat.chunk import Chunk
 
@@ -7,3 +8,9 @@ from docchat.chunk import Chunk
 class RetrievedChunk:
     chunk: Chunk
     score: float
+
+
+class Retriever(Protocol):
+    def add(
+        self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
+    ) -> None: ...

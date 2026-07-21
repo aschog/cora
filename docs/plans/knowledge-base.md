@@ -140,7 +140,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] `sources` lists each stored source once, and `contains` reports whether a content hash is present (drives `list_sources` and dedupe)
 
 #### Facade (against both fakes)
-- [ ] `add_file` ingests, embeds every chunk once, and stores one record per chunk with provenance, reporting how many chunks were added
+- [x] `add_file` ingests, embeds every chunk once, and stores one record per chunk with provenance, reporting how many chunks were added
 - [ ] `search` returns the top-k relevant chunks, ordered, with provenance + score (a query equal to a chunk's text retrieves that chunk first — proves query and docs share one embedder)
 - [ ] `search` on an empty KB returns no hits, no error
 - [ ] `list_sources` returns each source once across multiple files
