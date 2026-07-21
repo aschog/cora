@@ -3,6 +3,7 @@ from collections.abc import Callable
 import pytest
 
 from docchat.chunk import Chunk
+from docchat.knowledge_base import KnowledgeBase
 from fakes import FakeEmbedder, FakeRetriever
 
 
@@ -14,6 +15,11 @@ def embedder() -> FakeEmbedder:
 @pytest.fixture
 def retriever() -> FakeRetriever:
     return FakeRetriever()
+
+
+@pytest.fixture
+def kb(embedder: FakeEmbedder, retriever: FakeRetriever) -> KnowledgeBase:
+    return KnowledgeBase(embedder=embedder, retriever=retriever)
 
 
 @pytest.fixture

@@ -10,10 +10,9 @@ from fakes import FakeEmbedder, FakeRetriever
 
 
 def test_add_file_embeds_and_stores_one_record_per_chunk(
-    embedder: FakeEmbedder, retriever: FakeRetriever
+    kb: KnowledgeBase, embedder: FakeEmbedder, retriever: FakeRetriever
 ) -> None:
     data = ("lorem ipsum dolor sit amet " * 100).encode()
-    kb = KnowledgeBase(embedder=embedder, retriever=retriever)
 
     added = kb.add_file(data, "doc.txt")
 
@@ -27,7 +26,10 @@ def test_add_file_embeds_and_stores_one_record_per_chunk(
 
 
 def test_search_returns_the_relevant_chunk_first(
-    embedder: FakeEmbedder, retriever: FakeRetriever, make_chunk: Callable[..., Chunk]
+    kb: KnowledgeBase,
+    embedder: FakeEmbedder,
+    retriever: FakeRetriever,
+    make_chunk: Callable[..., Chunk],
 ) -> None:
     chunks = [
         make_chunk("alpha", index=0, offset=0),
@@ -35,7 +37,6 @@ def test_search_returns_the_relevant_chunk_first(
         make_chunk("gamma", index=2, offset=12),
     ]
     retriever.add(chunks, embedder.embed([c.text for c in chunks]), file_hash="h")
-    kb = KnowledgeBase(embedder=embedder, retriever=retriever)
 
     hits = kb.search("beta", k=1)
 
@@ -44,18 +45,11 @@ def test_search_returns_the_relevant_chunk_first(
     assert hits[0].chunk.source == "doc.txt"
 
 
-def test_search_on_empty_knowledge_base_returns_no_hits(
-    embedder: FakeEmbedder, retriever: FakeRetriever
-) -> None:
-    kb = KnowledgeBase(embedder=embedder, retriever=retriever)
-
+def test_search_on_empty_knowledge_base_returns_no_hits(kb: KnowledgeBase) -> None:
     assert kb.search("anything", k=5) == []
 
 
-def test_list_sources_returns_each_source_once(
-    embedder: FakeEmbedder, retriever: FakeRetriever
-) -> None:
-    kb = KnowledgeBase(embedder=embedder, retriever=retriever)
+def test_list_sources_returns_each_source_once(kb: KnowledgeBase) -> None:
     kb.add_file(("first document " * 100).encode(), "one.txt")
     kb.add_file(("second document " * 100).encode(), "two.md")
 
@@ -89,11 +83,7 @@ def test_re_adding_identical_bytes_is_a_no_op(retriever: FakeRetriever) -> None:
     assert len(stored) == first
 
 
-def test_add_file_propagates_ingestion_errors_unchanged(
-    embedder: FakeEmbedder, retriever: FakeRetriever
-) -> None:
-    kb = KnowledgeBase(embedder=embedder, retriever=retriever)
-
+def test_add_file_propagates_ingestion_errors_unchanged(kb: KnowledgeBase) -> None:
     with pytest.raises(UnsupportedFileTypeError):
         kb.add_file(b"data", "sheet.xlsx")
 
