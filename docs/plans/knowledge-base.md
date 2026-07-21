@@ -164,3 +164,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 
 #### End-to-end
 - [x] **(int)** the facade wired with both real adapters ingests a doc and retrieves the relevant chunk, provenance intact
+
+#### Post-review fixes
+- [x] **(int)** the sentence-transformers adapter re-raises library failures as `EmbeddingError` (no raw exception escapes)
+- [ ] **(int)** `ChromaRetriever` construction failures surface as `RetrievalError`

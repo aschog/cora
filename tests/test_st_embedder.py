@@ -31,3 +31,13 @@ def test_embedder_produces_384_dim_unit_vectors() -> None:
     assert all(
         math.isclose(a, b, abs_tol=1e-5) for a, b in zip(hello, again, strict=True)
     )
+
+
+def test_embedder_failure_surfaces_as_embedding_error() -> None:
+    from docchat.errors import EmbeddingError
+    from docchat.sentence_transformer_embedder import SentenceTransformerEmbedder
+
+    embedder = SentenceTransformerEmbedder(model_name="docchat/not-a-real-model-xyz")
+
+    with pytest.raises(EmbeddingError):
+        embedder.embed(["hello"])

@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
+from docchat.errors import EmbeddingError
+
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer
 
@@ -14,8 +16,11 @@ class SentenceTransformerEmbedder:
         self._model: SentenceTransformer | None = None
 
     def embed(self, texts: list[str]) -> list[list[float]]:
-        vectors = self._load().encode(texts, normalize_embeddings=True)
-        return cast("list[list[float]]", vectors.tolist())
+        try:
+            vectors = self._load().encode(texts, normalize_embeddings=True)
+            return cast("list[list[float]]", vectors.tolist())
+        except Exception as error:
+            raise EmbeddingError() from error
 
     def _load(self) -> SentenceTransformer:
         if self._model is None:
