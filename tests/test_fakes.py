@@ -72,3 +72,30 @@ def test_fake_retriever_returns_every_record_when_k_exceeds_store() -> None:
 
     assert len(hits) == 2
     assert hits[0].chunk == chunks[0]
+
+
+def test_fake_retriever_lists_each_source_once() -> None:
+    embedder = FakeEmbedder()
+    retriever = FakeRetriever()
+    first = [Chunk(text="a", source="one.txt", index=0, offset=0)]
+    second = [
+        Chunk(text="b", source="two.txt", index=0, offset=0),
+        Chunk(text="c", source="two.txt", index=1, offset=1),
+    ]
+    retriever.add(first, embedder.embed(["a"]), file_hash="h1")
+    retriever.add(second, embedder.embed(["b", "c"]), file_hash="h2")
+
+    assert retriever.sources() == ["one.txt", "two.txt"]
+
+
+def test_fake_retriever_contains_reports_known_hashes() -> None:
+    embedder = FakeEmbedder()
+    retriever = FakeRetriever()
+    retriever.add(
+        [Chunk(text="a", source="one.txt", index=0, offset=0)],
+        embedder.embed(["a"]),
+        file_hash="h1",
+    )
+
+    assert retriever.contains("h1")
+    assert not retriever.contains("h2")

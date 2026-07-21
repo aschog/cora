@@ -43,6 +43,12 @@ class FakeRetriever:
         )
         return ranked[:k]
 
+    def sources(self) -> list[str]:
+        return list(dict.fromkeys(chunk.source for _, chunk, _ in self._records))
+
+    def contains(self, file_hash: str) -> bool:
+        return any(stored == file_hash for _, _, stored in self._records)
+
 
 def _cosine(a: list[float], b: list[float]) -> float:
     dot = sum(x * y for x, y in zip(a, b, strict=True))

@@ -137,7 +137,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] querying an empty retriever yields no hits, no error
 - [x] returns stored records ordered most-relevant-first by cosine similarity, capped at k, each hit carrying provenance + score
 - [x] k larger than the store returns every record, and the closest vector ranks first
-- [ ] `sources` lists each stored source once, and `contains` reports whether a content hash is present (drives `list_sources` and dedupe)
+- [x] `sources` lists each stored source once, and `contains` reports whether a content hash is present (drives `list_sources` and dedupe)
 
 #### Facade (against both fakes)
 - [ ] `add_file` ingests, embeds every chunk once, and stores one record per chunk with provenance, reporting how many chunks were added
