@@ -1,10 +1,16 @@
+import uuid
 from collections.abc import Callable
+from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 
 from docchat.chunk import Chunk
 from docchat.knowledge_base import KnowledgeBase
 from fakes import FakeEmbedder, FakeRetriever
+
+if TYPE_CHECKING:
+    from docchat.chroma_retriever import ChromaRetriever
 
 
 @pytest.fixture
@@ -33,3 +39,10 @@ def make_chunk() -> Callable[..., Chunk]:
         return Chunk(text=text, source=source, index=index, offset=offset)
 
     return _make
+
+
+@pytest.fixture
+def chroma_retriever(tmp_path: Path) -> "ChromaRetriever":
+    from docchat.chroma_retriever import ChromaRetriever
+
+    return ChromaRetriever(path=str(tmp_path), collection=f"kb-{uuid.uuid4().hex}")
