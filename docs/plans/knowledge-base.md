@@ -101,10 +101,10 @@ Each decision names the alternative it was chosen over.
     - the fake computes cosine similarity directly
     - the Chroma adapter translates its distance metric into the same convention
     - cosine space with unit-normalized vectors, chosen deliberately
-- **Retrieved chunk = value object** — text + provenance (source, index, offset) + score, immutable (a richer provenance or a separate store-record type is unnecessary, as these fields already map straight to metadata):
+- **Retrieved chunk = value object** — a `Chunk` plus a relevance `score`, immutable (a richer provenance or a separate store-record type is unnecessary, as `Chunk` already maps straight to metadata):
     - equality by content
     - the direct input to citation rendering
-    - extends the existing `Chunk` value-object pattern
+    - composes `Chunk` rather than repeating its provenance fields
 - **Facade holds no technology** — depends only on the two ports:
     - tests wire the fakes
     - the composition root (item 6) wires the real adapters

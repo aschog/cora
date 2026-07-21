@@ -1,10 +1,9 @@
 from dataclasses import dataclass
 
+from docchat.chunk import Chunk
+
 
 @dataclass(frozen=True)
 class RetrievedChunk:
-    text: str
-    source: str
-    index: int
-    offset: int
+    chunk: Chunk
     score: float
