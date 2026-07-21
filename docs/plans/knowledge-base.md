@@ -159,7 +159,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] **(int)** a Chroma failure surfaces as the typed retrieval error
 
 #### sentence-transformers adapter — `uv add 'sentence-transformers>=5.3,<6'` at the first red step
-- [ ] **(int)** lazy-loaded: importing the module loads nothing, and the model is built on first embed
+- [x] **(int)** lazy-loaded: importing the module loads nothing, and the model is built on first embed
 - [ ] **(int)** encodes texts to 384-dim unit vectors, and identical text → identical vector
 
 #### End-to-end
