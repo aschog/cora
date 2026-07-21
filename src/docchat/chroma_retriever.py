@@ -54,3 +54,13 @@ class ChromaRetriever:
                 documents, metadatas, distances, strict=True
             )
         ]
+
+    def sources(self) -> list[str]:
+        metadatas = self._collection.get(include=["metadatas"])["metadatas"] or []
+        return list(
+            dict.fromkeys(cast(str, metadata["source"]) for metadata in metadatas)
+        )
+
+    def contains(self, file_hash: str) -> bool:
+        found = self._collection.get(where={"file_hash": file_hash}, limit=1)
+        return len(found["ids"]) > 0

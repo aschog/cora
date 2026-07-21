@@ -153,7 +153,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 #### Chroma adapter — `uv add 'chromadb>=1.5,<2'` at the first red step
 - [x] **(int)** a `conftest.py` fixture gives each test a temp dir + unique collection, so Chroma state never leaks
 - [x] **(int)** round-trips with our own precomputed embeddings (no Chroma embedding function): query returns records ordered by relevance with provenance + scores
-- [ ] **(int)** `sources` and `contains` read stored metadata back (drive `list_sources` and dedupe against real Chroma)
+- [x] **(int)** `sources` and `contains` read stored metadata back (drive `list_sources` and dedupe against real Chroma)
 - [ ] **(int)** records persist across a fresh client on the same directory
 - [ ] **(int)** content-hash ids make re-adds idempotent (no duplication)
 - [ ] **(int)** a Chroma failure surfaces as the typed retrieval error
