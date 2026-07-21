@@ -148,7 +148,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] a rejected ingestion (unsupported / empty / oversized) propagates its typed error unchanged
 
 #### Errors
-- [ ] the adapter error categories (embedding failed, retrieval failed) are `DocChatError` subtypes with user messages
+- [x] the adapter error categories (embedding failed, retrieval failed) are `DocChatError` subtypes with user messages
 
 #### Chroma adapter — `uv add 'chromadb>=1.5,<2'` at the first red step
 - [ ] **(int)** a `conftest.py` fixture gives each test a temp dir + unique collection, so Chroma state never leaks
