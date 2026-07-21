@@ -3,6 +3,7 @@
 import hashlib
 import math
 from dataclasses import dataclass
+from typing import NamedTuple
 
 from docchat.chunk import Chunk
 from docchat.retrieval import RetrievedChunk
@@ -20,23 +21,29 @@ class FakeEmbedder:
         return [digest[i % len(digest)] / 255.0 for i in range(self.dim)]
 
 
+class _Record(NamedTuple):
+    vector: list[float]
+    chunk: Chunk
+    file_hash: str
+
+
 class FakeRetriever:
     def __init__(self) -> None:
-        self._records: list[tuple[list[float], Chunk, str]] = []
+        self._records: list[_Record] = []
 
     def add(
         self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
     ) -> None:
         self._records.extend(
-            (vector, chunk, file_hash)
+            _Record(vector, chunk, file_hash)
             for chunk, vector in zip(chunks, vectors, strict=True)
         )
 
     def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
         ranked = sorted(
             (
-                RetrievedChunk(chunk=chunk, score=_cosine(query_vector, vector))
-                for vector, chunk, _ in self._records
+                RetrievedChunk(chunk=r.chunk, score=_cosine(query_vector, r.vector))
+                for r in self._records
             ),
             key=lambda hit: hit.score,
             reverse=True,
@@ -44,10 +51,10 @@ class FakeRetriever:
         return ranked[:k]
 
     def sources(self) -> list[str]:
-        return list(dict.fromkeys(chunk.source for _, chunk, _ in self._records))
+        return list(dict.fromkeys(r.chunk.source for r in self._records))
 
     def contains(self, file_hash: str) -> bool:
-        return any(stored == file_hash for _, _, stored in self._records)
+        return any(r.file_hash == file_hash for r in self._records)
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
