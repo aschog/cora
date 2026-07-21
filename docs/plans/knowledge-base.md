@@ -167,4 +167,4 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 
 #### Post-review fixes
 - [x] **(int)** the sentence-transformers adapter re-raises library failures as `EmbeddingError` (no raw exception escapes)
-- [ ] **(int)** `ChromaRetriever` construction failures surface as `RetrievalError`
+- [x] **(int)** `ChromaRetriever` construction failures surface as `RetrievalError`

@@ -22,6 +22,7 @@ def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
 
 
 class ChromaRetriever:
+    @_translate_errors
     def __init__(self, path: str, collection: str) -> None:
         client = chromadb.PersistentClient(path=path)
         self._collection = client.get_or_create_collection(

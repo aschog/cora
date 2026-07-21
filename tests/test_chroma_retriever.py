@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -89,3 +90,12 @@ def test_chroma_failure_surfaces_as_retrieval_error(
 
     with pytest.raises(RetrievalError):
         chroma_retriever.query([0.1, 0.2, 0.3], k=1)
+
+
+def test_chroma_construction_failure_surfaces_as_retrieval_error(
+    tmp_path: Path,
+) -> None:
+    from docchat.chroma_retriever import ChromaRetriever
+
+    with pytest.raises(RetrievalError):
+        ChromaRetriever(path=str(tmp_path), collection="x")
