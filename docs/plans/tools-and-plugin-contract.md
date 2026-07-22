@@ -134,7 +134,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] the pipeline returns the input unchanged when every rule accepts
 
 #### Plugin registry
-- [ ] resolving a configured name imports the module and returns its module-level `PLUGIN` bundle
+- [x] resolving a configured name imports the module and returns its module-level `PLUGIN` bundle
 - [ ] a missing plugin module raises a typed plugin-loading error (`raise ... from` the import failure)
 - [ ] a plugin module that raises during import surfaces as a typed plugin-loading error
 - [ ] a module lacking a `PLUGIN` attribute, or whose `PLUGIN` is not a `Plugin` instance, raises a typed plugin-loading error
