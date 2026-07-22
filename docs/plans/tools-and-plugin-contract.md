@@ -115,7 +115,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 #### Plugin contract value objects
 - [x] a `Tool` is immutable: name, description, parameter_schema, and a pure `run` — equal by value, mutation fails
 - [x] a `ToolCall` is immutable: tool name, arguments dict, and call id
-- [ ] a `ToolResult` is immutable: originating call id, and exactly one of payload or error
+- [x] a `ToolResult` is immutable: originating call id, and exactly one of payload or error
 - [ ] a `Plugin` is immutable: system_prompt, tools, validation_rules, and optional seed_docs ((filename, bytes) pairs) defaulting to empty
 
 #### Errors
