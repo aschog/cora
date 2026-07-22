@@ -27,50 +27,22 @@ def test_plugin_module_raising_during_import_surfaces_as_typed_error() -> None:
     assert isinstance(excinfo.value.__cause__, RuntimeError)
 
 
-def test_module_lacking_a_plugin_attribute_raises_typed_error() -> None:
+BAD_PLUGIN_FIXTURES = [
+    "no_bundle",  # module lacks a PLUGIN attribute
+    "wrong_type",  # PLUGIN is not a Plugin instance
+    "blank_prompt",  # system_prompt is blank
+    "no_tools",  # bundle provides no tools
+    "duplicate_names",  # two tools share a name
+    "non_callable_run",  # a tool's run is not callable
+    "bad_schema",  # a tool's parameter_schema is invalid
+]
+
+
+@pytest.mark.parametrize("fixture", BAD_PLUGIN_FIXTURES)
+def test_bad_plugin_bundle_raises_typed_error(fixture: str) -> None:
+    module_path = f"fixture_plugins.{fixture}"
+
     with pytest.raises(PluginLoadError) as excinfo:
-        load_plugin("fixture_plugins.no_bundle")
+        load_plugin(module_path)
 
-    assert "fixture_plugins.no_bundle" in excinfo.value.user_message
-
-
-def test_plugin_attribute_that_is_not_a_plugin_raises_typed_error() -> None:
-    with pytest.raises(PluginLoadError) as excinfo:
-        load_plugin("fixture_plugins.wrong_type")
-
-    assert "fixture_plugins.wrong_type" in excinfo.value.user_message
-
-
-def test_bundle_with_blank_system_prompt_raises_typed_error() -> None:
-    with pytest.raises(PluginLoadError) as excinfo:
-        load_plugin("fixture_plugins.blank_prompt")
-
-    assert "fixture_plugins.blank_prompt" in excinfo.value.user_message
-
-
-def test_bundle_with_no_tools_raises_typed_error() -> None:
-    with pytest.raises(PluginLoadError) as excinfo:
-        load_plugin("fixture_plugins.no_tools")
-
-    assert "fixture_plugins.no_tools" in excinfo.value.user_message
-
-
-def test_bundle_with_duplicate_tool_names_raises_typed_error() -> None:
-    with pytest.raises(PluginLoadError) as excinfo:
-        load_plugin("fixture_plugins.duplicate_names")
-
-    assert "fixture_plugins.duplicate_names" in excinfo.value.user_message
-
-
-def test_bundle_with_non_callable_tool_run_raises_typed_error() -> None:
-    with pytest.raises(PluginLoadError) as excinfo:
-        load_plugin("fixture_plugins.non_callable_run")
-
-    assert "fixture_plugins.non_callable_run" in excinfo.value.user_message
-
-
-def test_bundle_with_invalid_parameter_schema_raises_typed_error() -> None:
-    with pytest.raises(PluginLoadError) as excinfo:
-        load_plugin("fixture_plugins.bad_schema")
-
-    assert "fixture_plugins.bad_schema" in excinfo.value.user_message
+    assert module_path in excinfo.value.user_message
