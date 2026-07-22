@@ -119,7 +119,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] a `Plugin` is immutable: system_prompt, tools, validation_rules, and optional seed_docs ((filename, bytes) pairs) defaulting to empty
 
 #### Errors
-- [ ] a plugin-loading error and an input-rejection error are `DocChatError` subtypes carrying user-presentable messages — the input-rejection message is supplied by the raising rule
+- [x] a plugin-loading error and an input-rejection error are `DocChatError` subtypes carrying user-presentable messages — the input-rejection message is supplied by the raising rule
 
 #### Tool runtime
 - [ ] executing a valid `ToolCall` looks up the tool, calls its pure `run`, and returns an ok `ToolResult` carrying the originating call id and payload
