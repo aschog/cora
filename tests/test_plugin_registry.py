@@ -60,3 +60,10 @@ def test_bundle_with_duplicate_tool_names_raises_typed_error() -> None:
         load_plugin("fixture_plugins.duplicate_names")
 
     assert "fixture_plugins.duplicate_names" in excinfo.value.user_message
+
+
+def test_bundle_with_non_callable_tool_run_raises_typed_error() -> None:
+    with pytest.raises(PluginLoadError) as excinfo:
+        load_plugin("fixture_plugins.non_callable_run")
+
+    assert "fixture_plugins.non_callable_run" in excinfo.value.user_message

@@ -28,3 +28,8 @@ def _validate_bundle(module_path: str, bundle: Plugin) -> None:
     names = [tool.name for tool in bundle.tools]
     if len(set(names)) != len(names):
         raise PluginLoadError(module_path, "two tools share the same name")
+    for tool in bundle.tools:
+        if not callable(tool.run):
+            raise PluginLoadError(
+                module_path, f"tool '{tool.name}' has no callable run"
+            )

@@ -146,5 +146,5 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] a bundle with a blank system_prompt raises a typed plugin-loading error
 - [x] a bundle carrying no tools raises a typed plugin-loading error — the core requires ≥1
 - [x] a bundle with two tools sharing a name raises a typed plugin-loading error
-- [ ] a bundle with a tool whose `run` is not callable raises a typed plugin-loading error
+- [x] a bundle with a tool whose `run` is not callable raises a typed plugin-loading error
 - [ ] a bundle with a tool whose parameter_schema is not valid JSON Schema raises a typed plugin-loading error
