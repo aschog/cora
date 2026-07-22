@@ -129,7 +129,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 
 #### Validation pipeline
 - [x] the empty-input core rule rejects blank / whitespace-only input with a friendly input-rejection error
-- [ ] the too-long core rule rejects input beyond the length cap and accepts input within it
+- [x] the too-long core rule rejects input beyond the length cap and accepts input within it
 - [ ] the pipeline runs core rules before the active plugin's rules and raises the first rejection encountered
 - [ ] the pipeline returns the input unchanged when every rule accepts
 
