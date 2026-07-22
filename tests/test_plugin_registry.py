@@ -25,3 +25,17 @@ def test_plugin_module_raising_during_import_surfaces_as_typed_error() -> None:
 
     assert "fixture_plugins.broken_import" in excinfo.value.user_message
     assert isinstance(excinfo.value.__cause__, RuntimeError)
+
+
+def test_module_lacking_a_plugin_attribute_raises_typed_error() -> None:
+    with pytest.raises(PluginLoadError) as excinfo:
+        load_plugin("fixture_plugins.no_bundle")
+
+    assert "fixture_plugins.no_bundle" in excinfo.value.user_message
+
+
+def test_plugin_attribute_that_is_not_a_plugin_raises_typed_error() -> None:
+    with pytest.raises(PluginLoadError) as excinfo:
+        load_plugin("fixture_plugins.wrong_type")
+
+    assert "fixture_plugins.wrong_type" in excinfo.value.user_message
