@@ -46,3 +46,10 @@ def test_bundle_with_blank_system_prompt_raises_typed_error() -> None:
         load_plugin("fixture_plugins.blank_prompt")
 
     assert "fixture_plugins.blank_prompt" in excinfo.value.user_message
+
+
+def test_bundle_with_no_tools_raises_typed_error() -> None:
+    with pytest.raises(PluginLoadError) as excinfo:
+        load_plugin("fixture_plugins.no_tools")
+
+    assert "fixture_plugins.no_tools" in excinfo.value.user_message

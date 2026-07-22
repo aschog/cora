@@ -23,3 +23,5 @@ def load_plugin(module_path: str) -> Plugin:
 def _validate_bundle(module_path: str, bundle: Plugin) -> None:
     if not bundle.system_prompt.strip():
         raise PluginLoadError(module_path, "the system prompt is blank")
+    if not bundle.tools:
+        raise PluginLoadError(module_path, "the bundle provides no tools")
