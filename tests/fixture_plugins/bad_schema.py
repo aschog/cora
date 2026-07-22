@@ -1,5 +1,5 @@
 from docchat.plugin import Tool
-from fixture_plugins import _identity, make_plugin, make_tool
+from fixture_plugins import identity, make_plugin, make_tool
 
 PLUGIN = make_plugin(
     tools=(
@@ -8,7 +8,7 @@ PLUGIN = make_plugin(
             name="two",
             description="The two tool.",
             parameter_schema={"type": "integr", "properties": []},
-            run=_identity,
+            run=identity,
         ),
     ),
 )

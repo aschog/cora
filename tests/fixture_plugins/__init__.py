@@ -1,9 +1,9 @@
 from typing import Any
 
-from docchat.plugin import Plugin, Tool
+from docchat.plugin import Plugin, Tool, ValidationRule
 
 
-def _identity(x: int) -> int:
+def identity(x: int) -> int:
     return x
 
 
@@ -16,17 +16,21 @@ def make_tool(name: str) -> Tool:
             "properties": {"x": {"type": "integer"}},
             "required": ["x"],
         },
-        run=_identity,
+        run=identity,
     )
 
 
 def make_plugin(
     system_prompt: str = "You are a test plugin.",
     tools: tuple[Tool, ...] | None = None,
+    validation_rules: tuple[ValidationRule, ...] = (),
     **overrides: Any,
 ) -> Plugin:
     if tools is None:
         tools = (make_tool("one"), make_tool("two"), make_tool("three"))
     return Plugin(
-        system_prompt=system_prompt, tools=tools, validation_rules=(), **overrides
+        system_prompt=system_prompt,
+        tools=tools,
+        validation_rules=validation_rules,
+        **overrides,
     )
