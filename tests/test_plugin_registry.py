@@ -67,3 +67,10 @@ def test_bundle_with_non_callable_tool_run_raises_typed_error() -> None:
         load_plugin("fixture_plugins.non_callable_run")
 
     assert "fixture_plugins.non_callable_run" in excinfo.value.user_message
+
+
+def test_bundle_with_invalid_parameter_schema_raises_typed_error() -> None:
+    with pytest.raises(PluginLoadError) as excinfo:
+        load_plugin("fixture_plugins.bad_schema")
+
+    assert "fixture_plugins.bad_schema" in excinfo.value.user_message

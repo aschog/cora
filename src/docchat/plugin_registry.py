@@ -1,5 +1,7 @@
 import importlib
 
+from jsonschema import Draft202012Validator, SchemaError
+
 from docchat.errors import PluginLoadError
 from docchat.plugin import Plugin
 
@@ -33,3 +35,9 @@ def _validate_bundle(module_path: str, bundle: Plugin) -> None:
             raise PluginLoadError(
                 module_path, f"tool '{tool.name}' has no callable run"
             )
+        try:
+            Draft202012Validator.check_schema(tool.parameter_schema)
+        except SchemaError as exc:
+            raise PluginLoadError(
+                module_path, f"tool '{tool.name}' has an invalid parameter schema"
+            ) from exc
