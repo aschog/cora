@@ -1,10 +1,10 @@
 import dataclasses
-from typing import Any
 
 import pytest
 
-from docchat.plugin import Plugin, ToolCall, ToolResult
+from docchat.plugin import ToolCall, ToolResult
 from fakes import add_tool
+from fixture_plugins import make_plugin
 
 
 def test_tools_are_equal_by_value() -> None:
@@ -65,15 +65,6 @@ def test_tool_result_is_immutable() -> None:
 
     with pytest.raises(dataclasses.FrozenInstanceError):
         result.payload = 4  # ty: ignore[invalid-assignment]
-
-
-def make_plugin(**overrides: Any) -> Plugin:
-    return Plugin(
-        system_prompt="You are a maths tutor.",
-        tools=(add_tool(),),
-        validation_rules=(),
-        **overrides,
-    )
 
 
 def test_plugin_seed_docs_default_to_empty() -> None:

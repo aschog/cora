@@ -1,3 +1,5 @@
+from typing import Any
+
 from docchat.plugin import Plugin, Tool
 
 
@@ -21,7 +23,10 @@ def make_tool(name: str) -> Tool:
 def make_plugin(
     system_prompt: str = "You are a test plugin.",
     tools: tuple[Tool, ...] | None = None,
+    **overrides: Any,
 ) -> Plugin:
     if tools is None:
         tools = (make_tool("one"), make_tool("two"), make_tool("three"))
-    return Plugin(system_prompt=system_prompt, tools=tools, validation_rules=())
+    return Plugin(
+        system_prompt=system_prompt, tools=tools, validation_rules=(), **overrides
+    )
