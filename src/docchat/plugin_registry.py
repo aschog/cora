@@ -21,9 +21,11 @@ def load_plugin(module_path: str) -> Plugin:
         raise PluginLoadError(
             module_path, "the plugin module failed to import"
         ) from exc
-    bundle = getattr(module, "PLUGIN", None)
-    if not isinstance(bundle, Plugin):
+    if not hasattr(module, "PLUGIN"):
         raise PluginLoadError(module_path, "the module defines no PLUGIN bundle")
+    bundle = module.PLUGIN
+    if not isinstance(bundle, Plugin):
+        raise PluginLoadError(module_path, "PLUGIN is not a Plugin bundle")
     _validate_bundle(module_path, bundle)
     return bundle
 

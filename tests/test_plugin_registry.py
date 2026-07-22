@@ -36,21 +36,24 @@ def test_plugin_module_raising_during_import_surfaces_as_typed_error() -> None:
 
 
 BAD_PLUGIN_FIXTURES = [
-    "no_bundle",  # module lacks a PLUGIN attribute
-    "wrong_type",  # PLUGIN is not a Plugin instance
-    "blank_prompt",  # system_prompt is blank
-    "no_tools",  # bundle provides no tools
-    "duplicate_names",  # two tools share a name
-    "non_callable_run",  # a tool's run is not callable
-    "bad_schema",  # a tool's parameter_schema is invalid
+    ("no_bundle", "defines no PLUGIN"),
+    ("wrong_type", "not a Plugin bundle"),
+    ("blank_prompt", "system prompt is blank"),
+    ("no_tools", "provides no tools"),
+    ("duplicate_names", "share the same name"),
+    ("non_callable_run", "no callable run"),
+    ("bad_schema", "invalid parameter schema"),
 ]
 
 
-@pytest.mark.parametrize("fixture", BAD_PLUGIN_FIXTURES)
-def test_bad_plugin_bundle_raises_typed_error(fixture: str) -> None:
+@pytest.mark.parametrize(("fixture", "reason"), BAD_PLUGIN_FIXTURES)
+def test_bad_plugin_bundle_raises_typed_error_naming_the_failure(
+    fixture: str, reason: str
+) -> None:
     module_path = f"fixture_plugins.{fixture}"
 
     with pytest.raises(PluginLoadError) as excinfo:
         load_plugin(module_path)
 
     assert module_path in excinfo.value.user_message
+    assert reason in excinfo.value.user_message

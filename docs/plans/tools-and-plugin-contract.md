@@ -153,6 +153,6 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 
 - [x] a tool whose `run` returns None yields an error `ToolResult` — the exactly-one invariant stays; a silent tool is a plugin bug surfaced as data
 - [x] a plugin module whose own import of a missing dependency fails is reported as "failed to import", not "module not found"
-- [ ] each registry failure message names its specific failure, asserted per fixture (reason fragment in the parametrized test)
+- [x] each registry failure message names its specific failure, asserted per fixture (reason fragment in the parametrized test)
 - [ ] `test_plugin.py` reuses the shared `fixture_plugins.make_plugin` instead of its own copy
 - [ ] `ToolRuntime` and `ValidationPipeline` are frozen like every other holder
