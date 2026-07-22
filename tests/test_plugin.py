@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from docchat.plugin import Tool, ToolCall, ToolResult
+from docchat.plugin import Plugin, Tool, ToolCall, ToolResult
 
 
 def add(a: int, b: int) -> int:
@@ -83,3 +83,35 @@ def test_tool_result_is_immutable() -> None:
 
     with pytest.raises(dataclasses.FrozenInstanceError):
         result.payload = 4  # ty: ignore[invalid-assignment]
+
+
+def test_plugin_seed_docs_default_to_empty() -> None:
+    plugin = Plugin(
+        system_prompt="You are a maths tutor.",
+        tools=(make_add_tool(),),
+        validation_rules=(),
+    )
+
+    assert plugin.seed_docs == ()
+
+
+def test_plugin_carries_seed_docs_as_filename_bytes_pairs() -> None:
+    plugin = Plugin(
+        system_prompt="You are a maths tutor.",
+        tools=(make_add_tool(),),
+        validation_rules=(),
+        seed_docs=(("tables.md", b"# Times tables"),),
+    )
+
+    assert plugin.seed_docs == (("tables.md", b"# Times tables"),)
+
+
+def test_plugin_is_immutable() -> None:
+    plugin = Plugin(
+        system_prompt="You are a maths tutor.",
+        tools=(make_add_tool(),),
+        validation_rules=(),
+    )
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        plugin.system_prompt = "changed"  # ty: ignore[invalid-assignment]

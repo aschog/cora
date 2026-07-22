@@ -1,6 +1,6 @@
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Protocol
 
 
 @dataclass(frozen=True)
@@ -27,3 +27,15 @@ class ToolResult:
     def __post_init__(self) -> None:
         if (self.payload is None) == (self.error is None):
             raise ValueError("a ToolResult carries exactly one of payload or error")
+
+
+class ValidationRule(Protocol):
+    def apply(self, user_input: str) -> None: ...
+
+
+@dataclass(frozen=True)
+class Plugin:
+    system_prompt: str
+    tools: tuple[Tool, ...]
+    validation_rules: tuple[ValidationRule, ...]
+    seed_docs: tuple[tuple[str, bytes], ...] = ()
