@@ -10,7 +10,13 @@ def load_plugin(module_path: str) -> Plugin:
     try:
         module = importlib.import_module(module_path)
     except ModuleNotFoundError as exc:
-        raise PluginLoadError(module_path, "the plugin module was not found") from exc
+        if exc.name == module_path or module_path.startswith(f"{exc.name}."):
+            raise PluginLoadError(
+                module_path, "the plugin module was not found"
+            ) from exc
+        raise PluginLoadError(
+            module_path, "the plugin module failed to import"
+        ) from exc
     except Exception as exc:
         raise PluginLoadError(
             module_path, "the plugin module failed to import"

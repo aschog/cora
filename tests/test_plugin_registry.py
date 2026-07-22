@@ -19,6 +19,14 @@ def test_missing_plugin_module_raises_typed_error() -> None:
     assert isinstance(excinfo.value.__cause__, ModuleNotFoundError)
 
 
+def test_plugin_with_missing_dependency_is_reported_as_failed_import() -> None:
+    with pytest.raises(PluginLoadError) as excinfo:
+        load_plugin("fixture_plugins.missing_dependency")
+
+    assert "failed to import" in excinfo.value.user_message
+    assert "was not found" not in excinfo.value.user_message
+
+
 def test_plugin_module_raising_during_import_surfaces_as_typed_error() -> None:
     with pytest.raises(PluginLoadError) as excinfo:
         load_plugin("fixture_plugins.broken_import")
