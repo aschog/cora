@@ -155,4 +155,4 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] a plugin module whose own import of a missing dependency fails is reported as "failed to import", not "module not found"
 - [x] each registry failure message names its specific failure, asserted per fixture (reason fragment in the parametrized test)
 - [x] `test_plugin.py` reuses the shared `fixture_plugins.make_plugin` instead of its own copy
-- [ ] `ToolRuntime` and `ValidationPipeline` are frozen like every other holder
+- [x] `ToolRuntime` and `ValidationPipeline` are frozen like every other holder

@@ -5,7 +5,7 @@ from jsonschema import Draft202012Validator, ValidationError
 from docchat.plugin import Tool, ToolCall, ToolResult
 
 
-@dataclass
+@dataclass(frozen=True)
 class ToolRuntime:
     tools: tuple[Tool, ...]
 

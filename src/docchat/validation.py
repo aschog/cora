@@ -21,7 +21,7 @@ class MaxLengthRule:
             )
 
 
-@dataclass
+@dataclass(frozen=True)
 class ValidationPipeline:
     core_rules: tuple[ValidationRule, ...]
     plugin_rules: tuple[ValidationRule, ...]
