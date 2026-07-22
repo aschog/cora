@@ -16,4 +16,10 @@ def load_plugin(module_path: str) -> Plugin:
     bundle = getattr(module, "PLUGIN", None)
     if not isinstance(bundle, Plugin):
         raise PluginLoadError(module_path, "the module defines no PLUGIN bundle")
+    _validate_bundle(module_path, bundle)
     return bundle
+
+
+def _validate_bundle(module_path: str, bundle: Plugin) -> None:
+    if not bundle.system_prompt.strip():
+        raise PluginLoadError(module_path, "the system prompt is blank")

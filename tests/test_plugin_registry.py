@@ -39,3 +39,10 @@ def test_plugin_attribute_that_is_not_a_plugin_raises_typed_error() -> None:
         load_plugin("fixture_plugins.wrong_type")
 
     assert "fixture_plugins.wrong_type" in excinfo.value.user_message
+
+
+def test_bundle_with_blank_system_prompt_raises_typed_error() -> None:
+    with pytest.raises(PluginLoadError) as excinfo:
+        load_plugin("fixture_plugins.blank_prompt")
+
+    assert "fixture_plugins.blank_prompt" in excinfo.value.user_message

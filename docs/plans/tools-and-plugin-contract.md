@@ -138,7 +138,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 - [x] a missing plugin module raises a typed plugin-loading error (`raise ... from` the import failure)
 - [x] a plugin module that raises during import surfaces as a typed plugin-loading error
 - [x] a module lacking a `PLUGIN` attribute, or whose `PLUGIN` is not a `Plugin` instance, raises a typed plugin-loading error
-- [ ] a bundle with a blank system_prompt raises a typed plugin-loading error
+- [x] a bundle with a blank system_prompt raises a typed plugin-loading error
 - [ ] a bundle carrying fewer than three tools raises a typed plugin-loading error
 - [ ] a bundle with two tools sharing a name raises a typed plugin-loading error
 - [ ] a bundle with a tool whose `run` is not callable raises a typed plugin-loading error
