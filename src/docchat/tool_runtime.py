@@ -25,4 +25,8 @@ class ToolRuntime:
             return ToolResult(
                 call_id=call.call_id, error=f"tool '{call.name}' failed: {exc}"
             )
+        if payload is None:
+            return ToolResult(
+                call_id=call.call_id, error=f"tool '{call.name}' returned no result"
+            )
         return ToolResult(call_id=call.call_id, payload=payload)

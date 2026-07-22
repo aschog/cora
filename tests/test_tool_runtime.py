@@ -40,6 +40,29 @@ def test_wrong_argument_type_yields_error_result_naming_the_problem() -> None:
     assert "integer" in result.error
 
 
+def silent() -> None:
+    return None
+
+
+SILENT_TOOL = Tool(
+    name="silent",
+    description="Returns nothing.",
+    parameter_schema={"type": "object", "properties": {}},
+    run=silent,
+)
+
+
+def test_tool_returning_none_yields_error_result() -> None:
+    runtime = ToolRuntime(tools=(SILENT_TOOL,))
+
+    result = runtime.execute(ToolCall(name="silent", arguments={}, call_id="call-6"))
+
+    assert result.call_id == "call-6"
+    assert result.payload is None
+    assert result.error is not None
+    assert "silent" in result.error
+
+
 def test_raising_tool_yields_error_result_instead_of_crashing() -> None:
     result = make_runtime().execute(
         ToolCall(name="explode", arguments={}, call_id="call-5")
