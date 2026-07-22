@@ -10,7 +10,7 @@ From the architecture plan (§4 component table + plugin-contract classDiagram, 
 
 - Define the **plugin contract** value objects (`Plugin`, `Tool`, `ToolCall`, `ToolResult`) and a `ValidationRule` port — a plugin is *data, not behaviour*, so adding a domain needs zero core changes.
 - Provide the **Tool Runtime**: execute an LLM-requested `ToolCall`, turning unknown tool / invalid args / a raising tool all into error `ToolResult` data, never an exception.
-- Provide the **Validation Pipeline**: chain core rules (empty, too long) then plugin rules, raising the first rejection or passing valid input through.
+- Provide the **Validation Pipeline**: chain core rules (empty, too long) then plugin rules, raising the first rejection or passing valid input through — file type/size checks stay in ingestion (item 2), not duplicated as rules.
 - Provide the **Plugin Registry**: resolve a configured name to a loaded `Plugin` by import-by-name, failing loudly with typed errors on any bad plugin.
 
 **Scope guard** — this branch is unit-tier only, tested against plain in-memory `Tool`/rule stubs. The chat orchestrator and the LangChain/OpenRouter LLM adapter that *drive* these parts are **item 6** — not built here.
@@ -100,9 +100,10 @@ Each decision names the alternative it was chosen over.
     - plugin/registry problems **raise** loud typed `DocChatError`s at load time — config bugs must be caught early
     - tool arg/exec failures are **returned** as error `ToolResult` data (§6/§9) — the LLM can recover, the chat never crashes
 - **The tool stays a pure calculation** (over the tool building its own `ToolResult`) — the runtime validates args, calls a plain `run(**args)`, and wraps success/failure itself. The tool is unaware of `ToolResult`.
-- **Chain of Responsibility for validation** (over one monolithic validator) — core rules and plugin rules compose in order, and the reserved prompt-injection guard (§9) slots in later as one more rule. One contract every rule honors: `apply(input)` raises the input-rejection error to reject and otherwise returns nothing — a rule checks, it never transforms, so any rule substitutes for any other.
-- **Import-by-name registry** (over pip entry-points) — `importlib.import_module` + `getattr` for a module-level `PLUGIN` bundle. A convention, not packaging ceremony (§5). Loading and bundle validation stay separate steps — the import convention and the contract shape change for different reasons.
-- **jsonschema 4.26 as the validator** (over a hand-rolled one, which could drift from the shipped schema) — `Draft202012Validator` for both runtime arg-validation and load-time `check_schema`.
+- **Chain of Responsibility for validation** (over one monolithic validator) — core rules and plugin rules compose in order, and the reserved prompt-injection guard (§9) slots in later as one more rule. One contract every rule honors: `apply(input)` raises the input-rejection error to reject and otherwise returns nothing — a rule checks, it never transforms (§6's "clean input" = validated input), so any rule substitutes for any other. The rejection message is **rule-supplied**, per instance — it is the channel a domain rule uses for §9's safe redirect (item 5).
+- **Import-by-name registry** (over pip entry-points) — `importlib.import_module` + `getattr` for a module-level `PLUGIN` bundle, which must be a `Plugin` instance with valid values. A convention, not packaging ceremony (§5). Loading and bundle validation stay separate steps — the import convention and the contract shape change for different reasons.
+- **Seed docs are (filename, bytes) pairs** (over free-form text) — they map 1:1 onto `KnowledgeBase.add_file(data, filename)` (§4), so item 5 ships docs the KB ingests unchanged.
+- **jsonschema 4.26 as the validator** (over a hand-rolled one, which could drift from the shipped schema) — `Draft202012Validator` for both runtime arg-validation and load-time `check_schema`. Confined to the two validating modules (runtime, registry), never the contract value objects.
 - **New errors extend `DocChatError` directly** (over `AdapterError`/`IngestionError`) — a plugin-loading error and an input-rejection error, matching the `errors.py` idiom (class-level user-presentable message, `raise ... from exc` like `loaders.py`).
 
 ---
@@ -114,11 +115,11 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 #### Plugin contract value objects
 - [ ] a `Tool` is immutable: name, description, parameter_schema, and a pure `run` — equal by value, mutation fails
 - [ ] a `ToolCall` is immutable: tool name, arguments dict, and call id
-- [ ] a `ToolResult` is immutable: originating call id, and either a payload or an error, never both
-- [ ] a `Plugin` is immutable: system_prompt, tools, validation_rules, and optional seed_docs defaulting to empty
+- [ ] a `ToolResult` is immutable: originating call id, and exactly one of payload or error
+- [ ] a `Plugin` is immutable: system_prompt, tools, validation_rules, and optional seed_docs ((filename, bytes) pairs) defaulting to empty
 
 #### Errors
-- [ ] a plugin-loading error and an input-rejection error are `DocChatError` subtypes carrying user-presentable messages
+- [ ] a plugin-loading error and an input-rejection error are `DocChatError` subtypes carrying user-presentable messages — the input-rejection message is supplied by the raising rule
 
 #### Tool runtime
 - [ ] executing a valid `ToolCall` looks up the tool, calls its pure `run`, and returns an ok `ToolResult` carrying the originating call id and payload
@@ -135,6 +136,10 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 #### Plugin registry
 - [ ] resolving a configured name imports the module and returns its module-level `PLUGIN` bundle
 - [ ] a missing plugin module raises a typed plugin-loading error (`raise ... from` the import failure)
-- [ ] a module lacking a `PLUGIN` attribute raises a typed plugin-loading error
-- [ ] a bundle missing its system_prompt, or carrying fewer than three tools, raises a typed plugin-loading error
-- [ ] a bundle with a tool whose `run` is not callable, or whose parameter_schema is not valid JSON Schema, raises a typed plugin-loading error
+- [ ] a plugin module that raises during import surfaces as a typed plugin-loading error
+- [ ] a module lacking a `PLUGIN` attribute, or whose `PLUGIN` is not a `Plugin` instance, raises a typed plugin-loading error
+- [ ] a bundle with a blank system_prompt raises a typed plugin-loading error
+- [ ] a bundle carrying fewer than three tools raises a typed plugin-loading error
+- [ ] a bundle with two tools sharing a name raises a typed plugin-loading error
+- [ ] a bundle with a tool whose `run` is not callable raises a typed plugin-loading error
+- [ ] a bundle with a tool whose parameter_schema is not valid JSON Schema raises a typed plugin-loading error
