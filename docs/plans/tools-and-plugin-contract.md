@@ -124,7 +124,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 #### Tool runtime
 - [x] executing a valid `ToolCall` looks up the tool, calls its pure `run`, and returns an ok `ToolResult` carrying the originating call id and payload
 - [x] `uv add 'jsonschema>=4.26,<5'` — arguments that fail the tool's parameter_schema yield an error `ToolResult` naming the problem, never raised
-- [ ] an unknown tool name yields an error `ToolResult`, never raised
+- [x] an unknown tool name yields an error `ToolResult`, never raised
 - [ ] a tool whose `run` raises is caught and wrapped into an error `ToolResult`, never crashing the runtime
 
 #### Validation pipeline

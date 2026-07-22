@@ -28,6 +28,17 @@ def test_wrong_argument_type_yields_error_result_naming_the_problem() -> None:
     assert "integer" in result.error
 
 
+def test_unknown_tool_name_yields_error_result() -> None:
+    result = make_runtime().execute(
+        ToolCall(name="subtract", arguments={"a": 1, "b": 2}, call_id="call-4")
+    )
+
+    assert result.call_id == "call-4"
+    assert result.payload is None
+    assert result.error is not None
+    assert "subtract" in result.error
+
+
 def test_missing_required_argument_yields_error_result_naming_the_problem() -> None:
     result = make_runtime().execute(
         ToolCall(name="add", arguments={"a": 1}, call_id="call-3")
