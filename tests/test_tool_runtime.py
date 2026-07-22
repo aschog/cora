@@ -1,30 +1,38 @@
-from docchat.plugin import Tool, ToolCall
+from docchat.plugin import ToolCall
 from docchat.tool_runtime import ToolRuntime
+from fakes import add_tool
 
 
-def add(a: int, b: int) -> int:
-    return a + b
-
-
-ADD_TOOL = Tool(
-    name="add",
-    description="Add two integers.",
-    parameter_schema={
-        "type": "object",
-        "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-        "required": ["a", "b"],
-    },
-    run=add,
-)
+def make_runtime() -> ToolRuntime:
+    return ToolRuntime(tools=(add_tool(),))
 
 
 def test_valid_call_runs_the_tool_and_returns_ok_result() -> None:
-    runtime = ToolRuntime(tools=(ADD_TOOL,))
-
-    result = runtime.execute(
+    result = make_runtime().execute(
         ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="call-1")
     )
 
     assert result.call_id == "call-1"
     assert result.payload == 3
     assert result.error is None
+
+
+def test_wrong_argument_type_yields_error_result_naming_the_problem() -> None:
+    result = make_runtime().execute(
+        ToolCall(name="add", arguments={"a": "one", "b": 2}, call_id="call-2")
+    )
+
+    assert result.call_id == "call-2"
+    assert result.payload is None
+    assert result.error is not None
+    assert "integer" in result.error
+
+
+def test_missing_required_argument_yields_error_result_naming_the_problem() -> None:
+    result = make_runtime().execute(
+        ToolCall(name="add", arguments={"a": 1}, call_id="call-3")
+    )
+
+    assert result.payload is None
+    assert result.error is not None
+    assert "b" in result.error

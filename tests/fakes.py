@@ -1,4 +1,4 @@
-"""In-memory fakes of the knowledge-base ports, for the unit tier."""
+"""In-memory fakes of the ports and stubs of the plugin contract, for the unit tier."""
 
 import hashlib
 import math
@@ -6,7 +6,25 @@ from dataclasses import dataclass
 from typing import NamedTuple
 
 from docchat.chunk import Chunk
+from docchat.plugin import Tool
 from docchat.retrieval import RetrievedChunk
+
+
+def _add(a: int, b: int) -> int:
+    return a + b
+
+
+def add_tool() -> Tool:
+    return Tool(
+        name="add",
+        description="Add two integers.",
+        parameter_schema={
+            "type": "object",
+            "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
+            "required": ["a", "b"],
+        },
+        run=_add,
+    )
 
 
 @dataclass

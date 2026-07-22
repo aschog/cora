@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from jsonschema import Draft202012Validator, ValidationError
+
 from docchat.plugin import Tool, ToolCall, ToolResult
 
 
@@ -9,4 +11,10 @@ class ToolRuntime:
 
     def execute(self, call: ToolCall) -> ToolResult:
         tool = next(tool for tool in self.tools if tool.name == call.name)
+        try:
+            Draft202012Validator(tool.parameter_schema).validate(call.arguments)
+        except ValidationError as exc:
+            return ToolResult(
+                call_id=call.call_id, error=f"invalid arguments: {exc.message}"
+            )
         return ToolResult(call_id=call.call_id, payload=tool.run(**call.arguments))

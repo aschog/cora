@@ -2,39 +2,20 @@ import dataclasses
 
 import pytest
 
-from docchat.plugin import Plugin, Tool, ToolCall, ToolResult
-
-
-def add(a: int, b: int) -> int:
-    return a + b
-
-
-ADD_SCHEMA = {
-    "type": "object",
-    "properties": {"a": {"type": "integer"}, "b": {"type": "integer"}},
-    "required": ["a", "b"],
-}
-
-
-def make_add_tool() -> Tool:
-    return Tool(
-        name="add",
-        description="Add two integers.",
-        parameter_schema=ADD_SCHEMA,
-        run=add,
-    )
+from docchat.plugin import Plugin, ToolCall, ToolResult
+from fakes import add_tool
 
 
 def test_tools_are_equal_by_value() -> None:
-    assert make_add_tool() == make_add_tool()
+    assert add_tool() == add_tool()
 
 
 def test_tools_differ_when_any_field_differs() -> None:
-    assert make_add_tool() != dataclasses.replace(make_add_tool(), name="sum")
+    assert add_tool() != dataclasses.replace(add_tool(), name="sum")
 
 
 def test_tool_is_immutable() -> None:
-    tool = make_add_tool()
+    tool = add_tool()
 
     with pytest.raises(dataclasses.FrozenInstanceError):
         tool.name = "changed"  # ty: ignore[invalid-assignment]
@@ -88,7 +69,7 @@ def test_tool_result_is_immutable() -> None:
 def test_plugin_seed_docs_default_to_empty() -> None:
     plugin = Plugin(
         system_prompt="You are a maths tutor.",
-        tools=(make_add_tool(),),
+        tools=(add_tool(),),
         validation_rules=(),
     )
 
@@ -98,7 +79,7 @@ def test_plugin_seed_docs_default_to_empty() -> None:
 def test_plugin_carries_seed_docs_as_filename_bytes_pairs() -> None:
     plugin = Plugin(
         system_prompt="You are a maths tutor.",
-        tools=(make_add_tool(),),
+        tools=(add_tool(),),
         validation_rules=(),
         seed_docs=(("tables.md", b"# Times tables"),),
     )
@@ -109,7 +90,7 @@ def test_plugin_carries_seed_docs_as_filename_bytes_pairs() -> None:
 def test_plugin_is_immutable() -> None:
     plugin = Plugin(
         system_prompt="You are a maths tutor.",
-        tools=(make_add_tool(),),
+        tools=(add_tool(),),
         validation_rules=(),
     )
 
