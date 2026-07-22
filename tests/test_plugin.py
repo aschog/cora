@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from docchat.plugin import Tool
+from docchat.plugin import Tool, ToolCall
 
 
 def add(a: int, b: int) -> int:
@@ -38,3 +38,17 @@ def test_tool_is_immutable() -> None:
 
     with pytest.raises(dataclasses.FrozenInstanceError):
         tool.name = "changed"  # ty: ignore[invalid-assignment]
+
+
+def test_tool_calls_are_equal_by_value() -> None:
+    a = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="call-1")
+    b = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="call-1")
+
+    assert a == b
+
+
+def test_tool_call_is_immutable() -> None:
+    call = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="call-1")
+
+    with pytest.raises(dataclasses.FrozenInstanceError):
+        call.call_id = "changed"  # ty: ignore[invalid-assignment]

@@ -9,3 +9,10 @@ class Tool:
     description: str
     parameter_schema: dict[str, Any]
     run: Callable[..., Any]
+
+
+@dataclass(frozen=True)
+class ToolCall:
+    name: str
+    arguments: dict[str, Any]
+    call_id: str
