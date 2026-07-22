@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from docchat.errors import InputRejectedError
+from docchat.plugin import ValidationRule
 
 
 class EmptyInputRule:
@@ -18,3 +19,13 @@ class MaxLengthRule:
             raise InputRejectedError(
                 f"Your message is too long — the limit is {self.max_chars} characters."
             )
+
+
+@dataclass
+class ValidationPipeline:
+    core_rules: tuple[ValidationRule, ...]
+    plugin_rules: tuple[ValidationRule, ...]
+
+    def validate(self, user_input: str) -> None:
+        for rule in self.core_rules + self.plugin_rules:
+            rule.apply(user_input)
