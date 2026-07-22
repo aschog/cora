@@ -19,4 +19,10 @@ class ToolRuntime:
             return ToolResult(
                 call_id=call.call_id, error=f"invalid arguments: {exc.message}"
             )
-        return ToolResult(call_id=call.call_id, payload=tool.run(**call.arguments))
+        try:
+            payload = tool.run(**call.arguments)
+        except Exception as exc:
+            return ToolResult(
+                call_id=call.call_id, error=f"tool '{call.name}' failed: {exc}"
+            )
+        return ToolResult(call_id=call.call_id, payload=payload)
