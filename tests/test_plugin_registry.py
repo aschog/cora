@@ -17,3 +17,11 @@ def test_missing_plugin_module_raises_typed_error() -> None:
 
     assert "fixture_plugins.no_such_module" in excinfo.value.user_message
     assert isinstance(excinfo.value.__cause__, ModuleNotFoundError)
+
+
+def test_plugin_module_raising_during_import_surfaces_as_typed_error() -> None:
+    with pytest.raises(PluginLoadError) as excinfo:
+        load_plugin("fixture_plugins.broken_import")
+
+    assert "fixture_plugins.broken_import" in excinfo.value.user_message
+    assert isinstance(excinfo.value.__cause__, RuntimeError)

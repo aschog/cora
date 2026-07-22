@@ -136,7 +136,7 @@ Each item is one red → green → refactor cycle. Commit each green step. Order
 #### Plugin registry
 - [x] resolving a configured name imports the module and returns its module-level `PLUGIN` bundle
 - [x] a missing plugin module raises a typed plugin-loading error (`raise ... from` the import failure)
-- [ ] a plugin module that raises during import surfaces as a typed plugin-loading error
+- [x] a plugin module that raises during import surfaces as a typed plugin-loading error
 - [ ] a module lacking a `PLUGIN` attribute, or whose `PLUGIN` is not a `Plugin` instance, raises a typed plugin-loading error
 - [ ] a bundle with a blank system_prompt raises a typed plugin-loading error
 - [ ] a bundle carrying fewer than three tools raises a typed plugin-loading error
