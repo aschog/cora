@@ -41,12 +41,19 @@ def test_max_length_rule_accepts_input_within_the_cap() -> None:
     MaxLengthRule(max_chars=10).apply("x" * 10)
 
 
-def test_pipeline_runs_core_rules_before_plugin_rules() -> None:
+def make_pipeline(
+    core_rejects: bool = False, plugin_rejects: bool = False
+) -> tuple[ValidationPipeline, list[str]]:
     log: list[str] = []
     pipeline = ValidationPipeline(
-        core_rules=(RecordingRule("core", log),),
-        plugin_rules=(RecordingRule("plugin", log, rejects=True),),
+        core_rules=(RecordingRule("core", log, rejects=core_rejects),),
+        plugin_rules=(RecordingRule("plugin", log, rejects=plugin_rejects),),
     )
+    return pipeline, log
+
+
+def test_pipeline_runs_core_rules_before_plugin_rules() -> None:
+    pipeline, log = make_pipeline(plugin_rejects=True)
 
     with pytest.raises(InputRejectedError) as excinfo:
         pipeline.validate("hello")
@@ -56,14 +63,16 @@ def test_pipeline_runs_core_rules_before_plugin_rules() -> None:
 
 
 def test_pipeline_raises_the_first_rejection_and_stops() -> None:
-    log: list[str] = []
-    pipeline = ValidationPipeline(
-        core_rules=(RecordingRule("core", log, rejects=True),),
-        plugin_rules=(RecordingRule("plugin", log, rejects=True),),
-    )
+    pipeline, log = make_pipeline(core_rejects=True, plugin_rejects=True)
 
     with pytest.raises(InputRejectedError) as excinfo:
         pipeline.validate("hello")
 
     assert log == ["core"]
     assert excinfo.value.user_message == "core says no"
+
+
+def test_pipeline_returns_the_input_unchanged_when_every_rule_accepts() -> None:
+    pipeline, _ = make_pipeline()
+
+    assert pipeline.validate("  keep me as I am  ") == "  keep me as I am  "

@@ -26,6 +26,7 @@ class ValidationPipeline:
     core_rules: tuple[ValidationRule, ...]
     plugin_rules: tuple[ValidationRule, ...]
 
-    def validate(self, user_input: str) -> None:
+    def validate(self, user_input: str) -> str:
         for rule in self.core_rules + self.plugin_rules:
             rule.apply(user_input)
+        return user_input
