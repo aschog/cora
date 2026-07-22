@@ -50,6 +50,16 @@ class UnreadableFileError(IngestionError):
     reason = "the file is corrupted or unreadable."
 
 
+class PluginLoadError(DocChatError):
+    def __init__(self, plugin_name: str, reason: str) -> None:
+        super().__init__(f"Plugin '{plugin_name}' could not be loaded: {reason}.")
+        self.plugin_name = plugin_name
+
+
+class InputRejectedError(DocChatError):
+    pass
+
+
 class AdapterError(DocChatError):
     message = "The document service is temporarily unavailable. Please try again."
 

@@ -106,7 +106,7 @@ classDiagram
   class ValidationRule {
     +apply(input)
   }
-  Plugin *-- "≥3" Tool
+  Plugin *-- "≥1" Tool
   Plugin *-- "*" ValidationRule
   ChatOrchestrator ..> Plugin : reads system prompt
   ToolRuntime ..> Tool : executes
@@ -117,7 +117,7 @@ classDiagram
 | Plugin provides | Used by | Fulfils requirement |
 |---|---|---|
 | Domain system prompt(s) | Chat Orchestrator | domain-specific prompts & responses |
-| ≥3 domain tools (name, description, parameter schema, pure function) | Tool Runtime | tool calling |
+| Domain tools (name, description, parameter schema, pure function) | Tool Runtime | tool calling |
 | Domain security/validation rules | Validation Pipeline | domain security measures |
 | Optional seed documents | Knowledge Base | focused knowledge base |
 
