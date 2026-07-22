@@ -25,3 +25,6 @@ def _validate_bundle(module_path: str, bundle: Plugin) -> None:
         raise PluginLoadError(module_path, "the system prompt is blank")
     if not bundle.tools:
         raise PluginLoadError(module_path, "the bundle provides no tools")
+    names = [tool.name for tool in bundle.tools]
+    if len(set(names)) != len(names):
+        raise PluginLoadError(module_path, "two tools share the same name")
