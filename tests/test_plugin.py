@@ -1,4 +1,5 @@
 import dataclasses
+from typing import Any
 
 import pytest
 
@@ -66,33 +67,25 @@ def test_tool_result_is_immutable() -> None:
         result.payload = 4  # ty: ignore[invalid-assignment]
 
 
-def test_plugin_seed_docs_default_to_empty() -> None:
-    plugin = Plugin(
+def make_plugin(**overrides: Any) -> Plugin:
+    return Plugin(
         system_prompt="You are a maths tutor.",
         tools=(add_tool(),),
         validation_rules=(),
+        **overrides,
     )
 
-    assert plugin.seed_docs == ()
+
+def test_plugin_seed_docs_default_to_empty() -> None:
+    assert make_plugin().seed_docs == ()
 
 
 def test_plugin_carries_seed_docs_as_filename_bytes_pairs() -> None:
-    plugin = Plugin(
-        system_prompt="You are a maths tutor.",
-        tools=(add_tool(),),
-        validation_rules=(),
-        seed_docs=(("tables.md", b"# Times tables"),),
-    )
+    plugin = make_plugin(seed_docs=(("tables.md", b"# Times tables"),))
 
     assert plugin.seed_docs == (("tables.md", b"# Times tables"),)
 
 
 def test_plugin_is_immutable() -> None:
-    plugin = Plugin(
-        system_prompt="You are a maths tutor.",
-        tools=(add_tool(),),
-        validation_rules=(),
-    )
-
     with pytest.raises(dataclasses.FrozenInstanceError):
-        plugin.system_prompt = "changed"  # ty: ignore[invalid-assignment]
+        make_plugin().system_prompt = "changed"  # ty: ignore[invalid-assignment]

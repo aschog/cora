@@ -1,8 +1,7 @@
-from docchat.plugin import Plugin, Tool
-from fixture_plugins import _identity, make_tool
+from docchat.plugin import Tool
+from fixture_plugins import _identity, make_plugin, make_tool
 
-PLUGIN = Plugin(
-    system_prompt="You are a test plugin.",
+PLUGIN = make_plugin(
     tools=(
         make_tool("one"),
         Tool(
@@ -12,5 +11,4 @@ PLUGIN = Plugin(
             run=_identity,
         ),
     ),
-    validation_rules=(),
 )

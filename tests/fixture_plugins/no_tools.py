@@ -1,7 +1,3 @@
-from docchat.plugin import Plugin
+from fixture_plugins import make_plugin
 
-PLUGIN = Plugin(
-    system_prompt="You are a test plugin.",
-    tools=(),
-    validation_rules=(),
-)
+PLUGIN = make_plugin(tools=())
