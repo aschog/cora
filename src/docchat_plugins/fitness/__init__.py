@@ -1,3 +1,8 @@
+from docchat.plugin import Plugin
+from docchat_plugins.fitness.safety import MedicalSafetyRule
+from docchat_plugins.fitness.seed_docs import SEED_DOCS
+from docchat_plugins.fitness.tools import TOOLS
+
 SYSTEM_PROMPT = """\
 You are a knowledgeable, evidence-based fitness and nutrition coach. Answer
 questions about training and nutrition clearly and practically.
@@ -8,3 +13,10 @@ questions about training and nutrition clearly and practically.
 - You are not a doctor. Do not give medical advice, diagnoses, or medication
   guidance; direct those questions to a qualified healthcare professional.
 """
+
+PLUGIN = Plugin(
+    system_prompt=SYSTEM_PROMPT,
+    tools=TOOLS,
+    validation_rules=(MedicalSafetyRule(),),
+    seed_docs=SEED_DOCS,
+)
