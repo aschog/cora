@@ -96,7 +96,7 @@ classDiagram
 - [x] BMI = kg/m²: 70 kg / 1.75 m → ≈ 22.857142…, 95 / 1.80 → ≈ 29.3209…, 50 / 1.70 → ≈ 17.3010…
 - [x] male BMR: 80 kg / 180 cm / 30 y → exactly 1780.0
 - [x] female BMR: 60 kg / 165 cm / 25 y → exactly 1345.25
-- [ ] daily energy maps the five activity labels to 1.2 / 1.375 / 1.55 / 1.725 / 1.9 — sedentary male 80/180/30 → TDEE exactly 2136.0
+- [x] daily energy maps the five activity labels to 1.2 / 1.375 / 1.55 / 1.725 / 1.9 — sedentary male 80/180/30 → TDEE exactly 2136.0
 - [ ] macros: 2500 kcal / 80 kg → protein 144 g, fat ≈ 69.444… g, carbs 324.75 g — and 1800 / 60 → 108 / 50 / 229.5
 - [ ] macro invariant: 4·protein + 9·fat + 4·carbs equals the input kcal exactly
 - [ ] macros where protein + fat exceed the kcal budget (1200 kcal / 150 kg) raise a clear error
