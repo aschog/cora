@@ -23,25 +23,38 @@ New top-level package `docchat_plugins.fitness`. Configuration points the regist
 ```mermaid
 classDiagram
   direction LR
-  class PLUGIN {
-    <<Plugin bundle>>
+  class Plugin {
+    <<frozen>>
     +system_prompt
     +tools
     +validation_rules
-    +seed_docs
+    +seed_docs (optional)
   }
-  PLUGIN *-- calculate_bmi
-  PLUGIN *-- calculate_daily_energy
-  PLUGIN *-- plan_macros
-  PLUGIN *-- MedicalSafetyRule
-  calculate_bmi : WHO BMI = kg per m²
-  calculate_bmi : +run(weight_kg, height_m) pure
-  calculate_daily_energy : Mifflin-St Jeor BMR × activity factor
-  calculate_daily_energy : +run(sex, weight_kg, height_cm, age_years, activity_level) pure
-  plan_macros : 1.8 g protein per kg · 25% kcal fat · Atwater 4-4-9
-  plan_macros : +run(kcal, weight_kg) pure
-  MedicalSafetyRule : medical + medication keywords
-  MedicalSafetyRule : +apply(user_input)
+  class Tool {
+    <<frozen>>
+    +name
+    +description
+    +parameter_schema
+    +run() pure
+  }
+  class ValidationRule {
+    <<interface>>
+    +apply(input)
+  }
+  class MedicalSafetyRule {
+    +apply(input)
+  }
+  Plugin *-- "3" Tool
+  Plugin *-- "1" ValidationRule
+  MedicalSafetyRule ..|> ValidationRule
+  note for Tool "instances: 
+  - calculate_bmi 
+    - WHO kg/m² 
+  - calculate_daily_energy 
+    - Mifflin-St Jeor × activity factor 
+  - plan_macros 
+    - 1.8 g/kg protein, 25% kcal fat, Atwater 4-4-9"
+  note for MedicalSafetyRule "medical + medication keywords → safe redirect"
 ```
 
 ### Key decisions (each naming the rejected alternative)
