@@ -111,7 +111,7 @@ classDiagram
 #### Safety rule
 
 - [x] a medication-dosage question raises `InputRejectedError` carrying the redirect message
-- [ ] a medical-condition question ("do I have diabetes?") is rejected too
+- [x] a medical-condition question ("do I have diabetes?") is rejected too
 - [ ] matching is case-insensitive and stem-based: "DIABETES" and "pregnancy" (via "pregnan") are rejected
 - [ ] a benign fitness question ("how much protein to build muscle") passes without raising
 

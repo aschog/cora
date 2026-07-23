@@ -11,3 +11,8 @@ def test_medication_dosage_question_is_redirected() -> None:
     message = excinfo.value.user_message.lower()
     assert "medical" in message
     assert "professional" in message
+
+
+def test_medical_condition_question_is_redirected() -> None:
+    with pytest.raises(InputRejectedError):
+        MedicalSafetyRule().apply("Do I have diabetes?")

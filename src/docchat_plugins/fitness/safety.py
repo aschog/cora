@@ -12,6 +12,7 @@ _REDIRECT = (
 _KEYWORDS: Mapping[str, tuple[str, ...]] = MappingProxyType(
     {
         "medication": ("dosage", "dose", "steroid", "insulin", "prescription"),
+        "medical": ("diabetes", "blood pressure", "heart condition", "thyroid"),
     }
 )
 
