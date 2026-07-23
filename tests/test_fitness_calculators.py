@@ -88,3 +88,8 @@ def test_macro_grams_reconstruct_the_calorie_target_exactly(
         4 * macros["protein_g"] + 9 * macros["fat_g"] + 4 * macros["carbs_g"]
     )
     assert reconstructed == kcal
+
+
+def test_macros_reject_a_budget_too_low_for_bodyweight() -> None:
+    with pytest.raises(ValueError, match="calorie target"):
+        plan_macros(kcal=1200, weight_kg=150)

@@ -34,4 +34,9 @@ def plan_macros(kcal: float, weight_kg: float) -> dict[str, float]:
     protein_g = 1.8 * weight_kg
     fat_g = 0.25 * kcal / 9
     carbs_g = (kcal - 4 * protein_g - 9 * fat_g) / 4
+    if carbs_g < 0:
+        raise ValueError(
+            "the calorie target is too low for this bodyweight — "
+            "protein and fat alone exceed it, leaving no room for carbs"
+        )
     return {"protein_g": protein_g, "fat_g": fat_g, "carbs_g": carbs_g}
