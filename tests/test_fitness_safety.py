@@ -16,3 +16,12 @@ def test_medication_dosage_question_is_redirected() -> None:
 def test_medical_condition_question_is_redirected() -> None:
     with pytest.raises(InputRejectedError):
         MedicalSafetyRule().apply("Do I have diabetes?")
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["DIABETES", "Is my pregnancy affecting my macros?"],
+)
+def test_matching_is_case_insensitive_and_stem_based(text: str) -> None:
+    with pytest.raises(InputRejectedError):
+        MedicalSafetyRule().apply(text)
