@@ -44,17 +44,11 @@ classDiagram
   class MedicalSafetyRule {
     +apply(input)
   }
-  Plugin *-- "3" Tool
-  Plugin *-- "1" ValidationRule
+  Plugin *-- Tool : calculate_bmi (WHO kg/m²)
+  Plugin *-- Tool : calculate_daily_energy (Mifflin-St Jeor × activity)
+  Plugin *-- Tool : plan_macros (1.8 g/kg protein, 25% fat, 4-4-9)
+  Plugin *-- ValidationRule : medical + medication → redirect
   MedicalSafetyRule ..|> ValidationRule
-  note for Tool "instances: 
-  - calculate_bmi 
-    - WHO kg/m² 
-  - calculate_daily_energy 
-    - Mifflin-St Jeor × activity factor 
-  - plan_macros 
-    - 1.8 g/kg protein, 25% kcal fat, Atwater 4-4-9"
-  note for MedicalSafetyRule "medical + medication keywords → safe redirect"
 ```
 
 ### Key decisions (each naming the rejected alternative)
