@@ -1,6 +1,10 @@
+import pytest
+
+from docchat.errors import InputRejectedError
 from docchat.plugin import Plugin
 from docchat.plugin_registry import load_plugin
-from docchat_plugins.fitness import SYSTEM_PROMPT
+from docchat.validation import EmptyInputRule, MaxLengthRule, ValidationPipeline
+from docchat_plugins.fitness import PLUGIN, SYSTEM_PROMPT
 
 
 def test_system_prompt_sets_persona_and_load_bearing_instructions() -> None:
@@ -20,3 +24,21 @@ def test_load_plugin_returns_the_validated_bundle() -> None:
     assert len(plugin.tools) == 3
     assert plugin.validation_rules
     assert plugin.seed_docs
+
+
+def _pipeline() -> ValidationPipeline:
+    return ValidationPipeline(
+        core_rules=(EmptyInputRule(), MaxLengthRule(max_chars=1000)),
+        plugin_rules=PLUGIN.validation_rules,
+    )
+
+
+def test_plugin_rule_redirects_a_dosage_question_through_the_pipeline() -> None:
+    with pytest.raises(InputRejectedError):
+        _pipeline().validate("What steroid dosage should I take?")
+
+
+def test_pipeline_passes_a_benign_question_unchanged() -> None:
+    question = "How much protein should I eat to build muscle?"
+
+    assert _pipeline().validate(question) == question
