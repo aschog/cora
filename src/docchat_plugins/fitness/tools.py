@@ -28,11 +28,20 @@ DAILY_ENERGY_TOOL = Tool(
     parameter_schema={
         "type": "object",
         "properties": {
-            "sex": {"type": "string"},
+            "sex": {"type": "string", "enum": ["male", "female"]},
             "weight_kg": _WEIGHT_KG,
             "height_cm": {"type": "number", "minimum": 100, "maximum": 250},
             "age_years": {"type": "integer", "minimum": 18, "maximum": 100},
-            "activity_level": {"type": "string"},
+            "activity_level": {
+                "type": "string",
+                "enum": [
+                    "sedentary",
+                    "lightly_active",
+                    "moderately_active",
+                    "very_active",
+                    "extra_active",
+                ],
+            },
         },
         "required": [
             "sex",
