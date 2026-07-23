@@ -73,3 +73,18 @@ def test_macros_match_reference_split(
     kcal: int, weight_kg: float, expected: dict[str, float]
 ) -> None:
     assert plan_macros(kcal, weight_kg) == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ("kcal", "weight_kg"),
+    [(2500, 80), (1800, 60), (2000, 75), (3200, 95), (1500, 55)],
+)
+def test_macro_grams_reconstruct_the_calorie_target_exactly(
+    kcal: int, weight_kg: float
+) -> None:
+    macros = plan_macros(kcal, weight_kg)
+
+    reconstructed = (
+        4 * macros["protein_g"] + 9 * macros["fat_g"] + 4 * macros["carbs_g"]
+    )
+    assert reconstructed == kcal
