@@ -63,3 +63,12 @@ def test_invalid_enum_values_are_rejected_by_the_schema(
 
     assert result.payload is None
     assert "invalid arguments" in (result.error or "")
+
+
+def test_macros_raise_surfaces_as_error_result_not_an_exception() -> None:
+    # kcal 1200 / weight 150 pass the schema bounds but make carbs negative,
+    # so plan_macros raises — the runtime must catch it, not propagate.
+    result = _run("plan_macros", {"kcal": 1200, "weight_kg": 150})
+
+    assert result.payload is None
+    assert "calorie target" in (result.error or "")
