@@ -12,6 +12,11 @@ _ACTIVITY_FACTOR = {
     "extra_active": 1.9,
 }
 
+_PROTEIN_G_PER_KG = 1.8
+_FAT_FRACTION_OF_KCAL = 0.25
+_KCAL_PER_G_FAT = 9
+_KCAL_PER_G_PROTEIN_CARB = 4
+
 
 def calculate_bmr(
     sex: str, weight_kg: float, height_cm: float, age_years: int
@@ -31,9 +36,11 @@ def calculate_daily_energy(
 
 
 def plan_macros(kcal: float, weight_kg: float) -> dict[str, float]:
-    protein_g = 1.8 * weight_kg
-    fat_g = 0.25 * kcal / 9
-    carbs_g = (kcal - 4 * protein_g - 9 * fat_g) / 4
+    protein_g = _PROTEIN_G_PER_KG * weight_kg
+    fat_g = _FAT_FRACTION_OF_KCAL * kcal / _KCAL_PER_G_FAT
+    protein_kcal = _KCAL_PER_G_PROTEIN_CARB * protein_g
+    fat_kcal = _KCAL_PER_G_FAT * fat_g
+    carbs_g = (kcal - protein_kcal - fat_kcal) / _KCAL_PER_G_PROTEIN_CARB
     if carbs_g < 0:
         raise ValueError(
             "the calorie target is too low for this bodyweight — "
