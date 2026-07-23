@@ -20,15 +20,15 @@ From the architecture plan (§4 plugin contract, §9 security, §12 acceptance) 
 
 New top-level package `docchat_plugins.fitness`. Configuration points the registry at it, and its pure data flows through item 4's runtime unchanged.
 
+**Types** — the plugin contract this bundle fills:
+
 ```mermaid
 classDiagram
   direction LR
   class Plugin {
     <<frozen>>
     +system_prompt
-    +tools
-    +validation_rules
-    +seed_docs (optional)
+    +seed_docs [0..1]
   }
   class Tool {
     <<frozen>>
@@ -44,11 +44,36 @@ classDiagram
   class MedicalSafetyRule {
     +apply(input)
   }
-  Plugin *-- Tool : calculate_bmi (WHO kg/m²)
-  Plugin *-- Tool : calculate_daily_energy (Mifflin-St Jeor × activity)
-  Plugin *-- Tool : plan_macros (1.8 g/kg protein, 25% fat, 4-4-9)
-  Plugin *-- ValidationRule : medical + medication → redirect
+  Plugin *-- "1..*" Tool : tools
+  Plugin *-- "*" ValidationRule : validation_rules
   MedicalSafetyRule ..|> ValidationRule
+```
+
+**Instance** — the shipped fitness bundle:
+
+```mermaid
+classDiagram
+  direction LR
+  class fitnessPlugin["fitnessPlugin : Plugin"] {
+    tools = [3]
+    validation_rules = [1]
+  }
+  class bmi["bmi : Tool"] {
+    WHO kg/m²
+  }
+  class dailyEnergy["dailyEnergy : Tool"] {
+    Mifflin-St Jeor × activity
+  }
+  class planMacros["planMacros : Tool"] {
+    1.8 g/kg protein · 25% fat · 4-4-9
+  }
+  class safetyRule["safetyRule : MedicalSafetyRule"] {
+    medical + medication → redirect
+  }
+  fitnessPlugin --> bmi
+  fitnessPlugin --> dailyEnergy
+  fitnessPlugin --> planMacros
+  fitnessPlugin --> safetyRule
 ```
 
 ### Key decisions (each naming the rejected alternative)
