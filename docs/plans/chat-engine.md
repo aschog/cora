@@ -42,6 +42,7 @@ classDiagram
     <<frozen>>
     +text
     +tool_calls
+    +is_final
   }
   class ChatEngine {
     +system_prompt
@@ -100,8 +101,11 @@ classDiagram
 
 **LLM port** — `src/core/chat_model.py` (`typing.Protocol`, Strategy, model-agnostic):
 `ChatModel.complete(messages, tools) -> ModelReply`.
-- Value objects: `Message(role, content, tool_calls=(), tool_call_id=None)` with
-  `role ∈ {system,user,assistant,tool}`; `ModelReply(text: str | None, tool_calls=())`.
+- Value objects: `Message(role, content, tool_calls=(), tool_call_id=None)` where
+  `role: Literal["system","user","assistant","tool"]` (ty-enforced, no invalid roles, keeps the
+  adapter's role dispatch exhaustive — avoids a bare-string switch); `ModelReply(text: str | None,
+  tool_calls=())` with an `is_final` predicate (`not tool_calls`) so the loop reads intent-first
+  (Tell-Don't-Ask) rather than inspecting the tuple.
 - **Reuses** `Tool`/`ToolCall`/`ToolResult` from `core/plugin.py`. The adapter reads a Tool's
   `name`/`description`/`parameter_schema` only — never calls `run`. Provider tool-call →
   `ToolCall(name, arguments, call_id)`; each `ToolResult` → a `tool`-role `Message` (content =
@@ -111,8 +115,10 @@ classDiagram
 **Orchestrator** — `src/core/chat_engine.py`: `ChatEngine.answer(user_input) -> ChatResult`
 (single use-case driver, §4). Fields: `chat_model`, `knowledge_base`, `validation`
 (`ValidationPipeline`), `tool_runtime`, `system_prompt`, `tools`, `top_k`, `max_tool_rounds`.
-`ChatResult(answer, sources, tool_results)`. A pure helper builds the numbered-context +
-citation block from `RetrievedChunk`s.
+`ChatResult(answer, sources, tool_results)`. Context/citation formatting is a **separate reason
+to change** from orchestration, so it lives in a named, independently-tested pure function
+`build_context_block(chunks) -> str` (module-level in `chat_engine.py`) — not an inline private
+method. This keeps `ChatEngine` a pure Coordinator (SRP).
 
 **Adapter** — `src/core/openrouter_chat_model.py`: `OpenRouterChatModel` implements `ChatModel`
 via LangChain `ChatOpenAI` (OpenRouter `base_url`). It **imports LangChain at module top**,
@@ -184,7 +190,7 @@ sequenceDiagram
 3. Build transcript: system (prompt + numbered context + citation rule) + user.
 4. Bounded loop, ≤ `max_tool_rounds`:
    a. `reply = chat_model.complete(messages, tools)` (adapter failure → `LlmError`).
-   b. no `tool_calls` → return `ChatResult(reply.text, sources, tool_results)`.
+   b. `reply.is_final` → return `ChatResult(reply.text, sources, tool_results)`.
    c. else append the assistant tool-call `Message`; per `ToolCall` run `tool_runtime.execute` →
       append the `tool`-role `Message` (payload or error); collect results; loop.
 5. Cap exceeded → raise `ToolLoopLimitError` (bounded autonomy, §9).
@@ -221,7 +227,7 @@ New errors in `src/core/errors.py`:
 ## TDD checklist (red → green → refactor; commit per green; bottom-up)
 
 Ports, value objects & fake
-- [ ] `ModelReply()` with no tool_calls is a "final" reply; `Message` is frozen/immutable.
+- [ ] `ModelReply().is_final` is `True` with no tool_calls, `False` with tool_calls; `Message` is frozen/immutable and `role` rejects non-`Literal` values (ty).
 - [ ] `ScriptedChatModel` returns queued `ModelReply`s in order and records last messages+tools seen.
 
 Errors
@@ -231,7 +237,8 @@ Errors
 Orchestrator (fakes + fixture plugin)
 - [ ] scripted final-text reply → `ChatResult.answer == text`, no tools invoked.
 - [ ] engine searches KB (top_k); `ChatResult.sources` are the unique retrieved sources.
-- [ ] system message contains the numbered retrieved context + citation rule.
+- [ ] `build_context_block(chunks)` renders numbered context + citation rule (tested standalone).
+- [ ] system message sent to the model embeds that context block.
 - [ ] one-tool reply runs via `ToolRuntime`, feeds `ToolResult` back as a tool message, and
       `ChatResult.tool_results` includes it.
 - [ ] unknown-tool request → `ToolResult.error` fed back as data (no exception), loop finishes.
