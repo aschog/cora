@@ -117,7 +117,7 @@ classDiagram
 
 #### Seed docs
 
-- [ ] `seed_docs` is a non-empty tuple of (markdown filename, non-empty UTF-8 bytes) pairs
+- [x] `seed_docs` is a non-empty tuple of (markdown filename, non-empty UTF-8 bytes) pairs
 - [ ] every seed doc ingests through `KnowledgeBase.add_file` with fakes, producing ≥ 1 chunk
 
 #### Bundle assembly
