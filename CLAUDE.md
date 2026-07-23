@@ -1,6 +1,7 @@
 # CLAUDE.md
 
-NotebookLM-style RAG chatbot with domain plugins. Package: `docchat` (src layout).
+NotebookLM-style RAG chatbot with domain plugins. Distribution `cora` (src
+layout) ships two import packages: `core` (domain-agnostic) and `plugins` (domains).
 Read `docs/plans/webapp-overview.md` (architecture) and `docs/workflow.md`
 (TDD workflow) before making changes. Setup and all development commands
 (gates, test tiers, watch mode) live in `README.md`.

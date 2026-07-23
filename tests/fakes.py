@@ -5,9 +5,9 @@ import math
 from dataclasses import dataclass
 from typing import NamedTuple
 
-from docchat.chunk import Chunk
-from docchat.plugin import Tool
-from docchat.retrieval import RetrievedChunk
+from core.chunk import Chunk
+from core.plugin import Tool
+from core.retrieval import RetrievedChunk
 
 
 def _add(a: int, b: int) -> int:

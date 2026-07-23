@@ -1,4 +1,4 @@
-# docchat
+# cora
 
 A minimal NotebookLM-style "chat with your documents" web app. The core is
 domain-agnostic RAG with tool calling; domain specialisation (reference domain:
@@ -6,7 +6,7 @@ fitness coach) is provided exclusively through plugins.
 
 - Architecture: [`docs/plans/webapp-overview.md`](docs/plans/webapp-overview.md)
 - Development workflow (TDD): [`docs/workflow.md`](docs/workflow.md)
-- Assignment spec: [`docs/spec.md`](docs/spec.md)
+- Assignment spec: [`docs/spec.md`](docs/spec.md) (original brief: [`docs/assignment.md`](docs/assignment.md))
 
 ## Stack
 
