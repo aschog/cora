@@ -122,6 +122,6 @@ classDiagram
 
 #### Bundle assembly
 
-- [ ] the system prompt is non-blank, sets the coach persona, and instructs: cite sources, use tools for all arithmetic, not medical advice
+- [x] the system prompt is non-blank, sets the coach persona, and instructs: cite sources, use tools for all arithmetic, not medical advice
 - [ ] `load_plugin("docchat_plugins.fitness")` returns the bundle — full registry validation passes
 - [ ] wired into a `ValidationPipeline`, the plugin's rule runs after the core rules
