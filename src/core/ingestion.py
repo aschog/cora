@@ -1,4 +1,4 @@
-import os
+from pathlib import Path
 
 from core.chunk import Chunk
 from core.chunker import chunk_text
@@ -19,7 +19,7 @@ def ingest(
     *,
     max_bytes: int = DEFAULT_MAX_BYTES,
 ) -> list[Chunk]:
-    extension = os.path.splitext(filename)[1].lower()
+    extension = Path(filename).suffix.lower()
     if extension not in LOADERS:
         raise UnsupportedFileTypeError(filename, LOADERS.keys())
     if len(data) > max_bytes:
