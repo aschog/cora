@@ -3,11 +3,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from docchat.knowledge_base import KnowledgeBase
-from docchat.sentence_transformer_embedder import SentenceTransformerEmbedder
+from core.knowledge_base import KnowledgeBase
+from core.sentence_transformer_embedder import SentenceTransformerEmbedder
 
 if TYPE_CHECKING:
-    from docchat.chroma_retriever import ChromaRetriever
+    from core.chroma_retriever import ChromaRetriever
 
 pytestmark = pytest.mark.integration
 

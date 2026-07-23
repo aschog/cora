@@ -1,6 +1,6 @@
 from collections.abc import Callable
 
-from docchat.chunk import Chunk
+from core.chunk import Chunk
 from fakes import FakeEmbedder, FakeRetriever
 
 

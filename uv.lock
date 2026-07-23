@@ -383,6 +383,41 @@ wheels = [
 ]
 
 [[package]]
+name = "cora"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "chromadb" },
+    { name = "jsonschema" },
+    { name = "pypdf" },
+    { name = "sentence-transformers" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "pytest" },
+    { name = "pytest-watcher" },
+    { name = "ruff" },
+    { name = "ty" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "chromadb", specifier = ">=1.5,<2" },
+    { name = "jsonschema", specifier = ">=4.26,<5" },
+    { name = "pypdf", specifier = ">=6.14,<7" },
+    { name = "sentence-transformers", specifier = ">=5.3,<6" },
+]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest-watcher", specifier = ">=0.6.3" },
+    { name = "ruff", specifier = ">=0.15.22" },
+    { name = "ty", specifier = ">=0.0.60" },
+]
+
+[[package]]
 name = "cuda-bindings"
 version = "13.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -455,41 +490,6 @@ nvrtc = [
 ]
 nvtx = [
     { name = "nvidia-nvtx", marker = "platform_machine == 'aarch64' or platform_machine == 'x86_64'" },
-]
-
-[[package]]
-name = "docchat"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "chromadb" },
-    { name = "jsonschema" },
-    { name = "pypdf" },
-    { name = "sentence-transformers" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-watcher" },
-    { name = "ruff" },
-    { name = "ty" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "chromadb", specifier = ">=1.5,<2" },
-    { name = "jsonschema", specifier = ">=4.26,<5" },
-    { name = "pypdf", specifier = ">=6.14,<7" },
-    { name = "sentence-transformers", specifier = ">=5.3,<6" },
-]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=9.1.1" },
-    { name = "pytest-watcher", specifier = ">=0.6.3" },
-    { name = "ruff", specifier = ">=0.15.22" },
-    { name = "ty", specifier = ">=0.0.60" },
 ]
 
 [[package]]

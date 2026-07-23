@@ -1,4 +1,4 @@
-from docchat.plugin import Tool
+from core.plugin import Tool
 from fixture_plugins import identity, make_plugin, make_tool
 
 PLUGIN = make_plugin(

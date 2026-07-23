@@ -1,6 +1,6 @@
 from typing import Any
 
-from docchat.plugin import Plugin, Tool, ValidationRule
+from core.plugin import Plugin, Tool, ValidationRule
 
 
 def identity(x: int) -> int:
