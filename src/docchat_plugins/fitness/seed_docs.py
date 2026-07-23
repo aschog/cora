@@ -1,7 +1,7 @@
 _PROTEIN_NOTE = """\
 # Protein for muscle growth
 
-For building and maintaining muscle, aim for roughly 1.6-2.2 g of protein per
+For building and maintaining muscle, aim for roughly 1.4-2.0 g of protein per
 kg of bodyweight per day (ISSN position stand; Morton et al. 2018 found a
 breakpoint near 1.62 g/kg). Spread intake across 3-4 meals of 0.3-0.4 g/kg each.
 Whole-food sources — poultry, fish, eggs, dairy, legumes — cover most needs;
