@@ -19,3 +19,7 @@ def test_bmi_is_weight_over_height_squared(
 
 def test_male_bmr_matches_mifflin_st_jeor_reference() -> None:
     assert calculate_bmr("male", weight_kg=80, height_cm=180, age_years=30) == 1780.0
+
+
+def test_female_bmr_matches_mifflin_st_jeor_reference() -> None:
+    assert calculate_bmr("female", weight_kg=60, height_cm=165, age_years=25) == 1345.25
