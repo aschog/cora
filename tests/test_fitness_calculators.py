@@ -1,6 +1,6 @@
 import pytest
 
-from docchat_plugins.fitness.calculators import calculate_bmi
+from docchat_plugins.fitness.calculators import calculate_bmi, calculate_bmr
 
 
 @pytest.mark.parametrize(
@@ -15,3 +15,7 @@ def test_bmi_is_weight_over_height_squared(
     weight_kg: float, height_m: float, expected: float
 ) -> None:
     assert calculate_bmi(weight_kg, height_m) == pytest.approx(expected)
+
+
+def test_male_bmr_matches_mifflin_st_jeor_reference() -> None:
+    assert calculate_bmr("male", weight_kg=80, height_cm=180, age_years=30) == 1780.0
