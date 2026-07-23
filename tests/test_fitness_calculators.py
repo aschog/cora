@@ -4,6 +4,7 @@ from docchat_plugins.fitness.calculators import (
     calculate_bmi,
     calculate_bmr,
     calculate_daily_energy,
+    plan_macros,
 )
 
 
@@ -59,3 +60,16 @@ def test_daily_energy_applies_each_activity_factor(
     )
 
     assert result["tdee"] == pytest.approx(1780.0 * factor)
+
+
+@pytest.mark.parametrize(
+    ("kcal", "weight_kg", "expected"),
+    [
+        (2500, 80, {"protein_g": 144.0, "fat_g": 625 / 9, "carbs_g": 324.75}),
+        (1800, 60, {"protein_g": 108.0, "fat_g": 50.0, "carbs_g": 229.5}),
+    ],
+)
+def test_macros_match_reference_split(
+    kcal: int, weight_kg: float, expected: dict[str, float]
+) -> None:
+    assert plan_macros(kcal, weight_kg) == pytest.approx(expected)

@@ -28,3 +28,10 @@ def calculate_daily_energy(
 ) -> dict[str, float]:
     bmr = calculate_bmr(sex, weight_kg, height_cm, age_years)
     return {"bmr": bmr, "tdee": bmr * _ACTIVITY_FACTOR[activity_level]}
+
+
+def plan_macros(kcal: float, weight_kg: float) -> dict[str, float]:
+    protein_g = 1.8 * weight_kg
+    fat_g = 0.25 * kcal / 9
+    carbs_g = (kcal - 4 * protein_g - 9 * fat_g) / 4
+    return {"protein_g": protein_g, "fat_g": fat_g, "carbs_g": carbs_g}
