@@ -40,6 +40,7 @@ select = [
     "I",   # isort
     "UP",  # pyupgrade
     "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
     "SIM", # flake8-simplify
     "RUF", # ruff-specific
 ]
