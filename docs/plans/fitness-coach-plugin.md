@@ -106,7 +106,7 @@ classDiagram
 - [x] out-of-range args yield error `ToolResult`s, never raise: BMI weight < 20 kg, energy age < 18, macros kcal < 1200
 - [x] an invented activity label and a sex outside male/female are rejected by their schema enums as error `ToolResult`s
 - [x] the negative-carbs raise surfaces through the runtime as an error `ToolResult`, not an exception
-- [ ] a valid call to each of the three tools returns an ok `ToolResult` with the calculator's payload
+- [x] a valid call to each of the three tools returns an ok `ToolResult` with the calculator's payload
 
 #### Safety rule
 
