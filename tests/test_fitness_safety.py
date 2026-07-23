@@ -25,3 +25,7 @@ def test_medical_condition_question_is_redirected() -> None:
 def test_matching_is_case_insensitive_and_stem_based(text: str) -> None:
     with pytest.raises(InputRejectedError):
         MedicalSafetyRule().apply(text)
+
+
+def test_benign_fitness_question_passes() -> None:
+    MedicalSafetyRule().apply("How much protein should I eat to build muscle?")
