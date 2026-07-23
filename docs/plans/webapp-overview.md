@@ -123,8 +123,8 @@ classDiagram
 
 Adding a new domain = writing one new plugin package and pointing configuration at it.
 Zero core changes. The reference **fitness coach** plugin ships: fitness system prompt,
-pure-calculation tools (BMI, TDEE via Mifflin-St Jeor, 1RM via Epley, macro planning),
-safety rules (e.g. medical/medication questions get a safe redirect), and a small seed
+pure-calculation tools (BMI, TDEE via Mifflin-St Jeor, macro planning),
+safety rules (medical/medication questions get a safe redirect), and a small seed
 knowledge base of training/nutrition notes.
 
 ## 5. Design patterns employed
