@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
@@ -21,7 +22,12 @@ class ToolExecutor(Protocol):
 
 
 def _tool_message(result: ToolResult) -> Message:
-    content = result.error if result.error is not None else str(result.payload)
+    if result.error is not None:
+        content = result.error
+    elif isinstance(result.payload, str):
+        content = result.payload
+    else:
+        content = json.dumps(result.payload, default=str)
     return Message(role="tool", content=content, tool_call_id=result.call_id)
 
 
