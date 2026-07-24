@@ -218,3 +218,56 @@ def test_llm_error_from_the_chat_model_propagates_unchanged() -> None:
         engine.answer("hi")
 
     assert exc_info.value is error
+
+
+def _describe(**kwargs: object) -> dict[str, int]:
+    return {"value": 42}
+
+
+_DICT_TOOL = Tool(
+    name="describe",
+    description="Return a dict.",
+    parameter_schema={"type": "object", "properties": {}},
+    run=_describe,
+)
+
+
+def test_non_string_tool_payload_is_fed_back_as_json() -> None:
+    import json
+
+    call = ToolCall(name="describe", arguments={}, call_id="c1")
+    model = ScriptedChatModel([ModelReply(tool_calls=(call,)), ModelReply(text="ok")])
+    engine = _make_engine(
+        chat_model=model,
+        tool_runtime=ToolRuntime(tools=(_DICT_TOOL,)),
+        tools=(_DICT_TOOL,),
+    )
+
+    engine.answer("describe it")
+
+    assert model.last_messages is not None
+    fed_back = model.last_messages[-1]
+    assert json.loads(fed_back.content) == {"value": 42}
+
+
+def test_multiple_tool_calls_in_one_round_all_run_in_order() -> None:
+    c1 = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1")
+    c2 = ToolCall(name="add", arguments={"a": 3, "b": 4}, call_id="c2")
+    model = ScriptedChatModel(
+        [ModelReply(tool_calls=(c1, c2)), ModelReply(text="done")]
+    )
+    engine = _make_engine(
+        chat_model=model,
+        tool_runtime=ToolRuntime(tools=(add_tool(),)),
+        tools=(add_tool(),),
+    )
+
+    result = engine.answer("add two pairs")
+
+    assert result.tool_results == (
+        ToolResult(call_id="c1", payload=3),
+        ToolResult(call_id="c2", payload=7),
+    )
+    assert model.last_messages is not None
+    tool_ids = [m.tool_call_id for m in model.last_messages if m.role == "tool"]
+    assert tool_ids == ["c1", "c2"]

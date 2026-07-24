@@ -128,3 +128,14 @@ def test_provider_exception_is_wrapped_as_llm_error(
 
     with pytest.raises(LlmError):
         model.complete((Message(role="user", content="hi"),), ())
+
+
+def test_complete_returns_the_mapped_model_reply(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("core.openrouter_chat_model.ChatOpenAI", _FakeChatOpenAI)
+    model = OpenRouterChatModel(model="m", api_key="k")
+
+    reply = model.complete((Message(role="user", content="hi"),), ())
+
+    assert reply == ModelReply(text="ok")
