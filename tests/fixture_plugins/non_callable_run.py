@@ -1,4 +1,4 @@
-from core.ports.plugin import Tool
+from cora.core.ports.plugin import Tool
 from fixture_plugins import make_plugin, make_tool
 
 PLUGIN = make_plugin(
