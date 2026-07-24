@@ -250,7 +250,7 @@ Orchestrator (fakes + fixture plugin)
 - [x] system message sent to the model embeds the context block; an injected `build_context` replaces the default.
 - [x] one-tool reply runs via `ToolRuntime`, feeds `ToolResult` back as a tool message, and
       `ChatResult.tool_results` includes it.
-- [ ] unknown-tool request → `ToolResult.error` fed back as data (no exception), loop finishes.
+- [x] unknown-tool request → `ToolResult.error` fed back as data (no exception), loop finishes.
 - [ ] malformed-arguments request → `ToolResult.error` fed back as data (no exception).
 - [ ] looping past `max_tool_rounds` → raises `ToolLoopLimitError`.
 - [ ] invalid input (empty / too long / plugin safety) → `InputRejectedError` before any KB/LLM call.
