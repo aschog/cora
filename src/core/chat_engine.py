@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -31,10 +32,16 @@ class ChatEngine:
     chat_model: ChatModel
     knowledge_base: ContextSource
     top_k: int
+    system_prompt: str
+    build_context: Callable[[list[RetrievedChunk]], str] = build_context_block
 
     def answer(self, user_input: str) -> ChatResult:
         chunks = self.knowledge_base.search(user_input, self.top_k)
         sources = tuple(dict.fromkeys(hit.chunk.source for hit in chunks))
-        messages = (Message(role="user", content=user_input),)
+        system = Message(
+            role="system",
+            content=f"{self.system_prompt}\n\n{self.build_context(chunks)}",
+        )
+        messages = (system, Message(role="user", content=user_input))
         reply = self.chat_model.complete(messages, ())
         return ChatResult(answer=reply.text, sources=sources)

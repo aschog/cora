@@ -247,7 +247,7 @@ Orchestrator (fakes + fixture plugin)
 - [x] scripted final-text reply → `ChatResult.answer == text`, no tools invoked.
 - [x] engine searches KB (top_k); `ChatResult.sources` are the unique retrieved sources.
 - [x] `build_context_block(chunks)` renders numbered context + citation rule (tested standalone).
-- [ ] system message sent to the model embeds the context block; an injected `build_context` replaces the default.
+- [x] system message sent to the model embeds the context block; an injected `build_context` replaces the default.
 - [ ] one-tool reply runs via `ToolRuntime`, feeds `ToolResult` back as a tool message, and
       `ChatResult.tool_results` includes it.
 - [ ] unknown-tool request → `ToolResult.error` fed back as data (no exception), loop finishes.
