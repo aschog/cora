@@ -126,19 +126,40 @@ Monkeypatch `core.openrouter_chat_model.ChatOpenAI` in unit tests — no network
 **Fake** — `tests/fakes.py::ScriptedChatModel`: deterministic queue of `ModelReply`s; records
 the messages + tools it last received, for assertions.
 
-**Composition root** — new `src/cora/` app package (app/driver layer; item 7 imports it):
+**Composition root** — new `src/cora/` app package (app/driver layer; item 7 imports it): files
+`cora/config.py` (`Config.from_env`) and `cora/composition.py` (`assemble` + `build_engine`).
+The object graph `assemble` wires (instances : types, links labelled by the field each fills):
 
-- `cora/config.py::Config.from_env` — model, base_url, plugin module path, top_k,
-  max_tool_rounds, api key; missing api key → `ConfigurationError`.
-- `cora/composition.py`, split for testability:
-  - `assemble(plugin, embedder, retriever, chat_model, *, top_k, max_tool_rounds, core_rules)
-    -> ChatEngine` — **pure wiring**: seeds `plugin.seed_docs` into the KB, chains core +
-    plugin validation rules, builds `ToolRuntime(plugin.tools)`. Unit-tested with fakes + a
-    fixture plugin (no network / model download — unit tier).
-  - `build_engine(config) -> ChatEngine` — constructs real adapters, resolves the plugin via the
-    existing `plugin_registry.load_plugin(config.plugin_module)` (dynamic import → no static
-    plugin import; **UI → Core ← Plugins** holds), delegates to `assemble`. Thin glue; verified
-    at integration/acceptance, not the unit tier.
+```mermaid
+classDiagram
+  direction LR
+  class engine["engine : ChatEngine"]
+  class chatModel["chatModel : OpenRouterChatModel"]
+  class kb["kb : KnowledgeBase"]
+  class embedder["embedder : SentenceTransformerEmbedder"]
+  class retriever["retriever : ChromaRetriever"]
+  class validation["validation : ValidationPipeline"]
+  class runtime["runtime : ToolRuntime"]
+  class plugin["plugin : Plugin"]
+
+  engine --> chatModel : chat_model
+  engine --> kb : knowledge_base
+  engine --> validation : validation
+  engine --> runtime : tool_runtime
+  engine ..> plugin : system_prompt, tools
+  kb --> embedder : embedder
+  kb --> retriever : retriever
+  kb ..> plugin : seed_docs
+  validation ..> plugin : validation_rules
+  runtime ..> plugin : tools
+```
+
+Rationale the diagram can't hold — the split exists for testability:
+
+- `assemble` is **pure wiring** (the object graph above) — unit-tested with fakes + a fixture plugin, no network / model download (unit tier).
+- `build_engine` is thin glue — constructs the real adapters, resolves the plugin, passes `Config`'s `top_k`/`max_tool_rounds` to the engine, then delegates to `assemble`. Verified at integration/acceptance, not the unit tier.
+- Plugin resolved dynamically via `load_plugin(config.plugin_module)` → no static plugin import, so **UI → Core ← Plugins** holds.
+- `Config.from_env` raises `ConfigurationError` on a missing `OPENROUTER_API_KEY`.
 
 ### Chat flow (§6)
 
