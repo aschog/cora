@@ -60,6 +60,10 @@ class InputRejectedError(CoreError):
     pass
 
 
+class ConfigurationError(CoreError):
+    pass
+
+
 class AdapterError(CoreError):
     message = "The document service is temporarily unavailable. Please try again."
 

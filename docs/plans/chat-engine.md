@@ -266,7 +266,7 @@ OpenRouter adapter (unit, `ChatOpenAI` monkeypatched — no network)
 
 Config & composition root
 
-- [ ] `Config.from_env` reads model/base_url/plugin module/top_k/max_tool_rounds/api key;
+- [x] `Config.from_env` reads model/base_url/plugin module/top_k/max_tool_rounds/api key;
       missing api key → `ConfigurationError`.
 - [ ] `assemble(...)` wires a fixture plugin + fakes into a `ChatEngine` that answers a
       happy-path question, seeds `plugin.seed_docs` into the KB, and chains core + plugin rules.
