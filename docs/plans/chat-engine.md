@@ -235,7 +235,7 @@ Reused as-is: `InputRejectedError` (validation), `EmbeddingError`/`RetrievalErro
 Ports, value objects & fake
 
 - [x] `ModelReply().is_final` is `True` with no tool_calls, `False` with tool_calls; `Message` is frozen/immutable and `role` rejects non-`Literal` values (ty).
-- [ ] `ScriptedChatModel` returns queued `ModelReply`s in order and records last messages+tools seen.
+- [x] `ScriptedChatModel` returns queued `ModelReply`s in order and records last messages+tools seen.
 
 Errors
 
