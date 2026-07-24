@@ -239,7 +239,7 @@ Ports, value objects & fake
 
 Errors
 
-- [ ] `LlmError` is an `AdapterError`/`CoreError` with a user-presentable `user_message`.
+- [x] `LlmError` is an `AdapterError`/`CoreError` with a user-presentable `user_message`.
 - [ ] `ToolLoopLimitError` is a `CoreError` with a friendly `user_message`.
 
 Orchestrator (fakes + fixture plugin)

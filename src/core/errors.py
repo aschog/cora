@@ -73,3 +73,7 @@ class EmbeddingError(AdapterError):
 
 class RetrievalError(AdapterError):
     message = "The knowledge base is temporarily unavailable. Please try again."
+
+
+class LlmError(AdapterError):
+    message = "The assistant is temporarily unavailable. Please try again."

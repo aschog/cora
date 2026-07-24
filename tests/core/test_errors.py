@@ -8,6 +8,7 @@ from core.errors import (
     FileTooLargeError,
     IngestionError,
     InputRejectedError,
+    LlmError,
     PluginLoadError,
     RetrievalError,
     UnreadableFileError,
@@ -44,7 +45,7 @@ def test_ingestion_error_message_names_the_offending_file(
     assert error.filename == "budget.xlsx"
 
 
-ADAPTER_ERRORS = [EmbeddingError, RetrievalError]
+ADAPTER_ERRORS = [EmbeddingError, RetrievalError, LlmError]
 
 
 @pytest.mark.parametrize("error_type", ADAPTER_ERRORS)
