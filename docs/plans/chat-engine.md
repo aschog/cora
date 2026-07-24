@@ -114,7 +114,9 @@ Protocol-conformance test (ports verified by `ty`).
 
 **Orchestrator** — `src/core/chat_engine.py`: `ChatEngine` is a pure Coordinator depending only on
 three client-owned Protocols it defines (`ContextSource`, `InputValidator`, `ToolExecutor`),
-satisfied structurally by the existing classes with zero changes (DIP); prompt/citation format is
+satisfied structurally by the existing classes with zero changes (DIP) — so each Protocol method
+mirrors the existing signature exactly, parameter names and return types included (ty checks
+both: `validate(user_input: str) -> str`, `search(query: str, k: int)`); prompt/citation format is
 an injectable `build_context` strategy defaulting to `build_context_block` (OCP); `answer()` is a
 compose method over named steps, no god-method; `ChatResult.tool_results` keeps `ToolResult`
 typed end-to-end, only the model-facing message flattens to a string.
@@ -129,7 +131,10 @@ errors wrap to `LlmError`; tests monkeypatch `ChatOpenAI`, no network.
 transcript it received, substitutable for the adapter via the shared `Message`/`ModelReply` VOs.
 
 **Composition root** — new `src/cora/` package (`config.py`, `composition.py`): `assemble` wires
-fakes/adapters into a `ChatEngine`; `build_engine` adds real adapters + plugin resolution. Object
+fakes/adapters into a `ChatEngine`; `build_engine` adds real adapters + plugin resolution.
+Packaging: add `cora` to `[tool.uv.build-backend] module-name` in `pyproject.toml` (else the
+package neither builds nor imports), update CLAUDE.md's "two import packages" sentence, and
+delete the stale `src/docchat/` leftover. Object
 graph `assemble` produces:
 
 ```mermaid
@@ -212,8 +217,6 @@ Reused as-is: `InputRejectedError` (validation), `EmbeddingError`/`RetrievalErro
 
 ---
 
----
-
 ## TDD checklist (red → green → refactor; commit per green; bottom-up)
 
 Ports, value objects & fake
@@ -254,6 +257,8 @@ Config & composition root
       missing api key → `ConfigurationError`.
 - [ ] `assemble(...)` wires a fixture plugin + fakes into a `ChatEngine` that answers a
       happy-path question, seeds `plugin.seed_docs` into the KB, and chains core + plugin rules.
+- [ ] packaging chore (no test): `cora` in `module-name`, CLAUDE.md package list updated,
+      stale `src/docchat/` removed.
 
 ---
 
