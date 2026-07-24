@@ -1,7 +1,7 @@
 import pytest
 
-from core.plugin import ToolCall, ToolResult
-from core.tool_runtime import ToolRuntime
+from core.ports.plugin import ToolCall, ToolResult
+from core.services.tool_runtime import ToolRuntime
 from plugins.fitness.calculators import (
     calculate_bmi,
     calculate_daily_energy,

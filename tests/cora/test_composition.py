@@ -4,11 +4,11 @@ import pytest
 
 from cora.composition import assemble, build_engine
 from cora.config import Config
-from core.chat_engine import ChatEngine
-from core.chat_model import ModelReply
 from core.errors import InputRejectedError
-from core.plugin import Plugin
-from core.plugin_registry import load_plugin
+from core.ports.chat_model import ModelReply
+from core.ports.plugin import Plugin
+from core.services.chat_engine import ChatEngine
+from core.services.plugin_registry import load_plugin
 from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin
 

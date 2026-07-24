@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-from core.plugin import Tool, ToolCall
+from core.ports.plugin import Tool, ToolCall
 
 Role = Literal["system", "user", "assistant", "tool"]
 

@@ -3,10 +3,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
-from core.chat_model import ChatModel, Message
 from core.errors import ToolLoopLimitError
-from core.plugin import Tool, ToolCall, ToolResult
-from core.retrieval import RetrievedChunk
+from core.ports.chat_model import ChatModel, Message
+from core.ports.plugin import Tool, ToolCall, ToolResult
+from core.ports.retrieval import RetrievedChunk
 
 
 class ContextSource(Protocol):

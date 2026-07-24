@@ -4,8 +4,8 @@ import pytest
 
 from core.chunk import Chunk
 from core.errors import EmptyDocumentError, UnsupportedFileTypeError
-from core.ingestion import ingest
-from core.knowledge_base import KnowledgeBase
+from core.services.ingestion import ingest
+from core.services.knowledge_base import KnowledgeBase
 from fakes import FakeEmbedder, FakeRetriever
 
 

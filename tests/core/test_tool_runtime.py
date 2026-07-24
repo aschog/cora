@@ -1,5 +1,5 @@
-from core.plugin import Tool, ToolCall
-from core.tool_runtime import ToolRuntime
+from core.ports.plugin import Tool, ToolCall
+from core.services.tool_runtime import ToolRuntime
 from fakes import add_tool
 
 

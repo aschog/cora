@@ -9,7 +9,7 @@ from core.errors import RetrievalError
 from fakes import FakeEmbedder
 
 if TYPE_CHECKING:
-    from core.chroma_retriever import ChromaRetriever
+    from core.adapters.chroma_retriever import ChromaRetriever
 
 pytestmark = pytest.mark.integration
 
@@ -95,7 +95,7 @@ def test_chroma_failure_surfaces_as_retrieval_error(
 def test_chroma_construction_failure_surfaces_as_retrieval_error(
     tmp_path: Path,
 ) -> None:
-    from core.chroma_retriever import ChromaRetriever
+    from core.adapters.chroma_retriever import ChromaRetriever
 
     with pytest.raises(RetrievalError):
         ChromaRetriever(path=str(tmp_path), collection="x")

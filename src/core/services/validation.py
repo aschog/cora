@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from core.errors import InputRejectedError
-from core.plugin import ValidationRule
+from core.ports.plugin import ValidationRule
 
 
 class EmptyInputRule:

@@ -7,7 +7,7 @@ from chromadb.errors import ChromaError
 
 from core.chunk import Chunk
 from core.errors import RetrievalError
-from core.retrieval import RetrievedChunk
+from core.ports.retrieval import RetrievedChunk
 
 
 def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:

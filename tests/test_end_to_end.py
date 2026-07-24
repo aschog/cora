@@ -3,11 +3,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from core.knowledge_base import KnowledgeBase
-from core.sentence_transformer_embedder import SentenceTransformerEmbedder
+from core.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
+from core.services.knowledge_base import KnowledgeBase
 
 if TYPE_CHECKING:
-    from core.chroma_retriever import ChromaRetriever
+    from core.adapters.chroma_retriever import ChromaRetriever
 
 pytestmark = pytest.mark.integration
 

@@ -1,7 +1,7 @@
 import pytest
 
 from core.errors import UnreadableFileError
-from core.loaders import LOADERS, load_pdf, load_txt
+from core.services.loaders import LOADERS, load_pdf, load_txt
 from pdf_fixtures import make_pdf_bytes
 
 

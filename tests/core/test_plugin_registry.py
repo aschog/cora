@@ -1,7 +1,7 @@
 import pytest
 
 from core.errors import PluginLoadError
-from core.plugin_registry import load_plugin
+from core.services.plugin_registry import load_plugin
 
 
 def test_resolving_a_name_returns_the_module_level_plugin_bundle() -> None:

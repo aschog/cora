@@ -3,7 +3,7 @@ import itertools
 import pytest
 
 from core.chunk import Chunk
-from core.chunker import chunk_text
+from core.services.chunker import chunk_text
 
 
 def test_empty_text_yields_no_chunks() -> None:

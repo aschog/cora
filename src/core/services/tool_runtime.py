@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 from jsonschema import Draft202012Validator, ValidationError
 
-from core.plugin import Tool, ToolCall, ToolResult
+from core.ports.plugin import Tool, ToolCall, ToolResult
 
 
 @dataclass(frozen=True)

@@ -1,14 +1,14 @@
 from pathlib import Path
 
 from core.chunk import Chunk
-from core.chunker import chunk_text
-from core.cleaning import clean_text
 from core.errors import (
     EmptyDocumentError,
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
-from core.loaders import LOADERS
+from core.services.chunker import chunk_text
+from core.services.cleaning import clean_text
+from core.services.loaders import LOADERS
 
 DEFAULT_MAX_BYTES = 10 * 1024 * 1024
 

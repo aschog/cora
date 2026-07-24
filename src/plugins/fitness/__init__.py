@@ -1,4 +1,4 @@
-from core.plugin import Plugin
+from core.ports.plugin import Plugin
 from plugins.fitness.safety import MedicalSafetyRule
 from plugins.fitness.seed_docs import SEED_DOCS
 from plugins.fitness.tools import TOOLS

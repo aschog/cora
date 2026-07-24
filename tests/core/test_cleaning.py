@@ -1,4 +1,4 @@
-from core.cleaning import clean_text
+from core.services.cleaning import clean_text
 
 
 def test_crlf_becomes_lf() -> None:

@@ -6,14 +6,14 @@ from langchain_core.messages import (
     ToolMessage,
 )
 
-from core.chat_model import Message, ModelReply
-from core.errors import LlmError
-from core.openrouter_chat_model import (
+from core.adapters.openrouter_chat_model import (
     OpenRouterChatModel,
     to_langchain_message,
     to_model_reply,
 )
-from core.plugin import ToolCall
+from core.errors import LlmError
+from core.ports.chat_model import Message, ModelReply
+from core.ports.plugin import ToolCall
 from fakes import add_tool
 
 
@@ -95,7 +95,9 @@ def test_provider_text_reply_becomes_final_model_reply() -> None:
 def test_tool_schemas_are_bound_onto_the_client(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("core.openrouter_chat_model.ChatOpenAI", _FakeChatOpenAI)
+    monkeypatch.setattr(
+        "core.adapters.openrouter_chat_model.ChatOpenAI", _FakeChatOpenAI
+    )
     tool = add_tool()
     model = OpenRouterChatModel(model="m", api_key="k")
 
@@ -123,7 +125,9 @@ def test_provider_exception_is_wrapped_as_llm_error(
         def invoke(self, messages: object) -> AIMessage:
             raise RuntimeError("provider down")
 
-    monkeypatch.setattr("core.openrouter_chat_model.ChatOpenAI", _FailingChatOpenAI)
+    monkeypatch.setattr(
+        "core.adapters.openrouter_chat_model.ChatOpenAI", _FailingChatOpenAI
+    )
     model = OpenRouterChatModel(model="m", api_key="k")
 
     with pytest.raises(LlmError):
@@ -133,7 +137,9 @@ def test_provider_exception_is_wrapped_as_llm_error(
 def test_complete_returns_the_mapped_model_reply(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("core.openrouter_chat_model.ChatOpenAI", _FakeChatOpenAI)
+    monkeypatch.setattr(
+        "core.adapters.openrouter_chat_model.ChatOpenAI", _FakeChatOpenAI
+    )
     model = OpenRouterChatModel(model="m", api_key="k")
 
     reply = model.complete((Message(role="user", content="hi"),), ())

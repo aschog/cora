@@ -9,9 +9,9 @@ from langchain_core.messages import (
 )
 from langchain_openai import ChatOpenAI
 
-from core.chat_model import Message, ModelReply
 from core.errors import LlmError
-from core.plugin import Tool, ToolCall
+from core.ports.chat_model import Message, ModelReply
+from core.ports.plugin import Tool, ToolCall
 
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 

@@ -1,4 +1,4 @@
-from core.knowledge_base import KnowledgeBase
+from core.services.knowledge_base import KnowledgeBase
 from plugins.fitness.seed_docs import SEED_DOCS
 
 

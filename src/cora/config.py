@@ -2,8 +2,8 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from core.adapters.openrouter_chat_model import OPENROUTER_BASE_URL
 from core.errors import ConfigurationError
-from core.openrouter_chat_model import OPENROUTER_BASE_URL
 
 DEFAULT_MODEL = "openai/gpt-4o-mini"
 DEFAULT_PLUGIN = "plugins.fitness"

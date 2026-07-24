@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from core.plugin import ToolCall, ToolResult
+from core.ports.plugin import ToolCall, ToolResult
 from fakes import add_tool
 from fixture_plugins import make_plugin
 

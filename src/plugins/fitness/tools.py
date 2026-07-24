@@ -1,4 +1,4 @@
-from core.plugin import Tool
+from core.ports.plugin import Tool
 from plugins.fitness.calculators import (
     calculate_bmi,
     calculate_daily_energy,

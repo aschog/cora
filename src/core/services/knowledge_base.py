@@ -1,9 +1,9 @@
 import hashlib
 from dataclasses import dataclass
 
-from core.embedding import Embedder
-from core.ingestion import ingest
-from core.retrieval import RetrievedChunk, Retriever
+from core.ports.embedding import Embedder
+from core.ports.retrieval import RetrievedChunk, Retriever
+from core.services.ingestion import ingest
 
 
 @dataclass

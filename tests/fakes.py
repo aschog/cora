@@ -5,10 +5,10 @@ import math
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
-from core.chat_model import Message, ModelReply
 from core.chunk import Chunk
-from core.plugin import Tool
-from core.retrieval import RetrievedChunk
+from core.ports.chat_model import Message, ModelReply
+from core.ports.plugin import Tool
+from core.ports.retrieval import RetrievedChunk
 
 
 def _add(a: int, b: int) -> int:

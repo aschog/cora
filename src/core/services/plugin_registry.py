@@ -3,7 +3,7 @@ import importlib
 from jsonschema import Draft202012Validator, SchemaError
 
 from core.errors import PluginLoadError
-from core.plugin import Plugin
+from core.ports.plugin import Plugin
 
 
 def load_plugin(module_path: str) -> Plugin:

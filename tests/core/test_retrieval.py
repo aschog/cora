@@ -4,7 +4,7 @@ from collections.abc import Callable
 import pytest
 
 from core.chunk import Chunk
-from core.retrieval import RetrievedChunk
+from core.ports.retrieval import RetrievedChunk
 
 
 def test_retrieved_chunks_are_equal_by_content(

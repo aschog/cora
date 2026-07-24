@@ -2,19 +2,19 @@ from collections.abc import Callable
 
 import pytest
 
-from core.chat_engine import (
+from core.chunk import Chunk
+from core.errors import InputRejectedError, LlmError, ToolLoopLimitError
+from core.ports.chat_model import ChatModel, ModelReply
+from core.ports.plugin import Tool, ToolCall, ToolResult
+from core.ports.retrieval import RetrievedChunk
+from core.services.chat_engine import (
     ChatEngine,
     InputValidator,
     ToolExecutor,
     build_context_block,
 )
-from core.chat_model import ChatModel, ModelReply
-from core.chunk import Chunk
-from core.errors import InputRejectedError, LlmError, ToolLoopLimitError
-from core.plugin import Tool, ToolCall, ToolResult
-from core.retrieval import RetrievedChunk
-from core.tool_runtime import ToolRuntime
-from core.validation import EmptyInputRule, ValidationPipeline
+from core.services.tool_runtime import ToolRuntime
+from core.services.validation import EmptyInputRule, ValidationPipeline
 from fakes import FailingChatModel, FakeContextSource, ScriptedChatModel, add_tool
 
 

@@ -1,9 +1,9 @@
 import pytest
 
 from core.errors import InputRejectedError
-from core.plugin import Plugin
-from core.plugin_registry import load_plugin
-from core.validation import EmptyInputRule, MaxLengthRule, ValidationPipeline
+from core.ports.plugin import Plugin
+from core.services.plugin_registry import load_plugin
+from core.services.validation import EmptyInputRule, MaxLengthRule, ValidationPipeline
 from plugins.fitness import PLUGIN, SYSTEM_PROMPT
 
 

@@ -5,8 +5,8 @@ from core.errors import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
-from core.ingestion import ingest
-from core.loaders import LOADERS
+from core.services.ingestion import ingest
+from core.services.loaders import LOADERS
 from pdf_fixtures import make_pdf_bytes
 
 

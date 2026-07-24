@@ -3,7 +3,7 @@ from dataclasses import dataclass
 import pytest
 
 from core.errors import InputRejectedError
-from core.validation import EmptyInputRule, MaxLengthRule, ValidationPipeline
+from core.services.validation import EmptyInputRule, MaxLengthRule, ValidationPipeline
 
 
 @dataclass

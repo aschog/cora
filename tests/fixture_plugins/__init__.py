@@ -1,6 +1,6 @@
 from typing import Any
 
-from core.plugin import Plugin, Tool, ValidationRule
+from core.ports.plugin import Plugin, Tool, ValidationRule
 
 
 def identity(x: int) -> int:
