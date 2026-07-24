@@ -10,6 +10,15 @@ class ContextSource(Protocol):
     def search(self, query: str, k: int) -> list[RetrievedChunk]: ...
 
 
+def build_context_block(chunks: list[RetrievedChunk]) -> str:
+    context = "\n".join(
+        f"[{number}] {hit.chunk.source}: {hit.chunk.text}"
+        for number, hit in enumerate(chunks, start=1)
+    )
+    citation_rule = "Cite sources by their bracketed number, e.g. [1]."
+    return f"{context}\n\n{citation_rule}"
+
+
 @dataclass(frozen=True)
 class ChatResult:
     answer: str

@@ -1,4 +1,4 @@
-from core.chat_engine import ChatEngine
+from core.chat_engine import ChatEngine, build_context_block
 from core.chat_model import ChatModel, ModelReply
 from core.chunk import Chunk
 from core.retrieval import RetrievedChunk
@@ -18,9 +18,9 @@ def _make_engine(
     )
 
 
-def _retrieved(source: str, score: float = 1.0) -> RetrievedChunk:
+def _retrieved(source: str, text: str = "t", score: float = 1.0) -> RetrievedChunk:
     return RetrievedChunk(
-        chunk=Chunk(text="t", source=source, index=0, offset=0), score=score
+        chunk=Chunk(text=text, source=source, index=0, offset=0), score=score
     )
 
 
@@ -45,3 +45,14 @@ def test_answer_searches_the_knowledge_base_and_reports_unique_sources() -> None
     assert kb.last_query == "question"
     assert kb.last_k == 5
     assert result.sources == ("a.txt", "b.txt")
+
+
+def test_build_context_block_numbers_chunks_and_states_citation_rule() -> None:
+    block = build_context_block(
+        [_retrieved("a.txt", text="alpha"), _retrieved("b.txt", text="beta")]
+    )
+
+    assert block.index("[1]") < block.index("[2]")
+    assert "alpha" in block and "a.txt" in block
+    assert "beta" in block and "b.txt" in block
+    assert "cite" in block.lower()
