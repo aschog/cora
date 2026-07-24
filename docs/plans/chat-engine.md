@@ -24,23 +24,8 @@ From the architecture plan (§4 component roles, §6 chat flow, §10 roadmap) an
 ```mermaid
 classDiagram
   direction LR
-  class ChatModel {
-    <<interface>>
-    +complete(messages, tools) ModelReply
-  }
-  class Message {
-    <<frozen>>
-    +role
-    +content
-    +tool_calls
-    +tool_call_id
-  }
-  class ModelReply {
-    <<frozen>>
-    +text
-    +tool_calls
-    +is_final
-  }
+
+  %% Orchestrator + its result
   class ChatEngine {
     +system_prompt
     +top_k
@@ -54,8 +39,38 @@ classDiagram
     +sources
     +tool_results
   }
-  class OpenRouterChatModel {
+
+  %% Ports (client-owned interfaces)
+  class ChatModel {
+    <<interface>>
     +complete(messages, tools) ModelReply
+  }
+  class ContextSource {
+    <<interface>>
+    +search(query, k)
+  }
+  class InputValidator {
+    <<interface>>
+    +validate(input)
+  }
+  class ToolExecutor {
+    <<interface>>
+    +execute(ToolCall) ToolResult
+  }
+
+  %% Value objects
+  class Message {
+    <<frozen>>
+    +role
+    +content
+    +tool_calls
+    +tool_call_id
+  }
+  class ModelReply {
+    <<frozen>>
+    +text
+    +tool_calls
+    +is_final
   }
   class Tool {
     <<existing>>
@@ -66,42 +81,42 @@ classDiagram
   class ToolResult {
     <<existing>>
   }
-  class ToolExecutor {
-    <<interface>>
-    +execute(ToolCall) ToolResult
+
+  %% Adapters + existing implementations
+  class OpenRouterChatModel {
+    +complete(messages, tools) ModelReply
   }
-  class InputValidator {
-    <<interface>>
-    +validate(input)
-  }
-  class ContextSource {
-    <<interface>>
-    +search(query, k)
-  }
-  class ToolRuntime {
+  class KnowledgeBase {
     <<existing>>
   }
   class ValidationPipeline {
     <<existing>>
   }
-  class KnowledgeBase {
+  class ToolRuntime {
     <<existing>>
   }
 
+  %% Realizations (implementation ..|> port)
   OpenRouterChatModel ..|> ChatModel
   KnowledgeBase ..|> ContextSource
   ValidationPipeline ..|> InputValidator
   ToolRuntime ..|> ToolExecutor
+
+  %% ChatEngine collaborators
   ChatEngine --> ChatModel : chat_model
   ChatEngine --> ContextSource : knowledge_base
   ChatEngine --> InputValidator : validation
   ChatEngine --> ToolExecutor : tool_runtime
+  ChatEngine --> "*" Tool : tools
   ChatEngine ..> ChatResult : returns
   ChatEngine ..> Message : builds transcript
-  ChatEngine --> "*" Tool : tools
+
+  %% Port <-> value objects
   ChatModel ..> ModelReply : returns
   ChatModel ..> Tool : reads schema
   ModelReply *-- "*" ToolCall : tool_calls
+
+  %% Tool execution
   ToolRuntime ..> ToolCall : executes
   ToolRuntime ..> ToolResult : produces
   ChatResult *-- "*" ToolResult
