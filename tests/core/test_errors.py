@@ -8,8 +8,10 @@ from core.errors import (
     FileTooLargeError,
     IngestionError,
     InputRejectedError,
+    LlmError,
     PluginLoadError,
     RetrievalError,
+    ToolLoopLimitError,
     UnreadableFileError,
     UnsupportedFileTypeError,
 )
@@ -44,7 +46,7 @@ def test_ingestion_error_message_names_the_offending_file(
     assert error.filename == "budget.xlsx"
 
 
-ADAPTER_ERRORS = [EmbeddingError, RetrievalError]
+ADAPTER_ERRORS = [EmbeddingError, RetrievalError, LlmError]
 
 
 @pytest.mark.parametrize("error_type", ADAPTER_ERRORS)
@@ -65,6 +67,13 @@ def test_plugin_load_error_names_plugin_and_reason() -> None:
     assert issubclass(PluginLoadError, CoreError)
     assert "fitness" in error.user_message
     assert "could not be imported" in error.user_message
+
+
+def test_tool_loop_limit_error_carries_a_friendly_message() -> None:
+    error = ToolLoopLimitError()
+
+    assert issubclass(ToolLoopLimitError, CoreError)
+    assert error.user_message
 
 
 def test_input_rejection_carries_the_rule_supplied_message() -> None:

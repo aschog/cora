@@ -1,7 +1,8 @@
 from collections.abc import Callable
 
+from core.chat_model import Message, ModelReply
 from core.chunk import Chunk
-from fakes import FakeEmbedder, FakeRetriever
+from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel, add_tool
 
 
 def _add(
@@ -93,3 +94,23 @@ def test_fake_retriever_contains_reports_known_hashes(
 
     assert retriever.contains("h1")
     assert not retriever.contains("h2")
+
+
+def test_scripted_chat_model_returns_queued_replies_in_order() -> None:
+    first = ModelReply(text="first")
+    second = ModelReply(text="second")
+    model = ScriptedChatModel([first, second])
+
+    assert model.complete((), ()) == first
+    assert model.complete((), ()) == second
+
+
+def test_scripted_chat_model_records_last_messages_and_tools() -> None:
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    messages = (Message(role="user", content="hi"),)
+    tools = (add_tool(),)
+
+    model.complete(messages, tools)
+
+    assert model.last_messages == messages
+    assert model.last_tools == tools

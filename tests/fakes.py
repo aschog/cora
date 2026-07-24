@@ -2,9 +2,10 @@
 
 import hashlib
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import NamedTuple
 
+from core.chat_model import Message, ModelReply
 from core.chunk import Chunk
 from core.plugin import Tool
 from core.retrieval import RetrievedChunk
@@ -79,3 +80,39 @@ def _cosine(a: list[float], b: list[float]) -> float:
     dot = sum(x * y for x, y in zip(a, b, strict=True))
     norm = math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(y * y for y in b))
     return dot / norm if norm else 0.0
+
+
+class ScriptedChatModel:
+    def __init__(self, replies: list[ModelReply]) -> None:
+        self._replies = list(replies)
+        self.last_messages: tuple[Message, ...] | None = None
+        self.last_tools: tuple[Tool, ...] | None = None
+
+    def complete(
+        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+    ) -> ModelReply:
+        self.last_messages = messages
+        self.last_tools = tools
+        return self._replies.pop(0)
+
+
+@dataclass
+class FailingChatModel:
+    error: Exception
+
+    def complete(
+        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+    ) -> ModelReply:
+        raise self.error
+
+
+@dataclass
+class FakeContextSource:
+    results: list[RetrievedChunk] = field(default_factory=list)
+    last_query: str | None = None
+    last_k: int | None = None
+
+    def search(self, query: str, k: int) -> list[RetrievedChunk]:
+        self.last_query = query
+        self.last_k = k
+        return self.results
