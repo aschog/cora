@@ -18,9 +18,12 @@ From the architecture plan (§4 component roles, §6 chat flow, §10 roadmap) an
 
 ## Design (architecture level)
 
-**Types & collaborators** (`<<existing>>` = reused unchanged from the current core):
+`<<existing>>` = reused unchanged from the current core.
 
 ```mermaid
+---
+title: Types & collaborators
+---
 classDiagram
   direction LR
 
@@ -145,10 +148,12 @@ recording the transcript it received.
 **Composition root** — new `src/cora/` package (`config.py`, `composition.py`): `assemble` wires
 fakes into a `ChatEngine`, `build_engine` swaps in real adapters + plugin resolution. Packaging:
 add `cora` to `[tool.uv.build-backend] module-name` in `pyproject.toml` (else it neither builds nor
-imports), update CLAUDE.md's "two import packages" sentence, delete the stale `src/docchat/`. Object
-graph `assemble` produces:
+imports), update CLAUDE.md's "two import packages" sentence, delete the stale `src/docchat/`.
 
 ```mermaid
+---
+title: Composition root — object graph from assemble
+---
 classDiagram
   direction LR
   class engine["engine : ChatEngine"]
@@ -178,9 +183,12 @@ classDiagram
 
 ### Chat flow (§6)
 
-Core-scoped view of the §6 flow (no UI; the caller is the composition root):
+No UI; the caller is the composition root.
 
 ```mermaid
+---
+title: Chat flow (core-scoped, §6)
+---
 sequenceDiagram
   participant Caller as Composition root
   participant ORCH as ChatEngine
