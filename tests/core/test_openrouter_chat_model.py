@@ -60,3 +60,10 @@ def test_provider_reply_with_tool_calls_becomes_model_reply_tool_calls() -> None
         tool_calls=(ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1"),),
     )
     assert reply.is_final is False
+
+
+def test_provider_text_reply_becomes_final_model_reply() -> None:
+    reply = to_model_reply(AIMessage(content="The sum is 3."))
+
+    assert reply == ModelReply(text="The sum is 3.", tool_calls=())
+    assert reply.is_final is True

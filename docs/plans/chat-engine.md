@@ -260,7 +260,7 @@ OpenRouter adapter (unit, `ChatOpenAI` monkeypatched — no network)
 
 - [x] transcript `Message`s map to the right LangChain message types (system/user/assistant-with-tool-calls/tool).
 - [x] provider reply with tool calls → `ModelReply.tool_calls` as `ToolCall(name, arguments, call_id)`.
-- [ ] provider text reply → `ModelReply(text=..., tool_calls=())`.
+- [x] provider text reply → `ModelReply(text=..., tool_calls=())`.
 - [ ] tool schemas bound onto the client (`bind_tools`) from name/description/parameter_schema.
 - [ ] provider exception wrapped as `LlmError`.
 
