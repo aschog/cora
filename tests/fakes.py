@@ -97,6 +97,16 @@ class ScriptedChatModel:
 
 
 @dataclass
+class FailingChatModel:
+    error: Exception
+
+    def complete(
+        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+    ) -> ModelReply:
+        raise self.error
+
+
+@dataclass
 class FakeContextSource:
     results: list[RetrievedChunk] = field(default_factory=list)
     last_query: str | None = None

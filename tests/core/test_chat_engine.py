@@ -10,12 +10,12 @@ from core.chat_engine import (
 )
 from core.chat_model import ChatModel, ModelReply
 from core.chunk import Chunk
-from core.errors import InputRejectedError, ToolLoopLimitError
+from core.errors import InputRejectedError, LlmError, ToolLoopLimitError
 from core.plugin import Tool, ToolCall, ToolResult
 from core.retrieval import RetrievedChunk
 from core.tool_runtime import ToolRuntime
 from core.validation import EmptyInputRule, ValidationPipeline
-from fakes import FakeContextSource, ScriptedChatModel, add_tool
+from fakes import FailingChatModel, FakeContextSource, ScriptedChatModel, add_tool
 
 
 def _make_engine(
@@ -208,3 +208,13 @@ def test_invalid_input_is_rejected_before_kb_or_model_calls() -> None:
 
     assert kb.last_query is None
     assert model.last_messages is None
+
+
+def test_llm_error_from_the_chat_model_propagates_unchanged() -> None:
+    error = LlmError()
+    engine = _make_engine(chat_model=FailingChatModel(error))
+
+    with pytest.raises(LlmError) as exc_info:
+        engine.answer("hi")
+
+    assert exc_info.value is error

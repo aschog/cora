@@ -254,7 +254,7 @@ Orchestrator (fakes + fixture plugin)
 - [x] malformed-arguments request → `ToolResult.error` fed back as data (no exception).
 - [x] looping past `max_tool_rounds` → raises `ToolLoopLimitError`.
 - [x] invalid input (empty / too long / plugin safety) → `InputRejectedError` before any KB/LLM call.
-- [ ] `LlmError` from the chat model propagates unchanged out of `answer`.
+- [x] `LlmError` from the chat model propagates unchanged out of `answer`.
 
 OpenRouter adapter (unit, `ChatOpenAI` monkeypatched — no network)
 
