@@ -204,13 +204,12 @@ sequenceDiagram
     loop bounded rounds (≤ max_tool_rounds)
       ORCH->>LLM: complete(messages, tools)
       LLM-->>ORCH: ModelReply
-      alt reply has tool_calls
-        ORCH->>TOOL: execute(each ToolCall)
-        TOOL-->>ORCH: ToolResult
-        Note over ORCH: append tool-role messages, next round
-      else final answer (is_final)
+      break final answer (is_final)
         ORCH-->>Caller: ChatResult
       end
+      ORCH->>TOOL: execute(each ToolCall)
+      TOOL-->>ORCH: ToolResult
+      Note over ORCH: append tool-role messages, next round
     end
     Note over ORCH: rounds exhausted -> raise ToolLoopLimitError
   end
