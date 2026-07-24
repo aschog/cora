@@ -1,0 +1,45 @@
+from langchain_core.messages import (
+    AIMessage,
+    HumanMessage,
+    SystemMessage,
+    ToolMessage,
+)
+
+from core.chat_model import Message
+from core.openrouter_chat_model import to_langchain_message
+from core.plugin import ToolCall
+
+
+def test_system_message_maps_to_langchain_system_message() -> None:
+    result = to_langchain_message(Message(role="system", content="sys"))
+
+    assert isinstance(result, SystemMessage)
+    assert result.content == "sys"
+
+
+def test_user_message_maps_to_human_message() -> None:
+    result = to_langchain_message(Message(role="user", content="hi"))
+
+    assert isinstance(result, HumanMessage)
+    assert result.content == "hi"
+
+
+def test_assistant_with_tool_calls_maps_to_ai_message() -> None:
+    call = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1")
+
+    result = to_langchain_message(
+        Message(role="assistant", content="", tool_calls=(call,))
+    )
+
+    assert isinstance(result, AIMessage)
+    assert result.tool_calls == [
+        {"name": "add", "args": {"a": 1, "b": 2}, "id": "c1", "type": "tool_call"}
+    ]
+
+
+def test_tool_message_maps_to_langchain_tool_message() -> None:
+    result = to_langchain_message(Message(role="tool", content="3", tool_call_id="c1"))
+
+    assert isinstance(result, ToolMessage)
+    assert result.content == "3"
+    assert result.tool_call_id == "c1"
