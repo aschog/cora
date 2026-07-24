@@ -193,27 +193,26 @@ sequenceDiagram
   participant TOOL as ToolRuntime
 
   Caller->>ORCH: answer(user_input)
-  ORCH->>VAL: validate(input)
+  ORCH->>VAL: validate(user_input)
   alt invalid (empty, too long, plugin rule)
     VAL-->>ORCH: raise InputRejectedError
     ORCH-->>Caller: InputRejectedError
   else valid
-    ORCH->>KB: search(input, top_k)
+    ORCH->>KB: search(user_input, top_k)
     KB-->>ORCH: retrieved chunks
     Note over ORCH: build system prompt via build_context_block
     loop bounded rounds (≤ max_tool_rounds)
       ORCH->>LLM: complete(messages, tools)
+      LLM-->>ORCH: ModelReply
       alt reply has tool_calls
-        LLM-->>ORCH: ModelReply(tool_calls)
         ORCH->>TOOL: execute(each ToolCall)
         TOOL-->>ORCH: ToolResult
-        Note over ORCH: append tool-role messages, continue
-      else final answer
-        LLM-->>ORCH: ModelReply(text)
+        Note over ORCH: append tool-role messages, next round
+      else final answer (is_final)
         ORCH-->>Caller: ChatResult
       end
     end
-    Note over ORCH: cap exceeded -> raise ToolLoopLimitError
+    Note over ORCH: rounds exhausted -> raise ToolLoopLimitError
   end
 ```
 
