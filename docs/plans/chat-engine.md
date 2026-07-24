@@ -45,6 +45,7 @@ classDiagram
     +system_prompt
     +top_k
     +max_tool_rounds
+    +build_context
     +answer(user_input) ChatResult
   }
   class ChatResult {
@@ -65,24 +66,36 @@ classDiagram
   class ToolResult {
     <<existing>>
   }
+  class ToolExecutor {
+    <<interface>>
+    +execute(ToolCall) ToolResult
+  }
+  class InputValidator {
+    <<interface>>
+    +validate(input)
+  }
+  class ContextSource {
+    <<interface>>
+    +search(query, k)
+  }
   class ToolRuntime {
     <<existing>>
-    +execute(ToolCall) ToolResult
   }
   class ValidationPipeline {
     <<existing>>
-    +validate(input)
   }
   class KnowledgeBase {
     <<existing>>
-    +search(query, k)
   }
 
   OpenRouterChatModel ..|> ChatModel
+  KnowledgeBase ..|> ContextSource
+  ValidationPipeline ..|> InputValidator
+  ToolRuntime ..|> ToolExecutor
   ChatEngine --> ChatModel : chat_model
-  ChatEngine --> KnowledgeBase : knowledge_base
-  ChatEngine --> ValidationPipeline : validation
-  ChatEngine --> ToolRuntime : tool_runtime
+  ChatEngine --> ContextSource : knowledge_base
+  ChatEngine --> InputValidator : validation
+  ChatEngine --> ToolExecutor : tool_runtime
   ChatEngine ..> ChatResult : returns
   ChatEngine ..> Message : builds transcript
   ChatEngine --> "*" Tool : tools
@@ -109,9 +122,17 @@ model-agnostic). Value-object details the diagram can't carry:
 - No Protocol-conformance test (ports verified by `ty`) — only value objects + behaviour.
 
 **Orchestrator** — `src/core/chat_engine.py`: `ChatEngine` is the single use-case driver (§4), a
-pure Coordinator. Context/citation formatting is a **separate reason to change** from
-orchestration, so it lives in a named, independently-tested module-level function
-`build_context_block(chunks) -> str` — not an inline private method (SRP).
+pure Coordinator.
+
+- **Client-owned ports (DIP):** the engine depends on nothing concrete. It defines three narrow
+  Protocols in its own module — `ContextSource.search`, `InputValidator.validate`,
+  `ToolExecutor.execute` — which `KnowledgeBase`/`ValidationPipeline`/`ToolRuntime` satisfy
+  structurally, unchanged (ty-verified, no adapter code). Swapping retrieval (e.g. no-RAG mode)
+  never touches the engine.
+- **Prompt policy is a strategy (OCP):** context/citation formatting is a separate reason to
+  change, so the engine takes `build_context: Callable[[list[RetrievedChunk]], str]`, default =
+  module-level `build_context_block(chunks) -> str` (independently tested). A different citation
+  style is injected at assembly — no core edit. (Plugin-supplied builders: deferred, YAGNI.)
 
 **Adapter** — `src/core/openrouter_chat_model.py`: `OpenRouterChatModel` implements `ChatModel`
 via LangChain `ChatOpenAI` (OpenRouter `base_url`). It **imports LangChain at module top**,
@@ -182,13 +203,13 @@ sequenceDiagram
   else valid
     ORCH->>KB: search(input, top_k)
     KB-->>ORCH: retrieved chunks
-    Note over ORCH: build system prompt + numbered context + citation rule
+    Note over ORCH: build system prompt via build_context_block
     loop bounded rounds (≤ max_tool_rounds)
       ORCH->>LLM: complete(messages, tools)
       alt reply has tool_calls
         LLM-->>ORCH: ModelReply(tool_calls)
         ORCH->>TOOL: execute(each ToolCall)
-        TOOL-->>ORCH: ToolResult (failures as data)
+        TOOL-->>ORCH: ToolResult
         Note over ORCH: append tool-role messages, continue
       else final answer
         LLM-->>ORCH: ModelReply(text)
@@ -247,7 +268,7 @@ Orchestrator (fakes + fixture plugin)
 - [ ] scripted final-text reply → `ChatResult.answer == text`, no tools invoked.
 - [ ] engine searches KB (top_k); `ChatResult.sources` are the unique retrieved sources.
 - [ ] `build_context_block(chunks)` renders numbered context + citation rule (tested standalone).
-- [ ] system message sent to the model embeds that context block.
+- [ ] system message sent to the model embeds the context block; an injected `build_context` replaces the default.
 - [ ] one-tool reply runs via `ToolRuntime`, feeds `ToolResult` back as a tool message, and
       `ChatResult.tool_results` includes it.
 - [ ] unknown-tool request → `ToolResult.error` fed back as data (no exception), loop finishes.
