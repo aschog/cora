@@ -185,33 +185,33 @@ classDiagram
 title: Chat flow (core-scoped, §6)
 ---
 sequenceDiagram
-  participant Caller as Composition root
-  participant ORCH as ChatEngine
-  participant VAL as ValidationPipeline
-  participant KB as KnowledgeBase
-  participant LLM as ChatModel port
-  participant TOOL as ToolRuntime
+  participant caller as caller : Composition root
+  participant engine as engine : ChatEngine
+  participant validation as validation : ValidationPipeline
+  participant kb as kb : KnowledgeBase
+  participant chatModel as chatModel : ChatModel
+  participant runtime as runtime : ToolRuntime
 
-  Caller->>ORCH: answer(user_input)
-  ORCH->>VAL: validate(user_input)
+  caller->>engine: answer(user_input)
+  engine->>validation: validate(user_input)
   alt invalid (empty, too long, plugin rule)
-    VAL-->>ORCH: raise InputRejectedError
-    ORCH-->>Caller: InputRejectedError
+    validation-->>engine: raise InputRejectedError
+    engine-->>caller: InputRejectedError
   else valid
-    ORCH->>KB: search(user_input, top_k)
-    KB-->>ORCH: retrieved chunks
-    Note over ORCH: build system prompt via build_context_block
+    engine->>kb: search(user_input, top_k)
+    kb-->>engine: retrieved chunks
+    Note over engine: build system prompt via build_context_block
     loop bounded rounds (≤ max_tool_rounds)
-      ORCH->>LLM: complete(messages, tools)
-      LLM-->>ORCH: ModelReply
+      engine->>chatModel: complete(messages, tools)
+      chatModel-->>engine: ModelReply
       break final answer (is_final)
-        ORCH-->>Caller: ChatResult
+        engine-->>caller: ChatResult
       end
-      ORCH->>TOOL: execute(each ToolCall)
-      TOOL-->>ORCH: ToolResult
-      Note over ORCH: append tool-role messages, next round
+      engine->>runtime: execute(each ToolCall)
+      runtime-->>engine: ToolResult
+      Note over engine: append tool-role messages, next round
     end
-    Note over ORCH: rounds exhausted -> raise ToolLoopLimitError
+    Note over engine: rounds exhausted -> raise ToolLoopLimitError
   end
 ```
 
