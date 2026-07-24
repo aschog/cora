@@ -6,7 +6,16 @@ from langchain_core.messages import (
     ToolMessage,
 )
 
-from core.chat_model import Message
+from core.chat_model import Message, ModelReply
+from core.plugin import ToolCall
+
+
+def to_model_reply(reply: AIMessage) -> ModelReply:
+    tool_calls = tuple(
+        ToolCall(name=call["name"], arguments=call["args"], call_id=call["id"] or "")
+        for call in reply.tool_calls
+    )
+    return ModelReply(text=str(reply.text), tool_calls=tool_calls)
 
 
 def to_langchain_message(message: Message) -> BaseMessage:
