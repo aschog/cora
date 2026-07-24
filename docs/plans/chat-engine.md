@@ -11,8 +11,7 @@ From the architecture plan (§4 component roles, §6 chat flow, §10 roadmap) an
 - Build the **conversational half**: an LLM port, the chat orchestrator, a scripted fake LLM, the OpenRouter adapter, and the composition root.
 - **Scope = chat engine only.** The Streamlit UI is item 7 and out of scope. No progress/observer callback this round (additive, deferred to 7).
 - **Native function-calling** LLM port: the model returns structured tool calls mapping straight onto the existing `ToolCall`/`ToolRuntime` — no text/ReAct parsing layer.
-- LangChain stays confined to the **one** OpenRouter adapter (CLAUDE.md). Secrets flow through config; the adapter never reads env.
-- **Core domain purity** — the port and orchestrator are framework-free; LangChain is confined to the one adapter file (imported at module top, like `chroma_retriever.py`'s `chromadb`).
+- **Core domain purity** — the port and orchestrator are framework-free; LangChain lives in the **one** OpenRouter adapter (CLAUDE.md). Secrets flow through config; the adapter never reads env.
 - **Acceptance** — every checklist item ticked, all quality gates green; the tool-calling loop is deterministically tested via the scripted fake (happy path, unknown tool, malformed args, runaway cap).
 
 ---
@@ -122,34 +121,31 @@ classDiagram
   ChatResult *-- "*" ToolResult
 ```
 
-**LLM port** — `src/core/chat_model.py`: `ChatModel` is a model-agnostic `typing.Protocol`
-(Strategy); `role` is a `Literal` (ty-enforced, exhaustive dispatch); `is_final ≡ not tool_calls`
-(Tell-Don't-Ask); `Tool`/`ToolCall`/`ToolResult` are reused from `core/plugin.py` unchanged; no
-Protocol-conformance test (ports verified by `ty`).
+**Patterns** (from the diagram): Ports & Adapters · Dependency Inversion · Mediator/Coordinator ·
+Strategy · Command · Value Object.
 
-**Orchestrator** — `src/core/chat_engine.py`: `ChatEngine` is a pure Coordinator depending only on
-three client-owned Protocols it defines (`ContextSource`, `InputValidator`, `ToolExecutor`),
-satisfied structurally by the existing classes with zero changes (DIP) — so each Protocol method
-mirrors the existing signature exactly, parameter names and return types included (ty checks
-both: `validate(user_input: str) -> str`, `search(query: str, k: int)`); prompt/citation format is
-an injectable `build_context` strategy defaulting to `build_context_block` (OCP); `answer()` is a
-compose method over named steps, no god-method; `ChatResult.tool_results` keeps `ToolResult`
-typed end-to-end, only the model-facing message flattens to a string.
+**LLM port** — `src/core/chat_model.py`: `ChatModel` is a `typing.Protocol`; `role` is a `Literal`
+(ty-enforced, exhaustive dispatch); `is_final ≡ not tool_calls`; `Tool`/`ToolCall`/`ToolResult`
+come from `core/plugin.py`; ports verified by `ty`, no conformance test.
 
-**Adapter** — `src/core/openrouter_chat_model.py`: `OpenRouterChatModel` implements `ChatModel`
-via LangChain `ChatOpenAI`, importing LangChain at module top (like `chroma_retriever.py`'s
-`chromadb` — adapters may import their framework, only the port/orchestrator stay framework-free);
-`Message`↔LangChain translation lives in pure, standalone-tested functions the class composes;
-errors wrap to `LlmError`; tests monkeypatch `ChatOpenAI`, no network.
+**Orchestrator** — `src/core/chat_engine.py`: the three ports it owns
+(`ContextSource`/`InputValidator`/`ToolExecutor`) are satisfied structurally by the existing
+classes with zero changes, so each mirrors the existing signature exactly — names and return types
+included (`validate(user_input: str) -> str`, `search(query: str, k: int)`); `build_context` is
+injectable, defaulting to `build_context_block`; `answer()` composes named steps;
+`ChatResult.tool_results` stays typed end-to-end, only the model-facing message flattens to a string.
 
-**Fake** — `tests/fakes.py::ScriptedChatModel`: a scripted queue of `ModelReply`s recording the
-transcript it received, substitutable for the adapter via the shared `Message`/`ModelReply` VOs.
+**Adapter** — `src/core/openrouter_chat_model.py`: wraps LangChain `ChatOpenAI`, imported at module
+top (like `chroma_retriever.py`'s `chromadb`); `Message`↔LangChain translation lives in pure,
+standalone-tested functions; errors wrap to `LlmError`.
+
+**Fake** — `tests/fakes.py::ScriptedChatModel`: replays a scripted queue of `ModelReply`s,
+recording the transcript it received.
 
 **Composition root** — new `src/cora/` package (`config.py`, `composition.py`): `assemble` wires
-fakes/adapters into a `ChatEngine`; `build_engine` adds real adapters + plugin resolution.
-Packaging: add `cora` to `[tool.uv.build-backend] module-name` in `pyproject.toml` (else the
-package neither builds nor imports), update CLAUDE.md's "two import packages" sentence, and
-delete the stale `src/docchat/` leftover. Object
+fakes into a `ChatEngine`, `build_engine` swaps in real adapters + plugin resolution. Packaging:
+add `cora` to `[tool.uv.build-backend] module-name` in `pyproject.toml` (else it neither builds nor
+imports), update CLAUDE.md's "two import packages" sentence, delete the stale `src/docchat/`. Object
 graph `assemble` produces:
 
 ```mermaid
@@ -178,7 +174,7 @@ classDiagram
 
 `assemble` is unit-tested (fakes, unit tier); `build_engine` is integration/acceptance-only
 (real adapters); plugin resolution is dynamic (`load_plugin`), so no static plugin import breaks
-**UI → Core ← Plugins**; a missing `OPENROUTER_API_KEY` raises `ConfigurationError`.
+**UI → Core ← Plugins**.
 
 ### Chat flow (§6)
 
@@ -286,8 +282,6 @@ Config & composition root
 - Multiple tool calls per round: supported (loop over `reply.tool_calls`); tool-result size
   capping deferred.
 - Optional OpenRouter `default_headers` (HTTP-Referer / X-Title): config-only, deferred.
-- `build_engine` real-adapter glue is intentionally not unit-tested (needs network/model);
-  verified at integration/acceptance.
 
 ---
 
