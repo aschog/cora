@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from core.chunk import Chunk
-from core.knowledge_base import KnowledgeBase
+from cora.core.chunk import Chunk
+from cora.core.services.knowledge_base import KnowledgeBase
 from fakes import FakeEmbedder, FakeRetriever
 
 if TYPE_CHECKING:
-    from core.chroma_retriever import ChromaRetriever
+    from cora.adapters.chroma_retriever import ChromaRetriever
 
 
 @pytest.fixture
@@ -43,7 +43,7 @@ def make_chunk() -> Callable[..., Chunk]:
 @pytest.fixture
 def make_chroma(tmp_path: Path) -> "Callable[[], ChromaRetriever]":
     def _make() -> "ChromaRetriever":
-        from core.chroma_retriever import ChromaRetriever
+        from cora.adapters.chroma_retriever import ChromaRetriever
 
         return ChromaRetriever(path=str(tmp_path), collection="documents")
 

@@ -1,7 +1,7 @@
 from collections.abc import Callable
 
-from core.chat_model import Message, ModelReply
-from core.chunk import Chunk
+from cora.core.chunk import Chunk
+from cora.core.ports.chat_model import Message, ModelReply
 from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel, add_tool
 
 
