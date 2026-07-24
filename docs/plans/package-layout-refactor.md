@@ -91,16 +91,16 @@ Engine-local ports (`ContextSource`, `InputValidator`, `ToolExecutor` Protocols 
 
 ### Enforcement (the one new test)
 
-An architecture-guard test walks every module under `cora.core`, parses imports (AST), and asserts none resolve to a framework (`langchain*`, `chromadb`, `sentence_transformers`, `pypdf`, `jsonschema`) or to `cora.adapters` / `cora.plugins` / `cora.app`. This is the fitness function that makes the §3 dependency rule automatic instead of review-only.
+An architecture-guard test walks every module under `cora.core`, parses imports (AST), and asserts none resolve to a **volatile framework** (`langchain*`, `chromadb`, `sentence_transformers`, `streamlit` — the four §2/§5 isolates whose adapters left core) or to `cora.adapters` / `cora.plugins` / `cora.app`. `pypdf` and `jsonschema` are lightweight utilities the core services use directly and are intentionally *not* forbidden. This is the fitness function that makes the §3 dependency rule automatic instead of review-only.
 
 ---
 
 ## Migration checklist (ordered; each item ends green + one commit)
 
-- [ ] **1 · Reshuffle `core` internals** (package still top-level `core`). Create `core/{ports,services,adapters}/` with `__init__.py` (`chunk.py` + `errors.py` stay at the `core` root); `git mv` each module to its target; rewrite intra-repo imports; mirror the moves under `tests/core/`. Gate green. Commit `refactor(core): group modules into ports/services/adapters`.
-- [ ] **2 · Collapse to the `cora` namespace.** `git mv core → cora/core`, `core/adapters → cora/adapters`, `plugins → cora/plugins`, `cora/{config,composition}.py → cora/app/`; move `py.typed` to `cora/`; create empty `cora/app/ui/`; delete stale `src/docchat/`; set `module-name = ["cora"]`; `uv sync`; rewrite all remaining imports (src + tests + `conftest.py`); mirror `tests/` to `tests/cora/**`. Gate green. Commit `refactor: collapse core/plugins/cora into single cora namespace`.
-- [ ] **3 · Architecture-guard test** (TDD — write it red against a deliberate violation, then green). Asserts no `cora.core.*` module imports a framework or an outer layer. Gate green. Commit `test: add core-purity architecture guard`.
-- [ ] **4 · Docs & metadata.** Update CLAUDE.md ("two import packages" → one `cora` package with sub-layers), `webapp-overview.md` component paths, `README.md`, and `docs/plans/` cross-refs; tick this checklist. Gate green. Commit `docs: align docs with cora package layout`.
+- [x] **1 · Reshuffle `core` internals** (package still top-level `core`). Create `core/{ports,services,adapters}/` with `__init__.py` (`chunk.py` + `errors.py` stay at the `core` root); `git mv` each module to its target; rewrite intra-repo imports; mirror the moves under `tests/core/`. Gate green. Commit `refactor(core): group modules into ports/services/adapters`.
+- [x] **2 · Collapse to the `cora` namespace.** `git mv core → cora/core`, `core/adapters → cora/adapters`, `plugins → cora/plugins`, `cora/{config,composition}.py → cora/app/`; move `py.typed` to `cora/`; create empty `cora/app/ui/`; delete stale `src/docchat/`; set `module-name = ["cora"]`; `uv sync`; rewrite all remaining imports (src + tests + `conftest.py`); mirror `tests/` to `tests/cora/**`. Gate green. Commit `refactor: collapse core/plugins/cora into single cora namespace`.
+- [x] **3 · Architecture-guard test** (TDD — write it red against a deliberate violation, then green). Asserts no `cora.core.*` module imports a framework or an outer layer. Gate green. Commit `test: add core-purity architecture guard`.
+- [x] **4 · Docs & metadata.** Update CLAUDE.md ("two import packages" → one `cora` package with sub-layers), `webapp-overview.md` component paths, `README.md`, and `docs/plans/` cross-refs; tick this checklist. Gate green. Commit `docs: align docs with cora package layout`.
 
 ---
 

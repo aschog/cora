@@ -1,7 +1,10 @@
 # CLAUDE.md
 
 NotebookLM-style RAG chatbot with domain plugins. Distribution `cora` (src
-layout) ships two import packages: `core` (domain-agnostic) and `plugins` (domains).
+layout) ships a single import package `cora`, layered as: `cora.core`
+(domain-agnostic center — `ports`, `services`, plus root value objects &
+`errors`), `cora.adapters` (framework edge), `cora.plugins` (domains), and
+`cora.app` (composition root, config, UI shell).
 Read `docs/plans/webapp-overview.md` (architecture) and `docs/workflow.md`
 (TDD workflow) before making changes. Setup and all development commands
 (gates, test tiers, watch mode) live in `README.md`.
@@ -19,7 +22,9 @@ Read `docs/plans/webapp-overview.md` (architecture) and `docs/workflow.md`
   interfaces owned by the core.
 - **Dependency rule:** UI → Core ← Plugins. The core imports neither the UI nor
   any plugin. LangChain appears in exactly one adapter; same for Chroma,
-  sentence-transformers, and Streamlit (thin shell, widgets only).
+  sentence-transformers, and Streamlit (thin shell, widgets only). Enforced by
+  `tests/cora/test_architecture.py`: `cora.core` may import none of those
+  frameworks, nor `cora.adapters`/`cora.plugins`/`cora.app`.
 - **Plugins are data, not behaviour:** system prompt, tool definitions
   (pure functions + schema), validation rules, optional seed docs. Adding a
   domain must require zero core changes.
