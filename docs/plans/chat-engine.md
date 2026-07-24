@@ -124,17 +124,14 @@ classDiagram
   ChatResult *-- "*" ToolResult
 ```
 
-**Patterns** (from the diagram): Ports & Adapters · Dependency Inversion · Mediator/Coordinator ·
-Strategy · Command · Value Object.
-
 **LLM port** — `src/core/chat_model.py`: `ChatModel` is a `typing.Protocol`; `role` is a `Literal`
 (ty-enforced, exhaustive dispatch); `is_final ≡ not tool_calls`; `Tool`/`ToolCall`/`ToolResult`
 come from `core/plugin.py`; ports verified by `ty`, no conformance test.
 
-**Orchestrator** — `src/core/chat_engine.py`: the three ports it owns
-(`ContextSource`/`InputValidator`/`ToolExecutor`) are satisfied structurally by the existing
-classes with zero changes, so each mirrors the existing signature exactly — names and return types
-included (`validate(user_input: str) -> str`, `search(query: str, k: int)`); `build_context` is
+**Orchestrator** — `src/core/chat_engine.py`: the three ports it defines are satisfied
+structurally by the existing classes with zero changes, so each mirrors the existing signature
+exactly — names and return types included (`validate(user_input: str) -> str`,
+`search(query: str, k: int)`); `build_context` is
 injectable, defaulting to `build_context_block`; `answer()` composes named steps;
 `ChatResult.tool_results` stays typed end-to-end, only the model-facing message flattens to a string.
 
@@ -182,8 +179,6 @@ classDiagram
 **UI → Core ← Plugins**.
 
 ### Chat flow (§6)
-
-No UI; the caller is the composition root.
 
 ```mermaid
 ---
