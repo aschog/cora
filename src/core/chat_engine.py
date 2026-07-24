@@ -3,12 +3,21 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from core.chat_model import ChatModel, Message
-from core.plugin import ToolResult
+from core.plugin import Tool, ToolCall, ToolResult
 from core.retrieval import RetrievedChunk
 
 
 class ContextSource(Protocol):
     def search(self, query: str, k: int) -> list[RetrievedChunk]: ...
+
+
+class ToolExecutor(Protocol):
+    def execute(self, call: ToolCall) -> ToolResult: ...
+
+
+def _tool_message(result: ToolResult) -> Message:
+    content = result.error if result.error is not None else str(result.payload)
+    return Message(role="tool", content=content, tool_call_id=result.call_id)
 
 
 def build_context_block(chunks: list[RetrievedChunk]) -> str:
@@ -31,17 +40,37 @@ class ChatResult:
 class ChatEngine:
     chat_model: ChatModel
     knowledge_base: ContextSource
+    tool_runtime: ToolExecutor
     top_k: int
     system_prompt: str
+    tools: tuple[Tool, ...] = ()
     build_context: Callable[[list[RetrievedChunk]], str] = build_context_block
 
     def answer(self, user_input: str) -> ChatResult:
         chunks = self.knowledge_base.search(user_input, self.top_k)
         sources = tuple(dict.fromkeys(hit.chunk.source for hit in chunks))
-        system = Message(
-            role="system",
-            content=f"{self.system_prompt}\n\n{self.build_context(chunks)}",
-        )
-        messages = (system, Message(role="user", content=user_input))
-        reply = self.chat_model.complete(messages, ())
-        return ChatResult(answer=reply.text, sources=sources)
+        messages: list[Message] = [
+            Message(
+                role="system",
+                content=f"{self.system_prompt}\n\n{self.build_context(chunks)}",
+            ),
+            Message(role="user", content=user_input),
+        ]
+        tool_results: list[ToolResult] = []
+        while True:
+            reply = self.chat_model.complete(tuple(messages), self.tools)
+            if reply.is_final:
+                return ChatResult(
+                    answer=reply.text,
+                    sources=sources,
+                    tool_results=tuple(tool_results),
+                )
+            messages.append(
+                Message(
+                    role="assistant", content=reply.text, tool_calls=reply.tool_calls
+                )
+            )
+            for call in reply.tool_calls:
+                result = self.tool_runtime.execute(call)
+                tool_results.append(result)
+                messages.append(_tool_message(result))

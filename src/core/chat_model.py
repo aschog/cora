@@ -10,6 +10,8 @@ Role = Literal["system", "user", "assistant", "tool"]
 class Message:
     role: Role
     content: str
+    tool_calls: tuple[ToolCall, ...] = ()
+    tool_call_id: str | None = None
 
 
 @dataclass(frozen=True)

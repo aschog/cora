@@ -1,16 +1,20 @@
 from collections.abc import Callable
 
-from core.chat_engine import ChatEngine, build_context_block
+from core.chat_engine import ChatEngine, ToolExecutor, build_context_block
 from core.chat_model import ChatModel, ModelReply
 from core.chunk import Chunk
+from core.plugin import Tool, ToolCall, ToolResult
 from core.retrieval import RetrievedChunk
-from fakes import FakeContextSource, ScriptedChatModel
+from core.tool_runtime import ToolRuntime
+from fakes import FakeContextSource, ScriptedChatModel, add_tool
 
 
 def _make_engine(
     *,
     chat_model: ChatModel | None = None,
     knowledge_base: FakeContextSource | None = None,
+    tool_runtime: ToolExecutor | None = None,
+    tools: tuple[Tool, ...] = (),
     top_k: int = 3,
     system_prompt: str = "You are a helpful assistant.",
     build_context: Callable[[list[RetrievedChunk]], str] | None = None,
@@ -19,6 +23,8 @@ def _make_engine(
     return ChatEngine(
         chat_model=chat_model or ScriptedChatModel([ModelReply(text="ok")]),
         knowledge_base=knowledge_base or FakeContextSource(),
+        tool_runtime=tool_runtime or ToolRuntime(tools=()),
+        tools=tools,
         top_k=top_k,
         system_prompt=system_prompt,
         **extra,
@@ -94,3 +100,26 @@ def test_injected_build_context_replaces_the_default() -> None:
     system = model.last_messages[0]
     assert "CUSTOM-CONTEXT" in system.content
     assert "alpha" not in system.content
+
+
+def test_tool_call_runs_and_result_feeds_back_and_appears_in_result() -> None:
+    call = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1")
+    model = ScriptedChatModel(
+        [ModelReply(tool_calls=(call,)), ModelReply(text="The sum is 3.")]
+    )
+    engine = _make_engine(
+        chat_model=model,
+        tool_runtime=ToolRuntime(tools=(add_tool(),)),
+        tools=(add_tool(),),
+    )
+
+    result = engine.answer("add 1 and 2")
+
+    assert result.answer == "The sum is 3."
+    assert result.tool_results == (ToolResult(call_id="c1", payload=3),)
+
+    assert model.last_messages is not None
+    tool_message = model.last_messages[-1]
+    assert tool_message.role == "tool"
+    assert tool_message.tool_call_id == "c1"
+    assert "3" in tool_message.content
