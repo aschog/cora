@@ -7,6 +7,7 @@ from langchain_core.messages import (
 )
 
 from core.chat_model import Message, ModelReply
+from core.errors import LlmError
 from core.openrouter_chat_model import (
     OpenRouterChatModel,
     to_langchain_message,
@@ -111,3 +112,19 @@ def test_tool_schemas_are_bound_onto_the_client(
             },
         }
     ]
+
+
+def test_provider_exception_is_wrapped_as_llm_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class _FailingChatOpenAI:
+        def __init__(self, **kwargs: object) -> None: ...
+
+        def invoke(self, messages: object) -> AIMessage:
+            raise RuntimeError("provider down")
+
+    monkeypatch.setattr("core.openrouter_chat_model.ChatOpenAI", _FailingChatOpenAI)
+    model = OpenRouterChatModel(model="m", api_key="k")
+
+    with pytest.raises(LlmError):
+        model.complete((Message(role="user", content="hi"),), ())
