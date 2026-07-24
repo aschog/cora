@@ -107,49 +107,30 @@ classDiagram
   ChatResult *-- "*" ToolResult
 ```
 
-**LLM port** — `src/core/chat_model.py`: `ChatModel` is a `typing.Protocol` (Strategy,
-model-agnostic). Value-object details the diagram can't carry:
+**LLM port** — `src/core/chat_model.py`: `ChatModel` is a model-agnostic `typing.Protocol`
+(Strategy); `role` is a `Literal` (ty-enforced, exhaustive dispatch); `is_final ≡ not tool_calls`
+(Tell-Don't-Ask); `Tool`/`ToolCall`/`ToolResult` are reused from `core/plugin.py` unchanged; no
+Protocol-conformance test (ports verified by `ty`).
 
-- `Message.role` is a `Literal["system","user","assistant","tool"]` (ty-enforced; keeps the
-  adapter's role dispatch exhaustive, no bare-string switch). `content` optional; `tool_calls`
-  defaults `()`; `tool_call_id` defaults `None`.
-- `ModelReply.text` is `str | None`; `is_final ≡ not tool_calls`, so the loop reads intent-first
-  (Tell-Don't-Ask).
-- `Tool`/`ToolCall`/`ToolResult` originate in `core/plugin.py`. The adapter reads a Tool's
-  `name`/`description`/`parameter_schema` only — never calls `run`. Provider tool-call →
-  `ToolCall(name, arguments, call_id)`; each `ToolResult` → a `tool`-role `Message` (content =
-  payload or error string) fed to the next `complete`.
-- No Protocol-conformance test (ports verified by `ty`) — only value objects + behaviour.
-
-**Orchestrator** — `src/core/chat_engine.py`: `ChatEngine` is the single use-case driver (§4), a
-pure Coordinator.
-
-- **Client-owned ports (DIP):** the engine depends on nothing concrete. It defines three narrow
-  Protocols in its own module — `ContextSource.search`, `InputValidator.validate`,
-  `ToolExecutor.execute` — which `KnowledgeBase`/`ValidationPipeline`/`ToolRuntime` satisfy
-  structurally, unchanged (ty-verified, no adapter code). Swapping retrieval (e.g. no-RAG mode)
-  never touches the engine.
-- **Prompt policy is a strategy (OCP):** context/citation formatting is a separate reason to
-  change, so the engine takes `build_context: Callable[[list[RetrievedChunk]], str]`, default =
-  module-level `build_context_block(chunks) -> str` (independently tested). A different citation
-  style is injected at assembly — no core edit. (Plugin-supplied builders: deferred, YAGNI.)
+**Orchestrator** — `src/core/chat_engine.py`: `ChatEngine` is a pure Coordinator depending only on
+three client-owned Protocols it defines (`ContextSource`, `InputValidator`, `ToolExecutor`),
+satisfied structurally by the existing classes with zero changes (DIP); prompt/citation format is
+an injectable `build_context` strategy defaulting to `build_context_block` (OCP); `answer()` is a
+compose method over named steps, no god-method; `ChatResult.tool_results` keeps `ToolResult`
+typed end-to-end, only the model-facing message flattens to a string.
 
 **Adapter** — `src/core/openrouter_chat_model.py`: `OpenRouterChatModel` implements `ChatModel`
-via LangChain `ChatOpenAI` (OpenRouter `base_url`). It **imports LangChain at module top**,
-matching `chroma_retriever.py` (which imports `chromadb` directly): adapters physically live in
-`src/core/` and may import their framework — the architectural rule ("core imports no framework")
-binds the *pure* modules (the `ChatModel` port and the `ChatEngine` orchestrator), not the
-adapter files. (The lazy import in `sentence_transformer_embedder.py` exists only to defer a heavy
-model download, not for purity, so it does not apply here.) Translates `Message`↔LangChain both
-ways, `bind_tools` from tool schemas, wraps provider/auth/rate/parse failures → `LlmError`.
-Monkeypatch `core.openrouter_chat_model.ChatOpenAI` in unit tests — no network.
+via LangChain `ChatOpenAI`, importing LangChain at module top (like `chroma_retriever.py`'s
+`chromadb` — adapters may import their framework, only the port/orchestrator stay framework-free);
+`Message`↔LangChain translation lives in pure, standalone-tested functions the class composes;
+errors wrap to `LlmError`; tests monkeypatch `ChatOpenAI`, no network.
 
-**Fake** — `tests/fakes.py::ScriptedChatModel`: deterministic queue of `ModelReply`s; records
-the messages + tools it last received, for assertions.
+**Fake** — `tests/fakes.py::ScriptedChatModel`: a scripted queue of `ModelReply`s recording the
+transcript it received, substitutable for the adapter via the shared `Message`/`ModelReply` VOs.
 
-**Composition root** — new `src/cora/` app package (app/driver layer; item 7 imports it): files
-`cora/config.py` (`Config.from_env`) and `cora/composition.py` (`assemble` + `build_engine`).
-The object graph `assemble` wires (instances : types, links labelled by the field each fills):
+**Composition root** — new `src/cora/` package (`config.py`, `composition.py`): `assemble` wires
+fakes/adapters into a `ChatEngine`; `build_engine` adds real adapters + plugin resolution. Object
+graph `assemble` produces:
 
 ```mermaid
 classDiagram
@@ -175,12 +156,9 @@ classDiagram
   runtime ..> plugin : tools
 ```
 
-Rationale the diagram can't hold — the split exists for testability:
-
-- `assemble` is **pure wiring** (the object graph above) — unit-tested with fakes + a fixture plugin, no network / model download (unit tier).
-- `build_engine` is thin glue — constructs the real adapters, resolves the plugin, passes `Config`'s `top_k`/`max_tool_rounds` to the engine, then delegates to `assemble`. Verified at integration/acceptance, not the unit tier.
-- Plugin resolved dynamically via `load_plugin(config.plugin_module)` → no static plugin import, so **UI → Core ← Plugins** holds.
-- `Config.from_env` raises `ConfigurationError` on a missing `OPENROUTER_API_KEY`.
+`assemble` is unit-tested (fakes, unit tier); `build_engine` is integration/acceptance-only
+(real adapters); plugin resolution is dynamic (`load_plugin`), so no static plugin import breaks
+**UI → Core ← Plugins**; a missing `OPENROUTER_API_KEY` raises `ConfigurationError`.
 
 ### Chat flow (§6)
 
@@ -222,10 +200,8 @@ sequenceDiagram
 
 ### Error handling (typed errors + failures-as-data)
 
-Tool failures (unknown tool / malformed args / tool crash) are **data, not exceptions**:
-`ToolRuntime` already returns them as `ToolResult.error` and the loop feeds them back to the
-model — reuse it, add nothing. Every other failure is a typed `CoreError` surfacing its
-`user_message`. New errors in `src/core/errors.py`, each with the condition that raises it:
+Tool failures are data, not exceptions (`ToolRuntime` returns `ToolResult.error`, reused as-is);
+every other failure is a typed `CoreError`. New, in `src/core/errors.py`:
 
 - `LlmError(AdapterError)` — adapter/provider failure (auth 401, 402/429, network, malformed
   tool JSON): "The assistant is temporarily unavailable. Please try again."
@@ -235,19 +211,6 @@ model — reuse it, add nothing. Every other failure is a typed `CoreError` surf
 Reused as-is: `InputRejectedError` (validation), `EmbeddingError`/`RetrievalError` (KB).
 
 ---
-
-## Files
-
-- `src/core/chat_model.py` (new) — `ChatModel` port + `Message`, `ModelReply`.
-- `src/core/chat_engine.py` (new) — `ChatEngine` + `ChatResult`.
-- `src/core/openrouter_chat_model.py` (new) — LangChain/OpenRouter adapter (top-level LangChain import).
-- `src/core/errors.py` (changed) — `LlmError`, `ToolLoopLimitError`, `ConfigurationError`.
-- `src/cora/__init__.py`, `src/cora/config.py`, `src/cora/composition.py` (new).
-- `tests/fakes.py` (changed) — `ScriptedChatModel`; `tests/test_fakes.py` (changed).
-- `tests/core/test_chat_model.py`, `test_chat_engine.py`, `test_openrouter_chat_model.py`,
-  `test_errors.py` (changed); `tests/cora/test_config.py`, `tests/cora/test_composition.py` (new).
-- `pyproject.toml` (changed) — `uv add langchain-openai` (pin minor); add `"cora"` to build `module-name`.
-- `CLAUDE.md` (changed) — note the third import package (`cora`, composition root).
 
 ---
 
