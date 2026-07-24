@@ -1,3 +1,4 @@
+import pytest
 from langchain_core.messages import (
     AIMessage,
     HumanMessage,
@@ -6,8 +7,29 @@ from langchain_core.messages import (
 )
 
 from core.chat_model import Message, ModelReply
-from core.openrouter_chat_model import to_langchain_message, to_model_reply
+from core.openrouter_chat_model import (
+    OpenRouterChatModel,
+    to_langchain_message,
+    to_model_reply,
+)
 from core.plugin import ToolCall
+from fakes import add_tool
+
+
+class _FakeChatOpenAI:
+    last: "_FakeChatOpenAI | None" = None
+
+    def __init__(self, **kwargs: object) -> None:
+        _FakeChatOpenAI.last = self
+        self.init_kwargs = kwargs
+        self.bound_tools: list[dict[str, object]] | None = None
+
+    def bind_tools(self, tools: list[dict[str, object]]) -> "_FakeChatOpenAI":
+        self.bound_tools = tools
+        return self
+
+    def invoke(self, messages: object) -> AIMessage:
+        return AIMessage(content="ok")
 
 
 def test_system_message_maps_to_langchain_system_message() -> None:
@@ -67,3 +89,25 @@ def test_provider_text_reply_becomes_final_model_reply() -> None:
 
     assert reply == ModelReply(text="The sum is 3.", tool_calls=())
     assert reply.is_final is True
+
+
+def test_tool_schemas_are_bound_onto_the_client(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("core.openrouter_chat_model.ChatOpenAI", _FakeChatOpenAI)
+    tool = add_tool()
+    model = OpenRouterChatModel(model="m", api_key="k")
+
+    model.complete((Message(role="user", content="hi"),), (tool,))
+
+    assert _FakeChatOpenAI.last is not None
+    assert _FakeChatOpenAI.last.bound_tools == [
+        {
+            "type": "function",
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.parameter_schema,
+            },
+        }
+    ]
