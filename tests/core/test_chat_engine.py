@@ -2,13 +2,19 @@ from collections.abc import Callable
 
 import pytest
 
-from core.chat_engine import ChatEngine, ToolExecutor, build_context_block
+from core.chat_engine import (
+    ChatEngine,
+    InputValidator,
+    ToolExecutor,
+    build_context_block,
+)
 from core.chat_model import ChatModel, ModelReply
 from core.chunk import Chunk
-from core.errors import ToolLoopLimitError
+from core.errors import InputRejectedError, ToolLoopLimitError
 from core.plugin import Tool, ToolCall, ToolResult
 from core.retrieval import RetrievedChunk
 from core.tool_runtime import ToolRuntime
+from core.validation import EmptyInputRule, ValidationPipeline
 from fakes import FakeContextSource, ScriptedChatModel, add_tool
 
 
@@ -16,6 +22,7 @@ def _make_engine(
     *,
     chat_model: ChatModel | None = None,
     knowledge_base: FakeContextSource | None = None,
+    validation: InputValidator | None = None,
     tool_runtime: ToolExecutor | None = None,
     tools: tuple[Tool, ...] = (),
     top_k: int = 3,
@@ -27,6 +34,7 @@ def _make_engine(
     return ChatEngine(
         chat_model=chat_model or ScriptedChatModel([ModelReply(text="ok")]),
         knowledge_base=knowledge_base or FakeContextSource(),
+        validation=validation or ValidationPipeline((), ()),
         tool_runtime=tool_runtime or ToolRuntime(tools=()),
         tools=tools,
         top_k=top_k,
@@ -184,3 +192,19 @@ def test_exceeding_max_tool_rounds_raises_tool_loop_limit_error() -> None:
 
     with pytest.raises(ToolLoopLimitError):
         engine.answer("loop forever")
+
+
+def test_invalid_input_is_rejected_before_kb_or_model_calls() -> None:
+    kb = FakeContextSource([_retrieved("a.txt")])
+    model = ScriptedChatModel([ModelReply(text="should not be used")])
+    engine = _make_engine(
+        chat_model=model,
+        knowledge_base=kb,
+        validation=ValidationPipeline((EmptyInputRule(),), ()),
+    )
+
+    with pytest.raises(InputRejectedError):
+        engine.answer("   ")
+
+    assert kb.last_query is None
+    assert model.last_messages is None

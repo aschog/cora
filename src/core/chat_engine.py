@@ -12,6 +12,10 @@ class ContextSource(Protocol):
     def search(self, query: str, k: int) -> list[RetrievedChunk]: ...
 
 
+class InputValidator(Protocol):
+    def validate(self, user_input: str) -> str: ...
+
+
 class ToolExecutor(Protocol):
     def execute(self, call: ToolCall) -> ToolResult: ...
 
@@ -41,6 +45,7 @@ class ChatResult:
 class ChatEngine:
     chat_model: ChatModel
     knowledge_base: ContextSource
+    validation: InputValidator
     tool_runtime: ToolExecutor
     top_k: int
     max_tool_rounds: int
@@ -49,14 +54,15 @@ class ChatEngine:
     build_context: Callable[[list[RetrievedChunk]], str] = build_context_block
 
     def answer(self, user_input: str) -> ChatResult:
-        chunks = self.knowledge_base.search(user_input, self.top_k)
+        validated = self.validation.validate(user_input)
+        chunks = self.knowledge_base.search(validated, self.top_k)
         sources = tuple(dict.fromkeys(hit.chunk.source for hit in chunks))
         messages: list[Message] = [
             Message(
                 role="system",
                 content=f"{self.system_prompt}\n\n{self.build_context(chunks)}",
             ),
-            Message(role="user", content=user_input),
+            Message(role="user", content=validated),
         ]
         tool_results: list[ToolResult] = []
         for _ in range(self.max_tool_rounds):
