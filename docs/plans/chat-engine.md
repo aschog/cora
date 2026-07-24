@@ -270,6 +270,8 @@ Config & composition root
       missing api key → `ConfigurationError`.
 - [x] `assemble(...)` wires a fixture plugin + fakes into a `ChatEngine` that answers a
       happy-path question, seeds `plugin.seed_docs` into the KB, and chains core + plugin rules.
+- [x] `build_engine(Config)` wires real adapters + dynamic `load_plugin` into a `ChatEngine`
+      (integration tier — real Chroma, not the default unit tier).
 - [ ] packaging chore (no test): `cora` in `module-name`, CLAUDE.md package list updated,
       stale `src/docchat/` removed.
 
