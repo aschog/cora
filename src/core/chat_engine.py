@@ -25,6 +25,10 @@ def _tool_message(result: ToolResult) -> Message:
     return Message(role="tool", content=content, tool_call_id=result.call_id)
 
 
+def _unique_sources(chunks: list[RetrievedChunk]) -> tuple[str, ...]:
+    return tuple(dict.fromkeys(hit.chunk.source for hit in chunks))
+
+
 def build_context_block(chunks: list[RetrievedChunk]) -> str:
     context = "\n".join(
         f"[{number}] {hit.chunk.source}: {hit.chunk.text}"
@@ -56,23 +60,29 @@ class ChatEngine:
     def answer(self, user_input: str) -> ChatResult:
         validated = self.validation.validate(user_input)
         chunks = self.knowledge_base.search(validated, self.top_k)
-        sources = tuple(dict.fromkeys(hit.chunk.source for hit in chunks))
-        messages: list[Message] = [
-            Message(
-                role="system",
-                content=f"{self.system_prompt}\n\n{self.build_context(chunks)}",
-            ),
-            Message(role="user", content=validated),
-        ]
+        messages = self._initial_messages(validated, chunks)
+        text, tool_results = self._run_tool_loop(messages)
+        return ChatResult(
+            answer=text, sources=_unique_sources(chunks), tool_results=tool_results
+        )
+
+    def _initial_messages(
+        self, user_input: str, chunks: list[RetrievedChunk]
+    ) -> list[Message]:
+        system = Message(
+            role="system",
+            content=f"{self.system_prompt}\n\n{self.build_context(chunks)}",
+        )
+        return [system, Message(role="user", content=user_input)]
+
+    def _run_tool_loop(
+        self, messages: list[Message]
+    ) -> tuple[str, tuple[ToolResult, ...]]:
         tool_results: list[ToolResult] = []
         for _ in range(self.max_tool_rounds):
             reply = self.chat_model.complete(tuple(messages), self.tools)
             if reply.is_final:
-                return ChatResult(
-                    answer=reply.text,
-                    sources=sources,
-                    tool_results=tuple(tool_results),
-                )
+                return reply.text, tuple(tool_results)
             messages.append(
                 Message(
                     role="assistant", content=reply.text, tool_calls=reply.tool_calls
