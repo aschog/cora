@@ -252,7 +252,7 @@ Orchestrator (fakes + fixture plugin)
       `ChatResult.tool_results` includes it.
 - [x] unknown-tool request → `ToolResult.error` fed back as data (no exception), loop finishes.
 - [x] malformed-arguments request → `ToolResult.error` fed back as data (no exception).
-- [ ] looping past `max_tool_rounds` → raises `ToolLoopLimitError`.
+- [x] looping past `max_tool_rounds` → raises `ToolLoopLimitError`.
 - [ ] invalid input (empty / too long / plugin safety) → `InputRejectedError` before any KB/LLM call.
 - [ ] `LlmError` from the chat model propagates unchanged out of `answer`.
 

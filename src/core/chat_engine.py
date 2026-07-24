@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from core.chat_model import ChatModel, Message
+from core.errors import ToolLoopLimitError
 from core.plugin import Tool, ToolCall, ToolResult
 from core.retrieval import RetrievedChunk
 
@@ -42,6 +43,7 @@ class ChatEngine:
     knowledge_base: ContextSource
     tool_runtime: ToolExecutor
     top_k: int
+    max_tool_rounds: int
     system_prompt: str
     tools: tuple[Tool, ...] = ()
     build_context: Callable[[list[RetrievedChunk]], str] = build_context_block
@@ -57,7 +59,7 @@ class ChatEngine:
             Message(role="user", content=user_input),
         ]
         tool_results: list[ToolResult] = []
-        while True:
+        for _ in range(self.max_tool_rounds):
             reply = self.chat_model.complete(tuple(messages), self.tools)
             if reply.is_final:
                 return ChatResult(
@@ -74,3 +76,4 @@ class ChatEngine:
                 result = self.tool_runtime.execute(call)
                 tool_results.append(result)
                 messages.append(_tool_message(result))
+        raise ToolLoopLimitError

@@ -1,8 +1,11 @@
 from collections.abc import Callable
 
+import pytest
+
 from core.chat_engine import ChatEngine, ToolExecutor, build_context_block
 from core.chat_model import ChatModel, ModelReply
 from core.chunk import Chunk
+from core.errors import ToolLoopLimitError
 from core.plugin import Tool, ToolCall, ToolResult
 from core.retrieval import RetrievedChunk
 from core.tool_runtime import ToolRuntime
@@ -16,6 +19,7 @@ def _make_engine(
     tool_runtime: ToolExecutor | None = None,
     tools: tuple[Tool, ...] = (),
     top_k: int = 3,
+    max_tool_rounds: int = 8,
     system_prompt: str = "You are a helpful assistant.",
     build_context: Callable[[list[RetrievedChunk]], str] | None = None,
 ) -> ChatEngine:
@@ -26,6 +30,7 @@ def _make_engine(
         tool_runtime=tool_runtime or ToolRuntime(tools=()),
         tools=tools,
         top_k=top_k,
+        max_tool_rounds=max_tool_rounds,
         system_prompt=system_prompt,
         **extra,
     )
@@ -165,3 +170,17 @@ def test_malformed_arguments_error_is_fed_back_as_data() -> None:
     fed_back = model.last_messages[-1]
     assert fed_back.role == "tool"
     assert fed_back.content == tool_result.error
+
+
+def test_exceeding_max_tool_rounds_raises_tool_loop_limit_error() -> None:
+    call = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1")
+    model = ScriptedChatModel([ModelReply(tool_calls=(call,))] * 2)
+    engine = _make_engine(
+        chat_model=model,
+        tool_runtime=ToolRuntime(tools=(add_tool(),)),
+        tools=(add_tool(),),
+        max_tool_rounds=2,
+    )
+
+    with pytest.raises(ToolLoopLimitError):
+        engine.answer("loop forever")
