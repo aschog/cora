@@ -39,3 +39,9 @@ def test_from_env_applies_defaults_for_optional_fields() -> None:
 def test_from_env_missing_api_key_raises_configuration_error() -> None:
     with pytest.raises(ConfigurationError):
         Config.from_env({})
+
+
+@pytest.mark.parametrize("var", ["CORA_TOP_K", "CORA_MAX_TOOL_ROUNDS"])
+def test_from_env_non_integer_value_raises_configuration_error(var: str) -> None:
+    with pytest.raises(ConfigurationError):
+        Config.from_env({"OPENROUTER_API_KEY": "key-123", var: "lots"})
