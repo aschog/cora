@@ -162,13 +162,13 @@ classDiagram
   class runtime["runtime : ToolRuntime"]
   class plugin["plugin : Plugin"]
 
-  engine --> chatModel : chat_model
-  engine --> kb : knowledge_base
-  engine --> validation : validation
-  engine --> runtime : tool_runtime
+  engine --> chatModel
+  engine --> kb
+  engine --> validation
+  engine --> runtime
   engine ..> plugin : system_prompt, tools
-  kb --> embedder : embedder
-  kb --> retriever : retriever
+  kb --> embedder
+  kb --> retriever
   kb ..> plugin : seed_docs
   validation ..> plugin : validation_rules
   runtime ..> plugin : tools
