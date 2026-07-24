@@ -184,6 +184,7 @@ classDiagram
 ---
 title: Chat flow (core-scoped, §6)
 ---
+%%{init: {"sequence": {"mirrorActors": false}}}%%
 sequenceDiagram
   participant caller as caller : Composition root
   participant engine as engine : ChatEngine
