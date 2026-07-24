@@ -11,6 +11,7 @@ from core.errors import (
     LlmError,
     PluginLoadError,
     RetrievalError,
+    ToolLoopLimitError,
     UnreadableFileError,
     UnsupportedFileTypeError,
 )
@@ -66,6 +67,13 @@ def test_plugin_load_error_names_plugin_and_reason() -> None:
     assert issubclass(PluginLoadError, CoreError)
     assert "fitness" in error.user_message
     assert "could not be imported" in error.user_message
+
+
+def test_tool_loop_limit_error_carries_a_friendly_message() -> None:
+    error = ToolLoopLimitError()
+
+    assert issubclass(ToolLoopLimitError, CoreError)
+    assert error.user_message
 
 
 def test_input_rejection_carries_the_rule_supplied_message() -> None:

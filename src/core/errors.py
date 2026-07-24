@@ -77,3 +77,10 @@ class RetrievalError(AdapterError):
 
 class LlmError(AdapterError):
     message = "The assistant is temporarily unavailable. Please try again."
+
+
+class ToolLoopLimitError(CoreError):
+    def __init__(self) -> None:
+        super().__init__(
+            "Sorry, I couldn't complete your request. Please try rephrasing."
+        )
