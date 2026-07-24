@@ -144,3 +144,24 @@ def test_unknown_tool_error_is_fed_back_as_data_and_loop_finishes() -> None:
     fed_back = model.last_messages[-1]
     assert fed_back.role == "tool"
     assert fed_back.content == tool_result.error
+
+
+def test_malformed_arguments_error_is_fed_back_as_data() -> None:
+    call = ToolCall(name="add", arguments={"a": "one", "b": 2}, call_id="c1")
+    model = ScriptedChatModel([ModelReply(tool_calls=(call,)), ModelReply(text="done")])
+    engine = _make_engine(
+        chat_model=model,
+        tool_runtime=ToolRuntime(tools=(add_tool(),)),
+        tools=(add_tool(),),
+    )
+
+    result = engine.answer("add one and 2")
+
+    assert result.answer == "done"
+    [tool_result] = result.tool_results
+    assert tool_result.error is not None and "invalid arguments" in tool_result.error
+
+    assert model.last_messages is not None
+    fed_back = model.last_messages[-1]
+    assert fed_back.role == "tool"
+    assert fed_back.content == tool_result.error
