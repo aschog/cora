@@ -1,7 +1,7 @@
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, Protocol
 
-from core.plugin import ToolCall
+from core.plugin import Tool, ToolCall
 
 Role = Literal["system", "user", "assistant", "tool"]
 
@@ -20,3 +20,9 @@ class ModelReply:
     @property
     def is_final(self) -> bool:
         return not self.tool_calls
+
+
+class ChatModel(Protocol):
+    def complete(
+        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+    ) -> ModelReply: ...

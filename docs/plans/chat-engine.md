@@ -244,7 +244,7 @@ Errors
 
 Orchestrator (fakes + fixture plugin)
 
-- [ ] scripted final-text reply → `ChatResult.answer == text`, no tools invoked.
+- [x] scripted final-text reply → `ChatResult.answer == text`, no tools invoked.
 - [ ] engine searches KB (top_k); `ChatResult.sources` are the unique retrieved sources.
 - [ ] `build_context_block(chunks)` renders numbered context + citation rule (tested standalone).
 - [ ] system message sent to the model embeds the context block; an injected `build_context` replaces the default.
