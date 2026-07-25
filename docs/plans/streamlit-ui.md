@@ -72,6 +72,32 @@ sequenceDiagram
 
 ---
 
+## TDD checklist (red → green → refactor; commit per green; bottom-up)
+
+App facade & composition (unit; `build_engine` integration)
+
+- [ ] `App` is a frozen dataclass `{engine: ChatEngine, knowledge_base: KnowledgeBase}`; `assemble(...)` returns an `App` whose `.engine` answers a happy-path question and whose `.knowledge_base.list_sources()` includes the seeded `plugin.seed_docs`.
+- [ ] `build_engine(Config)` returns an `App` wiring real adapters + `load_plugin` (integration tier — real Chroma); `.engine` carries the plugin's prompt / tools / top_k.
+
+Display helpers (pure, framework-free)
+
+- [ ] `numbered_sources(sources)` renders `("a.pdf", "b.md")` → `["[1] a.pdf", "[2] b.md"]`; empty → `[]`.
+- [ ] `format_tool_result(tool_result)` shows the `error` message when set, else the payload (str as-is, other → JSON) — never both.
+
+UI shell (`cora.app.ui`) & architecture guard
+
+- [ ] architecture test: any `cora` module importing `streamlit` lives under `cora/app/ui/`; `cora.core` / `cora.adapters` / `cora.plugins` stay `streamlit`-free (extends `test_architecture.py`). Add `streamlit` (pinned minor) via `uv add`.
+- [ ] `render(app)` smoke (AppTest, integration): with a fake-wired `App`, uploading a text doc lists its source in the sidebar, asking a question shows the answer and its numbered sources, and no exception surfaces.
+- [ ] `render(app)` catches a `CoreError` raised by `engine.answer` and shows `st.error(user_message)` — no traceback, thread survives (AppTest, fake engine raises).
+- [ ] `main(app_factory=…)` renders the app when the factory succeeds, and on a `ConfigurationError` from the factory shows a friendly `st.error` with no chat input (AppTest, both cases).
+
+Entry point & docs (no test)
+
+- [ ] `streamlit run` target module under `cora/app/ui/` calls `main()` (real `App` via `build_engine(Config.from_env())`).
+- [ ] README: run command, required env (`OPENROUTER_API_KEY`, optional `CORA_*`), and a one-line upload → ask walkthrough; tick roadmap item 7.
+
+---
+
 ## Open questions / risks
 
 - **AppTest fake injection** — the shell must let the smoke test supply a fake `App` (factory override / module seam) without touching env or real adapters; keep that seam minimal.
