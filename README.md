@@ -36,6 +36,18 @@ Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
 `CORA_PLUGIN` (default `cora.plugins.fitness`), `CORA_TOP_K`,
 `CORA_MAX_TOOL_ROUNDS`, `OPENROUTER_BASE_URL`.
 
+## Manual testing
+
+With the API key in a local `.env` file (`OPENROUTER_API_KEY=sk-or-...`):
+
+```sh
+uv run --env-file .env streamlit run src/cora/app/ui/streamlit_app.py
+```
+
+Sample documents for exercising the upload paths (txt, md, and pdf) live in
+`samples/`. Upload each one in the sidebar, then ask questions against them —
+e.g. "How much protein should I eat?" or "What are common deadlift mistakes?".
+
 ## Development commands
 
 ```sh
