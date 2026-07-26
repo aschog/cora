@@ -2,7 +2,12 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from cora.app.assembly import App, assemble
-from cora.core.errors import ConfigurationError, EmptyDocumentError, LlmError
+from cora.core.errors import (
+    ConfigurationError,
+    EmptyDocumentError,
+    LlmError,
+    PluginLoadError,
+)
 from cora.core.ports.chat_model import ChatModel, ModelReply
 from fakes import FailingChatModel, FakeEmbedder, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin
@@ -86,6 +91,19 @@ def test_main_without_config_shows_friendly_error_and_no_chat() -> None:
 
     assert not at.exception
     assert [e.value for e in at.error] == ["OPENROUTER_API_KEY is not set."]
+    assert not at.chat_input
+
+
+@pytest.mark.integration
+def test_main_shows_friendly_error_for_any_startup_core_error() -> None:
+    def broken_factory() -> App:
+        raise PluginLoadError("cora.plugins.nutriton", "module not found")
+
+    at = _run_main(broken_factory)
+
+    assert not at.exception
+    expected = PluginLoadError("cora.plugins.nutriton", "module not found")
+    assert [e.value for e in at.error] == [expected.user_message]
     assert not at.chat_input
 
 
