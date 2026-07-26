@@ -55,7 +55,7 @@ def assemble(
     return App(engine=engine, knowledge_base=knowledge_base)
 
 
-def build_engine(
+def build(
     config: Config,
     db_path: str = DEFAULT_DB_PATH,
     collection: str = DEFAULT_COLLECTION,

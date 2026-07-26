@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from cora.app.composition import App, assemble, build_engine
+from cora.app.assembly import App, assemble, build
 from cora.app.config import Config
 from cora.core.errors import InputRejectedError
 from cora.core.ports.chat_model import ModelReply
@@ -78,7 +78,7 @@ def test_assemble_chains_core_and_plugin_validation_rules() -> None:
 
 
 @pytest.mark.integration
-def test_build_engine_wires_real_adapters_from_config(tmp_path: Path) -> None:
+def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
     config = Config(
         api_key="k",
         model="openai/gpt-4o-mini",
@@ -88,7 +88,7 @@ def test_build_engine_wires_real_adapters_from_config(tmp_path: Path) -> None:
         max_tool_rounds=4,
     )
 
-    app = build_engine(config, db_path=str(tmp_path))
+    app = build(config, db_path=str(tmp_path))
 
     plugin = load_plugin("fixture_plugins.valid")
     engine = app.engine

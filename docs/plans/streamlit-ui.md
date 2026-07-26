@@ -12,7 +12,7 @@ From the architecture plan (§4 UI-shell role, §6 runtime flows, §8 testing ti
 
 - Build the **replaceable frontend**: a thin Streamlit shell — widgets only, no business logic — over the existing `ChatEngine` + `KnowledgeBase`.
 - **Streamlit confined to one place** (`cora/app/ui/`); the architecture test already forbids `streamlit` in `cora.core`. Extend it to keep `streamlit` out of everywhere but the UI shell.
-- **Composition root exposes both services** — `build_engine` returns an `App` facade `{engine, knowledge_base}`; the UI depends on that single object.
+- **Composition root exposes both services** — `assembly.build` returns an `App` facade `{engine, knowledge_base}`; the UI depends on that single object.
 - **Progress** via Streamlit spinners around the coarse calls (ingest, answer) — no core Observer this round.
 - **Errors as friendly messages** — every `CoreError` surfaces as `err.user_message`; no stack traces. Missing API key (`ConfigurationError`) shows a friendly startup message, no chat thread.
 - **Secrets** only from env via `Config.from_env`; the UI never reads env directly, never logs the key.
@@ -24,7 +24,7 @@ From the architecture plan (§4 UI-shell role, §6 runtime flows, §8 testing ti
 
 `<<existing>>` = reused unchanged.
 
-- **`App` facade** (`cora.app.composition`) — frozen dataclass `{engine: ChatEngine, knowledge_base: KnowledgeBase}`. `assemble` builds the KB once and returns it inside `App`; `build_engine(Config) -> App` wires real adapters. `ChatEngine` `<<existing>>` stays a pure orchestrator (no ingestion role).
+- **`App` facade** (`cora.app.assembly`) — frozen dataclass `{engine: ChatEngine, knowledge_base: KnowledgeBase}`. `assemble` builds the KB once and returns it inside `App`; `build(Config) -> App` wires real adapters. `ChatEngine` `<<existing>>` stays a pure orchestrator (no ingestion role).
 - **UI shell** (`cora.app.ui`) — the sole `import streamlit`:
   - `main()` — resolves the `App` from an **injectable factory** (`@st.cache_resource`, built once), then renders. Injectable so the smoke test wires fakes without env/adapters.
   - **Sidebar** — file uploader (txt/md/pdf); on upload `st.spinner("Ingesting…")` → `kb.add_file(bytes, name)` (dedupe is free — KB hashes); below it, source list from `kb.list_sources()`.
@@ -69,17 +69,17 @@ sequenceDiagram
 
 ## Entry point & docs
 
-- `streamlit run` target — a module under `cora/app/ui/` that calls `main()` (builds the real `App` via `build_engine(Config.from_env())`).
+- `streamlit run` target — a module under `cora/app/ui/` that calls `main()` (builds the real `App` via `assembly.build(Config.from_env())`).
 - **README** — run command, required env (`OPENROUTER_API_KEY`, optional `CORA_*`), and a one-line "upload → ask" walkthrough.
 
 ---
 
 ## TDD checklist (red → green → refactor; commit per green; bottom-up)
 
-App facade & composition (unit; `build_engine` integration)
+App facade & composition (unit; `build` integration)
 
 - [x] `App` is a frozen dataclass `{engine: ChatEngine, knowledge_base: KnowledgeBase}`; `assemble(...)` returns an `App` whose `.engine` answers a happy-path question and whose `.knowledge_base.list_sources()` includes the seeded `plugin.seed_docs`.
-- [ ] `build_engine(Config)` returns an `App` wiring real adapters + `load_plugin` (integration tier — real Chroma); `.engine` carries the plugin's prompt / tools / top_k.
+- [ ] `assembly.build(Config)` returns an `App` wiring real adapters + `load_plugin` (integration tier — real Chroma); `.engine` carries the plugin's prompt / tools / top_k.
 
 Display helpers (pure, framework-free)
 
@@ -95,7 +95,7 @@ UI shell (`cora.app.ui`) & architecture guard
 
 Entry point & docs (no test)
 
-- [ ] `streamlit run` target module under `cora/app/ui/` calls `main()` (real `App` via `build_engine(Config.from_env())`).
+- [ ] `streamlit run` target module under `cora/app/ui/` calls `main()` (real `App` via `assembly.build(Config.from_env())`).
 - [ ] README: run command, required env (`OPENROUTER_API_KEY`, optional `CORA_*`), and a one-line upload → ask walkthrough; tick roadmap item 7.
 
 ---
