@@ -97,8 +97,8 @@ Review findings (PR #3 AI review, routed back through the TDD loop)
 
 - [x] upload failure — `CoreError` from `add_file` (e.g. empty doc) → `st.error(user_message)`, no traceback, chat input survives (AppTest).
 - [x] `main` catches any startup `CoreError` (e.g. `PluginLoadError` from a bad `CORA_PLUGIN`), not just `ConfigurationError` (AppTest).
-- [ ] engine-error test really asserts the thread survives: the user's message is still visible after the friendly error.
-- [ ] smoke variant with a scripted tool call: formatted tool result visible under "Tool results".
+- [x] engine-error test really asserts the thread survives: the user's message is still visible after the friendly error.
+- [x] smoke variant with a scripted tool call: formatted tool result visible under "Tool results".
 - [ ] refactor: rename the `Message` dict alias in `chat.py` (shadows `cora.core.ports.chat_model.Message`).
 
 Entry point & docs (no test)
