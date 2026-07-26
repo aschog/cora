@@ -34,25 +34,27 @@ From the architecture plan (§4 UI-shell role, §6 runtime flows, §8 testing ti
 - **State** — `App` cached as a resource (built once across reruns); chat history in `st.session_state`; uploads deduped by content hash in the KB.
 
 ```mermaid
+---
+title: UI runtime flows (upload & ask)
+---
+%%{init: {"sequence": {"mirrorActors": false}}}%%
 sequenceDiagram
-  actor User
-  participant UI as Streamlit shell
-  participant KB as KnowledgeBase
-  participant ENG as ChatEngine
-  User->>UI: upload file
-  activate UI
-  Note over UI: spinner "Ingesting…"
-  UI->>KB: add_file(bytes, name)
-  KB-->>UI: chunks added (0 if duplicate)
-  UI-->>User: source listed / friendly error
-  deactivate UI
-  User->>UI: question
-  activate UI
-  Note over UI: spinner "Thinking…"
-  UI->>ENG: answer(text)
-  ENG-->>UI: ChatResult(answer, sources, tool_results)
-  UI-->>User: answer + sources + tool results (expanders)
-  deactivate UI
+  actor user
+  participant ui as ui : Streamlit shell
+  participant kb as kb : KnowledgeBase
+  participant engine as engine : ChatEngine
+
+  user->>ui: upload file
+  Note over ui: spinner "Ingesting…"
+  ui->>kb: add_file(bytes, name)
+  kb-->>ui: chunks added (0 if duplicate)
+  ui-->>user: source listed / friendly error
+
+  user->>ui: question
+  Note over ui: spinner "Thinking…"
+  ui->>engine: answer(text)
+  engine-->>ui: ChatResult(answer, sources, tool_results)
+  ui-->>user: answer + sources + tool results (expanders)
 ```
 
 ---
