@@ -84,7 +84,7 @@ App facade & composition (unit; `build` integration)
 Display helpers (pure, framework-free)
 
 - [x] `numbered_sources(sources)` renders `("a.pdf", "b.md")` → `["[1] a.pdf", "[2] b.md"]`; empty → `[]`.
-- [ ] `format_tool_result(tool_result)` shows the `error` message when set, else the payload (str as-is, other → JSON) — never both.
+- [x] `format_tool_result(tool_result)` shows the `error` message when set, else the payload (str as-is, other → JSON) — never both.
 
 UI shell (`cora.app.ui`) & architecture guard
 
