@@ -96,7 +96,7 @@ UI shell (`cora.app.ui`) & architecture guard
 Entry point & docs (no test)
 
 - [x] `streamlit run` target module under `cora/app/ui/` calls `main()` (real `App` via `assembly.build(Config.from_env())`).
-- [ ] README: run command, required env (`OPENROUTER_API_KEY`, optional `CORA_*`), and a one-line upload → ask walkthrough; tick roadmap item 7.
+- [x] README: run command, required env (`OPENROUTER_API_KEY`, optional `CORA_*`), and a one-line upload → ask walkthrough. (Roadmap item 7 is marked done by moving this plan to `done/` at merge, as for items 1–6.)
 
 ---
 
