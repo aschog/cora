@@ -99,7 +99,7 @@ Review findings (PR #3 AI review, routed back through the TDD loop)
 - [x] `main` catches any startup `CoreError` (e.g. `PluginLoadError` from a bad `CORA_PLUGIN`), not just `ConfigurationError` (AppTest).
 - [x] engine-error test really asserts the thread survives: the user's message is still visible after the friendly error.
 - [x] smoke variant with a scripted tool call: formatted tool result visible under "Tool results".
-- [ ] refactor: rename the `Message` dict alias in `chat.py` (shadows `cora.core.ports.chat_model.Message`).
+- [x] refactor: rename the `Message` dict alias in `chat.py` (shadows `cora.core.ports.chat_model.Message`) → `ThreadEntry`.
 
 Entry point & docs (no test)
 

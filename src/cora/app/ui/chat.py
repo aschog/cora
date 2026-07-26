@@ -9,7 +9,7 @@ from cora.core.errors import CoreError
 from cora.core.services.chat_engine import ChatEngine, ChatResult
 from cora.core.services.knowledge_base import KnowledgeBase
 
-Message = dict[str, Any]
+ThreadEntry = dict[str, Any]
 
 
 def main(app_factory: Callable[[], App]) -> None:
@@ -60,7 +60,7 @@ def _answer(engine: ChatEngine, prompt: str) -> None:
     _append_and_show(_assistant_message(result))
 
 
-def _assistant_message(result: ChatResult) -> Message:
+def _assistant_message(result: ChatResult) -> ThreadEntry:
     return {
         "role": "assistant",
         "content": result.answer,
@@ -69,12 +69,12 @@ def _assistant_message(result: ChatResult) -> Message:
     }
 
 
-def _append_and_show(message: Message) -> None:
+def _append_and_show(message: ThreadEntry) -> None:
     st.session_state.messages.append(message)
     _show(message)
 
 
-def _show(message: Message) -> None:
+def _show(message: ThreadEntry) -> None:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
         _expander("Sources", message.get("sources", ()))
