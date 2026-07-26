@@ -1,15 +1,24 @@
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 import streamlit as st
 
 from cora.app.assembly import App
 from cora.app.ui.formatting import format_tool_result, numbered_sources
-from cora.core.errors import CoreError
+from cora.core.errors import ConfigurationError, CoreError
 from cora.core.services.chat_engine import ChatEngine, ChatResult
 from cora.core.services.knowledge_base import KnowledgeBase
 
 Message = dict[str, Any]
+
+
+def main(app_factory: Callable[[], App]) -> None:
+    try:
+        app = app_factory()
+    except ConfigurationError as error:
+        st.error(error.user_message)
+        return
+    render(app)
 
 
 def render(app: App) -> None:

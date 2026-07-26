@@ -2,7 +2,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from cora.app.assembly import App, assemble
-from cora.core.errors import LlmError
+from cora.core.errors import ConfigurationError, LlmError
 from cora.core.ports.chat_model import ChatModel, ModelReply
 from fakes import FailingChatModel, FakeEmbedder, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin
@@ -21,6 +21,18 @@ def _page(app) -> None:
     from cora.app.ui.chat import render
 
     render(app)
+
+
+def _main_page(app_factory) -> None:
+    from cora.app.ui.chat import main
+
+    main(app_factory)
+
+
+def _run_main(app_factory) -> AppTest:
+    at = AppTest.from_function(_main_page, args=(app_factory,))
+    at.run()
+    return at
 
 
 def _run_page(app: App) -> AppTest:
@@ -42,6 +54,26 @@ def test_engine_error_shows_friendly_message_and_keeps_the_thread() -> None:
     assert not at.exception
     assert [e.value for e in at.error] == [LlmError().user_message]
     assert at.chat_input[0] is not None
+
+
+@pytest.mark.integration
+def test_main_renders_the_page_from_the_factory() -> None:
+    at = _run_main(lambda: _app(ScriptedChatModel([ModelReply(text="hi")])))
+
+    assert not at.exception
+    assert at.chat_input
+
+
+@pytest.mark.integration
+def test_main_without_config_shows_friendly_error_and_no_chat() -> None:
+    def broken_factory() -> App:
+        raise ConfigurationError("OPENROUTER_API_KEY is not set.")
+
+    at = _run_main(broken_factory)
+
+    assert not at.exception
+    assert [e.value for e in at.error] == ["OPENROUTER_API_KEY is not set."]
+    assert not at.chat_input
 
 
 @pytest.mark.integration
