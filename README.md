@@ -22,6 +22,20 @@ uv sync                                    # install Python 3.12 env + deps
 git config core.hooksPath .githooks       # enable pre-commit + commit-msg hooks
 ```
 
+## Run the app
+
+```sh
+export OPENROUTER_API_KEY=sk-or-...        # required (https://openrouter.ai/keys)
+uv run streamlit run src/cora/app/ui/streamlit_app.py
+```
+
+Upload a document (txt/md/pdf) in the sidebar, then ask about it — answers cite
+their sources, and any tool runs appear under the answer.
+
+Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
+`CORA_PLUGIN` (default `cora.plugins.fitness`), `CORA_TOP_K`,
+`CORA_MAX_TOOL_ROUNDS`, `OPENROUTER_BASE_URL`.
+
 ## Development commands
 
 ```sh
