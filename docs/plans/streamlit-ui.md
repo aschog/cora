@@ -88,7 +88,7 @@ Display helpers (pure, framework-free)
 
 UI shell (`cora.app.ui`) & architecture guard
 
-- [ ] architecture test: any `cora` module importing `streamlit` lives under `cora/app/ui/`; `cora.core` / `cora.adapters` / `cora.plugins` stay `streamlit`-free (extends `test_architecture.py`). Add `streamlit` (pinned minor) via `uv add`.
+- [x] architecture test: any `cora` module importing `streamlit` lives under `cora/app/ui/`; `cora.core` / `cora.adapters` / `cora.plugins` stay `streamlit`-free (extends `test_architecture.py`). Add `streamlit` (pinned minor) via `uv add`.
 - [ ] `render(app)` smoke (AppTest, integration): with a fake-wired `App`, uploading a text doc lists its source in the sidebar, asking a question shows the answer and its numbered sources, and no exception surfaces.
 - [ ] `render(app)` catches a `CoreError` raised by `engine.answer` and shows `st.error(user_message)` — no traceback, thread survives (AppTest, fake engine raises).
 - [ ] `main(app_factory=…)` renders the app when the factory succeeds, and on a `ConfigurationError` from the factory shows a friendly `st.error` with no chat input (AppTest, both cases).
