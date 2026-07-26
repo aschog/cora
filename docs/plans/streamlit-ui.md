@@ -79,7 +79,7 @@ sequenceDiagram
 App facade & composition (unit; `build` integration)
 
 - [x] `App` is a frozen dataclass `{engine: ChatEngine, knowledge_base: KnowledgeBase}`; `assemble(...)` returns an `App` whose `.engine` answers a happy-path question and whose `.knowledge_base.list_sources()` includes the seeded `plugin.seed_docs`.
-- [ ] `assembly.build(Config)` returns an `App` wiring real adapters + `load_plugin` (integration tier — real Chroma); `.engine` carries the plugin's prompt / tools / top_k.
+- [x] `assembly.build(Config)` returns an `App` wiring real adapters + `load_plugin` (integration tier — real Chroma); `.engine` carries the plugin's prompt / tools / top_k.
 
 Display helpers (pure, framework-free)
 

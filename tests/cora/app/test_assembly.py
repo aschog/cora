@@ -91,6 +91,8 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
     app = build(config, db_path=str(tmp_path))
 
     plugin = load_plugin("fixture_plugins.valid")
+    assert isinstance(app, App)
+    assert app.knowledge_base is app.engine.knowledge_base
     engine = app.engine
     assert isinstance(engine, ChatEngine)
     assert engine.system_prompt == plugin.system_prompt
