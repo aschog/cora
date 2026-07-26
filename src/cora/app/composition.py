@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from cora.app.config import DEFAULT_MAX_TOOL_ROUNDS, DEFAULT_TOP_K, Config
 from cora.core.ports.chat_model import ChatModel
 from cora.core.ports.embedding import Embedder
@@ -18,6 +20,12 @@ DEFAULT_DB_PATH = ".cora/chroma"
 DEFAULT_COLLECTION = "documents"
 
 
+@dataclass(frozen=True)
+class App:
+    engine: ChatEngine
+    knowledge_base: KnowledgeBase
+
+
 def assemble(
     *,
     chat_model: ChatModel,
@@ -26,7 +34,7 @@ def assemble(
     plugin: Plugin,
     top_k: int = DEFAULT_TOP_K,
     max_tool_rounds: int = DEFAULT_MAX_TOOL_ROUNDS,
-) -> ChatEngine:
+) -> App:
     knowledge_base = KnowledgeBase(embedder=embedder, retriever=retriever)
     for filename, data in plugin.seed_docs:
         knowledge_base.add_file(data, filename)
@@ -34,7 +42,7 @@ def assemble(
         core_rules=(EmptyInputRule(), MaxLengthRule(MAX_INPUT_CHARS)),
         plugin_rules=plugin.validation_rules,
     )
-    return ChatEngine(
+    engine = ChatEngine(
         chat_model=chat_model,
         knowledge_base=knowledge_base,
         validation=validation,
@@ -44,13 +52,14 @@ def assemble(
         system_prompt=plugin.system_prompt,
         tools=plugin.tools,
     )
+    return App(engine=engine, knowledge_base=knowledge_base)
 
 
 def build_engine(
     config: Config,
     db_path: str = DEFAULT_DB_PATH,
     collection: str = DEFAULT_COLLECTION,
-) -> ChatEngine:
+) -> App:
     from cora.adapters.chroma_retriever import ChromaRetriever
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
