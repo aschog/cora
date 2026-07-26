@@ -33,8 +33,11 @@ def _documents(knowledge_base: KnowledgeBase) -> None:
     st.header("Documents")
     uploaded = st.file_uploader("Add a document", type=["txt", "md", "pdf"])
     if uploaded is not None:
-        with st.spinner("Ingesting…"):
-            knowledge_base.add_file(uploaded.getvalue(), uploaded.name)
+        try:
+            with st.spinner("Ingesting…"):
+                knowledge_base.add_file(uploaded.getvalue(), uploaded.name)
+        except CoreError as error:
+            st.error(error.user_message)
     for source in knowledge_base.list_sources():
         st.markdown(source)
 

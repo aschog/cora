@@ -2,7 +2,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from cora.app.assembly import App, assemble
-from cora.core.errors import ConfigurationError, LlmError
+from cora.core.errors import ConfigurationError, EmptyDocumentError, LlmError
 from cora.core.ports.chat_model import ChatModel, ModelReply
 from fakes import FailingChatModel, FakeEmbedder, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin
@@ -54,6 +54,19 @@ def test_engine_error_shows_friendly_message_and_keeps_the_thread() -> None:
     assert not at.exception
     assert [e.value for e in at.error] == [LlmError().user_message]
     assert at.chat_input[0] is not None
+
+
+@pytest.mark.integration
+def test_upload_failure_shows_friendly_error_and_keeps_the_chat() -> None:
+    at = _run_page(_app(ScriptedChatModel([])))
+
+    at.file_uploader[0].set_value(("empty.txt", b"", "text/plain"))
+    at.run()
+
+    assert not at.exception
+    expected = EmptyDocumentError("empty.txt").user_message
+    assert [e.value for e in at.error] == [expected]
+    assert at.chat_input
 
 
 @pytest.mark.integration

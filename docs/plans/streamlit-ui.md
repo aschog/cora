@@ -93,6 +93,14 @@ UI shell (`cora.app.ui`) & architecture guard
 - [x] `render(app)` catches a `CoreError` raised by `engine.answer` and shows `st.error(user_message)` — no traceback, thread survives (AppTest, fake engine raises).
 - [x] `main(app_factory=…)` renders the app when the factory succeeds, and on a `ConfigurationError` from the factory shows a friendly `st.error` with no chat input (AppTest, both cases).
 
+Review findings (PR #3 AI review, routed back through the TDD loop)
+
+- [x] upload failure — `CoreError` from `add_file` (e.g. empty doc) → `st.error(user_message)`, no traceback, chat input survives (AppTest).
+- [ ] `main` catches any startup `CoreError` (e.g. `PluginLoadError` from a bad `CORA_PLUGIN`), not just `ConfigurationError` (AppTest).
+- [ ] engine-error test really asserts the thread survives: the user's message is still visible after the friendly error.
+- [ ] smoke variant with a scripted tool call: formatted tool result visible under "Tool results".
+- [ ] refactor: rename the `Message` dict alias in `chat.py` (shadows `cora.core.ports.chat_model.Message`).
+
 Entry point & docs (no test)
 
 - [x] `streamlit run` target module under `cora/app/ui/` calls `main()` (real `App` via `assembly.build(Config.from_env())`).
