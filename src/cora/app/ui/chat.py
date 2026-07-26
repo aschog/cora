@@ -4,6 +4,7 @@ import streamlit as st
 
 from cora.app.assembly import App
 from cora.app.ui.formatting import format_tool_result, numbered_sources
+from cora.core.errors import CoreError
 from cora.core.services.chat_engine import ChatResult
 
 Message = dict[str, Any]
@@ -28,11 +29,15 @@ def render(app: App) -> None:
         user: Message = {"role": "user", "content": prompt}
         st.session_state.messages.append(user)
         _show(user)
-        with st.spinner("Thinking…"):
-            result = app.engine.answer(prompt)
-        assistant = _assistant_message(result)
-        st.session_state.messages.append(assistant)
-        _show(assistant)
+        try:
+            with st.spinner("Thinking…"):
+                result = app.engine.answer(prompt)
+        except CoreError as error:
+            st.error(error.user_message)
+        else:
+            assistant = _assistant_message(result)
+            st.session_state.messages.append(assistant)
+            _show(assistant)
 
 
 def _assistant_message(result: ChatResult) -> Message:

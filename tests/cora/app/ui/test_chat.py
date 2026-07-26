@@ -2,8 +2,9 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from cora.app.assembly import App, assemble
+from cora.core.errors import LlmError
 from cora.core.ports.chat_model import ModelReply
-from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel
+from fakes import FailingChatModel, FakeEmbedder, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin
 
 
@@ -24,6 +25,24 @@ def _page(app) -> None:
 
 def _visible_text(at: AppTest) -> str:
     return "\n".join(md.value for md in at.markdown)
+
+
+@pytest.mark.integration
+def test_engine_error_shows_friendly_message_and_keeps_the_thread() -> None:
+    app = assemble(
+        chat_model=FailingChatModel(LlmError()),
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        plugin=make_plugin(),
+    )
+    at = AppTest.from_function(_page, args=(app,))
+    at.run()
+
+    at.chat_input[0].set_value("Hello?").run()
+
+    assert not at.exception
+    assert [e.value for e in at.error] == [LlmError().user_message]
+    assert at.chat_input[0] is not None
 
 
 @pytest.mark.integration
