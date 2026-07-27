@@ -48,6 +48,7 @@ def _ingest_once(knowledge_base: KnowledgeBase, uploaded: UploadedFile | None) -
     """Ingest a selection once: Streamlit re-delivers the same file every rerun."""
     if uploaded is None:
         st.session_state.upload_key = None
+        st.session_state.upload_attempts = None
         return
     data = uploaded.getvalue()
     key = (uploaded.name, hashlib.sha256(data).hexdigest())

@@ -151,6 +151,18 @@ Second review round (PR #5, after the fixes above)
       *(The prose was corrected earlier but the flowchart under it still drew
       the abandoned store-and-consume record.)*
 
+Third review round (PR #5, nits)
+
+- [x] detaching clears the whole record — attempt budget as well as key, so a
+      file abandoned mid-outage does not come back with a spent counter. The
+      record is two session keys; detach was clearing one, which also made the
+      flowchart's "clear the record" node over-claim.
+- [x] the per-key attempt budget is pinned by a test. *(First attempt at this
+      test was vacuous — a settled selection resets the counter, so switching
+      files after exhaustion proves nothing. The counter is only stale when a
+      selection is abandoned mid-outage; the test now does that, and fails
+      under a mutation that drops the key comparison.)*
+
 ---
 
 ## Follow-up (deliberately not on this branch)

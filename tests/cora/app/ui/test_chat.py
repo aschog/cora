@@ -247,6 +247,43 @@ def test_a_persistent_ingest_failure_stops_retrying() -> None:
 
 
 @pytest.mark.integration
+def test_switching_files_mid_outage_gives_the_new_one_a_full_budget() -> None:
+    retriever = _FlakyRetriever()
+    at = _run_page(_app_on(retriever))
+    retriever.failures = 99
+
+    at.file_uploader[0].set_value(("a.md", b"first", "text/markdown"))
+    at.run()
+    assert retriever.add_attempts == 1  # a.md has spent one of its two
+
+    at.file_uploader[0].set_value(("b.md", b"second", "text/markdown"))
+    at.run()
+    at.run()
+
+    assert not at.exception
+    assert retriever.add_attempts == 3
+
+
+@pytest.mark.integration
+def test_detaching_a_file_restores_its_attempt_budget() -> None:
+    retriever = _FlakyRetriever()
+    at = _run_page(_app_on(retriever))
+    retriever.failures = 99
+    upload = ("a.md", b"first", "text/markdown")
+
+    at.file_uploader[0].set_value(upload)
+    at.run()
+    at.file_uploader[0].clear()
+    at.run()
+    at.file_uploader[0].set_value(upload)
+    at.run()
+    at.run()
+
+    assert not at.exception
+    assert retriever.add_attempts == 3
+
+
+@pytest.mark.integration
 def test_upload_error_clears_on_the_next_rerun_without_re_ingesting() -> None:
     retriever = _CountingRetriever()
     plugin = make_plugin(seed_docs=(("seed.md", b"protein facts"),))
