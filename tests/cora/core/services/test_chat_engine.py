@@ -28,6 +28,7 @@ def _make_engine(
     tools: tuple[Tool, ...] = (),
     top_k: int = 3,
     max_tool_rounds: int = 8,
+    max_history_turns: int = 20,
     system_prompt: str = "You are a helpful assistant.",
     build_context: Callable[[list[RetrievedChunk]], str] | None = None,
 ) -> ChatEngine:
@@ -40,6 +41,7 @@ def _make_engine(
         tools=tools,
         top_k=top_k,
         max_tool_rounds=max_tool_rounds,
+        max_history_turns=max_history_turns,
         system_prompt=system_prompt,
         **extra,
     )
@@ -143,6 +145,23 @@ def test_history_lands_between_system_prompt_and_current_question() -> None:
     assert model.last_messages[1].content == "I weigh 80 kg."
     assert model.last_messages[2].content == "Noted."
     assert model.last_messages[3].content == "What did I say my weight was?"
+
+
+def test_history_beyond_max_history_turns_drops_the_oldest_turns() -> None:
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    engine = _make_engine(chat_model=model, max_history_turns=2)
+    history = (
+        Turn(role="user", text="oldest"),
+        Turn(role="assistant", text="old"),
+        Turn(role="user", text="recent"),
+        Turn(role="assistant", text="newest"),
+    )
+
+    engine.answer("q", history=history)
+
+    assert model.last_messages is not None
+    contents = [m.content for m in model.last_messages[1:-1]]
+    assert contents == ["recent", "newest"]
 
 
 def test_tool_call_runs_and_result_feeds_back_and_appears_in_result() -> None:

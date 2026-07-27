@@ -61,6 +61,7 @@ class ChatEngine:
     top_k: int
     max_tool_rounds: int
     system_prompt: str
+    max_history_turns: int = 20
     tools: tuple[Tool, ...] = ()
     build_context: Callable[[list[RetrievedChunk]], str] = build_context_block
 
@@ -83,7 +84,8 @@ class ChatEngine:
             role="system",
             content=f"{self.system_prompt}\n\n{self.build_context(chunks)}",
         )
-        past = [Message(role=turn.role, content=turn.text) for turn in history]
+        recent = history[len(history) - self.max_history_turns :]
+        past = [Message(role=turn.role, content=turn.text) for turn in recent]
         return [system, *past, Message(role="user", content=user_input)]
 
     def _run_tool_loop(

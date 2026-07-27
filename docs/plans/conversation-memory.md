@@ -93,7 +93,7 @@ Core
       `ScriptedChatModel.last_messages`).
 - [x] `answer` with no history sends exactly what it sends today — the
       default keeps existing behaviour bit-for-bit.
-- [ ] history longer than `max_history_turns` is truncated to the most recent
+- [x] history longer than `max_history_turns` is truncated to the most recent
       turns (single messages, not pairs), oldest dropped first.
 - [ ] retrieval and validation still receive the current question alone, not
       the history (guards the "don't poison the query" decision).
