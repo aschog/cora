@@ -84,7 +84,7 @@ class ChatEngine:
             role="system",
             content=f"{self.system_prompt}\n\n{self.build_context(chunks)}",
         )
-        recent = history[len(history) - self.max_history_turns :]
+        recent = history[max(len(history) - self.max_history_turns, 0) :]
         past = [Message(role=turn.role, content=turn.text) for turn in recent]
         return [system, *past, Message(role="user", content=user_input)]
 

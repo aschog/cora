@@ -97,6 +97,9 @@ Core
       turns (single messages, not pairs), oldest dropped first.
 - [x] `max_history_turns=0` sends no history at all — memory can be switched
       off (guards the slice against the `[-0:]` sends-everything trap).
+- [x] history shorter than (and exactly at) the cap is sent in full — review
+      finding: the unclamped slice start went negative and silently dropped
+      most of the history for any conversation shorter than twice the cap.
 - [x] retrieval and validation still receive the current question alone, not
       the history (guards the "don't poison the query" decision).
 

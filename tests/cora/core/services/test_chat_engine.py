@@ -164,6 +164,36 @@ def test_history_beyond_max_history_turns_drops_the_oldest_turns() -> None:
     assert contents == ["recent", "newest"]
 
 
+def test_history_shorter_than_max_history_turns_is_sent_in_full() -> None:
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    engine = _make_engine(chat_model=model, max_history_turns=3)
+    history = (
+        Turn(role="user", text="I weigh 80 kg."),
+        Turn(role="assistant", text="Noted."),
+    )
+
+    engine.answer("q", history=history)
+
+    assert model.last_messages is not None
+    contents = [m.content for m in model.last_messages[1:-1]]
+    assert contents == ["I weigh 80 kg.", "Noted."]
+
+
+def test_history_exactly_at_max_history_turns_is_sent_in_full() -> None:
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    engine = _make_engine(chat_model=model, max_history_turns=2)
+    history = (
+        Turn(role="user", text="I weigh 80 kg."),
+        Turn(role="assistant", text="Noted."),
+    )
+
+    engine.answer("q", history=history)
+
+    assert model.last_messages is not None
+    contents = [m.content for m in model.last_messages[1:-1]]
+    assert contents == ["I weigh 80 kg.", "Noted."]
+
+
 def test_zero_max_history_turns_sends_no_history_at_all() -> None:
     model = ScriptedChatModel([ModelReply(text="ok")])
     engine = _make_engine(chat_model=model, max_history_turns=0)
