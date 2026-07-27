@@ -104,8 +104,11 @@ Upload record (#3, #9)
 - [x] detaching the file clears the record, so re-selecting it ingests again
       (and hits knowledge-base dedup). *(Item 3's green step had already written
       this branch untested; deleted it, watched this test go red, restored it.)*
-- [ ] refactor: extract the record handling so `_documents` stays a reading of
-      the flow above, not a nest of conditionals.
+- [x] refactor: extract the record handling so `_documents` stays a reading of
+      the flow above, not a nest of conditionals. *(`_ingest_once` now holds only
+      the rerun guard and `_ingest` the work; the outcome strings moved to
+      `formatting.ingest_message`, which gave the 1-vs-many wording unit-tier
+      coverage the AppTest layer never had.)*
 
 ---
 

@@ -6,7 +6,11 @@ import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from cora.app.assembly import App
-from cora.app.ui.formatting import format_tool_result, numbered_sources
+from cora.app.ui.formatting import (
+    format_tool_result,
+    ingest_message,
+    numbered_sources,
+)
 from cora.core.errors import CoreError
 from cora.core.services.chat_engine import ChatEngine, ChatResult
 from cora.core.services.knowledge_base import KnowledgeBase
@@ -40,6 +44,7 @@ def _documents(knowledge_base: KnowledgeBase) -> None:
 
 
 def _ingest_once(knowledge_base: KnowledgeBase, uploaded: UploadedFile | None) -> None:
+    """Ingest a selection once: Streamlit re-delivers the same file every rerun."""
     if uploaded is None:
         st.session_state.upload_hash = None
         return
@@ -48,20 +53,18 @@ def _ingest_once(knowledge_base: KnowledgeBase, uploaded: UploadedFile | None) -
     if file_hash == st.session_state.get("upload_hash"):
         return
     st.session_state.upload_hash = file_hash
+    _ingest(knowledge_base, data, uploaded.name)
+
+
+def _ingest(knowledge_base: KnowledgeBase, data: bytes, filename: str) -> None:
     try:
         with st.spinner("Ingesting…"):
-            chunks = knowledge_base.add_file(data, uploaded.name)
+            chunks = knowledge_base.add_file(data, filename)
     except CoreError as error:
         st.error(error.user_message)
         return
-    if chunks:
-        st.success(f"Added {uploaded.name} — {chunks} {_chunks(chunks)}.")
-    else:
-        st.info(f"{uploaded.name} is already in your knowledge base.")
-
-
-def _chunks(count: int) -> str:
-    return "chunk" if count == 1 else "chunks"
+    report = st.success if chunks else st.info
+    report(ingest_message(filename, chunks))
 
 
 def _thread() -> None:
