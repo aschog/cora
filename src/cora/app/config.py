@@ -9,6 +9,7 @@ DEFAULT_MODEL = "openai/gpt-4o-mini"
 DEFAULT_PLUGIN = "cora.plugins.fitness"
 DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
+DEFAULT_HISTORY_TURNS = 20
 
 
 @dataclass(frozen=True)
@@ -19,6 +20,7 @@ class Config:
     plugin_module: str
     top_k: int
     max_tool_rounds: int
+    history_turns: int
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Config":
@@ -35,6 +37,7 @@ class Config:
             plugin_module=env.get("CORA_PLUGIN", DEFAULT_PLUGIN),
             top_k=_int(env, "CORA_TOP_K", DEFAULT_TOP_K),
             max_tool_rounds=_int(env, "CORA_MAX_TOOL_ROUNDS", DEFAULT_MAX_TOOL_ROUNDS),
+            history_turns=_int(env, "CORA_HISTORY_TURNS", DEFAULT_HISTORY_TURNS),
         )
 
 

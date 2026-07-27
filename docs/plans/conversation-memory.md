@@ -102,7 +102,7 @@ Core
 
 Composition
 
-- [ ] `Config` exposes `CORA_HISTORY_TURNS` with a default; `assemble` passes
+- [x] `Config` exposes `CORA_HISTORY_TURNS` with a default; `assemble` passes
       it to `ChatEngine`.
 
 UI

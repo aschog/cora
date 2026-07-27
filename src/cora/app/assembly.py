@@ -1,6 +1,11 @@
 from dataclasses import dataclass
 
-from cora.app.config import DEFAULT_MAX_TOOL_ROUNDS, DEFAULT_TOP_K, Config
+from cora.app.config import (
+    DEFAULT_HISTORY_TURNS,
+    DEFAULT_MAX_TOOL_ROUNDS,
+    DEFAULT_TOP_K,
+    Config,
+)
 from cora.core.ports.chat_model import ChatModel
 from cora.core.ports.embedding import Embedder
 from cora.core.ports.plugin import Plugin
@@ -34,6 +39,7 @@ def assemble(
     plugin: Plugin,
     top_k: int = DEFAULT_TOP_K,
     max_tool_rounds: int = DEFAULT_MAX_TOOL_ROUNDS,
+    history_turns: int = DEFAULT_HISTORY_TURNS,
 ) -> App:
     knowledge_base = KnowledgeBase(embedder=embedder, retriever=retriever)
     for filename, data in plugin.seed_docs:
@@ -49,6 +55,7 @@ def assemble(
         tool_runtime=ToolRuntime(tools=plugin.tools),
         top_k=top_k,
         max_tool_rounds=max_tool_rounds,
+        max_history_turns=history_turns,
         system_prompt=plugin.system_prompt,
         tools=plugin.tools,
     )
@@ -73,4 +80,5 @@ def build(
         plugin=load_plugin(config.plugin_module),
         top_k=config.top_k,
         max_tool_rounds=config.max_tool_rounds,
+        history_turns=config.history_turns,
     )
