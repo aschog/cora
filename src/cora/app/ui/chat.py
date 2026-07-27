@@ -46,14 +46,14 @@ def _documents(knowledge_base: KnowledgeBase) -> None:
 def _ingest_once(knowledge_base: KnowledgeBase, uploaded: UploadedFile | None) -> None:
     """Ingest a selection once: Streamlit re-delivers the same file every rerun."""
     if uploaded is None:
-        st.session_state.upload_hash = None
+        st.session_state.upload_key = None
         return
     data = uploaded.getvalue()
-    file_hash = hashlib.sha256(data).hexdigest()
-    if file_hash == st.session_state.get("upload_hash"):
+    key = (uploaded.name, hashlib.sha256(data).hexdigest())
+    if key == st.session_state.get("upload_key"):
         return
     if _ingest(knowledge_base, data, uploaded.name):
-        st.session_state.upload_hash = file_hash
+        st.session_state.upload_key = key
 
 
 def _ingest(knowledge_base: KnowledgeBase, data: bytes, filename: str) -> bool:

@@ -189,6 +189,22 @@ def test_uploading_content_already_indexed_reports_a_duplicate() -> None:
 
 
 @pytest.mark.integration
+def test_a_new_selection_of_known_bytes_reports_the_duplicate() -> None:
+    at = _run_page(_app(ScriptedChatModel([])))
+    content = b"protein facts"
+
+    at.file_uploader[0].set_value(("a.md", content, "text/markdown"))
+    at.run()
+    at.file_uploader[0].set_value(("b.md", content, "text/markdown"))
+    at.run()
+
+    assert not at.exception
+    assert not at.success
+    [notice] = at.info
+    assert "b.md" in notice.value
+
+
+@pytest.mark.integration
 def test_a_transient_ingest_failure_is_retried_on_the_next_rerun() -> None:
     at = _run_page(_flaky_app(failures=1))
 

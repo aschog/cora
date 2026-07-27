@@ -121,8 +121,10 @@ Review findings (PR #5 AI review, routed back through the TDD loop)
       raising `InputRejectedError("")` put a traceback on screen, which the
       shell exists to prevent. Rejected a `TypedDict` for `ThreadEntry`: with
       `total=False` it would not have caught this access anyway.)*
-- [ ] a new selection whose bytes are already indexed reports the duplicate
-      instead of staying silent (key the record on name + hash).
+- [x] a new selection whose bytes are already indexed reports the duplicate
+      instead of staying silent — the record keys on name + hash. *(Content
+      alone was the wrong key: the record guards a selection, not a document,
+      and knowledge-base dedup already owns "is this content known?".)*
 - [ ] the upload-error test pins what the sidebar says after the rerun, not
       just the absence of an error.
 - [ ] `_counting_app` / `_flaky_app` wire one knowledge base into both `App`
