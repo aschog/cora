@@ -37,12 +37,12 @@ semantics. `<<existing>>` = reused unchanged.
   part of the persisted thread rather than a transient banner. The entry is
   typed, so conversation memory (finding #1) can later decide for itself whether
   failed turns reach the model — out of scope here.
-- **Upload record** — one `st.session_state` entry holding the content hash of
-  the handled file plus a **one-shot outcome** (added / duplicate / error)
-  consumed on first render. Two roles in one record: the guard that keeps
-  `add_file` from firing every rerun, and the carrier of the confirmation.
-  Detaching the file clears it. Comparison still hashes per rerun (cheap); what
-  is skipped is the retriever round-trip and the re-raise.
+- **Upload record** — one `st.session_state` entry identifying the handled
+  selection as `(filename, sha256)`. It is only a guard: the outcome is rendered
+  as the ingest happens and never re-rendered, so there is nothing to store and
+  consume. Detaching the file clears it; a transient failure declines to record
+  it, leaving the next rerun free to retry. Comparison still hashes per rerun
+  (cheap); what is skipped is the retriever round-trip and the re-raise.
 - **Outcome wording** — success names file and chunk count, duplicate says the
   file is already in the knowledge base, failure shows `error.user_message`. The
   sidebar source list `<<existing>>` stays the durable signal that a file landed.
@@ -125,10 +125,26 @@ Review findings (PR #5 AI review, routed back through the TDD loop)
       instead of staying silent — the record keys on name + hash. *(Content
       alone was the wrong key: the record guards a selection, not a document,
       and knowledge-base dedup already owns "is this content known?".)*
-- [ ] the upload-error test pins what the sidebar says after the rerun, not
+- [x] the upload-error test pins what the sidebar says after the rerun, not
       just the absence of an error.
-- [ ] `_counting_app` / `_flaky_app` wire one knowledge base into both `App`
-      fields instead of leaving `engine.knowledge_base` pointing elsewhere.
+- [x] the test doubles sit at the retriever port, so `assemble` wires one
+      knowledge base into both `App` fields. *(Better than repairing the
+      `replace()` wiring: counting `contains` calls measures the wasted
+      round-trip finding #3 named, instead of counting a level above it.)*
+
+---
+
+## Follow-up (deliberately not on this branch)
+
+- **Retryability belongs in `core.errors`, not the shell.** `_ingest` infers
+  "worth retrying" from the class hierarchy — `AdapterError` transient,
+  every other `CoreError` settled. The mapping is right today, but it is a
+  domain judgment made in a layer `CLAUDE.md` reserves for widgets, and it is
+  implicit: a future transient error that does not subclass `AdapterError`
+  would be silently treated as permanent, with no test or gate objecting.
+  State it on the hierarchy instead (a `retryable` class attribute, `False` on
+  `CoreError`, `True` on `AdapterError`) and have the shell ask. Left out here
+  to keep this branch shell-only; it needs its own branch and a core test.
 
 ---
 
@@ -137,9 +153,14 @@ Review findings (PR #5 AI review, routed back through the TDD loop)
 - **Blank input** — whitespace-only prompts now persist as an empty user bubble
   above "Please enter a question.". Accepted: the alternative has the shell
   second-guessing `EmptyInputRule`.
-- **AppTest file_uploader identity** — the guard keys on a hash of the bytes,
-  not on Streamlit's `file_id`, so it behaves the same under `AppTest` and a
-  real browser.
+- **Upload key vs `file_id`** — the record keys on `(name, sha256)` rather than
+  Streamlit's `file_id`, so it behaves the same under `AppTest` (which mints a
+  fresh id per `set_value`) and in a browser. Cost: a second place in the
+  codebase hashes content, the other being knowledge-base dedup.
+- **`UploadedFile` type hint** — imported from
+  `streamlit.runtime.uploaded_file_manager`, a runtime-internal path. Inside the
+  permitted tree, but an upgrade hazard for a hint only; a two-method Protocol
+  would avoid it.
 - **One-shot outcomes are easy to miss** — the next interaction wipes the
   confirmation. Mitigated by the source list; revisit only if manual testing
   says otherwise.
