@@ -110,6 +110,21 @@ Upload record (#3, #9)
       `formatting.ingest_message`, which gave the 1-vs-many wording unit-tier
       coverage the AppTest layer never had.)*
 
+Review findings (PR #5 AI review, routed back through the TDD loop)
+
+- [x] a transient `AdapterError` during ingest leaves the file retryable — the
+      next rerun attempts it again and succeeds once the retriever recovers.
+      *(The guard was armed before the ingest ran, so "please try again" was a
+      promise the code broke: only settled outcomes record the hash now.)*
+- [ ] an error entry with an empty message still renders as an error, never a
+      `KeyError` — `_show` tests presence, not truthiness.
+- [ ] a new selection whose bytes are already indexed reports the duplicate
+      instead of staying silent (key the record on name + hash).
+- [ ] the upload-error test pins what the sidebar says after the rerun, not
+      just the absence of an error.
+- [ ] `_counting_app` / `_flaky_app` wire one knowledge base into both `App`
+      fields instead of leaving `engine.knowledge_base` pointing elsewhere.
+
 ---
 
 ## Open questions / risks

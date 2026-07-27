@@ -10,6 +10,7 @@ from cora.core.errors import (
     InputRejectedError,
     LlmError,
     PluginLoadError,
+    RetrievalError,
 )
 from cora.core.ports.chat_model import ChatModel, ModelReply
 from cora.core.ports.plugin import Plugin, ToolCall
@@ -47,6 +48,24 @@ def _counting_app() -> tuple[App, _CountingKnowledgeBase]:
     app = _app(ScriptedChatModel([]))
     counting = _CountingKnowledgeBase(app.knowledge_base)
     return replace(app, knowledge_base=counting), counting
+
+
+class _FlakyKnowledgeBase(KnowledgeBase):
+    def __init__(self, inner: KnowledgeBase, failures: int) -> None:
+        super().__init__(embedder=inner.embedder, retriever=inner.retriever)
+        self.failures = failures
+
+    def add_file(self, data: bytes, filename: str) -> int:
+        if self.failures:
+            self.failures -= 1
+            raise RetrievalError
+        return super().add_file(data, filename)
+
+
+def _flaky_app(failures: int) -> App:
+    app = _app(ScriptedChatModel([]))
+    flaky = _FlakyKnowledgeBase(app.knowledge_base, failures)
+    return replace(app, knowledge_base=flaky)
 
 
 def _page(app) -> None:
@@ -156,6 +175,22 @@ def test_uploading_content_already_indexed_reports_a_duplicate() -> None:
     assert not at.success
     [notice] = at.info
     assert "copy.md" in notice.value
+
+
+@pytest.mark.integration
+def test_a_transient_ingest_failure_is_retried_on_the_next_rerun() -> None:
+    at = _run_page(_flaky_app(failures=1))
+
+    at.file_uploader[0].set_value(("note.md", b"protein facts", "text/markdown"))
+    at.run()
+    assert [e.value for e in at.error] == [RetrievalError().user_message]
+
+    at.run()
+
+    assert not at.exception
+    assert not at.error
+    [confirmation] = at.success
+    assert "note.md" in confirmation.value
 
 
 @pytest.mark.integration

@@ -11,7 +11,7 @@ from cora.app.ui.formatting import (
     ingest_message,
     numbered_sources,
 )
-from cora.core.errors import CoreError
+from cora.core.errors import AdapterError, CoreError
 from cora.core.services.chat_engine import ChatEngine, ChatResult
 from cora.core.services.knowledge_base import KnowledgeBase
 
@@ -52,19 +52,24 @@ def _ingest_once(knowledge_base: KnowledgeBase, uploaded: UploadedFile | None) -
     file_hash = hashlib.sha256(data).hexdigest()
     if file_hash == st.session_state.get("upload_hash"):
         return
-    st.session_state.upload_hash = file_hash
-    _ingest(knowledge_base, data, uploaded.name)
+    if _ingest(knowledge_base, data, uploaded.name):
+        st.session_state.upload_hash = file_hash
 
 
-def _ingest(knowledge_base: KnowledgeBase, data: bytes, filename: str) -> None:
+def _ingest(knowledge_base: KnowledgeBase, data: bytes, filename: str) -> bool:
+    """Report the outcome; return False when a later attempt could still work."""
     try:
         with st.spinner("Ingesting…"):
             chunks = knowledge_base.add_file(data, filename)
+    except AdapterError as error:
+        st.error(error.user_message)
+        return False
     except CoreError as error:
         st.error(error.user_message)
-        return
+        return True
     report = st.success if chunks else st.info
     report(ingest_message(filename, chunks))
+    return True
 
 
 def _thread() -> None:
