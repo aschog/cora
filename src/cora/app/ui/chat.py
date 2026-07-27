@@ -16,6 +16,7 @@ from cora.core.services.chat_engine import ChatEngine, ChatResult
 from cora.core.services.knowledge_base import KnowledgeBase
 
 ThreadEntry = dict[str, Any]
+MAX_INGEST_ATTEMPTS = 2
 
 
 def main(app_factory: Callable[[], App]) -> None:
@@ -52,8 +53,18 @@ def _ingest_once(knowledge_base: KnowledgeBase, uploaded: UploadedFile | None) -
     key = (uploaded.name, hashlib.sha256(data).hexdigest())
     if key == st.session_state.get("upload_key"):
         return
-    if _ingest(knowledge_base, data, uploaded.name):
+    attempt = _attempts_on(key) + 1
+    settled = _ingest(knowledge_base, data, uploaded.name)
+    if settled or attempt >= MAX_INGEST_ATTEMPTS:
         st.session_state.upload_key = key
+        st.session_state.upload_attempts = None
+    else:
+        st.session_state.upload_attempts = (key, attempt)
+
+
+def _attempts_on(key: tuple[str, str]) -> int:
+    tried, count = st.session_state.get("upload_attempts") or (None, 0)
+    return count if tried == key else 0
 
 
 def _ingest(knowledge_base: KnowledgeBase, data: bytes, filename: str) -> bool:

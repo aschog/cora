@@ -51,10 +51,12 @@ class _FlakyRetriever(FakeRetriever):
     def __init__(self) -> None:
         super().__init__()
         self.failures = 0
+        self.add_attempts = 0
 
     def add(
         self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
     ) -> None:
+        self.add_attempts += 1
         if self.failures:
             self.failures -= 1
             raise RetrievalError
@@ -226,6 +228,22 @@ def test_a_transient_ingest_failure_is_retried_on_the_next_rerun() -> None:
     assert not at.error
     [confirmation] = at.success
     assert "note.md" in confirmation.value
+
+
+@pytest.mark.integration
+def test_a_persistent_ingest_failure_stops_retrying() -> None:
+    retriever = _FlakyRetriever()
+    at = _run_page(_app_on(retriever))
+    retriever.failures = 99
+
+    at.file_uploader[0].set_value(("note.md", b"protein facts", "text/markdown"))
+    at.run()
+    at.run()
+    at.run()
+    at.run()
+
+    assert not at.exception
+    assert retriever.add_attempts == 2
 
 
 @pytest.mark.integration
