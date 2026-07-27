@@ -38,13 +38,20 @@
   lands between the system prompt and the current user message in
   `_initial_messages`. Defaulting to `()` keeps every existing caller and test
   valid, and keeps the engine a pure function of its arguments.
-- **Truncation in the engine** — a `max_history_turns` field, fed from a new
-  `CORA_HISTORY_TURNS`. Prompt assembly is the engine's job, so the cap belongs
-  next to it rather than in the caller.
+- **Truncation in the engine** — a `max_history_turns` field (defaulted, so
+  existing constructions stay valid — same argument as `history=()`), fed from
+  a new `CORA_HISTORY_TURNS`. Prompt assembly is the engine's job, so the cap
+  belongs next to it rather than in the caller. The unit is *turns* (single
+  messages), matching the name; an odd cap may leave history starting with an
+  orphaned assistant turn — accepted over pairing logic.
 - **UI derives, does not store** — a pure helper maps the existing
-  `session_state.messages` to `Turn`s, skipping error entries. One source of
-  truth, no second transcript to drift, and the "failed turns are not sent"
-  rule is one filter in framework-free code.
+  `session_state.messages` to `Turn`s, dropping failed exchanges: a user turn
+  counts only when a successful assistant answer follows it, so an error entry
+  removes *both* itself and the question that caused it (skipping the error
+  alone would still send the blocked question). One source of truth, no second
+  transcript to drift. `_answer` appends the prompt to the thread *before*
+  calling the engine, so history is mapped from the thread as it was before
+  that append — otherwise the current question appears twice.
 
 ```mermaid
 ---
@@ -87,7 +94,7 @@ Core
 - [ ] `answer` with no history sends exactly what it sends today — the
       default keeps existing behaviour bit-for-bit.
 - [ ] history longer than `max_history_turns` is truncated to the most recent
-      turns, oldest dropped first.
+      turns (single messages, not pairs), oldest dropped first.
 - [ ] retrieval and validation still receive the current question alone, not
       the history (guards the "don't poison the query" decision).
 
@@ -98,8 +105,11 @@ Composition
 
 UI
 
-- [ ] the thread-to-turns mapper skips error entries, keeps user/assistant
-      pairs in order, and maps an empty thread to `()`.
+- [ ] the thread-to-turns mapper keeps answered user/assistant pairs in order,
+      drops an error entry *and* the user turn that caused it, and maps an
+      empty thread to `()`.
+- [ ] `_answer` maps history from the thread before appending the current
+      prompt, so the question is sent once, not twice.
 - [ ] acceptance (`AppTest`): state a fact, then ask about it, and the second
       call receives the first exchange.
 
