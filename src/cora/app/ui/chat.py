@@ -55,7 +55,7 @@ def _answer(engine: ChatEngine, prompt: str) -> None:
         with st.spinner("Thinking…"):
             result = engine.answer(prompt)
     except CoreError as error:
-        st.error(error.user_message)
+        _append_and_show({"role": "assistant", "error": error.user_message})
         return
     _append_and_show(_assistant_message(result))
 
@@ -76,6 +76,9 @@ def _append_and_show(message: ThreadEntry) -> None:
 
 def _show(message: ThreadEntry) -> None:
     with st.chat_message(message["role"]):
+        if failure := message.get("error"):
+            st.error(failure)
+            return
         st.markdown(message["content"])
         _expander("Sources", message.get("sources", ()))
         _expander("Tool results", message.get("tool_results", ()))

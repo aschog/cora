@@ -82,7 +82,7 @@ that counts `add_file` calls.
 
 Failed turns (#2)
 
-- [ ] a `CoreError` from `engine.answer` appends an error entry: question and
+- [x] a `CoreError` from `engine.answer` appends an error entry: question and
       `user_message` are both visible, and both survive a plain rerun.
 - [ ] a successful turn after a failed one appends normally — thread keeps
       growing, the earlier error entry stays intact.

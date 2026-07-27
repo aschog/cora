@@ -70,6 +70,18 @@ def test_engine_error_shows_friendly_message_and_keeps_the_thread() -> None:
 
 
 @pytest.mark.integration
+def test_failed_turn_keeps_its_reason_across_a_rerun() -> None:
+    at = _run_page(_app(FailingChatModel(LlmError())))
+
+    at.chat_input[0].set_value("Hello?").run()
+    at.run()
+
+    assert not at.exception
+    assert "Hello?" in _visible_text(at)
+    assert [e.value for e in at.error] == [LlmError().user_message]
+
+
+@pytest.mark.integration
 def test_upload_failure_shows_friendly_error_and_keeps_the_chat() -> None:
     at = _run_page(_app(ScriptedChatModel([])))
 
