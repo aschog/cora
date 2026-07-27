@@ -91,7 +91,7 @@ Core
 - [x] `Turn(role, text)` is frozen; `answer` accepts `history` and places it
       between the system prompt and the current question (assert on
       `ScriptedChatModel.last_messages`).
-- [ ] `answer` with no history sends exactly what it sends today — the
+- [x] `answer` with no history sends exactly what it sends today — the
       default keeps existing behaviour bit-for-bit.
 - [ ] history longer than `max_history_turns` is truncated to the most recent
       turns (single messages, not pairs), oldest dropped first.

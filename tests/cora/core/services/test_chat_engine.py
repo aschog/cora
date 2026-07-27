@@ -116,6 +116,17 @@ def test_injected_build_context_replaces_the_default() -> None:
     assert "alpha" not in system.content
 
 
+def test_answer_without_history_sends_only_system_and_current_question() -> None:
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    engine = _make_engine(chat_model=model)
+
+    engine.answer("hi")
+
+    assert model.last_messages is not None
+    assert [m.role for m in model.last_messages] == ["system", "user"]
+    assert model.last_messages[1].content == "hi"
+
+
 def test_history_lands_between_system_prompt_and_current_question() -> None:
     model = ScriptedChatModel([ModelReply(text="ok")])
     engine = _make_engine(chat_model=model)
