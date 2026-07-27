@@ -13,6 +13,11 @@ all three `samples/` files, warm start on a populated DB, RAG questions,
 tool-calling questions, safety rejections, over-long input, malformed uploads,
 and plain reruns after an error.
 
+> **Status.** Findings 2, 3 and 9 are fixed on `fix/ui-error-handling` (PR #5)
+> and verified against the real stack. The other seven are open — #1 is the
+> highest-severity one remaining. The findings below are left as they were
+> written, so this file stays a record of the run rather than a tracker.
+
 ## What works
 
 - Cold start ~12 s (spinner shown), warm start ~3 s. Seed docs ingested, then
