@@ -15,6 +15,7 @@ from cora.core.services.chat_engine import (
 )
 from cora.core.services.tool_runtime import ToolRuntime
 from cora.core.services.validation import EmptyInputRule, ValidationPipeline
+from cora.core.turn import Turn
 from fakes import FailingChatModel, FakeContextSource, ScriptedChatModel, add_tool
 
 
@@ -113,6 +114,24 @@ def test_injected_build_context_replaces_the_default() -> None:
     system = model.last_messages[0]
     assert "CUSTOM-CONTEXT" in system.content
     assert "alpha" not in system.content
+
+
+def test_history_lands_between_system_prompt_and_current_question() -> None:
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    engine = _make_engine(chat_model=model)
+    history = (
+        Turn(role="user", text="I weigh 80 kg."),
+        Turn(role="assistant", text="Noted."),
+    )
+
+    engine.answer("What did I say my weight was?", history=history)
+
+    assert model.last_messages is not None
+    roles = [m.role for m in model.last_messages]
+    assert roles == ["system", "user", "assistant", "user"]
+    assert model.last_messages[1].content == "I weigh 80 kg."
+    assert model.last_messages[2].content == "Noted."
+    assert model.last_messages[3].content == "What did I say my weight was?"
 
 
 def test_tool_call_runs_and_result_feeds_back_and_appears_in_result() -> None:

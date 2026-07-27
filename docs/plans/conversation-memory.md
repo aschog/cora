@@ -88,7 +88,7 @@ for what the model received. One integration test for the acceptance case.
 
 Core
 
-- [ ] `Turn(role, text)` is frozen; `answer` accepts `history` and places it
+- [x] `Turn(role, text)` is frozen; `answer` accepts `history` and places it
       between the system prompt and the current question (assert on
       `ScriptedChatModel.last_messages`).
 - [ ] `answer` with no history sends exactly what it sends today — the

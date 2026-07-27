@@ -7,6 +7,7 @@ from cora.core.errors import ToolLoopLimitError
 from cora.core.ports.chat_model import ChatModel, Message
 from cora.core.ports.plugin import Tool, ToolCall, ToolResult
 from cora.core.ports.retrieval import RetrievedChunk
+from cora.core.turn import Turn
 
 
 class ContextSource(Protocol):
@@ -63,23 +64,27 @@ class ChatEngine:
     tools: tuple[Tool, ...] = ()
     build_context: Callable[[list[RetrievedChunk]], str] = build_context_block
 
-    def answer(self, user_input: str) -> ChatResult:
+    def answer(self, user_input: str, history: tuple[Turn, ...] = ()) -> ChatResult:
         validated = self.validation.validate(user_input)
         chunks = self.knowledge_base.search(validated, self.top_k)
-        messages = self._initial_messages(validated, chunks)
+        messages = self._initial_messages(validated, chunks, history)
         text, tool_results = self._run_tool_loop(messages)
         return ChatResult(
             answer=text, sources=_unique_sources(chunks), tool_results=tool_results
         )
 
     def _initial_messages(
-        self, user_input: str, chunks: list[RetrievedChunk]
+        self,
+        user_input: str,
+        chunks: list[RetrievedChunk],
+        history: tuple[Turn, ...],
     ) -> list[Message]:
         system = Message(
             role="system",
             content=f"{self.system_prompt}\n\n{self.build_context(chunks)}",
         )
-        return [system, Message(role="user", content=user_input)]
+        past = [Message(role=turn.role, content=turn.text) for turn in history]
+        return [system, *past, Message(role="user", content=user_input)]
 
     def _run_tool_loop(
         self, messages: list[Message]
