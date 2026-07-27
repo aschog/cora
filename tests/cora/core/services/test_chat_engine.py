@@ -178,6 +178,30 @@ def test_zero_max_history_turns_sends_no_history_at_all() -> None:
     assert [m.role for m in model.last_messages] == ["system", "user"]
 
 
+class _RecordingValidator:
+    def __init__(self) -> None:
+        self.last_input: str | None = None
+
+    def validate(self, user_input: str) -> str:
+        self.last_input = user_input
+        return user_input
+
+
+def test_retrieval_and_validation_see_the_question_alone_not_the_history() -> None:
+    kb = FakeContextSource()
+    validator = _RecordingValidator()
+    engine = _make_engine(knowledge_base=kb, validation=validator)
+    history = (
+        Turn(role="user", text="I weigh 80 kg."),
+        Turn(role="assistant", text="Noted."),
+    )
+
+    engine.answer("What about protein?", history=history)
+
+    assert validator.last_input == "What about protein?"
+    assert kb.last_query == "What about protein?"
+
+
 def test_tool_call_runs_and_result_feeds_back_and_appears_in_result() -> None:
     call = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1")
     model = ScriptedChatModel(
