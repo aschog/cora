@@ -96,8 +96,11 @@ Upload record (#3, #9)
       does not call `add_file` again. *(The record needs only the hash — the
       outcome is rendered at ingest time and never re-rendered, so there is
       nothing to store and consume.)*
-- [ ] a successful upload confirms with its chunk count; the same bytes
-      re-attached report a duplicate, not a fresh ingest.
+- [x] a successful upload confirms with its chunk count; content already
+      indexed reports a duplicate, not a fresh ingest. *(Two tests. Within one
+      session the hash guard catches a re-attach before the knowledge base
+      does, so the duplicate path is reached via already-indexed content —
+      seed docs here, a previous session in real use.)*
 - [ ] detaching the file clears the record, so re-selecting it ingests again
       (and hits knowledge-base dedup).
 - [ ] refactor: extract the record handling so `_documents` stays a reading of

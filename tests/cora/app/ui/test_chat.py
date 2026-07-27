@@ -132,6 +132,33 @@ def test_upload_failure_shows_friendly_error_and_keeps_the_chat() -> None:
 
 
 @pytest.mark.integration
+def test_successful_upload_confirms_with_its_chunk_count() -> None:
+    at = _run_page(_app(ScriptedChatModel([])))
+
+    at.file_uploader[0].set_value(("note.md", b"protein facts", "text/markdown"))
+    at.run()
+
+    assert not at.exception
+    [confirmation] = at.success
+    assert "note.md" in confirmation.value
+    assert "1 chunk" in confirmation.value
+
+
+@pytest.mark.integration
+def test_uploading_content_already_indexed_reports_a_duplicate() -> None:
+    plugin = make_plugin(seed_docs=(("seed.md", b"protein facts"),))
+    at = _run_page(_app(ScriptedChatModel([]), plugin=plugin))
+
+    at.file_uploader[0].set_value(("copy.md", b"protein facts", "text/markdown"))
+    at.run()
+
+    assert not at.exception
+    assert not at.success
+    [notice] = at.info
+    assert "copy.md" in notice.value
+
+
+@pytest.mark.integration
 def test_upload_error_clears_on_the_next_rerun_without_re_ingesting() -> None:
     app, knowledge_base = _counting_app()
     at = _run_page(app)

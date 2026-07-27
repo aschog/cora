@@ -50,9 +50,18 @@ def _ingest_once(knowledge_base: KnowledgeBase, uploaded: UploadedFile | None) -
     st.session_state.upload_hash = file_hash
     try:
         with st.spinner("Ingesting…"):
-            knowledge_base.add_file(data, uploaded.name)
+            chunks = knowledge_base.add_file(data, uploaded.name)
     except CoreError as error:
         st.error(error.user_message)
+        return
+    if chunks:
+        st.success(f"Added {uploaded.name} — {chunks} {_chunks(chunks)}.")
+    else:
+        st.info(f"{uploaded.name} is already in your knowledge base.")
+
+
+def _chunks(count: int) -> str:
+    return "chunk" if count == 1 else "chunks"
 
 
 def _thread() -> None:
