@@ -116,8 +116,11 @@ Review findings (PR #5 AI review, routed back through the TDD loop)
       next rerun attempts it again and succeeds once the retriever recovers.
       *(The guard was armed before the ingest ran, so "please try again" was a
       promise the code broke: only settled outcomes record the hash now.)*
-- [ ] an error entry with an empty message still renders as an error, never a
-      `KeyError` — `_show` tests presence, not truthiness.
+- [x] an error entry with an empty message still renders as an error, never a
+      `KeyError` — `_show` tests presence, not truthiness. *(A plugin rule
+      raising `InputRejectedError("")` put a traceback on screen, which the
+      shell exists to prevent. Rejected a `TypedDict` for `ThreadEntry`: with
+      `total=False` it would not have caught this access anyway.)*
 - [ ] a new selection whose bytes are already indexed reports the duplicate
       instead of staying silent (key the record on name + hash).
 - [ ] the upload-error test pins what the sidebar says after the rerun, not

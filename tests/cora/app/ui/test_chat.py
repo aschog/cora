@@ -138,6 +138,17 @@ def test_thread_grows_past_a_failed_turn() -> None:
 
 
 @pytest.mark.integration
+def test_a_failure_carrying_no_message_still_renders_as_an_error() -> None:
+    plugin = make_plugin(validation_rules=(_RejectRule("insulin", ""),))
+    at = _run_page(_app(ScriptedChatModel([]), plugin=plugin))
+
+    at.chat_input[0].set_value("Should I take insulin?").run()
+
+    assert not at.exception
+    assert len(at.error) == 1
+
+
+@pytest.mark.integration
 def test_upload_failure_shows_friendly_error_and_keeps_the_chat() -> None:
     at = _run_page(_app(ScriptedChatModel([])))
 

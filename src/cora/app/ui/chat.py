@@ -106,8 +106,8 @@ def _append_and_show(message: ThreadEntry) -> None:
 
 def _show(message: ThreadEntry) -> None:
     with st.chat_message(message["role"]):
-        if failure := message.get("error"):
-            st.error(failure)
+        if "error" in message:
+            st.error(message["error"])
             return
         st.markdown(message["content"])
         _expander("Sources", message.get("sources", ()))
