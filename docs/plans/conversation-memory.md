@@ -110,9 +110,9 @@ UI
 - [x] the thread-to-turns mapper keeps answered user/assistant pairs in order,
       drops an error entry *and* the user turn that caused it, and maps an
       empty thread to `()`.
-- [ ] `_answer` maps history from the thread before appending the current
+- [x] `_answer` maps history from the thread before appending the current
       prompt, so the question is sent once, not twice.
-- [ ] acceptance (`AppTest`): state a fact, then ask about it, and the second
+- [x] acceptance (`AppTest`): state a fact, then ask about it, and the second
       call receives the first exchange.
 
 Docs

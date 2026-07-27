@@ -10,6 +10,7 @@ from cora.app.ui.formatting import (
     format_tool_result,
     ingest_message,
     numbered_sources,
+    thread_to_turns,
 )
 from cora.core.errors import AdapterError, CoreError
 from cora.core.services.chat_engine import ChatEngine, ChatResult
@@ -91,10 +92,11 @@ def _thread() -> None:
 
 
 def _answer(engine: ChatEngine, prompt: str) -> None:
+    history = thread_to_turns(st.session_state.messages)
     _append_and_show({"role": "user", "content": prompt})
     try:
         with st.spinner("Thinking…"):
-            result = engine.answer(prompt)
+            result = engine.answer(prompt, history)
     except CoreError as error:
         _append_and_show({"role": "assistant", "error": error.user_message})
         return
