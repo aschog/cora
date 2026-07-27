@@ -34,7 +34,8 @@ their sources, and any tool runs appear under the answer.
 
 Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
 `CORA_PLUGIN` (default `cora.plugins.fitness`), `CORA_TOP_K`,
-`CORA_MAX_TOOL_ROUNDS`, `OPENROUTER_BASE_URL`.
+`CORA_MAX_TOOL_ROUNDS`, `CORA_HISTORY_TURNS` (past turns sent with each
+question; `0` switches memory off), `OPENROUTER_BASE_URL`.
 
 ## Manual testing
 

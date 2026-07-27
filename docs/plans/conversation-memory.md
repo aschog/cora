@@ -117,7 +117,7 @@ UI
 
 Docs
 
-- [ ] README: `CORA_HISTORY_TURNS` alongside the other `CORA_*` overrides.
+- [x] README: `CORA_HISTORY_TURNS` alongside the other `CORA_*` overrides.
 
 ---
 
