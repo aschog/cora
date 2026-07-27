@@ -55,16 +55,21 @@ title: Upload record lifecycle, one rerun of the sidebar
 ---
 flowchart TD
   start([rerun]) --> attached{file attached?}
-  attached -- no --> clear[clear record]
+  attached -- no --> clear[clear the record]
   clear --> done([render source list])
-  attached -- yes --> same{hash matches record?}
-  same -- yes --> pending{outcome unconsumed?}
-  pending -- no --> done
-  pending -- yes --> show[render outcome, mark consumed]
-  show --> done
+  attached -- yes --> same{"key matches? (name, hash)"}
+  same -- yes --> done
   same -- no --> ingest[add_file under spinner]
-  ingest --> store[store outcome: added, duplicate or error]
-  store --> show
+  ingest --> outcome{outcome}
+  outcome -- added or duplicate --> report[report chunk count or duplicate]
+  outcome -- deterministic error --> show[show the error]
+  outcome -- transient error --> retry{attempts left?}
+  retry -- no --> show
+  retry -- yes --> pending[show the error, leave the key unrecorded]
+  report --> record[record the key]
+  show --> record
+  record --> done
+  pending --> done
 ```
 
 ---
@@ -73,8 +78,11 @@ flowchart TD
 
 Integration tier (`AppTest`) throughout — every behaviour here is a rerun
 behaviour, which is precisely what the pure helpers cannot express. Fakes for
-the three ports `<<existing>>`; the upload tests need a knowledge-base double
-that counts `add_file` calls.
+the three ports `<<existing>>`; the upload tests add two `FakeRetriever`
+subclasses, one counting `contains` calls (an ingest attempt asks before doing
+any work) and one failing `add` a set number of times. Both go in through
+`assemble`, so the `App` under test is wired exactly as the real one is.
+Unit tier covers `ingest_message` — the only framework-free piece.
 
 ---
 
@@ -132,9 +140,30 @@ Review findings (PR #5 AI review, routed back through the TDD loop)
       `replace()` wiring: counting `contains` calls measures the wasted
       round-trip finding #3 named, instead of counting a level above it.)*
 
+Second review round (PR #5, after the fixes above)
+
+- [x] a persistent `AdapterError` stops retrying after `MAX_INGEST_ATTEMPTS`.
+      *(Self-inflicted by the retry fix: every rerun re-attempted — and
+      `add_file` embeds before it writes, so a real outage re-ran the embedder
+      over the whole file on every unrelated chat turn, recreating finding #3's
+      complaint for the transient class.)*
+- [x] the plan's diagram and testing notes match the shipped design.
+      *(The prose was corrected earlier but the flowchart under it still drew
+      the abandoned store-and-consume record.)*
+
 ---
 
 ## Follow-up (deliberately not on this branch)
+
+- **`list_sources()` is outside all error handling.** `_documents` calls it
+  unguarded (`chat.py:43`), `render` does not catch, and `main`'s `try` covers
+  only the factory — so when `ChromaRetriever.sources()` raises `RetrievalError`
+  on an unreachable collection, the user gets a traceback. Pre-existing, but
+  this branch makes it look handled: `_FlakyRetriever` fails only writes, so the
+  retry test simulates "writes fail while reads work" rather than the ordinary
+  outage, where the same rerun dies two lines later. Fixing it means one `try`
+  around the source listing plus a double that fails reads too — which would
+  also make the retry test realistic.
 
 - **Retryability belongs in `core.errors`, not the shell.** `_ingest` infers
   "worth retrying" from the class hierarchy — `AdapterError` transient,
