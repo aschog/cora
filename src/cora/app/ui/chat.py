@@ -1,7 +1,9 @@
+import hashlib
 from collections.abc import Callable, Sequence
 from typing import Any
 
 import streamlit as st
+from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from cora.app.assembly import App
 from cora.app.ui.formatting import format_tool_result, numbered_sources
@@ -32,14 +34,25 @@ def render(app: App) -> None:
 def _documents(knowledge_base: KnowledgeBase) -> None:
     st.header("Documents")
     uploaded = st.file_uploader("Add a document", type=["txt", "md", "pdf"])
-    if uploaded is not None:
-        try:
-            with st.spinner("Ingesting…"):
-                knowledge_base.add_file(uploaded.getvalue(), uploaded.name)
-        except CoreError as error:
-            st.error(error.user_message)
+    _ingest_once(knowledge_base, uploaded)
     for source in knowledge_base.list_sources():
         st.markdown(source)
+
+
+def _ingest_once(knowledge_base: KnowledgeBase, uploaded: UploadedFile | None) -> None:
+    if uploaded is None:
+        st.session_state.upload_hash = None
+        return
+    data = uploaded.getvalue()
+    file_hash = hashlib.sha256(data).hexdigest()
+    if file_hash == st.session_state.get("upload_hash"):
+        return
+    st.session_state.upload_hash = file_hash
+    try:
+        with st.spinner("Ingesting…"):
+            knowledge_base.add_file(data, uploaded.name)
+    except CoreError as error:
+        st.error(error.user_message)
 
 
 def _thread() -> None:

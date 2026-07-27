@@ -92,8 +92,10 @@ Failed turns (#2)
 
 Upload record (#3, #9)
 
-- [ ] a rejected file shows its error once; a plain rerun shows no error and
-      does not call `add_file` again.
+- [x] a rejected file shows its error once; a plain rerun shows no error and
+      does not call `add_file` again. *(The record needs only the hash — the
+      outcome is rendered at ingest time and never re-rendered, so there is
+      nothing to store and consume.)*
 - [ ] a successful upload confirms with its chunk count; the same bytes
       re-attached report a duplicate, not a fresh ingest.
 - [ ] detaching the file clears the record, so re-selecting it ingests again

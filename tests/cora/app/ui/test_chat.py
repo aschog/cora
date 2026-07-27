@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import pytest
 from streamlit.testing.v1 import AppTest
@@ -13,6 +13,7 @@ from cora.core.errors import (
 )
 from cora.core.ports.chat_model import ChatModel, ModelReply
 from cora.core.ports.plugin import Plugin, ToolCall
+from cora.core.services.knowledge_base import KnowledgeBase
 from fakes import (
     FailingChatModel,
     FakeEmbedder,
@@ -30,6 +31,22 @@ def _app(chat_model: ChatModel, plugin: Plugin | None = None) -> App:
         retriever=FakeRetriever(),
         plugin=plugin or make_plugin(),
     )
+
+
+class _CountingKnowledgeBase(KnowledgeBase):
+    def __init__(self, inner: KnowledgeBase) -> None:
+        super().__init__(embedder=inner.embedder, retriever=inner.retriever)
+        self.ingests = 0
+
+    def add_file(self, data: bytes, filename: str) -> int:
+        self.ingests += 1
+        return super().add_file(data, filename)
+
+
+def _counting_app() -> tuple[App, _CountingKnowledgeBase]:
+    app = _app(ScriptedChatModel([]))
+    counting = _CountingKnowledgeBase(app.knowledge_base)
+    return replace(app, knowledge_base=counting), counting
 
 
 def _page(app) -> None:
@@ -112,6 +129,22 @@ def test_upload_failure_shows_friendly_error_and_keeps_the_chat() -> None:
     expected = EmptyDocumentError("empty.txt").user_message
     assert [e.value for e in at.error] == [expected]
     assert at.chat_input
+
+
+@pytest.mark.integration
+def test_upload_error_clears_on_the_next_rerun_without_re_ingesting() -> None:
+    app, knowledge_base = _counting_app()
+    at = _run_page(app)
+
+    at.file_uploader[0].set_value(("empty.txt", b"", "text/plain"))
+    at.run()
+    assert [e.value for e in at.error] == [EmptyDocumentError("empty.txt").user_message]
+
+    at.run()
+
+    assert not at.exception
+    assert not at.error
+    assert knowledge_base.ingests == 1
 
 
 @pytest.mark.integration
