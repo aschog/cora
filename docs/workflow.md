@@ -56,6 +56,10 @@ project. Every phase should be an atomic commit.
 > Every green step is a save point. If a cycle goes sideways, reset to the last
 > green commit instead of untangling a big diff.
 
+> Docstrings and comments are extra effort to keep in sync and appear **only if
+> needed**: write none unless they state a contract the code can't express —
+> names + tests are the source of truth.
+
 ---
 
 ## Phase 3 — Review (before merge)
