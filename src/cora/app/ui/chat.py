@@ -1,12 +1,12 @@
 import hashlib
 from collections.abc import Callable, Sequence
-from typing import Any
 
 import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from cora.app.assembly import App
 from cora.app.ui.formatting import (
+    ThreadEntry,
     format_tool_result,
     ingest_message,
     numbered_sources,
@@ -15,7 +15,6 @@ from cora.core.errors import AdapterError, CoreError
 from cora.core.services.chat_engine import ChatEngine, ChatResult
 from cora.core.services.knowledge_base import KnowledgeBase
 
-ThreadEntry = dict[str, Any]
 MAX_INGEST_ATTEMPTS = 2
 
 

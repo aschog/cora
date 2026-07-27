@@ -107,7 +107,7 @@ Composition
 
 UI
 
-- [ ] the thread-to-turns mapper keeps answered user/assistant pairs in order,
+- [x] the thread-to-turns mapper keeps answered user/assistant pairs in order,
       drops an error entry *and* the user turn that caused it, and maps an
       empty thread to `()`.
 - [ ] `_answer` maps history from the thread before appending the current
