@@ -1,9 +1,10 @@
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 
 import pytest
 from streamlit.testing.v1 import AppTest
 
 from cora.app.assembly import App, assemble
+from cora.core.chunk import Chunk
 from cora.core.errors import (
     ConfigurationError,
     EmptyDocumentError,
@@ -14,7 +15,7 @@ from cora.core.errors import (
 )
 from cora.core.ports.chat_model import ChatModel, ModelReply
 from cora.core.ports.plugin import Plugin, ToolCall
-from cora.core.services.knowledge_base import KnowledgeBase
+from cora.core.ports.retrieval import Retriever
 from fakes import (
     FailingChatModel,
     FakeEmbedder,
@@ -34,38 +35,39 @@ def _app(chat_model: ChatModel, plugin: Plugin | None = None) -> App:
     )
 
 
-class _CountingKnowledgeBase(KnowledgeBase):
-    def __init__(self, inner: KnowledgeBase) -> None:
-        super().__init__(embedder=inner.embedder, retriever=inner.retriever)
-        self.ingests = 0
+class _CountingRetriever(FakeRetriever):
+    """Counts ingest attempts: ``add_file`` asks ``contains`` before any work."""
 
-    def add_file(self, data: bytes, filename: str) -> int:
-        self.ingests += 1
-        return super().add_file(data, filename)
+    def __init__(self) -> None:
+        super().__init__()
+        self.ingest_attempts = 0
 
-
-def _counting_app() -> tuple[App, _CountingKnowledgeBase]:
-    app = _app(ScriptedChatModel([]))
-    counting = _CountingKnowledgeBase(app.knowledge_base)
-    return replace(app, knowledge_base=counting), counting
+    def contains(self, file_hash: str) -> bool:
+        self.ingest_attempts += 1
+        return super().contains(file_hash)
 
 
-class _FlakyKnowledgeBase(KnowledgeBase):
-    def __init__(self, inner: KnowledgeBase, failures: int) -> None:
-        super().__init__(embedder=inner.embedder, retriever=inner.retriever)
-        self.failures = failures
+class _FlakyRetriever(FakeRetriever):
+    def __init__(self) -> None:
+        super().__init__()
+        self.failures = 0
 
-    def add_file(self, data: bytes, filename: str) -> int:
+    def add(
+        self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
+    ) -> None:
         if self.failures:
             self.failures -= 1
             raise RetrievalError
-        return super().add_file(data, filename)
+        super().add(chunks, vectors, file_hash)
 
 
-def _flaky_app(failures: int) -> App:
-    app = _app(ScriptedChatModel([]))
-    flaky = _FlakyKnowledgeBase(app.knowledge_base, failures)
-    return replace(app, knowledge_base=flaky)
+def _app_on(retriever: Retriever, plugin: Plugin | None = None) -> App:
+    return assemble(
+        chat_model=ScriptedChatModel([]),
+        embedder=FakeEmbedder(),
+        retriever=retriever,
+        plugin=plugin or make_plugin(),
+    )
 
 
 def _page(app) -> None:
@@ -94,6 +96,10 @@ def _run_page(app: App) -> AppTest:
 
 def _visible_text(at: AppTest) -> str:
     return "\n".join(md.value for md in at.markdown)
+
+
+def _sidebar_sources(at: AppTest) -> list[str]:
+    return [md.value for md in at.sidebar.markdown]
 
 
 @pytest.mark.integration
@@ -206,7 +212,9 @@ def test_a_new_selection_of_known_bytes_reports_the_duplicate() -> None:
 
 @pytest.mark.integration
 def test_a_transient_ingest_failure_is_retried_on_the_next_rerun() -> None:
-    at = _run_page(_flaky_app(failures=1))
+    retriever = _FlakyRetriever()
+    at = _run_page(_app_on(retriever))
+    retriever.failures = 1
 
     at.file_uploader[0].set_value(("note.md", b"protein facts", "text/markdown"))
     at.run()
@@ -222,8 +230,10 @@ def test_a_transient_ingest_failure_is_retried_on_the_next_rerun() -> None:
 
 @pytest.mark.integration
 def test_upload_error_clears_on_the_next_rerun_without_re_ingesting() -> None:
-    app, knowledge_base = _counting_app()
-    at = _run_page(app)
+    retriever = _CountingRetriever()
+    plugin = make_plugin(seed_docs=(("seed.md", b"protein facts"),))
+    at = _run_page(_app_on(retriever, plugin))
+    retriever.ingest_attempts = 0
 
     at.file_uploader[0].set_value(("empty.txt", b"", "text/plain"))
     at.run()
@@ -233,13 +243,14 @@ def test_upload_error_clears_on_the_next_rerun_without_re_ingesting() -> None:
 
     assert not at.exception
     assert not at.error
-    assert knowledge_base.ingests == 1
+    assert retriever.ingest_attempts == 1
+    assert _sidebar_sources(at) == ["seed.md"]
 
 
 @pytest.mark.integration
 def test_detaching_a_file_lets_the_same_bytes_be_selected_again() -> None:
-    app, knowledge_base = _counting_app()
-    at = _run_page(app)
+    retriever = _CountingRetriever()
+    at = _run_page(_app_on(retriever))
     upload = ("note.md", b"protein facts", "text/markdown")
 
     at.file_uploader[0].set_value(upload)
@@ -250,7 +261,7 @@ def test_detaching_a_file_lets_the_same_bytes_be_selected_again() -> None:
     at.run()
 
     assert not at.exception
-    assert knowledge_base.ingests == 2
+    assert retriever.ingest_attempts == 2
     [notice] = at.info
     assert "already in your knowledge base" in notice.value
 
