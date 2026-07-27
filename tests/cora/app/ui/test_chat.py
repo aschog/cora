@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import pytest
 from streamlit.testing.v1 import AppTest
 
@@ -5,6 +7,7 @@ from cora.app.assembly import App, assemble
 from cora.core.errors import (
     ConfigurationError,
     EmptyDocumentError,
+    InputRejectedError,
     LlmError,
     PluginLoadError,
 )
@@ -58,18 +61,6 @@ def _visible_text(at: AppTest) -> str:
 
 
 @pytest.mark.integration
-def test_engine_error_shows_friendly_message_and_keeps_the_thread() -> None:
-    at = _run_page(_app(FailingChatModel(LlmError())))
-
-    at.chat_input[0].set_value("Hello?").run()
-
-    assert not at.exception
-    assert [e.value for e in at.error] == [LlmError().user_message]
-    assert "Hello?" in _visible_text(at)
-    assert at.chat_input
-
-
-@pytest.mark.integration
 def test_failed_turn_keeps_its_reason_across_a_rerun() -> None:
     at = _run_page(_app(FailingChatModel(LlmError())))
 
@@ -79,6 +70,35 @@ def test_failed_turn_keeps_its_reason_across_a_rerun() -> None:
     assert not at.exception
     assert "Hello?" in _visible_text(at)
     assert [e.value for e in at.error] == [LlmError().user_message]
+    assert at.chat_input
+
+
+@dataclass(frozen=True)
+class _RejectRule:
+    phrase: str
+    message: str
+
+    def apply(self, user_input: str) -> None:
+        if self.phrase in user_input:
+            raise InputRejectedError(self.message)
+
+
+@pytest.mark.integration
+def test_thread_grows_past_a_failed_turn() -> None:
+    refusal = "I can't advise on medication."
+    answer = "BMI is weight over height squared."
+    plugin = make_plugin(validation_rules=(_RejectRule("insulin", refusal),))
+    at = _run_page(_app(ScriptedChatModel([ModelReply(text=answer)]), plugin=plugin))
+
+    at.chat_input[0].set_value("Should I take insulin?").run()
+    at.chat_input[0].set_value("What is BMI?").run()
+
+    assert not at.exception
+    text = _visible_text(at)
+    assert "Should I take insulin?" in text
+    assert "What is BMI?" in text
+    assert answer in text
+    assert [e.value for e in at.error] == [refusal]
 
 
 @pytest.mark.integration

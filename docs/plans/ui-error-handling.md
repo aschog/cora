@@ -84,8 +84,11 @@ Failed turns (#2)
 
 - [x] a `CoreError` from `engine.answer` appends an error entry: question and
       `user_message` are both visible, and both survive a plain rerun.
-- [ ] a successful turn after a failed one appends normally — thread keeps
-      growing, the earlier error entry stays intact.
+- [x] a successful turn after a failed one appends normally — thread keeps
+      growing, the earlier error entry stays intact. *(Passed on the first run:
+      item 1's fix already covered it. Kept as regression coverage — verified it
+      fails with that fix reverted — and folded the older, now-subsumed
+      engine-error test into the rerun test.)*
 
 Upload record (#3, #9)
 
