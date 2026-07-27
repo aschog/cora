@@ -95,6 +95,8 @@ Core
       default keeps existing behaviour bit-for-bit.
 - [x] history longer than `max_history_turns` is truncated to the most recent
       turns (single messages, not pairs), oldest dropped first.
+- [x] `max_history_turns=0` sends no history at all — memory can be switched
+      off (guards the slice against the `[-0:]` sends-everything trap).
 - [ ] retrieval and validation still receive the current question alone, not
       the history (guards the "don't poison the query" decision).
 

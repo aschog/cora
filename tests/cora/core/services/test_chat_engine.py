@@ -164,6 +164,20 @@ def test_history_beyond_max_history_turns_drops_the_oldest_turns() -> None:
     assert contents == ["recent", "newest"]
 
 
+def test_zero_max_history_turns_sends_no_history_at_all() -> None:
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    engine = _make_engine(chat_model=model, max_history_turns=0)
+    history = (
+        Turn(role="user", text="I weigh 80 kg."),
+        Turn(role="assistant", text="Noted."),
+    )
+
+    engine.answer("q", history=history)
+
+    assert model.last_messages is not None
+    assert [m.role for m in model.last_messages] == ["system", "user"]
+
+
 def test_tool_call_runs_and_result_feeds_back_and_appears_in_result() -> None:
     call = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1")
     model = ScriptedChatModel(
