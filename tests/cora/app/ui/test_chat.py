@@ -175,6 +175,25 @@ def test_upload_error_clears_on_the_next_rerun_without_re_ingesting() -> None:
 
 
 @pytest.mark.integration
+def test_detaching_a_file_lets_the_same_bytes_be_selected_again() -> None:
+    app, knowledge_base = _counting_app()
+    at = _run_page(app)
+    upload = ("note.md", b"protein facts", "text/markdown")
+
+    at.file_uploader[0].set_value(upload)
+    at.run()
+    at.file_uploader[0].clear()
+    at.run()
+    at.file_uploader[0].set_value(upload)
+    at.run()
+
+    assert not at.exception
+    assert knowledge_base.ingests == 2
+    [notice] = at.info
+    assert "already in your knowledge base" in notice.value
+
+
+@pytest.mark.integration
 def test_main_renders_the_page_from_the_factory() -> None:
     at = _run_main(lambda: _app(ScriptedChatModel([ModelReply(text="hi")])))
 

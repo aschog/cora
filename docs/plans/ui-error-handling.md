@@ -101,8 +101,9 @@ Upload record (#3, #9)
       session the hash guard catches a re-attach before the knowledge base
       does, so the duplicate path is reached via already-indexed content —
       seed docs here, a previous session in real use.)*
-- [ ] detaching the file clears the record, so re-selecting it ingests again
-      (and hits knowledge-base dedup).
+- [x] detaching the file clears the record, so re-selecting it ingests again
+      (and hits knowledge-base dedup). *(Item 3's green step had already written
+      this branch untested; deleted it, watched this test go red, restored it.)*
 - [ ] refactor: extract the record handling so `_documents` stays a reading of
       the flow above, not a nest of conditionals.
 
