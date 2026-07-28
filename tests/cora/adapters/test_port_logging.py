@@ -117,6 +117,30 @@ def test_logging_chat_model_bounds_the_roles_of_a_long_history(
     assert len(request) <= 3 * MAX_LOGGED_CHARS
 
 
+def test_logging_chat_model_bounds_hallucinated_tool_call_names(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    inner = ScriptedChatModel(
+        [
+            ModelReply(
+                tool_calls=tuple(
+                    ToolCall(
+                        name=f"tool_{turn}_" + "x" * MAX_LOGGED_CHARS,
+                        arguments={},
+                        call_id=f"c{turn}",
+                    )
+                    for turn in range(50)
+                )
+            )
+        ]
+    )
+
+    with caplog.at_level(logging.DEBUG, logger="cora"):
+        LoggingChatModel(inner).complete((Message(role="user", content="hi"),), ())
+
+    assert len(line_about(caplog, "reply")) <= 3 * MAX_LOGGED_CHARS
+
+
 def test_logging_retriever_delegates_and_logs_the_hits(
     caplog: pytest.LogCaptureFixture,
 ) -> None:

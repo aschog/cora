@@ -34,7 +34,7 @@ class LoggingChatModel:
         reply = self.inner.complete(messages, tools)
         log.debug(
             "chat reply: tool calls [%s], text: %s",
-            ", ".join(call.name for call in reply.tool_calls),
+            truncate(", ".join(call.name for call in reply.tool_calls)),
             truncate(reply.text),
         )
         return reply
