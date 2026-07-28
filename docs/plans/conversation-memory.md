@@ -141,10 +141,14 @@ carried into `main`.
       one default. Guarded by `ty` (`missing-argument`) rather than a test, per
       the same reasoning as the port Protocols: a construction that omits the
       field no longer type-checks.
-- [ ] `_int` rejects non-positive values. `CORA_HISTORY_TURNS=-1` — a plausible
+- [x] `_int` enforces a per-key minimum. `CORA_HISTORY_TURNS=-1` — a plausible
       "unlimited" guess — yields an empty slice and silently disables memory;
       same hole for `CORA_TOP_K` and `CORA_MAX_TOOL_ROUNDS`, so the guard belongs
-      in `_int`. Behavioural: failing test first.
+      in `_int`. Not the review's "reject non-positive": `0` history turns is a
+      documented way to switch memory off, so the floor is 0 there and 1 for the
+      other two, where `max_tool_rounds=0` would make `range(0)` raise
+      `ToolLoopLimitError` on every question. A test pins the `0` case as
+      allowed so the guard cannot over-reach later.
 - [ ] correct the `_answer`-ordering item above: no test can fail for it. Mapping
       *after* the append keeps all 20 UI tests green, because the mapper already
       drops a trailing unanswered user entry. The ordering is defensive
