@@ -263,8 +263,12 @@ Review findings (PR #9, `ai-code-reviewer`) — behavioural ones each need their
       has exactly one store and it is the temp one. Both halves of the finding were proved
       by planting `for filename, data in ():` — the new assertion fails, and with it
       removed the old one **passes with no ingest at all**.
-- [ ] make the tool-result spec reject tool-*error* text: `\d` matches
-      `invalid arguments: 180 is greater than the maximum of 2.5`.
+- [x] make the tool-result spec reject tool-*error* text: `\d` matches
+      `invalid arguments: 180 is greater than the maximum of 2.5`. Proved by scripting
+      `height_m: 180` — the spec passed green while the tool rejected its arguments and
+      never ran. Now also asserts no `ToolRuntime` error marker, which stays
+      fix-compatible with labelling and rounding. Dropped the redundant visibility
+      assertion `open_expander` had already made.
 - [ ] make the provider-failure spec prove the stub was actually reached — a `RetrievalError`
       carries the same user-facing message and satisfies all four assertions today.
 - [ ] pin the viewport, so the sidebar assertions cannot be flipped by a `--device` run.

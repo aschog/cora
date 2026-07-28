@@ -10,6 +10,10 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(180)]
 
 CITATION = re.compile(r"\[(\d+)\]")
 NUMBER = re.compile(r"\d")
+# Every branch of `ToolRuntime.execute` that fails renders its message verbatim.
+TOOL_ERROR = re.compile(
+    r"invalid arguments|unknown tool|returned no result|failed:", re.IGNORECASE
+)
 
 
 def test_an_answer_cites_only_sources_it_lists(app: Page, stub: StubLlm) -> None:
@@ -84,6 +88,9 @@ def test_a_calculator_question_shows_its_tool_result(app: Page, stub: StubLlm) -
 
     ask(app, "What is my BMI at 80 kg and 1.80 m?")
 
-    results = open_expander(app, "Tool results")
-    expect(results).to_be_visible()
-    assert NUMBER.search(results.inner_text()), "a tool result must carry a number"
+    # `open_expander` already asserted the panel is visible. A digit alone is far too
+    # weak: every ToolRuntime error renders verbatim and most carry digits, so a tool
+    # that never ran would satisfy it. Both assertions survive labelling and rounding.
+    results = open_expander(app, "Tool results").inner_text()
+    assert NUMBER.search(results), "a tool result must carry a number"
+    assert not TOOL_ERROR.search(results), f"the tool did not run: {results}"
