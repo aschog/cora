@@ -27,7 +27,17 @@ def test_enable_debug_logs_adds_one_handler_however_often_it_runs(
 def test_enable_debug_logs_leaves_logging_untouched_when_off(
     clean_cora_logger: logging.Logger,
 ) -> None:
-    enable_debug_logs(False)
+    root = logging.getLogger()
+    saved_handlers, saved_level = list(root.handlers), root.level
+    root.handlers = []  # basicConfig() is a no-op while root has handlers
+
+    try:
+        enable_debug_logs(False)
+
+        assert root.handlers == []
+        assert root.level == saved_level
+    finally:
+        root.handlers = saved_handlers
 
     assert clean_cora_logger.level == logging.NOTSET
     assert clean_cora_logger.handlers == []
