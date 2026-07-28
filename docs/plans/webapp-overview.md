@@ -140,6 +140,7 @@ knowledge base of training/nutrition notes.
 | **Value Objects** (immutable data) | messages, chunks, tool calls/results, responses | predictable, trivially assertable in tests | [Fowler, bliki](https://martinfowler.com/bliki/ValueObject.html) |
 | **Observer (callback)** | progress events from orchestrator | UI progress indicators without the core knowing Streamlit | [Refactoring.Guru](https://refactoring.guru/design-patterns/observer) |
 | **Adapter** | OpenRouter/LangChain, Chroma, embeddings | quarantine version churn; one file per volatile dependency | [Refactoring.Guru](https://refactoring.guru/design-patterns/adapter) |
+| **Decorator** | debug logging over the three ports (`CORA_DEBUG`) | observe what crosses the boundary without touching core, adapters or UI | [Refactoring.Guru](https://refactoring.guru/design-patterns/decorator) |
 
 Deliberately **not** used: LangChain chains/agents/LCEL (the LLM adapter is the whole
 LangChain surface), pip entry-points for plugins (import-by-name convention is enough),
