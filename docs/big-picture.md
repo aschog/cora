@@ -92,13 +92,15 @@ something that plugs in, chosen in one place.
 The shell knows exactly two methods. Everything the product does goes through one of
 them, which is why a different frontend is a rewrite of the shell and nothing else.
 
-**`engine.answer(question) -> ChatResult`** — `cora/core/services/chat_engine.py`
+**`engine.answer(question, history=()) -> ChatResult`** — `cora/core/services/chat_engine.py`
 
 1. Validate — core rules first (empty, 4000-character cap), then the plugin's. A
    rejection raises `InputRejectedError` and never reaches the model.
 2. Retrieve — embed the question, pull the top `k` chunks (`CORA_TOP_K`, default 5).
 3. Prompt — the plugin's system prompt, then the chunks numbered `[1]`…`[n]` with the
-   citation rule appended.
+   citation rule appended, then the last `CORA_HISTORY_TURNS` turns the shell passed in
+   (default 20; `0` switches memory off), then the question. Validation and retrieval
+   above see the question alone, never the history.
 4. Tool loop, at most `CORA_MAX_TOOL_ROUNDS` (default 8) rounds — the model asks for
    tools, ToolRuntime runs each, results go back as `tool` messages, repeat until a reply
    carries no tool calls.
