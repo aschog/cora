@@ -163,3 +163,23 @@ def test_logging_retriever_survives_an_add_with_no_chunks(
         LoggingRetriever(FakeRetriever()).add([], [], "hash-1")
 
     assert "0 chunks" in line_about(caplog, "indexed")
+
+
+def test_logging_retriever_answers_lookups_silently(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    embedder = FakeEmbedder()
+    inner = FakeRetriever()
+    chunk = Chunk(text="protein needs", source="guide.pdf", index=0, offset=0)
+    inner.add([chunk], embedder.embed([chunk.text]), "hash-1")
+    retriever = LoggingRetriever(inner)
+
+    with caplog.at_level(logging.DEBUG, logger="cora"):
+        sources = retriever.sources()
+        known = retriever.contains("hash-1")
+        unknown = retriever.contains("hash-2")
+
+    assert sources == ["guide.pdf"]
+    assert known is True
+    assert unknown is False
+    assert caplog.records == []

@@ -63,6 +63,12 @@ class LoggingRetriever:
         )
         return hits
 
+    def sources(self) -> list[str]:
+        return self.inner.sources()
+
+    def contains(self, file_hash: str) -> bool:
+        return self.inner.contains(file_hash)
+
 
 def _describe(hit: RetrievedChunk) -> str:
     return f"{hit.chunk.source}#{hit.chunk.index} {hit.score:.2f}"
