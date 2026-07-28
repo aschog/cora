@@ -109,7 +109,7 @@ def test_assemble_with_debug_logs_every_port_of_a_chat_turn(
     logged = " ".join(record.getMessage() for record in caplog.records)
     assert "chat request" in logged
     assert "retrieval" in logged
-    assert "embedded" in logged
+    assert "embedding" in logged
 
 
 def test_assemble_keeps_a_chat_turn_silent_without_debug(

@@ -10,11 +10,12 @@ from cora.adapters.port_logging import (
     truncate,
 )
 from cora.core.chunk import Chunk
-from cora.core.errors import LlmError
+from cora.core.errors import LlmError, RetrievalError
 from cora.core.ports.chat_model import Message, ModelReply
 from cora.core.ports.plugin import ToolCall
 from fakes import (
     FailingChatModel,
+    FailingRetriever,
     FakeEmbedder,
     FakeRetriever,
     ScriptedChatModel,
@@ -202,7 +203,7 @@ def test_logging_retriever_delegates_and_logs_an_add(
 
     assert inner.sources() == ["guide.pdf"]
     assert inner.contains("hash-1")
-    indexed = line_about(caplog, "indexed")
+    indexed = line_about(caplog, "indexing")
     assert "3 chunks" in indexed
     assert "guide.pdf" in indexed
 
@@ -213,7 +214,23 @@ def test_logging_retriever_survives_an_add_with_no_chunks(
     with caplog.at_level(logging.DEBUG, logger="cora"):
         LoggingRetriever(FakeRetriever()).add([], [], "hash-1")
 
-    assert "0 chunks" in line_about(caplog, "indexed")
+    assert "0 chunks" in line_about(caplog, "indexing")
+
+
+def test_logging_retriever_does_not_claim_an_add_that_failed(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    chunk = Chunk(text="text", source="guide.pdf", index=0, offset=0)
+
+    with (
+        caplog.at_level(logging.DEBUG, logger="cora"),
+        pytest.raises(RetrievalError),
+    ):
+        LoggingRetriever(FailingRetriever(RetrievalError())).add(
+            [chunk], [[0.1]], "hash-1"
+        )
+
+    assert not any("indexed" in record.getMessage() for record in caplog.records)
 
 
 def test_logging_retriever_answers_lookups_silently(
@@ -246,4 +263,4 @@ def test_logging_embedder_delegates_and_logs_the_batch_size(
         vectors = LoggingEmbedder(inner).embed(texts)
 
     assert vectors == inner.embed(texts)
-    assert "3 texts" in line_about(caplog, "embedded")
+    assert "3 texts" in line_about(caplog, "embedding")

@@ -48,7 +48,7 @@ class LoggingRetriever:
         self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
     ) -> None:
         log.debug(
-            "indexed: %d chunks from %s",
+            "indexing: %d chunks from %s",
             len(chunks),
             truncate(chunks[0].source) if chunks else "an empty batch",
         )
@@ -76,7 +76,7 @@ class LoggingEmbedder:
     inner: Embedder
 
     def embed(self, texts: list[str]) -> list[list[float]]:
-        log.debug("embedded: %d texts", len(texts))
+        log.debug("embedding: %d texts", len(texts))
         return self.inner.embed(texts)
 
 

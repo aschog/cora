@@ -97,6 +97,25 @@ class ScriptedChatModel:
 
 
 @dataclass
+class FailingRetriever:
+    error: Exception
+
+    def add(
+        self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
+    ) -> None:
+        raise self.error
+
+    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
+        raise self.error
+
+    def sources(self) -> list[str]:
+        raise self.error
+
+    def contains(self, file_hash: str) -> bool:
+        raise self.error
+
+
+@dataclass
 class FailingChatModel:
     error: Exception
 
