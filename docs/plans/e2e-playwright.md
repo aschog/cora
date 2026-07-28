@@ -131,8 +131,11 @@ Stub LLM server (no browser, no subprocess)
       the client retries, so state and not call count drives the reply.
 - [x] write a test that shows a scripted 429 surfaces as `LlmError` through the real
       adapter (one representative status; per-status mapping is already unit-tested).
-- [ ] write a test that shows the stub records each request, so a spec can assert what the
+- [x] write a test that shows the stub records each request, so a spec can assert what the
       model was sent — system prompt, prior turns, tool result.
+- [x] *(added while landing the recorder)* write a test that shows all three retries of a
+      failed request are recorded — makes the client's retry behaviour assertable rather
+      than merely visible as elapsed time.
 - [ ] write a test that shows two overlapping requests are both served.
 
 Config knob
