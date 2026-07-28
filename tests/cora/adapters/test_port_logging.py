@@ -95,3 +95,20 @@ def test_logging_chat_model_never_logs_a_buried_marker(
     logged = [record.getMessage() for record in caplog.records]
     assert len(logged) == 2
     assert not any("BURIED" in line for line in logged)
+
+
+def test_logging_chat_model_bounds_the_roles_of_a_long_history(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    history = tuple(
+        Message(role="user" if turn % 2 == 0 else "assistant", content="short")
+        for turn in range(200)
+    )
+    inner = ScriptedChatModel([ModelReply(text="ok")])
+
+    with caplog.at_level(logging.DEBUG, logger="cora"):
+        LoggingChatModel(inner).complete(history, ())
+
+    request = line_about(caplog, "request")
+    assert "200 messages" in request
+    assert len(request) <= 3 * MAX_LOGGED_CHARS

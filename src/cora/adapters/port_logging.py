@@ -25,7 +25,7 @@ class LoggingChatModel:
         log.debug(
             "chat request: %d messages [%s], last: %s",
             len(messages),
-            ", ".join(message.role for message in messages),
+            truncate(", ".join(message.role for message in messages)),
             truncate(messages[-1].content) if messages else "",
         )
         reply = self.inner.complete(messages, tools)
