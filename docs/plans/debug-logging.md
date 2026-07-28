@@ -53,7 +53,8 @@ Wrappers (fakes + caplog)
 - [x] test that the logging chat model returns the inner fake's reply and passes messages/tools through unchanged.
 - [x] test that a `complete` call logs one line with message count + roles + truncated content.
 - [x] test that the reply side logs requested tool-call names and truncated reply text.
-- [ ] test that a marker buried deep in a long prompt never appears in any log line (every field bounded).
+- [x] test that a marker buried deep in a long prompt never appears in any log line (every field bounded).
+- [ ] test that the roles field stays bounded for a long history (discovered: `", ".join(roles)` grows with turn count, so the request line is not yet bounded end to end).
 - [ ] test that the logging retriever's `query` delegates and logs k plus returned chunk sources + scores.
 - [ ] test that its `add` delegates and logs chunk count + file source.
 - [ ] test that `sources()` and `contains()` delegate transparently.

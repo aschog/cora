@@ -77,3 +77,21 @@ def test_logging_chat_model_logs_the_reply(caplog: pytest.LogCaptureFixture) -> 
     assert "add" in reply
     assert "here it comes" in reply
     assert "TAIL" not in reply
+
+
+def test_logging_chat_model_never_logs_a_buried_marker(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    buried = "filler " * MAX_LOGGED_CHARS + "BURIED"
+    inner = ScriptedChatModel([ModelReply(text=buried)])
+    messages = (
+        Message(role="system", content=buried),
+        Message(role="user", content=buried),
+    )
+
+    with caplog.at_level(logging.DEBUG, logger="cora"):
+        LoggingChatModel(inner).complete(messages, ())
+
+    logged = [record.getMessage() for record in caplog.records]
+    assert len(logged) == 2
+    assert not any("BURIED" in line for line in logged)
