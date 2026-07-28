@@ -15,9 +15,25 @@ and plain reruns after an error.
 
 > **Status.** Findings 2, 3 and 9 are fixed on `fix/ui-error-handling` (PR #5)
 > and finding 1 on `feature/conversation-memory` (PR #6), all verified against
-> the real stack. The other six are open — #4, #5 and #6 are the highest-severity
-> ones remaining. The findings below are left as they were written, so this file
-> stays a record of the run rather than a tracker.
+> the real stack. Finding 10 is fixed on `feature/e2e-playwright` by the
+> `CORA_DB_PATH` knob. The other five are open — #4, #5 and #6 are the
+> highest-severity ones remaining. The findings below are left as they were
+> written, so this file stays a record of the run rather than a tracker.
+>
+> **This loop is now automated.** `feature/e2e-playwright` replays it as a
+> browser tier (`uv run pytest -m e2e`): chromium against `streamlit run` with
+> the real composition root and a stub LLM, so the scenarios below run on every
+> push instead of by hand. Covered as specs: cold start and shell render, upload
+> and sidebar listing, dedup no-op (#9's fix), citations resolving to listed
+> sources, tool results, conversation memory (#1's fix), the medical-safety
+> refusal, a provider failure rendering one friendly alert with the question
+> still on screen (#2's fix), the tool-round cap, and a missing API key at
+> startup. Not covered, because the
+> assertions are deliberately fix-compatible rather than wart-pinning: #4 and #5
+> stay visible in browser output but unasserted — an answer citing only `[1]`
+> still lists two sources, and a tool result still renders as bare
+> `24.691358024691358`. Malformed uploads, over-long input and warm start
+> against a populated DB remain unautomated.
 
 ## What works
 

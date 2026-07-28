@@ -220,12 +220,13 @@ App specs (live-ready unless marked stub-only)
 
 Docs (Phase 4, no test)
 
-- [ ] `webapp-overview.md` §8: the fourth tier, what it may touch, why `llm` now reuses
+- [x] `webapp-overview.md` §8: the fourth tier, what it may touch, why `llm` now reuses
       these specs.
-- [ ] `README.md`: `uv run pytest -m e2e`, the one-off chromium install, and
+- [x] `README.md`: `uv run pytest -m e2e`, the one-off chromium install, and
       `CORA_DB_PATH` beside the other `CORA_*` overrides.
-- [ ] `docs/manual-test-findings.md`: status note that this loop is now automated, and
-      which findings the specs cover.
+- [x] `docs/manual-test-findings.md`: status note that this loop is now automated, and
+      which findings the specs cover — including what it does *not* cover (malformed
+      uploads, over-long input, warm start), so the file stays honest about the gap.
 
 ---
 

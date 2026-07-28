@@ -226,7 +226,7 @@ ever reaches the user as a stack trace.
 
 ## 8. Testing architecture (TDD backbone)
 
-Three tiers, cleanly separated by what they may touch:
+Four tiers, cleanly separated by what they may touch:
 
 1. **Unit (default, seconds, runs on every save & pre-commit):** all core logic and all
    plugin calculators, exercised against in-memory fakes of the three ports (scripted
@@ -234,8 +234,22 @@ Three tiers, cleanly separated by what they may touch:
    downloads, no UI.
 2. **Integration (CI):** real Chroma round-trip & persistence, real embedding model
    smoke test, one headless Streamlit smoke test with a fake-wired engine.
-3. **LLM (manual only):** a single real OpenRouter round-trip incl. one tool call —
+3. **End-to-end (own CI job, `-m e2e`):** chromium drives the app as a user would —
+   `streamlit run` in a subprocess with the real composition root, real Chroma and real
+   embedder. Only the LLM is doubled, and at the *network* seam: a stdlib HTTP stub the
+   subprocess talks to, since in-process doubles cannot reach across a process boundary.
+   May touch a browser, a subprocess and loopback TCP; may not touch the network or a
+   real key. Isolated by `CORA_DB_PATH`, so a run never reaches `.cora/chroma`.
+4. **LLM (manual only):** a single real OpenRouter round-trip incl. one tool call —
    skipped without an API key; used for final acceptance, never in CI.
+
+The e2e specs are the `llm` tier's vehicle rather than a hand-driven session: one fixture
+yields `(base_url, api_key)`, so pointing it at real OpenRouter runs the same specs
+against a real model. That is why their assertions are structural — an answer appeared,
+every `[n]` resolves to a listed source, a tool panel holds a plausible number — and
+never exact model prose. The three specs that script adversarial behaviour (loop cap,
+provider failure, missing key) take the stub explicitly, which makes them machine-checkably
+stub-only.
 
 The fakes are first-class design artifacts: the in-memory retriever doubles as proof the
 retriever port is sufficient, and the scripted LLM makes the tool-calling loop fully
