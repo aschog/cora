@@ -97,6 +97,14 @@ class ScriptedChatModel:
 
 
 @dataclass
+class FailingEmbedder:
+    error: Exception
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        raise self.error
+
+
+@dataclass
 class FailingRetriever:
     error: Exception
 

@@ -10,11 +10,12 @@ from cora.adapters.port_logging import (
     truncate,
 )
 from cora.core.chunk import Chunk
-from cora.core.errors import LlmError, RetrievalError
+from cora.core.errors import EmbeddingError, LlmError, RetrievalError
 from cora.core.ports.chat_model import Message, ModelReply
 from cora.core.ports.plugin import ToolCall
 from fakes import (
     FailingChatModel,
+    FailingEmbedder,
     FailingRetriever,
     FakeEmbedder,
     FakeRetriever,
@@ -194,6 +195,7 @@ def test_logging_retriever_delegates_and_logs_the_hits(
     assert "k=3" in retrieval
     assert "guide.pdf" in retrieval
     assert "1.00" in retrieval
+    assert {record.levelno for record in caplog.records} == {logging.DEBUG}
 
 
 def test_logging_retriever_delegates_and_logs_an_add(
@@ -226,7 +228,7 @@ def test_logging_retriever_survives_an_add_with_no_chunks(
     assert "0 chunks" in line_about(caplog, "indexing")
 
 
-def test_logging_retriever_does_not_claim_an_add_that_failed(
+def test_logging_retriever_announces_an_add_before_attempting_it(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     chunk = Chunk(text="text", source="guide.pdf", index=0, offset=0)
@@ -239,7 +241,22 @@ def test_logging_retriever_does_not_claim_an_add_that_failed(
             [chunk], [[0.1]], "hash-1"
         )
 
-    assert not any("indexed" in record.getMessage() for record in caplog.records)
+    assert "1 chunks" in line_about(caplog, "indexing")
+
+
+def test_logging_retriever_reraises_a_failed_query(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    failure = RetrievalError()
+
+    with (
+        caplog.at_level(logging.DEBUG, logger="cora"),
+        pytest.raises(RetrievalError) as raised,
+    ):
+        LoggingRetriever(FailingRetriever(failure)).query([0.1], k=3)
+
+    assert raised.value is failure
+    assert caplog.records == []
 
 
 def test_logging_retriever_answers_lookups_silently(
@@ -273,3 +290,19 @@ def test_logging_embedder_delegates_and_logs_the_batch_size(
 
     assert vectors == inner.embed(texts)
     assert "3 texts" in line_about(caplog, "embedding")
+    assert {record.levelno for record in caplog.records} == {logging.DEBUG}
+
+
+def test_logging_embedder_announces_a_batch_before_attempting_it(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    failure = EmbeddingError()
+
+    with (
+        caplog.at_level(logging.DEBUG, logger="cora"),
+        pytest.raises(EmbeddingError) as raised,
+    ):
+        LoggingEmbedder(FailingEmbedder(failure)).embed(["one", "two"])
+
+    assert raised.value is failure
+    assert "2 texts" in line_about(caplog, "embedding")
