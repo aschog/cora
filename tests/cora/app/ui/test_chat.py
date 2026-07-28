@@ -146,6 +146,40 @@ def test_thread_grows_past_a_failed_turn() -> None:
 
 
 @pytest.mark.integration
+def test_second_question_carries_the_first_exchange_exactly_once() -> None:
+    model = ScriptedChatModel([ModelReply(text="Noted."), ModelReply(text="80 kg.")])
+    at = _run_page(_app(model))
+
+    at.chat_input[0].set_value("I weigh 80 kg.").run()
+    at.chat_input[0].set_value("What did I say my weight was?").run()
+
+    assert not at.exception
+    assert model.last_messages is not None
+    assert [(m.role, m.content) for m in model.last_messages[1:]] == [
+        ("user", "I weigh 80 kg."),
+        ("assistant", "Noted."),
+        ("user", "What did I say my weight was?"),
+    ]
+
+
+@pytest.mark.integration
+def test_a_rejected_question_never_reaches_the_model_afterwards() -> None:
+    refusal = "I can't advise on medication."
+    plugin = make_plugin(validation_rules=(_RejectRule("insulin", refusal),))
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    at = _run_page(_app(model, plugin=plugin))
+
+    at.chat_input[0].set_value("Should I take insulin?").run()
+    at.chat_input[0].set_value("What is BMI?").run()
+
+    assert not at.exception
+    assert model.last_messages is not None
+    assert [(m.role, m.content) for m in model.last_messages[1:]] == [
+        ("user", "What is BMI?"),
+    ]
+
+
+@pytest.mark.integration
 def test_a_failure_carrying_no_message_still_renders_as_an_error() -> None:
     plugin = make_plugin(validation_rules=(_RejectRule("insulin", ""),))
     at = _run_page(_app(ScriptedChatModel([]), plugin=plugin))

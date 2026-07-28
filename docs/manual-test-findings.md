@@ -14,9 +14,10 @@ tool-calling questions, safety rejections, over-long input, malformed uploads,
 and plain reruns after an error.
 
 > **Status.** Findings 2, 3 and 9 are fixed on `fix/ui-error-handling` (PR #5)
-> and verified against the real stack. The other seven are open — #1 is the
-> highest-severity one remaining. The findings below are left as they were
-> written, so this file stays a record of the run rather than a tracker.
+> and finding 1 on `feature/conversation-memory` (PR #6), all verified against
+> the real stack. The other six are open — #4, #5 and #6 are the highest-severity
+> ones remaining. The findings below are left as they were written, so this file
+> stays a record of the run rather than a tracker.
 
 ## What works
 

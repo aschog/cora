@@ -52,6 +52,18 @@ def test_assemble_answers_a_happy_path_question() -> None:
     assert result.answer == "42"
 
 
+def test_assemble_passes_history_turns_to_the_engine() -> None:
+    app = assemble(
+        chat_model=ScriptedChatModel([ModelReply(text="ok")]),
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        plugin=make_plugin(),
+        history_turns=6,
+    )
+
+    assert app.engine.max_history_turns == 6
+
+
 def test_assemble_seeds_plugin_docs_into_the_knowledge_base() -> None:
     plugin = make_plugin(seed_docs=(("note.md", b"protein supports muscle growth"),))
     retriever = FakeRetriever()
@@ -86,6 +98,7 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
         plugin_module="fixture_plugins.valid",
         top_k=3,
         max_tool_rounds=4,
+        history_turns=6,
     )
 
     app = build(config, db_path=str(tmp_path))
@@ -99,3 +112,4 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
     assert engine.tools == plugin.tools
     assert engine.top_k == 3
     assert engine.max_tool_rounds == 4
+    assert engine.max_history_turns == 6

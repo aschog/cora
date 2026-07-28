@@ -1,8 +1,4 @@
-from cora.app.ui.formatting import (
-    format_tool_result,
-    ingest_message,
-    numbered_sources,
-)
+from cora.app.ui.formatting import format_tool_result, ingest_message, numbered_sources
 from cora.core.ports.plugin import ToolResult
 
 
