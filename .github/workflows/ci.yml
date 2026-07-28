@@ -52,5 +52,7 @@ jobs:
           path: ~/.cache/huggingface
           key: hf-${{ runner.os }}-all-MiniLM-L6-v2
 
+      # A bare -m replaces the addopts selector rather than narrowing it, so the
+      # llm exclusion has to be restated here or a paid round-trip test runs in CI.
       - name: Integration tests
-        run: uv run pytest -m integration -q
+        run: uv run pytest -m 'integration and not llm' -q

@@ -16,9 +16,10 @@
 - **Failed turns are not sent.** A question blocked by a validation rule never
   reaches the model — otherwise it sees an unanswered question in the
   transcript and may answer it next turn, defeating the rule that blocked it.
-- **Bounded context.** Send the last N exchanges, configurable like
-  `CORA_TOP_K`; long conversations forget the oldest turns rather than growing
-  cost without limit or hitting the model's window.
+- **Bounded context.** Send the last N turns — single messages, so N counts
+  roughly half that many exchanges — configurable like `CORA_TOP_K`; long
+  conversations forget the oldest turns rather than growing cost without limit
+  or hitting the model's window.
 - **No shared state.** `streamlit_app.py` caches one `App` for every browser
   session (`@st.cache_resource`) and `ChatEngine` is frozen, so the transcript
   cannot live in the engine — one user's memory would be everyone's.
@@ -171,6 +172,39 @@ carried into `main`.
 - [x] nits: the clamp note above says "shorter than twice the cap" — the real
       window was `cap/2 < len < cap` (11-19 turns at the default), since Python
       clamps `history[-18:]` on a 2-turn tuple; README omits the default `20`.
+
+## Second review (after the seven above were fixed)
+
+- [x] the integration job restates the `llm` exclusion. A bare `-m integration`
+      *replaces* the `addopts` selector instead of narrowing it: a probe test
+      marked both was collected **and run** by the job's own command. Latent
+      today (no `llm` test exists) but `tests/test_end_to_end.py` is module-wide
+      `integration`, so the first real round-trip test there would have made a
+      paid API call in CI. Now `-m 'integration and not llm'`.
+- [x] pin the odd-cap orphan. The plan accepts that an odd cap can start history
+      on an assistant turn whose question was dropped, but every truncation test
+      used an even-length history, so pairing logic could be added or removed
+      with nothing failing. Cap 3 over 4 turns now asserts the leading turn is
+      the assistant's — verified by mutation: rounding the cap down to even
+      breaks this test and only this test.
+- [x] state the unit of `CORA_HISTORY_TURNS` once. Requirements said "exchanges",
+      the design note said "turns (single messages)", the README said neither —
+      and `20` turns is only ten exchanges, half what the name suggests.
+
+Deferred, each needing its own red test rather than a squeeze into this branch:
+
+- [ ] **`ChatEngine` owns its own range invariants.** `assemble()`'s defaulted
+      parameters bypass `Config`, so `assemble(history_turns=-1)` still reaches
+      the engine as an empty slice — memory silently off, exactly what `_int`
+      closed, one layer up. Not live: `build(config)` is the only production
+      caller. A `__post_init__` rejecting `max_history_turns < 0`, `top_k < 1`
+      and `max_tool_rounds < 1` puts the invariant where the field lives.
+- [ ] **`ThreadEntry` stops being `dict[str, Any]`.** The alias makes the mapper
+      untypeable: `Turn.role`'s `Literal` goes unchecked, and an entry variant
+      without `content` would raise `KeyError` into a Streamlit traceback, which
+      `CLAUDE.md` forbids. A `TypedDict` pair (answered / failed) or a small
+      frozen entry type would make ty flag an unclassified variant at the seam —
+      the enforcement the "thread as source of truth" risk below currently lacks.
 
 ---
 

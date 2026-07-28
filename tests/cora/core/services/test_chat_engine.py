@@ -194,6 +194,25 @@ def test_history_exactly_at_max_history_turns_is_sent_in_full() -> None:
     assert contents == ["I weigh 80 kg.", "Noted."]
 
 
+def test_an_odd_cap_sends_a_leading_assistant_turn_without_its_question() -> None:
+    """The plan accepts this orphan: the cap counts messages, not exchanges."""
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    engine = _make_engine(chat_model=model, max_history_turns=3)
+    history = (
+        Turn(role="user", text="I weigh 80 kg."),
+        Turn(role="assistant", text="Noted."),
+        Turn(role="user", text="And I'm 1.80 m."),
+        Turn(role="assistant", text="Got it."),
+    )
+
+    engine.answer("q", history=history)
+
+    assert model.last_messages is not None
+    past = model.last_messages[1:-1]
+    assert [m.content for m in past] == ["Noted.", "And I'm 1.80 m.", "Got it."]
+    assert past[0].role == "assistant"
+
+
 def test_zero_max_history_turns_sends_no_history_at_all() -> None:
     model = ScriptedChatModel([ModelReply(text="ok")])
     engine = _make_engine(chat_model=model, max_history_turns=0)
