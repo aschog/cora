@@ -250,8 +250,13 @@ Review findings (PR #9, `ai-code-reviewer`) — behavioural ones each need their
       "module scope" sentence, `.count()` stated as never-used, the live flip described as
       a capability, and the stale "skipped" box above. Plus `manual-test-findings.md`
       claiming finding 10 *fixed* when the default is still CWD-relative.
-- [ ] strip inherited `CORA_*` from the launched app's environment, so a developer's
-      exported `CORA_HISTORY_TURNS=0` cannot silently break the memory spec.
+- [x] strip inherited `CORA_*` from the launched app's environment, so a developer's
+      exported `CORA_HISTORY_TURNS=0` cannot silently break the memory spec. `_env` became
+      `app_env` to be a tested seam. *Every* `CORA_*` is dropped rather than the four named
+      ones, and what the harness does not pin falls to the app's own defaults, so
+      `config.py` stays the single source. Confirmed both ways: with the fix stashed,
+      `CORA_HISTORY_TURNS=0 uv run pytest -k second_question` fails exactly as predicted;
+      with it, that run passes.
 - [ ] make the seed-doc spec fail when the ingest loop is removed — `PersistentClient`
       creates the directory on construction, so `iterdir()` proves only that Chroma opened.
 - [ ] make the tool-result spec reject tool-*error* text: `\d` matches

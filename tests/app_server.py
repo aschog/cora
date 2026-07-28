@@ -57,7 +57,7 @@ def running_app(
             _command(port),
             stdout=log,
             stderr=subprocess.STDOUT,
-            env=_env(base_url, api_key, db_path, model),
+            env=app_env(base_url, api_key, db_path, model),
         )
         server = AppServer(url=f"http://127.0.0.1:{port}", process=process, log=log)
         try:
@@ -70,10 +70,18 @@ def running_app(
             print(server.output())
 
 
-def _env(
+def app_env(
     base_url: str, api_key: str | None, db_path: Path, model: str
 ) -> dict[str, str]:
-    env = os.environ | {
+    # Every CORA_* knob is dropped, not just the ones set below: an exported
+    # CORA_HISTORY_TURNS=0 or CORA_PLUGIN would otherwise reach the app under test
+    # and fail a spec with nothing in the output pointing at the cause. What is not
+    # set here falls to the app's own defaults, so config.py stays the one source.
+    env = {
+        name: value
+        for name, value in os.environ.items()
+        if not name.startswith("CORA_")
+    } | {
         "OPENROUTER_BASE_URL": base_url,
         "CORA_MODEL": model,
         "CORA_DB_PATH": str(db_path),
