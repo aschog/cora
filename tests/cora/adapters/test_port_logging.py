@@ -5,6 +5,7 @@ import pytest
 from cora.adapters.port_logging import (
     MAX_LOGGED_CHARS,
     LoggingChatModel,
+    LoggingEmbedder,
     LoggingRetriever,
     truncate,
 )
@@ -183,3 +184,16 @@ def test_logging_retriever_answers_lookups_silently(
     assert known is True
     assert unknown is False
     assert caplog.records == []
+
+
+def test_logging_embedder_delegates_and_logs_the_batch_size(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    inner = FakeEmbedder()
+    texts = ["one", "two", "three"]
+
+    with caplog.at_level(logging.DEBUG, logger="cora"):
+        vectors = LoggingEmbedder(inner).embed(texts)
+
+    assert vectors == inner.embed(texts)
+    assert "3 texts" in line_about(caplog, "embedded")

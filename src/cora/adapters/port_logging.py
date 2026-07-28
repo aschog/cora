@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from cora.core.chunk import Chunk
 from cora.core.ports.chat_model import ChatModel, Message, ModelReply
+from cora.core.ports.embedding import Embedder
 from cora.core.ports.plugin import Tool
 from cora.core.ports.retrieval import RetrievedChunk, Retriever
 
@@ -68,6 +69,15 @@ class LoggingRetriever:
 
     def contains(self, file_hash: str) -> bool:
         return self.inner.contains(file_hash)
+
+
+@dataclass(frozen=True)
+class LoggingEmbedder:
+    inner: Embedder
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        log.debug("embedded: %d texts", len(texts))
+        return self.inner.embed(texts)
 
 
 def _describe(hit: RetrievedChunk) -> str:
