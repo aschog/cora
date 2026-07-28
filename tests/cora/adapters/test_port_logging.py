@@ -61,6 +61,7 @@ def test_logging_chat_model_logs_the_request(caplog: pytest.LogCaptureFixture) -
     assert "system, user" in request
     assert "a question" in request
     assert all(record.name.startswith("cora") for record in caplog.records)
+    assert {record.levelno for record in caplog.records} == {logging.DEBUG}
 
 
 def test_logging_chat_model_logs_the_reply(caplog: pytest.LogCaptureFixture) -> None:
