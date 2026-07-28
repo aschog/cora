@@ -3,7 +3,7 @@ import re
 import pytest
 from playwright.sync_api import Page, expect
 
-from app_page import ALERT_ERROR, ask, messages, open_expander
+from app_page import ALERT_ERROR, EXCEPTION, ask, messages, open_expander
 from stub_llm import StubLlm
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(180)]
@@ -53,6 +53,18 @@ def test_a_medical_question_is_refused_without_reaching_the_model(
         "consult a qualified healthcare professional"
     )
     assert stub.requests == [], "a refused question must never reach the model"
+
+
+def test_a_provider_failure_shows_one_friendly_alert(app: Page, stub: StubLlm) -> None:
+    stub.script_status(429)
+
+    ask(app, "How much protein should I eat?")
+
+    alert = app.get_by_test_id(ALERT_ERROR)
+    expect(alert).to_have_count(1)
+    expect(alert).to_contain_text("temporarily unavailable")
+    expect(app.get_by_test_id(EXCEPTION)).to_have_count(0)
+    expect(messages(app).first).to_contain_text("How much protein should I eat?")
 
 
 def test_a_calculator_question_shows_its_tool_result(app: Page, stub: StubLlm) -> None:

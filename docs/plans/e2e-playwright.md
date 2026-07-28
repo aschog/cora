@@ -194,8 +194,15 @@ App specs (live-ready unless marked stub-only)
       half is a recorder assertion, so only the alert half could run live. Green on
       arrival like the memory spec; red proved by planting a `MedicalSafetyRule` that
       does not raise, once per assertion since the first failure masks the second.
-- [ ] write a test that shows a provider failure renders one friendly error alert, no
-      traceback, and the user's question still on screen (**stub-only**).
+- [x] write a test that shows a provider failure renders one friendly error alert, no
+      traceback, and the user's question still on screen (**stub-only**). Two plants, since
+      the three assertions guard different regressions — and the first was instructive:
+      with the `except CoreError` handler removed, **the alert assertions still passed**.
+      Streamlit renders an uncaught exception inside an `stAlertContentError` whose text is
+      `LlmError`'s own message, so "one friendly alert" cannot by itself tell a handled
+      error from a traceback; the `stException` count is the load-bearing assertion. The
+      question-on-screen assertion needed its own plant (append the user turn *after* the
+      call), which no error-shape assertion catches.
 - [ ] write a test that shows exceeding the tool-round cap ends in a friendly error rather
       than a hang (**stub-only**).
 - [ ] write a test that shows a fresh server started without `OPENROUTER_API_KEY` renders
