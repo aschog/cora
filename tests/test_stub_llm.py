@@ -102,18 +102,7 @@ def test_stub_records_what_the_model_was_sent() -> None:
 
 
 @pytest.mark.integration
-def test_stub_records_every_retry_of_a_failed_request() -> None:
-    with StubLlm() as stub:
-        stub.script_status(429)
-
-        with pytest.raises(LlmError):
-            _model(stub).complete((Message(role="user", content="Deadlifts?"),), ())
-
-    assert len(stub.requests) == 3
-
-
-@pytest.mark.integration
-def test_scripted_rate_limit_surfaces_as_the_apps_llm_error() -> None:
+def test_scripted_rate_limit_surfaces_as_llm_error_after_retrying() -> None:
     """One status is enough: every provider failure collapses to LlmError, and the
     per-status mapping is already covered by the adapter's unit tests."""
     with StubLlm() as stub:
@@ -121,6 +110,9 @@ def test_scripted_rate_limit_surfaces_as_the_apps_llm_error() -> None:
 
         with pytest.raises(LlmError):
             _model(stub).complete((Message(role="user", content="Deadlifts?"),), ())
+
+    # Not an exact count: that is the openai client's default, not our behaviour.
+    assert len(stub.requests) >= 2
 
 
 @pytest.mark.integration
@@ -138,3 +130,20 @@ def test_overlapping_requests_are_both_served() -> None:
     assert [reply.text for reply in replies] == [
         "Deadlifts train the posterior chain."
     ] * 2
+
+
+@pytest.mark.integration
+def test_a_met_overlap_requirement_does_not_stall_the_next_request() -> None:
+    question = (Message(role="user", content="Deadlifts?"),)
+    with StubLlm() as stub:
+        stub.script_answer("Deadlifts train the posterior chain.")
+        stub.require_overlap(2)
+        model = _model(stub)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            pending = [pool.submit(model.complete, question, ()) for _ in range(2)]
+            [future.result(timeout=15) for future in pending]
+
+        reply = model.complete(question, ())
+
+    assert reply == ModelReply(text="Deadlifts train the posterior chain.")

@@ -25,6 +25,7 @@ def test_the_launched_app_inherits_none_of_the_developers_knobs(
     assert env["CORA_DB_PATH"] == str(tmp_path)
 
 
+@pytest.mark.integration
 def test_find_free_port_returns_a_port_the_caller_can_bind() -> None:
     port = find_free_port()
 

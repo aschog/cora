@@ -32,6 +32,8 @@ class StubLlm:
         self._server.shutdown()
         self._server.server_close()
         self._thread.join(timeout=5)
+        if self._thread.is_alive():
+            raise RuntimeError("the stub server thread did not stop")
 
     @property
     def base_url(self) -> str:
@@ -65,8 +67,13 @@ class StubLlm:
     def response(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         with self._lock:
             self._requests.append(request)
-        if self._overlap is not None:
-            self._overlap.wait()
+        overlap = self._overlap
+        if overlap is not None:
+            # Cleared only after it trips — clearing first would let the second party
+            # read None, skip the wait and strand the first. A barrier left in place
+            # would block the next odd request for its full timeout, then break it.
+            overlap.wait()
+            self._overlap = None
         if self._delay:
             time.sleep(self._delay)
         if self._status != 200:

@@ -280,10 +280,19 @@ Review findings (PR #9, `ai-code-reviewer`) — behavioural ones each need their
       `aria-expanded="false"`, hidden. A session-scoped `browser_context_args` override
       wins over the device preset, and the same command now passes. The earlier "pinned
       wide viewport" claim is finally true.
-- [ ] hygiene: anchor `samples/` off `__file__`; reset or document the overlap `Barrier`;
-      loosen the retry-count assertion off langchain's default; mark or move the
-      socket-binding unit test; rename `test_end_to_end.py` now that `e2e` means the
-      browser tier.
+- [x] hygiene: anchor `samples/` off `__file__` (verified by running the upload specs from
+      another cwd, where the old relative path raised `FileNotFoundError`); clear the
+      overlap `Barrier` once met; loosen the retry-count assertion off the openai client's
+      default and fold the now-subsumed rate-limit test into it; mark the socket-binding
+      test `integration`, since the unit tier promises no sockets; rename
+      `test_end_to_end.py` → `test_ingest_and_search.py` now that `e2e` means the browser
+      tier. The stub also raises if its server thread outlives teardown instead of leaking
+      it silently.
+      The barrier fix earned its own red: a third request hit the tripped barrier, blocked
+      for the full 10s timeout and died with `BrokenBarrierError` inside the handler, so the
+      client got no response at all. My first fix cleared the barrier *before* waiting,
+      which races — the second party can read `None`, skip the wait and strand the first;
+      clearing after it trips is the correct order.
 
 ---
 

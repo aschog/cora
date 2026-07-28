@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 pytestmark = pytest.mark.integration
 
 
-def test_ingest_and_search_end_to_end(
+def test_a_search_retrieves_the_chunk_matching_the_question(
     make_chroma: "Callable[[], ChromaRetriever]",
 ) -> None:
     kb = KnowledgeBase(

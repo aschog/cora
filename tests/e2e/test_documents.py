@@ -15,7 +15,7 @@ from app_page import (
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(180)]
 
-SAMPLE = Path("samples/training-plan.md")
+SAMPLE = Path(__file__).parents[2] / "samples" / "training-plan.md"
 
 
 def test_uploading_a_document_confirms_it_and_lists_it(app: Page) -> None:
