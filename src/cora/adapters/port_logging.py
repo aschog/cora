@@ -13,9 +13,10 @@ log = logging.getLogger(__name__)
 
 
 def truncate(text: str) -> str:
-    if len(text) <= MAX_LOGGED_CHARS:
-        return text
-    return text[: MAX_LOGGED_CHARS - 1] + "…"
+    one_line = " ".join(text.split())
+    if len(one_line) <= MAX_LOGGED_CHARS:
+        return one_line
+    return one_line[: MAX_LOGGED_CHARS - 1] + "…"
 
 
 @dataclass(frozen=True)

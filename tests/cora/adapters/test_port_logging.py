@@ -42,6 +42,15 @@ def test_truncate_bounds_long_text_and_marks_the_cut() -> None:
     assert clipped.endswith("…")
 
 
+def test_truncate_keeps_a_multi_line_value_on_one_line() -> None:
+    collapsed = truncate("first\nsecond\r\nthird\tfourth")
+
+    assert "\n" not in collapsed
+    assert "\r" not in collapsed
+    assert "\t" not in collapsed
+    assert collapsed == "first second third fourth"
+
+
 def test_logging_chat_model_delegates_and_returns_the_inner_reply() -> None:
     inner = ScriptedChatModel([ModelReply(text="an answer")])
     messages = (Message(role="user", content="a question"),)
