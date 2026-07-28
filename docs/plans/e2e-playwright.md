@@ -294,6 +294,16 @@ Review findings (PR #9, `ai-code-reviewer`) — behavioural ones each need their
       which races — the second party can read `None`, skip the wait and strand the first;
       clearing after it trips is the correct order.
 
+Second review pass (PR #9) — the first pass's fixes set a standard the harness then missed
+
+- [x] strip `STREAMLIT_*` alongside `CORA_*`. The CLI flags pin five options; every other
+      one has a `STREAMLIT_*` env var and was inherited, so an exported
+      `STREAMLIT_SERVER_MAX_UPLOAD_SIZE=0` silently broke the upload specs — verified both
+      ways, failing without the fix and passing with it.
+- [x] assert a key-free launch drops an exported `OPENROUTER_API_KEY`. The pop already did
+      this, but nothing proved it: the only cover was the browser spec, which in CI has no
+      key to leak and so passed vacuously. Red proved by planting a blank instead of a pop.
+
 ---
 
 ## Discovered, out of scope

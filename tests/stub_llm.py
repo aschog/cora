@@ -69,11 +69,8 @@ class StubLlm:
             self._requests.append(request)
         overlap = self._overlap
         if overlap is not None:
-            # Cleared only after it trips — clearing first would let the second party
-            # read None, skip the wait and strand the first. A barrier left in place
-            # would block the next odd request for its full timeout, then break it.
             overlap.wait()
-            self._overlap = None
+            self._overlap = None  # after the trip: clearing first strands the waiter
         if self._delay:
             time.sleep(self._delay)
         if self._status != 200:

@@ -12,6 +12,7 @@ def test_the_launched_app_inherits_none_of_the_developers_knobs(
 ) -> None:
     monkeypatch.setenv("CORA_HISTORY_TURNS", "0")
     monkeypatch.setenv("CORA_PLUGIN", "some.other.plugin")
+    monkeypatch.setenv("STREAMLIT_SERVER_MAX_UPLOAD_SIZE", "0")
 
     env = app_env(
         base_url="http://127.0.0.1:1/v1",
@@ -22,7 +23,23 @@ def test_the_launched_app_inherits_none_of_the_developers_knobs(
 
     assert "CORA_HISTORY_TURNS" not in env
     assert "CORA_PLUGIN" not in env
+    assert "STREAMLIT_SERVER_MAX_UPLOAD_SIZE" not in env
     assert env["CORA_DB_PATH"] == str(tmp_path)
+
+
+def test_a_key_free_launch_does_not_inherit_the_developers_key(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "sk-or-the-real-thing")
+
+    env = app_env(
+        base_url="http://127.0.0.1:1/v1",
+        api_key=None,
+        db_path=tmp_path,
+        model="stub-model",
+    )
+
+    assert "OPENROUTER_API_KEY" not in env
 
 
 @pytest.mark.integration

@@ -16,6 +16,7 @@ from typing import IO
 APP_MODULE = "cora.app.ui.streamlit_app"
 READY_TIMEOUT = 180.0
 POLL_INTERVAL = 0.25
+INHERITED_KNOBS = ("CORA_", "STREAMLIT_")
 
 
 def find_free_port() -> int:
@@ -76,7 +77,7 @@ def app_env(
     env = {
         name: value
         for name, value in os.environ.items()
-        if not name.startswith("CORA_")
+        if not name.startswith(INHERITED_KNOBS)
     } | {
         "OPENROUTER_BASE_URL": base_url,
         "CORA_MODEL": model,
@@ -93,8 +94,6 @@ def app_env(
 
 
 def _command(port: int) -> list[str]:
-    # CLI flags, not env vars: flags outrank a developer's ~/.streamlit/config.toml,
-    # so their local settings cannot change the app under test.
     return [
         sys.executable,
         "-m",

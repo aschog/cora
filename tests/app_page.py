@@ -2,9 +2,6 @@ from contextlib import suppress
 
 from playwright.sync_api import Locator, Page, expect
 
-# No data-testid is documented by Streamlit and they do churn — stFileUploaderFile*
-# became stFileChip* in 1.60 — so every one the suite depends on is named here and
-# nowhere else. A Streamlit upgrade is this file to fix.
 APP = "stApp"
 CHAT_INPUT = "stChatInputTextArea"
 CHAT_MESSAGE = "stChatMessage"
