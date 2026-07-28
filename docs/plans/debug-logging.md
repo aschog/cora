@@ -46,7 +46,7 @@ Config
 
 Truncation helper
 
-- [ ] test that text over the cap is truncated with a marker; short text passes unchanged.
+- [x] test that text over the cap is truncated with a marker; short text passes unchanged.
 
 Wrappers (fakes + caplog)
 
