@@ -116,34 +116,19 @@ def test_scripted_rate_limit_surfaces_as_llm_error_after_retrying() -> None:
 
 
 @pytest.mark.integration
-def test_overlapping_requests_are_both_served() -> None:
+def test_an_overlap_requirement_is_met_and_then_released() -> None:
+    answer = "Deadlifts train the posterior chain."
     question = (Message(role="user", content="Deadlifts?"),)
     with StubLlm() as stub:
-        stub.script_answer("Deadlifts train the posterior chain.")
+        stub.script_answer(answer)
         stub.require_overlap(2)
         model = _model(stub)
 
         with ThreadPoolExecutor(max_workers=2) as pool:
             pending = [pool.submit(model.complete, question, ()) for _ in range(2)]
-            replies = [future.result(timeout=15) for future in pending]
+            overlapping = [future.result(timeout=15) for future in pending]
 
-    assert [reply.text for reply in replies] == [
-        "Deadlifts train the posterior chain."
-    ] * 2
+        after = model.complete(question, ())
 
-
-@pytest.mark.integration
-def test_a_met_overlap_requirement_does_not_stall_the_next_request() -> None:
-    question = (Message(role="user", content="Deadlifts?"),)
-    with StubLlm() as stub:
-        stub.script_answer("Deadlifts train the posterior chain.")
-        stub.require_overlap(2)
-        model = _model(stub)
-
-        with ThreadPoolExecutor(max_workers=2) as pool:
-            pending = [pool.submit(model.complete, question, ()) for _ in range(2)]
-            [future.result(timeout=15) for future in pending]
-
-        reply = model.complete(question, ())
-
-    assert reply == ModelReply(text="Deadlifts train the posterior chain.")
+    assert [reply.text for reply in overlapping] == [answer] * 2
+    assert after == ModelReply(text=answer)

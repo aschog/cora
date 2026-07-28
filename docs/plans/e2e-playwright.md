@@ -303,6 +303,15 @@ Second review pass (PR #9) — the first pass's fixes set a standard the harness
 - [x] assert a key-free launch drops an exported `OPENROUTER_API_KEY`. The pop already did
       this, but nothing proved it: the only cover was the browser spec, which in CI has no
       key to leak and so passed vacuously. Red proved by planting a blank instead of a pop.
+- [x] fold the barrier-release test into the overlap test, the way the rate-limit pair was
+      folded — same setup, and the copy discarded its replies. Verified the merged test
+      still catches the bug by replanting the uncleared barrier.
+- [x] **accept** the barrier's residual race rather than close it. A request arriving in
+      the window between the trip and the clear still waits alone for the 10s timeout. The
+      reviewer could not reproduce it in 60 trials, no spec sends a third *concurrent*
+      request, and this is a single-developer repo, so the counter-based claim-a-slot fix
+      buys little. If a spec ever needs three concurrent requests, that is the fix — and
+      the note lives here rather than in a comment, since no edit can silently break it.
 
 ---
 
