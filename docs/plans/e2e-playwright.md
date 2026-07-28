@@ -257,8 +257,12 @@ Review findings (PR #9, `ai-code-reviewer`) — behavioural ones each need their
       `config.py` stays the single source. Confirmed both ways: with the fix stashed,
       `CORA_HISTORY_TURNS=0 uv run pytest -k second_question` fails exactly as predicted;
       with it, that run passes.
-- [ ] make the seed-doc spec fail when the ingest loop is removed — `PersistentClient`
+- [x] make the seed-doc spec fail when the ingest loop is removed — `PersistentClient`
       creates the directory on construction, so `iterdir()` proves only that Chroma opened.
+      Now asserts the sidebar lists `protein.md`; the path assertion stays, because the app
+      has exactly one store and it is the temp one. Both halves of the finding were proved
+      by planting `for filename, data in ():` — the new assertion fails, and with it
+      removed the old one **passes with no ingest at all**.
 - [ ] make the tool-result spec reject tool-*error* text: `\d` matches
       `invalid arguments: 180 is greater than the maximum of 2.5`.
 - [ ] make the provider-failure spec prove the stub was actually reached — a `RetrievalError`
