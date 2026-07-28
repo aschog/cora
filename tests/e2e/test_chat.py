@@ -3,7 +3,7 @@ import re
 import pytest
 from playwright.sync_api import Page, expect
 
-from app_page import ask, messages, open_expander
+from app_page import ALERT_ERROR, ask, messages, open_expander
 from stub_llm import StubLlm
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(180)]
@@ -42,6 +42,17 @@ def test_a_second_question_reaches_the_model_with_the_first_exchange(
         ("assistant", "Aim for about 1.6 g per kilogram."),
         ("user", "And at 80 kg?"),
     ]
+
+
+def test_a_medical_question_is_refused_without_reaching_the_model(
+    app: Page, stub: StubLlm
+) -> None:
+    ask(app, "Should I take insulin before training?")
+
+    expect(app.get_by_test_id(ALERT_ERROR)).to_contain_text(
+        "consult a qualified healthcare professional"
+    )
+    assert stub.requests == [], "a refused question must never reach the model"
 
 
 def test_a_calculator_question_shows_its_tool_result(app: Page, stub: StubLlm) -> None:

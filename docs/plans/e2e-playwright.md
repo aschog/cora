@@ -151,7 +151,10 @@ Config knob
 
 Harness fixtures (each proved by the smallest spec that can fail)
 
-- [ ] write a test that shows the port helper returns a port that can actually be bound.
+- [~] ~~write a test that shows the port helper returns a port that can actually be bound.~~
+      **Skipped, not forgotten.** Every spec's server fixture binds the helper's port before
+      anything else, so a port that cannot be bound fails the whole tier at once — a direct
+      test would restate the loudest signal the suite already has.
 - [x] write a test that shows the launched app answers `/_stcore/health` with `ok` inside
       the readiness budget, and that the subprocess is gone after teardown.
 - [x] write a test that shows the run wrote its store under the temp path — **health does
@@ -186,8 +189,11 @@ App specs (live-ready unless marked stub-only)
       included (**stub-only**, recorder assertion) — green on arrival, since conversation
       memory already landed in PR #6, so red was proved by planting `engine.answer(prompt)`
       without history and watching the recorder see one message instead of three.
-- [ ] write a test that shows a medical-safety question is refused with the plugin's
-      message and never reaches the model.
+- [x] write a test that shows a medical-safety question is refused with the plugin's
+      message and never reaches the model — **stub-only** after all: the "never reaches"
+      half is a recorder assertion, so only the alert half could run live. Green on
+      arrival like the memory spec; red proved by planting a `MedicalSafetyRule` that
+      does not raise, once per assertion since the first failure masks the second.
 - [ ] write a test that shows a provider failure renders one friendly error alert, no
       traceback, and the user's question still on screen (**stub-only**).
 - [ ] write a test that shows exceeding the tool-round cap ends in a friendly error rather
