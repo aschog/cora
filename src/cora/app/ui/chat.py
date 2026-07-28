@@ -6,12 +6,11 @@ from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from cora.app.assembly import App
 from cora.app.ui.formatting import (
-    ThreadEntry,
     format_tool_result,
     ingest_message,
     numbered_sources,
-    thread_to_turns,
 )
+from cora.app.ui.thread import ThreadEntry, thread_to_turns
 from cora.core.errors import AdapterError, CoreError
 from cora.core.services.chat_engine import ChatEngine, ChatResult
 from cora.core.services.knowledge_base import KnowledgeBase
