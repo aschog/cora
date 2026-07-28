@@ -1,6 +1,7 @@
 import pytest
 
 from cora.adapters.openrouter_chat_model import OpenRouterChatModel
+from cora.core.errors import LlmError
 from cora.core.ports.chat_model import Message, ModelReply
 from fakes import add_tool
 from stub_llm import StubLlm
@@ -14,8 +15,6 @@ def _model(stub: StubLlm) -> OpenRouterChatModel:
 
 @pytest.mark.integration
 def test_adapter_pointed_at_the_stub_returns_the_scripted_answer() -> None:
-    """The stub stands in for OpenRouter at the network seam, so the real
-    adapter — real langchain-openai, real HTTP — is the thing under test."""
     with StubLlm() as stub:
         stub.script_answer("Deadlifts train the posterior chain.")
 
@@ -26,9 +25,6 @@ def test_adapter_pointed_at_the_stub_returns_the_scripted_answer() -> None:
 
 @pytest.mark.integration
 def test_stub_asks_for_the_tool_until_the_result_comes_back() -> None:
-    """Scripted on conversation state, not call count: the openai client retries,
-    so an advancing script would desync. The predicate is whether the request
-    already carries a tool result."""
     tool = add_tool()
     question = (Message(role="user", content="Add 1 and 2."),)
     with StubLlm() as stub:
@@ -54,3 +50,30 @@ def test_stub_asks_for_the_tool_until_the_result_comes_back() -> None:
     assert asked.tool_calls[0].call_id
     assert asked.is_final is False
     assert answered == ModelReply(text="The sum is 3.")
+
+
+@pytest.mark.integration
+def test_repeating_a_request_does_not_advance_the_script() -> None:
+    tool = add_tool()
+    question = (Message(role="user", content="Add 1 and 2."),)
+    with StubLlm() as stub:
+        stub.script_tool_call("add", {"a": 1, "b": 2})
+        stub.script_answer("The sum is 3.")
+        model = _model(stub)
+
+        first = model.complete(question, (tool,))
+        repeated = model.complete(question, (tool,))
+
+    assert first == repeated
+    assert repeated.is_final is False
+
+
+@pytest.mark.integration
+def test_scripted_rate_limit_surfaces_as_the_apps_llm_error() -> None:
+    """One status is enough: every provider failure collapses to LlmError, and the
+    per-status mapping is already covered by the adapter's unit tests."""
+    with StubLlm() as stub:
+        stub.script_status(429)
+
+        with pytest.raises(LlmError):
+            _model(stub).complete((Message(role="user", content="Deadlifts?"),), ())

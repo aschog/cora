@@ -13,6 +13,7 @@ class StubLlm:
     def __init__(self) -> None:
         self._answer = ""
         self._tool_call: tuple[str, dict[str, object]] | None = None
+        self._status = 200
         self._server = _StubServer(("127.0.0.1", 0), _Handler)
         self._server.stub = self
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
@@ -37,12 +38,21 @@ class StubLlm:
     def script_tool_call(self, name: str, arguments: dict[str, object]) -> None:
         self._tool_call = (name, arguments)
 
-    def completion(self, request: dict[str, object]) -> dict[str, object]:
+    def script_status(self, code: int) -> None:
+        """A scripted failure stands until cleared: the client retries 429 and 5xx
+        three times by default, and every attempt must see the same failure."""
+        self._status = code
+
+    def response(self, request: dict[str, object]) -> tuple[int, dict[str, object]]:
         """Keyed on conversation state, never on a call counter: the openai
         client retries by default, so identical requests repeat."""
+        if self._status != 200:
+            return self._status, {
+                "error": {"message": "scripted failure", "code": self._status}
+            }
         if self._tool_call is not None and not _carries_tool_result(request):
-            return _envelope("tool_calls", _tool_call_message(*self._tool_call))
-        return _envelope("stop", {"role": "assistant", "content": self._answer})
+            return 200, _envelope("tool_calls", _tool_call_message(*self._tool_call))
+        return 200, _envelope("stop", {"role": "assistant", "content": self._answer})
 
 
 def _carries_tool_result(request: dict[str, object]) -> bool:
@@ -84,8 +94,9 @@ class _Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         raw = self.rfile.read(int(self.headers.get("Content-Length") or 0))
         stub = cast(_StubServer, self.server).stub
-        body = json.dumps(stub.completion(json.loads(raw or b"{}"))).encode()
-        self.send_response(200)
+        status, payload = stub.response(json.loads(raw or b"{}"))
+        body = json.dumps(payload).encode()
+        self.send_response(status)
         self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()

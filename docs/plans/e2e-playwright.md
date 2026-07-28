@@ -123,13 +123,13 @@ Scaffolding (no assertion surface — minimal, lands first)
 
 Stub LLM server (no browser, no subprocess)
 
-- [ ] write a test that shows the real `OpenRouterChatModel` pointed at the stub returns
+- [x] write a test that shows the real `OpenRouterChatModel` pointed at the stub returns
       a scripted plain answer as its final text.
-- [ ] write a test that shows the stub replies with a tool call while the request carries
+- [x] write a test that shows the stub replies with a tool call while the request carries
       no tool result, and with a final answer once it does.
-- [ ] write a test that shows repeating the *same* request does not advance the script —
+- [x] write a test that shows repeating the *same* request does not advance the script —
       the client retries, so state and not call count drives the reply.
-- [ ] write a test that shows a scripted 429 surfaces as `LlmError` through the real
+- [x] write a test that shows a scripted 429 surfaces as `LlmError` through the real
       adapter (one representative status; per-status mapping is already unit-tested).
 - [ ] write a test that shows the stub records each request, so a spec can assert what the
       model was sent — system prompt, prior turns, tool result.
