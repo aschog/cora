@@ -147,10 +147,14 @@ Config knob
 Harness fixtures (each proved by the smallest spec that can fail)
 
 - [ ] write a test that shows the port helper returns a port that can actually be bound.
-- [ ] write a test that shows the launched app answers `/_stcore/health` with `ok` inside
+- [x] write a test that shows the launched app answers `/_stcore/health` with `ok` inside
       the readiness budget, and that the subprocess is gone after teardown.
-- [ ] write a test that shows the run wrote its store under the temp path and left the
-      repository's `.cora` untouched.
+- [ ] *(moved to the app specs)* write a test that shows the run wrote its store under the
+      temp path and left the repository's `.cora` untouched — **health does not imply the
+      script ran.** `/_stcore/health` goes `ok` once the runtime accepts browser
+      connections, and Streamlit executes the script per session, on websocket connect. So
+      the fixture is ready in ~1.5s with `st.cache_resource` not yet built and no seed docs
+      ingested; only a page load proves where the store lands.
 - [ ] write a test that shows the barrier returns only after the rerun finished — an
       assertion made immediately after it sees the new content.
 - [ ] write a test that shows the page loads with the chat input visible, sidebar content
