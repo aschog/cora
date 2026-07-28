@@ -38,8 +38,14 @@ Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
 with each question — the default `20` is about ten question-and-answer
 exchanges, and `0` switches memory off), `CORA_DB_PATH` (where Chroma persists;
 the default `.cora/chroma` is relative to the working directory),
-`OPENROUTER_BASE_URL`. The three counts are rejected at startup if they fall
-below their lowest useful value — `0` for history turns, `1` for the others.
+`OPENROUTER_BASE_URL`, `CORA_DEBUG`. The three counts are rejected at startup if
+they fall below their lowest useful value — `0` for history turns, `1` for the
+others.
+
+Set `CORA_DEBUG` to `1` or `true` to trace what crosses the ports — one truncated
+line per embed, retrieval (with sources and scores) and model round trip, printed
+to the terminal running Streamlit. Any other value leaves it off, so tracing is
+never enabled by accident; the API key never crosses a port.
 
 ## Manual testing
 

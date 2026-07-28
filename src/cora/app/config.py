@@ -23,6 +23,7 @@ class Config:
     max_tool_rounds: int
     history_turns: int
     db_path: str
+    debug: bool = False
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Config":
@@ -45,7 +46,12 @@ class Config:
                 env, "CORA_HISTORY_TURNS", DEFAULT_HISTORY_TURNS, minimum=0
             ),
             db_path=env.get("CORA_DB_PATH", DEFAULT_DB_PATH),
+            debug=_bool(env, "CORA_DEBUG"),
         )
+
+
+def _bool(env: Mapping[str, str], key: str) -> bool:
+    return env.get(key, "").strip().lower() in {"1", "true"}
 
 
 def _int(env: Mapping[str, str], key: str, default: int, *, minimum: int) -> int:

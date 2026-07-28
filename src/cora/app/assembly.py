@@ -1,11 +1,17 @@
 from dataclasses import dataclass
 
+from cora.adapters.port_logging import (
+    LoggingChatModel,
+    LoggingEmbedder,
+    LoggingRetriever,
+)
 from cora.app.config import (
     DEFAULT_HISTORY_TURNS,
     DEFAULT_MAX_TOOL_ROUNDS,
     DEFAULT_TOP_K,
     Config,
 )
+from cora.app.log_config import enable_debug_logs
 from cora.core.ports.chat_model import ChatModel
 from cora.core.ports.embedding import Embedder
 from cora.core.ports.plugin import Plugin
@@ -39,7 +45,12 @@ def assemble(
     top_k: int = DEFAULT_TOP_K,
     max_tool_rounds: int = DEFAULT_MAX_TOOL_ROUNDS,
     history_turns: int = DEFAULT_HISTORY_TURNS,
+    debug: bool = False,
 ) -> App:
+    if debug:
+        chat_model = LoggingChatModel(chat_model)
+        embedder = LoggingEmbedder(embedder)
+        retriever = LoggingRetriever(retriever)
     knowledge_base = KnowledgeBase(embedder=embedder, retriever=retriever)
     for filename, data in plugin.seed_docs:
         knowledge_base.add_file(data, filename)
@@ -66,6 +77,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
 
+    enable_debug_logs(config.debug)
     return assemble(
         chat_model=OpenRouterChatModel(
             model=config.model, api_key=config.api_key, base_url=config.base_url
@@ -76,4 +88,5 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         top_k=config.top_k,
         max_tool_rounds=config.max_tool_rounds,
         history_turns=config.history_turns,
+        debug=config.debug,
     )

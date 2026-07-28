@@ -1,4 +1,5 @@
-from collections.abc import Callable
+import logging
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -10,6 +11,17 @@ from fakes import FakeEmbedder, FakeRetriever
 
 if TYPE_CHECKING:
     from cora.adapters.chroma_retriever import ChromaRetriever
+
+
+@pytest.fixture
+def clean_cora_logger() -> Iterator[logging.Logger]:
+    logger = logging.getLogger("cora")
+    level, handlers = logger.level, list(logger.handlers)
+    logger.setLevel(logging.NOTSET)
+    logger.handlers = []
+    yield logger
+    logger.setLevel(level)
+    logger.handlers = handlers
 
 
 @pytest.fixture

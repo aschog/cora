@@ -42,6 +42,26 @@ def test_from_env_applies_defaults_for_optional_fields() -> None:
     assert config.db_path
 
 
+def test_from_env_leaves_debug_off_when_the_flag_is_unset() -> None:
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert config.debug is False
+
+
+@pytest.mark.parametrize("raw", ["1", "true", "TRUE", "True"])
+def test_from_env_turns_debug_on_for_truthy_flags(raw: str) -> None:
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123", "CORA_DEBUG": raw})
+
+    assert config.debug is True
+
+
+@pytest.mark.parametrize("raw", ["0", "false", "FALSE", ""])
+def test_from_env_keeps_debug_off_for_falsy_flags(raw: str) -> None:
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123", "CORA_DEBUG": raw})
+
+    assert config.debug is False
+
+
 def test_from_env_missing_api_key_raises_configuration_error() -> None:
     with pytest.raises(ConfigurationError):
         Config.from_env({})

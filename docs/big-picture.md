@@ -146,6 +146,11 @@ domain.
 | **Retriever** | `add(chunks, vectors, file_hash)`, `query(vector, k)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a persistent embedded collection with cosine distance. No server to run. |
 | **Plugin** | data only: `system_prompt`, `tools`, `validation_rules`, `seed_docs` | `cora.plugins.fitness` — swap it with `CORA_PLUGIN`. A frozen dataclass, not a base class to subclass. |
 
+With `CORA_DEBUG=1` the three technology ports are each bound to a thin logging
+decorator (`cora.adapters.port_logging`) wrapping the real adapter, so one
+truncated line per call shows what crossed the boundary. Nothing else changes:
+the core, the plugins and the UI never learn the difference.
+
 ## Claims, and what backs them
 
 Each of these is checked by something, not just asserted in a document.
