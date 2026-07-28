@@ -122,6 +122,43 @@ Docs
 
 - [x] README: `CORA_HISTORY_TURNS` alongside the other `CORA_*` overrides.
 
+## Review findings (PR #6, `ai-code-reviewer` + mutation testing)
+
+Two mutants survived the suite; both are recorded here as items rather than
+carried into `main`.
+
+- [ ] CI runs the integration tier. Reverting `_answer` to `engine.answer(prompt)`
+      — manual-test finding 1 itself — left `pytest -q` at 275 passed, so the
+      feature's whole UI-to-engine wiring was invisible to the pipeline while
+      `pyproject.toml` already advertised the marker as "run in CI". New
+      `integration-tier` job, with the embedding model cached. No test: a
+      workflow file has no assertion surface.
+- [ ] `max_history_turns` becomes a required field like `top_k` and
+      `max_tool_rounds`. Mutating the engine's `= 20` default to `0` left all
+      307 tests green — every construction passes the value, so the default is
+      unpinned dead code, and a future caller that omits it would get memory
+      silently off instead of a `TypeError`. `DEFAULT_HISTORY_TURNS` stays the
+      one default.
+- [ ] `_int` rejects non-positive values. `CORA_HISTORY_TURNS=-1` — a plausible
+      "unlimited" guess — yields an empty slice and silently disables memory;
+      same hole for `CORA_TOP_K` and `CORA_MAX_TOOL_ROUNDS`, so the guard belongs
+      in `_int`. Behavioural: failing test first.
+- [ ] correct the `_answer`-ordering item above: no test can fail for it. Mapping
+      *after* the append keeps all 20 UI tests green, because the mapper already
+      drops a trailing unanswered user entry. The ordering is defensive
+      redundancy, not a guard — say so, or fold it into the acceptance item.
+- [ ] log the citation-collision risk under Open questions: history carries the
+      previous answer's `[1]` while each turn rebuilds the context block with a
+      freshly numbered `[1]`, so a prior claim can cite a different document
+      than the one now numbered that way.
+- [ ] `docs/manual-test-findings.md` still lists finding 1 as the highest
+      remaining; update the status note as PR #5 did for findings 2/3/9.
+- [ ] nits: the clamp note above says "shorter than twice the cap" — the real
+      window was `cap/2 < len < cap` (11-19 turns at the default), since Python
+      clamps `history[-18:]` on a 2-turn tuple; `thread_to_turns` and
+      `ThreadEntry` have outgrown `ui/formatting.py` (`ui/thread.py` names it);
+      README omits the default `20`.
+
 ---
 
 ## Open questions / risks
