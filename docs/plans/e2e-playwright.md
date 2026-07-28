@@ -179,9 +179,9 @@ Harness fixtures (each proved by the smallest spec that can fail)
       assertion made immediately after it sees the new content. Verified by planting the
       naive wait-for-`notRunning`, which returns with 0 messages instead of 2.
 - [x] write a test that shows the page loads with the chat input visible, sidebar content
-      visible, and no `stException`. The viewport is **not** pinned, contrary to an earlier
-      claim here: it is pytest-playwright's 1280×720 default, so `--device="Pixel 5"`
-      collapses the sidebar and fails the spec. Pinning it is queued below.
+      visible at the pinned wide viewport, and no `stException`. The pin arrived late — see
+      the review-findings group; until then the spec leaned on pytest-playwright's 1280×720
+      default and a `--device` run would have failed it.
 - [x] CI `e2e` job (scaffolding, lands here because it needs one spec to select):
       `playwright install --with-deps chromium`, `-m 'e2e and not llm'` — a bare `-m`
       replaces the `addopts` selector rather than narrowing it, so the `llm` exclusion must
@@ -275,7 +275,11 @@ Review findings (PR #9, `ai-code-reviewer`) — behavioural ones each need their
       (planting `raise RetrievalError` in `ChromaRetriever.query` passed the old spec and
       fails the new one), and `stub.requests` must be non-empty (planting `raise LlmError`
       before the HTTP call leaves the text identical and fails only that assertion).
-- [ ] pin the viewport, so the sidebar assertions cannot be flipped by a `--device` run.
+- [x] pin the viewport, so the sidebar assertions cannot be flipped by a `--device` run.
+      Red was literal, no plant needed: `--device="Pixel 5"` rendered the sidebar
+      `aria-expanded="false"`, hidden. A session-scoped `browser_context_args` override
+      wins over the device preset, and the same command now passes. The earlier "pinned
+      wide viewport" claim is finally true.
 - [ ] hygiene: anchor `samples/` off `__file__`; reset or document the overlap `Barrier`;
       loosen the retry-count assertion off langchain's default; mark or move the
       socket-binding unit test; rename `test_end_to_end.py` now that `e2e` means the
