@@ -6,6 +6,7 @@ from cora.adapters.port_logging import (
     LoggingRetriever,
 )
 from cora.app.config import DEFAULT_MAX_TOOL_ROUNDS, DEFAULT_TOP_K, Config
+from cora.app.log_config import enable_debug_logs
 from cora.core.ports.chat_model import ChatModel
 from cora.core.ports.embedding import Embedder
 from cora.core.ports.plugin import Plugin
@@ -74,6 +75,7 @@ def build(
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
 
+    enable_debug_logs(config.debug)
     return assemble(
         chat_model=OpenRouterChatModel(
             model=config.model, api_key=config.api_key, base_url=config.base_url
@@ -83,4 +85,5 @@ def build(
         plugin=load_plugin(config.plugin_module),
         top_k=config.top_k,
         max_tool_rounds=config.max_tool_rounds,
+        debug=config.debug,
     )

@@ -3,8 +3,10 @@ from pathlib import Path
 
 import pytest
 
+from cora.adapters.port_logging import LoggingChatModel
 from cora.app.assembly import App, assemble, build
 from cora.app.config import Config
+from cora.app.log_config import DEBUG_HANDLER
 from cora.core.errors import InputRejectedError
 from cora.core.ports.chat_model import ModelReply
 from cora.core.ports.plugin import Plugin
@@ -109,18 +111,42 @@ def test_assemble_keeps_a_chat_turn_silent_without_debug(
     assert caplog.records == []
 
 
-@pytest.mark.integration
-def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
-    config = Config(
+def _config(*, debug: bool = False) -> Config:
+    return Config(
         api_key="k",
         model="openai/gpt-4o-mini",
         base_url="https://openrouter.ai/api/v1",
         plugin_module="fixture_plugins.valid",
         top_k=3,
         max_tool_rounds=4,
+        debug=debug,
     )
 
-    app = build(config, db_path=str(tmp_path))
+
+@pytest.mark.integration
+def test_build_wires_the_debug_seam_when_config_asks_for_it(
+    tmp_path: Path, clean_cora_logger: logging.Logger
+) -> None:
+    app = build(_config(debug=True), db_path=str(tmp_path))
+
+    assert isinstance(app.engine.chat_model, LoggingChatModel)
+    assert clean_cora_logger.level == logging.DEBUG
+    assert [handler.name for handler in clean_cora_logger.handlers] == [DEBUG_HANDLER]
+
+
+@pytest.mark.integration
+def test_build_leaves_the_ports_bare_without_debug(
+    tmp_path: Path, clean_cora_logger: logging.Logger
+) -> None:
+    app = build(_config(), db_path=str(tmp_path))
+
+    assert not isinstance(app.engine.chat_model, LoggingChatModel)
+    assert clean_cora_logger.handlers == []
+
+
+@pytest.mark.integration
+def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
+    app = build(_config(), db_path=str(tmp_path))
 
     plugin = load_plugin("fixture_plugins.valid")
     assert isinstance(app, App)

@@ -1,20 +1,6 @@
 import logging
-from collections.abc import Iterator
-
-import pytest
 
 from cora.app.log_config import enable_debug_logs
-
-
-@pytest.fixture(autouse=True)
-def clean_cora_logger() -> Iterator[logging.Logger]:
-    logger = logging.getLogger("cora")
-    level, handlers = logger.level, list(logger.handlers)
-    logger.setLevel(logging.NOTSET)
-    logger.handlers = []
-    yield logger
-    logger.setLevel(level)
-    logger.handlers = handlers
 
 
 def test_enable_debug_logs_puts_a_debug_handler_on_the_cora_logger(
