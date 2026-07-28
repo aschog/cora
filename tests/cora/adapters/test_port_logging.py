@@ -1,3 +1,7 @@
+import logging
+
+import pytest
+
 from cora.adapters.port_logging import (
     MAX_LOGGED_CHARS,
     LoggingChatModel,
@@ -5,6 +9,12 @@ from cora.adapters.port_logging import (
 )
 from cora.core.ports.chat_model import Message, ModelReply
 from fakes import ScriptedChatModel, add_tool
+
+
+def line_about(caplog: pytest.LogCaptureFixture, subject: str) -> str:
+    matches = [r.getMessage() for r in caplog.records if subject in r.getMessage()]
+    assert len(matches) == 1, f"expected one line about {subject!r}, got {matches}"
+    return matches[0]
 
 
 def test_truncate_passes_text_within_the_cap_through_unchanged() -> None:
@@ -30,3 +40,20 @@ def test_logging_chat_model_delegates_and_returns_the_inner_reply() -> None:
     assert reply == ModelReply(text="an answer")
     assert inner.last_messages == messages
     assert inner.last_tools == tools
+
+
+def test_logging_chat_model_logs_the_request(caplog: pytest.LogCaptureFixture) -> None:
+    inner = ScriptedChatModel([ModelReply(text="an answer")])
+    messages = (
+        Message(role="system", content="be helpful"),
+        Message(role="user", content="a question"),
+    )
+
+    with caplog.at_level(logging.DEBUG, logger="cora"):
+        LoggingChatModel(inner).complete(messages, ())
+
+    request = line_about(caplog, "request")
+    assert "2 messages" in request
+    assert "system, user" in request
+    assert "a question" in request
+    assert all(record.name.startswith("cora") for record in caplog.records)
