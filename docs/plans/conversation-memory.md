@@ -133,12 +133,14 @@ carried into `main`.
       `pyproject.toml` already advertised the marker as "run in CI". New
       `integration-tier` job, with the embedding model cached. No test: a
       workflow file has no assertion surface.
-- [ ] `max_history_turns` becomes a required field like `top_k` and
+- [x] `max_history_turns` becomes a required field like `top_k` and
       `max_tool_rounds`. Mutating the engine's `= 20` default to `0` left all
       307 tests green — every construction passes the value, so the default is
       unpinned dead code, and a future caller that omits it would get memory
       silently off instead of a `TypeError`. `DEFAULT_HISTORY_TURNS` stays the
-      one default.
+      one default. Guarded by `ty` (`missing-argument`) rather than a test, per
+      the same reasoning as the port Protocols: a construction that omits the
+      field no longer type-checks.
 - [ ] `_int` rejects non-positive values. `CORA_HISTORY_TURNS=-1` — a plausible
       "unlimited" guess — yields an empty slice and silently disables memory;
       same hole for `CORA_TOP_K` and `CORA_MAX_TOOL_ROUNDS`, so the guard belongs

@@ -61,7 +61,7 @@ class ChatEngine:
     top_k: int
     max_tool_rounds: int
     system_prompt: str
-    max_history_turns: int = 20
+    max_history_turns: int
     tools: tuple[Tool, ...] = ()
     build_context: Callable[[list[RetrievedChunk]], str] = build_context_block
 
