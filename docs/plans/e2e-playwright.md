@@ -117,8 +117,9 @@ Scaffolding (no assertion surface — minimal, lands first)
 
 - [x] dev deps via `uv add --dev`: `pytest-playwright`, pinned `playwright`,
       `pytest-timeout`; register the `e2e` marker and exclude it from the default selector.
-- [ ] CI `e2e` job: `playwright install --with-deps chromium`, `-m 'e2e and not llm'`,
-      screenshot/video/trace retained on failure. Browser caching is a later optimisation.
+> The CI job moved out of scaffolding to the end of the fixtures group: `pytest` exits **5**
+> on an empty selection, so a job added before the first `e2e`-marked spec exists is a job
+> that fails by construction.
 
 Stub LLM server (no browser, no subprocess)
 
@@ -150,6 +151,11 @@ Harness fixtures (each proved by the smallest spec that can fail)
       assertion made immediately after it sees the new content.
 - [ ] write a test that shows the page loads with the chat input visible, sidebar content
       visible at the pinned wide viewport, and no `stException`.
+- [ ] CI `e2e` job (scaffolding, lands here because it needs one spec to select):
+      `playwright install --with-deps chromium`, `-m 'e2e and not llm'` — a bare `-m`
+      replaces the `addopts` selector rather than narrowing it, so the `llm` exclusion must
+      be restated as the integration job already does. Screenshot/video/trace retained on
+      failure; browser caching is a later optimisation.
 
 App specs (live-ready unless marked stub-only)
 
