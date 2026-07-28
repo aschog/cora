@@ -5,7 +5,8 @@ layout) ships a single import package `cora`, layered as: `cora.core`
 (domain-agnostic center — `ports`, `services`, plus root value objects &
 `errors`), `cora.adapters` (framework edge), `cora.plugins` (domains), and
 `cora.app` (composition root, config, UI shell).
-Read `docs/plans/webapp-overview.md` (architecture) and `docs/workflow.md`
+Read `docs/big-picture.md` (one-page orientation: layers, components, ports),
+`docs/plans/webapp-overview.md` (architecture rationale) and `docs/workflow.md`
 (TDD workflow) before making changes. Setup and all development commands
 (gates, test tiers, watch mode) live in `README.md`.
 
