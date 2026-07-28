@@ -73,10 +73,6 @@ def running_app(
 def app_env(
     base_url: str, api_key: str | None, db_path: Path, model: str
 ) -> dict[str, str]:
-    # Every CORA_* knob is dropped, not just the ones set below: an exported
-    # CORA_HISTORY_TURNS=0 or CORA_PLUGIN would otherwise reach the app under test
-    # and fail a spec with nothing in the output pointing at the cause. What is not
-    # set here falls to the app's own defaults, so config.py stays the one source.
     env = {
         name: value
         for name, value in os.environ.items()
@@ -89,9 +85,6 @@ def app_env(
         # error, and the client caches its transport, so this must be set up front.
         "NO_PROXY": "127.0.0.1,localhost",
     }
-    # None pops rather than blanks: `not api_key` reads both alike today, but only
-    # absence still tests a missing key if that ever tightens to `is None` — and it
-    # keeps a developer's own key out of the subprocess.
     if api_key is None:
         env.pop("OPENROUTER_API_KEY", None)
     else:

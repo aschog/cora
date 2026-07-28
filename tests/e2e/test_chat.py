@@ -10,7 +10,6 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(180)]
 
 CITATION = re.compile(r"\[(\d+)\]")
 NUMBER = re.compile(r"\d")
-# Every branch of `ToolRuntime.execute` that fails renders its message verbatim.
 TOOL_ERROR = re.compile(
     r"invalid arguments|unknown tool|returned no result|failed:", re.IGNORECASE
 )
@@ -66,9 +65,10 @@ def test_a_provider_failure_shows_one_friendly_alert(app: Page, stub: StubLlm) -
 
     alert = app.get_by_test_id(ALERT_ERROR)
     expect(alert).to_have_count(1)
-    expect(alert).to_contain_text("temporarily unavailable")
+    expect(alert).to_contain_text("The assistant is temporarily unavailable")
     expect(app.get_by_test_id(EXCEPTION)).to_have_count(0)
     expect(messages(app).first).to_contain_text("How much protein should I eat?")
+    assert stub.requests, "the scripted failure never reached the model"
 
 
 def test_a_model_that_never_stops_calling_tools_ends_in_a_friendly_error(
@@ -88,9 +88,6 @@ def test_a_calculator_question_shows_its_tool_result(app: Page, stub: StubLlm) -
 
     ask(app, "What is my BMI at 80 kg and 1.80 m?")
 
-    # `open_expander` already asserted the panel is visible. A digit alone is far too
-    # weak: every ToolRuntime error renders verbatim and most carry digits, so a tool
-    # that never ran would satisfy it. Both assertions survive labelling and rounding.
     results = open_expander(app, "Tool results").inner_text()
     assert NUMBER.search(results), "a tool result must carry a number"
     assert not TOOL_ERROR.search(results), f"the tool did not run: {results}"

@@ -19,9 +19,6 @@ def test_the_app_loads_with_its_shell_rendered(app: Page) -> None:
 def test_a_page_load_ingests_the_seed_docs_under_the_configured_path(
     app: Page, tmp_path: Path
 ) -> None:
-    # The directory alone proves nothing: PersistentClient creates it on
-    # construction, before `assemble` ingests anything. Listing a seed doc is what
-    # shows the ingest ran, and the app has only one store, at the temp path.
     expect(sources(app).filter(has_text="protein.md")).to_have_count(1)
 
     assert any((tmp_path / "chroma").iterdir())

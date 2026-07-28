@@ -50,8 +50,6 @@ class StubLlm:
         self._tool_call = (name, arguments)
 
     def script_endless_tool_calls(self, name: str, arguments: dict[str, Any]) -> None:
-        # The one script a well-behaved model never produces, and so the only way
-        # to reach the engine's round cap.
         self._tool_call = (name, arguments)
         self._endless = True
 

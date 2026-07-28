@@ -13,8 +13,6 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(180)]
 def test_a_server_started_without_an_api_key_says_so_instead_of_chatting(
     page: Page, stub: StubLlm, tmp_path: Path
 ) -> None:
-    # Own process, not the `app` fixture: config is read once at startup and
-    # `st.cache_resource` holds it for the life of the process.
     with running_app(
         base_url=stub.base_url, api_key=None, db_path=tmp_path / "chroma"
     ) as server:

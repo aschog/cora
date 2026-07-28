@@ -269,8 +269,12 @@ Review findings (PR #9, `ai-code-reviewer`) — behavioural ones each need their
       never ran. Now also asserts no `ToolRuntime` error marker, which stays
       fix-compatible with labelling and rounding. Dropped the redundant visibility
       assertion `open_expander` had already made.
-- [ ] make the provider-failure spec prove the stub was actually reached — a `RetrievalError`
-      carries the same user-facing message and satisfies all four assertions today.
+- [x] make the provider-failure spec prove the stub was actually reached — a `RetrievalError`
+      carries the same user-facing message and satisfied all four assertions. Two fixes,
+      each with its own plant: the alert must now contain the *full* `LlmError` message
+      (planting `raise RetrievalError` in `ChromaRetriever.query` passed the old spec and
+      fails the new one), and `stub.requests` must be non-empty (planting `raise LlmError`
+      before the HTTP call leaves the text identical and fails only that assertion).
 - [ ] pin the viewport, so the sidebar assertions cannot be flipped by a `--device` run.
 - [ ] hygiene: anchor `samples/` off `__file__`; reset or document the overlap `Barrier`;
       loosen the retry-count assertion off langchain's default; mark or move the
