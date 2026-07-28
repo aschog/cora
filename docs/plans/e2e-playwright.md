@@ -306,6 +306,12 @@ Second review pass (PR #9) — the first pass's fixes set a standard the harness
 - [x] fold the barrier-release test into the overlap test, the way the rate-limit pair was
       folded — same setup, and the copy discarded its replies. Verified the merged test
       still catches the bug by replanting the uncleared barrier.
+- [x] guard the acceptance criterion "nothing under `src/` imports playwright", which was
+      ticked but unchecked: `FORBIDDEN_FRAMEWORKS` is consulted only for `cora.core`, so an
+      import in `cora.app` or `cora.adapters` passed CI. A `PACKAGE_FILES`-wide test now
+      covers `playwright` and `pytest`, following the streamlit pattern already there —
+      synthetic rogue file for the detector, and proved on a real one by planting the import
+      into `app/ui/chat.py`.
 - [x] **accept** the barrier's residual race rather than close it. A request arriving in
       the window between the trip and the clear still waits alone for the 10s timeout. The
       reviewer could not reproduce it in 60 trials, no spec sends a third *concurrent*

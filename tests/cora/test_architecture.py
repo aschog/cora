@@ -16,6 +16,7 @@ FORBIDDEN_FRAMEWORKS = frozenset(
     }
 )
 FORBIDDEN_LAYERS = ("cora.adapters", "cora.plugins", "cora.app")
+TEST_ONLY_FRAMEWORKS = frozenset({"playwright", "pytest"})
 
 CORE_ROOT = pathlib.Path(cora.core.__file__).parent
 SRC_ROOT = CORE_ROOT.parents[1]
@@ -64,6 +65,17 @@ def _imports_streamlit(path: pathlib.Path) -> bool:
     return False
 
 
+def _test_only_imports(path: pathlib.Path) -> list[str]:
+    tree = ast.parse(path.read_text())
+    roots: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            roots.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            roots.add(node.module.split(".")[0])
+    return sorted(roots & TEST_ONLY_FRAMEWORKS)
+
+
 def _is_forbidden(module: str) -> bool:
     if module.split(".")[0] in FORBIDDEN_FRAMEWORKS:
         return True
@@ -94,6 +106,26 @@ def test_streamlit_import_is_detected(tmp_path: pathlib.Path) -> None:
 def test_streamlit_stays_inside_the_ui_shell(path: pathlib.Path) -> None:
     assert not _imports_streamlit(path), (
         f"{path.relative_to(PACKAGE_ROOT)} imports streamlit outside cora/app/ui"
+    )
+
+
+def test_test_only_import_is_detected(tmp_path: pathlib.Path) -> None:
+    rogue = tmp_path / "rogue.py"
+    rogue.write_text("from playwright.sync_api import Page\n")
+    assert _test_only_imports(rogue) == ["playwright"]
+
+    innocent = tmp_path / "innocent.py"
+    innocent.write_text("import json\n")
+    assert _test_only_imports(innocent) == []
+
+
+@pytest.mark.parametrize(
+    "path", PACKAGE_FILES, ids=lambda p: str(p.relative_to(PACKAGE_ROOT))
+)
+def test_no_test_only_framework_is_shipped(path: pathlib.Path) -> None:
+    leaked = _test_only_imports(path)
+    assert not leaked, (
+        f"{path.relative_to(PACKAGE_ROOT)} imports test-only frameworks: {leaked}"
     )
 
 
