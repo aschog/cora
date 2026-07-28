@@ -14,6 +14,7 @@ class StubLlm:
     def __init__(self) -> None:
         self._answer = ""
         self._tool_call: tuple[str, dict[str, Any]] | None = None
+        self._endless = False
         self._status = 200
         self._requests: list[dict[str, Any]] = []
         self._lock = threading.Lock()
@@ -48,6 +49,13 @@ class StubLlm:
     def script_tool_call(self, name: str, arguments: dict[str, Any]) -> None:
         self._tool_call = (name, arguments)
 
+    def script_endless_tool_calls(self, name: str, arguments: dict[str, Any]) -> None:
+        """Answers every request with the same tool call, tool result present or
+        not — the one script a well-behaved model never produces, so it is the
+        only way to reach the engine's round cap."""
+        self._tool_call = (name, arguments)
+        self._endless = True
+
     def script_status(self, code: int) -> None:
         self._status = code
 
@@ -68,7 +76,9 @@ class StubLlm:
             return self._status, {
                 "error": {"message": "scripted failure", "code": self._status}
             }
-        if self._tool_call is not None and not _carries_tool_result(request):
+        if self._tool_call is not None and (
+            self._endless or not _carries_tool_result(request)
+        ):
             return 200, _envelope("tool_calls", _tool_call_message(*self._tool_call))
         return 200, _envelope("stop", {"role": "assistant", "content": self._answer})
 

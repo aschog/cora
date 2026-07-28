@@ -203,8 +203,12 @@ App specs (live-ready unless marked stub-only)
       error from a traceback; the `stException` count is the load-bearing assertion. The
       question-on-screen assertion needed its own plant (append the user turn *after* the
       call), which no error-shape assertion catches.
-- [ ] write a test that shows exceeding the tool-round cap ends in a friendly error rather
-      than a hang (**stub-only**).
+- [x] write a test that shows exceeding the tool-round cap ends in a friendly error rather
+      than a hang (**stub-only**). The first item here with real red: the stub could only
+      answer a tool call while no tool result was present, so it gained
+      `script_endless_tool_calls` — the one script a well-behaved model never produces.
+      The paired `stException` count is what stops the alert assertion passing on a
+      traceback, as the provider-failure spec found.
 - [ ] write a test that shows a fresh server started without `OPENROUTER_API_KEY` renders
       the friendly startup message and no chat input (**stub-only**, own process).
 

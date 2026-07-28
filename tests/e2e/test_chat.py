@@ -67,6 +67,17 @@ def test_a_provider_failure_shows_one_friendly_alert(app: Page, stub: StubLlm) -
     expect(messages(app).first).to_contain_text("How much protein should I eat?")
 
 
+def test_a_model_that_never_stops_calling_tools_ends_in_a_friendly_error(
+    app: Page, stub: StubLlm
+) -> None:
+    stub.script_endless_tool_calls("calculate_bmi", {"weight_kg": 80, "height_m": 1.8})
+
+    ask(app, "What is my BMI at 80 kg and 1.80 m?")
+
+    expect(app.get_by_test_id(ALERT_ERROR)).to_contain_text("try rephrasing")
+    expect(app.get_by_test_id(EXCEPTION)).to_have_count(0)
+
+
 def test_a_calculator_question_shows_its_tool_result(app: Page, stub: StubLlm) -> None:
     stub.script_tool_call("calculate_bmi", {"weight_kg": 80, "height_m": 1.8})
     stub.script_answer("Your BMI is about 24.7.")
