@@ -154,3 +154,12 @@ def test_logging_retriever_delegates_and_logs_an_add(
     indexed = line_about(caplog, "indexed")
     assert "3 chunks" in indexed
     assert "guide.pdf" in indexed
+
+
+def test_logging_retriever_survives_an_add_with_no_chunks(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="cora"):
+        LoggingRetriever(FakeRetriever()).add([], [], "hash-1")
+
+    assert "0 chunks" in line_about(caplog, "indexed")

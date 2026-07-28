@@ -49,7 +49,7 @@ class LoggingRetriever:
         log.debug(
             "indexed: %d chunks from %s",
             len(chunks),
-            truncate(chunks[0].source) if chunks else "nothing",
+            truncate(chunks[0].source) if chunks else "an empty batch",
         )
         self.inner.add(chunks, vectors, file_hash)
 

@@ -57,6 +57,7 @@ Wrappers (fakes + caplog)
 - [x] test that the roles field stays bounded for a long history (discovered: `", ".join(roles)` grew with turn count, so the request line was not bounded end to end).
 - [x] test that the logging retriever's `query` delegates and logs k plus returned chunk sources + scores.
 - [x] test that its `add` delegates and logs chunk count + file source.
+- [x] test that an `add` with no chunks logs `0 chunks` instead of raising (discovered: reading `chunks[0].source` made the debug wrapper crash on an empty batch).
 - [ ] test that `sources()` and `contains()` delegate transparently.
 - [ ] test that the logging embedder delegates and logs the number of texts embedded.
 
