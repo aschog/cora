@@ -3,8 +3,9 @@
 > **Source** `docs/manual-test-findings.md` — automates the manual exploratory loop ·
 > **Branch** `feature/e2e-playwright` · **Builds on** conversation memory (PR #6)
 >
-> Adds a **fourth** test tier. The only `src/` change is one config knob, which
-> also closes open finding 10.
+> Adds a **fourth** test tier. The only `src/` change is one config knob, which also
+> narrows open finding 10 — the Chroma path becomes configurable, though its default
+> stays CWD-relative.
 
 ---
 
@@ -83,9 +84,11 @@
   Spinners are never asserted — they render only after 500 ms.
 - **Isolated store via `CORA_DB_PATH`.** `Config.from_env` gains a sixth knob and
   `build` reads it, so `streamlit_app.py` needs no change and `build`'s own `db_path`
-  parameter goes away rather than becoming a second source of truth. A subprocess can only be configured by
-  environment, and the hardcoded CWD-relative path is already recorded as finding 10 —
-  so this is a product fix that stands without the tests. *Rejected:* launching with
+  parameter goes away rather than becoming a second source of truth. A subprocess can only
+  be configured by environment, and the hardcoded CWD-relative path is already recorded as
+  finding 10 — so this is a product fix that stands without the tests, though it only
+  *narrows* that finding: the default is still relative, so launching from another
+  directory still starts an empty DB unless the knob is set. *Rejected:* launching with
   `cwd=tmp_path`, which leans on the accident that the default is relative. The
   collection name needs no knob: a temp store isolates everything.
 
@@ -148,13 +151,14 @@ Stub LLM server (no browser, no subprocess)
 - [x] write a test that shows repeating the *same* request does not advance the script —
       the client retries, so state and not call count drives the reply.
 - [x] write a test that shows a scripted 429 surfaces as `LlmError` through the real
-      adapter (one representative status; per-status mapping is already unit-tested).
+      adapter (one representative status; per-status mapping is already unit-tested), and
+      that the retries are recorded — merged in review, since a separate retry test
+      repeated the same script. The count is not pinned: three attempts is the openai
+      client's default, not our behaviour.
 - [x] write a test that shows the stub records each request, so a spec can assert what the
       model was sent — system prompt, prior turns, tool result.
-- [x] *(added while landing the recorder)* write a test that shows all three retries of a
-      failed request are recorded — makes the client's retry behaviour assertable rather
-      than merely visible as elapsed time.
-- [x] write a test that shows two overlapping requests are both served.
+- [x] write a test that shows two overlapping requests are both served, and that the next
+      request is not stalled by the barrier they tripped (merged in the same review pass).
 
 Config knob
 
@@ -266,12 +270,16 @@ Review findings (PR #9, `ai-code-reviewer`) — behavioural ones each need their
 - [x] make the tool-result spec reject tool-*error* text: `\d` matches
       `invalid arguments: 180 is greater than the maximum of 2.5`. Proved by scripting
       `height_m: 180` — the spec passed green while the tool rejected its arguments and
-      never ran. Now also asserts no `ToolRuntime` error marker, which stays
-      fix-compatible with labelling and rounding. Dropped the redundant visibility
-      assertion `open_expander` had already made.
+      never ran. Now also asserts the panel text matches none of the four `ToolRuntime`
+      error phrasings, which stays fix-compatible with labelling and rounding. There is no
+      structural marker to match instead: `format_tool_result` renders an error as bare
+      text, so the regex **copies core prose** and silently stops guarding if those
+      messages are reworded — closable once tool results are labelled (manual finding 5).
+      Dropped the redundant visibility assertion `open_expander` had already made.
 - [x] make the provider-failure spec prove the stub was actually reached — a `RetrievalError`
       carries the same user-facing message and satisfied all four assertions. Two fixes,
-      each with its own plant: the alert must now contain the *full* `LlmError` message
+      each with its own plant: the alert must now contain the phrase that distinguishes
+      `LlmError` from its siblings — "The assistant is …", not just "temporarily unavailable"
       (planting `raise RetrievalError` in `ChromaRetriever.query` passed the old spec and
       fails the new one), and `stub.requests` must be non-empty (planting `raise LlmError`
       before the HTTP call leaves the text identical and fails only that assertion).
