@@ -42,9 +42,10 @@ the default `.cora/chroma` is relative to the working directory),
 they fall below their lowest useful value — `0` for history turns, `1` for the
 others.
 
-Set `CORA_DEBUG=1` to trace what crosses the ports — one truncated line per
-embed, retrieval (with sources and scores) and model round trip, printed to the
-terminal running Streamlit. Off by default; the API key never crosses a port.
+Set `CORA_DEBUG` to `1` or `true` to trace what crosses the ports — one truncated
+line per embed, retrieval (with sources and scores) and model round trip, printed
+to the terminal running Streamlit. Any other value leaves it off, so tracing is
+never enabled by accident; the API key never crosses a port.
 
 ## Manual testing
 
