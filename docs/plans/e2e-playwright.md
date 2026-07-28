@@ -173,14 +173,14 @@ Harness fixtures (each proved by the smallest spec that can fail)
 
 App specs (live-ready unless marked stub-only)
 
-- [ ] write a test that shows uploading a `samples/` file surfaces the file chip, then a
+- [x] write a test that shows uploading a `samples/` file surfaces the file chip, then a
       success alert, then the document in the sidebar list.
-- [ ] write a test that shows re-uploading the same file reports the dedupe outcome rather
+- [x] write a test that shows re-uploading the same file reports the dedupe outcome rather
       than ingesting twice — needs the chip cleared first, since `_ingest_once`
       short-circuits an unchanged selection.
-- [ ] write a test that shows asking a question renders an assistant message whose every
+- [x] write a test that shows asking a question renders an assistant message whose every
       `[n]` resolves to an entry of the Sources expander.
-- [ ] write a test that shows a calculator question renders a Tool results expander
+- [x] write a test that shows a calculator question renders a Tool results expander
       holding a plausible number.
 - [ ] write a test that shows a second question reaches the model with the first exchange
       included (**stub-only**, recorder assertion).
@@ -215,8 +215,13 @@ Docs (Phase 4, no test)
 - **Three branches are queued behind this one** — prompt-injection protection, hybrid
   search, logging & monitoring — and each will add its own specs. So fixtures must compose:
   no central script registry, no spec-count assumptions, scripting supplied per spec.
-- Findings 4-8 stay open. These specs pin **today's** behaviour; the branches that fix
-  those findings change the specs along with the behaviour.
+- Findings 4-8 stay open, and two are now visible in browser output: an answer citing
+  only `[1]` still lists `[1] protein.md` and `[2] energy_balance.md` (finding 4), and a
+  tool result renders as the bare `24.691358024691358` (finding 5). Both chat assertions
+  were chosen to be **fix-compatible** rather than to pin the wart: `cited ⊆ listed` still
+  holds once sources are narrowed to cited ones, and "the panel holds a number" still holds
+  once results are labelled and rounded. The citation spec also fails loudly if the answer
+  cites nothing, so a live run cannot pass it vacuously.
 
 ## Risks
 

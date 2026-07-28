@@ -17,8 +17,6 @@ def test_the_app_loads_with_its_shell_rendered(app: Page) -> None:
 def test_a_page_load_ingests_the_seed_docs_under_the_configured_path(
     app: Page, tmp_path
 ) -> None:
-    """The check the server fixture could not make: only a session runs the script,
-    so only a page load proves where the store lands."""
     expect(app.get_by_test_id(APP)).to_be_visible()
 
     assert any((tmp_path / "chroma").iterdir())

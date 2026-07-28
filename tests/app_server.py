@@ -42,7 +42,6 @@ class AppServer:
             return reply.read().decode()
 
     def output(self) -> str:
-        """The subprocess log is the only window into a server-side traceback."""
         self.log.seek(0)
         return self.log.read().decode(errors="replace")
 

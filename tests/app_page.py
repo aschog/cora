@@ -9,9 +9,15 @@ APP = "stApp"
 CHAT_INPUT = "stChatInputTextArea"
 CHAT_MESSAGE = "stChatMessage"
 EXCEPTION = "stException"
+ALERT_ERROR = "stAlertContentError"
+ALERT_INFO = "stAlertContentInfo"
+ALERT_SUCCESS = "stAlertContentSuccess"
 EXPANDER = "stExpander"
+EXPANDER_DETAILS = "stExpanderDetails"
+FILE_CHIP_DELETE = "stFileChipDeleteBtn"
 FILE_CHIP_NAME = "stFileChipName"
 FILE_UPLOAD_INPUT = "stFileUploaderDropzoneInput"
+MARKDOWN = "stMarkdown"
 SIDEBAR = "stSidebar"
 
 SCRIPT_STATE = "data-test-script-state"
@@ -45,9 +51,25 @@ def upload(page: Page, name: str, data: bytes, mime: str = "text/markdown") -> N
     wait_for_rerun(page)
 
 
-def messages(page: Page) -> Locator:
-    return page.get_by_test_id(CHAT_MESSAGE)
+def sources(page: Page) -> Locator:
+    """The sidebar's document list. Scoping to markdown blocks is exact: the ingest
+    alert is an stAlert, not an stMarkdown, so it cannot be mistaken for a source."""
+    return page.get_by_test_id(SIDEBAR).get_by_test_id(MARKDOWN)
 
 
 def expander(page: Page, label: str) -> Locator:
     return page.get_by_test_id(EXPANDER).filter(has_text=label)
+
+
+def open_expander(page: Page, label: str) -> Locator:
+    """Streamlit expanders start collapsed, and collapsed content reads as empty
+    text, so a spec must open one before asserting on what it holds."""
+    panel = expander(page, label)
+    panel.get_by_text(label).click()
+    details = panel.get_by_test_id(EXPANDER_DETAILS)
+    expect(details).to_be_visible()
+    return details
+
+
+def messages(page: Page) -> Locator:
+    return page.get_by_test_id(CHAT_MESSAGE)
