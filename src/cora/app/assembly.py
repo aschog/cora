@@ -1,5 +1,10 @@
 from dataclasses import dataclass
 
+from cora.adapters.port_logging import (
+    LoggingChatModel,
+    LoggingEmbedder,
+    LoggingRetriever,
+)
 from cora.app.config import DEFAULT_MAX_TOOL_ROUNDS, DEFAULT_TOP_K, Config
 from cora.core.ports.chat_model import ChatModel
 from cora.core.ports.embedding import Embedder
@@ -34,7 +39,12 @@ def assemble(
     plugin: Plugin,
     top_k: int = DEFAULT_TOP_K,
     max_tool_rounds: int = DEFAULT_MAX_TOOL_ROUNDS,
+    debug: bool = False,
 ) -> App:
+    if debug:
+        chat_model = LoggingChatModel(chat_model)
+        embedder = LoggingEmbedder(embedder)
+        retriever = LoggingRetriever(retriever)
     knowledge_base = KnowledgeBase(embedder=embedder, retriever=retriever)
     for filename, data in plugin.seed_docs:
         knowledge_base.add_file(data, filename)

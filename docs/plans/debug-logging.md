@@ -64,7 +64,7 @@ Wrappers (fakes + caplog)
 Wiring
 
 - [x] test that the log-config helper enables DEBUG + a handler on the `cora` logger when on, is idempotent, and does nothing when off (root logger untouched).
-- [ ] test that `assemble(..., debug=True)` yields an app whose single chat turn emits chat-model, retriever, and embedder records; default `assemble` emits none.
+- [x] test that `assemble(..., debug=True)` yields an app whose single chat turn emits chat-model, retriever, and embedder records; default `assemble` emits none.
 - [ ] test that `build` forwards `config.debug` and triggers log configuration only when set (unit with adapters monkeypatched, or integration tier, matching the existing `build` test style).
 
 ---

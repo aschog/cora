@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import pytest
@@ -18,13 +19,19 @@ def _assemble(
     *,
     chat_model: ScriptedChatModel | None = None,
     retriever: FakeRetriever | None = None,
+    debug: bool = False,
 ) -> App:
     return assemble(
         chat_model=chat_model or ScriptedChatModel([ModelReply(text="ok")]),
         embedder=FakeEmbedder(),
         retriever=retriever or FakeRetriever(),
         plugin=plugin,
+        debug=debug,
     )
+
+
+def _seed_doc() -> tuple[tuple[str, bytes], ...]:
+    return (("note.md", b"protein builds muscle"),)
 
 
 def test_assemble_returns_app_exposing_engine_and_knowledge_base() -> None:
@@ -75,6 +82,31 @@ def test_assemble_chains_core_and_plugin_validation_rules() -> None:
 
     with pytest.raises(InputRejectedError):
         app.engine.answer("a banned word")  # plugin rule
+
+
+def test_assemble_with_debug_logs_every_port_of_a_chat_turn(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    app = _assemble(make_plugin(seed_docs=_seed_doc()), debug=True)
+
+    with caplog.at_level(logging.DEBUG, logger="cora"):
+        app.engine.answer("How much protein?")
+
+    logged = " ".join(record.getMessage() for record in caplog.records)
+    assert "chat request" in logged
+    assert "retrieval" in logged
+    assert "embedded" in logged
+
+
+def test_assemble_keeps_a_chat_turn_silent_without_debug(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    app = _assemble(make_plugin(seed_docs=_seed_doc()))
+
+    with caplog.at_level(logging.DEBUG, logger="cora"):
+        app.engine.answer("How much protein?")
+
+    assert caplog.records == []
 
 
 @pytest.mark.integration
