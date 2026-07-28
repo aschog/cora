@@ -10,9 +10,16 @@ from cora.adapters.port_logging import (
     truncate,
 )
 from cora.core.chunk import Chunk
+from cora.core.errors import LlmError
 from cora.core.ports.chat_model import Message, ModelReply
 from cora.core.ports.plugin import ToolCall
-from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel, add_tool
+from fakes import (
+    FailingChatModel,
+    FakeEmbedder,
+    FakeRetriever,
+    ScriptedChatModel,
+    add_tool,
+)
 
 
 def line_about(caplog: pytest.LogCaptureFixture, subject: str) -> str:
@@ -116,6 +123,24 @@ def test_logging_chat_model_bounds_the_roles_of_a_long_history(
     request = line_about(caplog, "request")
     assert "200 messages" in request
     assert len(request) <= 3 * MAX_LOGGED_CHARS
+
+
+def test_logging_chat_model_reraises_the_inner_failure_unchanged(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    failure = LlmError()
+    model = LoggingChatModel(FailingChatModel(failure))
+
+    with (
+        caplog.at_level(logging.DEBUG, logger="cora"),
+        pytest.raises(LlmError) as raised,
+    ):
+        model.complete((Message(role="user", content="hi"),), ())
+
+    assert raised.value is failure
+    assert [record.getMessage() for record in caplog.records] == [
+        line_about(caplog, "request")
+    ]
 
 
 def test_logging_chat_model_bounds_hallucinated_tool_call_names(
