@@ -15,12 +15,19 @@
   LangChain adapter. Only the LLM is faked, by pointing `OPENROUTER_BASE_URL` at a
   local stub server. Rejected: a test-only entrypoint wired with in-memory fakes —
   `AppTest` already covers the shell, and every manual finding came from the real stack.
-- **Live-ready specs.** One fixture yields `(base_url, api_key)`; parametrising it with
-  real OpenRouter values must run the *same* specs under the existing `llm` marker.
-  Consequence: assertions are **structural** — an answer appeared, each `[n]` resolves
-  to a listed source, a tool expander holds a plausible number — never exact model prose.
+- **Live-ready specs.** One fixture yields `(base_url, api_key)`; retargeting it at real
+  OpenRouter must run the *same* specs. Consequence: assertions are **structural** — an
+  answer appeared, each `[n]` resolves to a listed source, a tool expander holds a
+  plausible number — never exact model prose.
+  *As built, that flip is a source edit, not a capability:* there is no `--live` option, no
+  parametrisation hook, and no `llm`-marked variant, so `-m llm` selects nothing. Two
+  consequences worth stating rather than glossing: `credentials` depends on `stub`, so a
+  live run would still start the stub server; and the stub-only assertions would then hold
+  **vacuously** — `stub.requests == []` is trivially true for a stub nobody calls. Making
+  the flip real means breaking that dependency and skipping the recorder assertions live.
 - **Stub-only where scripting is adversarial.** Loop cap, provider failure, missing key.
-  These take the stub fixture explicitly, which makes the marker machine-checkable.
+  These take the stub fixture explicitly, which makes stub-only-ness *visible in the
+  signature* — nothing checks it, so it is a convention, not a machine-checked property.
 - **Deterministic and key-free.** `uv run pytest -m e2e` passes with no
   `OPENROUTER_API_KEY` and no network beyond loopback.
 - **Isolated.** A run must not touch the developer's `.cora/chroma`.
@@ -28,7 +35,8 @@
 ### Acceptance ("done")
 
 - `uv run pytest -m e2e` green and deterministic without a real API key.
-- The same specs run live by flipping the one credentials fixture.
+- The same specs run live by editing the one credentials fixture — a source edit, and one
+  that needs the `stub` dependency broken first (see above); not a flag.
 - CI green with a separate `e2e` job (chromium only), artifacts retained on failure.
 - Unit tier unchanged in scope and speed; `uv run pytest` behaviour untouched.
 - Nothing under `src/` imports playwright; `tests/cora/test_architecture.py` needs no change.
@@ -39,36 +47,40 @@
 
 - **Stub LLM as a Service Stub at the *network* seam, not the object seam.** The openai
   client lives in the Streamlit subprocess, so in-process doubles (`respx`, `responses`)
-  cannot reach it. A stdlib `ThreadingHTTPServer` on port 0 in a daemon thread serves the
-  one route the adapter uses (`POST {base_url}/chat/completions`) — no new runtime
+  cannot reach it. A stdlib `ThreadingHTTPServer` on port 0 in a daemon thread answers the
+  one call the adapter makes (`POST {base_url}/chat/completions`) — no new runtime
   dependency, and the stub stays the only test-side thing that knows the OpenAI wire
-  shape, mirroring the one-file confinement the adapters get.
+  shape, mirroring the one-file confinement the adapters get. It does **not** inspect
+  `self.path`: any POST gets a chat completion, so a wrong-route or wrong-base-URL
+  regression in the adapter cannot be caught here.
 - **Scripted on conversation state, not call count.** The client retries three times by
   default, so identical requests repeat; the stub decides from the request body (does it
   already carry a `tool` message?). It also **records** requests — that recorder is the
   assertion surface for "what the model was actually sent", one layer out from the unit
   tier's `ScriptedChatModel`.
 - **Credentials fixture as the live/stub strategy.** Every other fixture depends on
-  `(base_url, api_key)` alone, so retargeting the suite is a one-fixture change.
+  `(base_url, api_key)` alone, so retargeting the suite is a one-fixture change — with the
+  caveat recorded under Requirements: that fixture still depends on `stub` itself.
 - **Server fixture, function-scoped** (revised from module-scoped once measured).
   A fresh process per spec costs ~11s of cold init — embedder load plus seed-doc ingest —
   and buys full isolation: fresh Chroma, fresh `st.cache_resource`, fresh stub script. It
   also dissolves the reason module scope was proposed, since the config-error spec needs a
   fresh process and now every spec gets one. Revisit only if CI time bites.
-  Mechanics: Free port via `connect_ex`; CLI flags rather than
-  env so a developer's `~/.streamlit/config.toml` cannot alter the SUT; readiness by
-  polling `/_stcore/health` for `ok`; output captured to a temporary file (not `PIPE`,
-  which deadlocks) and dumped on teardown — the only window into server-side tracebacks;
-  teardown `terminate → wait → kill`. Module scope because `st.cache_resource` is
-  process-wide: the config-error spec needs a fresh **process**, not a fresh page.
+  Mechanics: free port by binding port 0 and reading back `getsockname` — which leaves a
+  race, since the port is free when probed and not necessarily when Streamlit claims it;
+  CLI flags rather than env so a developer's `~/.streamlit/config.toml` cannot alter the
+  SUT; readiness by polling `/_stcore/health` for `ok`; output captured to a temporary file
+  (not `PIPE`, which deadlocks) and dumped on teardown — the only window into server-side
+  tracebacks; teardown `terminate → wait → kill`.
 - **Locators in one module.** No `data-testid` is documented by Streamlit and they do
   churn (`stFileUploaderFile*` → `stFileChip*` in 1.60), so an upgrade must be one file
   to fix. Prefer user-visible locators (placeholder, role, text) wherever equally robust.
 - **Sync barrier plus auto-retrying assertions.** The barrier waits for `running` **then**
   `notRunning` on `stApp`; a bare wait-for-`notRunning` passes stalely inside a measured
   ~30-40 ms window. Real waiting lives in `expect(...)` with generous timeouts. Counts use
-  `to_have_count`, never `.count()`. Spinners are never asserted — they render only after
-  500 ms.
+  `to_have_count`, with one deliberate exception: the barrier's own self-test needs
+  `.count()`, because a retrying assertion would paper over a barrier that returned early.
+  Spinners are never asserted — they render only after 500 ms.
 - **Isolated store via `CORA_DB_PATH`.** `Config.from_env` gains a sixth knob and
   `build` reads it, so `streamlit_app.py` needs no change and `build`'s own `db_path`
   parameter goes away rather than becoming a second source of truth. A subprocess can only be configured by
@@ -151,10 +163,11 @@ Config knob
 
 Harness fixtures (each proved by the smallest spec that can fail)
 
-- [~] ~~write a test that shows the port helper returns a port that can actually be bound.~~
-      **Skipped, not forgotten.** Every spec's server fixture binds the helper's port before
-      anything else, so a port that cannot be bound fails the whole tier at once — a direct
-      test would restate the loudest signal the suite already has.
+- [x] write a test that shows the port helper returns a port that can actually be bound.
+      Landed with the server fixture in `d10e78b` as
+      `test_find_free_port_returns_a_port_the_caller_can_bind`. This box was briefly marked
+      "skipped, covered by the fixture" — wrong on the facts, since the test was already
+      there; the checkbox was just stale.
 - [x] write a test that shows the launched app answers `/_stcore/health` with `ok` inside
       the readiness budget, and that the subprocess is gone after teardown.
 - [x] write a test that shows the run wrote its store under the temp path — **health does
@@ -166,7 +179,9 @@ Harness fixtures (each proved by the smallest spec that can fail)
       assertion made immediately after it sees the new content. Verified by planting the
       naive wait-for-`notRunning`, which returns with 0 messages instead of 2.
 - [x] write a test that shows the page loads with the chat input visible, sidebar content
-      visible at the pinned wide viewport, and no `stException`.
+      visible, and no `stException`. The viewport is **not** pinned, contrary to an earlier
+      claim here: it is pytest-playwright's 1280×720 default, so `--device="Pixel 5"`
+      collapses the sidebar and fails the spec. Pinning it is queued below.
 - [x] CI `e2e` job (scaffolding, lands here because it needs one spec to select):
       `playwright install --with-deps chromium`, `-m 'e2e and not llm'` — a bare `-m`
       replaces the `addopts` selector rather than narrowing it, so the `llm` exclusion must
@@ -228,6 +243,27 @@ Docs (Phase 4, no test)
       which findings the specs cover — including what it does *not* cover (malformed
       uploads, over-long input, warm start), so the file stays honest about the gap.
 
+Review findings (PR #9, `ai-code-reviewer`) — behavioural ones each need their red planted
+
+- [x] correct the claims this plan and `webapp-overview.md` made that the code does not
+      implement: `connect_ex`, a pinned viewport, route checking in the stub, a stale
+      "module scope" sentence, `.count()` stated as never-used, the live flip described as
+      a capability, and the stale "skipped" box above. Plus `manual-test-findings.md`
+      claiming finding 10 *fixed* when the default is still CWD-relative.
+- [ ] strip inherited `CORA_*` from the launched app's environment, so a developer's
+      exported `CORA_HISTORY_TURNS=0` cannot silently break the memory spec.
+- [ ] make the seed-doc spec fail when the ingest loop is removed — `PersistentClient`
+      creates the directory on construction, so `iterdir()` proves only that Chroma opened.
+- [ ] make the tool-result spec reject tool-*error* text: `\d` matches
+      `invalid arguments: 180 is greater than the maximum of 2.5`.
+- [ ] make the provider-failure spec prove the stub was actually reached — a `RetrievalError`
+      carries the same user-facing message and satisfies all four assertions today.
+- [ ] pin the viewport, so the sidebar assertions cannot be flipped by a `--device` run.
+- [ ] hygiene: anchor `samples/` off `__file__`; reset or document the overlap `Barrier`;
+      loosen the retry-count assertion off langchain's default; mark or move the
+      socket-binding unit test; rename `test_end_to_end.py` now that `e2e` means the
+      browser tier.
+
 ---
 
 ## Discovered, out of scope
@@ -256,7 +292,7 @@ Docs (Phase 4, no test)
 - **CI cost** — chromium is a multi-hundred-MB install, minutes not seconds. Its own job,
   so it never slows the quality gates.
 - **Flake policy** — no retries, no `sleep`. A flake is a missing barrier or a `.count()`
-  assertion, and gets fixed as one.
+  used where `to_have_count` belongs, and gets fixed as one.
 - **One unexplained flake, watch it.** A single heavily-loaded `-m 'not llm'` run produced
   three fixture-phase `ERROR`s (so `_await_ready` raised, not an assertion) at 490s wall
   clock against a normal ~160s; the two runs after it were clean, and the message was lost

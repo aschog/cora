@@ -243,13 +243,14 @@ Four tiers, cleanly separated by what they may touch:
 4. **LLM (manual only):** a single real OpenRouter round-trip incl. one tool call —
    skipped without an API key; used for final acceptance, never in CI.
 
-The e2e specs are the `llm` tier's vehicle rather than a hand-driven session: one fixture
-yields `(base_url, api_key)`, so pointing it at real OpenRouter runs the same specs
-against a real model. That is why their assertions are structural — an answer appeared,
-every `[n]` resolves to a listed source, a tool panel holds a plausible number — and
-never exact model prose. The three specs that script adversarial behaviour (loop cap,
-provider failure, missing key) take the stub explicitly, which makes them machine-checkably
-stub-only.
+The e2e specs are *designed* to be the `llm` tier's vehicle rather than a hand-driven
+session: one fixture yields `(base_url, api_key)`, so pointing it at real OpenRouter runs
+the same specs against a real model. That is why their assertions are structural — an
+answer appeared, every `[n]` resolves to a listed source, a tool panel holds a plausible
+number — and never exact model prose. Retargeting is still a source edit rather than a
+flag, and the specs that script adversarial behaviour (loop cap, provider failure, missing
+key) take the stub explicitly — a convention that makes stub-only-ness visible in the
+signature, not a property anything enforces.
 
 The fakes are first-class design artifacts: the in-memory retriever doubles as proof the
 retriever port is sufficient, and the scripted LLM makes the tool-calling loop fully

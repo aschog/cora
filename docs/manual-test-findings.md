@@ -15,9 +15,11 @@ and plain reruns after an error.
 
 > **Status.** Findings 2, 3 and 9 are fixed on `fix/ui-error-handling` (PR #5)
 > and finding 1 on `feature/conversation-memory` (PR #6), all verified against
-> the real stack. Finding 10 is fixed on `feature/e2e-playwright` by the
-> `CORA_DB_PATH` knob. The other five are open — #4, #5 and #6 are the
-> highest-severity ones remaining. The findings below are left as they were
+> the real stack. Finding 10 is *narrowed* on `feature/e2e-playwright`: the path
+> is now configurable via `CORA_DB_PATH`, but the default `.cora/chroma` is still
+> CWD-relative, so the symptom reported below — launching from another directory
+> starts a new, empty DB — is unchanged unless the knob is set. The other five
+> are open — #4, #5 and #6 are the highest-severity ones remaining. The findings below are left as they were
 > written, so this file stays a record of the run rather than a tracker.
 >
 > **This loop is now automated.** `feature/e2e-playwright` replays it as a
