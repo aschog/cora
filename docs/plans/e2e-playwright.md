@@ -209,8 +209,14 @@ App specs (live-ready unless marked stub-only)
       `script_endless_tool_calls` — the one script a well-behaved model never produces.
       The paired `stException` count is what stops the alert assertion passing on a
       traceback, as the provider-failure spec found.
-- [ ] write a test that shows a fresh server started without `OPENROUTER_API_KEY` renders
-      the friendly startup message and no chat input (**stub-only**, own process).
+- [x] write a test that shows a fresh server started without `OPENROUTER_API_KEY` renders
+      the friendly startup message and no chat input (**stub-only**, own process) — its own
+      `test_startup.py`, driving `running_app` directly since the `app` fixture always
+      supplies a key. Genuine red: `running_app` had no way to express *no* key. It now
+      takes `api_key: str | None`, where `None` **pops** the variable — blanking it would
+      pass today (`not api_key` reads both alike) but would survive a change to
+      `is None`, and popping also stops a developer's own key leaking in via `os.environ`.
+      Cheapest spec in the tier at ~5s: the app fails config before loading the embedder.
 
 Docs (Phase 4, no test)
 
@@ -250,4 +256,11 @@ Docs (Phase 4, no test)
   so it never slows the quality gates.
 - **Flake policy** — no retries, no `sleep`. A flake is a missing barrier or a `.count()`
   assertion, and gets fixed as one.
+- **One unexplained flake, watch it.** A single heavily-loaded `-m 'not llm'` run produced
+  three fixture-phase `ERROR`s (so `_await_ready` raised, not an assertion) at 490s wall
+  clock against a normal ~160s; the two runs after it were clean, and the message was lost
+  to a filtered log. Prime suspect is the race `find_free_port` already documents — free
+  when probed, taken when Streamlit claims it, which exits the subprocess before it serves.
+  If it recurs: capture the full log, and the fix is to retry the launch on a fresh port
+  rather than to widen the readiness budget.
 - **No `-n auto`** — ports would have to become worker-aware first.

@@ -48,7 +48,7 @@ class AppServer:
 
 @contextmanager
 def running_app(
-    *, base_url: str, api_key: str, db_path: Path, model: str = "stub-model"
+    *, base_url: str, api_key: str | None, db_path: Path, model: str = "stub-model"
 ) -> Iterator[AppServer]:
     port = find_free_port()
     # A pipe would deadlock once the app fills the buffer, and the app is chatty.
@@ -70,9 +70,10 @@ def running_app(
             print(server.output())
 
 
-def _env(base_url: str, api_key: str, db_path: Path, model: str) -> dict[str, str]:
-    return os.environ | {
-        "OPENROUTER_API_KEY": api_key,
+def _env(
+    base_url: str, api_key: str | None, db_path: Path, model: str
+) -> dict[str, str]:
+    env = os.environ | {
         "OPENROUTER_BASE_URL": base_url,
         "CORA_MODEL": model,
         "CORA_DB_PATH": str(db_path),
@@ -80,6 +81,14 @@ def _env(base_url: str, api_key: str, db_path: Path, model: str) -> dict[str, st
         # error, and the client caches its transport, so this must be set up front.
         "NO_PROXY": "127.0.0.1,localhost",
     }
+    # None pops rather than blanks: `not api_key` reads both alike today, but only
+    # absence still tests a missing key if that ever tightens to `is None` — and it
+    # keeps a developer's own key out of the subprocess.
+    if api_key is None:
+        env.pop("OPENROUTER_API_KEY", None)
+    else:
+        env["OPENROUTER_API_KEY"] = api_key
+    return env
 
 
 def _command(port: int) -> list[str]:
