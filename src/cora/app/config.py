@@ -36,7 +36,12 @@ class Config:
             plugin_module=env.get("CORA_PLUGIN", DEFAULT_PLUGIN),
             top_k=_int(env, "CORA_TOP_K", DEFAULT_TOP_K),
             max_tool_rounds=_int(env, "CORA_MAX_TOOL_ROUNDS", DEFAULT_MAX_TOOL_ROUNDS),
+            debug=_bool(env, "CORA_DEBUG"),
         )
+
+
+def _bool(env: Mapping[str, str], key: str) -> bool:
+    return env.get(key, "").strip().lower() in {"1", "true"}
 
 
 def _int(env: Mapping[str, str], key: str, default: int) -> int:

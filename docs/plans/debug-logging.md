@@ -42,7 +42,7 @@
 Config
 
 - [x] test that `Config.from_env` sets `debug=False` when `CORA_DEBUG` is unset.
-- [ ] test that `CORA_DEBUG=1` / `true` (case-insensitive) set `debug=True`; `0` / `false` stay off.
+- [x] test that `CORA_DEBUG=1` / `true` (case-insensitive) set `debug=True`; `0` / `false` stay off.
 
 Truncation helper
 
