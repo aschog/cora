@@ -1,6 +1,9 @@
-# Mirrors .githooks/pre-commit: format check, lint, type check, unit tests.
-# The integration tier (pytest -m integration) gets its own job once the
-# first integration tests exist (knowledge-base feature branch).
+# quality-gates mirrors .githooks/pre-commit: format check, lint, type check,
+# unit tests. integration-tier runs the tests the hook skips — they need real
+# Chroma, a downloaded embedding model and Streamlit, so they are too slow for
+# every commit but are the only cover for the UI-to-engine wiring. e2e-tier drives the real app in
+# a browser against a stub LLM; it is the slowest job and the only one needing a
+# browser binary, so it stays separate rather than gating the quality checks.
 name: CI
 
 on: [push]
@@ -30,3 +33,71 @@ jobs:
 
       - name: Unit tests
         run: uv run pytest -q
+
+  integration-tier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      # The embedding model is a ~90 MB download; without this every run pays it.
+      - name: Cache the embedding model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ runner.os }}-all-MiniLM-L6-v2
+
+      # A bare -m replaces the addopts selector rather than narrowing it, so the
+      # llm exclusion has to be restated here or a paid round-trip test runs in CI.
+      - name: Integration tests
+        run: uv run pytest -m 'integration and not llm' -q
+
+  e2e-tier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: uv sync --locked
+
+      # These specs run the real embedder, so they pay the same download.
+      - name: Cache the embedding model
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/huggingface
+          key: hf-${{ runner.os }}-all-MiniLM-L6-v2
+
+      # Chromium only — the suite pins one browser. --with-deps adds the system
+      # libraries an Ubuntu runner lacks.
+      - name: Install chromium
+        run: uv run playwright install --with-deps chromium
+
+      # As above, a bare -m replaces the addopts selector, so the llm exclusion
+      # is restated. Artifacts are the only way to debug a browser failure here.
+      - name: Browser tests
+        run: >
+          uv run pytest -m 'e2e and not llm' -q
+          --screenshot only-on-failure
+          --video retain-on-failure
+          --tracing retain-on-failure
+          --output e2e-artifacts
+
+      - name: Upload failure artifacts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-artifacts
+          path: e2e-artifacts
+          if-no-files-found: ignore

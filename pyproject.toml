@@ -25,7 +25,10 @@ module-name = ["cora"]
 
 [dependency-groups]
 dev = [
+    "playwright==1.61.*",
     "pytest>=9.1.1",
+    "pytest-playwright>=0.8.0",
+    "pytest-timeout>=2.4.0",
     "pytest-watcher>=0.6.3",
     "ruff>=0.15.22",
     "ty>=0.0.60",
@@ -50,9 +53,10 @@ select = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["tests"]
-addopts = "--strict-markers --import-mode=importlib -m 'not integration and not llm'"
+addopts = "--strict-markers --import-mode=importlib -m 'not integration and not llm and not e2e'"
 markers = [
     "integration: touches real infrastructure (Chroma, embedding model, Streamlit); run in CI",
+    "e2e: drives the real app in a browser against a stub LLM; needs chromium, own CI job",
     "llm: real OpenRouter round-trip; manual acceptance only, never in CI",
 ]
 

@@ -1,4 +1,4 @@
-from cora.app.ui.formatting import format_tool_result, numbered_sources
+from cora.app.ui.formatting import format_tool_result, ingest_message, numbered_sources
 from cora.core.ports.plugin import ToolResult
 
 
@@ -8,6 +8,18 @@ def test_numbered_sources_renders_bracketed_numbers_in_order() -> None:
 
 def test_numbered_sources_of_nothing_is_empty() -> None:
     assert numbered_sources(()) == []
+
+
+def test_ingest_message_counts_a_single_chunk_in_the_singular() -> None:
+    assert ingest_message("note.md", 1) == "Added note.md — 1 chunk."
+
+
+def test_ingest_message_pluralises_several_chunks() -> None:
+    assert ingest_message("guide.pdf", 12) == "Added guide.pdf — 12 chunks."
+
+
+def test_ingest_message_reports_no_chunks_as_already_known() -> None:
+    assert ingest_message("copy.md", 0) == "copy.md is already in your knowledge base."
 
 
 def test_format_tool_result_shows_the_error_message() -> None:

@@ -61,6 +61,18 @@ def test_assemble_answers_a_happy_path_question() -> None:
     assert result.answer == "42"
 
 
+def test_assemble_passes_history_turns_to_the_engine() -> None:
+    app = assemble(
+        chat_model=ScriptedChatModel([ModelReply(text="ok")]),
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        plugin=make_plugin(),
+        history_turns=6,
+    )
+
+    assert app.engine.max_history_turns == 6
+
+
 def test_assemble_seeds_plugin_docs_into_the_knowledge_base() -> None:
     plugin = make_plugin(seed_docs=(("note.md", b"protein supports muscle growth"),))
     retriever = FakeRetriever()
@@ -111,7 +123,7 @@ def test_assemble_keeps_a_chat_turn_silent_without_debug(
     assert caplog.records == []
 
 
-def _config(*, debug: bool = False) -> Config:
+def _config(db_path: Path, *, debug: bool = False) -> Config:
     return Config(
         api_key="k",
         model="openai/gpt-4o-mini",
@@ -119,6 +131,8 @@ def _config(*, debug: bool = False) -> Config:
         plugin_module="fixture_plugins.valid",
         top_k=3,
         max_tool_rounds=4,
+        history_turns=6,
+        db_path=str(db_path),
         debug=debug,
     )
 
@@ -127,7 +141,7 @@ def _config(*, debug: bool = False) -> Config:
 def test_build_wires_the_debug_seam_when_config_asks_for_it(
     tmp_path: Path, clean_cora_logger: logging.Logger
 ) -> None:
-    app = build(_config(debug=True), db_path=str(tmp_path))
+    app = build(_config(tmp_path, debug=True))
 
     assert isinstance(app.engine.chat_model, LoggingChatModel)
     assert clean_cora_logger.level == logging.DEBUG
@@ -138,7 +152,7 @@ def test_build_wires_the_debug_seam_when_config_asks_for_it(
 def test_build_leaves_the_ports_bare_without_debug(
     tmp_path: Path, clean_cora_logger: logging.Logger
 ) -> None:
-    app = build(_config(), db_path=str(tmp_path))
+    app = build(_config(tmp_path))
 
     assert not isinstance(app.engine.chat_model, LoggingChatModel)
     assert clean_cora_logger.handlers == []
@@ -146,7 +160,7 @@ def test_build_leaves_the_ports_bare_without_debug(
 
 @pytest.mark.integration
 def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
-    app = build(_config(), db_path=str(tmp_path))
+    app = build(_config(tmp_path))
 
     plugin = load_plugin("fixture_plugins.valid")
     assert isinstance(app, App)
@@ -157,3 +171,5 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
     assert engine.tools == plugin.tools
     assert engine.top_k == 3
     assert engine.max_tool_rounds == 4
+    assert engine.max_history_turns == 6
+    assert any(tmp_path.iterdir()), "the store must land under the configured path"

@@ -5,7 +5,12 @@ from cora.adapters.port_logging import (
     LoggingEmbedder,
     LoggingRetriever,
 )
-from cora.app.config import DEFAULT_MAX_TOOL_ROUNDS, DEFAULT_TOP_K, Config
+from cora.app.config import (
+    DEFAULT_HISTORY_TURNS,
+    DEFAULT_MAX_TOOL_ROUNDS,
+    DEFAULT_TOP_K,
+    Config,
+)
 from cora.app.log_config import enable_debug_logs
 from cora.core.ports.chat_model import ChatModel
 from cora.core.ports.embedding import Embedder
@@ -22,7 +27,6 @@ from cora.core.services.validation import (
 )
 
 MAX_INPUT_CHARS = 4000
-DEFAULT_DB_PATH = ".cora/chroma"
 DEFAULT_COLLECTION = "documents"
 
 
@@ -40,6 +44,7 @@ def assemble(
     plugin: Plugin,
     top_k: int = DEFAULT_TOP_K,
     max_tool_rounds: int = DEFAULT_MAX_TOOL_ROUNDS,
+    history_turns: int = DEFAULT_HISTORY_TURNS,
     debug: bool = False,
 ) -> App:
     if debug:
@@ -60,17 +65,14 @@ def assemble(
         tool_runtime=ToolRuntime(tools=plugin.tools),
         top_k=top_k,
         max_tool_rounds=max_tool_rounds,
+        max_history_turns=history_turns,
         system_prompt=plugin.system_prompt,
         tools=plugin.tools,
     )
     return App(engine=engine, knowledge_base=knowledge_base)
 
 
-def build(
-    config: Config,
-    db_path: str = DEFAULT_DB_PATH,
-    collection: str = DEFAULT_COLLECTION,
-) -> App:
+def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
     from cora.adapters.chroma_retriever import ChromaRetriever
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
@@ -81,9 +83,10 @@ def build(
             model=config.model, api_key=config.api_key, base_url=config.base_url
         ),
         embedder=SentenceTransformerEmbedder(),
-        retriever=ChromaRetriever(path=db_path, collection=collection),
+        retriever=ChromaRetriever(path=config.db_path, collection=collection),
         plugin=load_plugin(config.plugin_module),
         top_k=config.top_k,
         max_tool_rounds=config.max_tool_rounds,
+        history_turns=config.history_turns,
         debug=config.debug,
     )
