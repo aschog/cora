@@ -28,4 +28,10 @@ class LoggingChatModel:
             ", ".join(message.role for message in messages),
             truncate(messages[-1].content) if messages else "",
         )
-        return self.inner.complete(messages, tools)
+        reply = self.inner.complete(messages, tools)
+        log.debug(
+            "chat reply: tool calls [%s], text: %s",
+            ", ".join(call.name for call in reply.tool_calls),
+            truncate(reply.text),
+        )
+        return reply

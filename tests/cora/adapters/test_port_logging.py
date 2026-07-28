@@ -8,6 +8,7 @@ from cora.adapters.port_logging import (
     truncate,
 )
 from cora.core.ports.chat_model import Message, ModelReply
+from cora.core.ports.plugin import ToolCall
 from fakes import ScriptedChatModel, add_tool
 
 
@@ -57,3 +58,22 @@ def test_logging_chat_model_logs_the_request(caplog: pytest.LogCaptureFixture) -
     assert "system, user" in request
     assert "a question" in request
     assert all(record.name.startswith("cora") for record in caplog.records)
+
+
+def test_logging_chat_model_logs_the_reply(caplog: pytest.LogCaptureFixture) -> None:
+    inner = ScriptedChatModel(
+        [
+            ModelReply(
+                text="here it comes: " + "filler " * MAX_LOGGED_CHARS + "TAIL",
+                tool_calls=(ToolCall(name="add", arguments={"a": 1}, call_id="c1"),),
+            )
+        ]
+    )
+
+    with caplog.at_level(logging.DEBUG, logger="cora"):
+        LoggingChatModel(inner).complete((Message(role="user", content="hi"),), ())
+
+    reply = line_about(caplog, "reply")
+    assert "add" in reply
+    assert "here it comes" in reply
+    assert "TAIL" not in reply
