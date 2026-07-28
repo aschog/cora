@@ -55,7 +55,7 @@ Wrappers (fakes + caplog)
 - [x] test that the reply side logs requested tool-call names and truncated reply text.
 - [x] test that a marker buried deep in a long prompt never appears in any log line (every field bounded).
 - [x] test that the roles field stays bounded for a long history (discovered: `", ".join(roles)` grew with turn count, so the request line was not bounded end to end).
-- [ ] test that the logging retriever's `query` delegates and logs k plus returned chunk sources + scores.
+- [x] test that the logging retriever's `query` delegates and logs k plus returned chunk sources + scores.
 - [ ] test that its `add` delegates and logs chunk count + file source.
 - [ ] test that `sources()` and `contains()` delegate transparently.
 - [ ] test that the logging embedder delegates and logs the number of texts embedded.

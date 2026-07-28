@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from cora.core.ports.chat_model import ChatModel, Message, ModelReply
 from cora.core.ports.plugin import Tool
+from cora.core.ports.retrieval import RetrievedChunk, Retriever
 
 MAX_LOGGED_CHARS = 120
 
@@ -35,3 +36,22 @@ class LoggingChatModel:
             truncate(reply.text),
         )
         return reply
+
+
+@dataclass(frozen=True)
+class LoggingRetriever:
+    inner: Retriever
+
+    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
+        hits = self.inner.query(query_vector, k)
+        log.debug(
+            "retrieval: k=%d, %d hits [%s]",
+            k,
+            len(hits),
+            truncate(", ".join(_describe(hit) for hit in hits)),
+        )
+        return hits
+
+
+def _describe(hit: RetrievedChunk) -> str:
+    return f"{hit.chunk.source}#{hit.chunk.index} {hit.score:.2f}"

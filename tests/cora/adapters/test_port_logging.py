@@ -5,11 +5,13 @@ import pytest
 from cora.adapters.port_logging import (
     MAX_LOGGED_CHARS,
     LoggingChatModel,
+    LoggingRetriever,
     truncate,
 )
+from cora.core.chunk import Chunk
 from cora.core.ports.chat_model import Message, ModelReply
 from cora.core.ports.plugin import ToolCall
-from fakes import ScriptedChatModel, add_tool
+from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel, add_tool
 
 
 def line_about(caplog: pytest.LogCaptureFixture, subject: str) -> str:
@@ -112,3 +114,22 @@ def test_logging_chat_model_bounds_the_roles_of_a_long_history(
     request = line_about(caplog, "request")
     assert "200 messages" in request
     assert len(request) <= 3 * MAX_LOGGED_CHARS
+
+
+def test_logging_retriever_delegates_and_logs_the_hits(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    embedder = FakeEmbedder()
+    inner = FakeRetriever()
+    chunk = Chunk(text="protein needs", source="guide.pdf", index=2, offset=40)
+    inner.add([chunk], embedder.embed([chunk.text]), "hash-1")
+    query_vector = embedder.embed([chunk.text])[0]
+
+    with caplog.at_level(logging.DEBUG, logger="cora"):
+        hits = LoggingRetriever(inner).query(query_vector, k=3)
+
+    assert [hit.chunk for hit in hits] == [chunk]
+    retrieval = line_about(caplog, "retrieval")
+    assert "k=3" in retrieval
+    assert "guide.pdf" in retrieval
+    assert "1.00" in retrieval
