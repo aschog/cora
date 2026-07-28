@@ -99,9 +99,10 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
         top_k=3,
         max_tool_rounds=4,
         history_turns=6,
+        db_path=str(tmp_path),
     )
 
-    app = build(config, db_path=str(tmp_path))
+    app = build(config)
 
     plugin = load_plugin("fixture_plugins.valid")
     assert isinstance(app, App)
@@ -113,3 +114,4 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
     assert engine.top_k == 3
     assert engine.max_tool_rounds == 4
     assert engine.max_history_turns == 6
+    assert any(tmp_path.iterdir()), "the store must land under the configured path"

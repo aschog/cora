@@ -10,6 +10,7 @@ DEFAULT_PLUGIN = "cora.plugins.fitness"
 DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
 DEFAULT_HISTORY_TURNS = 20
+DEFAULT_DB_PATH = ".cora/chroma"
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,7 @@ class Config:
     top_k: int
     max_tool_rounds: int
     history_turns: int
+    db_path: str
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Config":
@@ -42,6 +44,7 @@ class Config:
             history_turns=_int(
                 env, "CORA_HISTORY_TURNS", DEFAULT_HISTORY_TURNS, minimum=0
             ),
+            db_path=env.get("CORA_DB_PATH", DEFAULT_DB_PATH),
         )
 
 

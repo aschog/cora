@@ -36,7 +36,8 @@ Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
 `CORA_PLUGIN` (default `cora.plugins.fitness`), `CORA_TOP_K` (default `5`),
 `CORA_MAX_TOOL_ROUNDS` (default `8`), `CORA_HISTORY_TURNS` (past messages sent
 with each question — the default `20` is about ten question-and-answer
-exchanges, and `0` switches memory off),
+exchanges, and `0` switches memory off), `CORA_DB_PATH` (where Chroma persists;
+the default `.cora/chroma` is relative to the working directory),
 `OPENROUTER_BASE_URL`. The three counts are rejected at startup if they fall
 below their lowest useful value — `0` for history turns, `1` for the others.
 
@@ -58,10 +59,18 @@ e.g. "How much protein should I eat?" or "What are common deadlift mistakes?".
 uv run ptw .                  # test watch mode (unit tier, reruns on save)
 uv run pytest                 # unit tests (default; fast, no network/models/UI)
 uv run pytest -m integration  # integration tier (real Chroma, embeddings, Streamlit)
+uv run pytest -m e2e          # browser tier (chromium drives the real app; stub LLM, no key)
 uv run pytest -m llm          # manual acceptance only, never in CI (needs OPENROUTER_API_KEY)
 uv run ruff format .          # format
 uv run ruff check .           # lint
 uv run ty check               # type check
+```
+
+The browser tier needs chromium once per machine — a few hundred MB, so it is not
+part of `uv sync`:
+
+```sh
+uv run playwright install chromium
 ```
 
 The pre-commit hook runs format check, lint, type check and unit tests;
