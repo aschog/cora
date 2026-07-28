@@ -71,6 +71,11 @@ Wiring
 
 ## Acceptance (manual)
 
-- `CORA_DEBUG=1 uv run --env-file .env streamlit run src/cora/app/ui/streamlit_app.py`: upload a doc → terminal shows an embed-count line and an `add()` line; one chat turn → embed line, `query()` line with sources + scores, `complete()` lines including a tool-call round; all content visibly truncated; API key nowhere in the output.
-- Without the flag: terminal output identical to today.
-- Gates green: `uv run ruff format --check`, `uv run ruff check`, `uv run ty`, `uv run pytest`.
+Verified headlessly on 2026-07-28 over the real stack — real embedding model,
+real Chroma store, real fitness plugin, the Streamlit page driven through
+`AppTest` (upload → chat turn). Only the LLM was scripted, so a tool-call round
+could be forced without spending a live key.
+
+- [x] `CORA_DEBUG=1`: upload a doc → terminal shows an embed-count line and an `add()` line; one chat turn → embed line, `query()` line with sources + scores, `complete()` lines including a tool-call round; all content visibly truncated; API key nowhere in the output. Observed, in order: `embedded: 2 texts`, `indexed: 2 chunks from protein_guide.md`, `embedded: 1 texts`, `retrieval: k=5, 4 hits [energy_balance.md#0 0.43, protein.md#0 0.22, …]`, `chat request: 2 messages [system, user]`, `chat reply: tool calls [calculate_daily_energy]`, `chat request: 4 messages [system, user, assistant, tool], last: {"bmr": 1780.0, "tdee": 2759.0}`, `chat reply: tool calls [], text: Your maintenance is about 2600 kcal…`. Longest line 154 chars; a marker buried in the uploaded document and the API key both appear zero times in stdout and stderr.
+- [x] Without the flag: zero `cora` log lines, same answer in the UI, no exceptions.
+- [x] Gates green: `uv run ruff format --check`, `uv run ruff check`, `uv run ty`, `uv run pytest` (283 unit) and `uv run pytest -m integration` (20).

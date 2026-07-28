@@ -34,7 +34,11 @@ their sources, and any tool runs appear under the answer.
 
 Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
 `CORA_PLUGIN` (default `cora.plugins.fitness`), `CORA_TOP_K`,
-`CORA_MAX_TOOL_ROUNDS`, `OPENROUTER_BASE_URL`.
+`CORA_MAX_TOOL_ROUNDS`, `OPENROUTER_BASE_URL`, `CORA_DEBUG`.
+
+Set `CORA_DEBUG=1` to trace what crosses the ports — one truncated line per
+embed, retrieval (with sources and scores) and model round trip, printed to the
+terminal running Streamlit. Off by default; the API key never crosses a port.
 
 ## Manual testing
 
