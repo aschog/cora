@@ -95,8 +95,19 @@ A fourth tier alongside `webapp-overview.md` §8's three: browser + real adapter
 LLM. Slower than integration (chromium install, embedder warm-up) but deterministic, so it
 gets its own marker, its own CI job, and a third exclusion in the default `addopts`
 selector. The `llm` tier stays manual and paid, but these specs become its vehicle rather
-than a hand-driven session. `pytest-timeout` is mandatory — a hung websocket otherwise
-runs to the CI job limit.
+than a hand-driven session.
+
+Two scoping decisions taken while landing the scaffolding:
+
+- **The stub-server tests are `integration`, not `e2e`.** They exercise the real adapter
+  over real TCP but need no browser and no subprocess, so they belong in the CI job that
+  already exists — the `e2e` marker stays strictly browser work, and its chromium job
+  stays as small as possible.
+- **`pytest-timeout` is applied per spec, not globally.** A hung websocket must not run to
+  the CI job limit, but a global timeout would also cover a first-run
+  sentence-transformers download in the integration tier, where it would fire as a false
+  failure. The e2e specs carry it in their shared `pytestmark` beside the `e2e` marker, so
+  the guard travels with the specs that need it.
 
 ---
 
@@ -104,7 +115,7 @@ runs to the CI job limit.
 
 Scaffolding (no assertion surface — minimal, lands first)
 
-- [ ] dev deps via `uv add --dev`: `pytest-playwright`, pinned `playwright`,
+- [x] dev deps via `uv add --dev`: `pytest-playwright`, pinned `playwright`,
       `pytest-timeout`; register the `e2e` marker and exclude it from the default selector.
 - [ ] CI `e2e` job: `playwright install --with-deps chromium`, `-m 'e2e and not llm'`,
       screenshot/video/trace retained on failure. Browser caching is a later optimisation.
