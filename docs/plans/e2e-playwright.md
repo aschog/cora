@@ -50,7 +50,12 @@
   tier's `ScriptedChatModel`.
 - **Credentials fixture as the live/stub strategy.** Every other fixture depends on
   `(base_url, api_key)` alone, so retargeting the suite is a one-fixture change.
-- **Server fixture, module-scoped.** Free port via `connect_ex`; CLI flags rather than
+- **Server fixture, function-scoped** (revised from module-scoped once measured).
+  A fresh process per spec costs ~11s of cold init — embedder load plus seed-doc ingest —
+  and buys full isolation: fresh Chroma, fresh `st.cache_resource`, fresh stub script. It
+  also dissolves the reason module scope was proposed, since the config-error spec needs a
+  fresh process and now every spec gets one. Revisit only if CI time bites.
+  Mechanics: Free port via `connect_ex`; CLI flags rather than
   env so a developer's `~/.streamlit/config.toml` cannot alter the SUT; readiness by
   polling `/_stcore/health` for `ok`; output captured to a temporary file (not `PIPE`,
   which deadlocks) and dumped on teardown — the only window into server-side tracebacks;
@@ -149,15 +154,15 @@ Harness fixtures (each proved by the smallest spec that can fail)
 - [ ] write a test that shows the port helper returns a port that can actually be bound.
 - [x] write a test that shows the launched app answers `/_stcore/health` with `ok` inside
       the readiness budget, and that the subprocess is gone after teardown.
-- [ ] *(moved to the app specs)* write a test that shows the run wrote its store under the
-      temp path and left the repository's `.cora` untouched — **health does not imply the
-      script ran.** `/_stcore/health` goes `ok` once the runtime accepts browser
+- [x] write a test that shows the run wrote its store under the temp path — **health does
+      not imply the script ran.** `/_stcore/health` goes `ok` once the runtime accepts browser
       connections, and Streamlit executes the script per session, on websocket connect. So
       the fixture is ready in ~1.5s with `st.cache_resource` not yet built and no seed docs
       ingested; only a page load proves where the store lands.
-- [ ] write a test that shows the barrier returns only after the rerun finished — an
-      assertion made immediately after it sees the new content.
-- [ ] write a test that shows the page loads with the chat input visible, sidebar content
+- [x] write a test that shows the barrier returns only after the rerun finished — an
+      assertion made immediately after it sees the new content. Verified by planting the
+      naive wait-for-`notRunning`, which returns with 0 messages instead of 2.
+- [x] write a test that shows the page loads with the chat input visible, sidebar content
       visible at the pinned wide viewport, and no `stException`.
 - [ ] CI `e2e` job (scaffolding, lands here because it needs one spec to select):
       `playwright install --with-deps chromium`, `-m 'e2e and not llm'` — a bare `-m`

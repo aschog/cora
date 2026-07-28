@@ -1,5 +1,6 @@
 import json
 import threading
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, cast
 
@@ -17,6 +18,7 @@ class StubLlm:
         self._requests: list[dict[str, Any]] = []
         self._lock = threading.Lock()
         self._overlap: threading.Barrier | None = None
+        self._delay = 0.0
         self._server = _StubServer(("127.0.0.1", 0), _Handler)
         self._server.stub = self
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
@@ -52,11 +54,16 @@ class StubLlm:
     def require_overlap(self, count: int) -> None:
         self._overlap = threading.Barrier(count, timeout=10)
 
+    def script_delay(self, seconds: float) -> None:
+        self._delay = seconds
+
     def response(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         with self._lock:
             self._requests.append(request)
         if self._overlap is not None:
             self._overlap.wait()
+        if self._delay:
+            time.sleep(self._delay)
         if self._status != 200:
             return self._status, {
                 "error": {"message": "scripted failure", "code": self._status}
