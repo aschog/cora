@@ -19,6 +19,7 @@ class Config:
     plugin_module: str
     top_k: int
     max_tool_rounds: int
+    debug: bool = False
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Config":

@@ -36,6 +36,12 @@ def test_from_env_applies_defaults_for_optional_fields() -> None:
     assert config.max_tool_rounds > 0
 
 
+def test_from_env_leaves_debug_off_when_the_flag_is_unset() -> None:
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert config.debug is False
+
+
 def test_from_env_missing_api_key_raises_configuration_error() -> None:
     with pytest.raises(ConfigurationError):
         Config.from_env({})
