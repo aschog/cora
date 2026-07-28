@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
 
+from cora.core.chunk import Chunk
 from cora.core.ports.chat_model import ChatModel, Message, ModelReply
 from cora.core.ports.plugin import Tool
 from cora.core.ports.retrieval import RetrievedChunk, Retriever
@@ -41,6 +42,16 @@ class LoggingChatModel:
 @dataclass(frozen=True)
 class LoggingRetriever:
     inner: Retriever
+
+    def add(
+        self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
+    ) -> None:
+        log.debug(
+            "indexed: %d chunks from %s",
+            len(chunks),
+            truncate(chunks[0].source) if chunks else "nothing",
+        )
+        self.inner.add(chunks, vectors, file_hash)
 
     def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
         hits = self.inner.query(query_vector, k)

@@ -133,3 +133,24 @@ def test_logging_retriever_delegates_and_logs_the_hits(
     assert "k=3" in retrieval
     assert "guide.pdf" in retrieval
     assert "1.00" in retrieval
+
+
+def test_logging_retriever_delegates_and_logs_an_add(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    embedder = FakeEmbedder()
+    inner = FakeRetriever()
+    chunks = [
+        Chunk(text=f"part {turn}", source="guide.pdf", index=turn, offset=turn * 10)
+        for turn in range(3)
+    ]
+    vectors = embedder.embed([chunk.text for chunk in chunks])
+
+    with caplog.at_level(logging.DEBUG, logger="cora"):
+        LoggingRetriever(inner).add(chunks, vectors, "hash-1")
+
+    assert inner.sources() == ["guide.pdf"]
+    assert inner.contains("hash-1")
+    indexed = line_about(caplog, "indexed")
+    assert "3 chunks" in indexed
+    assert "guide.pdf" in indexed
