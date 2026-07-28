@@ -127,7 +127,7 @@ Docs
 Two mutants survived the suite; both are recorded here as items rather than
 carried into `main`.
 
-- [ ] CI runs the integration tier. Reverting `_answer` to `engine.answer(prompt)`
+- [x] CI runs the integration tier. Reverting `_answer` to `engine.answer(prompt)`
       — manual-test finding 1 itself — left `pytest -q` at 275 passed, so the
       feature's whole UI-to-engine wiring was invisible to the pipeline while
       `pyproject.toml` already advertised the marker as "run in CI". New
