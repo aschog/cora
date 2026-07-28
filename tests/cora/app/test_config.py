@@ -14,6 +14,7 @@ def test_from_env_reads_every_field() -> None:
             "CORA_TOP_K": "7",
             "CORA_MAX_TOOL_ROUNDS": "3",
             "CORA_HISTORY_TURNS": "9",
+            "CORA_DB_PATH": "/tmp/vectors",
         }
     )
 
@@ -25,6 +26,7 @@ def test_from_env_reads_every_field() -> None:
         top_k=7,
         max_tool_rounds=3,
         history_turns=9,
+        db_path="/tmp/vectors",
     )
 
 
@@ -37,6 +39,7 @@ def test_from_env_applies_defaults_for_optional_fields() -> None:
     assert config.top_k > 0
     assert config.max_tool_rounds > 0
     assert config.history_turns > 0
+    assert config.db_path
 
 
 def test_from_env_missing_api_key_raises_configuration_error() -> None:

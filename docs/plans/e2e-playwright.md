@@ -65,7 +65,8 @@
   `to_have_count`, never `.count()`. Spinners are never asserted — they render only after
   500 ms.
 - **Isolated store via `CORA_DB_PATH`.** `Config.from_env` gains a sixth knob and
-  `streamlit_app.py` passes it through. A subprocess can only be configured by
+  `build` reads it, so `streamlit_app.py` needs no change and `build`'s own `db_path`
+  parameter goes away rather than becoming a second source of truth. A subprocess can only be configured by
   environment, and the hardcoded CWD-relative path is already recorded as finding 10 —
   so this is a product fix that stands without the tests. *Rejected:* launching with
   `cwd=tmp_path`, which leans on the accident that the default is relative. The
@@ -136,11 +137,11 @@ Stub LLM server (no browser, no subprocess)
 - [x] *(added while landing the recorder)* write a test that shows all three retries of a
       failed request are recorded — makes the client's retry behaviour assertable rather
       than merely visible as elapsed time.
-- [ ] write a test that shows two overlapping requests are both served.
+- [x] write a test that shows two overlapping requests are both served.
 
 Config knob
 
-- [ ] write a test that shows `Config.from_env` reads `CORA_DB_PATH` and defaults to
+- [x] write a test that shows `Config.from_env` reads `CORA_DB_PATH` and defaults to
       today's value, and that `build` stores into that path.
 
 Harness fixtures (each proved by the smallest spec that can fail)

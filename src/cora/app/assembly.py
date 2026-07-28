@@ -21,7 +21,6 @@ from cora.core.services.validation import (
 )
 
 MAX_INPUT_CHARS = 4000
-DEFAULT_DB_PATH = ".cora/chroma"
 DEFAULT_COLLECTION = "documents"
 
 
@@ -62,11 +61,7 @@ def assemble(
     return App(engine=engine, knowledge_base=knowledge_base)
 
 
-def build(
-    config: Config,
-    db_path: str = DEFAULT_DB_PATH,
-    collection: str = DEFAULT_COLLECTION,
-) -> App:
+def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
     from cora.adapters.chroma_retriever import ChromaRetriever
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
@@ -76,7 +71,7 @@ def build(
             model=config.model, api_key=config.api_key, base_url=config.base_url
         ),
         embedder=SentenceTransformerEmbedder(),
-        retriever=ChromaRetriever(path=db_path, collection=collection),
+        retriever=ChromaRetriever(path=config.db_path, collection=collection),
         plugin=load_plugin(config.plugin_module),
         top_k=config.top_k,
         max_tool_rounds=config.max_tool_rounds,
