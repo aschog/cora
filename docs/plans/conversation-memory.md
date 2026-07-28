@@ -99,7 +99,10 @@ Core
       off (guards the slice against the `[-0:]` sends-everything trap).
 - [x] history shorter than (and exactly at) the cap is sent in full — review
       finding: the unclamped slice start went negative and silently dropped
-      most of the history for any conversation shorter than twice the cap.
+      most of the history whenever `cap/2 < len(history) < cap` (11-19 turns at
+      the default 20). Shorter conversations were unaffected, because Python
+      clamps a negative slice start — `history[-18:]` on a 2-turn tuple is the
+      whole tuple.
 - [x] retrieval and validation still receive the current question alone, not
       the history (guards the "don't poison the query" decision).
 
@@ -114,7 +117,11 @@ UI
       drops an error entry *and* the user turn that caused it, and maps an
       empty thread to `()`.
 - [x] `_answer` maps history from the thread before appending the current
-      prompt, so the question is sent once, not twice.
+      prompt. No test can fail for this: mapping *after* the append is
+      behaviourally identical, because the mapper already drops a trailing
+      unanswered user entry. Defensive redundancy, not a guard — the duplicate
+      question is prevented by the mapper, and the acceptance item below is what
+      actually pins "sent once".
 - [x] acceptance (`AppTest`): state a fact, then ask about it, and the second
       call receives the first exchange.
 
@@ -149,21 +156,21 @@ carried into `main`.
       other two, where `max_tool_rounds=0` would make `range(0)` raise
       `ToolLoopLimitError` on every question. A test pins the `0` case as
       allowed so the guard cannot over-reach later.
-- [ ] correct the `_answer`-ordering item above: no test can fail for it. Mapping
+- [x] correct the `_answer`-ordering item above: no test can fail for it. Mapping
       *after* the append keeps all 20 UI tests green, because the mapper already
       drops a trailing unanswered user entry. The ordering is defensive
       redundancy, not a guard — say so, or fold it into the acceptance item.
-- [ ] log the citation-collision risk under Open questions: history carries the
+- [x] log the citation-collision risk under Open questions: history carries the
       previous answer's `[1]` while each turn rebuilds the context block with a
       freshly numbered `[1]`, so a prior claim can cite a different document
       than the one now numbered that way.
-- [ ] `docs/manual-test-findings.md` still lists finding 1 as the highest
+- [x] `docs/manual-test-findings.md` still lists finding 1 as the highest
       remaining; update the status note as PR #5 did for findings 2/3/9.
-- [ ] nits: the clamp note above says "shorter than twice the cap" — the real
+- [x] `thread_to_turns` and `ThreadEntry` have outgrown `ui/formatting.py` —
+      moved to `ui/thread.py`, tests split 8/4 to match.
+- [x] nits: the clamp note above says "shorter than twice the cap" — the real
       window was `cap/2 < len < cap` (11-19 turns at the default), since Python
-      clamps `history[-18:]` on a 2-turn tuple; `thread_to_turns` and
-      `ThreadEntry` have outgrown `ui/formatting.py` (`ui/thread.py` names it);
-      README omits the default `20`.
+      clamps `history[-18:]` on a 2-turn tuple; README omits the default `20`.
 
 ---
 
@@ -181,6 +188,13 @@ carried into `main`.
 - **Thread as source of truth.** Deriving history from render state means any
   future entry variant must be classified as conversational or not. The
   alternative — a parallel transcript — trades that for drift.
+- **Citation numbers collide across turns.** Each turn rebuilds the system
+  message with a freshly numbered context block, while history carries the
+  previous answer's `[1]`/`[2]` verbatim. Turn 1 cites `protein.md` as `[1]`;
+  turn 2 retrieves `deadlift-form-guide.pdf` as `[1]`, so the model sees a prior
+  claim citing a number that now means a different document — and the sources
+  panel for turn 2 lists only the new ones. Needs stable per-conversation
+  citation identity to fix properly; logged with the retrieval issue above.
 
 ---
 

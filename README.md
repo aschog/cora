@@ -33,9 +33,11 @@ Upload a document (txt/md/pdf) in the sidebar, then ask about it — answers cit
 their sources, and any tool runs appear under the answer.
 
 Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
-`CORA_PLUGIN` (default `cora.plugins.fitness`), `CORA_TOP_K`,
-`CORA_MAX_TOOL_ROUNDS`, `CORA_HISTORY_TURNS` (past turns sent with each
-question; `0` switches memory off), `OPENROUTER_BASE_URL`.
+`CORA_PLUGIN` (default `cora.plugins.fitness`), `CORA_TOP_K` (default `5`),
+`CORA_MAX_TOOL_ROUNDS` (default `8`), `CORA_HISTORY_TURNS` (past turns sent with
+each question; default `20`, and `0` switches memory off),
+`OPENROUTER_BASE_URL`. The three counts are rejected at startup if they fall
+below their lowest useful value — `0` for history turns, `1` for the others.
 
 ## Manual testing
 
