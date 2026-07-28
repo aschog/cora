@@ -27,6 +27,23 @@ def test_an_answer_cites_only_sources_it_lists(app: Page, stub: StubLlm) -> None
     )
 
 
+def test_a_second_question_reaches_the_model_with_the_first_exchange(
+    app: Page, stub: StubLlm
+) -> None:
+    stub.script_answer("Aim for about 1.6 g per kilogram.")
+    ask(app, "How much protein should I eat?")
+    stub.script_answer("At 80 kg that is about 128 g.")
+    ask(app, "And at 80 kg?")
+
+    system, *exchange = stub.requests[-1]["messages"]
+    assert system["role"] == "system"
+    assert [(message["role"], message["content"]) for message in exchange] == [
+        ("user", "How much protein should I eat?"),
+        ("assistant", "Aim for about 1.6 g per kilogram."),
+        ("user", "And at 80 kg?"),
+    ]
+
+
 def test_a_calculator_question_shows_its_tool_result(app: Page, stub: StubLlm) -> None:
     stub.script_tool_call("calculate_bmi", {"weight_kg": 80, "height_m": 1.8})
     stub.script_answer("Your BMI is about 24.7.")

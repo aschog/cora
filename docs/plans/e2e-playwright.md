@@ -182,8 +182,10 @@ App specs (live-ready unless marked stub-only)
       `[n]` resolves to an entry of the Sources expander.
 - [x] write a test that shows a calculator question renders a Tool results expander
       holding a plausible number.
-- [ ] write a test that shows a second question reaches the model with the first exchange
-      included (**stub-only**, recorder assertion).
+- [x] write a test that shows a second question reaches the model with the first exchange
+      included (**stub-only**, recorder assertion) — green on arrival, since conversation
+      memory already landed in PR #6, so red was proved by planting `engine.answer(prompt)`
+      without history and watching the recorder see one message instead of three.
 - [ ] write a test that shows a medical-safety question is refused with the plugin's
       message and never reaches the model.
 - [ ] write a test that shows a provider failure renders one friendly error alert, no
