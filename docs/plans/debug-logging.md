@@ -50,7 +50,7 @@ Truncation helper
 
 Wrappers (fakes + caplog)
 
-- [ ] test that the logging chat model returns the inner fake's reply and passes messages/tools through unchanged.
+- [x] test that the logging chat model returns the inner fake's reply and passes messages/tools through unchanged.
 - [ ] test that a `complete` call logs one line with message count + roles + truncated content.
 - [ ] test that the reply side logs requested tool-call names and truncated reply text.
 - [ ] test that a marker buried deep in a long prompt never appears in any log line (every field bounded).
