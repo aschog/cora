@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+
 import pytest
 
 from cora.adapters.openrouter_chat_model import OpenRouterChatModel
@@ -119,3 +121,20 @@ def test_scripted_rate_limit_surfaces_as_the_apps_llm_error() -> None:
 
         with pytest.raises(LlmError):
             _model(stub).complete((Message(role="user", content="Deadlifts?"),), ())
+
+
+@pytest.mark.integration
+def test_overlapping_requests_are_both_served() -> None:
+    question = (Message(role="user", content="Deadlifts?"),)
+    with StubLlm() as stub:
+        stub.script_answer("Deadlifts train the posterior chain.")
+        stub.require_overlap(2)
+        model = _model(stub)
+
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            pending = [pool.submit(model.complete, question, ()) for _ in range(2)]
+            replies = [future.result(timeout=15) for future in pending]
+
+    assert [reply.text for reply in replies] == [
+        "Deadlifts train the posterior chain."
+    ] * 2

@@ -16,6 +16,7 @@ class StubLlm:
         self._status = 200
         self._requests: list[dict[str, Any]] = []
         self._lock = threading.Lock()
+        self._overlap: threading.Barrier | None = None
         self._server = _StubServer(("127.0.0.1", 0), _Handler)
         self._server.stub = self
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
@@ -48,9 +49,14 @@ class StubLlm:
     def script_status(self, code: int) -> None:
         self._status = code
 
+    def require_overlap(self, count: int) -> None:
+        self._overlap = threading.Barrier(count, timeout=10)
+
     def response(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         with self._lock:
             self._requests.append(request)
+        if self._overlap is not None:
+            self._overlap.wait()
         if self._status != 200:
             return self._status, {
                 "error": {"message": "scripted failure", "code": self._status}
