@@ -164,11 +164,12 @@ Harness fixtures (each proved by the smallest spec that can fail)
       naive wait-for-`notRunning`, which returns with 0 messages instead of 2.
 - [x] write a test that shows the page loads with the chat input visible, sidebar content
       visible at the pinned wide viewport, and no `stException`.
-- [ ] CI `e2e` job (scaffolding, lands here because it needs one spec to select):
+- [x] CI `e2e` job (scaffolding, lands here because it needs one spec to select):
       `playwright install --with-deps chromium`, `-m 'e2e and not llm'` — a bare `-m`
       replaces the `addopts` selector rather than narrowing it, so the `llm` exclusion must
       be restated as the integration job already does. Screenshot/video/trace retained on
-      failure; browser caching is a later optimisation.
+      failure; browser caching is a later optimisation. Its exact pytest invocation is
+      verified locally, but the job itself is unverified until the branch is first pushed.
 
 App specs (live-ready unless marked stub-only)
 

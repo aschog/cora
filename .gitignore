@@ -19,3 +19,4 @@ dist/
 
 # Local vector store (Chroma persistence)
 .cora/
+e2e-artifacts/
