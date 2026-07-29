@@ -145,8 +145,8 @@ sequenceDiagram
 **Prerequisite (not a test):** `uv add rank-bm25`.
 
 #### Bm25KeywordIndex adapter
-- [ ] over a small known corpus, `search` ranks the lexically-matching chunk first, above an unrelated one
-- [ ] `search` reconstructs a `RetrievedChunk` carrying the chunk's identical `text`/`source`/`index`/`offset` (the fusion identity guard)
+- [x] over a small known corpus, `search` ranks the lexically-matching chunk first, above an unrelated one
+- [x] `search` reconstructs a `RetrievedChunk` carrying the chunk's identical `text`/`source`/`index`/`offset` (the fusion identity guard)
 - [ ] `from_chunks(corpus)` seeds the whole corpus searchable in one build (the rehydration entry point)
 - [ ] a second `add` rebuilds the corpus so an earlier file's chunks stay searchable
 - [ ] an empty corpus → `search` returns `[]` (guards `BM25Okapi([])` `ZeroDivisionError`)

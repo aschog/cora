@@ -15,3 +15,20 @@ def test_search_ranks_the_lexical_match_first(
     hits = index.search("protein muscle", k=3)
 
     assert hits[0].chunk == match
+
+
+def test_search_reconstructs_the_chunk_with_identical_fields(
+    make_chunk: Callable[..., Chunk],
+) -> None:
+    chunk = make_chunk("unique zebra token", source="notes.md", index=7, offset=42)
+    index = Bm25KeywordIndex.from_chunks([chunk])
+
+    [hit] = index.search("zebra", k=1)
+
+    assert hit.chunk == chunk
+    assert (hit.chunk.text, hit.chunk.source, hit.chunk.index, hit.chunk.offset) == (
+        "unique zebra token",
+        "notes.md",
+        7,
+        42,
+    )
