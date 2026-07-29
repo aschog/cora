@@ -69,7 +69,7 @@ flowchart LR
 
 ## TDD checklist
 
-- [ ] Write a test that shows `app_env` sets no `CORA_MODEL` when the caller
+- [x] Write a test that shows `app_env` sets no `CORA_MODEL` when the caller
       gives no model override, so a launched app falls back to the composition
       root's default model (unit tier, fake env).
 - [ ] Write a test that shows the live-credentials helper returns the real

@@ -42,6 +42,18 @@ def test_a_key_free_launch_does_not_inherit_the_developers_key(
     assert "OPENROUTER_API_KEY" not in env
 
 
+def test_a_model_free_launch_leaves_the_model_choice_to_the_app(
+    tmp_path: Path,
+) -> None:
+    env = app_env(
+        base_url="http://127.0.0.1:1/v1",
+        api_key="dummy-key",
+        db_path=tmp_path,
+    )
+
+    assert "CORA_MODEL" not in env
+
+
 @pytest.mark.integration
 def test_find_free_port_returns_a_port_the_caller_can_bind() -> None:
     port = find_free_port()
