@@ -26,9 +26,10 @@ class Bm25KeywordIndex:
         self._bm25 = BM25Okapi([_tokenize(chunk.text) for chunk in self._chunks])
 
     def search(self, query: str, k: int) -> list[RetrievedChunk]:
-        if self._bm25 is None:
+        tokens = _tokenize(query)
+        if self._bm25 is None or not tokens:
             return []
-        scores = self._bm25.get_scores(_tokenize(query))
+        scores = self._bm25.get_scores(tokens)
         ranked = sorted(range(len(self._chunks)), key=lambda i: (-scores[i], i))
         return [
             RetrievedChunk(chunk=self._chunks[i], score=float(scores[i]))

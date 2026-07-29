@@ -67,3 +67,11 @@ def test_empty_corpus_search_returns_nothing() -> None:
     index = Bm25KeywordIndex.from_chunks([])
 
     assert index.search("protein", k=5) == []
+
+
+def test_empty_query_search_returns_nothing(
+    make_chunk: Callable[..., Chunk],
+) -> None:
+    index = Bm25KeywordIndex.from_chunks([make_chunk("protein for muscle")])
+
+    assert index.search("   ", k=5) == []

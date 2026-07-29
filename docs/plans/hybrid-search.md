@@ -150,7 +150,7 @@ sequenceDiagram
 - [x] `from_chunks(corpus)` seeds the whole corpus searchable in one build (the rehydration entry point)
 - [x] a second `add` rebuilds the corpus so an earlier file's chunks stay searchable
 - [x] an empty corpus → `search` returns `[]` (guards `BM25Okapi([])` `ZeroDivisionError`)
-- [ ] an empty query → `search` returns `[]` (`get_scores([])` is zeros, not a crash)
+- [x] an empty query → `search` returns `[]` (`get_scores([])` is zeros, not a crash)
 - [ ] equal-scoring chunks come back in deterministic order, tie-broken by **corpus position** — not `Chunk.index` (collides across sources) and not `get_top_n`'s unstable `argsort`
 
 #### HybridContextSource
