@@ -32,3 +32,21 @@ def test_search_reconstructs_the_chunk_with_identical_fields(
         7,
         42,
     )
+
+
+def test_from_chunks_seeds_the_whole_corpus_searchable(
+    make_chunk: Callable[..., Chunk],
+) -> None:
+    corpus = [
+        make_chunk("protein for muscle", index=0),
+        make_chunk("hydration and water", index=1),
+        make_chunk("sleep for recovery", index=2),
+    ]
+    index = Bm25KeywordIndex.from_chunks(corpus)
+
+    for token, expected in [
+        ("protein", corpus[0]),
+        ("water", corpus[1]),
+        ("sleep", corpus[2]),
+    ]:
+        assert index.search(token, k=1)[0].chunk == expected
