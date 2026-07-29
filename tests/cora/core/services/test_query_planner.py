@@ -45,6 +45,20 @@ def test_parse_plan_reads_a_json_fenced_object() -> None:
     assert plan == QueryPlan(queries=("protein basics",))
 
 
+def test_parse_plan_reads_an_untagged_fenced_object() -> None:
+    text = '```\n{"queries": ["protein basics"]}\n```'
+
+    assert parse_plan(text, sources=()) == QueryPlan(queries=("protein basics",))
+
+
+def test_parse_plan_reads_an_object_wrapped_in_prose() -> None:
+    lead = parse_plan('Here is the JSON: {"queries": ["a"]}', sources=())
+    trail = parse_plan('{"queries": ["a"]} Hope this helps.', sources=())
+
+    assert lead == QueryPlan(queries=("a",))
+    assert trail == QueryPlan(queries=("a",))
+
+
 def test_parse_plan_returns_none_for_malformed_json() -> None:
     assert parse_plan("not json at all", sources=()) is None
     assert parse_plan('{"missing": "queries"}', sources=()) is None
