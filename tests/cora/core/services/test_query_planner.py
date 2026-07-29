@@ -43,6 +43,16 @@ def test_parse_plan_returns_none_for_malformed_json() -> None:
     assert parse_plan('{"queries": []}', sources=()) is None
 
 
+def test_parse_plan_drops_blank_queries_and_strips_the_rest() -> None:
+    plan = parse_plan('{"queries": ["  protein  ", ""]}', sources=())
+
+    assert plan == QueryPlan(queries=("protein",))
+
+
+def test_parse_plan_falls_back_when_every_query_is_blank() -> None:
+    assert parse_plan('{"queries": ["", "   "]}', sources=()) is None
+
+
 def test_planner_falls_back_to_the_raw_question_on_malformed_json() -> None:
     model = ScriptedChatModel([ModelReply(text="not json")])
     planner = QueryPlanner(chat_model=model, num_queries=3)

@@ -29,9 +29,12 @@ def parse_plan(text: str, sources: tuple[str, ...]) -> QueryPlan | None:
         return None
     if not isinstance(data, dict):
         return None
-    queries = data.get("queries")
-    if not isinstance(queries, list) or not all(isinstance(q, str) for q in queries):
+    raw_queries = data.get("queries")
+    if not isinstance(raw_queries, list) or not all(
+        isinstance(q, str) for q in raw_queries
+    ):
         return None
+    queries = tuple(q.strip() for q in raw_queries if q.strip())
     if not queries:
         return None
     source = data.get("source")
@@ -40,7 +43,7 @@ def parse_plan(text: str, sources: tuple[str, ...]) -> QueryPlan | None:
         if isinstance(source, str) and source in sources
         else None
     )
-    return QueryPlan(queries=tuple(queries), metadata_filter=metadata_filter)
+    return QueryPlan(queries=queries, metadata_filter=metadata_filter)
 
 
 def _planning_messages(
