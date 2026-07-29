@@ -7,15 +7,29 @@ from cora.adapters.port_logging import LoggingChatModel
 from cora.app.assembly import App, assemble, build
 from cora.app.config import Config
 from cora.app.log_config import DEBUG_HANDLER_NAME
+from cora.core.chunk import Chunk
 from cora.core.errors import InputRejectedError
 from cora.core.ports.chat_model import ModelReply
 from cora.core.ports.plugin import Plugin
+from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.services.chat_engine import ChatEngine
 from cora.core.services.fusion_context_source import FusionContextSource
+from cora.core.services.hybrid_context_source import HybridContextSource
 from cora.core.services.plugin_registry import load_plugin
 from cora.core.services.query_planner import QueryPlanner
 from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin
+
+
+class _FakeKeywordStore:
+    def __init__(self) -> None:
+        self.added: list[Chunk] = []
+
+    def add(self, chunks: list[Chunk]) -> None:
+        self.added.extend(chunks)
+
+    def search(self, query: str, k: int) -> list[RetrievedChunk]:
+        return []
 
 
 def _assemble(
@@ -85,6 +99,23 @@ def test_assemble_advanced_mode_wraps_the_knowledge_base_in_fusion() -> None:
     planner = source.planner
     assert isinstance(planner, QueryPlanner)
     assert planner.num_queries == 3
+
+
+def test_assemble_hybrid_mode_wraps_dense_and_keyword_in_a_hybrid_source() -> None:
+    keyword = _FakeKeywordStore()
+    app = assemble(
+        chat_model=ScriptedChatModel([ModelReply(text="ok")]),
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        plugin=make_plugin(),
+        retrieval="hybrid",
+        keyword_index=keyword,
+    )
+
+    source = app.engine.knowledge_base
+    assert isinstance(source, HybridContextSource)
+    assert source.dense is app.knowledge_base
+    assert source.keyword is keyword
 
 
 def test_assemble_passes_history_turns_to_the_engine() -> None:
