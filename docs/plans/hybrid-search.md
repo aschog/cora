@@ -172,7 +172,7 @@ sequenceDiagram
 
 #### Invariants + docs
 - *(note, not an increment)* `HybridContextSource` and its local role Protocols import no framework — already covered by the existing core-wide scan; nothing new to write
-- [ ] `rank_bm25` is added to `FORBIDDEN_FRAMEWORKS` and a planted core import of it is caught (mirrors the Streamlit / outer-layer planted-violation tests — the scan does *not* cover `rank_bm25` today)
+- [x] `rank_bm25` is added to `FORBIDDEN_FRAMEWORKS` and a planted core import of it is caught (mirrors the Streamlit / outer-layer planted-violation tests — the scan does *not* cover `rank_bm25` today)
 - [ ] `big-picture.md` retrieve step notes plain/advanced/**hybrid** (ports table unchanged — no new port); `README` (line ~46, currently "must be `plain` or `advanced`") documents `CORA_RETRIEVAL=hybrid`
 
 ---
