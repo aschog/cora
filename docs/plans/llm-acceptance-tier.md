@@ -72,10 +72,10 @@ flowchart LR
 - [x] Write a test that shows `app_env` sets no `CORA_MODEL` when the caller
       gives no model override, so a launched app falls back to the composition
       root's default model (unit tier, fake env).
-- [ ] Write a test that shows the live-credentials helper returns the real
+- [x] Write a test that shows the live-credentials helper returns the real
       OpenRouter base URL and the key when `OPENROUTER_API_KEY` is set in a
       fake env (unit tier).
-- [ ] Write a test that shows the helper raises pytest's skip, with a reason
+- [x] Write a test that shows the helper raises pytest's skip, with a reason
       naming `OPENROUTER_API_KEY`, when the key is absent (unit tier).
 - [ ] Write the llm module skeleton — marked `llm`, module-local `credentials`
       fixture built on the helper, no stub: red is today's `-m llm` collecting
