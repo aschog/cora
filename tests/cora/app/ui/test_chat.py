@@ -1,3 +1,4 @@
+import re
 from dataclasses import dataclass
 
 import pytest
@@ -417,4 +418,5 @@ def test_upload_then_ask_shows_answer_with_sources() -> None:
     at.chat_input[0].set_value("What about protein?").run()
     assert not at.exception
     assert answer in _visible_text(at)
-    assert "[1] note.md" in _visible_text(at)
+    panel = [md.value for md in at.markdown if re.match(r"^\[\d+\] ", md.value)]
+    assert panel == ["[1] note.md"]

@@ -9,9 +9,12 @@ from cora.core.ports.plugin import Tool, ToolCall, ToolResult
 from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.services.chat_engine import (
     ChatEngine,
+    Context,
     InputValidator,
+    Source,
     ToolExecutor,
     build_context_block,
+    cited_numbers,
 )
 from cora.core.services.tool_runtime import ToolRuntime
 from cora.core.services.validation import EmptyInputRule, ValidationPipeline
@@ -30,7 +33,7 @@ def _make_engine(
     max_tool_rounds: int = 8,
     max_history_turns: int = 20,
     system_prompt: str = "You are a helpful assistant.",
-    build_context: Callable[[list[RetrievedChunk]], str] | None = None,
+    build_context: Callable[[list[RetrievedChunk]], Context] | None = None,
 ) -> ChatEngine:
     extra = {} if build_context is None else {"build_context": build_context}
     return ChatEngine(
@@ -53,6 +56,18 @@ def _retrieved(source: str, text: str = "t", score: float = 1.0) -> RetrievedChu
     )
 
 
+def test_cited_numbers_are_distinct_and_in_order_of_first_appearance() -> None:
+    assert cited_numbers("uses [3], then [1], and [3] again") == (3, 1)
+
+
+def test_cited_numbers_of_uncited_text_is_empty() -> None:
+    assert cited_numbers("no brackets here") == ()
+
+
+def test_cited_numbers_ignores_brackets_glued_to_a_word_or_bracket() -> None:
+    assert cited_numbers("write list[2] or arr[0][1], then cite [1]") == (1,)
+
+
 def test_final_text_reply_becomes_the_answer() -> None:
     model = ScriptedChatModel([ModelReply(text="Hello!")])
     engine = _make_engine(chat_model=model)
@@ -63,28 +78,101 @@ def test_final_text_reply_becomes_the_answer() -> None:
     assert result.tool_results == ()
 
 
-def test_answer_searches_the_knowledge_base_and_reports_unique_sources() -> None:
-    kb = FakeContextSource(
-        [_retrieved("a.txt"), _retrieved("a.txt"), _retrieved("b.txt")]
-    )
+def test_answer_searches_the_knowledge_base_with_the_question_and_top_k() -> None:
+    kb = FakeContextSource([_retrieved("a.txt")])
+    engine = _make_engine(knowledge_base=kb, top_k=5)
+
+    engine.answer("question")
+
+    assert kb.last_query == "question"
+    assert kb.last_k == 5
+
+
+def test_answer_reports_only_the_cited_sources_under_their_own_numbers() -> None:
+    kb = FakeContextSource([_retrieved("a.txt"), _retrieved("b.txt")])
+    model = ScriptedChatModel([ModelReply(text="Per [2], do this.")])
+    engine = _make_engine(chat_model=model, knowledge_base=kb, top_k=5)
+
+    result = engine.answer("question")
+
+    assert result.sources == (Source(2, "b.txt"),)
+
+
+def test_answer_lists_cited_sources_in_ascending_number_order() -> None:
+    kb = FakeContextSource([_retrieved("a.txt"), _retrieved("b.txt")])
+    model = ScriptedChatModel([ModelReply(text="first [2], then [1].")])
+    engine = _make_engine(chat_model=model, knowledge_base=kb, top_k=5)
+
+    result = engine.answer("question")
+
+    assert result.sources == (Source(1, "a.txt"), Source(2, "b.txt"))
+
+
+def test_answer_reports_no_sources_when_the_answer_cites_none() -> None:
+    kb = FakeContextSource([_retrieved("a.txt"), _retrieved("b.txt")])
     engine = _make_engine(knowledge_base=kb, top_k=5)
 
     result = engine.answer("question")
 
-    assert kb.last_query == "question"
-    assert kb.last_k == 5
-    assert result.sources == ("a.txt", "b.txt")
+    assert result.sources == ()
 
 
-def test_build_context_block_numbers_chunks_and_states_citation_rule() -> None:
-    block = build_context_block(
-        [_retrieved("a.txt", text="alpha"), _retrieved("b.txt", text="beta")]
+def test_answer_resolves_citations_by_the_builders_own_numbers() -> None:
+    context = Context(
+        text="[5] x  [9] y",
+        sources=(Source(5, "x.txt"), Source(9, "y.txt")),
+    )
+    model = ScriptedChatModel([ModelReply(text="see [9].")])
+    engine = _make_engine(chat_model=model, build_context=lambda chunks: context)
+
+    result = engine.answer("q")
+
+    assert result.sources == (Source(9, "y.txt"),)
+
+
+def test_answer_ignores_a_citation_whose_number_has_no_source() -> None:
+    kb = FakeContextSource([_retrieved("a.txt")])
+    model = ScriptedChatModel([ModelReply(text="Per [1] and also [9].")])
+    engine = _make_engine(chat_model=model, knowledge_base=kb, top_k=5)
+
+    result = engine.answer("question")
+
+    assert result.sources == (Source(1, "a.txt"),)
+
+
+def test_build_context_block_numbers_by_unique_source_and_states_citation_rule() -> (
+    None
+):
+    context = build_context_block(
+        [
+            _retrieved("a.txt", text="alpha1"),
+            _retrieved("a.txt", text="alpha2"),
+            _retrieved("b.txt", text="beta"),
+        ]
     )
 
-    assert block.index("[1]") < block.index("[2]")
-    assert "alpha" in block and "a.txt" in block
-    assert "beta" in block and "b.txt" in block
-    assert "cite" in block.lower()
+    assert context.sources == (Source(1, "a.txt"), Source(2, "b.txt"))
+    a_lines = [line for line in context.text.splitlines() if "a.txt" in line]
+    b_lines = [line for line in context.text.splitlines() if "b.txt" in line]
+    assert [line[:3] for line in a_lines] == ["[1]", "[1]"]
+    assert b_lines[0].startswith("[2]")
+    assert "alpha1" in context.text and "alpha2" in context.text
+    assert "beta" in context.text
+    assert "source" in context.text.lower() and "cite" in context.text.lower()
+
+
+def test_build_context_block_numbers_non_adjacent_repeats_the_same() -> None:
+    context = build_context_block(
+        [
+            _retrieved("a.txt", text="one"),
+            _retrieved("b.txt", text="two"),
+            _retrieved("a.txt", text="three"),
+        ]
+    )
+
+    assert context.sources == (Source(1, "a.txt"), Source(2, "b.txt"))
+    a_lines = [line for line in context.text.splitlines() if "a.txt" in line]
+    assert [line[:3] for line in a_lines] == ["[1]", "[1]"]
 
 
 def test_system_message_embeds_the_prompt_and_context_block() -> None:
@@ -107,7 +195,7 @@ def test_injected_build_context_replaces_the_default() -> None:
     engine = _make_engine(
         chat_model=model,
         knowledge_base=kb,
-        build_context=lambda chunks: "CUSTOM-CONTEXT",
+        build_context=lambda chunks: Context(text="CUSTOM-CONTEXT", sources=()),
     )
 
     engine.answer("q")

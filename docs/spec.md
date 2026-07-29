@@ -32,3 +32,23 @@
    - Show relevant context and sources
    - Display tool call results
    - Include progress indicators for long operations
+
+### Medium requirements
+
+The optional tasks chosen for the bonus (two medium). Each plugs into an existing
+seam so it stays a small, isolated addition.
+
+1. **Visualisation of tool-call results:** *(done)*
+   - Render each tool call's result under the answer in the UI
+
+2. **Prompt-injection protection:** *(planned)*
+   - Detect injection / jailbreak patterns as a validation rule in the pipeline
+   - Add the guard by adding a rule, not by editing a component
+
+### Hard requirements
+
+The optional task chosen for the bonus (one hard).
+
+1. **Hybrid search:** *(planned)*
+   - Add a sparse (BM25) retriever behind the existing `Retriever` port
+   - Fuse sparse and dense rankings with the existing reciprocal rank fusion

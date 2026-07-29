@@ -1,9 +1,13 @@
 from cora.app.ui.formatting import format_tool_result, ingest_message, numbered_sources
 from cora.core.ports.plugin import ToolResult
+from cora.core.services.chat_engine import Source
 
 
-def test_numbered_sources_renders_bracketed_numbers_in_order() -> None:
-    assert numbered_sources(("a.pdf", "b.md")) == ["[1] a.pdf", "[2] b.md"]
+def test_numbered_sources_renders_each_source_under_its_own_number() -> None:
+    assert numbered_sources((Source(1, "a.pdf"), Source(3, "b.md"))) == [
+        "[1] a.pdf",
+        "[3] b.md",
+    ]
 
 
 def test_numbered_sources_of_nothing_is_empty() -> None:

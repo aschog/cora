@@ -1,4 +1,5 @@
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
@@ -36,19 +37,45 @@ def _unique_sources(chunks: list[RetrievedChunk]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(hit.chunk.source for hit in chunks))
 
 
-def build_context_block(chunks: list[RetrievedChunk]) -> str:
-    context = "\n".join(
-        f"[{number}] {hit.chunk.source}: {hit.chunk.text}"
-        for number, hit in enumerate(chunks, start=1)
+def cited_numbers(text: str) -> tuple[int, ...]:
+    found = (int(match) for match in re.findall(r"(?<![\w\]])\[(\d+)\]", text))
+    return tuple(dict.fromkeys(found))
+
+
+@dataclass(frozen=True)
+class Source:
+    number: int
+    name: str
+
+
+@dataclass(frozen=True)
+class Context:
+    text: str
+    sources: tuple[Source, ...]
+
+
+def build_context_block(chunks: list[RetrievedChunk]) -> Context:
+    names = _unique_sources(chunks)
+    sources = tuple(Source(number, name) for number, name in enumerate(names, start=1))
+    number_of = {source.name: source.number for source in sources}
+    body = "\n".join(
+        f"[{number_of[hit.chunk.source]}] {hit.chunk.source}: {hit.chunk.text}"
+        for hit in chunks
     )
     citation_rule = "Cite sources by their bracketed number, e.g. [1]."
-    return f"{context}\n\n{citation_rule}"
+    return Context(text=f"{body}\n\n{citation_rule}", sources=sources)
+
+
+def _cited_sources(text: str, sources: tuple[Source, ...]) -> tuple[Source, ...]:
+    by_number = {source.number: source for source in sources}
+    cited = (by_number[n] for n in cited_numbers(text) if n in by_number)
+    return tuple(sorted(cited, key=lambda source: source.number))
 
 
 @dataclass(frozen=True)
 class ChatResult:
     answer: str
-    sources: tuple[str, ...] = ()
+    sources: tuple[Source, ...] = ()
     tool_results: tuple[ToolResult, ...] = ()
 
 
@@ -63,26 +90,29 @@ class ChatEngine:
     system_prompt: str
     max_history_turns: int
     tools: tuple[Tool, ...] = ()
-    build_context: Callable[[list[RetrievedChunk]], str] = build_context_block
+    build_context: Callable[[list[RetrievedChunk]], Context] = build_context_block
 
     def answer(self, user_input: str, history: tuple[Turn, ...] = ()) -> ChatResult:
         validated = self.validation.validate(user_input)
         chunks = self.knowledge_base.search(validated, self.top_k)
-        messages = self._initial_messages(validated, chunks, history)
+        context = self.build_context(chunks)
+        messages = self._initial_messages(validated, context, history)
         text, tool_results = self._run_tool_loop(messages)
         return ChatResult(
-            answer=text, sources=_unique_sources(chunks), tool_results=tool_results
+            answer=text,
+            sources=_cited_sources(text, context.sources),
+            tool_results=tool_results,
         )
 
     def _initial_messages(
         self,
         user_input: str,
-        chunks: list[RetrievedChunk],
+        context: Context,
         history: tuple[Turn, ...],
     ) -> list[Message]:
         system = Message(
             role="system",
-            content=f"{self.system_prompt}\n\n{self.build_context(chunks)}",
+            content=f"{self.system_prompt}\n\n{context.text}",
         )
         recent = history[max(len(history) - self.max_history_turns, 0) :]
         past = [Message(role=turn.role, content=turn.text) for turn in recent]

@@ -47,7 +47,7 @@ per project. Every phase should be an atomic commit.
 - [ ] **Red** — write a failing test; run it and *see it fail* for the right reason
 - [ ] **Green** — write the minimal code to make it pass; all tests green
 - [ ] **Refactor** — clean up code *and tests*; stay green
-- [ ] **Auto-commit** the green step (Conventional Commit message; hooks enforce green)
+- [ ] **Auto-commit** the green step after human has approved it (Conventional Commit message; hooks enforce green)
       — messages must read as a **history**: the commit log of a branch tells the
       story of the feature growing, each message says *what* changed and *why*
 - [ ] **Update the checklist**: tick the item; add any newly discovered items or
@@ -66,6 +66,10 @@ per project. Every phase should be an atomic commit.
 > Docstrings and comments are extra effort to keep in sync and appear **only if
 > needed**: write none unless they state a contract the code can't express —
 > names + tests are the source of truth.
+
+> Don't narrate the diff — the reviewer reads it. After a step, say only what the
+> diff can't show: a decision, a surprise, anything urgent or important. Silence
+> on the mechanics is the default.
 
 ---
 

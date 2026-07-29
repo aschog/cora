@@ -2,10 +2,11 @@ import json
 from collections.abc import Sequence
 
 from cora.core.ports.plugin import ToolResult
+from cora.core.services.chat_engine import Source
 
 
-def numbered_sources(sources: Sequence[str]) -> list[str]:
-    return [f"[{number}] {source}" for number, source in enumerate(sources, start=1)]
+def numbered_sources(sources: Sequence[Source]) -> list[str]:
+    return [f"[{source.number}] {source.name}" for source in sources]
 
 
 def ingest_message(filename: str, chunks: int) -> str:
