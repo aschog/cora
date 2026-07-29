@@ -5,6 +5,27 @@ from cora.plugins.fitness.calculators import (
     plan_macros,
 )
 
+
+def _bmi(weight_kg: float, height_m: float) -> float:
+    return round(calculate_bmi(weight_kg, height_m), 1)
+
+
+def _to_whole(values: dict[str, float]) -> dict[str, int]:
+    return {key: round(value) for key, value in values.items()}
+
+
+def _daily_energy(
+    sex: str, weight_kg: float, height_cm: float, age_years: int, activity_level: str
+) -> dict[str, int]:
+    return _to_whole(
+        calculate_daily_energy(sex, weight_kg, height_cm, age_years, activity_level)
+    )
+
+
+def _macros(kcal: float, weight_kg: float) -> dict[str, int]:
+    return _to_whole(plan_macros(kcal, weight_kg))
+
+
 _WEIGHT_KG = {"type": "number", "minimum": 20, "maximum": 300}
 
 BMI_TOOL = Tool(
@@ -18,7 +39,7 @@ BMI_TOOL = Tool(
         },
         "required": ["weight_kg", "height_m"],
     },
-    run=calculate_bmi,
+    run=_bmi,
 )
 
 DAILY_ENERGY_TOOL = Tool(
@@ -51,7 +72,7 @@ DAILY_ENERGY_TOOL = Tool(
             "activity_level",
         ],
     },
-    run=calculate_daily_energy,
+    run=_daily_energy,
 )
 
 MACROS_TOOL = Tool(
@@ -65,7 +86,7 @@ MACROS_TOOL = Tool(
         },
         "required": ["kcal", "weight_kg"],
     },
-    run=plan_macros,
+    run=_macros,
 )
 
 TOOLS = (BMI_TOOL, DAILY_ENERGY_TOOL, MACROS_TOOL)
