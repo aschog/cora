@@ -86,6 +86,21 @@ class ChromaRetriever:
         ]
 
     @_translate_errors
+    def all_chunks(self) -> list[Chunk]:
+        result = self._collection.get(include=["documents", "metadatas"])
+        documents = result["documents"] or []
+        metadatas = result["metadatas"] or []
+        return [
+            Chunk(
+                text=str(document),
+                source=cast(str, metadata["source"]),
+                index=cast(int, metadata["index"]),
+                offset=cast(int, metadata["offset"]),
+            )
+            for document, metadata in zip(documents, metadatas, strict=True)
+        ]
+
+    @_translate_errors
     def sources(self) -> list[str]:
         metadatas = self._collection.get(include=["metadatas"])["metadatas"] or []
         return list(
