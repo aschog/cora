@@ -94,9 +94,9 @@ sequenceDiagram
 - [x] a model failure / empty text falls back too
 
 #### Reciprocal Rank Fusion (pure)
-- [ ] RRF merges two ranked lists by summed reciprocal rank (`c=60`), best first
-- [ ] a chunk appearing in several lists outranks one appearing once
-- [ ] RRF caps output at `top_k`; the constant is separate from `top_k` (guards conflation)
+- [x] RRF merges two ranked lists by summed reciprocal rank (`c=60`), best first
+- [x] a chunk appearing in several lists outranks one appearing once
+- [x] RRF caps output at `top_k`; the constant is separate from `top_k` (guards conflation)
 
 #### FusionContextSource
 - [ ] `search` plans, fans out one `KB.search` per sub-query, RRF-merges, returns top_k (fake planner + fake KB) — satisfies `ContextSource`
