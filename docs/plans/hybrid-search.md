@@ -162,7 +162,7 @@ sequenceDiagram
 - [x] a duplicate-hash re-upload is a no-op for both stores — the keyword index is untouched
 
 #### Config + composition root
-- [ ] `Config` accepts `CORA_RETRIEVAL=hybrid` (`RETRIEVAL_MODES` includes it); default and unknown-value behaviour unchanged
+- [x] `Config` accepts `CORA_RETRIEVAL=hybrid` (`RETRIEVAL_MODES` includes it); default and unknown-value behaviour unchanged
 - [ ] `assemble` in hybrid mode returns a `HybridContextSource` over the dense KB + the given `keyword_index`
 - [ ] `assemble` injects `keyword_index` into KB **before** the seed loop, so a genuinely new seed doc is searchable on the sparse side
 - [ ] `assemble` with `keyword_index=None` (plain/advanced) is bit-for-bit unchanged
