@@ -88,7 +88,12 @@ Root** (mode wiring).
   the keyword index the *same* chunks it just embedded; the dedupe no-op feeds
   neither. Rehydration + fan-out together keep both stores consistent across
   restarts and within a session, with Chroma the single source of truth. `None` in
-  plain/advanced reproduces today bit-for-bit.
+  plain/advanced reproduces today bit-for-bit. This makes KB a *dual*-store write
+  coordinator (dense + optional sparse) — a deliberate SRP call, not drift: dedupe
+  lives in KB and the fan-out must respect it, so splitting the write across KB and
+  the root would scatter one decision. KB keeps a single "own the corpus writes"
+  responsibility; the sparse side is one more thing it coordinates, not a second
+  reason to change.
 - **No metadata filter on this path.** The sparse search role is
   `search(query, k)`, full stop — the same rule that drops `file_hash` from the
   `add` seam. Hybrid has no planner, so a filter would be unconditionally `None`;
