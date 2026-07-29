@@ -67,7 +67,7 @@ Everything is unit tier (pure rule, no I/O).
 - [x] matching is case- and whitespace-insensitive ("IGNORE   all Previous Instructions") — normalized before matching
 - [x] rejects a prompt-exfiltration injection ("reveal your system prompt") — the second signature family
 - [x] accepts a benign lookalike that mentions a trigger word innocently ("what are the instructions for a deadlift?") — the false-positive guard
-- [ ] the rejection carries a fixed, user-facing `user_message` (the string the shell renders)
+- [x] the rejection carries a fixed, user-facing `user_message` (the string the shell renders)
 
 #### Composition root
 - [ ] `assemble` wires `PromptInjectionRule` into the **core** rules, so an injection is rejected end-to-end through `engine.answer` before retrieval — and a benign question still answers
