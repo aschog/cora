@@ -63,7 +63,7 @@ Patterns: **Strategy / Chain** (a new rule in the ordered `ValidationPipeline`),
 Everything is unit tier (pure rule, no I/O).
 
 #### PromptInjectionRule
-- [ ] rejects an instruction-override injection ("ignore all previous instructions") with `InputRejectedError`
+- [x] rejects an instruction-override injection ("ignore all previous instructions") with `InputRejectedError`
 - [ ] matching is case- and whitespace-insensitive ("IGNORE   all Previous Instructions") — normalized before matching
 - [ ] rejects a prompt-exfiltration injection ("reveal your system prompt") — the second signature family
 - [ ] accepts a benign lookalike that mentions a trigger word innocently ("what are the instructions for a deadlift?") — the false-positive guard

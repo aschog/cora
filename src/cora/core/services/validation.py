@@ -1,7 +1,22 @@
+import re
 from dataclasses import dataclass
 
 from cora.core.errors import InputRejectedError
 from cora.core.ports.plugin import ValidationRule
+
+_INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"ignore\b.*\bprevious instructions"),
+)
+
+
+class PromptInjectionRule:
+    def apply(self, user_input: str) -> None:
+        normalized = " ".join(user_input.lower().split())
+        if any(pattern.search(normalized) for pattern in _INJECTION_PATTERNS):
+            raise InputRejectedError(
+                "Your message looks like an attempt to change my instructions. "
+                "Please rephrase it as a genuine question."
+            )
 
 
 class EmptyInputRule:
