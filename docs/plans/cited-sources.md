@@ -62,7 +62,7 @@ the prompt and the citations cannot drift — the seam stays honest.
       `build_context` owns its numbering and `_cited_sources` resolves by number,
       not by position.
 - [x] Panel lists cited sources in ascending source-number order, not citation order.
-- [ ] `build_context_block` numbers non-adjacent repeats of a source the same.
+- [x] `build_context_block` numbers non-adjacent repeats of a source the same.
 
 ## Fallout to update
 

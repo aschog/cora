@@ -161,6 +161,20 @@ def test_build_context_block_numbers_by_unique_source_and_states_citation_rule()
     assert "source" in context.text.lower() and "cite" in context.text.lower()
 
 
+def test_build_context_block_numbers_non_adjacent_repeats_the_same() -> None:
+    context = build_context_block(
+        [
+            _retrieved("a.txt", text="one"),
+            _retrieved("b.txt", text="two"),
+            _retrieved("a.txt", text="three"),
+        ]
+    )
+
+    assert context.sources == (Source(1, "a.txt"), Source(2, "b.txt"))
+    a_lines = [line for line in context.text.splitlines() if "a.txt" in line]
+    assert [line[:3] for line in a_lines] == ["[1]", "[1]"]
+
+
 def test_system_message_embeds_the_prompt_and_context_block() -> None:
     model = ScriptedChatModel([ModelReply(text="ok")])
     kb = FakeContextSource([_retrieved("a.txt", text="alpha")])
