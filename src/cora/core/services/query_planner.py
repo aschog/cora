@@ -14,18 +14,29 @@ class QueryPlanner:
     def plan(self, question: str, sources: tuple[str, ...]) -> QueryPlan:
         messages = _planning_messages(question, sources, self.num_queries)
         reply = self.chat_model.complete(messages, ())
-        return parse_plan(reply.text, sources)
+        plan = parse_plan(reply.text, sources)
+        return plan if plan is not None else QueryPlan(queries=(question,))
 
 
-def parse_plan(text: str, sources: tuple[str, ...]) -> QueryPlan:
-    data = json.loads(text)
+def parse_plan(text: str, sources: tuple[str, ...]) -> QueryPlan | None:
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    queries = data.get("queries")
+    if not isinstance(queries, list) or not all(isinstance(q, str) for q in queries):
+        return None
+    if not queries:
+        return None
     source = data.get("source")
     metadata_filter = (
         MetadataFilter(field="source", value=source)
         if isinstance(source, str) and source in sources
         else None
     )
-    return QueryPlan(queries=tuple(data["queries"]), metadata_filter=metadata_filter)
+    return QueryPlan(queries=tuple(queries), metadata_filter=metadata_filter)
 
 
 def _planning_messages(
