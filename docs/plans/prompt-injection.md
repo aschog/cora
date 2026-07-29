@@ -74,7 +74,7 @@ Everything is unit tier (pure rule, no I/O).
 - [x] existing core rules (empty, max-length) and plugin rules are unchanged (order + first-rejection-wins preserved)
 
 #### Docs
-- [ ] `big-picture.md` validate step notes the injection guard among core rules (`README` if warranted)
+- [x] `big-picture.md` validate step notes the injection guard among core rules (`README` if warranted)
 
 ---
 

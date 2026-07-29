@@ -94,8 +94,9 @@ them, which is why a different frontend is a rewrite of the shell and nothing el
 
 **`engine.answer(question, history=()) -> ChatResult`** — `cora/core/services/chat_engine.py`
 
-1. Validate — core rules first (empty, 4000-character cap), then the plugin's. A
-   rejection raises `InputRejectedError` and never reaches the model.
+1. Validate — core rules first (empty, 4000-character cap, prompt-injection guard),
+   then the plugin's. A rejection raises `InputRejectedError` and never reaches the
+   model.
 2. Retrieve — embed the question, pull the top `k` chunks (`CORA_TOP_K`, default 5).
    `CORA_RETRIEVAL=advanced` swaps this single lookup for RAG-Fusion: a
    `QueryPlanner` rewrites the question into sub-queries plus an optional source
