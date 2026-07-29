@@ -68,7 +68,8 @@ def build_context_block(chunks: list[RetrievedChunk]) -> Context:
 
 def _cited_sources(text: str, sources: tuple[Source, ...]) -> tuple[Source, ...]:
     by_number = {source.number: source for source in sources}
-    return tuple(by_number[n] for n in cited_numbers(text) if n in by_number)
+    cited = (by_number[n] for n in cited_numbers(text) if n in by_number)
+    return tuple(sorted(cited, key=lambda source: source.number))
 
 
 @dataclass(frozen=True)

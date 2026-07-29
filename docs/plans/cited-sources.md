@@ -61,7 +61,7 @@ the prompt and the citations cannot drift — the seam stays honest.
 - [x] Honest seam: `Context.sources` carries `Source` objects, so a custom
       `build_context` owns its numbering and `_cited_sources` resolves by number,
       not by position.
-- [ ] Panel lists cited sources in ascending source-number order, not citation order.
+- [x] Panel lists cited sources in ascending source-number order, not citation order.
 - [ ] `build_context_block` numbers non-adjacent repeats of a source the same.
 
 ## Fallout to update

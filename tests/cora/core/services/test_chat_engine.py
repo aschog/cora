@@ -98,6 +98,16 @@ def test_answer_reports_only_the_cited_sources_under_their_own_numbers() -> None
     assert result.sources == (Source(2, "b.txt"),)
 
 
+def test_answer_lists_cited_sources_in_ascending_number_order() -> None:
+    kb = FakeContextSource([_retrieved("a.txt"), _retrieved("b.txt")])
+    model = ScriptedChatModel([ModelReply(text="first [2], then [1].")])
+    engine = _make_engine(chat_model=model, knowledge_base=kb, top_k=5)
+
+    result = engine.answer("question")
+
+    assert result.sources == (Source(1, "a.txt"), Source(2, "b.txt"))
+
+
 def test_answer_reports_no_sources_when_the_answer_cites_none() -> None:
     kb = FakeContextSource([_retrieved("a.txt"), _retrieved("b.txt")])
     engine = _make_engine(knowledge_base=kb, top_k=5)
