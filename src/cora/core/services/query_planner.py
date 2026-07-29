@@ -1,6 +1,7 @@
 import json
 from dataclasses import dataclass
 
+from cora.core.metadata_filter import MetadataFilter
 from cora.core.ports.chat_model import ChatModel, Message
 from cora.core.query_plan import QueryPlan
 
@@ -13,12 +14,18 @@ class QueryPlanner:
     def plan(self, question: str, sources: tuple[str, ...]) -> QueryPlan:
         messages = _planning_messages(question, sources, self.num_queries)
         reply = self.chat_model.complete(messages, ())
-        return parse_plan(reply.text)
+        return parse_plan(reply.text, sources)
 
 
-def parse_plan(text: str) -> QueryPlan:
+def parse_plan(text: str, sources: tuple[str, ...]) -> QueryPlan:
     data = json.loads(text)
-    return QueryPlan(queries=tuple(data["queries"]))
+    source = data.get("source")
+    metadata_filter = (
+        MetadataFilter(field="source", value=source)
+        if isinstance(source, str) and source in sources
+        else None
+    )
+    return QueryPlan(queries=tuple(data["queries"]), metadata_filter=metadata_filter)
 
 
 def _planning_messages(
