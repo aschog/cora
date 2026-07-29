@@ -5,6 +5,11 @@ from cora.plugins.fitness.calculators import (
     plan_macros,
 )
 
+
+def _bmi(weight_kg: float, height_m: float) -> float:
+    return round(calculate_bmi(weight_kg, height_m), 1)
+
+
 _WEIGHT_KG = {"type": "number", "minimum": 20, "maximum": 300}
 
 BMI_TOOL = Tool(
@@ -18,7 +23,7 @@ BMI_TOOL = Tool(
         },
         "required": ["weight_kg", "height_m"],
     },
-    run=calculate_bmi,
+    run=_bmi,
 )
 
 DAILY_ENERGY_TOOL = Tool(
