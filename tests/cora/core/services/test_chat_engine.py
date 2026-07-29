@@ -68,6 +68,14 @@ def test_cited_numbers_ignores_brackets_glued_to_a_word_or_bracket() -> None:
     assert cited_numbers("write list[2] or arr[0][1], then cite [1]") == (1,)
 
 
+def test_cited_numbers_counts_every_citation_in_a_consecutive_run() -> None:
+    assert cited_numbers("a balanced diet [3][1][2].") == (3, 1, 2)
+
+
+def test_cited_numbers_reads_multi_digit_numbers_in_a_run() -> None:
+    assert cited_numbers("see [10][2].") == (10, 2)
+
+
 def test_final_text_reply_becomes_the_answer() -> None:
     model = ScriptedChatModel([ModelReply(text="Hello!")])
     engine = _make_engine(chat_model=model)

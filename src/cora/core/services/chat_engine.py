@@ -38,7 +38,8 @@ def _unique_sources(chunks: list[RetrievedChunk]) -> tuple[str, ...]:
 
 
 def cited_numbers(text: str) -> tuple[int, ...]:
-    found = (int(match) for match in re.findall(r"(?<![\w\]])\[(\d+)\]", text))
+    runs = re.findall(r"(?<![\w\]])(?:\[\d+\])+", text)
+    found = (int(number) for run in runs for number in re.findall(r"\d+", run))
     return tuple(dict.fromkeys(found))
 
 
