@@ -76,6 +76,12 @@ def test_parse_plan_scan_ignores_braces_inside_a_query_string() -> None:
     assert parse_plan(text, sources=()) == QueryPlan(queries=("what about {macros}?",))
 
 
+def test_parse_plan_reads_the_object_inside_a_wrapping_array() -> None:
+    plan = parse_plan('[{"queries": ["a"]}]', sources=())
+
+    assert plan == QueryPlan(queries=("a",))
+
+
 def test_parse_plan_returns_none_for_malformed_json() -> None:
     assert parse_plan("not json at all", sources=()) is None
     assert parse_plan("I can't help with that.", sources=()) is None
