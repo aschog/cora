@@ -49,7 +49,11 @@ class AppServer:
 
 @contextmanager
 def running_app(
-    *, base_url: str, api_key: str | None, db_path: Path, model: str = "stub-model"
+    *,
+    base_url: str,
+    api_key: str | None,
+    db_path: Path,
+    model: str | None = "stub-model",
 ) -> Iterator[AppServer]:
     port = find_free_port()
     # A pipe would deadlock once the app fills the buffer, and the app is chatty.

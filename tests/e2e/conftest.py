@@ -32,10 +32,23 @@ def credentials(stub: StubLlm) -> tuple[str, str]:
 
 
 @pytest.fixture
-def app(page: Page, credentials: tuple[str, str], tmp_path: Path) -> Iterator[Page]:
+def model() -> str | None:
+    """The companion seam to `credentials`: stub-model is a deliberate tripwire
+    (a live call would reject it), so the live module overrides this to None and
+    the app falls back to the composition root's shipped default."""
+    return "stub-model"
+
+
+@pytest.fixture
+def app(
+    page: Page,
+    credentials: tuple[str, str],
+    model: str | None,
+    tmp_path: Path,
+) -> Iterator[Page]:
     base_url, api_key = credentials
     with running_app(
-        base_url=base_url, api_key=api_key, db_path=tmp_path / "chroma"
+        base_url=base_url, api_key=api_key, db_path=tmp_path / "chroma", model=model
     ) as server:
         page.goto(server.url)
         wait_for_rerun(page)

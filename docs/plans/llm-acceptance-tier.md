@@ -81,7 +81,13 @@ flowchart LR
       fixture built on the helper, no stub: red is today's `-m llm` collecting
       nothing; green is a key-less run reporting exactly one skip with the
       helper's reason.
-- [ ] Write the live acceptance spec body — ask the BMI question; assert an
+- [x] Thread the model choice through the `app` fixture — a `model` fixture
+      defaulting to `stub-model` in the e2e conftest, so the live module can
+      override it to `None` and reach the shipped default. Discovered while
+      wiring item 5: item 1 taught `app_env` to omit the model, but the `app`
+      fixture still forced `stub-model` via `running_app`'s default, so a live
+      launch got `stub-model is not a valid model ID` from OpenRouter.
+- [x] Write the live acceptance spec body — ask the BMI question; assert an
       assistant answer appeared, the tool panel holds a number and no
       tool-error text, and no exception element rendered: red is the wired-up
       spec failing against a dummy key for the right reason; green is
