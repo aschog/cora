@@ -158,7 +158,7 @@ sequenceDiagram
 - [x] `search` queries each index at `k` and caps the fused result at `k`
 
 #### KnowledgeBase fan-out
-- [ ] `add_file` feeds the same chunks to the keyword index (a locally-declared `add(chunks)` seam) after the dense store; with no keyword index it behaves bit-for-bit as today
+- [x] `add_file` feeds the same chunks to the keyword index (a locally-declared `add(chunks)` seam) after the dense store; with no keyword index it behaves bit-for-bit as today
 - [ ] a duplicate-hash re-upload is a no-op for both stores — the keyword index is untouched
 
 #### Config + composition root

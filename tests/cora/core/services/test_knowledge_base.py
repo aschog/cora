@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import dataclass, field
 
 import pytest
 
@@ -101,6 +102,26 @@ def test_re_adding_identical_bytes_is_a_no_op(retriever: FakeRetriever) -> None:
 
     stored = retriever.query(FakeEmbedder().embed(["probe"])[0], k=first + 5)
     assert len(stored) == first
+
+
+@dataclass
+class FakeKeywordIndex:
+    added: list[Chunk] = field(default_factory=list)
+
+    def add(self, chunks: list[Chunk]) -> None:
+        self.added.extend(chunks)
+
+
+def test_add_file_fans_out_the_same_chunks_to_the_keyword_index(
+    embedder: FakeEmbedder, retriever: FakeRetriever
+) -> None:
+    keyword = FakeKeywordIndex()
+    kb = KnowledgeBase(embedder=embedder, retriever=retriever, keyword_index=keyword)
+    data = ("protein supports muscle " * 100).encode()
+
+    kb.add_file(data, "doc.txt")
+
+    assert keyword.added == ingest(data, "doc.txt")
 
 
 def test_add_file_propagates_ingestion_errors_unchanged(kb: KnowledgeBase) -> None:
