@@ -37,8 +37,55 @@ def test_planner_ignores_a_source_filter_naming_an_unknown_document() -> None:
     assert plan.queries == ("protein timing",)
 
 
+def test_parse_plan_reads_a_json_fenced_object() -> None:
+    text = '```json\n{"queries": ["protein basics"], "source": null}\n```'
+
+    plan = parse_plan(text, sources=())
+
+    assert plan == QueryPlan(queries=("protein basics",))
+
+
+def test_parse_plan_reads_an_untagged_fenced_object() -> None:
+    text = '```\n{"queries": ["protein basics"]}\n```'
+
+    assert parse_plan(text, sources=()) == QueryPlan(queries=("protein basics",))
+
+
+def test_parse_plan_reads_an_object_wrapped_in_prose() -> None:
+    lead = parse_plan('Here is the JSON: {"queries": ["a"]}', sources=())
+    trail = parse_plan('{"queries": ["a"]} Hope this helps.', sources=())
+
+    assert lead == QueryPlan(queries=("a",))
+    assert trail == QueryPlan(queries=("a",))
+
+
+def test_parse_plan_keeps_the_source_filter_through_wrapping() -> None:
+    text = '```json\n{"queries": ["timing"], "source": "protein.md"}\n```'
+
+    plan = parse_plan(text, sources=("protein.md",))
+
+    assert plan == QueryPlan(
+        queries=("timing",),
+        metadata_filter=MetadataFilter(field="source", value="protein.md"),
+    )
+
+
+def test_parse_plan_scan_ignores_braces_inside_a_query_string() -> None:
+    text = 'Sure: {"queries": ["what about {macros}?"]} done'
+
+    assert parse_plan(text, sources=()) == QueryPlan(queries=("what about {macros}?",))
+
+
+def test_parse_plan_reads_the_object_inside_a_wrapping_array() -> None:
+    plan = parse_plan('[{"queries": ["a"]}]', sources=())
+
+    assert plan == QueryPlan(queries=("a",))
+
+
 def test_parse_plan_returns_none_for_malformed_json() -> None:
     assert parse_plan("not json at all", sources=()) is None
+    assert parse_plan("I can't help with that.", sources=()) is None
+    assert parse_plan("```json\n{queries: nope}\n```", sources=()) is None
     assert parse_plan('{"missing": "queries"}', sources=()) is None
     assert parse_plan('{"queries": []}', sources=()) is None
 
