@@ -110,9 +110,9 @@ sequenceDiagram
 - [x] **(int)** advanced mode end-to-end over real Chroma: a question retrieves source-filtered, fused chunks
 
 #### Invariants + docs
-- [ ] the new core modules import no framework — architecture test still green (`MetadataFilter`, `QueryPlanner`, `FusionContextSource`, RRF all under `cora.core`)
-- [ ] `big-picture.md`: retrieve step notes the plain/advanced swap; ports table notes the widened `Retriever.query(filter)`
-- [ ] `README`: `CORA_RETRIEVAL` + `CORA_FUSION_QUERIES` alongside the other `CORA_*` overrides
+- [x] the new core modules import no framework — architecture test still green (`MetadataFilter`, `QueryPlanner`, `FusionContextSource`, RRF all under `cora.core`)
+- [x] `big-picture.md`: retrieve step notes the plain/advanced swap; ports table notes the widened `Retriever.query(filter)`
+- [x] `README`: `CORA_RETRIEVAL` + `CORA_FUSION_QUERIES` alongside the other `CORA_*` overrides
 
 ---
 
