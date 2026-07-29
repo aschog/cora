@@ -37,6 +37,14 @@ def test_planner_ignores_a_source_filter_naming_an_unknown_document() -> None:
     assert plan.queries == ("protein timing",)
 
 
+def test_parse_plan_reads_a_json_fenced_object() -> None:
+    text = '```json\n{"queries": ["protein basics"], "source": null}\n```'
+
+    plan = parse_plan(text, sources=())
+
+    assert plan == QueryPlan(queries=("protein basics",))
+
+
 def test_parse_plan_returns_none_for_malformed_json() -> None:
     assert parse_plan("not json at all", sources=()) is None
     assert parse_plan('{"missing": "queries"}', sources=()) is None
