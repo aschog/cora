@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import NamedTuple
 
 from cora.core.chunk import Chunk
+from cora.core.metadata_filter import MetadataFilter
 from cora.core.ports.chat_model import Message, ModelReply
 from cora.core.ports.plugin import Tool
 from cora.core.ports.retrieval import RetrievedChunk
@@ -58,11 +59,17 @@ class FakeRetriever:
             for chunk, vector in zip(chunks, vectors, strict=True)
         )
 
-    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
+    def query(
+        self,
+        query_vector: list[float],
+        k: int,
+        metadata_filter: MetadataFilter | None = None,
+    ) -> list[RetrievedChunk]:
+        records = [r for r in self._records if _matches(r.chunk, metadata_filter)]
         ranked = sorted(
             (
                 RetrievedChunk(chunk=r.chunk, score=_cosine(query_vector, r.vector))
-                for r in self._records
+                for r in records
             ),
             key=lambda hit: hit.score,
             reverse=True,
@@ -74,6 +81,12 @@ class FakeRetriever:
 
     def contains(self, file_hash: str) -> bool:
         return any(r.file_hash == file_hash for r in self._records)
+
+
+def _matches(chunk: Chunk, metadata_filter: MetadataFilter | None) -> bool:
+    if metadata_filter is None:
+        return True
+    return getattr(chunk, metadata_filter.field) == metadata_filter.value
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -113,7 +126,12 @@ class FailingRetriever:
     ) -> None:
         raise self.error
 
-    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
+    def query(
+        self,
+        query_vector: list[float],
+        k: int,
+        metadata_filter: MetadataFilter | None = None,
+    ) -> list[RetrievedChunk]:
         raise self.error
 
     def sources(self) -> list[str]:

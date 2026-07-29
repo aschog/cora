@@ -11,6 +11,11 @@ DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
 DEFAULT_HISTORY_TURNS = 20
 DEFAULT_DB_PATH = ".cora/chroma"
+RETRIEVAL_PLAIN = "plain"
+RETRIEVAL_ADVANCED = "advanced"
+RETRIEVAL_MODES = (RETRIEVAL_PLAIN, RETRIEVAL_ADVANCED)
+DEFAULT_RETRIEVAL = RETRIEVAL_PLAIN
+DEFAULT_FUSION_QUERIES = 4
 
 
 @dataclass(frozen=True)
@@ -23,6 +28,8 @@ class Config:
     max_tool_rounds: int
     history_turns: int
     db_path: str
+    retrieval: str = DEFAULT_RETRIEVAL
+    fusion_queries: int = DEFAULT_FUSION_QUERIES
     debug: bool = False
 
     @classmethod
@@ -46,8 +53,22 @@ class Config:
                 env, "CORA_HISTORY_TURNS", DEFAULT_HISTORY_TURNS, minimum=0
             ),
             db_path=env.get("CORA_DB_PATH", DEFAULT_DB_PATH),
+            retrieval=_retrieval_mode(env),
+            fusion_queries=_int(
+                env, "CORA_FUSION_QUERIES", DEFAULT_FUSION_QUERIES, minimum=1
+            ),
             debug=_bool(env, "CORA_DEBUG"),
         )
+
+
+def _retrieval_mode(env: Mapping[str, str]) -> str:
+    mode = env.get("CORA_RETRIEVAL", DEFAULT_RETRIEVAL)
+    if mode not in RETRIEVAL_MODES:
+        allowed = ", ".join(RETRIEVAL_MODES)
+        raise ConfigurationError(
+            f"CORA_RETRIEVAL must be one of {allowed}, but got {mode!r}."
+        )
+    return mode
 
 
 def _bool(env: Mapping[str, str], key: str) -> bool:

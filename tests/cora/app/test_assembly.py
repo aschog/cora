@@ -11,7 +11,9 @@ from cora.core.errors import InputRejectedError
 from cora.core.ports.chat_model import ModelReply
 from cora.core.ports.plugin import Plugin
 from cora.core.services.chat_engine import ChatEngine
+from cora.core.services.fusion_context_source import FusionContextSource
 from cora.core.services.plugin_registry import load_plugin
+from cora.core.services.query_planner import QueryPlanner
 from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin
 
@@ -59,6 +61,30 @@ def test_assemble_answers_a_happy_path_question() -> None:
     result = app.engine.answer("What is the answer?")
 
     assert result.answer == "42"
+
+
+def test_assemble_plain_mode_uses_the_knowledge_base_as_context_source() -> None:
+    app = _assemble(make_plugin())
+
+    assert app.engine.knowledge_base is app.knowledge_base
+
+
+def test_assemble_advanced_mode_wraps_the_knowledge_base_in_fusion() -> None:
+    app = assemble(
+        chat_model=ScriptedChatModel([ModelReply(text="ok")]),
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        plugin=make_plugin(),
+        retrieval="advanced",
+        fusion_queries=3,
+    )
+
+    source = app.engine.knowledge_base
+    assert isinstance(source, FusionContextSource)
+    assert app.knowledge_base is not source
+    planner = source.planner
+    assert isinstance(planner, QueryPlanner)
+    assert planner.num_queries == 3
 
 
 def test_assemble_passes_history_turns_to_the_engine() -> None:

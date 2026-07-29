@@ -1,9 +1,11 @@
 # Project Workflow
 
 A generalized, stack-agnostic workflow for starting projects and building features
-with AI assistance. The TDD loop is driven by **human + AI together** — the AI is a
-pair partner, not an autopilot. Placeholders like `<test runner>` get filled per
-project. Every phase should be an atomic commit.
+with AI assistance. It distils the core **Extreme Programming (XP)** practices —
+test-driven development, pair programming, continuous integration, small releases
+and relentless refactoring. The TDD loop is driven by **human + AI together** — the
+AI is a pair partner, not an autopilot. Placeholders like `<test runner>` get filled
+per project. Every phase should be an atomic commit.
 
 ---
 
@@ -55,6 +57,11 @@ project. Every phase should be an atomic commit.
 
 > Every green step is a save point. If a cycle goes sideways, reset to the last
 > green commit instead of untangling a big diff.
+
+> Tests follow the **Detroit (classicist) school**: drive behaviour through the
+> public API with real objects and hand-written fakes, and assert on resulting
+> **state**, not on how collaborators were called. Reserve stubs for true
+> boundaries — network, models, nondeterminism.
 
 > Docstrings and comments are extra effort to keep in sync and appear **only if
 > needed**: write none unless they state a contract the code can't express —

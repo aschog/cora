@@ -1,6 +1,7 @@
 from collections.abc import Callable
 
 from cora.core.chunk import Chunk
+from cora.core.metadata_filter import MetadataFilter
 from cora.core.ports.chat_model import Message, ModelReply
 from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel, add_tool
 
@@ -71,6 +72,34 @@ def test_fake_retriever_returns_every_record_when_k_exceeds_store(
 
     assert len(hits) == 2
     assert hits[0].chunk == chunks[0]
+
+
+def test_fake_retriever_query_filters_to_matching_metadata(
+    embedder: FakeEmbedder, retriever: FakeRetriever, make_chunk: Callable[..., Chunk]
+) -> None:
+    _add(retriever, embedder, [make_chunk("a", source="one.txt")], file_hash="h1")
+    _add(retriever, embedder, [make_chunk("b", source="two.txt")], file_hash="h2")
+
+    [query_vector] = embedder.embed(["a"])
+    hits = retriever.query(
+        query_vector,
+        k=10,
+        metadata_filter=MetadataFilter(field="source", value="two.txt"),
+    )
+
+    assert [hit.chunk.source for hit in hits] == ["two.txt"]
+
+
+def test_fake_retriever_query_without_filter_returns_all_sources(
+    embedder: FakeEmbedder, retriever: FakeRetriever, make_chunk: Callable[..., Chunk]
+) -> None:
+    _add(retriever, embedder, [make_chunk("a", source="one.txt")], file_hash="h1")
+    _add(retriever, embedder, [make_chunk("b", source="two.txt")], file_hash="h2")
+
+    [query_vector] = embedder.embed(["a"])
+    hits = retriever.query(query_vector, k=10, metadata_filter=None)
+
+    assert {hit.chunk.source for hit in hits} == {"one.txt", "two.txt"}
 
 
 def test_fake_retriever_lists_each_source_once(

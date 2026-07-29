@@ -1,6 +1,7 @@
 import hashlib
 from dataclasses import dataclass
 
+from cora.core.metadata_filter import MetadataFilter
 from cora.core.ports.embedding import Embedder
 from cora.core.ports.retrieval import RetrievedChunk, Retriever
 from cora.core.services.ingestion import ingest
@@ -20,9 +21,11 @@ class KnowledgeBase:
         self.retriever.add(chunks, vectors, file_hash)
         return len(chunks)
 
-    def search(self, query: str, k: int) -> list[RetrievedChunk]:
+    def search(
+        self, query: str, k: int, metadata_filter: MetadataFilter | None = None
+    ) -> list[RetrievedChunk]:
         [query_vector] = self.embedder.embed([query])
-        return self.retriever.query(query_vector, k)
+        return self.retriever.query(query_vector, k, metadata_filter)
 
     def list_sources(self) -> list[str]:
         return self.retriever.sources()

@@ -7,6 +7,7 @@ from chromadb.errors import ChromaError
 
 from cora.core.chunk import Chunk
 from cora.core.errors import RetrievalError
+from cora.core.metadata_filter import MetadataFilter
 from cora.core.ports.retrieval import RetrievedChunk
 
 
@@ -49,10 +50,21 @@ class ChromaRetriever:
         )
 
     @_translate_errors
-    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
+    def query(
+        self,
+        query_vector: list[float],
+        k: int,
+        metadata_filter: MetadataFilter | None = None,
+    ) -> list[RetrievedChunk]:
+        where = (
+            {metadata_filter.field: metadata_filter.value}
+            if metadata_filter is not None
+            else None
+        )
         result = self._collection.query(
             query_embeddings=[list(query_vector)],
             n_results=k,
+            where=where,
             include=["documents", "metadatas", "distances"],
         )
         documents = (result["documents"] or [[]])[0]

@@ -42,6 +42,31 @@ def test_from_env_applies_defaults_for_optional_fields() -> None:
     assert config.db_path
 
 
+def test_from_env_reads_retrieval_mode_and_fusion_queries() -> None:
+    config = Config.from_env(
+        {
+            "OPENROUTER_API_KEY": "key-123",
+            "CORA_RETRIEVAL": "advanced",
+            "CORA_FUSION_QUERIES": "6",
+        }
+    )
+
+    assert config.retrieval == "advanced"
+    assert config.fusion_queries == 6
+
+
+def test_from_env_defaults_to_plain_retrieval() -> None:
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert config.retrieval == "plain"
+    assert config.fusion_queries >= 1
+
+
+def test_from_env_rejects_an_unknown_retrieval_mode() -> None:
+    with pytest.raises(ConfigurationError):
+        Config.from_env({"OPENROUTER_API_KEY": "key-123", "CORA_RETRIEVAL": "bogus"})
+
+
 def test_from_env_leaves_debug_off_when_the_flag_is_unset() -> None:
     config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
 

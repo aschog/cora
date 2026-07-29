@@ -1,7 +1,7 @@
 ### Core requirements
 
-- webapp like notebooklm
-- only core features as simple as possible (like pi agent)
+- webapp for chatting with your own documents
+- only core features as simple as possible
 - extensible with plugins
 - frontend with Streamlit, should be replaceable
 - backend with python

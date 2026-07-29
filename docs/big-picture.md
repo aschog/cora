@@ -97,6 +97,9 @@ them, which is why a different frontend is a rewrite of the shell and nothing el
 1. Validate — core rules first (empty, 4000-character cap), then the plugin's. A
    rejection raises `InputRejectedError` and never reaches the model.
 2. Retrieve — embed the question, pull the top `k` chunks (`CORA_TOP_K`, default 5).
+   `CORA_RETRIEVAL=advanced` swaps this single lookup for RAG-Fusion: a
+   `QueryPlanner` rewrites the question into sub-queries plus an optional source
+   filter, each is retrieved, and the rankings are fused (Reciprocal Rank Fusion).
 3. Prompt — the plugin's system prompt, then the chunks numbered `[1]`…`[n]` with the
    citation rule appended, then the last `CORA_HISTORY_TURNS` turns the shell passed in
    (default 20; `0` switches memory off), then the question. Validation and retrieval
@@ -143,7 +146,7 @@ domain.
 |---|---|---|
 | **ChatModel** | `complete(messages, tools) -> ModelReply` | `OpenRouterChatModel` — the one file that imports LangChain, against OpenRouter's OpenAI-compatible endpoint (`CORA_MODEL`). |
 | **Embedder** | `embed(texts) -> list[list[float]]` | `SentenceTransformerEmbedder` — all-MiniLM-L6-v2, local and free, loaded lazily so the test loop stays fast. |
-| **Retriever** | `add(chunks, vectors, file_hash)`, `query(vector, k)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a persistent embedded collection with cosine distance. No server to run. |
+| **Retriever** | `add(chunks, vectors, file_hash)`, `query(vector, k, filter)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a persistent embedded collection with cosine distance. No server to run. The optional `filter` narrows a query to matching metadata (self-query). |
 | **Plugin** | data only: `system_prompt`, `tools`, `validation_rules`, `seed_docs` | `cora.plugins.fitness` — swap it with `CORA_PLUGIN`. A frozen dataclass, not a base class to subclass. |
 
 With `CORA_DEBUG=1` the three technology ports are each bound to a thin logging

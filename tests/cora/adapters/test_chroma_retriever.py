@@ -6,6 +6,7 @@ import pytest
 
 from cora.core.chunk import Chunk
 from cora.core.errors import RetrievalError
+from cora.core.metadata_filter import MetadataFilter
 from fakes import FakeEmbedder
 
 if TYPE_CHECKING:
@@ -51,6 +52,30 @@ def test_chroma_reads_back_sources_and_contains(
     assert sorted(chroma_retriever.sources()) == ["one.txt", "two.txt"]
     assert chroma_retriever.contains("h1")
     assert not chroma_retriever.contains("h3")
+
+
+def test_chroma_query_filters_to_the_given_source(
+    chroma_retriever: "ChromaRetriever", make_chunk: Callable[..., Chunk]
+) -> None:
+    embedder = FakeEmbedder()
+    chroma_retriever.add(
+        [make_chunk("alpha", source="one.txt", index=0)],
+        embedder.embed(["alpha"]),
+        file_hash="h1",
+    )
+    chroma_retriever.add(
+        [make_chunk("beta", source="two.txt", index=0)],
+        embedder.embed(["beta"]),
+        file_hash="h2",
+    )
+
+    hits = chroma_retriever.query(
+        embedder.embed(["alpha"])[0],
+        k=10,
+        metadata_filter=MetadataFilter(field="source", value="two.txt"),
+    )
+
+    assert [hit.chunk.source for hit in hits] == ["two.txt"]
 
 
 def test_chroma_records_persist_across_a_fresh_client(
