@@ -80,11 +80,11 @@ sequenceDiagram
 **Legend:** **(int)** = `@pytest.mark.integration`. Everything else is unit tier.
 
 #### MetadataFilter + widened retriever path
-- [ ] `MetadataFilter` is a frozen core value object over one field/value equality, equal by content, imports no framework
-- [ ] the fake retriever's `query` returns only filter-matching chunks, and all chunks when the filter is `None`
-- [ ] `KnowledgeBase.search` threads an optional filter to `retriever.query`; no filter reproduces today's result bit-for-bit
-- [ ] `ChromaRetriever.query` accepts an optional filter and renders it as a one-key `where`-dict (no filter → no `where`)
-- [ ] **(int)** `ChromaRetriever.query` with a `source` filter returns only that document's chunks; without one, unchanged
+- [x] `MetadataFilter` is a frozen core value object over one field/value equality, equal by content, imports no framework
+- [x] the fake retriever's `query` returns only filter-matching chunks, and all chunks when the filter is `None`
+- [x] `KnowledgeBase.search` threads an optional filter to `retriever.query`; no filter reproduces today's result bit-for-bit
+- [x] `ChromaRetriever.query` accepts an optional filter and renders it as a one-key `where`-dict (no filter → no `where`)
+- [x] **(int)** `ChromaRetriever.query` with a `source` filter returns only that document's chunks; without one, unchanged
 
 #### QueryPlanner (translation + self-query)
 - [ ] `QueryPlan` is frozen: sub-queries tuple + optional `MetadataFilter`

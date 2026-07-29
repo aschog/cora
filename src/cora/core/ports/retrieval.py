@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from cora.core.chunk import Chunk
+from cora.core.metadata_filter import MetadataFilter
 
 
 @dataclass(frozen=True)
@@ -15,7 +16,12 @@ class Retriever(Protocol):
         self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
     ) -> None: ...
 
-    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]: ...
+    def query(
+        self,
+        query_vector: list[float],
+        k: int,
+        metadata_filter: MetadataFilter | None = None,
+    ) -> list[RetrievedChunk]: ...
 
     def sources(self) -> list[str]: ...
 
