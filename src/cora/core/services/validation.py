@@ -5,9 +5,12 @@ from cora.core.errors import InputRejectedError
 from cora.core.ports.plugin import ValidationRule
 
 _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"ignore\b.*\bprevious instructions"),
     re.compile(
-        r"(reveal|show|print|repeat|expose|tell me)\b.*"
+        r"(ignore|disregard|forget|override)\b.{0,40}"
+        r"\b(previous|above|prior|earlier|system)\b.{0,30}(instruction|prompt)"
+    ),
+    re.compile(
+        r"(reveal|show|print|repeat|expose|tell me)\b.{0,40}"
         r"\b(your (system )?(prompt|instructions)|system prompt)"
     ),
 )
