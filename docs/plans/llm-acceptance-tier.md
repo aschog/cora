@@ -77,7 +77,7 @@ flowchart LR
       fake env (unit tier).
 - [x] Write a test that shows the helper raises pytest's skip, with a reason
       naming `OPENROUTER_API_KEY`, when the key is absent (unit tier).
-- [ ] Write the llm module skeleton — marked `llm`, module-local `credentials`
+- [x] Write the llm module skeleton — marked `llm`, module-local `credentials`
       fixture built on the helper, no stub: red is today's `-m llm` collecting
       nothing; green is a key-less run reporting exactly one skip with the
       helper's reason.
