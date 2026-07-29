@@ -22,7 +22,7 @@ where a coach would say `23.1`. Round each metric to a fitting precision.
 ## TDD checklist
 
 - [x] `BMI_TOOL.run(weight_kg=75, height_m=1.8)` → `23.1` (exact is `23.148…`).
-- [ ] `DAILY_ENERGY_TOOL.run(...)` returns whole-kcal ints for `bmr` and `tdee`.
+- [x] `DAILY_ENERGY_TOOL.run(...)` returns whole-kcal ints for `bmr` and `tdee`.
 - [ ] `MACROS_TOOL.run(...)` returns whole-gram ints for `protein_g`, `fat_g`, `carbs_g`.
 
 ## Fallout

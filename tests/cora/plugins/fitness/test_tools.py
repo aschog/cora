@@ -84,3 +84,12 @@ def test_bmi_tool_rounds_to_one_decimal() -> None:
     result = _run("calculate_bmi", {"weight_kg": 75, "height_m": 1.8})
 
     assert result.payload == 23.1
+
+
+def test_daily_energy_tool_rounds_kcal_to_whole_numbers() -> None:
+    result = _run(
+        "calculate_daily_energy",
+        energy_args(age_years=31, activity_level="lightly_active"),
+    )
+
+    assert result.payload == {"bmr": 1775, "tdee": 2441}
