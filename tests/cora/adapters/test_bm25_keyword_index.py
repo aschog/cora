@@ -75,3 +75,15 @@ def test_empty_query_search_returns_nothing(
     index = Bm25KeywordIndex.from_chunks([make_chunk("protein for muscle")])
 
     assert index.search("   ", k=5) == []
+
+
+def test_ties_break_by_corpus_position_not_chunk_index(
+    make_chunk: Callable[..., Chunk],
+) -> None:
+    first = make_chunk("alpha match", source="a.md", index=5)
+    second = make_chunk("alpha match", source="b.md", index=1)
+    index = Bm25KeywordIndex.from_chunks([first, second])
+
+    hits = index.search("alpha match", k=2)
+
+    assert [hit.chunk for hit in hits] == [first, second]
