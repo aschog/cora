@@ -22,6 +22,10 @@ def _daily_energy(
     )
 
 
+def _macros(kcal: float, weight_kg: float) -> dict[str, int]:
+    return _to_whole(plan_macros(kcal, weight_kg))
+
+
 _WEIGHT_KG = {"type": "number", "minimum": 20, "maximum": 300}
 
 BMI_TOOL = Tool(
@@ -82,7 +86,7 @@ MACROS_TOOL = Tool(
         },
         "required": ["kcal", "weight_kg"],
     },
-    run=plan_macros,
+    run=_macros,
 )
 
 TOOLS = (BMI_TOOL, DAILY_ENERGY_TOOL, MACROS_TOOL)

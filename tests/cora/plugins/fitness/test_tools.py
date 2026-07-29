@@ -93,3 +93,9 @@ def test_daily_energy_tool_rounds_kcal_to_whole_numbers() -> None:
     )
 
     assert result.payload == {"bmr": 1775, "tdee": 2441}
+
+
+def test_macros_tool_rounds_grams_to_whole_numbers() -> None:
+    result = _run("plan_macros", {"kcal": 2500, "weight_kg": 80})
+
+    assert result.payload == {"protein_g": 144, "fat_g": 69, "carbs_g": 325}

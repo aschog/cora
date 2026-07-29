@@ -23,7 +23,7 @@ where a coach would say `23.1`. Round each metric to a fitting precision.
 
 - [x] `BMI_TOOL.run(weight_kg=75, height_m=1.8)` → `23.1` (exact is `23.148…`).
 - [x] `DAILY_ENERGY_TOOL.run(...)` returns whole-kcal ints for `bmr` and `tdee`.
-- [ ] `MACROS_TOOL.run(...)` returns whole-gram ints for `protein_g`, `fat_g`, `carbs_g`.
+- [x] `MACROS_TOOL.run(...)` returns whole-gram ints for `protein_g`, `fat_g`, `carbs_g`.
 
 ## Fallout
 
