@@ -13,6 +13,7 @@ FORBIDDEN_FRAMEWORKS = frozenset(
         "chromadb",
         "sentence_transformers",
         "streamlit",
+        "rank_bm25",
     }
 )
 FORBIDDEN_LAYERS = ("cora.adapters", "cora.plugins", "cora.app")
@@ -127,6 +128,12 @@ def test_no_test_only_framework_is_shipped(path: pathlib.Path) -> None:
     assert not leaked, (
         f"{path.relative_to(PACKAGE_ROOT)} imports test-only frameworks: {leaked}"
     )
+
+
+def test_rank_bm25_import_into_core_is_detected() -> None:
+    tree = ast.parse("import rank_bm25\n")
+    modules = set(_imported_modules(tree, ("cora", "core", "services")))
+    assert any(_is_forbidden(m) for m in modules)
 
 
 def test_relative_import_into_outer_layer_is_detected() -> None:

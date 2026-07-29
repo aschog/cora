@@ -62,6 +62,14 @@ def test_from_env_defaults_to_plain_retrieval() -> None:
     assert config.fusion_queries >= 1
 
 
+def test_from_env_accepts_hybrid_retrieval() -> None:
+    config = Config.from_env(
+        {"OPENROUTER_API_KEY": "key-123", "CORA_RETRIEVAL": "hybrid"}
+    )
+
+    assert config.retrieval == "hybrid"
+
+
 def test_from_env_rejects_an_unknown_retrieval_mode() -> None:
     with pytest.raises(ConfigurationError):
         Config.from_env({"OPENROUTER_API_KEY": "key-123", "CORA_RETRIEVAL": "bogus"})
