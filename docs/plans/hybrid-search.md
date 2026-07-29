@@ -164,7 +164,7 @@ sequenceDiagram
 #### Config + composition root
 - [x] `Config` accepts `CORA_RETRIEVAL=hybrid` (`RETRIEVAL_MODES` includes it); default and unknown-value behaviour unchanged
 - [x] `assemble` in hybrid mode returns a `HybridContextSource` over the dense KB + the given `keyword_index`
-- [ ] `assemble` injects `keyword_index` into KB **before** the seed loop, so a genuinely new seed doc is searchable on the sparse side
+- [x] `assemble` injects `keyword_index` into KB **before** the seed loop, so a genuinely new seed doc is searchable on the sparse side
 - [ ] `assemble` with `keyword_index=None` (plain/advanced) is bit-for-bit unchanged
 - [ ] **(int)** `ChromaRetriever.all_chunks()` round-trips every stored chunk with identical `text`/`source`/`index`/`offset`
 - [ ] **(int)** rehydration across a restart: a second `build` over an already-populated persistent Chroma path finds a prior doc on the sparse side **exactly once** — corpus size unchanged after the dedupe-skipped seed loop (guards the fan-out-only regression *and* rehydrate/fan-out double-counting)

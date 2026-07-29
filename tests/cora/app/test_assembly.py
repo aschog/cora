@@ -118,6 +118,22 @@ def test_assemble_hybrid_mode_wraps_dense_and_keyword_in_a_hybrid_source() -> No
     assert source.keyword is keyword
 
 
+def test_assemble_seeds_new_docs_into_the_keyword_index() -> None:
+    keyword = _FakeKeywordStore()
+    plugin = make_plugin(seed_docs=(("note.md", b"protein supports muscle growth"),))
+    assemble(
+        chat_model=ScriptedChatModel([ModelReply(text="ok")]),
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        plugin=plugin,
+        retrieval="hybrid",
+        keyword_index=keyword,
+    )
+
+    assert keyword.added
+    assert all(chunk.source == "note.md" for chunk in keyword.added)
+
+
 def test_assemble_passes_history_turns_to_the_engine() -> None:
     app = assemble(
         chat_model=ScriptedChatModel([ModelReply(text="ok")]),
