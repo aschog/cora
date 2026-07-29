@@ -67,6 +67,10 @@ per project. Every phase should be an atomic commit.
 > needed**: write none unless they state a contract the code can't express —
 > names + tests are the source of truth.
 
+> Don't narrate the diff — the reviewer reads it. After a step, say only what the
+> diff can't show: a decision, a surprise, anything urgent or important. Silence
+> on the mechanics is the default.
+
 ---
 
 ## Phase 3 — Review (before merge)
