@@ -61,3 +61,9 @@ def test_a_second_add_keeps_earlier_chunks_searchable(
     index.add([make_chunk("hydration and water", source="b.md", index=0)])
 
     assert index.search("protein", k=1)[0].chunk == first
+
+
+def test_empty_corpus_search_returns_nothing() -> None:
+    index = Bm25KeywordIndex.from_chunks([])
+
+    assert index.search("protein", k=5) == []

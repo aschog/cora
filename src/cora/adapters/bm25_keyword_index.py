@@ -21,6 +21,8 @@ class Bm25KeywordIndex:
 
     def add(self, chunks: list[Chunk]) -> None:
         self._chunks.extend(chunks)
+        if not self._chunks:
+            return
         self._bm25 = BM25Okapi([_tokenize(chunk.text) for chunk in self._chunks])
 
     def search(self, query: str, k: int) -> list[RetrievedChunk]:
