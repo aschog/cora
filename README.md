@@ -1,6 +1,6 @@
 # cora
 
-A minimal NotebookLM-style "chat with your documents" web app. The core is
+A minimal "chat with your documents" web app. The core is
 domain-agnostic RAG with tool calling; domain specialisation (reference domain:
 fitness coach) is provided exclusively through plugins.
 

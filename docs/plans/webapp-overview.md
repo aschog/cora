@@ -1,4 +1,4 @@
-# Architecture Plan: NotebookLM-style RAG Chatbot with Domain Plugins
+# Architecture Plan: Document-Grounded RAG Chatbot with Domain Plugins
 
 ## 1. Vision
 
