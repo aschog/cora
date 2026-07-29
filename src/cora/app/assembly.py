@@ -11,6 +11,7 @@ from cora.app.config import (
     DEFAULT_MAX_TOOL_ROUNDS,
     DEFAULT_RETRIEVAL,
     DEFAULT_TOP_K,
+    RETRIEVAL_ADVANCED,
     Config,
 )
 from cora.app.log_config import enable_debug_logs
@@ -87,7 +88,7 @@ def _context_source(
     knowledge_base: KnowledgeBase,
     fusion_queries: int,
 ) -> ContextSource:
-    if retrieval == "advanced":
+    if retrieval == RETRIEVAL_ADVANCED:
         planner = QueryPlanner(chat_model=chat_model, num_queries=fusion_queries)
         return FusionContextSource(planner=planner, index=knowledge_base)
     return knowledge_base
