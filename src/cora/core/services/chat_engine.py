@@ -42,13 +42,21 @@ def cited_numbers(text: str) -> tuple[int, ...]:
     return tuple(dict.fromkeys(found))
 
 
-def build_context_block(chunks: list[RetrievedChunk]) -> str:
-    context = "\n".join(
-        f"[{number}] {hit.chunk.source}: {hit.chunk.text}"
-        for number, hit in enumerate(chunks, start=1)
+@dataclass(frozen=True)
+class Context:
+    text: str
+    sources: tuple[str, ...]
+
+
+def build_context_block(chunks: list[RetrievedChunk]) -> Context:
+    sources = _unique_sources(chunks)
+    number_of = {source: number for number, source in enumerate(sources, start=1)}
+    body = "\n".join(
+        f"[{number_of[hit.chunk.source]}] {hit.chunk.source}: {hit.chunk.text}"
+        for hit in chunks
     )
     citation_rule = "Cite sources by their bracketed number, e.g. [1]."
-    return f"{context}\n\n{citation_rule}"
+    return Context(text=f"{body}\n\n{citation_rule}", sources=sources)
 
 
 @dataclass(frozen=True)
@@ -69,7 +77,7 @@ class ChatEngine:
     system_prompt: str
     max_history_turns: int
     tools: tuple[Tool, ...] = ()
-    build_context: Callable[[list[RetrievedChunk]], str] = build_context_block
+    build_context: Callable[[list[RetrievedChunk]], Context] = build_context_block
 
     def answer(self, user_input: str, history: tuple[Turn, ...] = ()) -> ChatResult:
         validated = self.validation.validate(user_input)
@@ -88,7 +96,7 @@ class ChatEngine:
     ) -> list[Message]:
         system = Message(
             role="system",
-            content=f"{self.system_prompt}\n\n{self.build_context(chunks)}",
+            content=f"{self.system_prompt}\n\n{self.build_context(chunks).text}",
         )
         recent = history[max(len(history) - self.max_history_turns, 0) :]
         past = [Message(role=turn.role, content=turn.text) for turn in recent]

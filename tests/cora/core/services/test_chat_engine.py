@@ -9,6 +9,7 @@ from cora.core.ports.plugin import Tool, ToolCall, ToolResult
 from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.services.chat_engine import (
     ChatEngine,
+    Context,
     InputValidator,
     ToolExecutor,
     build_context_block,
@@ -31,7 +32,7 @@ def _make_engine(
     max_tool_rounds: int = 8,
     max_history_turns: int = 20,
     system_prompt: str = "You are a helpful assistant.",
-    build_context: Callable[[list[RetrievedChunk]], str] | None = None,
+    build_context: Callable[[list[RetrievedChunk]], Context] | None = None,
 ) -> ChatEngine:
     extra = {} if build_context is None else {"build_context": build_context}
     return ChatEngine(
@@ -85,15 +86,25 @@ def test_answer_searches_the_knowledge_base_and_reports_unique_sources() -> None
     assert result.sources == ("a.txt", "b.txt")
 
 
-def test_build_context_block_numbers_chunks_and_states_citation_rule() -> None:
-    block = build_context_block(
-        [_retrieved("a.txt", text="alpha"), _retrieved("b.txt", text="beta")]
+def test_build_context_block_numbers_by_unique_source_and_states_citation_rule() -> (
+    None
+):
+    context = build_context_block(
+        [
+            _retrieved("a.txt", text="alpha1"),
+            _retrieved("a.txt", text="alpha2"),
+            _retrieved("b.txt", text="beta"),
+        ]
     )
 
-    assert block.index("[1]") < block.index("[2]")
-    assert "alpha" in block and "a.txt" in block
-    assert "beta" in block and "b.txt" in block
-    assert "cite" in block.lower()
+    assert context.sources == ("a.txt", "b.txt")
+    a_lines = [line for line in context.text.splitlines() if "a.txt" in line]
+    b_lines = [line for line in context.text.splitlines() if "b.txt" in line]
+    assert [line[:3] for line in a_lines] == ["[1]", "[1]"]
+    assert b_lines[0].startswith("[2]")
+    assert "alpha1" in context.text and "alpha2" in context.text
+    assert "beta" in context.text
+    assert "source" in context.text.lower() and "cite" in context.text.lower()
 
 
 def test_system_message_embeds_the_prompt_and_context_block() -> None:
@@ -116,7 +127,7 @@ def test_injected_build_context_replaces_the_default() -> None:
     engine = _make_engine(
         chat_model=model,
         knowledge_base=kb,
-        build_context=lambda chunks: "CUSTOM-CONTEXT",
+        build_context=lambda chunks: Context(text="CUSTOM-CONTEXT", sources=()),
     )
 
     engine.answer("q")
