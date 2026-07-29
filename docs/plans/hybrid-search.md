@@ -31,14 +31,23 @@ existing tests unchanged; gates green; `rank_bm25` importable only under
 
 Patterns: **Strategy** (context-source swap, third arm), **Facade**
 (`HybridContextSource` over two indices; `KnowledgeBase` over ingest + both
-stores), **Adapter** (BM25 → `KeywordIndex` port), **Port/Protocol** (new
-`KeywordIndex`), **Composition Root** (mode wiring).
+stores), **Adapter** (BM25 → `Bm25KeywordIndex`), **Role interfaces**
+(consumer-defined local Protocols per ISP — no new central port), **Composition
+Root** (mode wiring).
 
-- **`KeywordIndex` port** (`cora.core.ports`) — `add(chunks, file_hash)` and
-  `search(query, k, metadata_filter=None) -> list[RetrievedChunk]`. Returns the
-  same `RetrievedChunk` type, so it feeds RRF untouched. Conformance is
-  ty-verified (no explicit test). The `search` shape mirrors the local
-  `DocumentIndex` protocol `KnowledgeBase` already satisfies for the dense side.
+- **No new port — consumer-defined role interfaces.** The dense search seam is
+  already a *local* Protocol (`ContextSource` in `chat_engine`, `DocumentIndex`
+  in `fusion_context_source`), not an entry in `cora.core.ports`. Hybrid follows
+  that same convention, so the outward surface stays at **four ports**. A single
+  `KeywordIndex` port would fuse two roles into one interface and force each
+  client to depend on a method it never calls (ISP); segregating by consumer
+  fixes it. `Bm25KeywordIndex` satisfies both role Protocols structurally
+  (ty-verified at the root, no explicit test):
+  - `HybridContextSource` consumes a *search* seam — `search(query, k) ->
+    list[RetrievedChunk]` (no `list_sources`, no planner). KB and the BM25
+    adapter both satisfy it.
+  - `KnowledgeBase` consumes an *ingest* seam — `add(chunks, file_hash) -> None`
+    — declared locally for the optional fan-out collaborator.
 - **`Bm25KeywordIndex`** (`cora.adapters.bm25_keyword_index`) — the only importer
   of `rank_bm25`. Owns tokenization (lowercase + whitespace split; query and docs
   tokenized identically). `rank-bm25` has no incremental add, so `add` **rebuilds**
@@ -59,10 +68,14 @@ stores), **Adapter** (BM25 → `KeywordIndex` port), **Port/Protocol** (new
   sides provably share chunk identity — the RRF correctness dependency.
 - **Metadata filter.** Threaded for interface symmetry but always `None` in
   hybrid (no planner) — source-narrowing stays an `advanced`-only feature.
-- **Wiring.** `RETRIEVAL_HYBRID = "hybrid"` joins `RETRIEVAL_MODES`
-  (`app/config.py`); `build()` constructs the keyword index; `_context_source`
-  gets a hybrid branch returning `HybridContextSource` over KB + keyword index,
-  with the same keyword index handed to KB for fan-out.
+- **Wiring + construction order (refactor).** `RETRIEVAL_HYBRID = "hybrid"`
+  joins `RETRIEVAL_MODES` (`app/config.py`). Today `assemble` builds KB, then
+  ingests `plugin.seed_docs`, *then* builds the context source — so a keyword
+  index created inside `_context_source` would miss the seed docs on the sparse
+  side. Fix the order: in hybrid, construct the keyword index and inject it into
+  KB **before** the seed-doc loop, so "one ingest, two stores" holds for seed
+  docs too; `_context_source` then returns `HybridContextSource` over the same
+  KB + keyword index. plain/advanced keep `keyword_index=None` and are untouched.
 
 ```mermaid
 sequenceDiagram
@@ -100,17 +113,17 @@ sequenceDiagram
 - [ ] `search` queries each index at `k` and caps the fused result at `k`
 
 #### KnowledgeBase fan-out
-- [ ] `add_file` feeds the same chunks to the keyword index after the dense store; with no keyword index it behaves bit-for-bit as today
+- [ ] `add_file` feeds the same chunks to the keyword index (a locally-declared `add(chunks, file_hash)` seam) after the dense store; with no keyword index it behaves bit-for-bit as today
 - [ ] a duplicate-hash re-upload is a no-op for both stores — the keyword index is untouched
 
 #### Config + composition root
 - [ ] `Config` accepts `CORA_RETRIEVAL=hybrid` (`RETRIEVAL_MODES` includes it); default and unknown-value behaviour unchanged
-- [ ] `assemble` in hybrid mode wires a keyword index into KB and returns a `HybridContextSource` over dense + keyword; plain/advanced unchanged
+- [ ] `assemble` in hybrid mode constructs the keyword index and injects it into KB **before** seeding, then returns a `HybridContextSource` over dense + keyword; a seed doc is searchable on the sparse side; plain/advanced unchanged
 - [ ] **(int)** hybrid end-to-end over real Chroma + real BM25: a keyword-heavy question surfaces the lexical match that dense alone ranks lower
 
 #### Invariants + docs
-- [ ] architecture test still green: `HybridContextSource` and the `KeywordIndex` port import no framework; `rank_bm25` lives only under `cora.adapters`
-- [ ] `big-picture.md` retrieve step notes plain/advanced/**hybrid**; ports table adds `KeywordIndex`; `README` documents `CORA_RETRIEVAL=hybrid`
+- [ ] architecture test still green: `HybridContextSource` and its local role Protocols import no framework (covered by the core-wide scan); `rank_bm25` lives only under `cora.adapters`; `cora.core.ports` still holds exactly four ports
+- [ ] `big-picture.md` retrieve step notes plain/advanced/**hybrid** (ports table unchanged — no new port); `README` documents `CORA_RETRIEVAL=hybrid`
 
 ---
 
