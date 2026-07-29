@@ -35,7 +35,8 @@ their sources, and any tool runs appear under the answer.
 Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
 `CORA_PLUGIN` (default `cora.plugins.fitness`), `CORA_TOP_K` (default `5`),
 `CORA_RETRIEVAL` (`plain` by default; `advanced` turns on query translation and
-self-query filtering — RAG-Fusion — for one extra model call per question),
+self-query filtering — RAG-Fusion — for one extra model call per question;
+`hybrid` fuses dense and BM25 keyword rankings with no extra model call),
 `CORA_FUSION_QUERIES` (default `4`; sub-queries advanced mode fans out per
 question), `CORA_MAX_TOOL_ROUNDS` (default `8`), `CORA_HISTORY_TURNS` (past
 messages sent with each question — the default `20` is about ten
@@ -43,7 +44,7 @@ question-and-answer exchanges, and `0` switches memory off), `CORA_DB_PATH`
 (where Chroma persists; the default `.cora/chroma` is relative to the working
 directory), `OPENROUTER_BASE_URL`, `CORA_DEBUG`. The counts are rejected at
 startup if they fall below their lowest useful value — `0` for history turns, `1`
-for the others — and `CORA_RETRIEVAL` must be `plain` or `advanced`.
+for the others — and `CORA_RETRIEVAL` must be `plain`, `advanced`, or `hybrid`.
 
 Set `CORA_DEBUG` to `1` or `true` to trace what crosses the ports — one truncated
 line per embed, retrieval (with sources and scores) and model round trip, printed

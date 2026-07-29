@@ -100,6 +100,10 @@ them, which is why a different frontend is a rewrite of the shell and nothing el
    `CORA_RETRIEVAL=advanced` swaps this single lookup for RAG-Fusion: a
    `QueryPlanner` rewrites the question into sub-queries plus an optional source
    filter, each is retrieved, and the rankings are fused (Reciprocal Rank Fusion).
+   `CORA_RETRIEVAL=hybrid` instead fuses one dense ranking with one sparse (BM25)
+   ranking over the same corpus by the same Reciprocal Rank Fusion — no planner, no
+   extra model call. The keyword index lives only in `cora.adapters`, rehydrated
+   from Chroma at startup and kept fresh by a fan-out on upload.
 3. Prompt — the plugin's system prompt, then the chunks numbered `[1]`…`[n]` with the
    citation rule appended, then the last `CORA_HISTORY_TURNS` turns the shell passed in
    (default 20; `0` switches memory off), then the question. Validation and retrieval
