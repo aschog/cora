@@ -18,6 +18,7 @@ from cora.app.config import (
 )
 from cora.app.log_config import enable_debug_logs
 from cora.core.chunk import Chunk
+from cora.core.errors import ConfigurationError
 from cora.core.ports.chat_model import ChatModel
 from cora.core.ports.embedding import Embedder
 from cora.core.ports.plugin import Plugin
@@ -105,7 +106,9 @@ def _context_source(
     if retrieval == RETRIEVAL_ADVANCED:
         planner = QueryPlanner(chat_model=chat_model, num_queries=fusion_queries)
         return FusionContextSource(planner=planner, index=knowledge_base)
-    if retrieval == RETRIEVAL_HYBRID and keyword_index is not None:
+    if retrieval == RETRIEVAL_HYBRID:
+        if keyword_index is None:
+            raise ConfigurationError("Hybrid retrieval requires a keyword index.")
         return HybridContextSource(dense=knowledge_base, keyword=keyword_index)
     return knowledge_base
 

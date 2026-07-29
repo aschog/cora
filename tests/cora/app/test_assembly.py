@@ -8,7 +8,7 @@ from cora.app.assembly import App, assemble, build
 from cora.app.config import Config
 from cora.app.log_config import DEBUG_HANDLER_NAME
 from cora.core.chunk import Chunk
-from cora.core.errors import InputRejectedError
+from cora.core.errors import ConfigurationError, InputRejectedError
 from cora.core.ports.chat_model import ModelReply
 from cora.core.ports.plugin import Plugin
 from cora.core.ports.retrieval import RetrievedChunk
@@ -116,6 +116,17 @@ def test_assemble_hybrid_mode_wraps_dense_and_keyword_in_a_hybrid_source() -> No
     assert isinstance(source, HybridContextSource)
     assert source.dense is app.knowledge_base
     assert source.keyword is keyword
+
+
+def test_assemble_hybrid_without_a_keyword_index_is_rejected() -> None:
+    with pytest.raises(ConfigurationError):
+        assemble(
+            chat_model=ScriptedChatModel([ModelReply(text="ok")]),
+            embedder=FakeEmbedder(),
+            retriever=FakeRetriever(),
+            plugin=make_plugin(),
+            retrieval="hybrid",
+        )
 
 
 def test_assemble_without_a_keyword_index_leaves_the_knowledge_base_bare() -> None:
