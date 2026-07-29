@@ -124,6 +124,21 @@ def test_add_file_fans_out_the_same_chunks_to_the_keyword_index(
     assert keyword.added == ingest(data, "doc.txt")
 
 
+def test_duplicate_reupload_leaves_the_keyword_index_untouched(
+    embedder: FakeEmbedder, retriever: FakeRetriever
+) -> None:
+    keyword = FakeKeywordIndex()
+    kb = KnowledgeBase(embedder=embedder, retriever=retriever, keyword_index=keyword)
+    data = ("protein supports muscle " * 100).encode()
+
+    kb.add_file(data, "doc.txt")
+    after_first = list(keyword.added)
+    second = kb.add_file(data, "doc.txt")
+
+    assert second == 0
+    assert keyword.added == after_first
+
+
 def test_add_file_propagates_ingestion_errors_unchanged(kb: KnowledgeBase) -> None:
     with pytest.raises(UnsupportedFileTypeError):
         kb.add_file(b"data", "sheet.xlsx")

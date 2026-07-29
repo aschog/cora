@@ -159,7 +159,7 @@ sequenceDiagram
 
 #### KnowledgeBase fan-out
 - [x] `add_file` feeds the same chunks to the keyword index (a locally-declared `add(chunks)` seam) after the dense store; with no keyword index it behaves bit-for-bit as today
-- [ ] a duplicate-hash re-upload is a no-op for both stores — the keyword index is untouched
+- [x] a duplicate-hash re-upload is a no-op for both stores — the keyword index is untouched
 
 #### Config + composition root
 - [ ] `Config` accepts `CORA_RETRIEVAL=hybrid` (`RETRIEVAL_MODES` includes it); default and unknown-value behaviour unchanged
