@@ -77,6 +77,21 @@ def test_empty_query_search_returns_nothing(
     assert index.search("   ", k=5) == []
 
 
+def test_search_returns_only_chunks_that_lexically_match(
+    make_chunk: Callable[..., Chunk],
+) -> None:
+    corpus = [
+        make_chunk("protein for muscle", index=0),
+        make_chunk("hydration and water", index=1),
+        make_chunk("sleep for recovery", index=2),
+    ]
+    index = Bm25KeywordIndex.from_chunks(corpus)
+
+    hits = index.search("protein", k=3)
+
+    assert [hit.chunk for hit in hits] == [corpus[0]]
+
+
 def test_ties_break_by_corpus_position_not_chunk_index(
     make_chunk: Callable[..., Chunk],
 ) -> None:

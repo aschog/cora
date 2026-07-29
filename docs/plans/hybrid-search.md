@@ -66,7 +66,11 @@ Root** (mode wiring).
   `get_top_n`, whose `np.argsort` is unstable — so ties are deterministic. Guards
   the empty corpus
   (`BM25Okapi([])` raises `ZeroDivisionError` → `[]`) and the empty query
-  (`get_scores([])` is all-zeros, not a crash → `[]`).
+  (`get_scores([])` is all-zeros, not a crash → `[]`). Returns **only** chunks that
+  share a token with the query (`get_scores` scores every chunk, so unmatched ones
+  would otherwise pad the result to `k` and, by corpus position, pollute the fusion
+  — hybrid must never be worse than plain on a non-lexical query). Overlap, not a
+  score threshold: small-corpus BM25 IDF goes zero or negative on a genuine match.
 - **`HybridContextSource`** (core service) — mirrors `FusionContextSource`; holds a
   dense index + a keyword index and satisfies the **unchanged**
   `ContextSource.search(query, k)`:
