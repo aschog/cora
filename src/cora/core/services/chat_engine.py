@@ -60,9 +60,23 @@ def build_context_block(chunks: list[RetrievedChunk]) -> Context:
 
 
 @dataclass(frozen=True)
+class Source:
+    number: int
+    name: str
+
+
+def _cited_sources(text: str, sources: tuple[str, ...]) -> tuple[Source, ...]:
+    return tuple(
+        Source(number, sources[number - 1])
+        for number in cited_numbers(text)
+        if 1 <= number <= len(sources)
+    )
+
+
+@dataclass(frozen=True)
 class ChatResult:
     answer: str
-    sources: tuple[str, ...] = ()
+    sources: tuple[Source, ...] = ()
     tool_results: tuple[ToolResult, ...] = ()
 
 
@@ -82,21 +96,24 @@ class ChatEngine:
     def answer(self, user_input: str, history: tuple[Turn, ...] = ()) -> ChatResult:
         validated = self.validation.validate(user_input)
         chunks = self.knowledge_base.search(validated, self.top_k)
-        messages = self._initial_messages(validated, chunks, history)
+        context = self.build_context(chunks)
+        messages = self._initial_messages(validated, context, history)
         text, tool_results = self._run_tool_loop(messages)
         return ChatResult(
-            answer=text, sources=_unique_sources(chunks), tool_results=tool_results
+            answer=text,
+            sources=_cited_sources(text, context.sources),
+            tool_results=tool_results,
         )
 
     def _initial_messages(
         self,
         user_input: str,
-        chunks: list[RetrievedChunk],
+        context: Context,
         history: tuple[Turn, ...],
     ) -> list[Message]:
         system = Message(
             role="system",
-            content=f"{self.system_prompt}\n\n{self.build_context(chunks).text}",
+            content=f"{self.system_prompt}\n\n{context.text}",
         )
         recent = history[max(len(history) - self.max_history_turns, 0) :]
         past = [Message(role=turn.role, content=turn.text) for turn in recent]

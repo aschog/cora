@@ -11,6 +11,7 @@ from cora.core.services.chat_engine import (
     ChatEngine,
     Context,
     InputValidator,
+    Source,
     ToolExecutor,
     build_context_block,
     cited_numbers,
@@ -73,17 +74,43 @@ def test_final_text_reply_becomes_the_answer() -> None:
     assert result.tool_results == ()
 
 
-def test_answer_searches_the_knowledge_base_and_reports_unique_sources() -> None:
-    kb = FakeContextSource(
-        [_retrieved("a.txt"), _retrieved("a.txt"), _retrieved("b.txt")]
-    )
+def test_answer_searches_the_knowledge_base_with_the_question_and_top_k() -> None:
+    kb = FakeContextSource([_retrieved("a.txt")])
+    engine = _make_engine(knowledge_base=kb, top_k=5)
+
+    engine.answer("question")
+
+    assert kb.last_query == "question"
+    assert kb.last_k == 5
+
+
+def test_answer_reports_only_the_cited_sources_under_their_own_numbers() -> None:
+    kb = FakeContextSource([_retrieved("a.txt"), _retrieved("b.txt")])
+    model = ScriptedChatModel([ModelReply(text="Per [2], do this.")])
+    engine = _make_engine(chat_model=model, knowledge_base=kb, top_k=5)
+
+    result = engine.answer("question")
+
+    assert result.sources == (Source(2, "b.txt"),)
+
+
+def test_answer_reports_no_sources_when_the_answer_cites_none() -> None:
+    kb = FakeContextSource([_retrieved("a.txt"), _retrieved("b.txt")])
     engine = _make_engine(knowledge_base=kb, top_k=5)
 
     result = engine.answer("question")
 
-    assert kb.last_query == "question"
-    assert kb.last_k == 5
-    assert result.sources == ("a.txt", "b.txt")
+    assert result.sources == ()
+
+
+def test_answer_ignores_a_citation_whose_number_has_no_source() -> None:
+    kb = FakeContextSource([_retrieved("a.txt")])
+    model = ScriptedChatModel([ModelReply(text="Per [1] and also [9].")])
+    engine = _make_engine(chat_model=model, knowledge_base=kb, top_k=5)
+
+    result = engine.answer("question")
+
+    assert result.sources == (Source(1, "a.txt"),)
 
 
 def test_build_context_block_numbers_by_unique_source_and_states_citation_rule() -> (

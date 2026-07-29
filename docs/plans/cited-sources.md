@@ -42,11 +42,14 @@ the prompt and the citations cannot drift — the seam stays honest.
 - [x] `build_context_block`: two chunks of one source share its number; a second
       source gets the next number; rule mentions "source"; returns a `Context` whose
       `sources` is the ordered unique-source table.
-- [ ] `answer` citing `[1]` returns `(Source(1, "a.txt"),)` — not the uncited `b.txt`.
-- [ ] `answer` citing nothing returns `()`.
-- [ ] `answer` with an out-of-range `[9]` (and a repeat) ignores it.
-- [ ] `numbered_sources((Source(1,"a"), Source(3,"b")))` → `["[1] a", "[3] b"]`;
+- [x] `answer` citing `[2]` returns `(Source(2, "b.txt"),)` — not the uncited `a.txt`.
+- [x] `answer` citing nothing returns `()`.
+- [x] `answer` with an out-of-range `[9]` ignores it.
+- [x] `numbered_sources((Source(1,"a"), Source(3,"b")))` → `["[1] a", "[3] b"]`;
       `()` → `[]`.
+  > These four landed as one green step: flipping `ChatResult.sources` to
+  > `tuple[Source, ...]` ripples engine→formatter atomically, so splitting them
+  > would leave the tree red.
 - [ ] UI: upload a doc, ask, model cites `[1]` → panel shows exactly that one source.
 
 ## Fallout to update
