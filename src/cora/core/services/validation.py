@@ -6,6 +6,10 @@ from cora.core.ports.plugin import ValidationRule
 
 _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"ignore\b.*\bprevious instructions"),
+    re.compile(
+        r"(reveal|show|print|repeat|expose|tell me)\b.*"
+        r"\b(your (system )?(prompt|instructions)|system prompt)"
+    ),
 )
 
 
