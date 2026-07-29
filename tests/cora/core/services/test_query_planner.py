@@ -59,8 +59,27 @@ def test_parse_plan_reads_an_object_wrapped_in_prose() -> None:
     assert trail == QueryPlan(queries=("a",))
 
 
+def test_parse_plan_keeps_the_source_filter_through_wrapping() -> None:
+    text = '```json\n{"queries": ["timing"], "source": "protein.md"}\n```'
+
+    plan = parse_plan(text, sources=("protein.md",))
+
+    assert plan == QueryPlan(
+        queries=("timing",),
+        metadata_filter=MetadataFilter(field="source", value="protein.md"),
+    )
+
+
+def test_parse_plan_scan_ignores_braces_inside_a_query_string() -> None:
+    text = 'Sure: {"queries": ["what about {macros}?"]} done'
+
+    assert parse_plan(text, sources=()) == QueryPlan(queries=("what about {macros}?",))
+
+
 def test_parse_plan_returns_none_for_malformed_json() -> None:
     assert parse_plan("not json at all", sources=()) is None
+    assert parse_plan("I can't help with that.", sources=()) is None
+    assert parse_plan("```json\n{queries: nope}\n```", sources=()) is None
     assert parse_plan('{"missing": "queries"}', sources=()) is None
     assert parse_plan('{"queries": []}', sources=()) is None
 

@@ -24,12 +24,12 @@ degrades to plain — no error, no failing test. Make the parser tolerant of the
 
 ## TDD checklist
 
-- [ ] a ```` ```json ```` fenced object parses into the expected queries (was `None`).
-- [ ] an untagged ```` ``` ```` fence parses too; leading/trailing prose parses.
-- [ ] a wrapped reply with a valid `source` still yields the `MetadataFilter`.
-- [ ] braces inside a query string don't truncate the balanced scan.
-- [ ] genuinely non-JSON, and fenced-but-malformed JSON, still return `None`.
-- [ ] a bare valid JSON object parses exactly as before (regression guard).
+- [x] a ```` ```json ```` fenced object parses into the expected queries (was `None`).
+- [x] an untagged ```` ``` ```` fence parses too; leading/trailing prose parses.
+- [x] a wrapped reply with a valid `source` still yields the `MetadataFilter`.
+- [x] braces inside a query string don't truncate the balanced scan.
+- [x] genuinely non-JSON, and fenced-but-malformed JSON, still return `None`.
+- [x] a bare valid JSON object parses exactly as before (regression guard).
 
 ## Fallout
 
