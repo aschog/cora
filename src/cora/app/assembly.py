@@ -111,22 +111,30 @@ def _context_source(
 
 
 def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
+    from cora.adapters.bm25_keyword_index import Bm25KeywordIndex
     from cora.adapters.chroma_retriever import ChromaRetriever
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
 
     enable_debug_logs(config.debug)
+    retriever = ChromaRetriever(path=config.db_path, collection=collection)
+    keyword_index = (
+        Bm25KeywordIndex.from_chunks(retriever.all_chunks())
+        if config.retrieval == RETRIEVAL_HYBRID
+        else None
+    )
     return assemble(
         chat_model=OpenRouterChatModel(
             model=config.model, api_key=config.api_key, base_url=config.base_url
         ),
         embedder=SentenceTransformerEmbedder(),
-        retriever=ChromaRetriever(path=config.db_path, collection=collection),
+        retriever=retriever,
         plugin=load_plugin(config.plugin_module),
         top_k=config.top_k,
         max_tool_rounds=config.max_tool_rounds,
         history_turns=config.history_turns,
         retrieval=config.retrieval,
         fusion_queries=config.fusion_queries,
+        keyword_index=keyword_index,
         debug=config.debug,
     )

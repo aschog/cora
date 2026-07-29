@@ -218,6 +218,31 @@ def _config(db_path: Path, *, debug: bool = False) -> Config:
 
 
 @pytest.mark.integration
+def test_build_rehydrates_hybrid_across_a_restart_counting_a_prior_doc_once(
+    tmp_path: Path,
+) -> None:
+    config = Config(
+        api_key="k",
+        model="openai/gpt-4o-mini",
+        base_url="https://openrouter.ai/api/v1",
+        plugin_module="fixture_plugins.seeded",
+        top_k=3,
+        max_tool_rounds=4,
+        history_turns=6,
+        db_path=str(tmp_path),
+        retrieval="hybrid",
+    )
+
+    build(config)
+    app = build(config)
+
+    source = app.engine.knowledge_base
+    assert isinstance(source, HybridContextSource)
+    hits = source.keyword.search("protein", k=10)
+    assert [hit.chunk.source for hit in hits] == ["note.md"]
+
+
+@pytest.mark.integration
 def test_build_wires_the_debug_seam_when_config_asks_for_it(
     tmp_path: Path, clean_cora_logger: logging.Logger
 ) -> None:
