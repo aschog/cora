@@ -33,6 +33,7 @@ from cora.core.services.tool_runtime import ToolRuntime
 from cora.core.services.validation import (
     EmptyInputRule,
     MaxLengthRule,
+    PromptInjectionRule,
     ValidationPipeline,
 )
 
@@ -79,7 +80,11 @@ def assemble(
         retrieval, chat_model, knowledge_base, fusion_queries, keyword_index
     )
     validation = ValidationPipeline(
-        core_rules=(EmptyInputRule(), MaxLengthRule(MAX_INPUT_CHARS)),
+        core_rules=(
+            EmptyInputRule(),
+            MaxLengthRule(MAX_INPUT_CHARS),
+            PromptInjectionRule(),
+        ),
         plugin_rules=plugin.validation_rules,
     )
     engine = ChatEngine(

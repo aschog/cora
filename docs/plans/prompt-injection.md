@@ -70,8 +70,8 @@ Everything is unit tier (pure rule, no I/O).
 - [x] the rejection carries a fixed, user-facing `user_message` (the string the shell renders)
 
 #### Composition root
-- [ ] `assemble` wires `PromptInjectionRule` into the **core** rules, so an injection is rejected end-to-end through `engine.answer` before retrieval — and a benign question still answers
-- [ ] existing core rules (empty, max-length) and plugin rules are unchanged (order + first-rejection-wins preserved)
+- [x] `assemble` wires `PromptInjectionRule` into the **core** rules, so an injection is rejected end-to-end through `engine.answer` before retrieval — and a benign question still answers
+- [x] existing core rules (empty, max-length) and plugin rules are unchanged (order + first-rejection-wins preserved)
 
 #### Docs
 - [ ] `big-picture.md` validate step notes the injection guard among core rules (`README` if warranted)
