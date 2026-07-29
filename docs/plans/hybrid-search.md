@@ -154,7 +154,7 @@ sequenceDiagram
 - [x] equal-scoring chunks come back in deterministic order, tie-broken by **corpus position** — not `Chunk.index` (collides across sources) and not `get_top_n`'s unstable `argsort`
 
 #### HybridContextSource
-- [ ] `search` fuses the dense ranking and the keyword ranking via RRF — a chunk in both outranks one in a single ranking (fake dense + fake keyword) — satisfies `ContextSource`
+- [x] `search` fuses the dense ranking and the keyword ranking via RRF — a chunk in both outranks one in a single ranking (fake dense + fake keyword) — satisfies `ContextSource`
 - [ ] `search` queries each index at `k` and caps the fused result at `k`
 
 #### KnowledgeBase fan-out
