@@ -118,6 +118,13 @@ def test_assemble_hybrid_mode_wraps_dense_and_keyword_in_a_hybrid_source() -> No
     assert source.keyword is keyword
 
 
+def test_assemble_without_a_keyword_index_leaves_the_knowledge_base_bare() -> None:
+    app = _assemble(make_plugin())
+
+    assert app.engine.knowledge_base is app.knowledge_base
+    assert app.knowledge_base.keyword_index is None
+
+
 def test_assemble_seeds_new_docs_into_the_keyword_index() -> None:
     keyword = _FakeKeywordStore()
     plugin = make_plugin(seed_docs=(("note.md", b"protein supports muscle growth"),))
