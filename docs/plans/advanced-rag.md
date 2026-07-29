@@ -104,10 +104,10 @@ sequenceDiagram
 - [x] on planner fallback it degrades to a plain top_k search — no crash, no filter
 
 #### Config + composition root
-- [ ] `Config` exposes `CORA_RETRIEVAL` (plain string, default `plain`) and `CORA_FUSION_QUERIES` (int, minimum 1)
-- [ ] an unknown `CORA_RETRIEVAL` value raises `ConfigurationError` (fail fast — no silent degrade to plain)
-- [ ] `assemble` wires the context source per mode — plain: `KnowledgeBase`; advanced: `FusionContextSource` over KB + a `QueryPlanner` on the chat model
-- [ ] **(int)** advanced mode end-to-end over real Chroma: a question retrieves source-filtered, fused chunks
+- [x] `Config` exposes `CORA_RETRIEVAL` (plain string, default `plain`) and `CORA_FUSION_QUERIES` (int, minimum 1)
+- [x] an unknown `CORA_RETRIEVAL` value raises `ConfigurationError` (fail fast — no silent degrade to plain)
+- [x] `assemble` wires the context source per mode — plain: `KnowledgeBase`; advanced: `FusionContextSource` over KB + a `QueryPlanner` on the chat model
+- [x] **(int)** advanced mode end-to-end over real Chroma: a question retrieves source-filtered, fused chunks
 
 #### Invariants + docs
 - [ ] the new core modules import no framework — architecture test still green (`MetadataFilter`, `QueryPlanner`, `FusionContextSource`, RRF all under `cora.core`)
