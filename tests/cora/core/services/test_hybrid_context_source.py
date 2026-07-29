@@ -26,3 +26,18 @@ def test_search_fuses_dense_and_keyword_rankings() -> None:
     hits = source.search("q", k=3)
 
     assert hits[0].chunk == a
+
+
+def test_search_caps_the_fused_result_at_k() -> None:
+    dense = FakeIndex(
+        [RetrievedChunk(_chunk(f"d{i}"), 1.0 - i * 0.1) for i in range(5)]
+    )
+    keyword = FakeIndex([RetrievedChunk(_chunk(f"k{i}"), 5.0 - i) for i in range(5)])
+    source = HybridContextSource(dense=dense, keyword=keyword)
+
+    hits = source.search("q", k=3)
+
+    sources = {hit.chunk.source for hit in hits}
+    assert len(hits) == 3
+    assert sources & {"d0", "d1", "d2"}
+    assert sources & {"k0", "k1", "k2"}

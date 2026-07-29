@@ -155,7 +155,7 @@ sequenceDiagram
 
 #### HybridContextSource
 - [x] `search` fuses the dense ranking and the keyword ranking via RRF — a chunk in both outranks one in a single ranking (fake dense + fake keyword) — satisfies `ContextSource`
-- [ ] `search` queries each index at `k` and caps the fused result at `k`
+- [x] `search` queries each index at `k` and caps the fused result at `k`
 
 #### KnowledgeBase fan-out
 - [ ] `add_file` feeds the same chunks to the keyword index (a locally-declared `add(chunks)` seam) after the dense store; with no keyword index it behaves bit-for-bit as today
