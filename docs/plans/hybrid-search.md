@@ -60,8 +60,11 @@ Root** (mode wiring).
   `Chunk` list so `search` reconstructs `RetrievedChunk`s with identical field
   values. Seeded from the same source of truth two ways: `from_chunks(corpus)` for
   the startup rehydration, `add(chunks)` for the same-session fan-out.
-  `search` sorts by an explicit `(-score, index)` key — **not** `get_top_n`, whose
-  `np.argsort` is unstable — so ties are deterministic. Guards the empty corpus
+  `search` sorts by an explicit `(-score, position)` key where `position` is the
+  chunk's **corpus index** (unique, stable per build) — **not** `Chunk.index`, a
+  per-document sequence number that collides across sources, and **not**
+  `get_top_n`, whose `np.argsort` is unstable — so ties are deterministic. Guards
+  the empty corpus
   (`BM25Okapi([])` raises `ZeroDivisionError` → `[]`) and the empty query
   (`get_scores([])` is all-zeros, not a crash → `[]`).
 - **`HybridContextSource`** (core service) — mirrors `FusionContextSource`; holds a
@@ -86,8 +89,12 @@ Root** (mode wiring).
   neither. Rehydration + fan-out together keep both stores consistent across
   restarts and within a session, with Chroma the single source of truth. `None` in
   plain/advanced reproduces today bit-for-bit.
-- **Metadata filter.** Threaded for interface symmetry but always `None` in
-  hybrid (no planner) — source-narrowing stays an `advanced`-only feature.
+- **No metadata filter on this path.** The sparse search role is
+  `search(query, k)`, full stop — the same rule that drops `file_hash` from the
+  `add` seam. Hybrid has no planner, so a filter would be unconditionally `None`;
+  `ContextSource.search` is two-arg anyway and BM25 has no metadata index to
+  filter on. Source-narrowing stays an `advanced`-only feature by not existing
+  here, not by threading an always-`None` param.
 - **Wiring + construction order (refactor).** `RETRIEVAL_HYBRID = "hybrid"` joins
   `RETRIEVAL_MODES` (`app/config.py`). In hybrid, `build` — which knows the
   concrete `ChromaRetriever` — rehydrates `Bm25KeywordIndex.from_chunks(
@@ -97,10 +104,16 @@ Root** (mode wiring).
   rehydration and correctly skipped by dedupe), then returns `HybridContextSource`
   over the same KB + keyword index. plain/advanced pass `keyword_index=None` and
   are untouched. One object satisfies both role seams (KB's `add`, the source's
-  `search`) and Python has no intersection type, so `assemble` types the parameter
-  concretely as `Bm25KeywordIndex | None` — the app layer already imports adapters
-  in `build`; the segregation stays where the *consumers* declare their Protocols,
-  not at this wiring point.
+  `search`); the root genuinely uses both, so its own view of the parameter is the
+  *intersection* of the two roles — not an ISP violation, and expressible as a
+  root-local `KeywordStore(Protocol)` listing `add` + `search`. The consumer
+  Protocols stay segregated where they're declared; the root gets a third, local
+  view. Typing the parameter as the concrete `Bm25KeywordIndex | None` instead
+  would drag `cora.adapters.bm25_keyword_index` (hence `rank_bm25`) into
+  `assembly`'s import graph at module load — regressing the deliberate deferral of
+  heavy adapters into `build`. So: a root-local `KeywordStore` Protocol, or if the
+  concrete name is preferred, reference it under `TYPE_CHECKING` with `from
+  __future__ import annotations` so it stays type-only.
 
 ```mermaid
 sequenceDiagram
@@ -133,7 +146,7 @@ sequenceDiagram
 - [ ] a second `add` rebuilds the corpus so an earlier file's chunks stay searchable
 - [ ] an empty corpus → `search` returns `[]` (guards `BM25Okapi([])` `ZeroDivisionError`)
 - [ ] an empty query → `search` returns `[]` (`get_scores([])` is zeros, not a crash)
-- [ ] equal-scoring chunks come back in deterministic order (explicit `(-score, index)` sort, not `get_top_n`)
+- [ ] equal-scoring chunks come back in deterministic order, tie-broken by **corpus position** — not `Chunk.index` (collides across sources) and not `get_top_n`'s unstable `argsort`
 
 #### HybridContextSource
 - [ ] `search` fuses the dense ranking and the keyword ranking via RRF — a chunk in both outranks one in a single ranking (fake dense + fake keyword) — satisfies `ContextSource`
@@ -145,13 +158,15 @@ sequenceDiagram
 
 #### Config + composition root
 - [ ] `Config` accepts `CORA_RETRIEVAL=hybrid` (`RETRIEVAL_MODES` includes it); default and unknown-value behaviour unchanged
-- [ ] `assemble` in hybrid mode injects the given `keyword_index` into KB **before** seeding, then returns a `HybridContextSource` over dense + keyword; a new seed doc is searchable on the sparse side (fan-out); `keyword_index=None` in plain/advanced is unchanged
+- [ ] `assemble` in hybrid mode returns a `HybridContextSource` over the dense KB + the given `keyword_index`
+- [ ] `assemble` injects `keyword_index` into KB **before** the seed loop, so a genuinely new seed doc is searchable on the sparse side
+- [ ] `assemble` with `keyword_index=None` (plain/advanced) is bit-for-bit unchanged
 - [ ] **(int)** `ChromaRetriever.all_chunks()` round-trips every stored chunk with identical `text`/`source`/`index`/`offset`
 - [ ] **(int)** rehydration across a restart: a second `build` over an already-populated persistent Chroma path finds a prior doc on the sparse side **exactly once** — corpus size unchanged after the dedupe-skipped seed loop (guards the fan-out-only regression *and* rehydrate/fan-out double-counting)
-- [ ] **(int)** hybrid end-to-end over real Chroma + real BM25: a keyword-heavy question surfaces the lexical match that dense alone ranks lower
+- [ ] **(int)** hybrid end-to-end over real Chroma + real BM25: a keyword-heavy question surfaces the lexical match that dense alone ranks lower — fixture tokens must match under lowercase + whitespace split (e.g. `fitness.` ≠ `fitness`), so the pass is for the right reason
 
 #### Invariants + docs
-- [ ] `HybridContextSource` and its local role Protocols import no framework (already covered by the core-wide scan)
+- *(note, not an increment)* `HybridContextSource` and its local role Protocols import no framework — already covered by the existing core-wide scan; nothing new to write
 - [ ] `rank_bm25` is added to `FORBIDDEN_FRAMEWORKS` and a planted core import of it is caught (mirrors the Streamlit / outer-layer planted-violation tests — the scan does *not* cover `rank_bm25` today)
 - [ ] `big-picture.md` retrieve step notes plain/advanced/**hybrid** (ports table unchanged — no new port); `README` (line ~46, currently "must be `plain` or `advanced`") documents `CORA_RETRIEVAL=hybrid`
 
@@ -161,8 +176,9 @@ sequenceDiagram
 
 - No stemming, stopwords, or lemmatization — tokenization is lowercase + whitespace
   split; document the richer tokenizer as a future knob, don't build it.
-- No self-query / metadata filtering in hybrid — that stays `advanced`-only; the
-  `metadata_filter` param is threaded for symmetry and passed `None`.
+- No self-query / metadata filtering in hybrid — that stays `advanced`-only, and
+  by *not existing* on this path: the sparse search seam is `search(query, k)`,
+  with no always-`None` `metadata_filter` param threaded for symmetry.
 - No *persisted* BM25 artifact — the index is in-memory, rehydrated from Chroma at
   startup and rebuilt per ingest; Chroma remains the single source of truth for
   chunk text/metadata. Rehydration itself is not optional (see the primary fix
