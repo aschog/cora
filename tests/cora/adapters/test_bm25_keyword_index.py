@@ -50,3 +50,14 @@ def test_from_chunks_seeds_the_whole_corpus_searchable(
         ("sleep", corpus[2]),
     ]:
         assert index.search(token, k=1)[0].chunk == expected
+
+
+def test_a_second_add_keeps_earlier_chunks_searchable(
+    make_chunk: Callable[..., Chunk],
+) -> None:
+    first = make_chunk("protein for muscle", source="a.md", index=0)
+    index = Bm25KeywordIndex.from_chunks([first])
+
+    index.add([make_chunk("hydration and water", source="b.md", index=0)])
+
+    assert index.search("protein", k=1)[0].chunk == first

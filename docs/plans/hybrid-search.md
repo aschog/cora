@@ -148,7 +148,7 @@ sequenceDiagram
 - [x] over a small known corpus, `search` ranks the lexically-matching chunk first, above an unrelated one
 - [x] `search` reconstructs a `RetrievedChunk` carrying the chunk's identical `text`/`source`/`index`/`offset` (the fusion identity guard)
 - [x] `from_chunks(corpus)` seeds the whole corpus searchable in one build (the rehydration entry point)
-- [ ] a second `add` rebuilds the corpus so an earlier file's chunks stay searchable
+- [x] a second `add` rebuilds the corpus so an earlier file's chunks stay searchable
 - [ ] an empty corpus → `search` returns `[]` (guards `BM25Okapi([])` `ZeroDivisionError`)
 - [ ] an empty query → `search` returns `[]` (`get_scores([])` is zeros, not a crash)
 - [ ] equal-scoring chunks come back in deterministic order, tie-broken by **corpus position** — not `Chunk.index` (collides across sources) and not `get_top_n`'s unstable `argsort`
