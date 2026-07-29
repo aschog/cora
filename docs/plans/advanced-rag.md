@@ -99,9 +99,9 @@ sequenceDiagram
 - [x] RRF caps output at `top_k`; the constant is separate from `top_k` (guards conflation)
 
 #### FusionContextSource
-- [ ] `search` plans, fans out one `KB.search` per sub-query, RRF-merges, returns top_k (fake planner + fake KB) — satisfies `ContextSource`
-- [ ] the plan's filter is passed into each `KB.search` (self-query path)
-- [ ] on planner fallback it degrades to a plain top_k search — no crash, no filter
+- [x] `search` plans, fans out one `KB.search` per sub-query, RRF-merges, returns top_k (fake planner + fake KB) — satisfies `ContextSource`
+- [x] the plan's filter is passed into each `KB.search` (self-query path)
+- [x] on planner fallback it degrades to a plain top_k search — no crash, no filter
 
 #### Config + composition root
 - [ ] `Config` exposes `CORA_RETRIEVAL` (plain string, default `plain`) and `CORA_FUSION_QUERIES` (int, minimum 1)
