@@ -1,6 +1,7 @@
 import json
 from dataclasses import dataclass
 
+from cora.core.errors import LlmError
 from cora.core.metadata_filter import MetadataFilter
 from cora.core.ports.chat_model import ChatModel, Message
 from cora.core.query_plan import QueryPlan
@@ -13,7 +14,10 @@ class QueryPlanner:
 
     def plan(self, question: str, sources: tuple[str, ...]) -> QueryPlan:
         messages = _planning_messages(question, sources, self.num_queries)
-        reply = self.chat_model.complete(messages, ())
+        try:
+            reply = self.chat_model.complete(messages, ())
+        except LlmError:
+            return QueryPlan(queries=(question,))
         plan = parse_plan(reply.text, sources)
         return plan if plan is not None else QueryPlan(queries=(question,))
 

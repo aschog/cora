@@ -1,8 +1,9 @@
+from cora.core.errors import LlmError
 from cora.core.metadata_filter import MetadataFilter
 from cora.core.ports.chat_model import ModelReply
 from cora.core.query_plan import QueryPlan
 from cora.core.services.query_planner import QueryPlanner, parse_plan
-from fakes import ScriptedChatModel
+from fakes import FailingChatModel, ScriptedChatModel
 
 
 def test_planner_parses_sub_queries_from_the_model_reply() -> None:
@@ -49,3 +50,21 @@ def test_planner_falls_back_to_the_raw_question_on_malformed_json() -> None:
     plan = planner.plan("how much protein?", sources=("protein.md",))
 
     assert plan == QueryPlan(queries=("how much protein?",))
+
+
+def test_planner_falls_back_on_empty_model_text() -> None:
+    model = ScriptedChatModel([ModelReply(text="")])
+    planner = QueryPlanner(chat_model=model, num_queries=3)
+
+    plan = planner.plan("protein?", sources=())
+
+    assert plan == QueryPlan(queries=("protein?",))
+
+
+def test_planner_falls_back_when_the_model_fails() -> None:
+    model = FailingChatModel(error=LlmError())
+    planner = QueryPlanner(chat_model=model, num_queries=3)
+
+    plan = planner.plan("protein?", sources=("protein.md",))
+
+    assert plan == QueryPlan(queries=("protein?",))

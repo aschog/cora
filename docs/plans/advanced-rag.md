@@ -87,11 +87,11 @@ sequenceDiagram
 - [x] **(int)** `ChromaRetriever.query` with a `source` filter returns only that document's chunks; without one, unchanged
 
 #### QueryPlanner (translation + self-query)
-- [ ] `QueryPlan` is frozen: sub-queries tuple + optional `MetadataFilter`
-- [ ] the planner parses N sub-queries from a scripted `ModelReply.text` JSON (fake ChatModel)
-- [ ] the planner extracts an optional `source` filter from the same reply when present, drawn from the known sources it was given
-- [ ] malformed JSON falls back to `([question], no filter)`
-- [ ] a model failure / empty text falls back too
+- [x] `QueryPlan` is frozen: sub-queries tuple + optional `MetadataFilter`
+- [x] the planner parses N sub-queries from a scripted `ModelReply.text` JSON (fake ChatModel)
+- [x] the planner extracts an optional `source` filter from the same reply when present, drawn from the known sources it was given
+- [x] malformed JSON falls back to `([question], no filter)`
+- [x] a model failure / empty text falls back too
 
 #### Reciprocal Rank Fusion (pure)
 - [ ] RRF merges two ranked lists by summed reciprocal rank (`c=60`), best first
