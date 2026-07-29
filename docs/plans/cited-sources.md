@@ -50,7 +50,8 @@ the prompt and the citations cannot drift — the seam stays honest.
   > These four landed as one green step: flipping `ChatResult.sources` to
   > `tuple[Source, ...]` ripples engine→formatter atomically, so splitting them
   > would leave the tree red.
-- [ ] UI: upload a doc, ask, model cites `[1]` → panel shows exactly that one source.
+- [x] UI: upload a doc, ask, model cites `[1]` → panel shows exactly that one source
+      (retrieved-but-uncited seed docs stay out — the regression guard for the bug).
 
 ## Fallout to update
 
