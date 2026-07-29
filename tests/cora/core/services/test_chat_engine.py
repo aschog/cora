@@ -107,6 +107,19 @@ def test_answer_reports_no_sources_when_the_answer_cites_none() -> None:
     assert result.sources == ()
 
 
+def test_answer_resolves_citations_by_the_builders_own_numbers() -> None:
+    context = Context(
+        text="[5] x  [9] y",
+        sources=(Source(5, "x.txt"), Source(9, "y.txt")),
+    )
+    model = ScriptedChatModel([ModelReply(text="see [9].")])
+    engine = _make_engine(chat_model=model, build_context=lambda chunks: context)
+
+    result = engine.answer("q")
+
+    assert result.sources == (Source(9, "y.txt"),)
+
+
 def test_answer_ignores_a_citation_whose_number_has_no_source() -> None:
     kb = FakeContextSource([_retrieved("a.txt")])
     model = ScriptedChatModel([ModelReply(text="Per [1] and also [9].")])
@@ -128,7 +141,7 @@ def test_build_context_block_numbers_by_unique_source_and_states_citation_rule()
         ]
     )
 
-    assert context.sources == ("a.txt", "b.txt")
+    assert context.sources == (Source(1, "a.txt"), Source(2, "b.txt"))
     a_lines = [line for line in context.text.splitlines() if "a.txt" in line]
     b_lines = [line for line in context.text.splitlines() if "b.txt" in line]
     assert [line[:3] for line in a_lines] == ["[1]", "[1]"]

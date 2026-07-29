@@ -58,7 +58,7 @@ the prompt and the citations cannot drift — the seam stays honest.
 - [x] Guard incidental brackets: `cited_numbers` ignores `[n]` glued to a word or
       `]` (`list[2]`, `arr[0][1]`), so only real citations count. Partial by nature —
       a spaced `step [2]` still matches; that's an accepted limit of a bracket scheme.
-- [ ] Honest seam: `Context.sources` carries `Source` objects, so a custom
+- [x] Honest seam: `Context.sources` carries `Source` objects, so a custom
       `build_context` owns its numbering and `_cited_sources` resolves by number,
       not by position.
 - [ ] Panel lists cited sources in ascending source-number order, not citation order.

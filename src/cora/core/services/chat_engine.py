@@ -43,14 +43,21 @@ def cited_numbers(text: str) -> tuple[int, ...]:
 
 
 @dataclass(frozen=True)
+class Source:
+    number: int
+    name: str
+
+
+@dataclass(frozen=True)
 class Context:
     text: str
-    sources: tuple[str, ...]
+    sources: tuple[Source, ...]
 
 
 def build_context_block(chunks: list[RetrievedChunk]) -> Context:
-    sources = _unique_sources(chunks)
-    number_of = {source: number for number, source in enumerate(sources, start=1)}
+    names = _unique_sources(chunks)
+    sources = tuple(Source(number, name) for number, name in enumerate(names, start=1))
+    number_of = {source.name: source.number for source in sources}
     body = "\n".join(
         f"[{number_of[hit.chunk.source]}] {hit.chunk.source}: {hit.chunk.text}"
         for hit in chunks
@@ -59,18 +66,9 @@ def build_context_block(chunks: list[RetrievedChunk]) -> Context:
     return Context(text=f"{body}\n\n{citation_rule}", sources=sources)
 
 
-@dataclass(frozen=True)
-class Source:
-    number: int
-    name: str
-
-
-def _cited_sources(text: str, sources: tuple[str, ...]) -> tuple[Source, ...]:
-    return tuple(
-        Source(number, sources[number - 1])
-        for number in cited_numbers(text)
-        if 1 <= number <= len(sources)
-    )
+def _cited_sources(text: str, sources: tuple[Source, ...]) -> tuple[Source, ...]:
+    by_number = {source.number: source for source in sources}
+    return tuple(by_number[n] for n in cited_numbers(text) if n in by_number)
 
 
 @dataclass(frozen=True)
