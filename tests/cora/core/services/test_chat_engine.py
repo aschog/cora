@@ -12,6 +12,7 @@ from cora.core.services.chat_engine import (
     InputValidator,
     ToolExecutor,
     build_context_block,
+    cited_numbers,
 )
 from cora.core.services.tool_runtime import ToolRuntime
 from cora.core.services.validation import EmptyInputRule, ValidationPipeline
@@ -51,6 +52,14 @@ def _retrieved(source: str, text: str = "t", score: float = 1.0) -> RetrievedChu
     return RetrievedChunk(
         chunk=Chunk(text=text, source=source, index=0, offset=0), score=score
     )
+
+
+def test_cited_numbers_are_distinct_and_in_order_of_first_appearance() -> None:
+    assert cited_numbers("uses [3], then [1], and [3] again") == (3, 1)
+
+
+def test_cited_numbers_of_uncited_text_is_empty() -> None:
+    assert cited_numbers("no brackets here") == ()
 
 
 def test_final_text_reply_becomes_the_answer() -> None:

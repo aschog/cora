@@ -1,4 +1,5 @@
 import json
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
@@ -34,6 +35,11 @@ def _tool_message(result: ToolResult) -> Message:
 
 def _unique_sources(chunks: list[RetrievedChunk]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(hit.chunk.source for hit in chunks))
+
+
+def cited_numbers(text: str) -> tuple[int, ...]:
+    found = (int(match) for match in re.findall(r"\[(\d+)\]", text))
+    return tuple(dict.fromkeys(found))
 
 
 def build_context_block(chunks: list[RetrievedChunk]) -> str:
