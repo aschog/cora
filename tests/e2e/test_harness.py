@@ -16,10 +16,10 @@ def test_the_app_loads_with_its_shell_rendered(app: Page) -> None:
     expect(app.get_by_test_id(EXCEPTION)).to_have_count(0)
 
 
-def test_a_page_load_ingests_the_seed_docs_under_the_configured_path(
+def test_a_page_load_starts_with_no_documents_under_the_configured_path(
     app: Page, tmp_path: Path
 ) -> None:
-    expect(sources(app).filter(has_text="protein.md")).to_have_count(1)
+    expect(sources(app)).to_have_count(0)
 
     assert any((tmp_path / "chroma").iterdir())
 

@@ -18,8 +18,12 @@ and plain reruns after an error.
 > the real stack. Finding 10 is *narrowed* on `feature/e2e-playwright`: the path
 > is now configurable via `CORA_DB_PATH`, but the default `.cora/chroma` is still
 > CWD-relative, so the symptom reported below — launching from another directory
-> starts a new, empty DB — is unchanged unless the knob is set. The other five
-> are open — #4, #5 and #6 are the highest-severity ones remaining. The findings below are left as they were
+> starts a new, empty DB — is unchanged unless the knob is set. Finding 8 is
+> *narrowed* on `fix/no-startup-seeding` (PR #21): the app no longer seeds
+> documents at startup, so the sidebar starts empty and the two unexplained
+> seed docs (`protein.md`, `energy_balance.md`) are gone — the missing
+> clear/removal controls remain open. The other four are open — #4, #5 and #6
+> are the highest-severity ones remaining. The findings below are left as they were
 > written, so this file stays a record of the run rather than a tracker.
 >
 > **This loop is now automated.** `feature/e2e-playwright` replays it as a

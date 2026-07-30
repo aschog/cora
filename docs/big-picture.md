@@ -139,7 +139,7 @@ box.
 | **ValidationPipeline** | An ordered chain: core rules, then the plugin's. Adding a guard means adding a rule, not editing a component. | `core/services/validation.py` |
 | **ToolRuntime** | Find the tool, JSON-Schema-check the arguments, run it, turn every outcome — including a crash — into a `ToolResult`. | `core/services/tool_runtime.py` |
 | **Plugin registry** *(folded into the composition root)* | Import a plugin by module path and check the bundle before the app starts: prompt present, tool names unique, every schema valid. | `core/services/plugin_registry.py` |
-| **Composition root** | The only place that names a real adapter. Reads the environment, loads the plugin, seeds its documents, hands back an `App`. | `app/config.py`, `app/assembly.py` |
+| **Composition root** | The only place that names a real adapter. Reads the environment, loads the plugin, hands back an `App`. | `app/config.py`, `app/assembly.py` |
 | **UI shell** | Widgets only: uploader, chat thread, sources and tool-result expanders, spinners, and error text taken verbatim from the error. | `app/ui/` |
 
 ## The ports

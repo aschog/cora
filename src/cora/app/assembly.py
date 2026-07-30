@@ -65,6 +65,7 @@ def assemble(
     retrieval: str = DEFAULT_RETRIEVAL,
     fusion_queries: int = DEFAULT_FUSION_QUERIES,
     keyword_index: KeywordStore | None = None,
+    seed: bool = True,
     debug: bool = False,
 ) -> App:
     if debug:
@@ -74,8 +75,9 @@ def assemble(
     knowledge_base = KnowledgeBase(
         embedder=embedder, retriever=retriever, keyword_index=keyword_index
     )
-    for filename, data in plugin.seed_docs:
-        knowledge_base.add_file(data, filename)
+    if seed:
+        for filename, data in plugin.seed_docs:
+            knowledge_base.add_file(data, filename)
     context_source = _context_source(
         retrieval, chat_model, knowledge_base, fusion_queries, keyword_index
     )
@@ -144,5 +146,6 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         retrieval=config.retrieval,
         fusion_queries=config.fusion_queries,
         keyword_index=keyword_index,
+        seed=False,
         debug=config.debug,
     )
