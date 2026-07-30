@@ -11,6 +11,10 @@ tiers, watch mode) stay as links — open them when relevant.
 
 ## Rules (not covered by the imports above)
 
+- **Workflow** — `docs/workflow.md` is the authoritative process for planning and
+  building features. Superpowers process skills (`brainstorming`, etc.) are welcome,
+  but they run *inside* that workflow, not instead of it: brainstorming feeds the
+  plan, it doesn't replace it.
 - **Tooling** — run everything through `uv run`; never call `python`/`pytest` directly.
   Add dependencies with `uv add` / `uv add --dev`; never edit the lockfile or use pip.
 - **Secrets** — environment variables only; never logged, never committed.
