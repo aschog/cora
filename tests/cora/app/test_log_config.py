@@ -12,9 +12,11 @@ from cora.app.log_config import (
 
 
 def test_enable_debug_logs_writes_the_lines_where_the_user_can_see_them(
-    clean_cora_logger: logging.Logger, capsys: pytest.CaptureFixture[str]
+    clean_cora_logger: logging.Logger,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
 ) -> None:
-    enable_debug_logs(True)
+    enable_debug_logs(True, log_file=tmp_path / "cora.log")
 
     logging.getLogger("cora.probe").debug("a line worth seeing")
 
