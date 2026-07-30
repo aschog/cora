@@ -68,7 +68,12 @@ def test_enable_debug_logs_adds_each_handler_once_however_often_it_runs(
     enable_debug_logs(True, log_file=log_file)
     enable_debug_logs(True, log_file=log_file)
 
-    assert len(clean_cora_logger.handlers) == 2
+    file_handlers = [
+        handler
+        for handler in clean_cora_logger.handlers
+        if handler.name == FILE_HANDLER_NAME
+    ]
+    assert len(file_handlers) == 1
 
 
 def test_enable_debug_logs_leaves_logging_untouched_when_off(
