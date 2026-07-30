@@ -173,6 +173,21 @@ def test_assemble_seeds_plugin_docs_into_the_knowledge_base() -> None:
     assert "note.md" in retriever.sources()
 
 
+def test_assemble_skips_seeding_when_seed_is_off() -> None:
+    plugin = make_plugin(seed_docs=(("note.md", b"protein supports muscle growth"),))
+    retriever = FakeRetriever()
+
+    assemble(
+        chat_model=ScriptedChatModel([ModelReply(text="ok")]),
+        embedder=FakeEmbedder(),
+        retriever=retriever,
+        plugin=plugin,
+        seed=False,
+    )
+
+    assert retriever.sources() == []
+
+
 def test_assemble_blocks_prompt_injection_before_the_model() -> None:
     app = _assemble(make_plugin())
 
@@ -248,7 +263,7 @@ def _config(db_path: Path, *, debug: bool = False) -> Config:
 
 
 @pytest.mark.integration
-def test_build_rehydrates_hybrid_across_a_restart_counting_a_prior_doc_once(
+def test_build_starts_with_an_empty_store_and_ignores_seed_docs(
     tmp_path: Path,
 ) -> None:
     config = Config(
@@ -260,10 +275,30 @@ def test_build_rehydrates_hybrid_across_a_restart_counting_a_prior_doc_once(
         max_tool_rounds=4,
         history_turns=6,
         db_path=str(tmp_path),
+    )
+
+    app = build(config)
+
+    assert app.knowledge_base.list_sources() == []
+
+
+@pytest.mark.integration
+def test_build_rehydrates_hybrid_across_a_restart_counting_a_prior_doc_once(
+    tmp_path: Path,
+) -> None:
+    config = Config(
+        api_key="k",
+        model="openai/gpt-4o-mini",
+        base_url="https://openrouter.ai/api/v1",
+        plugin_module="fixture_plugins.valid",
+        top_k=3,
+        max_tool_rounds=4,
+        history_turns=6,
+        db_path=str(tmp_path),
         retrieval="hybrid",
     )
 
-    build(config)
+    build(config).knowledge_base.add_file(b"protein builds muscle", "note.md")
     app = build(config)
 
     source = app.engine.knowledge_base
