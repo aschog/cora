@@ -23,12 +23,12 @@ scrolls. When `CORA_DEBUG` is on, also write the `cora` DEBUG stream to a file.
 
 ## TDD checklist
 
-- [ ] enabled + `log.debug(...)` → file exists under a freshly-created dir, holds the
+- [x] enabled + `log.debug(...)` → file exists under a freshly-created dir, holds the
       message with a level and timestamp.
-- [ ] disabled → no file, no directory, no file handler attached.
-- [ ] two enabled calls → exactly one file handler (not reopened).
-- [ ] enabled → stderr handler still attached alongside the file handler.
-- [ ] `build(config, debug=True)` → both handler names on the `cora` logger; update the
+- [x] disabled → no file, no directory, no file handler attached.
+- [x] two enabled calls → exactly one file handler (not reopened).
+- [x] enabled → stderr handler still attached alongside the file handler.
+- [x] `build(config, debug=True)` → both handler names on the `cora` logger; update the
       existing debug-seam build test to expect both.
 
 ## Fallout
