@@ -21,6 +21,39 @@ scrolls. When `CORA_DEBUG` is on, also write the `cora` DEBUG stream to a file.
 - `enable_debug_logs` gains an optional `log_file` param (defaults to `LOG_FILE`) so tests
   point it under `tmp_path`. Test seam only — not an env var.
 
+After `enable_debug_logs(True)` the `cora` logger holds both handlers, each with its
+own formatter:
+
+```mermaid
+classDiagram
+    class coraLogger {
+        <<Logger>>
+        name = "cora"
+        level = DEBUG
+    }
+    class streamHandler {
+        <<StreamHandler>>
+        name = "cora-debug"
+    }
+    class fileHandler {
+        <<FileHandler>>
+        name = "cora-debug-file"
+        baseFilename = ".cora/logs/cora.log"
+    }
+    class streamFormat {
+        <<Formatter>>
+        fmt = "%(name)s %(message)s"
+    }
+    class fileFormat {
+        <<Formatter>>
+        fmt = "%(asctime)s %(levelname)s %(name)s %(message)s"
+    }
+    coraLogger --> streamHandler : handlers
+    coraLogger --> fileHandler : handlers
+    streamHandler --> streamFormat : formatter
+    fileHandler --> fileFormat : formatter
+```
+
 ## TDD checklist
 
 - [x] enabled + `log.debug(...)` → file exists under a freshly-created dir, holds the
