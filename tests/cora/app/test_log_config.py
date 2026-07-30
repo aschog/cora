@@ -4,7 +4,11 @@ from pathlib import Path
 
 import pytest
 
-from cora.app.log_config import FILE_HANDLER_NAME, enable_debug_logs
+from cora.app.log_config import (
+    DEBUG_HANDLER_NAME,
+    FILE_HANDLER_NAME,
+    enable_debug_logs,
+)
 
 
 def test_enable_debug_logs_writes_the_lines_where_the_user_can_see_them(
@@ -56,7 +60,8 @@ def test_enable_debug_logs_puts_debug_handlers_on_the_cora_logger(
     enable_debug_logs(True, log_file=tmp_path / "cora.log")
 
     assert clean_cora_logger.level == logging.DEBUG
-    assert len(clean_cora_logger.handlers) == 2
+    names = {handler.name for handler in clean_cora_logger.handlers}
+    assert names == {DEBUG_HANDLER_NAME, FILE_HANDLER_NAME}
     assert list(logging.getLogger().handlers) == root_handlers
 
 
