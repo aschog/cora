@@ -6,7 +6,7 @@ import pytest
 from cora.adapters.port_logging import LoggingChatModel
 from cora.app.assembly import App, assemble, build
 from cora.app.config import Config
-from cora.app.log_config import DEBUG_HANDLER_NAME
+from cora.app.log_config import DEBUG_HANDLER_NAME, FILE_HANDLER_NAME
 from cora.core.chunk import Chunk
 from cora.core.errors import ConfigurationError, InputRejectedError
 from cora.core.ports.chat_model import ModelReply
@@ -280,8 +280,8 @@ def test_build_wires_the_debug_seam_when_config_asks_for_it(
 
     assert isinstance(app.engine.chat_model, LoggingChatModel)
     assert clean_cora_logger.level == logging.DEBUG
-    handlers = clean_cora_logger.handlers
-    assert [handler.name for handler in handlers] == [DEBUG_HANDLER_NAME]
+    names = {handler.name for handler in clean_cora_logger.handlers}
+    assert names == {DEBUG_HANDLER_NAME, FILE_HANDLER_NAME}
 
 
 @pytest.mark.integration

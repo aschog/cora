@@ -20,6 +20,8 @@ def clean_cora_logger() -> Iterator[logging.Logger]:
     logger.setLevel(logging.NOTSET)
     logger.handlers = []
     yield logger
+    for handler in logger.handlers:
+        handler.close()
     logger.setLevel(level)
     logger.handlers = handlers
 

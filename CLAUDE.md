@@ -11,8 +11,15 @@ tiers, watch mode) stay as links — open them when relevant.
 
 ## Rules (not covered by the imports above)
 
+- **Workflow** — `docs/workflow.md` is the authoritative process for planning and
+  building features. Superpowers process skills (`brainstorming`, etc.) are welcome,
+  but they run *inside* that workflow, not instead of it: brainstorming feeds the
+  plan, it doesn't replace it.
 - **Tooling** — run everything through `uv run`; never call `python`/`pytest` directly.
   Add dependencies with `uv add` / `uv add --dev`; never edit the lockfile or use pip.
 - **Secrets** — environment variables only; never logged, never committed.
 - **Commits** — plain Conventional Commits; no attribution trailers or co-author lines.
 - **Answers** — brief by default; expand only when asked.
+- **Plans** — `docs/plans/<feature>.md` stays terse, scaled to the feature. For a
+  small feature match `docs/plans/done/tool-number-formatting.md` (no
+  rejected-alternatives section); reserve longer plans for genuinely complex ones.
