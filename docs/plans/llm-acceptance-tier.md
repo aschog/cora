@@ -92,10 +92,11 @@ flowchart LR
       tool-error text, and no exception element rendered: red is the wired-up
       spec failing against a dummy key for the right reason; green is
       `uv run --env-file .env pytest -m llm` passing end-to-end.
-- [ ] Verify selection is unchanged: default, `-m integration`, and `-m e2e`
+- [x] Verify selection is unchanged: default, `-m integration`, and `-m e2e`
       runs collect the same counts as trunk; ci.yml's two `not llm` exclusions
-      still stand.
-- [ ] Update README: working invocation with `--env-file`, skip behaviour, one
+      still stand. Verified: `-m integration` 47, `-m e2e` 12 on both branch and
+      trunk; `-m llm` 0 → 1; default +3 offline unit tests only.
+- [x] Update README: working invocation with `--env-file`, skip behaviour, one
       line that the run costs real tokens.
 - [ ] Update `docs/plans/webapp-overview.md` §8: retargeting is now a dedicated
       llm-marked module keyed by the environment, not a source edit.
