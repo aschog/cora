@@ -59,11 +59,11 @@ flowchart LR
    explicit act; missing key → fixture-level skip with a clear reason.
    Rejected: auto-loading `.env` in conftest (new dependency plus ambient
    behaviour in every tier for one manual command).
-4. **Nondeterminism: one question, structural assertions.** "What is my BMI at
-   80 kg and 1.80 m?" reliably triggers `calculate_bmi` (confirmed by a manual
-   acceptance run). Assert: an answer appeared, the tool panel holds a number
-   and no tool-error text, no exception rendered. Tolerate extra tool calls and
-   absent citations; keep the 180 s timeout.
+4. **Nondeterminism: one nudged question, structural assertions.** "What is my
+   BMI at 80 kg and 1.80 m? Use your BMI tool." — the explicit tool nudge makes
+   `calculate_bmi` fire reliably across models. Assert: an answer appeared, the
+   tool panel holds a number and no tool-error text, no exception rendered.
+   Tolerate extra tool calls and absent citations; keep the 180 s timeout.
 5. **CI: no change needed.** `addopts` deselects `llm` by default and `ci.yml`
    restates `not llm` in both jobs; the checklist carries verification only.
 
@@ -98,7 +98,7 @@ flowchart LR
       trunk; `-m llm` 0 → 1; default +3 offline unit tests only.
 - [x] Update README: working invocation with `--env-file`, skip behaviour, one
       line that the run costs real tokens.
-- [ ] Update `docs/plans/webapp-overview.md` §8: retargeting is now a dedicated
+- [x] Update `docs/plans/webapp-overview.md` §8: retargeting is now a dedicated
       llm-marked module keyed by the environment, not a source edit.
 
 ## Out of scope

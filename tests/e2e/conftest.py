@@ -26,8 +26,9 @@ def stub() -> Iterator[StubLlm]:
 
 @pytest.fixture
 def credentials(stub: StubLlm) -> tuple[str, str]:
-    """The live/stub strategy: parametrise this to return real OpenRouter values
-    and every spec below runs against a real model unchanged."""
+    """The stub binding: e2e specs talk to the loopback StubLlm. The live module
+    overrides this fixture locally to return real OpenRouter values, so the same
+    browser harness runs against a real model."""
     return stub.base_url, "dummy-key"
 
 
