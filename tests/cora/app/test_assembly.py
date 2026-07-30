@@ -300,6 +300,7 @@ def test_build_rehydrates_hybrid_across_a_restart_counting_a_prior_doc_once(
 
     build(config).knowledge_base.add_file(b"protein builds muscle", "note.md")
     app = build(config)
+    app.knowledge_base.add_file(b"protein builds muscle", "note.md")  # same hash: no-op
 
     source = app.engine.knowledge_base
     assert isinstance(source, HybridContextSource)
