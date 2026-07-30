@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from cora.app.log_config import enable_debug_logs
+from cora.app.log_config import FILE_HANDLER_NAME, enable_debug_logs
 
 
 def test_enable_debug_logs_writes_the_lines_where_the_user_can_see_them(
@@ -32,6 +32,20 @@ def test_enable_debug_logs_writes_a_timestamped_line_to_a_file(
     assert "cora.probe" in written
     assert "DEBUG" in written
     assert re.search(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}", written)
+
+
+def test_enable_debug_logs_off_creates_no_file_or_directory(
+    clean_cora_logger: logging.Logger, tmp_path: Path
+) -> None:
+    log_file = tmp_path / "logs" / "cora.log"
+
+    enable_debug_logs(False, log_file=log_file)
+
+    assert not log_file.exists()
+    assert not log_file.parent.exists()
+    assert not any(
+        handler.name == FILE_HANDLER_NAME for handler in clean_cora_logger.handlers
+    )
 
 
 def test_enable_debug_logs_puts_debug_handlers_on_the_cora_logger(
