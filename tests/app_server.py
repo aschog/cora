@@ -49,7 +49,11 @@ class AppServer:
 
 @contextmanager
 def running_app(
-    *, base_url: str, api_key: str | None, db_path: Path, model: str = "stub-model"
+    *,
+    base_url: str,
+    api_key: str | None,
+    db_path: Path,
+    model: str | None = "stub-model",
 ) -> Iterator[AppServer]:
     port = find_free_port()
     # A pipe would deadlock once the app fills the buffer, and the app is chatty.
@@ -72,7 +76,7 @@ def running_app(
 
 
 def app_env(
-    base_url: str, api_key: str | None, db_path: Path, model: str
+    base_url: str, api_key: str | None, db_path: Path, model: str | None = None
 ) -> dict[str, str]:
     env = {
         name: value
@@ -80,12 +84,13 @@ def app_env(
         if not name.startswith(INHERITED_KNOBS)
     } | {
         "OPENROUTER_BASE_URL": base_url,
-        "CORA_MODEL": model,
         "CORA_DB_PATH": str(db_path),
         # A set HTTP_PROXY turns the loopback call to the stub into a connection
         # error, and the client caches its transport, so this must be set up front.
         "NO_PROXY": "127.0.0.1,localhost",
     }
+    if model is not None:
+        env["CORA_MODEL"] = model
     if api_key is None:
         env.pop("OPENROUTER_API_KEY", None)
     else:

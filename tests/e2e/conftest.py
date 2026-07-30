@@ -26,16 +26,30 @@ def stub() -> Iterator[StubLlm]:
 
 @pytest.fixture
 def credentials(stub: StubLlm) -> tuple[str, str]:
-    """The live/stub strategy: parametrise this to return real OpenRouter values
-    and every spec below runs against a real model unchanged."""
+    """The stub binding: e2e specs talk to the loopback StubLlm. The live module
+    overrides this fixture locally to return real OpenRouter values, so the same
+    browser harness runs against a real model."""
     return stub.base_url, "dummy-key"
 
 
 @pytest.fixture
-def app(page: Page, credentials: tuple[str, str], tmp_path: Path) -> Iterator[Page]:
+def model() -> str | None:
+    """The companion seam to `credentials`: stub-model is a deliberate tripwire
+    (a live call would reject it), so the live module overrides this to None and
+    the app falls back to the composition root's shipped default."""
+    return "stub-model"
+
+
+@pytest.fixture
+def app(
+    page: Page,
+    credentials: tuple[str, str],
+    model: str | None,
+    tmp_path: Path,
+) -> Iterator[Page]:
     base_url, api_key = credentials
     with running_app(
-        base_url=base_url, api_key=api_key, db_path=tmp_path / "chroma"
+        base_url=base_url, api_key=api_key, db_path=tmp_path / "chroma", model=model
     ) as server:
         page.goto(server.url)
         wait_for_rerun(page)
