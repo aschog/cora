@@ -20,3 +20,6 @@ tiers, watch mode) stay as links — open them when relevant.
 - **Secrets** — environment variables only; never logged, never committed.
 - **Commits** — plain Conventional Commits; no attribution trailers or co-author lines.
 - **Answers** — brief by default; expand only when asked.
+- **Plans** — `docs/plans/<feature>.md` stays terse, scaled to the feature. For a
+  small feature match `docs/plans/done/tool-number-formatting.md` (no
+  rejected-alternatives section); reserve longer plans for genuinely complex ones.
