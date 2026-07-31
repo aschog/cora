@@ -11,7 +11,7 @@ class Planner(Protocol):
     def plan(self, question: str, sources: tuple[str, ...]) -> QueryPlan: ...
 
 
-class DocumentIndex(Protocol):
+class SelfQueryIndex(Protocol):
     def search(
         self, query: str, k: int, metadata_filter: MetadataFilter | None = None
     ) -> list[RetrievedChunk]: ...
@@ -22,7 +22,7 @@ class DocumentIndex(Protocol):
 @dataclass(frozen=True)
 class FusionContextSource:
     planner: Planner
-    index: DocumentIndex
+    index: SelfQueryIndex
 
     def search(self, query: str, k: int) -> list[RetrievedChunk]:
         plan = self.planner.plan(query, tuple(self.index.list_sources()))

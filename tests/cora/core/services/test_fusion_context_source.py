@@ -17,7 +17,7 @@ class FakePlanner:
 
 
 @dataclass
-class FakeDocumentIndex:
+class FakeSelfQueryIndex:
     rankings: dict[str, list[RetrievedChunk]]
     sources: list[str] = field(default_factory=list)
 
@@ -44,7 +44,7 @@ def test_fusion_fans_out_across_sub_queries_and_fuses(
     only_first = make_chunk("only_first", index=1)
     only_second = make_chunk("only_second", index=2)
     planner = FakePlanner(QueryPlan(queries=("q1", "q2")))
-    index = FakeDocumentIndex(
+    index = FakeSelfQueryIndex(
         rankings={
             "q1": [
                 RetrievedChunk(chunk=shared, score=0.0),
@@ -71,7 +71,7 @@ def test_fusion_narrows_results_to_the_plan_filter(
     energy = make_chunk("e", source="energy.md", index=0)
     metadata_filter = MetadataFilter(field="source", value="protein.md")
     planner = FakePlanner(QueryPlan(queries=("q1",), metadata_filter=metadata_filter))
-    index = FakeDocumentIndex(
+    index = FakeSelfQueryIndex(
         rankings={
             "q1": [
                 RetrievedChunk(chunk=protein, score=0.0),
@@ -92,7 +92,7 @@ def test_fusion_returns_an_unfiltered_search_for_a_fallback_plan(
     protein = make_chunk("p", source="protein.md", index=0)
     energy = make_chunk("e", source="energy.md", index=0)
     planner = FakePlanner(QueryPlan(queries=("original question",)))
-    index = FakeDocumentIndex(
+    index = FakeSelfQueryIndex(
         rankings={
             "original question": [
                 RetrievedChunk(chunk=protein, score=0.0),
