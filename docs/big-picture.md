@@ -92,6 +92,35 @@ BM25 keyword one. That keyword ranking is the one bit of technology bound *below
 strategy rather than to a core port — which is why `Bm25KeywordIndex` sits outside with the
 other adapters yet the four-port count still holds.
 
+`hybrid` in one picture — the question is scored two ways over the same corpus, then the two
+rankings are fused by Reciprocal Rank Fusion:
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"system-ui","fontSize":"16px"},"flowchart":{"curve":"linear","nodeSpacing":55,"rankSpacing":60}}}%%
+flowchart TB
+  q("<b>Question</b>")
+  bm25("<b>BM25 (sparse)</b><br/>exact terms, IDs")
+  vec("<b>Vectors (dense)</b><br/>semantics, synonyms")
+  rrf("<b>Fusion (RRF)</b><br/>merge the rankings")
+  hits("<b>Ranked hits</b>")
+
+  q --- bm25
+  q --- vec
+  bm25 --- rrf
+  vec --- rrf
+  rrf --- hits
+
+  classDef grey fill:#3f3f42,stroke:#5b5b60,color:#e8e6e3;
+  classDef rust fill:#7c3a29,stroke:#a95c46,color:#f2ddce;
+  classDef teal fill:#1f5b4e,stroke:#3f8776,color:#d3efe7;
+  classDef indigo fill:#463fa6,stroke:#6b62d4,color:#e3dfff;
+  class q,hits grey;
+  class bm25 rust;
+  class vec teal;
+  class rrf indigo;
+  linkStyle default stroke:#8a8a90,stroke-width:1.5px;
+```
+
 The symmetry at the seam is the design worth pointing at: three ports are technology and
 the fourth is the domain, so an adapter and a plugin are the same kind of thing —
 something that plugs in, chosen in one place.
