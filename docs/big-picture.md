@@ -1,137 +1,155 @@
 # Big picture
 
-The one page to read first. It shows the core, the four ports where it comes apart, and the
-technology bound to each — a hexagonal (ports-and-adapters) design at the altitude you need
-to *explain* cora, not to re-derive it.
-
-Past this page, **the tests are the documentation**: once a feature lands, `tests/` is its
-living, executable spec — read them, not prose that drifts. The plans under `docs/plans/`
-are build-time history, not maintained docs; the one kept for reference is
-`docs/plans/webapp-overview.md`, the original design rationale (patterns, trade-offs,
-risks, roadmap).
+Read this page first. It shows the core of cora, its four ports, and the technology behind
+each port. The design is called *hexagonal* (also known as *ports and adapters*).
+The tests show how the code really works. The plans in `docs/plans/` show how
+the code was built, not how it works today.
 
 ## The map
 
-![cora as a hexagon: the core in the centre, its four ports on the boundary, and the shell,
-adapters and plugin outside — every dependency pointing inward.](big-picture-hexagon.svg)
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 45, "rankSpacing": 55, "curve": "basis"}}}%%
+flowchart TB
+  subgraph shell["cora.app"]
+    ui["UI<br/><i>Streamlit widgets</i>"]
+    root["Composition root<br/><i>loads plugin, binds ports, picks strategy</i>"]
+  end
 
-Read it inside-out: the core sits in the middle and owns the four ports on its boundary;
-the shell, the adapters and the plugin all live outside and depend inward. The core names
-nothing outside it. The figure's own legend explains each mark; a **port** is a narrow
-interface the core owns, and its four are the whole outward surface of the *core*.
+  subgraph core["cora.core"]
+    engine["ChatEngine"]
+    val["ValidationPipeline"]
+    retr["Retrieval strategy<br/><i>plain · RAG-Fusion · hybrid</i>"]
+    kb["KnowledgeBase"]
+    rt["ToolRuntime"]
+  end
 
-The picture deliberately compresses two components. **Ingestion** and the **plugin
-registry** are real (see the table below), folded into KnowledgeBase and the composition
-root to keep it at this altitude. Each dotted arrow runs the way the dependency really
-points — an adapter inward to the port it implements, bound in one place at startup.
+  subgraph seam["cora.core.ports"]
+    cm{{"ChatModel"}}
+    emb{{"Embedder"}}
+    ret{{"Retriever"}}
+    plug{{"Plugin"}}
+  end
 
-The **retrieval strategy** is the one node that shifts with configuration — it is the
-engine's own `ContextSource`, and `CORA_RETRIEVAL` picks which one the composition root
-binds. `plain` is KnowledgeBase itself; `advanced` wraps it in RAG-Fusion (a `QueryPlanner`
-rewrites the question, RRF merges the rankings); `hybrid` fuses its dense ranking with a
-BM25 keyword one. That keyword ranking is the one bit of technology bound *below* the
-strategy rather than to a core port — which is why `Bm25KeywordIndex` sits outside with the
-other adapters yet the four-port count still holds.
+  subgraph infra["cora.adapters · cora.plugins"]
+    orc["OpenRouterChatModel<br/><i>LangChain</i>"]
+    ste["SentenceTransformerEmbedder<br/><i>all-MiniLM-L6-v2</i>"]
+    chroma["ChromaRetriever<br/><i>Chroma</i>"]
+    bm25["Bm25KeywordIndex<br/><i>rank_bm25</i>"]
+    fit["fitness plugin"]
+  end
 
-The symmetry at the seam is the design worth pointing at: three ports are technology and
-the fourth is the domain, so an adapter and a plugin are the same kind of thing —
-something that plugs in, chosen in one place.
+  ui -->|"answer()"| engine
+  ui -->|"add_file()"| kb
+  root ==> engine
+  root ==> kb
+  root ==> plug
+  engine --> cm
+  engine --> retr
+  engine --> val
+  engine --> rt
+  retr --> kb
+  kb --> emb
+  kb --> ret
+  retr -.->|"hybrid"| bm25
+  cm -.-> orc
+  emb -.-> ste
+  ret -.-> chroma
+  plug -.-> fit
+
+  classDef port fill:#8c4b00,stroke:#d98a1f,color:#fff;
+  classDef logic fill:#134e6f,stroke:#1f78b4,color:#fff;
+  class cm,emb,ret,plug port;
+  class engine,val,retr,kb,rt logic;
+```
+
+Read the map from top to bottom. The shell (top) calls the core (middle). The core has four
+ports. When the app starts, each port is connected to one adapter (bottom). The core does not
+know which adapter it uses.
+
+| Mark | Means |
+|---|---|
+| blue box | A part of the core. It is plain Python, so a test can build it with fakes. |
+| amber hexagon | A port — a slot in the core for one kind of technology. The four ports are the only way in and out of the core. |
+| thin arrow | A call made while answering a request. |
+| thick arrow | Built by the composition root when the app starts. |
+| dotted arrow | The adapter behind a port. Change this one line to use a different technology. |
+
+**Ingestion** and the **plugin registry** are real parts of the code. To keep the map simple,
+they are shown inside KnowledgeBase and the composition root.
+
+The **retrieval strategy** is the part that changes with the setting `CORA_RETRIEVAL`. There
+are three options:
+
+- `plain` — just use KnowledgeBase.
+- `advanced` — use RAG-Fusion. A `QueryPlanner` writes the question in a few different ways, and RRF joins the results. (RRF, Reciprocal Rank Fusion, is a simple way to merge ranked lists.)
+- `hybrid` — run two searches over the same files, one by meaning (dense) and one by keywords (BM25), and join them with the same RRF. This needs no planner and no extra model call.
+
+A **port** is a fixed slot in the core for one kind of technology. The core has exactly four
+slots: one for chat, one for embedding, one for retrieval, and one for the plugin. You can put a
+different technology in a slot without changing the core.
+
+BM25 has no slot like this. Only the `hybrid` search uses it, wired straight into that search.
+So BM25 is a technology with no port. It is kept with the other adapters, and the core still has
+just four ports.
 
 ## Two calls in
 
-The shell knows exactly two methods. Everything the product does goes through one of
-them, which is why a different frontend is a rewrite of the shell and nothing else.
+The shell uses the core through two main methods: `answer()` and `add_file()` (plus
+`list_sources()` to show the file list in the sidebar).
 
-**`engine.answer(question, history=()) -> ChatResult`** — `cora/core/services/chat_engine.py`
+**`engine.answer(question, history=()) -> ChatResult`** — `core/services/chat_engine.py`
 
-1. Validate — core rules first (empty, 4000-character cap, prompt-injection guard),
-   then the plugin's. A rejection raises `InputRejectedError` and never reaches the
-   model.
-2. Retrieve — embed the question, pull the top `k` chunks (`CORA_TOP_K`, default 5).
-   `CORA_RETRIEVAL=advanced` swaps this single lookup for RAG-Fusion: a
-   `QueryPlanner` rewrites the question into sub-queries plus an optional source
-   filter, each is retrieved, and the rankings are fused (Reciprocal Rank Fusion).
-   `CORA_RETRIEVAL=hybrid` instead fuses one dense ranking with one sparse (BM25)
-   ranking over the same corpus by the same Reciprocal Rank Fusion — no planner, no
-   extra model call. The keyword index lives only in `cora.adapters`, rehydrated
-   from Chroma at startup and kept fresh by a fan-out on upload.
-3. Prompt — the plugin's system prompt, then the chunks numbered `[1]`…`[n]` with the
-   citation rule appended, then the last `CORA_HISTORY_TURNS` turns the shell passed in
-   (default 20; `0` switches memory off), then the question. Validation and retrieval
-   above see the question alone, never the history.
-4. Tool loop, at most `CORA_MAX_TOOL_ROUNDS` (default 8) rounds — the model asks for
-   tools, ToolRuntime runs each, results go back as `tool` messages, repeat until a reply
-   carries no tool calls.
-5. Return the answer, the sources the answer actually cites — the deduplicated list,
-   narrowed to the bracketed numbers that appear in the reply — and every tool result.
-   Running the loop dry raises `ToolLoopLimitError`.
+1. **Validate** — check the question against the core rules (not empty, at most 4000 characters, no prompt-injection), then the plugin's rules. If a rule says no, raise `InputRejectedError`. The model never sees the question.
+2. **Retrieve** — find the best `k` text chunks (small pieces of your documents; `CORA_TOP_K`, default 5) using the retrieval strategy above.
+3. **Prompt** — build the message for the model in this order: the plugin's system prompt, the chunks numbered `[1]`…`[n]` with the rule to cite them, the last `CORA_HISTORY_TURNS` turns of chat (default 20; `0` means no memory), and last the question. Steps 1 and 2 use the question only, never the chat history.
+4. **Tool loop** — let the model call tools, at most `CORA_MAX_TOOL_ROUNDS` times (default 8). If it never finishes, raise `ToolLoopLimitError`.
+5. **Return** — the answer, the sources it really used (only the `[n]` numbers that appear in the reply, with duplicates removed), and every tool result.
 
-**`kb.add_file(data, filename) -> int`** — `cora/core/services/knowledge_base.py`
+**`kb.add_file(data, filename) -> int`** — `core/services/knowledge_base.py`
 
-1. Hash the bytes with SHA-256. If the store already holds that hash, return `0` —
-   re-uploading the same file is a no-op, not a duplicate.
-2. Ingest — extension must be `.txt`, `.md` or `.pdf`; at most 10 MB; text must survive
-   cleaning non-empty. Each failure raises its own `IngestionError`.
-3. Chunk — 1000 characters with 150 overlap, split at the coarsest boundary that fits:
-   paragraph, line, space, then bare characters.
-4. Embed the chunks and store them with their provenance (source, index, offset, file
-   hash). The return value is the chunk count the UI reports.
+1. **Dedupe** — make a SHA-256 hash of the file. If the store already has this hash, stop and return `0`.
+2. **Ingest** — the file must be `.txt`, `.md`, or `.pdf`, at most 10 MB, and not empty after cleaning. Each problem raises its own `IngestionError`.
+3. **Chunk** — cut the text into pieces of 1000 characters that overlap by 150. Cut at the largest natural break that fits: paragraph, then line, then space, then single character.
+4. **Embed and store** — turn each chunk into a vector (a list of numbers) and save it with its origin (source, index, offset, file hash). Return the number of chunks.
 
 ## The components
 
-Nine, each with one job. The map draws seven; the two marked *folded* live in the caller's
-box.
+Nine parts, each with one job. Seven are on the map; two are marked *folded* because the map
+shows them inside another part.
 
 | Component | Job | Where |
 |---|---|---|
-| **ChatEngine** | The single use case, and the only component that sees all four ports. | `core/services/chat_engine.py` |
-| **KnowledgeBase** | Facade over ingest → embed → store, plus search and the source list. Owns the re-upload dedupe. | `core/services/knowledge_base.py` |
-| **Ingestion** *(folded into KnowledgeBase)* | Bytes to clean text to overlapping chunks with provenance. Rejects the wrong type, the oversized, the empty. | `core/services/ingestion.py`, `loaders`, `cleaning`, `chunker` |
-| **Retrieval strategy** | What the engine retrieves through. `plain` is KnowledgeBase itself; `advanced` (`FusionContextSource` + `QueryPlanner`) and `hybrid` (`HybridContextSource`) wrap it, both fusing rankings by Reciprocal Rank Fusion. | `core/services/fusion_context_source.py`, `hybrid_context_source.py`, `query_planner.py`, `rank_fusion.py` |
-| **ValidationPipeline** | An ordered chain: core rules, then the plugin's. Adding a guard means adding a rule, not editing a component. | `core/services/validation.py` |
-| **ToolRuntime** | Find the tool, JSON-Schema-check the arguments, run it, turn every outcome — including a crash — into a `ToolResult`. | `core/services/tool_runtime.py` |
-| **Plugin registry** *(folded into the composition root)* | Import a plugin by module path and check the bundle before the app starts: prompt present, tool names unique, every schema valid. | `core/services/plugin_registry.py` |
-| **Composition root** | The only place that names a real adapter. Reads the environment, loads the plugin, hands back an `App`. | `app/config.py`, `app/assembly.py` |
-| **UI shell** | Widgets only: uploader, chat thread, sources and tool-result expanders, spinners, and error text taken verbatim from the error. | `app/ui/` |
+| **ChatEngine** | The one main use case. It runs the steps in order: validate, retrieve, prompt, tool loop. It gets its helpers as inputs. | `core/services/chat_engine.py` |
+| **KnowledgeBase** | A simple front for ingest, embed, and store. It also does search, lists sources, and skips files already uploaded. | `core/services/knowledge_base.py` |
+| **Ingestion** *(folded)* | Turns bytes into clean text, then into overlapping chunks with their origin. Rejects the wrong type, too large, or empty. | `core/services/ingestion.py`, `loaders`, `cleaning`, `chunker` |
+| **Retrieval strategy** | How the engine gets its chunks: `plain` (KnowledgeBase), `advanced`, or `hybrid`. Both wrappers merge results with RRF. | `fusion_context_source.py`, `hybrid_context_source.py`, `query_planner.py`, `rank_fusion.py` |
+| **ValidationPipeline** | A list of rules run in order: core rules first, then the plugin's. To add a check, add a rule; you do not change the code. | `core/services/validation.py` |
+| **ToolRuntime** | Finds the tool, checks the arguments against its JSON Schema, runs it, and turns every result (even a crash) into a `ToolResult`. | `core/services/tool_runtime.py` |
+| **Plugin registry** *(folded)* | Loads a plugin by its module path and checks it before the app starts: the prompt exists, tool names are unique, schemas are valid. | `core/services/plugin_registry.py` |
+| **Composition root** | The only place that names a real adapter. It reads the settings, loads the plugin, picks the strategy, and returns an `App`. | `app/config.py`, `app/assembly.py`, `app/retrieval.py` |
+| **UI shell** | Only widgets: the uploader, the chat, the sources and tool-result boxes, and error text shown exactly as the error gives it. | `app/ui/` |
 
 ## The ports
 
-All four are Protocols in `cora.core.ports`. Three are technology; the fourth is the
-domain.
+The four ports are the only outward surface of the core. Three of them are **Protocols** (the
+technology). The fourth, **Plugin**, is a frozen **dataclass** (the domain — the topic the app
+is about). So an adapter and a plugin work the same way: each one is chosen in one place.
 
 | Port | Surface | Bound at startup to |
 |---|---|---|
-| **ChatModel** | `complete(messages, tools) -> ModelReply` | `OpenRouterChatModel` — the one file that imports LangChain, against OpenRouter's OpenAI-compatible endpoint (`CORA_MODEL`). |
-| **Embedder** | `embed(texts) -> list[list[float]]` | `SentenceTransformerEmbedder` — all-MiniLM-L6-v2, local and free, loaded lazily so the test loop stays fast. |
-| **Retriever** | `add(chunks, vectors, file_hash)`, `query(vector, k, filter)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a persistent embedded collection with cosine distance. No server to run. The optional `filter` narrows a query to matching metadata (self-query). |
-| **Plugin** | data only: `system_prompt`, `tools`, `validation_rules`, `seed_docs` | `cora.plugins.fitness` — swap it with `CORA_PLUGIN`. A frozen dataclass, not a base class to subclass. |
+| **ChatModel** | `complete(messages, tools) -> ModelReply` | `OpenRouterChatModel` — the only file that uses LangChain. It talks to OpenRouter, an OpenAI-style endpoint set by `CORA_MODEL`. |
+| **Embedder** | `embed(texts) -> list[list[float]]` | `SentenceTransformerEmbedder` — the all-MiniLM-L6-v2 model. It runs on your machine and loads only when first used. |
+| **Retriever** | `add(chunks, vectors, file_hash)`, `query(query_vector, k, metadata_filter=None)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a saved, built-in database that uses cosine distance. The optional filter limits a search to matching metadata (self-query). |
+| **Plugin** | data only: `system_prompt`, `tools`, `validation_rules`, `seed_docs` | `cora.plugins.fitness` — change it with `CORA_PLUGIN`. It is a frozen dataclass, not a class you subclass. |
 
-With `CORA_DEBUG=1` the three technology ports are each bound to a thin logging
-decorator (`cora.adapters.port_logging`) wrapping the real adapter, so one
-truncated line per call shows what crossed the boundary. Nothing else changes:
-the core, the plugins and the UI never learn the difference.
+Set `CORA_DEBUG=1` to wrap the three technology ports in a logger (`cora.adapters.port_logging`).
+It prints one short line each time data crosses a port. The core, the plugins, and the UI do
+not notice any change.
 
-## Claims, and what backs them
+## Backed by tests
 
-Each of these is checked by something, not just asserted in a document.
-
-- **The core cannot reach a framework.** `tests/cora/test_architecture.py` parses every
-  module under `cora.core` and fails on an import of LangChain, Chroma,
-  sentence-transformers, Streamlit, or any outer layer. A companion test plants a
-  violation to prove the detector itself catches it.
-- **Streamlit exists in one directory.** The same test walks the whole distribution and
-  asserts nothing outside `cora/app/ui` imports it — which is what makes "replaceable
-  frontend" a fact rather than an intention.
-- **The engine does not depend on its own collaborators.** `chat_engine.py` declares
-  three one-method Protocols of its own — `ContextSource`, `InputValidator`,
-  `ToolExecutor` — and the composition root satisfies them with KnowledgeBase,
-  ValidationPipeline and ToolRuntime. Every collaborator is a constructor argument.
-- **A new domain needs zero core changes.** A plugin is a frozen `Plugin` dataclass: a
-  prompt, some tools, some rules, optional seed documents. Point `CORA_PLUGIN` at another
-  module and the app changes domain. The core never contains the word *fitness*.
-- **A broken tool cannot break the chat.** ToolRuntime catches unknown names, schema
-  violations, exceptions and empty returns, handing each back as a `ToolResult` carrying
-  an error string. The engine passes that to the model, which gets to recover.
-- **No stack trace reaches a user.** One hierarchy under `CoreError`, every instance
-  carrying a `user_message` written for a person; the shell renders that string and
-  nothing else. Runaway tool loops are capped and come back as a friendly apology.
+- **The core cannot use a framework.** A test reads every `cora.core` file. If one imports LangChain, Chroma, sentence-transformers, Streamlit, or any outer layer, the test fails. A fake bad import is added on purpose to prove the test catches it.
+- **Streamlit is used in one folder only.** No file outside `cora/app/ui` may import it. This is why you can really replace the user interface.
+- **The engine does not depend on any real helper.** It defines its own small Protocols (`ContextSource`, `InputValidator`, `ToolExecutor`). Every helper is passed in when the engine is built.
+- **A new topic needs no change to the core.** A plugin is a frozen dataclass. Point `CORA_PLUGIN` at another plugin and the topic changes. The word *fitness* never appears in the core.
+- **A broken tool cannot break the chat, and users never see a stack trace.** ToolRuntime turns every tool failure into a `ToolResult` with an error message. Every `CoreError` has a message written for a person, and a tool loop that runs too long returns a friendly apology.
