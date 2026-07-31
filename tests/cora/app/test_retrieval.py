@@ -7,6 +7,7 @@ from cora.app.retrieval import (
 )
 from cora.core.errors import ConfigurationError
 from cora.core.ports.chat_model import ModelReply
+from cora.core.services.fusion_context_source import FusionContextSource
 from cora.core.services.knowledge_base import KnowledgeBase
 from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel
 
@@ -35,6 +36,18 @@ def test_plain_mode_returns_the_knowledge_base_itself() -> None:
     )
 
     assert source is kb
+
+
+def test_advanced_mode_wraps_the_knowledge_base_in_fusion() -> None:
+    source = build_context_source(
+        "advanced",
+        chat_model=_chat(),
+        knowledge_base=_kb(),
+        keyword_index=None,
+        fusion_queries=3,
+    )
+
+    assert isinstance(source, FusionContextSource)
 
 
 def test_hybrid_without_a_keyword_index_is_rejected() -> None:
