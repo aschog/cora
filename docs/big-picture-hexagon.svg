@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 620" font-family="'Segoe UI', system-ui, -apple-system, sans-serif">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#475569"/>
+    </marker>
+    <marker id="arrowThick" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748b"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1000" height="620" fill="#f8fafc"/>
+
+  <!-- the core hexagon -->
+  <polygon points="385,150 575,150 670,300 575,450 385,450 290,300"
+           fill="#e8f1fb" stroke="#1f78b4" stroke-width="2.5"/>
+  <text x="480" y="402" text-anchor="middle" font-size="12" fill="#1f78b4" font-style="italic">cora.core</text>
+
+  <!-- core components -->
+  <g font-size="12.5" fill="#ffffff" text-anchor="middle">
+    <rect x="405" y="164" width="150" height="30" rx="5" fill="#134e6f"/>
+    <text x="480" y="183">ChatEngine</text>
+    <rect x="405" y="204" width="150" height="30" rx="5" fill="#134e6f"/>
+    <text x="480" y="223">ValidationPipeline</text>
+    <rect x="405" y="244" width="150" height="30" rx="5" fill="#134e6f"/>
+    <text x="480" y="263">Retrieval strategy</text>
+    <rect x="405" y="284" width="150" height="30" rx="5" fill="#134e6f"/>
+    <text x="480" y="303">KnowledgeBase</text>
+    <rect x="405" y="324" width="150" height="30" rx="5" fill="#134e6f"/>
+    <text x="480" y="343">ToolRuntime</text>
+  </g>
+
+  <!-- ports on the boundary -->
+  <g font-size="12" fill="#ffffff" text-anchor="middle">
+    <rect x="430" y="135" width="100" height="30" rx="15" fill="#8c4b00" stroke="#d98a1f" stroke-width="1.5"/>
+    <text x="480" y="154">Plugin</text>
+    <rect x="565" y="210" width="100" height="30" rx="15" fill="#8c4b00" stroke="#d98a1f" stroke-width="1.5"/>
+    <text x="615" y="229">ChatModel</text>
+    <rect x="610" y="285" width="100" height="30" rx="15" fill="#8c4b00" stroke="#d98a1f" stroke-width="1.5"/>
+    <text x="660" y="304">Embedder</text>
+    <rect x="565" y="360" width="100" height="30" rx="15" fill="#8c4b00" stroke="#d98a1f" stroke-width="1.5"/>
+    <text x="615" y="379">Retriever</text>
+  </g>
+
+  <!-- driven adapters -->
+  <g font-size="12" fill="#1f2937" text-anchor="middle">
+    <rect x="405" y="48" width="150" height="36" rx="6" fill="#e2e8f0" stroke="#94a3b8"/>
+    <text x="480" y="65">fitness plugin</text>
+    <text x="480" y="79" font-size="10.5" fill="#475569">prompt · tools · rules · seeds</text>
+
+    <rect x="725" y="188" width="205" height="40" rx="6" fill="#e2e8f0" stroke="#94a3b8"/>
+    <text x="827" y="205">OpenRouterChatModel</text>
+    <text x="827" y="220" font-size="10.5" fill="#475569">LangChain</text>
+
+    <rect x="725" y="280" width="235" height="40" rx="6" fill="#e2e8f0" stroke="#94a3b8"/>
+    <text x="842" y="297">SentenceTransformerEmbedder</text>
+    <text x="842" y="312" font-size="10.5" fill="#475569">all-MiniLM-L6-v2, local</text>
+
+    <rect x="725" y="355" width="205" height="40" rx="6" fill="#e2e8f0" stroke="#94a3b8"/>
+    <text x="827" y="372">ChromaRetriever</text>
+    <text x="827" y="387" font-size="10.5" fill="#475569">Chroma, persistent</text>
+  </g>
+
+  <!-- dotted bindings: adapter implements the port it points at (inward) -->
+  <g stroke="#475569" stroke-width="1.6" stroke-dasharray="4 3" fill="none" marker-end="url(#arrow)">
+    <line x1="480" y1="84" x2="480" y2="133"/>
+    <line x1="725" y1="211" x2="667" y2="223"/>
+    <line x1="725" y1="300" x2="712" y2="300"/>
+    <line x1="725" y1="372" x2="667" y2="377"/>
+  </g>
+
+  <!-- driving side: the shell calls in -->
+  <g font-size="12" fill="#1e3a5f" text-anchor="middle">
+    <rect x="40" y="235" width="130" height="40" rx="6" fill="#dbeafe" stroke="#60a5fa"/>
+    <text x="105" y="252">UI</text>
+    <text x="105" y="267" font-size="10.5" fill="#3b5573">Streamlit widgets</text>
+  </g>
+  <g stroke="#475569" stroke-width="1.8" fill="none" marker-end="url(#arrow)">
+    <path d="M170,248 C 260,220 330,190 403,180"/>
+    <path d="M170,262 C 260,290 330,300 403,299"/>
+  </g>
+  <g font-size="11" fill="#334155" text-anchor="middle" font-style="italic">
+    <text x="285" y="192">answer()</text>
+    <text x="285" y="315">add_file()</text>
+  </g>
+
+  <!-- composition root -->
+  <g font-size="11.5" fill="#1e3a5f" text-anchor="middle">
+    <rect x="30" y="360" width="160" height="44" rx="6" fill="#dbeafe" stroke="#60a5fa"/>
+    <text x="110" y="379">Composition root</text>
+    <text x="110" y="394" font-size="10.5" fill="#3b5573">binds ports → adapters</text>
+  </g>
+  <path d="M190,378 C 250,368 285,355 322,340" stroke="#64748b" stroke-width="3" fill="none" marker-end="url(#arrowThick)"/>
+
+  <!-- BM25: the answer to "why no port" -->
+  <g font-size="11.5" fill="#1f2937" text-anchor="middle">
+    <rect x="35" y="520" width="210" height="44" rx="6" fill="#e2e8f0" stroke="#94a3b8"/>
+    <text x="140" y="539">Bm25KeywordIndex</text>
+    <text x="140" y="554" font-size="10.5" fill="#475569">rank_bm25, in-memory</text>
+  </g>
+  <path d="M245,528 C 330,470 360,330 403,262" stroke="#475569" stroke-width="1.6" stroke-dasharray="4 3" fill="none" marker-end="url(#arrow)"/>
+  <g font-size="10.5" fill="#b45309" text-anchor="start" font-style="italic">
+    <text x="60" y="474">hybrid only — bound to the</text>
+    <text x="60" y="488">strategy, not a port</text>
+  </g>
+
+  <!-- legend -->
+  <g font-size="11" fill="#334155" text-anchor="start">
+    <rect x="705" y="470" width="270" height="120" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+    <rect x="720" y="484" width="20" height="13" rx="6" fill="#8c4b00" stroke="#d98a1f"/>
+    <text x="748" y="494">port — an interface the core owns</text>
+    <rect x="720" y="504" width="20" height="13" rx="3" fill="#134e6f"/>
+    <text x="748" y="514">core component (pure Python)</text>
+    <rect x="720" y="524" width="20" height="13" rx="3" fill="#e2e8f0" stroke="#94a3b8"/>
+    <text x="748" y="534">adapter — the bound technology</text>
+    <line x1="720" y1="550" x2="740" y2="550" stroke="#475569" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#arrow)"/>
+    <text x="748" y="554">implements / bound at startup (inward)</text>
+    <line x1="720" y1="570" x2="740" y2="570" stroke="#475569" stroke-width="1.8" marker-end="url(#arrow)"/>
+    <text x="748" y="574">call at request time</text>
+  </g>
+</svg>

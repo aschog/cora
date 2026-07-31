@@ -1,87 +1,37 @@
 # Big picture
 
-One map instead of five. It shows the four layers, the components that do the work, and
-the four ports where the system comes apart — at the altitude you need to *explain* cora,
-not to re-derive it. For the reasoning behind the design (patterns, trade-offs, risks,
-roadmap) read `docs/plans/webapp-overview.md`; this page replaces its diagrams for
-everyday use.
+The one page to read first. It shows the core, the four ports where it comes apart, and the
+technology bound to each — a hexagonal (ports-and-adapters) design at the altitude you need
+to *explain* cora, not to re-derive it.
+
+Past this page, **the tests are the documentation**: once a feature lands, `tests/` is its
+living, executable spec — read them, not prose that drifts. The plans under `docs/plans/`
+are build-time history, not maintained docs; the one kept for reference is
+`docs/plans/webapp-overview.md`, the original design rationale (patterns, trade-offs,
+risks, roadmap).
 
 ## The map
 
-```mermaid
-%%{init: {"flowchart": {"nodeSpacing": 45, "rankSpacing": 60, "diagramPadding": 14, "curve": "basis"}}}%%
-flowchart TB
-  subgraph shell["cora.app"]
-    ui["UI<br/><i>Streamlit widgets only</i>"]
-    root["Composition root<br/><i>reads env, loads the plugin,<br/>binds the adapters</i>"]
-  end
+![cora as a hexagon: the core in the centre, its four ports on the boundary, and the shell,
+adapters and plugin outside — every dependency pointing inward.](big-picture-hexagon.svg)
 
-  subgraph core["cora.core"]
-    engine["ChatEngine<br/><i>validate, retrieve,<br/>prompt, tool loop</i>"]
-    val["ValidationPipeline<br/><i>core rules, then plugin rules</i>"]
-    kb["KnowledgeBase<br/><i>dedupe, ingest, embed, store</i>"]
-    rt["ToolRuntime<br/><i>schema-check, run,<br/>failure as data</i>"]
-  end
+Read it inside-out: the core sits in the middle and owns the four ports on its boundary;
+the shell, the adapters and the plugin all live outside and depend inward. The core names
+nothing outside it. The figure's own legend explains each mark; a **port** is a narrow
+interface the core owns, and its four are the whole outward surface of the *core*.
 
-  subgraph seam["cora.core.ports"]
-    cm{{"ChatModel"}}
-    emb{{"Embedder"}}
-    ret{{"Retriever"}}
-    plug{{"Plugin"}}
-  end
+The picture deliberately compresses two components. **Ingestion** and the **plugin
+registry** are real (see the table below), folded into KnowledgeBase and the composition
+root to keep it at this altitude. Each dotted arrow runs the way the dependency really
+points — an adapter inward to the port it implements, bound in one place at startup.
 
-  subgraph infra["cora.adapters"]
-    orc["OpenRouterChatModel<br/><i>LangChain</i>"]
-    ste["SentenceTransformerEmbedder<br/><i>all-MiniLM-L6-v2, local</i>"]
-    chroma["ChromaRetriever<br/><i>Chroma, persistent</i>"]
-  end
-
-  subgraph domain["cora.plugins"]
-    fit["fitness<br/><i>prompt, 3 calculators,<br/>safety rule, seed docs</i>"]
-  end
-
-  ui -->|"answer()"| engine
-  ui -->|"add_file()"| kb
-  root ==> engine
-  root ==> kb
-
-  engine --> val
-  engine --> kb
-  engine --> rt
-  engine --> cm
-  engine --> plug
-  val --> plug
-  rt --> plug
-  kb --> emb
-  kb --> ret
-
-  cm -.->|"bound at startup"| orc
-  emb -.-> ste
-  ret -.-> chroma
-  plug -.-> fit
-
-  classDef port fill:#8c4b00,stroke:#d98a1f,color:#fff;
-  classDef logic fill:#134e6f,stroke:#1f78b4,color:#fff;
-  class cm,emb,ret,plug port;
-  class engine,kb,val,rt logic;
-```
-
-Read it top to bottom: the shell drives the core, the core owns the ports, technology
-hangs off the bottom. Nothing below the amber band is named anywhere above it.
-
-| Mark | Means |
-|---|---|
-| blue box | A core component — pure Python, so a unit test builds it with fakes. |
-| amber hexagon | A port: a narrow interface the core owns. Four in total, and that is the whole outward surface. |
-| thin arrow | Calls, at request time. |
-| thick arrow | Constructed by the composition root at startup. |
-| dotted arrow | The implementation this port is bound to — the one line you change to swap technology. |
-
-Two things the map deliberately compresses. **Ingestion** and the **plugin registry** are
-real components (see the table below) folded into KnowledgeBase and the composition root
-to keep the picture at this altitude. And the dotted arrows point *port → adapter*, which
-is the startup binding, not the import direction — adapters import the port module, but
-drawing that inward arrow puts them above the seam and destroys the layering.
+The **retrieval strategy** is the one node that shifts with configuration — it is the
+engine's own `ContextSource`, and `CORA_RETRIEVAL` picks which one the composition root
+binds. `plain` is KnowledgeBase itself; `advanced` wraps it in RAG-Fusion (a `QueryPlanner`
+rewrites the question, RRF merges the rankings); `hybrid` fuses its dense ranking with a
+BM25 keyword one. That keyword ranking is the one bit of technology bound *below* the
+strategy rather than to a core port — which is why `Bm25KeywordIndex` sits outside with the
+other adapters yet the four-port count still holds.
 
 The symmetry at the seam is the design worth pointing at: three ports are technology and
 the fourth is the domain, so an adapter and a plugin are the same kind of thing —
@@ -112,8 +62,9 @@ them, which is why a different frontend is a rewrite of the shell and nothing el
 4. Tool loop, at most `CORA_MAX_TOOL_ROUNDS` (default 8) rounds — the model asks for
    tools, ToolRuntime runs each, results go back as `tool` messages, repeat until a reply
    carries no tool calls.
-5. Return the answer, the deduplicated source list, and every tool result. Running the
-   loop dry raises `ToolLoopLimitError`.
+5. Return the answer, the sources the answer actually cites — the deduplicated list,
+   narrowed to the bracketed numbers that appear in the reply — and every tool result.
+   Running the loop dry raises `ToolLoopLimitError`.
 
 **`kb.add_file(data, filename) -> int`** — `cora/core/services/knowledge_base.py`
 
@@ -128,7 +79,7 @@ them, which is why a different frontend is a rewrite of the shell and nothing el
 
 ## The components
 
-Eight, each with one job. The map draws six; the two marked *folded* live in the caller's
+Nine, each with one job. The map draws seven; the two marked *folded* live in the caller's
 box.
 
 | Component | Job | Where |
@@ -136,6 +87,7 @@ box.
 | **ChatEngine** | The single use case, and the only component that sees all four ports. | `core/services/chat_engine.py` |
 | **KnowledgeBase** | Facade over ingest → embed → store, plus search and the source list. Owns the re-upload dedupe. | `core/services/knowledge_base.py` |
 | **Ingestion** *(folded into KnowledgeBase)* | Bytes to clean text to overlapping chunks with provenance. Rejects the wrong type, the oversized, the empty. | `core/services/ingestion.py`, `loaders`, `cleaning`, `chunker` |
+| **Retrieval strategy** | What the engine retrieves through. `plain` is KnowledgeBase itself; `advanced` (`FusionContextSource` + `QueryPlanner`) and `hybrid` (`HybridContextSource`) wrap it, both fusing rankings by Reciprocal Rank Fusion. | `core/services/fusion_context_source.py`, `hybrid_context_source.py`, `query_planner.py`, `rank_fusion.py` |
 | **ValidationPipeline** | An ordered chain: core rules, then the plugin's. Adding a guard means adding a rule, not editing a component. | `core/services/validation.py` |
 | **ToolRuntime** | Find the tool, JSON-Schema-check the arguments, run it, turn every outcome — including a crash — into a `ToolResult`. | `core/services/tool_runtime.py` |
 | **Plugin registry** *(folded into the composition root)* | Import a plugin by module path and check the bundle before the app starts: prompt present, tool names unique, every schema valid. | `core/services/plugin_registry.py` |

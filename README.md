@@ -4,7 +4,8 @@ A minimal "chat with your documents" web app. The core is
 domain-agnostic RAG with tool calling; domain specialisation (reference domain:
 fitness coach) is provided exclusively through plugins.
 
-- Architecture: [`docs/plans/webapp-overview.md`](docs/plans/webapp-overview.md)
+- Architecture (start here): [`docs/big-picture.md`](docs/big-picture.md) — the brief map;
+  links on to the design rationale
 - Development workflow (TDD): [`docs/workflow.md`](docs/workflow.md)
 - Assignment spec: [`docs/spec.md`](docs/spec.md) (original brief: [`docs/assignment.md`](docs/assignment.md))
 
