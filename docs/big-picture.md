@@ -12,18 +12,77 @@ risks, roadmap).
 
 ## The map
 
-![cora as a hexagon: the core in the centre, its four ports on the boundary, and the shell,
-adapters and plugin outside — every dependency pointing inward.](big-picture-hexagon.svg)
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 45, "rankSpacing": 55, "curve": "basis"}}}%%
+flowchart TB
+  subgraph shell["cora.app"]
+    ui["UI<br/><i>Streamlit widgets</i>"]
+    root["Composition root<br/><i>loads plugin, binds ports, picks strategy</i>"]
+  end
 
-Read it inside-out: the core sits in the middle and owns the four ports on its boundary;
-the shell, the adapters and the plugin all live outside and depend inward. The core names
-nothing outside it. The figure's own legend explains each mark; a **port** is a narrow
-interface the core owns, and its four are the whole outward surface of the *core*.
+  subgraph core["cora.core"]
+    engine["ChatEngine"]
+    val["ValidationPipeline"]
+    retr["Retrieval strategy<br/><i>plain · RAG-Fusion · hybrid</i>"]
+    kb["KnowledgeBase"]
+    rt["ToolRuntime"]
+  end
 
-The picture deliberately compresses two components. **Ingestion** and the **plugin
-registry** are real (see the table below), folded into KnowledgeBase and the composition
-root to keep it at this altitude. Each dotted arrow runs the way the dependency really
-points — an adapter inward to the port it implements, bound in one place at startup.
+  subgraph seam["cora.core.ports"]
+    cm{{"ChatModel"}}
+    emb{{"Embedder"}}
+    ret{{"Retriever"}}
+    plug{{"Plugin"}}
+  end
+
+  subgraph infra["cora.adapters · cora.plugins"]
+    orc["OpenRouterChatModel<br/><i>LangChain</i>"]
+    ste["SentenceTransformerEmbedder<br/><i>all-MiniLM-L6-v2</i>"]
+    chroma["ChromaRetriever<br/><i>Chroma</i>"]
+    bm25["Bm25KeywordIndex<br/><i>rank_bm25</i>"]
+    fit["fitness plugin"]
+  end
+
+  ui -->|"answer()"| engine
+  ui -->|"add_file()"| kb
+  root ==> engine
+  root ==> kb
+  root --> plug
+  engine --> cm
+  engine --> retr
+  engine --> val
+  engine --> rt
+  retr --> kb
+  kb --> emb
+  kb --> ret
+  retr -.->|"hybrid"| bm25
+  cm -.-> orc
+  emb -.-> ste
+  ret -.-> chroma
+  plug -.-> fit
+
+  classDef port fill:#8c4b00,stroke:#d98a1f,color:#fff;
+  classDef logic fill:#134e6f,stroke:#1f78b4,color:#fff;
+  class cm,emb,ret,plug port;
+  class engine,val,retr,kb,rt logic;
+```
+
+Read it top to bottom: the shell drives the core, the core owns its four ports at the seam,
+and each port is bound at startup to one adapter below it. The core names nothing beneath the
+seam — a **port** is a narrow interface the core owns, and its four are the whole outward
+surface of the *core*.
+
+| Mark | Means |
+|---|---|
+| blue box | A core component — pure Python, so a unit test builds it with fakes. |
+| amber hexagon | A port: a narrow interface the core owns. Four in total — the whole outward surface of the *core*. |
+| thin arrow | A call, at request time. |
+| thick arrow | Constructed by the composition root at startup. |
+| dotted arrow | The adapter this port is bound to — the one line you change to swap technology. |
+
+The map deliberately compresses two components. **Ingestion** and the **plugin registry**
+are real (see the table below), folded into KnowledgeBase and the composition root to keep
+it at this altitude.
 
 The **retrieval strategy** is the one node that shifts with configuration — it is the
 engine's own `ContextSource`, and `CORA_RETRIEVAL` picks which one the composition root
@@ -32,6 +91,35 @@ rewrites the question, RRF merges the rankings); `hybrid` fuses its dense rankin
 BM25 keyword one. That keyword ranking is the one bit of technology bound *below* the
 strategy rather than to a core port — which is why `Bm25KeywordIndex` sits outside with the
 other adapters yet the four-port count still holds.
+
+`hybrid` in one picture — the question is scored two ways over the same corpus, then the two
+rankings are fused by Reciprocal Rank Fusion:
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"fontFamily":"system-ui","fontSize":"16px"},"flowchart":{"curve":"linear","nodeSpacing":55,"rankSpacing":60}}}%%
+flowchart TB
+  q("<b>Question</b>")
+  bm25("<b>BM25 (sparse)</b><br/>exact terms, IDs")
+  vec("<b>Vectors (dense)</b><br/>semantics, synonyms")
+  rrf("<b>Fusion (RRF)</b><br/>merge the rankings")
+  hits("<b>Ranked hits</b>")
+
+  q --- bm25
+  q --- vec
+  bm25 --- rrf
+  vec --- rrf
+  rrf --- hits
+
+  classDef grey fill:#3f3f42,stroke:#5b5b60,color:#e8e6e3;
+  classDef rust fill:#7c3a29,stroke:#a95c46,color:#f2ddce;
+  classDef teal fill:#1f5b4e,stroke:#3f8776,color:#d3efe7;
+  classDef indigo fill:#463fa6,stroke:#6b62d4,color:#e3dfff;
+  class q,hits grey;
+  class bm25 rust;
+  class vec teal;
+  class rrf indigo;
+  linkStyle default stroke:#8a8a90,stroke-width:1.5px;
+```
 
 The symmetry at the seam is the design worth pointing at: three ports are technology and
 the fourth is the domain, so an adapter and a plugin are the same kind of thing —
@@ -91,7 +179,7 @@ box.
 | **ValidationPipeline** | An ordered chain: core rules, then the plugin's. Adding a guard means adding a rule, not editing a component. | `core/services/validation.py` |
 | **ToolRuntime** | Find the tool, JSON-Schema-check the arguments, run it, turn every outcome — including a crash — into a `ToolResult`. | `core/services/tool_runtime.py` |
 | **Plugin registry** *(folded into the composition root)* | Import a plugin by module path and check the bundle before the app starts: prompt present, tool names unique, every schema valid. | `core/services/plugin_registry.py` |
-| **Composition root** | The only place that names a real adapter. Reads the environment, loads the plugin, hands back an `App`. | `app/config.py`, `app/assembly.py` |
+| **Composition root** | The only place that names a real adapter. Reads the environment, loads the plugin, picks the retrieval strategy, hands back an `App`. | `app/config.py`, `app/assembly.py`, `app/retrieval.py` |
 | **UI shell** | Widgets only: uploader, chat thread, sources and tool-result expanders, spinners, and error text taken verbatim from the error. | `app/ui/` |
 
 ## The ports
