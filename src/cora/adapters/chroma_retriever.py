@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from functools import wraps
 from typing import cast
 
@@ -20,6 +20,15 @@ def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
             raise RetrievalError() from error
 
     return wrapper
+
+
+def _to_chunk(document: object, metadata: Mapping[str, object]) -> Chunk:
+    return Chunk(
+        text=str(document),
+        source=cast(str, metadata["source"]),
+        index=cast(int, metadata["index"]),
+        offset=cast(int, metadata["offset"]),
+    )
 
 
 class ChromaRetriever:
@@ -71,15 +80,7 @@ class ChromaRetriever:
         metadatas = (result["metadatas"] or [[]])[0]
         distances = (result["distances"] or [[]])[0]
         return [
-            RetrievedChunk(
-                chunk=Chunk(
-                    text=str(document),
-                    source=cast(str, metadata["source"]),
-                    index=cast(int, metadata["index"]),
-                    offset=cast(int, metadata["offset"]),
-                ),
-                score=1.0 - distance,
-            )
+            RetrievedChunk(chunk=_to_chunk(document, metadata), score=1.0 - distance)
             for document, metadata, distance in zip(
                 documents, metadatas, distances, strict=True
             )
@@ -91,12 +92,7 @@ class ChromaRetriever:
         documents = result["documents"] or []
         metadatas = result["metadatas"] or []
         return [
-            Chunk(
-                text=str(document),
-                source=cast(str, metadata["source"]),
-                index=cast(int, metadata["index"]),
-                offset=cast(int, metadata["offset"]),
-            )
+            _to_chunk(document, metadata)
             for document, metadata in zip(documents, metadatas, strict=True)
         ]
 
