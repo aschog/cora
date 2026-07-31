@@ -1,5 +1,4 @@
-from cora.app.ui.formatting import format_tool_result, ingest_message, numbered_sources
-from cora.core.ports.plugin import ToolResult
+from cora.app.ui.formatting import ingest_message, numbered_sources
 from cora.core.services.chat_engine import Source
 
 
@@ -24,21 +23,3 @@ def test_ingest_message_pluralises_several_chunks() -> None:
 
 def test_ingest_message_reports_no_chunks_as_already_known() -> None:
     assert ingest_message("copy.md", 0) == "copy.md is already in your knowledge base."
-
-
-def test_format_tool_result_shows_the_error_message() -> None:
-    result = ToolResult(call_id="c1", error="Unknown tool 'tdee'.")
-
-    assert format_tool_result(result) == "Unknown tool 'tdee'."
-
-
-def test_format_tool_result_shows_a_string_payload_as_is() -> None:
-    result = ToolResult(call_id="c1", payload="2500 kcal")
-
-    assert format_tool_result(result) == "2500 kcal"
-
-
-def test_format_tool_result_renders_other_payloads_as_json() -> None:
-    result = ToolResult(call_id="c1", payload={"tdee": 2500, "unit": "kcal"})
-
-    assert format_tool_result(result) == '{"tdee": 2500, "unit": "kcal"}'

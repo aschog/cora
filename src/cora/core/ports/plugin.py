@@ -1,3 +1,4 @@
+import json
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -27,6 +28,13 @@ class ToolResult:
     def __post_init__(self) -> None:
         if (self.payload is None) == (self.error is None):
             raise ValueError("a ToolResult carries exactly one of payload or error")
+
+    def render(self) -> str:
+        if self.error is not None:
+            return self.error
+        if isinstance(self.payload, str):
+            return self.payload
+        return json.dumps(self.payload, default=str)
 
 
 class ValidationRule(Protocol):

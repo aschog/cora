@@ -1,4 +1,3 @@
-import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -24,13 +23,7 @@ class ToolExecutor(Protocol):
 
 
 def _tool_message(result: ToolResult) -> Message:
-    if result.error is not None:
-        content = result.error
-    elif isinstance(result.payload, str):
-        content = result.payload
-    else:
-        content = json.dumps(result.payload, default=str)
-    return Message(role="tool", content=content, tool_call_id=result.call_id)
+    return Message(role="tool", content=result.render(), tool_call_id=result.call_id)
 
 
 def _unique_sources(chunks: list[RetrievedChunk]) -> tuple[str, ...]:

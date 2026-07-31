@@ -67,6 +67,22 @@ def test_tool_result_is_immutable() -> None:
         result.payload = 4  # ty: ignore[invalid-assignment]
 
 
+def test_render_returns_the_error_message() -> None:
+    assert ToolResult(call_id="c1", error="Unknown tool 'tdee'.").render() == (
+        "Unknown tool 'tdee'."
+    )
+
+
+def test_render_returns_a_string_payload_as_is() -> None:
+    assert ToolResult(call_id="c1", payload="2500 kcal").render() == "2500 kcal"
+
+
+def test_render_serialises_other_payloads_as_json() -> None:
+    result = ToolResult(call_id="c1", payload={"tdee": 2500, "unit": "kcal"})
+
+    assert result.render() == '{"tdee": 2500, "unit": "kcal"}'
+
+
 def test_plugin_seed_docs_default_to_empty() -> None:
     assert make_plugin().seed_docs == ()
 
