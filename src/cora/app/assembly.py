@@ -17,16 +17,15 @@ from cora.app.config import (
     Config,
 )
 from cora.app.log_config import enable_debug_logs
-from cora.core.chunk import Chunk
 from cora.core.errors import ConfigurationError
 from cora.core.ports.chat_model import ChatModel
 from cora.core.ports.embedding import Embedder
 from cora.core.ports.plugin import Plugin
-from cora.core.ports.retrieval import RetrievedChunk, Retriever
+from cora.core.ports.retrieval import Retriever
 from cora.core.services.chat_engine import ChatEngine, ContextSource
 from cora.core.services.fusion_context_source import FusionContextSource
 from cora.core.services.hybrid_context_source import HybridContextSource
-from cora.core.services.knowledge_base import KnowledgeBase
+from cora.core.services.knowledge_base import KeywordIndex, KnowledgeBase
 from cora.core.services.plugin_registry import load_plugin
 from cora.core.services.query_planner import QueryPlanner
 from cora.core.services.tool_runtime import ToolRuntime
@@ -41,10 +40,8 @@ MAX_INPUT_CHARS = 4000
 DEFAULT_COLLECTION = "documents"
 
 
-class KeywordStore(Protocol):
-    def add(self, chunks: list[Chunk]) -> None: ...
-
-    def search(self, query: str, k: int) -> list[RetrievedChunk]: ...
+class KeywordStore(KeywordIndex, ContextSource, Protocol):
+    """The injected sparse index: written to on ingest, searched during hybrid."""
 
 
 @dataclass(frozen=True)
