@@ -29,22 +29,23 @@ distinct capabilities alone.
   is what Fusion's self-query genuinely needs — not a duplicate, a bigger capability. Leave it
   (optional polish: rename → `SelfQueryIndex` to make the distinction obvious).
 - **Mode registry.** Replace `_context_source`'s `if/elif` and the separate `RETRIEVAL_MODES`
-  tuple with one dict keyed by mode → builder (mirrors the existing `LOADERS` registry).
-  Allowed modes derive from its keys; the hybrid builder owns building the keyword index.
-- **De-dupe.** Extract `render_tool_result(result) -> str` into core, called by
-  `chat_engine._tool_message` and `ui/formatting.format_tool_result`. Extract
-  `_to_chunk(document, metadata)` in `chroma_retriever`, used by `query` and `all_chunks`.
+  tuple with one dict keyed by mode → builder in a new `cora.app.retrieval` (mirrors the
+  existing `LOADERS` registry). Allowed modes derive from its keys; the composition root still
+  builds the shared keyword index when `needs_keyword_index(mode)` — ingestion and hybrid
+  search use the one instance, so it can't move inside a per-mode builder.
+- **De-dupe.** Give `ToolResult` a `render() -> str`, called by `chat_engine._tool_message` and
+  the UI (the `format_tool_result` wrapper is deleted). Extract `_to_chunk(document, metadata)`
+  in `chroma_retriever`, used by `query` and `all_chunks`.
 
 ## TDD checklist
 
-- [ ] `KeywordStore` recomposed from `KeywordIndex` + `ContextSource`; assembly + fakes green.
-- [ ] `HybridContextSource` slots typed `ContextSource`; `SearchIndex` deleted; hybrid tests green.
-- [ ] Mode registry replaces the `if/elif` + `RETRIEVAL_MODES`: unknown mode rejected, each mode
-      builds its expected source type, and a newly registered mode works with no dispatch edit.
-- [ ] `render_tool_result` extracted; `_tool_message` and `format_tool_result` both call it;
-      tool-message and UI output unchanged.
-- [ ] `_to_chunk` extracted in `chroma_retriever`; `query`/`all_chunks` unchanged (integration green).
-- [ ] *(optional)* rename `DocumentIndex` → `SelfQueryIndex`; fusion tests green.
+- [x] `KeywordStore` recomposed from `KeywordIndex` + `ContextSource`; assembly + fakes green.
+- [x] `HybridContextSource` slots typed `ContextSource`; `SearchIndex` deleted; hybrid tests green.
+- [x] `ToolResult.render()` extracted; `_tool_message` and the UI both call it; output unchanged.
+- [x] `_to_chunk` extracted in `chroma_retriever`; `query`/`all_chunks` unchanged (integration green).
+- [x] Mode registry replaces the `if/elif` + `RETRIEVAL_MODES`: allowed modes derive from the
+      builder keys, and each mode builds its expected source type.
+- [x] Renamed `DocumentIndex` → `SelfQueryIndex`; fusion tests green.
 
 ## Out of scope
 
