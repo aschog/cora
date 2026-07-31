@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 
 from cora.adapters.openrouter_chat_model import OPENROUTER_BASE_URL
+from cora.app.retrieval import DEFAULT_RETRIEVAL, RETRIEVAL_MODES
 from cora.core.errors import ConfigurationError
 
 DEFAULT_MODEL = "openai/gpt-4o-mini"
@@ -11,11 +12,6 @@ DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
 DEFAULT_HISTORY_TURNS = 20
 DEFAULT_DB_PATH = ".cora/chroma"
-RETRIEVAL_PLAIN = "plain"
-RETRIEVAL_ADVANCED = "advanced"
-RETRIEVAL_HYBRID = "hybrid"
-RETRIEVAL_MODES = (RETRIEVAL_PLAIN, RETRIEVAL_ADVANCED, RETRIEVAL_HYBRID)
-DEFAULT_RETRIEVAL = RETRIEVAL_PLAIN
 DEFAULT_FUSION_QUERIES = 4
 
 
