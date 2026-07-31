@@ -5,11 +5,7 @@ import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from cora.app.assembly import App
-from cora.app.ui.formatting import (
-    format_tool_result,
-    ingest_message,
-    numbered_sources,
-)
+from cora.app.ui.formatting import ingest_message, numbered_sources
 from cora.app.ui.thread import ThreadEntry, thread_to_turns
 from cora.core.errors import AdapterError, CoreError
 from cora.core.services.chat_engine import ChatEngine, ChatResult
@@ -107,7 +103,7 @@ def _assistant_message(result: ChatResult) -> ThreadEntry:
         "role": "assistant",
         "content": result.answer,
         "sources": numbered_sources(result.sources),
-        "tool_results": [format_tool_result(r) for r in result.tool_results],
+        "tool_results": [r.render() for r in result.tool_results],
     }
 
 
