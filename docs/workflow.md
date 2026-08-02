@@ -99,3 +99,17 @@ per project. Every phase should be an atomic commit.
 - [ ] **Keep the feature branch** (don't delete) — the micro-commit trail stays
       publicly visible as evidence of the TDD process
 - [ ] Mark the plan as done by moving it into `docs/plans/done/`
+
+---
+
+## Try next sprint — outside-in double loop
+
+Open each feature slice with **one failing functional test** (the acceptance
+criterion, ideally written with the story) and keep it red while the Phase 2 unit
+loop runs inside it — the outer test is your definition of "done", so you stop when
+it goes green, not before. To keep CI green while the slice is in progress, mark the
+outer test `@pytest.mark.xfail(strict=True)` (or a `wip` marker) and drop the marker
+when it passes. Written up front it catches design mistakes a retrofitted test can't;
+same red-green cycle applies to bug fixes (reproduce first) and legacy characterization.
+
+Background: [Obey the Testing Goat, ch. 1](https://www.obeythetestinggoat.com/book/chapter_01.html).
