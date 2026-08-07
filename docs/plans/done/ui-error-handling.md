@@ -1,6 +1,6 @@
 # Feature Plan: UI error handling
 
-> **Source** `docs/manual-test-findings.md` findings 2, 3, 9 · **Branch** `fix/ui-error-handling` · **Builds on** streamlit UI (roadmap item 7), done
+> **Source** `docs/sprints/3/manual-test-findings.md` findings 2, 3, 9 · **Branch** `fix/ui-error-handling` · **Builds on** streamlit UI (roadmap item 7), done
 >
 > Design spec (brainstorming) + TDD checklist. Fix branch, not a roadmap item.
 
