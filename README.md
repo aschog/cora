@@ -7,7 +7,8 @@ fitness coach) is provided exclusively through plugins.
 - Architecture (start here): [`docs/big-picture.md`](docs/big-picture.md) — the brief map;
   links on to the design rationale
 - Development workflow (TDD): [`docs/workflow.md`](docs/workflow.md)
-- Assignment spec: [`docs/spec.md`](docs/spec.md) (original brief: [`docs/assignment.md`](docs/assignment.md))
+- Assignment brief: [`docs/sprints/4/assignment.md`](docs/sprints/4/assignment.md) —
+  current sprint; sprint 3's brief, spec and test findings are in `docs/sprints/3/`
 
 ## Stack
 

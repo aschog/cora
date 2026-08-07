@@ -1,6 +1,6 @@
 # Feature Plan: Browser end-to-end tests (Playwright)
 
-> **Source** `docs/manual-test-findings.md` — automates the manual exploratory loop ·
+> **Source** `docs/sprints/3/manual-test-findings.md` — automates the manual exploratory loop ·
 > **Branch** `feature/e2e-playwright` · **Builds on** conversation memory (PR #6)
 >
 > Adds a **fourth** test tier. The only `src/` change is one config knob, which also
@@ -243,7 +243,7 @@ Docs (Phase 4, no test)
       these specs.
 - [x] `README.md`: `uv run pytest -m e2e`, the one-off chromium install, and
       `CORA_DB_PATH` beside the other `CORA_*` overrides.
-- [x] `docs/manual-test-findings.md`: status note that this loop is now automated, and
+- [x] `docs/sprints/3/manual-test-findings.md`: status note that this loop is now automated, and
       which findings the specs cover — including what it does *not* cover (malformed
       uploads, over-long input, warm start), so the file stays honest about the gap.
 

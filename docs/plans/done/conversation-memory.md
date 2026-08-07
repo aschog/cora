@@ -1,6 +1,6 @@
 # Feature Plan: Conversation memory
 
-> **Source** `docs/manual-test-findings.md` finding 1 (high) · **Branch** `feature/conversation-memory` · **Builds on** UI error handling (findings 2/3/9), merged
+> **Source** `docs/sprints/3/manual-test-findings.md` finding 1 (high) · **Branch** `feature/conversation-memory` · **Builds on** UI error handling (findings 2/3/9), merged
 >
 > Design spec (brainstorming) + TDD checklist. First branch since the shell
 > rewrite to change `cora.core`.
@@ -165,7 +165,7 @@ carried into `main`.
       previous answer's `[1]` while each turn rebuilds the context block with a
       freshly numbered `[1]`, so a prior claim can cite a different document
       than the one now numbered that way.
-- [x] `docs/manual-test-findings.md` still lists finding 1 as the highest
+- [x] `docs/sprints/3/manual-test-findings.md` still lists finding 1 as the highest
       remaining; update the status note as PR #5 did for findings 2/3/9.
 - [x] `thread_to_turns` and `ThreadEntry` have outgrown `ui/formatting.py` —
       moved to `ui/thread.py`, tests split 8/4 to match.
