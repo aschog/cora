@@ -151,3 +151,37 @@ functional test goes green  →  feature done
 - [ ] **Keep the feature branch** (don't delete) — the micro-commit trail stays
       publicly visible as evidence of the TDD process
 - [ ] Mark the plan as done by moving it into `docs/plans/done/`
+
+---
+
+## Phase 5 — Sprint close (once per sprint)
+
+- [ ] **Tag the reviewed commit on trunk** — the sprint's submitted state gets a
+      permanent name, so "the version the reviewer saw" survives every later
+      merge:
+
+  ```bash
+  git tag -a v1.0.0 <commit> -m "Sprint 3 submission — cora RAG chatbot
+
+  <one paragraph: what shipped, review date and outcome>"
+  git push origin v1.0.0
+  ```
+
+  - **Annotated (`-a`), never lightweight** — an annotated tag is a real object
+    carrying tagger, date and message, so it records provenance and
+    `git describe` can anchor later work to it. A lightweight tag is a bare
+    pointer with none of that. Use `-s` instead of `-a` once commit signing is
+    set up.
+  - **Semantic name** — `v1.0.0` for the first reviewed release; a sprint that
+    reshapes the app is the next major. Sprint names don't order or compare, so
+    the *message* says which sprint, not the tag.
+  - **Name the commit explicitly.** Tags default to `HEAD`, which is usually a
+    working branch by the time the sprint closes — pass the trunk commit that
+    was actually reviewed.
+  - **Push the tag on its own.** Tags do not travel with a normal `git push`.
+  - No GitHub Release: the tag is the marker, and a release adds a second thing
+    to keep true.
+
+- [ ] **Retrospective** — three questions, written to `docs/retrospective.md`;
+      its actions become next sprint's process changes and feed
+      *Sprint preparation* above
