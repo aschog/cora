@@ -26,13 +26,13 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
       uncited text *(migrated)*
 - [x] it ignores brackets glued to a word or another bracket *(migrated)*
 - [x] it reads every number in a consecutive run, multi-digit included *(migrated)*
-- [ ] against an empty registry, a batch numbers from `[1]`, one number per unique source,
+- [x] against an empty registry, a batch numbers from `[1]`, one number per unique source,
       a repeated source keeping its number *(migrated)*
-- [ ] `build_context_block` continues numbering after already-registered sources — a
+- [x] `build_context_block` continues numbering after already-registered sources — a
       second retrieval starts at `[3]`
-- [ ] it returns only the newly registered sources
-- [ ] a source already registered keeps its number when retrieved again
-- [ ] the block marks its document text as untrusted data, not instructions
+- [x] it returns only the newly registered sources
+- [x] a source already registered keeps its number when retrieved again
+- [x] the block marks its document text as untrusted data, not instructions
 - [ ] a hit list registered against the sources known so far renders as that block and
       names the sources it added
 - [ ] a hit list with no hits renders as "no matching documents" and adds none

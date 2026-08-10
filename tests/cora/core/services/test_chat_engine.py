@@ -13,7 +13,6 @@ from cora.core.services.chat_engine import (
     InputValidator,
     Source,
     ToolExecutor,
-    build_context_block,
 )
 from cora.core.services.tool_runtime import ToolRuntime
 from cora.core.services.validation import EmptyInputRule, ValidationPipeline
@@ -125,41 +124,6 @@ def test_answer_ignores_a_citation_whose_number_has_no_source() -> None:
     result = engine.answer("question")
 
     assert result.sources == (Source(1, "a.txt"),)
-
-
-def test_build_context_block_numbers_by_unique_source_and_states_citation_rule() -> (
-    None
-):
-    context = build_context_block(
-        [
-            _retrieved("a.txt", text="alpha1"),
-            _retrieved("a.txt", text="alpha2"),
-            _retrieved("b.txt", text="beta"),
-        ]
-    )
-
-    assert context.sources == (Source(1, "a.txt"), Source(2, "b.txt"))
-    a_lines = [line for line in context.text.splitlines() if "a.txt" in line]
-    b_lines = [line for line in context.text.splitlines() if "b.txt" in line]
-    assert [line[:3] for line in a_lines] == ["[1]", "[1]"]
-    assert b_lines[0].startswith("[2]")
-    assert "alpha1" in context.text and "alpha2" in context.text
-    assert "beta" in context.text
-    assert "source" in context.text.lower() and "cite" in context.text.lower()
-
-
-def test_build_context_block_numbers_non_adjacent_repeats_the_same() -> None:
-    context = build_context_block(
-        [
-            _retrieved("a.txt", text="one"),
-            _retrieved("b.txt", text="two"),
-            _retrieved("a.txt", text="three"),
-        ]
-    )
-
-    assert context.sources == (Source(1, "a.txt"), Source(2, "b.txt"))
-    a_lines = [line for line in context.text.splitlines() if "a.txt" in line]
-    assert [line[:3] for line in a_lines] == ["[1]", "[1]"]
 
 
 def test_system_message_embeds_the_prompt_and_context_block() -> None:

@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
-from cora.core.citations import cited_numbers
+from cora.core.citations import Context, Source, build_context_block, cited_numbers
 from cora.core.errors import ToolLoopLimitError
 from cora.core.ports.chat_model import ChatModel, Message
 from cora.core.ports.plugin import Tool, ToolCall, ToolResult
@@ -24,34 +24,6 @@ class ToolExecutor(Protocol):
 
 def _tool_message(result: ToolResult) -> Message:
     return Message(role="tool", content=result.render(), tool_call_id=result.call_id)
-
-
-def _unique_sources(chunks: list[RetrievedChunk]) -> tuple[str, ...]:
-    return tuple(dict.fromkeys(hit.chunk.source for hit in chunks))
-
-
-@dataclass(frozen=True)
-class Source:
-    number: int
-    name: str
-
-
-@dataclass(frozen=True)
-class Context:
-    text: str
-    sources: tuple[Source, ...]
-
-
-def build_context_block(chunks: list[RetrievedChunk]) -> Context:
-    names = _unique_sources(chunks)
-    sources = tuple(Source(number, name) for number, name in enumerate(names, start=1))
-    number_of = {source.name: source.number for source in sources}
-    body = "\n".join(
-        f"[{number_of[hit.chunk.source]}] {hit.chunk.source}: {hit.chunk.text}"
-        for hit in chunks
-    )
-    citation_rule = "Cite sources by their bracketed number, e.g. [1]."
-    return Context(text=f"{body}\n\n{citation_rule}", sources=sources)
 
 
 def _cited_sources(text: str, sources: tuple[Source, ...]) -> tuple[Source, ...]:
