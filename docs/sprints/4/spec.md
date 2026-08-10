@@ -35,7 +35,10 @@ two paths.
 
 ## Stories
 
-In merge order. Each ends on main as a working, demoable app.
+In merge order. Each ends on main as a working, demoable app. A story in flight moves
+into its own file and leaves a pointer behind.
+
+### [1. The agent plans its own steps](story-01.md)
 
 ### 2. I can see what it did
 

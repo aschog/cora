@@ -18,6 +18,7 @@ docs/sprints/4/
   spec.md                 the story cut, requirement coverage, out of scope
   sprint-4-feedback.md    last review's findings, as a tracked backlog
   story-01.md             one file per story: the story + its test list
+  done/                   story files whose test list is fully ticked
   retrospective.md        written at sprint close
 ```
 
@@ -29,8 +30,9 @@ docs/sprints/4/
 - **`story-NN.md` is the planning artefact**: the story (*As a · I want · So that* with
   its *Given/When/Then*) followed by a **test list**. `docs/sprints/4/story-01.md` is the
   current reference shape — match it.
-- **A story lives in exactly one place.** When it gets its own `story-NN.md` it moves out
-  of `spec.md`; `spec.md` keeps the stories not yet in flight.
+- **A story lives in exactly one place.** When it gets its own `story-NN.md`, its text
+  moves there and `spec.md` keeps only its heading, linked to the story file, so the
+  story cut still reads in order and no criterion is stated twice.
 - **The test list is Beck's, not a work breakdown** — every item is one failing test.
   It is expected to change as you go: add items as they surface, and if an item can't be
   phrased as "write a test that shows X", it does not belong on the list.
@@ -182,8 +184,7 @@ functional test goes green  →  feature done
       per feature
 - [ ] **Keep the feature branch** (don't delete) — the micro-commit trail stays
       publicly visible as evidence of the TDD process
-- [ ] **A fully ticked `story-NN.md`** is moved into the done folder in the
-      sprint folder.
+- [ ] **A fully ticked `story-NN.md`** is moved into `docs/sprints/<n>/done/`
 
 ---
 

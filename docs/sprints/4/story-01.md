@@ -1,5 +1,4 @@
-
-### Story 1: The agent plans its own steps
+# Story 1: The agent plans its own steps
 
 **As a** user · **I want** to ask in my own words · **So that** I get an answer that took
 whatever steps were needed
@@ -11,14 +10,10 @@ whatever steps were needed
 
 Satisfies the hard bonus *Agentic RAG*: retrieval becomes a decision, not a fixed step.
 
-Retrieval becomes a core tool the model may or may not call, and `ChatEngine` is
-refactored into the graph's steps.
-
 ## Test list
 
-Bold = in progress · ticked = done · add items as they surface, this list is expected to
-change hourly. **Tiers:** unit unless marked — **(int)** integration, **(e2e)** browser,
-**(llm)** live model.
+**Tiers:** unit unless marked — **(int)** integration, **(e2e)** browser, **(llm)** live
+model.
 
 #### The architectural claim
 
@@ -116,13 +111,8 @@ change hourly. **Tiers:** unit unless marked — **(int)** integration, **(e2e)*
       shadowed
 - [ ] **(e2e)** the browser answer still lists its cited source, with the stub scripting a
       `search_documents` call before its answer — run `-m e2e` by hand on this commit
-- [ ] *(refactor, the one item that is not a test)* delete `ChatEngine` and
-      `chat_engine.py`; re-point `app/retrieval.py` and `app/ui/chat.py`. Gated on every
-      assertion in `test_chat_engine.py` already having a home
 
 #### Close
 
 - [ ] **(llm)** a real model retrieves for a document question and answers a greeting
       without a tool call — the honest proof that the *decision* is the model's
-- [ ] drop the outer test's `xfail` and watch both halves pass
-- [ ] `README` notes the agent loop and the retrieval decision
