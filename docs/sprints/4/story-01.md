@@ -13,28 +13,36 @@ Satisfies the hard bonus *Agentic RAG*: retrieval becomes a decision, not a fixe
 ## Test list
 
 **Tiers:** unit unless marked — **(int)** integration, **(e2e)** browser, **(llm)** live
-model.
+model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new one.
 
 #### The architectural claim
 
-- [ ] a planted `import langgraph` inside `cora.core` is caught by the purity scan
-      (`langgraph` joins `FORBIDDEN_FRAMEWORKS`)
-- [ ] every core step object is callable with exactly one positional argument (guards
-      LangGraph's silent `Runtime`/`RunnableConfig` injection)
+- [ ] a `langgraph` import into a core module is detected as forbidden — mirrors the
+      `rank_bm25` proof, and turns green when `langgraph` joins `FORBIDDEN_FRAMEWORKS`
 
-#### Citations (`citations.py`)
+#### Citations (`citations.py`, home of `Source` and `Context`)
 
+- [ ] `cited_numbers` reads distinct numbers in order of first appearance, and none from
+      uncited text *(migrated)*
+- [ ] it ignores brackets glued to a word or another bracket *(migrated)*
+- [ ] it reads every number in a consecutive run, multi-digit included *(migrated)*
+- [ ] against an empty registry, a batch numbers from `[1]`, one number per unique source,
+      a repeated source keeping its number *(migrated)*
+- [ ] the block ends with the rule to cite by bracketed number *(migrated)*
 - [ ] `build_context_block` continues numbering after already-registered sources — a
-      second retrieval starts at `[3]` — and returns only the newly registered ones
+      second retrieval starts at `[3]`
+- [ ] it returns only the newly registered sources
 - [ ] a source already registered keeps its number when retrieved again
 - [ ] `cited_sources(text, sources)` returns only cited sources, ascending
+- [ ] a citation whose number has no registered source is ignored *(migrated)*
 
 #### Infrastructure failures stay visible
 
 - [ ] `ToolRuntime` lets an `AdapterError` from a tool propagate instead of returning a
-      `ToolResult`; a plain `Exception` still becomes one
+      `ToolResult`
+- [ ] a plain `Exception` from a tool still becomes a `ToolResult` error *(migrated)*
 
-#### The retrieval tool
+#### The retrieval tool (`retrieval_tool.py`; `ContextSource` moves to `context_source.py`)
 
 - [ ] the tool searches the injected context source with the model's `query` at the
       configured `k` and returns its hits
@@ -45,53 +53,66 @@ model.
 
 - [ ] a plain tool call executes; the partial dict carries a `tool` message and the
       `ToolResult`
+- [ ] the round appends the assistant message carrying `tool_calls` before the tool
+      messages
 - [ ] a hit-list payload is rendered into a numbered context block, and the stored
       `ToolResult` renders that same text
-- [ ] the block's new sources land in the partial dict; a second retrieval in the same run
-      continues the numbering
+- [ ] the block marks its document text as untrusted data, not instructions
+- [ ] the block's new sources land in the partial dict
+- [ ] a second retrieval in the same run continues the numbering
 - [ ] a search that finds nothing feeds back "no matching documents" and registers no
       source
 - [ ] several tool calls in one round all run, in order *(migrated)*
-- [ ] an unknown tool and malformed arguments come back as tool messages, not exceptions
-      *(migrated)*
+- [ ] an unknown tool comes back as a tool message, not an exception *(migrated)*
+- [ ] malformed arguments come back as a tool message, not an exception *(migrated)*
 
 #### `ModelStep`
 
 - [ ] the step completes with the state's messages and the bound tools, appending the reply
 - [ ] a final reply sets `answer`; a tool-calling reply does not
 - [ ] each visit adds one to `rounds`
+- [ ] an `LlmError` from the chat model propagates unchanged *(migrated)*
 
 #### `PrepareStep`
 
 - [ ] an invalid question raises `InputRejectedError` and produces no messages
+- [ ] the validator sees the question alone, never the history *(migrated)*
 - [ ] messages come out as system, then recent history, then the question *(migrated)*
-- [ ] history longer than `max_history_turns` drops the oldest; `0` sends none *(migrated)*
+- [ ] history longer than `max_history_turns` drops the oldest *(migrated)*
+- [ ] history exactly at the cap is sent in full *(migrated)*
+- [ ] an odd cap sends a leading assistant turn without its question *(migrated)*
+- [ ] `0` sends no history at all *(migrated)*
 - [ ] the system message carries the plugin prompt plus the instruction to call
-      `search_documents` and cite `[n]` — and no context block
+      `search_documents` and cite `[n]`
+- [ ] it instructs the model to decline what the retrieved documents do not support
+- [ ] no document text reaches the system message — retrieved text exists only in `tool`
+      messages
 
 #### Router
 
-- [ ] a final reply routes to `done`; a tool-calling reply under budget routes to `tools`
+- [ ] a final reply routes to `done`
+- [ ] a tool-calling reply under budget routes to `tools`
 - [ ] a tool-calling reply at `max_tool_rounds` raises `ToolLoopLimitError` with its
       friendly message
 
-#### `Agent` facade
+#### `Agent` facade (`agent.py`, home of `ChatResult`)
 
 - [ ] `answer` seeds the initial state from question + history and returns the run's
       `answer`
 - [ ] `ChatResult.sources` are only the cited ones, resolved against the registered sources
 - [ ] `ChatResult.tool_results` carry the run's results in order
 
-#### `LangGraphRunner`
+#### `LangGraphRunner` (an adapter behind the new `GraphRunner` port)
 
-- [ ] over trivial fake steps, `run` walks prepare → model → tools → model and returns a
-      state whose reducers accumulated every partial dict
+- [ ] over trivial fake steps, `run` walks prepare → model → tools → model
+- [ ] the returned state's reducers accumulated every partial dict
 - [ ] a runaway graph under a tiny recursion limit surfaces as `ToolLoopLimitError`, never
       `GraphRecursionError`
 - [ ] with an endlessly tool-calling model the core counter fires first — exactly
       `max_tool_rounds` model calls before the friendly error
 - [ ] an `InputRejectedError` from `PrepareStep` leaves `invoke` unwrapped, so the UI's
       `except CoreError` still catches it
+- [ ] an `AdapterError` raised inside a step leaves `invoke` unwrapped too
 
 #### ⇄ Switchover (one commit: `assemble` stops building `ChatEngine`)
 
@@ -99,6 +120,9 @@ model.
       through the graph
 - [ ] the model is offered `search_documents` alongside the plugin's tools, and the runtime
       dispatches it
+- [ ] `assemble(top_k=…)` reaches the search tool *(migrated)*
+- [ ] `assemble(max_tool_rounds=…)` reaches the round budget *(migrated)*
+- [ ] history turns reach the model behaviourally (replaces `app.engine.max_history_turns`)
 - [ ] `App` exposes the configured `context_source` — plain → the knowledge base, advanced
       → `FusionContextSource`, hybrid → `HybridContextSource` (re-points the mode-wiring
       assertions, including `tests/test_hybrid_retrieval.py`)
@@ -106,9 +130,11 @@ model.
       `app.engine.chat_model`
 - [ ] a debug turn logs the retrieval and embedding ports **when the model calls the
       search tool** (the old assertion, re-pointed at the decision)
-- [ ] history turns reach the model behaviourally (replaces `app.engine.max_history_turns`)
+- [ ] a chat turn stays silent without debug *(migrated)*
 - [ ] a plugin tool named `search_documents` is rejected at assembly rather than silently
       shadowed
+- [ ] **(int)** the UI answers through `app.agent` and its Sources panel lists the cited
+      source, with the model scripting a `search_documents` call *(migrated)*
 - [ ] **(e2e)** the browser answer still lists its cited source, with the stub scripting a
       `search_documents` call before its answer — run `-m e2e` by hand on this commit
 

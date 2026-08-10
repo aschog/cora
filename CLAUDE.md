@@ -4,7 +4,6 @@ RAG chatbot grounded in your uploaded documents, with swappable domain plugins, 
 the `cora` package (src layout).
 
 @docs/workflow.md
-@docs/big-picture.md
 
 `README.md` (setup, gates, test tiers, watch mode) stays as a link — open it when
 relevant.
