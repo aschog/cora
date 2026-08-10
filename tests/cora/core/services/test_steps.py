@@ -267,7 +267,7 @@ class _RecordingValidator:
         return user_input
 
 
-def test_an_invalid_question_is_rejected_and_produces_no_messages() -> None:
+def test_an_invalid_question_is_rejected() -> None:
     step = _prepare()
 
     with pytest.raises(InputRejectedError):
@@ -303,6 +303,14 @@ def test_history_beyond_the_cap_drops_the_oldest() -> None:
     partial = _prepare(max_history_turns=2)({"question": "q", "history": history})
 
     assert _past(partial) == ["recent", "newest"]
+
+
+def test_history_shorter_than_the_cap_is_sent_in_full() -> None:
+    history = _turns("I weigh 80 kg.", "Noted.")
+
+    partial = _prepare(max_history_turns=5)({"question": "q", "history": history})
+
+    assert _past(partial) == ["I weigh 80 kg.", "Noted."]
 
 
 def test_history_exactly_at_the_cap_is_sent_in_full() -> None:

@@ -10,16 +10,6 @@ SEARCH_TOOL_DESCRIPTION = (
     "numbered so the answer can cite it. Call this whenever the answer should "
     "rest on what the documents say."
 )
-SEARCH_TOOL_SCHEMA = {
-    "type": "object",
-    "properties": {
-        "query": {
-            "type": "string",
-            "description": "What to look for, in the user's own words.",
-        }
-    },
-    "required": ["query"],
-}
 
 
 @dataclass(frozen=True)
@@ -35,6 +25,15 @@ def search_tool(context_source: ContextSource, top_k: int) -> Tool:
     return Tool(
         name=SEARCH_TOOL_NAME,
         description=SEARCH_TOOL_DESCRIPTION,
-        parameter_schema=SEARCH_TOOL_SCHEMA,
+        parameter_schema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "What to look for, in the user's own words.",
+                }
+            },
+            "required": ["query"],
+        },
         run=DocumentSearch(context_source, top_k),
     )

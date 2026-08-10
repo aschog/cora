@@ -85,6 +85,7 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 - [x] the validator sees the question alone, never the history *(migrated)*
 - [x] messages come out as system, then recent history, then the question *(migrated)*
 - [x] history longer than `max_history_turns` drops the oldest *(migrated)*
+- [x] history shorter than the cap is sent in full *(migrated)*
 - [x] history exactly at the cap is sent in full *(migrated)*
 - [x] an odd cap sends a leading assistant turn without its question *(migrated)*
 - [x] `0` sends no history at all *(migrated)*
