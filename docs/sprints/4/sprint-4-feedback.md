@@ -37,11 +37,14 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       out-of-domain question is answered from model knowledge. Add a tested rule that
       declines unsupported answers, evaluated against in-domain, out-of-domain and
       weak-retrieval cases. Also manual finding #6.
-      → own slice, **after story 1**, which carries only the prompt instruction to decline.
-      Enforcement is not unit-sized: against a scripted model the assertion is the script,
-      and "in-domain / out-of-domain / weak-retrieval" is the evaluation set below. Story 1
-      also makes retrieval a *decision*, so a mechanical "no context → refuse" would
-      contradict its own second criterion (a greeting is answered without retrieving).
+      → own slice, **after story 1**, and story 1 changes nothing here: the instruction
+      already ships in the plugin prompt (`plugins/fitness/__init__.py:10`), which is where
+      domain policy belongs — a plugin whose tools answer without documents must be able to
+      opt out. Enforcement is not unit-sized: against a scripted model the assertion is the
+      script, and "in-domain / out-of-domain / weak-retrieval" is the evaluation set below.
+      Story 1 also makes retrieval a *decision*, so any rule phrased as "no context →
+      refuse" would contradict its second criterion (a greeting is answered without
+      retrieving); it has to be scoped to questions the documents were asked to answer.
 
 - [ ] **Planner JSON is hand-parsed and fails silently** — `parse_plan` scrapes fences and
       braces, and a parse failure falls back to plain search with no signal

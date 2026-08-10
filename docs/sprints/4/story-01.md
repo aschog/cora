@@ -28,7 +28,6 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 - [ ] it reads every number in a consecutive run, multi-digit included *(migrated)*
 - [ ] against an empty registry, a batch numbers from `[1]`, one number per unique source,
       a repeated source keeping its number *(migrated)*
-- [ ] the block ends with the rule to cite by bracketed number *(migrated)*
 - [ ] `build_context_block` continues numbering after already-registered sources — a
       second retrieval starts at `[3]`
 - [ ] it returns only the newly registered sources
@@ -53,8 +52,6 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 
 - [ ] a plain tool call executes; the partial dict carries a `tool` message and the
       `ToolResult`
-- [ ] the round appends the assistant message carrying `tool_calls` before the tool
-      messages
 - [ ] a hit-list payload is rendered into a numbered context block, and the stored
       `ToolResult` renders that same text
 - [ ] the block marks its document text as untrusted data, not instructions
@@ -69,6 +66,8 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 #### `ModelStep`
 
 - [ ] the step completes with the state's messages and the bound tools, appending the reply
+- [ ] a tool-calling reply is appended with its `tool_calls` intact, ahead of the tool
+      messages the round adds
 - [ ] a final reply sets `answer`; a tool-calling reply does not
 - [ ] each visit adds one to `rounds`
 - [ ] an `LlmError` from the chat model propagates unchanged *(migrated)*
@@ -84,9 +83,6 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 - [ ] `0` sends no history at all *(migrated)*
 - [ ] the system message carries the plugin prompt plus the instruction to call
       `search_documents` and cite `[n]`
-- [ ] it instructs the model to decline what the retrieved documents do not support
-- [ ] no document text reaches the system message — retrieved text exists only in `tool`
-      messages
 
 #### Router
 
@@ -101,8 +97,10 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
       `answer`
 - [ ] `ChatResult.sources` are only the cited ones, resolved against the registered sources
 - [ ] `ChatResult.tool_results` carry the run's results in order
+- [ ] over a turn that retrieves, no document text reaches the system message — it exists
+      only in `tool` messages
 
-#### `LangGraphRunner` (an adapter behind the new `GraphRunner` port)
+#### `LangGraphRunner` (`adapters/`, behind the new `GraphRunner` port in `core/ports/graph.py`)
 
 - [ ] over trivial fake steps, `run` walks prepare → model → tools → model
 - [ ] the returned state's reducers accumulated every partial dict
@@ -122,10 +120,15 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
       dispatches it
 - [ ] `assemble(top_k=…)` reaches the search tool *(migrated)*
 - [ ] `assemble(max_tool_rounds=…)` reaches the round budget *(migrated)*
+- [ ] the plugin's system prompt reaches the model *(migrated)*
 - [ ] history turns reach the model behaviourally (replaces `app.engine.max_history_turns`)
-- [ ] `App` exposes the configured `context_source` — plain → the knowledge base, advanced
-      → `FusionContextSource`, hybrid → `HybridContextSource` (re-points the mode-wiring
-      assertions, including `tests/test_hybrid_retrieval.py`)
+- [ ] the assembled agent rejects an injection attempt before the model is called
+      *(migrated)*
+- [ ] it chains core and plugin validation rules, in that order *(migrated)*
+- [ ] `App` exposes the configured `context_source` — plain → the knowledge base *(migrated)*
+- [ ] advanced → `FusionContextSource`, built with the configured query count *(migrated)*
+- [ ] hybrid → `HybridContextSource` (re-points `tests/test_hybrid_retrieval.py` too)
+      *(migrated)*
 - [ ] `CORA_DEBUG=1` still wraps the three technology ports — re-pointed off
       `app.engine.chat_model`
 - [ ] a debug turn logs the retrieval and embedding ports **when the model calls the

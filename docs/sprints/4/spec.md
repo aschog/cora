@@ -36,10 +36,12 @@ two paths.
 **A fifth port.** Driving the graph is a technology the core must not name, so the `Agent`
 facade in core reaches its runner through a new port and `assemble` binds
 `LangGraphRunner` to it like the other four. The core has said "four ports" so far; this
-sprint makes it five, deliberately. The line it follows is the one the code already draws:
+sprint makes it five, deliberately. The line it follows is the one the code mostly draws:
 `core/ports/` holds Protocols whose implementations live *outside* core, while
 collaborator Protocols implemented *inside* it (`ContextSource`, `InputValidator`,
-`ToolExecutor`) sit beside the service that uses them. The alternative — moving `Agent`
+`ToolExecutor`) sit beside the service that uses them. A heuristic, not a law —
+`ValidationRule` sits in `ports/plugin.py` with three core implementations, and
+`Bm25KeywordIndex` satisfies `ContextSource` from outside. The alternative — moving `Agent`
 into the shell to avoid the port — would push the assembly of `ChatResult` into the
 composition root and leave the core with no use case.
 
