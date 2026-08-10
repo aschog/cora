@@ -160,6 +160,20 @@ def test_assemble_passes_max_tool_rounds_to_the_round_budget() -> None:
         app.agent.answer("go round in circles")
 
 
+def test_a_run_that_spends_the_whole_round_budget_still_answers() -> None:
+    model = ScriptedChatModel(
+        [_searching("c1"), _searching("c2"), ModelReply(text="Found it [1].")]
+    )
+    app = _assemble(
+        make_plugin(seed_docs=_seed_doc()), chat_model=model, max_tool_rounds=3
+    )
+
+    result = app.agent.answer("What about protein?")
+
+    assert result.answer == "Found it [1]."
+    assert len(result.tool_results) == 2
+
+
 def test_the_plugins_system_prompt_reaches_the_model() -> None:
     model = ScriptedChatModel([ModelReply(text="ok")])
     app = _assemble(

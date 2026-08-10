@@ -124,6 +124,8 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
       only in `tool` messages
 - [x] `assemble(top_k=…)` reaches the search tool *(migrated)*
 - [x] `assemble(max_tool_rounds=…)` reaches the round budget *(migrated)*
+- [x] a run that spends the whole budget still answers — pins the graph's recursion
+      limit from outside, so a legitimate deep turn is never mistaken for a runaway one
 - [x] the plugin's system prompt reaches the model *(migrated)*
 - [x] history turns reach the model behaviourally (replaces `app.engine.max_history_turns`)
 - [x] the assembled agent rejects an injection attempt before the model is called
