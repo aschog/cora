@@ -69,14 +69,10 @@ def test_an_already_registered_source_keeps_its_number() -> None:
     assert context.sources == ()
 
 
-def test_the_block_marks_its_document_text_as_untrusted_data() -> None:
+def test_the_block_is_the_numbered_passages_and_nothing_else() -> None:
     context = build_context_block([_hit("a.txt", "alpha")])
 
-    notice, _, body = context.text.partition("[1]")
-
-    assert "untrusted" in notice.lower()
-    assert "instructions" in notice.lower()
-    assert "alpha" in body
+    assert context.text == "[1] a.txt: alpha"
 
 
 def test_a_hit_list_registers_against_the_sources_known_so_far() -> None:

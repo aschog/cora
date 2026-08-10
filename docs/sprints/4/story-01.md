@@ -32,7 +32,8 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
       second retrieval starts at `[3]`
 - [x] it returns only the newly registered sources
 - [x] a source already registered keeps its number when retrieved again
-- [x] the block marks its document text as untrusted data, not instructions
+- [x] the block is the numbered passages and nothing else — the untrusted-data label is
+      the tool message's framing, so it never reaches the user's panel
 - [x] a hit list registered against the sources known so far renders as that block and
       names the sources it added
 - [x] a hit list with no hits renders as "no matching documents" and adds none
@@ -61,6 +62,8 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
       `ToolResult` renders the block it produced
 - [x] the sources it added land in the partial dict
 - [x] a second citable payload in the same run continues the numbering
+- [x] the tool message labels the passages untrusted; the recorded result does not —
+      and the label holds even when the retrieval added no new source
 - [x] a second *tool* returning a citable payload is registered the same way — the step
       names no tool
 - [x] several tool calls in one round all run, in order *(migrated)*

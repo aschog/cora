@@ -77,9 +77,32 @@ def test_a_citable_payload_is_registered_and_its_result_renders_the_block() -> N
     partial = step(_asked(_search_call("c1")))
 
     [result] = partial["tool_results"]
+    assert result.render() == "[1] note.md: protein builds muscle"
+
+
+def test_the_model_gets_the_passages_labelled_as_untrusted_data() -> None:
+    step = ToolStep(ToolRuntime(tools=(_searcher(_hit("note.md")),)))
+
+    partial = step(_asked(_search_call("c1")))
+
+    [result] = partial["tool_results"]
     [message] = partial["messages"]
-    assert "[1] note.md: protein builds muscle" in result.render()
-    assert message.content == result.render()
+    notice, _, body = message.content.partition("[1]")
+    assert "untrusted" in notice.lower()
+    assert "instructions" in notice.lower()
+    assert body in message.content
+    assert "untrusted" not in result.render().lower()
+
+
+def test_passages_are_labelled_even_when_they_add_no_new_source() -> None:
+    step = ToolStep(ToolRuntime(tools=(_searcher(_hit("note.md")),)))
+
+    partial = step(_asked(_search_call("c1"), known=(Source(1, "note.md"),)))
+
+    assert partial["sources"] == []
+    [message] = partial["messages"]
+    assert "untrusted" in message.content.lower()
+    assert "[1] note.md" in message.content
 
 
 def test_the_sources_it_registered_land_in_the_partial_state() -> None:
