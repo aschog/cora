@@ -37,18 +37,6 @@ two paths.
 
 In merge order. Each ends on main as a working, demoable app.
 
-### 1. The agent plans its own steps
-
-**As a** user · **I want** to ask in my own words · **So that** I get an answer that took
-whatever steps were needed
-
-> **Given** an indexed document and a question needing both a lookup and a calculation
-> **When** I ask it
-> **Then** the answer uses both — and a question needing neither is answered without
-> retrieving or calling a tool
-
-Satisfies the hard bonus *Agentic RAG*: retrieval becomes a decision, not a fixed step.
-
 ### 2. I can see what it did
 
 > **Given** an answer that took several steps

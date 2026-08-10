@@ -6,8 +6,8 @@ the `cora` package (src layout).
 @docs/workflow.md
 @docs/big-picture.md
 
-`docs/plans/webapp-overview.md` (design rationale) and `README.md` (setup, gates, test
-tiers, watch mode) stay as links — open them when relevant.
+`README.md` (setup, gates, test tiers, watch mode) stays as a link — open it when
+relevant.
 
 ## Rules (not covered by the imports above)
 
@@ -20,6 +20,8 @@ tiers, watch mode) stay as links — open them when relevant.
 - **Secrets** — environment variables only; never logged, never committed.
 - **Commits** — plain Conventional Commits; no attribution trailers or co-author lines.
 - **Answers** — brief by default; expand only when asked.
-- **Plans** — `docs/plans/<feature>.md` stays terse, scaled to the feature. For a
-  small feature match `docs/plans/done/tool-number-formatting.md` (no
-  rejected-alternatives section); reserve longer plans for genuinely complex ones.
+- **Plans** — planning happens in the **current sprint's folder only**
+  (`docs/sprints/<n>/`), and the artefact is `story-NN.md`: the story followed by a
+  **test list** of failing-test-sized items. Match `docs/sprints/4/story-01.md`. Design
+  rationale does not go in the file — it lives in the conversation, the commit messages
+  and the tests. Earlier sprint folders are build history, not planning input.

@@ -1,16 +1,23 @@
-# Story 1: The agent plans its own steps
 
-## Design (architecture level)
+### Story 1: The agent plans its own steps
 
-Patterns: **ReAct loop** (reason → act → observe until final), **Command** (each step a
-frozen 1-arg callable holding its collaborators), **Strategy** (which `ContextSource` sits
-behind the search tool — unchanged), **Adapter** (LangGraph → `LangGraphRunner`),
-**Facade** (`Agent` over the runner), **Role interfaces** (consumer-declared Protocols, no
-new central port), **Composition Root**.
+**As a** user · **I want** to ask in my own words · **So that** I get an answer that took
+whatever steps were needed
 
-## TDD checklist (red → green → refactor; commit per green)
+> **Given** an indexed document and a question needing both a lookup and a calculation
+> **When** I ask it
+> **Then** the answer uses both — and a question needing neither is answered without
+> retrieving or calling a tool
 
-**Legend:** unit tier unless marked. **(int)** integration, **(e2e)** browser,
+Satisfies the hard bonus *Agentic RAG*: retrieval becomes a decision, not a fixed step.
+
+Retrieval becomes a core tool the model may or may not call, and `ChatEngine` is
+refactored into the graph's steps.
+
+## Test list
+
+Bold = in progress · ticked = done · add items as they surface, this list is expected to
+change hourly. **Tiers:** unit unless marked — **(int)** integration, **(e2e)** browser,
 **(llm)** live model.
 
 #### The architectural claim
