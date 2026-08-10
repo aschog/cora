@@ -33,9 +33,9 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 - [x] it returns only the newly registered sources
 - [x] a source already registered keeps its number when retrieved again
 - [x] the block marks its document text as untrusted data, not instructions
-- [ ] a hit list registered against the sources known so far renders as that block and
+- [x] a hit list registered against the sources known so far renders as that block and
       names the sources it added
-- [ ] a hit list with no hits renders as "no matching documents" and adds none
+- [x] a hit list with no hits renders as "no matching documents" and adds none
 - [ ] `cited_sources(text, sources)` returns only cited sources, ascending
 - [ ] a citation whose number has no registered source is ignored *(migrated)*
 

@@ -1,5 +1,10 @@
 from cora.core.chunk import Chunk
-from cora.core.citations import Source, build_context_block, cited_numbers
+from cora.core.citations import (
+    CitableHits,
+    Source,
+    build_context_block,
+    cited_numbers,
+)
 from cora.core.ports.retrieval import RetrievedChunk
 
 
@@ -71,3 +76,19 @@ def test_the_block_marks_its_document_text_as_untrusted_data() -> None:
     assert "untrusted" in notice.lower()
     assert "instructions" in notice.lower()
     assert "alpha" in body
+
+
+def test_a_hit_list_registers_against_the_sources_known_so_far() -> None:
+    known = (Source(1, "a.txt"),)
+
+    context = CitableHits([_hit("b.txt", "beta")]).register(known)
+
+    assert context == build_context_block([_hit("b.txt", "beta")], known)
+    assert context.sources == (Source(2, "b.txt"),)
+
+
+def test_a_hit_list_with_no_hits_says_so_and_adds_nothing() -> None:
+    context = CitableHits([]).register(())
+
+    assert "no matching documents" in context.text.lower()
+    assert context.sources == ()
