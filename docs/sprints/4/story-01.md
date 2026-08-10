@@ -41,9 +41,9 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 
 #### Infrastructure failures stay visible
 
-- [ ] `ToolRuntime` lets an `AdapterError` from a tool propagate instead of returning a
+- [x] `ToolRuntime` lets an `AdapterError` from a tool propagate instead of returning a
       `ToolResult`
-- [ ] a plain `Exception` from a tool still becomes a `ToolResult` error *(migrated)*
+- [x] a plain `Exception` from a tool still becomes a `ToolResult` error *(migrated)*
 
 #### The retrieval tool (`retrieval_tool.py`; `ContextSource` moves to `context_source.py`)
 

@@ -1,3 +1,6 @@
+import pytest
+
+from cora.core.errors import RetrievalError
 from cora.core.ports.plugin import Tool, ToolCall
 from cora.core.services.tool_runtime import ToolRuntime
 from fakes import add_tool
@@ -93,3 +96,22 @@ def test_missing_required_argument_yields_error_result_naming_the_problem() -> N
     assert result.payload is None
     assert result.error is not None
     assert "b" in result.error
+
+
+def unavailable() -> None:
+    raise RetrievalError
+
+
+UNAVAILABLE_TOOL = Tool(
+    name="unavailable",
+    description="Fails because its infrastructure is down.",
+    parameter_schema={"type": "object", "properties": {}},
+    run=unavailable,
+)
+
+
+def test_an_adapter_error_from_a_tool_propagates_instead_of_becoming_a_result() -> None:
+    runtime = ToolRuntime(tools=(UNAVAILABLE_TOOL,))
+
+    with pytest.raises(RetrievalError):
+        runtime.execute(ToolCall(name="unavailable", arguments={}, call_id="call-7"))
