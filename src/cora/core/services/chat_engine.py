@@ -2,7 +2,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
-from cora.core.citations import Context, Source, build_context_block, cited_numbers
+from cora.core.citations import Context, Source, build_context_block, cited_sources
 from cora.core.errors import ToolLoopLimitError
 from cora.core.ports.chat_model import ChatModel, Message
 from cora.core.ports.plugin import Tool, ToolCall, ToolResult
@@ -24,12 +24,6 @@ class ToolExecutor(Protocol):
 
 def _tool_message(result: ToolResult) -> Message:
     return Message(role="tool", content=result.render(), tool_call_id=result.call_id)
-
-
-def _cited_sources(text: str, sources: tuple[Source, ...]) -> tuple[Source, ...]:
-    by_number = {source.number: source for source in sources}
-    cited = (by_number[n] for n in cited_numbers(text) if n in by_number)
-    return tuple(sorted(cited, key=lambda source: source.number))
 
 
 @dataclass(frozen=True)
@@ -60,7 +54,7 @@ class ChatEngine:
         text, tool_results = self._run_tool_loop(messages)
         return ChatResult(
             answer=text,
-            sources=_cited_sources(text, context.sources),
+            sources=cited_sources(text, context.sources),
             tool_results=tool_results,
         )
 

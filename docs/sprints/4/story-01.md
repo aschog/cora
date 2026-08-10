@@ -36,8 +36,8 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 - [x] a hit list registered against the sources known so far renders as that block and
       names the sources it added
 - [x] a hit list with no hits renders as "no matching documents" and adds none
-- [ ] `cited_sources(text, sources)` returns only cited sources, ascending
-- [ ] a citation whose number has no registered source is ignored *(migrated)*
+- [x] `cited_sources(text, sources)` returns only cited sources, ascending
+- [x] a citation whose number has no registered source is ignored *(migrated)*
 
 #### Infrastructure failures stay visible
 

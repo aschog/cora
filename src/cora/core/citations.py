@@ -28,6 +28,12 @@ def cited_numbers(text: str) -> tuple[int, ...]:
     return tuple(dict.fromkeys(found))
 
 
+def cited_sources(text: str, sources: tuple[Source, ...]) -> tuple[Source, ...]:
+    by_number = {source.number: source for source in sources}
+    cited = (by_number[n] for n in cited_numbers(text) if n in by_number)
+    return tuple(sorted(cited, key=lambda source: source.number))
+
+
 def build_context_block(
     hits: list[RetrievedChunk], known: tuple[Source, ...] = ()
 ) -> Context:

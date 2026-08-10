@@ -4,6 +4,7 @@ from cora.core.citations import (
     Source,
     build_context_block,
     cited_numbers,
+    cited_sources,
 )
 from cora.core.ports.retrieval import RetrievedChunk
 
@@ -92,3 +93,18 @@ def test_a_hit_list_with_no_hits_says_so_and_adds_nothing() -> None:
 
     assert "no matching documents" in context.text.lower()
     assert context.sources == ()
+
+
+def test_only_the_cited_sources_come_back_in_ascending_order() -> None:
+    sources = (Source(1, "a.txt"), Source(2, "b.txt"), Source(3, "c.txt"))
+
+    assert cited_sources("first [3], then [1].", sources) == (
+        Source(1, "a.txt"),
+        Source(3, "c.txt"),
+    )
+
+
+def test_a_citation_with_no_registered_source_is_ignored() -> None:
+    assert cited_sources("per [1] and also [9]", (Source(1, "a.txt"),)) == (
+        Source(1, "a.txt"),
+    )
