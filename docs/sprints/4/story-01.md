@@ -147,5 +147,5 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 
 #### Close
 
-- [ ] **(llm)** a real model retrieves for a document question and answers a greeting
+- [x] **(llm)** a real model retrieves for a document question and answers a greeting
       without a tool call — the honest proof that the *decision* is the model's
