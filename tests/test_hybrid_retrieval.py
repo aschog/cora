@@ -55,7 +55,7 @@ def test_hybrid_surfaces_a_lexical_match_dense_ranks_below_top_k(
     question = "how to get bigger stronger muscles"
 
     dense = [hit.chunk.source for hit in app.knowledge_base.search(question, k=2)]
-    source = app.engine.knowledge_base
+    source = app.context_source
     assert isinstance(source, HybridContextSource)
     hybrid = [hit.chunk.source for hit in source.search(question, k=2)]
 

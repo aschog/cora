@@ -4,6 +4,7 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from app_page import ask, messages, open_expander, upload
+from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME
 from stub_llm import StubLlm
 
 pytestmark = [pytest.mark.e2e, pytest.mark.timeout(180)]
@@ -13,6 +14,7 @@ CITATION = re.compile(r"\[(\d+)\]")
 
 def test_an_answer_cites_only_sources_it_lists(app: Page, stub: StubLlm) -> None:
     upload(app, "protein.md", b"# Protein\n\nAim for ~1.6 g of protein per kg per day.")
+    stub.script_tool_call(SEARCH_TOOL_NAME, {"query": "protein"})
     stub.script_answer("Protein supports recovery [1].")
 
     ask(app, "How much protein should I eat?")

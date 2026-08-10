@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 from cora.core.citations import CitableHits
 from cora.core.context_source import ContextSource
 from cora.core.ports.plugin import Tool
@@ -20,13 +22,19 @@ SEARCH_TOOL_SCHEMA = {
 }
 
 
-def search_tool(context_source: ContextSource, top_k: int) -> Tool:
-    def run(query: str) -> CitableHits:
-        return CitableHits(context_source.search(query, top_k))
+@dataclass(frozen=True)
+class DocumentSearch:
+    context_source: ContextSource
+    top_k: int
 
+    def __call__(self, query: str) -> CitableHits:
+        return CitableHits(self.context_source.search(query, self.top_k))
+
+
+def search_tool(context_source: ContextSource, top_k: int) -> Tool:
     return Tool(
         name=SEARCH_TOOL_NAME,
         description=SEARCH_TOOL_DESCRIPTION,
         parameter_schema=SEARCH_TOOL_SCHEMA,
-        run=run,
+        run=DocumentSearch(context_source, top_k),
     )

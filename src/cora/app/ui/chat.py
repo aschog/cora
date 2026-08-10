@@ -8,7 +8,7 @@ from cora.app.assembly import App
 from cora.app.ui.formatting import ingest_message, numbered_sources
 from cora.app.ui.thread import ThreadEntry, thread_to_turns
 from cora.core.errors import AdapterError, CoreError
-from cora.core.services.chat_engine import ChatEngine, ChatResult
+from cora.core.services.agent import Agent, ChatResult
 from cora.core.services.knowledge_base import KnowledgeBase
 
 MAX_INGEST_ATTEMPTS = 2
@@ -28,7 +28,7 @@ def render(app: App) -> None:
         _documents(app.knowledge_base)
     _thread()
     if prompt := st.chat_input("Ask about your documents"):
-        _answer(app.engine, prompt)
+        _answer(app.agent, prompt)
 
 
 def _documents(knowledge_base: KnowledgeBase) -> None:
@@ -86,12 +86,12 @@ def _thread() -> None:
         _show(message)
 
 
-def _answer(engine: ChatEngine, prompt: str) -> None:
+def _answer(agent: Agent, prompt: str) -> None:
     history = thread_to_turns(st.session_state.messages)
     _append_and_show({"role": "user", "content": prompt})
     try:
         with st.spinner("Thinking…"):
-            result = engine.answer(prompt, history)
+            result = agent.answer(prompt, history)
     except CoreError as error:
         _append_and_show({"role": "assistant", "error": error.user_message})
         return

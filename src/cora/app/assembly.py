@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from cora.adapters.langgraph_runner import LangGraphRunner, recursion_limit_for
 from cora.adapters.port_logging import (
     LoggingChatModel,
     LoggingEmbedder,
@@ -19,13 +20,17 @@ from cora.app.retrieval import (
     build_context_source,
     needs_keyword_index,
 )
+from cora.core.context_source import ContextSource
+from cora.core.errors import ConfigurationError
 from cora.core.ports.chat_model import ChatModel
 from cora.core.ports.embedding import Embedder
-from cora.core.ports.plugin import Plugin
+from cora.core.ports.plugin import Plugin, Tool
 from cora.core.ports.retrieval import Retriever
-from cora.core.services.chat_engine import ChatEngine
+from cora.core.services.agent import Agent
 from cora.core.services.knowledge_base import KnowledgeBase
 from cora.core.services.plugin_registry import load_plugin
+from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME, search_tool
+from cora.core.services.steps import ModelStep, PrepareStep, Router, ToolStep
 from cora.core.services.tool_runtime import ToolRuntime
 from cora.core.services.validation import (
     EmptyInputRule,
@@ -40,8 +45,9 @@ DEFAULT_COLLECTION = "documents"
 
 @dataclass(frozen=True)
 class App:
-    engine: ChatEngine
+    agent: Agent
     knowledge_base: KnowledgeBase
+    context_source: ContextSource
 
 
 def assemble(
@@ -76,6 +82,7 @@ def assemble(
         keyword_index=keyword_index,
         fusion_queries=fusion_queries,
     )
+    tools = _offered_tools(plugin, context_source, top_k)
     validation = ValidationPipeline(
         core_rules=(
             EmptyInputRule(),
@@ -84,18 +91,33 @@ def assemble(
         ),
         plugin_rules=plugin.validation_rules,
     )
-    engine = ChatEngine(
-        chat_model=chat_model,
-        knowledge_base=context_source,
-        validation=validation,
-        tool_runtime=ToolRuntime(tools=plugin.tools),
-        top_k=top_k,
-        max_tool_rounds=max_tool_rounds,
-        max_history_turns=history_turns,
-        system_prompt=plugin.system_prompt,
-        tools=plugin.tools,
+    runner = LangGraphRunner(
+        prepare=PrepareStep(
+            validation=validation,
+            system_prompt=plugin.system_prompt,
+            max_history_turns=history_turns,
+        ),
+        model=ModelStep(chat_model=chat_model, tools=tools),
+        tools=ToolStep(tool_runtime=ToolRuntime(tools=tools)),
+        router=Router(max_tool_rounds=max_tool_rounds),
+        recursion_limit=recursion_limit_for(max_tool_rounds),
     )
-    return App(engine=engine, knowledge_base=knowledge_base)
+    return App(
+        agent=Agent(runner=runner),
+        knowledge_base=knowledge_base,
+        context_source=context_source,
+    )
+
+
+def _offered_tools(
+    plugin: Plugin, context_source: ContextSource, top_k: int
+) -> tuple[Tool, ...]:
+    if any(tool.name == SEARCH_TOOL_NAME for tool in plugin.tools):
+        raise ConfigurationError(
+            f"A plugin tool may not be named '{SEARCH_TOOL_NAME}': "
+            "that name belongs to document search."
+        )
+    return (search_tool(context_source, top_k), *plugin.tools)
 
 
 def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:

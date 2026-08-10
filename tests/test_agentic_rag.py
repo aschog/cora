@@ -1,5 +1,3 @@
-import pytest
-
 from cora.app.assembly import App, assemble
 from cora.core.metadata_filter import MetadataFilter
 from cora.core.ports.chat_model import ModelReply
@@ -11,7 +9,6 @@ from fixture_plugins import make_plugin
 SEED_DOC = ("note.md", b"protein builds muscle")
 QUESTION = "What do my notes say about protein, and what is 20 + 22?"
 ANSWER = "Protein builds muscle [1], and 20 + 22 = 42."
-IN_PROGRESS = "story 1: the agent decides its own steps"
 
 
 class CountingRetriever(FakeRetriever):
@@ -44,7 +41,6 @@ def _assemble(replies: list[ModelReply], retriever: FakeRetriever) -> App:
     )
 
 
-@pytest.mark.xfail(strict=True, reason=IN_PROGRESS)
 def test_a_question_needing_a_lookup_and_a_calculation_uses_both() -> None:
     app = _assemble(
         [
@@ -55,7 +51,7 @@ def test_a_question_needing_a_lookup_and_a_calculation_uses_both() -> None:
         CountingRetriever(),
     )
 
-    result = app.agent.answer(QUESTION)  # ty: ignore[unresolved-attribute]
+    result = app.agent.answer(QUESTION)
 
     assert result.answer == ANSWER
     assert [(source.number, source.name) for source in result.sources] == [
@@ -66,12 +62,11 @@ def test_a_question_needing_a_lookup_and_a_calculation_uses_both() -> None:
     assert calculation.payload == 42
 
 
-@pytest.mark.xfail(strict=True, reason=IN_PROGRESS)
 def test_a_question_needing_neither_retrieves_nothing_and_calls_no_tool() -> None:
     retriever = CountingRetriever()
     app = _assemble([ModelReply(text="Hello! How can I help?")], retriever)
 
-    result = app.agent.answer("Hello there!")  # ty: ignore[unresolved-attribute]
+    result = app.agent.answer("Hello there!")
 
     assert result.answer == "Hello! How can I help?"
     assert result.tool_results == ()

@@ -17,6 +17,7 @@ from cora.core.errors import (
 from cora.core.ports.chat_model import ChatModel, ModelReply
 from cora.core.ports.plugin import Plugin, ToolCall
 from cora.core.ports.retrieval import Retriever
+from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME
 from fakes import (
     FailingChatModel,
     FakeEmbedder,
@@ -407,7 +408,14 @@ def test_tool_results_are_shown_with_the_answer() -> None:
 @pytest.mark.integration
 def test_upload_then_ask_shows_answer_with_sources() -> None:
     answer = "Protein supports muscle growth [1]."
-    at = _run_page(_app(ScriptedChatModel([ModelReply(text=answer)])))
+    searching = ModelReply(
+        tool_calls=(
+            ToolCall(
+                name=SEARCH_TOOL_NAME, arguments={"query": "protein"}, call_id="call-1"
+            ),
+        )
+    )
+    at = _run_page(_app(ScriptedChatModel([searching, ModelReply(text=answer)])))
     assert not at.exception
 
     at.file_uploader[0].set_value(("note.md", b"protein facts", "text/markdown"))

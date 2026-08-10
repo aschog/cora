@@ -116,33 +116,33 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 
 #### ⇄ Switchover (one commit: `assemble` stops building `ChatEngine`)
 
-- [ ] `assemble` returns an app whose `agent` answers a scripted question end-to-end
+- [x] `assemble` returns an app whose `agent` answers a scripted question end-to-end
       through the graph
-- [ ] the model is offered `search_documents` alongside the plugin's tools, and the runtime
+- [x] the model is offered `search_documents` alongside the plugin's tools, and the runtime
       dispatches it
-- [ ] over a turn that retrieves, no document text reaches the system message — it exists
+- [x] over a turn that retrieves, no document text reaches the system message — it exists
       only in `tool` messages
-- [ ] `assemble(top_k=…)` reaches the search tool *(migrated)*
-- [ ] `assemble(max_tool_rounds=…)` reaches the round budget *(migrated)*
-- [ ] the plugin's system prompt reaches the model *(migrated)*
-- [ ] history turns reach the model behaviourally (replaces `app.engine.max_history_turns`)
-- [ ] the assembled agent rejects an injection attempt before the model is called
+- [x] `assemble(top_k=…)` reaches the search tool *(migrated)*
+- [x] `assemble(max_tool_rounds=…)` reaches the round budget *(migrated)*
+- [x] the plugin's system prompt reaches the model *(migrated)*
+- [x] history turns reach the model behaviourally (replaces `app.engine.max_history_turns`)
+- [x] the assembled agent rejects an injection attempt before the model is called
       *(migrated)*
-- [ ] it chains core and plugin validation rules, in that order *(migrated)*
-- [ ] `App` exposes the configured `context_source` — plain → the knowledge base *(migrated)*
-- [ ] advanced → `FusionContextSource`, built with the configured query count *(migrated)*
-- [ ] hybrid → `HybridContextSource` (re-points `tests/test_hybrid_retrieval.py` too)
+- [x] it chains core and plugin validation rules, in that order *(migrated)*
+- [x] `App` exposes the configured `context_source` — plain → the knowledge base *(migrated)*
+- [x] advanced → `FusionContextSource`, built with the configured query count *(migrated)*
+- [x] hybrid → `HybridContextSource` (re-points `tests/test_hybrid_retrieval.py` too)
       *(migrated)*
-- [ ] `CORA_DEBUG=1` still wraps the three technology ports — re-pointed off
-      `app.engine.chat_model`
-- [ ] a debug turn logs the retrieval and embedding ports **when the model calls the
+- [x] `CORA_DEBUG=1` still wraps the retrieval and embedding ports — re-pointed off
+      `app.engine.chat_model`; the chat model's wrap is proved by the debug turn below
+- [x] a debug turn logs the retrieval and embedding ports **when the model calls the
       search tool** (the old assertion, re-pointed at the decision)
-- [ ] a chat turn stays silent without debug *(migrated)*
-- [ ] a plugin tool named `search_documents` is rejected at assembly rather than silently
+- [x] a chat turn stays silent without debug *(migrated)*
+- [x] a plugin tool named `search_documents` is rejected at assembly rather than silently
       shadowed
-- [ ] **(int)** the UI answers through `app.agent` and its Sources panel lists the cited
+- [x] **(int)** the UI answers through `app.agent` and its Sources panel lists the cited
       source, with the model scripting a `search_documents` call *(migrated)*
-- [ ] **(e2e)** the browser answer still lists its cited source, with the stub scripting a
+- [x] **(e2e)** the browser answer still lists its cited source, with the stub scripting a
       `search_documents` call before its answer — run `-m e2e` by hand on this commit
 
 #### Close
