@@ -1,5 +1,5 @@
 from cora.app.ui.formatting import ingest_message, numbered_sources
-from cora.core.services.chat_engine import Source
+from cora.core.citations import Source
 
 
 def test_numbered_sources_renders_each_source_under_its_own_number() -> None:

@@ -1,25 +1,19 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from cora.core.citations import Context, Source, build_context_block, cited_sources
+from cora.core.citations import Context, build_context_block, cited_sources
 from cora.core.context_source import ContextSource
 from cora.core.errors import ToolLoopLimitError
 from cora.core.ports.chat_model import ChatModel, Message
 from cora.core.ports.plugin import Tool, ToolResult
 from cora.core.ports.retrieval import RetrievedChunk
+from cora.core.services.agent import ChatResult
 from cora.core.services.steps import InputValidator, ToolExecutor
 from cora.core.turn import Turn
 
 
 def _tool_message(result: ToolResult) -> Message:
     return Message(role="tool", content=result.render(), tool_call_id=result.call_id)
-
-
-@dataclass(frozen=True)
-class ChatResult:
-    answer: str
-    sources: tuple[Source, ...] = ()
-    tool_results: tuple[ToolResult, ...] = ()
 
 
 @dataclass(frozen=True)

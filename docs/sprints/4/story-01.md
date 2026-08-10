@@ -97,12 +97,10 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 
 #### `Agent` facade (`agent.py`, home of `ChatResult`)
 
-- [ ] `answer` seeds the initial state from question + history and returns the run's
+- [x] `answer` seeds the initial state from question + history and returns the run's
       `answer`
-- [ ] `ChatResult.sources` are only the cited ones, resolved against the registered sources
-- [ ] `ChatResult.tool_results` carry the run's results in order
-- [ ] over a turn that retrieves, no document text reaches the system message — it exists
-      only in `tool` messages
+- [x] `ChatResult.sources` are only the cited ones, resolved against the registered sources
+- [x] `ChatResult.tool_results` carry the run's results in order
 
 #### `LangGraphRunner` (`adapters/`, behind the new `GraphRunner` port in `core/ports/graph.py`)
 
@@ -122,6 +120,8 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
       through the graph
 - [ ] the model is offered `search_documents` alongside the plugin's tools, and the runtime
       dispatches it
+- [ ] over a turn that retrieves, no document text reaches the system message — it exists
+      only in `tool` messages
 - [ ] `assemble(top_k=…)` reaches the search tool *(migrated)*
 - [ ] `assemble(max_tool_rounds=…)` reaches the round budget *(migrated)*
 - [ ] the plugin's system prompt reaches the model *(migrated)*
