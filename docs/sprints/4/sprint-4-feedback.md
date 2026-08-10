@@ -104,6 +104,15 @@ Recorded with a decision, not scheduled — none is in the sprint-4 story cut.
       but it is what would make citations better than filenames. Revisit with the
       evaluation set.
 
+## Found by the story-1 review
+
+- [ ] **Citation numbers restart each turn** — `[1]` names one document this turn and
+      another the next, so a model that echoes an earlier `[1]` while paraphrasing its own
+      previous answer has it resolved against *this* turn's sources
+      (`core/services/agent.py`). Pre-dates the agent — sprint 3 numbered per turn too.
+      → candidate for **story 3**, where the thread's memory arrives and numbering could
+      become per conversation rather than per turn.
+
 ## Carried over from the manual test run
 
 - [ ] **#5 Tool results shown raw and unlabelled** — `chat.py:106` renders bare payloads

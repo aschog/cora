@@ -6,8 +6,8 @@ domain's tools, and answers directly when neither is needed. The core is
 domain-agnostic; domain specialisation (reference domain: fitness coach) is
 provided exclusively through plugins.
 
-- Architecture (start here): [`docs/big-picture.md`](docs/big-picture.md) — the brief map;
-  links on to the design rationale
+- Architecture (start here): [`docs/big-picture.md`](docs/big-picture.md) — the map, the
+  five ports, and what the tests pin down
 - Development workflow (TDD): [`docs/workflow.md`](docs/workflow.md)
 - Assignment brief: [`docs/sprints/4/assignment.md`](docs/sprints/4/assignment.md) —
   current sprint; sprint 3's brief, spec and test findings are in `docs/sprints/3/`
@@ -16,8 +16,7 @@ provided exclusively through plugins.
 
 Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangGraph · LangChain over
 OpenRouter · Chroma · sentence-transformers · Streamlit — with ruff, ty and pytest as
-quality gates. Runtime dependencies are added feature-by-feature; see the
-roadmap in the architecture plan.
+quality gates. Runtime dependencies are added feature-by-feature, story by story.
 
 ## Setup
 

@@ -131,8 +131,8 @@ labelled as data, and cora's own rules stay in the system message.
 
 ## The components
 
-Eleven parts, each with one job. Eight are on the map; three are marked *folded* because the map
-shows them inside another part.
+Thirteen parts, each with one job. Ten are on the map; three are marked *folded*
+because the map shows them inside another part.
 
 | Component | Job | Where |
 |---|---|---|
@@ -173,6 +173,7 @@ not notice any change.
 - **The core cannot use a framework.** A test reads every `cora.core` file. If one imports LangGraph, LangChain, Chroma, sentence-transformers, Streamlit, or any outer layer, the test fails. A fake bad import is added on purpose to prove the test catches it.
 - **Streamlit is used in one folder only.** No file outside `cora/app/ui` may import it. This is why you can really replace the user interface.
 - **The steps do not depend on any real helper.** They are plain callables over small Protocols (`ContextSource`, `InputValidator`, `ToolExecutor`), so a test walks a whole turn with fakes and no graph at all.
+- **One thing the core shares with the graph on purpose.** `core/agent_state.py` marks the keys that accumulate (`Annotated[list[Message], operator.add]`). No core code reads those marks — they are the convention LangGraph uses to merge each step's partial state, so this one file is written to be understood by a graph engine, without importing one. The steps and the router stay framework-free; the state's *shape* is the shared word.
 - **Document text can never act as an instruction.** A test drives a turn that retrieves and checks that the document's words appear only in a `tool` message — never in the system prompt, where cora's own rules live.
 - **Retrieving is the model's decision.** A live-model test asks a document question and a greeting through the same agent: only the first comes back with sources, and only the first calls a tool.
 - **A runaway agent still ends politely.** The core's round budget is set to trip before the graph's own recursion limit, and a graph that overruns anyway is turned into the same friendly apology — never a framework error.
