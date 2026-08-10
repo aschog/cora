@@ -20,7 +20,7 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 - [ ] a `langgraph` import into a core module is detected as forbidden — mirrors the
       `rank_bm25` proof, and turns green when `langgraph` joins `FORBIDDEN_FRAMEWORKS`
 
-#### Citations (`citations.py`, home of `Source` and `Context`)
+#### Citations (`citations.py`, home of `Source`, `Context` and the citable hit list)
 
 - [ ] `cited_numbers` reads distinct numbers in order of first appearance, and none from
       uncited text *(migrated)*
@@ -32,6 +32,10 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
       second retrieval starts at `[3]`
 - [ ] it returns only the newly registered sources
 - [ ] a source already registered keeps its number when retrieved again
+- [ ] the block marks its document text as untrusted data, not instructions
+- [ ] a hit list registered against the sources known so far renders as that block and
+      names the sources it added
+- [ ] a hit list with no hits renders as "no matching documents" and adds none
 - [ ] `cited_sources(text, sources)` returns only cited sources, ascending
 - [ ] a citation whose number has no registered source is ignored *(migrated)*
 
@@ -44,7 +48,7 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 #### The retrieval tool (`retrieval_tool.py`; `ContextSource` moves to `context_source.py`)
 
 - [ ] the tool searches the injected context source with the model's `query` at the
-      configured `k` and returns its hits
+      configured `k` and returns its hits as a citable payload
 - [ ] dispatched through `ToolRuntime`, a call with no `query` comes back as an
       `invalid arguments` tool error
 
@@ -52,13 +56,13 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 
 - [ ] a plain tool call executes; the partial dict carries a `tool` message and the
       `ToolResult`
-- [ ] a hit-list payload is rendered into a numbered context block, and the stored
-      `ToolResult` renders that same text
-- [ ] the block marks its document text as untrusted data, not instructions
-- [ ] the block's new sources land in the partial dict
-- [ ] a second retrieval in the same run continues the numbering
-- [ ] a search that finds nothing feeds back "no matching documents" and registers no
-      source
+- [ ] a payload that registers no citations is fed back by `ToolResult.render()` unchanged
+- [ ] a citable payload is registered against the run's known sources, and the stored
+      `ToolResult` renders the block it produced
+- [ ] the sources it added land in the partial dict
+- [ ] a second citable payload in the same run continues the numbering
+- [ ] a second *tool* returning a citable payload is registered the same way — the step
+      names no tool
 - [ ] several tool calls in one round all run, in order *(migrated)*
 - [ ] an unknown tool comes back as a tool message, not an exception *(migrated)*
 - [ ] malformed arguments come back as a tool message, not an exception *(migrated)*
