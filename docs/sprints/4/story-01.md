@@ -104,15 +104,15 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 
 #### `LangGraphRunner` (`adapters/`, behind the new `GraphRunner` port in `core/ports/graph.py`)
 
-- [ ] over trivial fake steps, `run` walks prepare → model → tools → model
-- [ ] the returned state's reducers accumulated every partial dict
-- [ ] a runaway graph under a tiny recursion limit surfaces as `ToolLoopLimitError`, never
+- [x] over trivial fake steps, `run` walks prepare → model → tools → model
+- [x] the returned state's reducers accumulated every partial dict
+- [x] a runaway graph under a tiny recursion limit surfaces as `ToolLoopLimitError`, never
       `GraphRecursionError`
-- [ ] with an endlessly tool-calling model the core counter fires first — exactly
+- [x] with an endlessly tool-calling model the core counter fires first — exactly
       `max_tool_rounds` model calls before the friendly error
-- [ ] an `InputRejectedError` from `PrepareStep` leaves `invoke` unwrapped, so the UI's
+- [x] an `InputRejectedError` from `PrepareStep` leaves `invoke` unwrapped, so the UI's
       `except CoreError` still catches it
-- [ ] an `AdapterError` raised inside a step leaves `invoke` unwrapped too
+- [x] an `AdapterError` raised inside a step leaves `invoke` unwrapped too
 
 #### ⇄ Switchover (one commit: `assemble` stops building `ChatEngine`)
 
