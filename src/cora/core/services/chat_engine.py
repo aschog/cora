@@ -1,8 +1,8 @@
-import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
+from cora.core.citations import cited_numbers
 from cora.core.errors import ToolLoopLimitError
 from cora.core.ports.chat_model import ChatModel, Message
 from cora.core.ports.plugin import Tool, ToolCall, ToolResult
@@ -28,12 +28,6 @@ def _tool_message(result: ToolResult) -> Message:
 
 def _unique_sources(chunks: list[RetrievedChunk]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(hit.chunk.source for hit in chunks))
-
-
-def cited_numbers(text: str) -> tuple[int, ...]:
-    runs = re.findall(r"(?<![\w\]])(?:\[\d+\])+", text)
-    found = (int(number) for run in runs for number in re.findall(r"\d+", run))
-    return tuple(dict.fromkeys(found))
 
 
 @dataclass(frozen=True)

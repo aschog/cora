@@ -22,10 +22,10 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 
 #### Citations (`citations.py`, home of `Source`, `Context` and the citable hit list)
 
-- [ ] `cited_numbers` reads distinct numbers in order of first appearance, and none from
+- [x] `cited_numbers` reads distinct numbers in order of first appearance, and none from
       uncited text *(migrated)*
-- [ ] it ignores brackets glued to a word or another bracket *(migrated)*
-- [ ] it reads every number in a consecutive run, multi-digit included *(migrated)*
+- [x] it ignores brackets glued to a word or another bracket *(migrated)*
+- [x] it reads every number in a consecutive run, multi-digit included *(migrated)*
 - [ ] against an empty registry, a batch numbers from `[1]`, one number per unique source,
       a repeated source keeping its number *(migrated)*
 - [ ] `build_context_block` continues numbering after already-registered sources — a
