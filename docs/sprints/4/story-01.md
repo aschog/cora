@@ -17,7 +17,7 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 
 #### The architectural claim
 
-- [ ] a `langgraph` import into a core module is detected as forbidden — mirrors the
+- [x] a `langgraph` import into a core module is detected as forbidden — mirrors the
       `rank_bm25` proof, and turns green when `langgraph` joins `FORBIDDEN_FRAMEWORKS`
 
 #### Citations (`citations.py`, home of `Source`, `Context` and the citable hit list)
