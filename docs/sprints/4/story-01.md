@@ -47,9 +47,9 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 
 #### The retrieval tool (`retrieval_tool.py`; `ContextSource` moves to `context_source.py`)
 
-- [ ] the tool searches the injected context source with the model's `query` at the
+- [x] the tool searches the injected context source with the model's `query` at the
       configured `k` and returns its hits as a citable payload
-- [ ] dispatched through `ToolRuntime`, a call with no `query` comes back as an
+- [x] dispatched through `ToolRuntime`, a call with no `query` comes back as an
       `invalid arguments` tool error
 
 #### `ToolStep`

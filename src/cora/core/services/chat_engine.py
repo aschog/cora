@@ -3,15 +3,12 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from cora.core.citations import Context, Source, build_context_block, cited_sources
+from cora.core.context_source import ContextSource
 from cora.core.errors import ToolLoopLimitError
 from cora.core.ports.chat_model import ChatModel, Message
 from cora.core.ports.plugin import Tool, ToolCall, ToolResult
 from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.turn import Turn
-
-
-class ContextSource(Protocol):
-    def search(self, query: str, k: int) -> list[RetrievedChunk]: ...
 
 
 class InputValidator(Protocol):
