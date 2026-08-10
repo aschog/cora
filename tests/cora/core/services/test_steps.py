@@ -1,15 +1,18 @@
 import dataclasses
 
+import pytest
+
 from cora.core.agent_state import AgentState
 from cora.core.chunk import Chunk
 from cora.core.citations import Source
-from cora.core.ports.chat_model import Message
+from cora.core.errors import LlmError
+from cora.core.ports.chat_model import Message, ModelReply
 from cora.core.ports.plugin import ToolCall, ToolResult
 from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME, search_tool
-from cora.core.services.steps import ToolStep
+from cora.core.services.steps import ModelStep, ToolStep
 from cora.core.services.tool_runtime import ToolRuntime
-from fakes import FakeContextSource, add_tool
+from fakes import FailingChatModel, FakeContextSource, ScriptedChatModel, add_tool
 
 
 def _hit(source: str, text: str = "protein builds muscle") -> RetrievedChunk:
@@ -140,3 +143,64 @@ def test_malformed_arguments_come_back_as_a_tool_message() -> None:
     assert result.error is not None and "invalid arguments" in result.error
     [message] = partial["messages"]
     assert message.content == result.error
+
+
+def _model_step(*replies: ModelReply) -> ModelStep:
+    return ModelStep(chat_model=ScriptedChatModel(list(replies)), tools=(add_tool(),))
+
+
+def _asking(text: str = "add 1 and 2") -> AgentState:
+    return {"messages": [Message(role="user", content=text)]}
+
+
+def test_the_step_completes_with_the_states_messages_and_the_bound_tools() -> None:
+    model = ScriptedChatModel([ModelReply(text="The sum is 3.")])
+    step = ModelStep(chat_model=model, tools=(add_tool(),))
+    state = _asking()
+
+    partial = step(state)
+
+    assert model.last_messages == tuple(state["messages"])
+    assert model.last_tools == (add_tool(),)
+    [reply] = partial["messages"]
+    assert reply.role == "assistant"
+    assert reply.content == "The sum is 3."
+
+
+def test_a_tool_calling_reply_keeps_its_calls_ahead_of_the_rounds_tool_messages() -> (
+    None
+):
+    state = _asking()
+    from_model = _model_step(ModelReply(tool_calls=(_add_call("c1"),)))(state)
+    asked: AgentState = {"messages": [*state["messages"], *from_model["messages"]]}
+
+    from_tools = ToolStep(ToolRuntime(tools=(add_tool(),)))(asked)
+
+    transcript = [*asked["messages"], *from_tools["messages"]]
+    assert [m.role for m in transcript] == ["user", "assistant", "tool"]
+    assert transcript[1].tool_calls == (_add_call("c1"),)
+
+
+def test_a_final_reply_sets_the_answer_and_a_tool_calling_one_does_not() -> None:
+    final = _model_step(ModelReply(text="The sum is 3."))(_asking())
+    calling = _model_step(ModelReply(tool_calls=(_add_call("c1"),)))(_asking())
+
+    assert final["answer"] == "The sum is 3."
+    assert "answer" not in calling
+
+
+def test_each_visit_adds_one_round() -> None:
+    step = _model_step(ModelReply(text="one"), ModelReply(text="two"))
+
+    assert step(_asking())["rounds"] == 1
+    assert step(_asking())["rounds"] == 1
+
+
+def test_an_llm_error_from_the_chat_model_propagates_unchanged() -> None:
+    error = LlmError()
+    step = ModelStep(chat_model=FailingChatModel(error), tools=())
+
+    with pytest.raises(LlmError) as exc_info:
+        step(_asking())
+
+    assert exc_info.value is error

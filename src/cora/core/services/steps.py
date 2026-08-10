@@ -3,12 +3,28 @@ from typing import Protocol
 
 from cora.core.agent_state import AgentState
 from cora.core.citations import Citable, Source
-from cora.core.ports.chat_model import Message
-from cora.core.ports.plugin import ToolCall, ToolResult
+from cora.core.ports.chat_model import ChatModel, Message
+from cora.core.ports.plugin import Tool, ToolCall, ToolResult
 
 
 class ToolExecutor(Protocol):
     def execute(self, call: ToolCall) -> ToolResult: ...
+
+
+@dataclass(frozen=True)
+class ModelStep:
+    chat_model: ChatModel
+    tools: tuple[Tool, ...]
+
+    def __call__(self, state: AgentState) -> AgentState:
+        reply = self.chat_model.complete(tuple(state.get("messages", ())), self.tools)
+        appended = Message(
+            role="assistant", content=reply.text, tool_calls=reply.tool_calls
+        )
+        partial: AgentState = {"messages": [appended], "rounds": 1}
+        if reply.is_final:
+            partial["answer"] = reply.text
+        return partial
 
 
 @dataclass(frozen=True)

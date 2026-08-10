@@ -69,12 +69,12 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 
 #### `ModelStep`
 
-- [ ] the step completes with the state's messages and the bound tools, appending the reply
-- [ ] a tool-calling reply is appended with its `tool_calls` intact, ahead of the tool
+- [x] the step completes with the state's messages and the bound tools, appending the reply
+- [x] a tool-calling reply is appended with its `tool_calls` intact, ahead of the tool
       messages the round adds
-- [ ] a final reply sets `answer`; a tool-calling reply does not
-- [ ] each visit adds one to `rounds`
-- [ ] an `LlmError` from the chat model propagates unchanged *(migrated)*
+- [x] a final reply sets `answer`; a tool-calling reply does not
+- [x] each visit adds one to `rounds`
+- [x] an `LlmError` from the chat model propagates unchanged *(migrated)*
 
 #### `PrepareStep`
 
