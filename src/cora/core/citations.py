@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+from typing import Protocol, runtime_checkable
 
 from cora.core.ports.retrieval import RetrievedChunk
 
@@ -55,6 +56,14 @@ def build_context_block(
         for hit in hits
     )
     return Context(text=f"{UNTRUSTED_NOTICE}\n\n{body}", sources=added)
+
+
+@runtime_checkable
+class Citable(Protocol):
+    """A tool payload that cites its own material: it takes the numbers already
+    handed out and renders itself as a numbered block."""
+
+    def register(self, known: tuple[Source, ...]) -> Context: ...
 
 
 @dataclass(frozen=True)

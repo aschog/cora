@@ -54,18 +54,18 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 
 #### `ToolStep`
 
-- [ ] a plain tool call executes; the partial dict carries a `tool` message and the
+- [x] a plain tool call executes; the partial dict carries a `tool` message and the
       `ToolResult`
-- [ ] a payload that registers no citations is fed back by `ToolResult.render()` unchanged
-- [ ] a citable payload is registered against the run's known sources, and the stored
+- [x] a payload that registers no citations is fed back by `ToolResult.render()` unchanged
+- [x] a citable payload is registered against the run's known sources, and the stored
       `ToolResult` renders the block it produced
-- [ ] the sources it added land in the partial dict
-- [ ] a second citable payload in the same run continues the numbering
-- [ ] a second *tool* returning a citable payload is registered the same way — the step
+- [x] the sources it added land in the partial dict
+- [x] a second citable payload in the same run continues the numbering
+- [x] a second *tool* returning a citable payload is registered the same way — the step
       names no tool
-- [ ] several tool calls in one round all run, in order *(migrated)*
-- [ ] an unknown tool comes back as a tool message, not an exception *(migrated)*
-- [ ] malformed arguments come back as a tool message, not an exception *(migrated)*
+- [x] several tool calls in one round all run, in order *(migrated)*
+- [x] an unknown tool comes back as a tool message, not an exception *(migrated)*
+- [x] malformed arguments come back as a tool message, not an exception *(migrated)*
 
 #### `ModelStep`
 
