@@ -1,6 +1,6 @@
 import re
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Protocol, runtime_checkable
 
 from cora.core.ports.retrieval import RetrievedChunk
 
@@ -58,16 +58,18 @@ def build_context_block(
     return Context(text=f"{UNTRUSTED_NOTICE}\n\n{body}", sources=added)
 
 
-@runtime_checkable
-class Citable(Protocol):
+class Citable(ABC):
     """A tool payload that cites its own material: it takes the numbers already
-    handed out and renders itself as a numbered block."""
+    handed out and renders itself as a numbered block. Declared by inheritance,
+    not by shape — a plugin payload with a `register` of its own is not citable.
+    """
 
+    @abstractmethod
     def register(self, known: tuple[Source, ...]) -> Context: ...
 
 
 @dataclass(frozen=True)
-class CitableHits:
+class CitableHits(Citable):
     hits: list[RetrievedChunk]
 
     def register(self, known: tuple[Source, ...]) -> Context:

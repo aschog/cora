@@ -1,4 +1,5 @@
 import dataclasses
+from dataclasses import dataclass
 
 import pytest
 
@@ -7,7 +8,7 @@ from cora.core.chunk import Chunk
 from cora.core.citations import Source
 from cora.core.errors import InputRejectedError, LlmError, ToolLoopLimitError
 from cora.core.ports.chat_model import Message, ModelReply, Role
-from cora.core.ports.plugin import ToolCall, ToolResult
+from cora.core.ports.plugin import Tool, ToolCall, ToolResult
 from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.core.services.steps import (
@@ -330,3 +331,33 @@ def test_a_tool_calling_reply_at_the_round_budget_gives_up_kindly() -> None:
         Router(max_tool_rounds=2)({"rounds": 2})
 
     assert exc_info.value.user_message == ToolLoopLimitError().user_message
+
+
+@dataclass(frozen=True)
+class _Booking:
+    """A plugin payload that happens to have a `register` of its own."""
+
+    member: str
+
+    def register(self, session: str) -> str:
+        return f"{self.member} is in {session}"
+
+
+_BOOKING_TOOL = Tool(
+    name="book",
+    description="Book a session.",
+    parameter_schema={"type": "object", "properties": {}},
+    run=lambda: _Booking("Ada"),
+)
+
+
+def test_a_payload_that_only_looks_citable_is_fed_back_untouched() -> None:
+    step = ToolStep(ToolRuntime(tools=(_BOOKING_TOOL,)))
+
+    partial = step(_asked(ToolCall(name="book", arguments={}, call_id="c1")))
+
+    [result] = partial["tool_results"]
+    assert result.payload == _Booking("Ada")
+    assert partial["sources"] == []
+    [message] = partial["messages"]
+    assert message.content == result.render()
