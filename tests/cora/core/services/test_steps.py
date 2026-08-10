@@ -5,12 +5,19 @@ import pytest
 from cora.core.agent_state import AgentState
 from cora.core.chunk import Chunk
 from cora.core.citations import Source
-from cora.core.errors import InputRejectedError, LlmError
+from cora.core.errors import InputRejectedError, LlmError, ToolLoopLimitError
 from cora.core.ports.chat_model import Message, ModelReply, Role
 from cora.core.ports.plugin import ToolCall, ToolResult
 from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME, search_tool
-from cora.core.services.steps import ModelStep, PrepareStep, ToolStep
+from cora.core.services.steps import (
+    DONE,
+    TOOLS,
+    ModelStep,
+    PrepareStep,
+    Router,
+    ToolStep,
+)
 from cora.core.services.tool_runtime import ToolRuntime
 from cora.core.services.validation import EmptyInputRule, ValidationPipeline
 from cora.core.turn import Turn
@@ -308,3 +315,18 @@ def test_the_system_message_carries_the_plugin_prompt_and_the_agents_rules() -> 
     assert "You are a fitness coach." in system.content
     assert SEARCH_TOOL_NAME in system.content
     assert "[n]" in system.content
+
+
+def test_a_final_reply_routes_to_done() -> None:
+    assert Router(max_tool_rounds=8)({"answer": "The sum is 3.", "rounds": 1}) == DONE
+
+
+def test_a_tool_calling_reply_under_budget_routes_to_the_tools() -> None:
+    assert Router(max_tool_rounds=8)({"rounds": 1}) == TOOLS
+
+
+def test_a_tool_calling_reply_at_the_round_budget_gives_up_kindly() -> None:
+    with pytest.raises(ToolLoopLimitError) as exc_info:
+        Router(max_tool_rounds=2)({"rounds": 2})
+
+    assert exc_info.value.user_message == ToolLoopLimitError().user_message

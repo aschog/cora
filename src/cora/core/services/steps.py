@@ -3,6 +3,7 @@ from typing import Protocol
 
 from cora.core.agent_state import AgentState
 from cora.core.citations import Citable, Source
+from cora.core.errors import ToolLoopLimitError
 from cora.core.ports.chat_model import ChatModel, Message
 from cora.core.ports.plugin import Tool, ToolCall, ToolResult
 from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME
@@ -16,6 +17,8 @@ class InputValidator(Protocol):
     def validate(self, user_input: str) -> str: ...
 
 
+DONE = "done"
+TOOLS = "tools"
 AGENT_RULES = (
     f"Call the {SEARCH_TOOL_NAME} tool whenever the answer should rest on the "
     "user's own documents, and cite the numbered passages it returns as [n]. "
@@ -79,6 +82,18 @@ class ToolStep:
             "tool_results": results,
             "sources": added,
         }
+
+
+@dataclass(frozen=True)
+class Router:
+    max_tool_rounds: int
+
+    def __call__(self, state: AgentState) -> str:
+        if "answer" in state:
+            return DONE
+        if state.get("rounds", 0) >= self.max_tool_rounds:
+            raise ToolLoopLimitError
+        return TOOLS
 
 
 def _requested_calls(state: AgentState) -> tuple[ToolCall, ...]:

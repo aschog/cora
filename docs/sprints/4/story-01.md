@@ -90,9 +90,9 @@ model. **(migrated)** marks a test that moves off `ChatEngine` rather than a new
 
 #### Router
 
-- [ ] a final reply routes to `done`
-- [ ] a tool-calling reply under budget routes to `tools`
-- [ ] a tool-calling reply at `max_tool_rounds` raises `ToolLoopLimitError` with its
+- [x] a final reply routes to `done`
+- [x] a tool-calling reply under budget routes to `tools`
+- [x] a tool-calling reply at `max_tool_rounds` raises `ToolLoopLimitError` with its
       friendly message
 
 #### `Agent` facade (`agent.py`, home of `ChatResult`)
