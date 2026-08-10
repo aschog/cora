@@ -9,7 +9,7 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
 
 ## Reviewer findings
 
-- [ ] **Indirect prompt injection through document text** *(reviewer: biggest issue)* —
+- [x] **Indirect prompt injection through document text** *(reviewer: biggest issue)* —
       retrieved chunks are concatenated into the system message
       (`core/services/chat_engine.py:107-110`), so an instruction hidden in an uploaded
       document carries the same authority as cora's own rules; the injection rule only
@@ -19,6 +19,9 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       construction. Fixing it first would mean reworking `ChatEngine`, then deleting that
       code and its tests at the switchover. Story 1 asserts it explicitly: the structure
       comes free, the *untrusted-data label* does not.
+      **Done in story 1**: retrieved text now arrives as a `tool` message headed by an
+      untrusted-data notice, and a test asserts the document's words never reach the
+      system message.
 
 - [ ] **Stronger injection rules as a plugin** — `ValidationPipeline` already runs
       `core_rules + plugin_rules` and a rule is anything with `apply(user_input)`

@@ -1,8 +1,10 @@
 # cora
 
-A minimal "chat with your documents" web app. The core is
-domain-agnostic RAG with tool calling; domain specialisation (reference domain:
-fitness coach) is provided exclusively through plugins.
+A "chat with your documents" web app. Ask in your own words and the agent plans
+its own steps: it looks things up when a question needs your documents, runs the
+domain's tools, and answers directly when neither is needed. The core is
+domain-agnostic; domain specialisation (reference domain: fitness coach) is
+provided exclusively through plugins.
 
 - Architecture (start here): [`docs/big-picture.md`](docs/big-picture.md) — the brief map;
   links on to the design rationale
@@ -12,8 +14,8 @@ fitness coach) is provided exclusively through plugins.
 
 ## Stack
 
-Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangChain over OpenRouter ·
-Chroma · sentence-transformers · Streamlit — with ruff, ty and pytest as
+Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangGraph · LangChain over
+OpenRouter · Chroma · sentence-transformers · Streamlit — with ruff, ty and pytest as
 quality gates. Runtime dependencies are added feature-by-feature; see the
 roadmap in the architecture plan.
 
@@ -32,7 +34,8 @@ uv run streamlit run src/cora/app/ui/streamlit_app.py
 ```
 
 Upload a document (txt/md/pdf) in the sidebar, then ask about it — answers cite
-their sources, and any tool runs appear under the answer.
+the sources they used, and any tool runs appear under the answer. A question that
+needs no documents is answered without searching them.
 
 Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
 `CORA_PLUGIN` (default `cora.plugins.fitness`), `CORA_TOP_K` (default `5`),
@@ -40,7 +43,8 @@ Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
 self-query filtering — RAG-Fusion — for one extra model call per question;
 `hybrid` fuses dense and BM25 keyword rankings with no extra model call),
 `CORA_FUSION_QUERIES` (default `4`; sub-queries advanced mode fans out per
-question), `CORA_MAX_TOOL_ROUNDS` (default `8`), `CORA_HISTORY_TURNS` (past
+question), `CORA_MAX_TOOL_ROUNDS` (default `8`; one round is a model call plus the tools it
+asks for, document search included), `CORA_HISTORY_TURNS` (past
 messages sent with each question — the default `20` is about ten
 question-and-answer exchanges, and `0` switches memory off), `CORA_DB_PATH`
 (where Chroma persists; the default `.cora/chroma` is relative to the working
