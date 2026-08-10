@@ -5,10 +5,43 @@ from cora.core.agent_state import AgentState
 from cora.core.citations import Citable, Source
 from cora.core.ports.chat_model import ChatModel, Message
 from cora.core.ports.plugin import Tool, ToolCall, ToolResult
+from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME
 
 
 class ToolExecutor(Protocol):
     def execute(self, call: ToolCall) -> ToolResult: ...
+
+
+class InputValidator(Protocol):
+    def validate(self, user_input: str) -> str: ...
+
+
+AGENT_RULES = (
+    f"Call the {SEARCH_TOOL_NAME} tool whenever the answer should rest on the "
+    "user's own documents, and cite the numbered passages it returns as [n]. "
+    "Answer directly when the question needs no documents."
+)
+
+
+@dataclass(frozen=True)
+class PrepareStep:
+    validation: InputValidator
+    system_prompt: str
+    max_history_turns: int
+
+    def __call__(self, state: AgentState) -> AgentState:
+        question = self.validation.validate(state["question"])
+        history = state.get("history", ())
+        recent = history[max(len(history) - self.max_history_turns, 0) :]
+        return {
+            "messages": [
+                Message(
+                    role="system", content=f"{self.system_prompt}\n\n{AGENT_RULES}"
+                ),
+                *(Message(role=turn.role, content=turn.text) for turn in recent),
+                Message(role="user", content=question),
+            ]
+        }
 
 
 @dataclass(frozen=True)

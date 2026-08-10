@@ -5,13 +5,15 @@ import pytest
 from cora.core.agent_state import AgentState
 from cora.core.chunk import Chunk
 from cora.core.citations import Source
-from cora.core.errors import LlmError
-from cora.core.ports.chat_model import Message, ModelReply
+from cora.core.errors import InputRejectedError, LlmError
+from cora.core.ports.chat_model import Message, ModelReply, Role
 from cora.core.ports.plugin import ToolCall, ToolResult
 from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME, search_tool
-from cora.core.services.steps import ModelStep, ToolStep
+from cora.core.services.steps import ModelStep, PrepareStep, ToolStep
 from cora.core.services.tool_runtime import ToolRuntime
+from cora.core.services.validation import EmptyInputRule, ValidationPipeline
+from cora.core.turn import Turn
 from fakes import FailingChatModel, FakeContextSource, ScriptedChatModel, add_tool
 
 
@@ -204,3 +206,105 @@ def test_an_llm_error_from_the_chat_model_propagates_unchanged() -> None:
         step(_asking())
 
     assert exc_info.value is error
+
+
+def _prepare(max_history_turns: int = 20, prompt: str = "SYS") -> PrepareStep:
+    return PrepareStep(
+        validation=ValidationPipeline((EmptyInputRule(),), ()),
+        system_prompt=prompt,
+        max_history_turns=max_history_turns,
+    )
+
+
+def _turns(*texts: str) -> tuple[Turn, ...]:
+    roles: tuple[Role, ...] = ("user", "assistant")
+    return tuple(
+        Turn(role=roles[index % 2], text=text) for index, text in enumerate(texts)
+    )
+
+
+def _past(partial: AgentState) -> list[str]:
+    return [m.content for m in partial["messages"][1:-1]]
+
+
+class _RecordingValidator:
+    def __init__(self) -> None:
+        self.seen: str | None = None
+
+    def validate(self, user_input: str) -> str:
+        self.seen = user_input
+        return user_input
+
+
+def test_an_invalid_question_is_rejected_and_produces_no_messages() -> None:
+    step = _prepare()
+
+    with pytest.raises(InputRejectedError):
+        step({"question": "   "})
+
+
+def test_the_validator_sees_the_question_alone_never_the_history() -> None:
+    validator = _RecordingValidator()
+    step = PrepareStep(validation=validator, system_prompt="SYS", max_history_turns=20)
+
+    step({"question": "What about protein?", "history": _turns("I weigh 80 kg.")})
+
+    assert validator.seen == "What about protein?"
+
+
+def test_messages_come_out_as_system_then_recent_history_then_the_question() -> None:
+    history = _turns("I weigh 80 kg.", "Noted.")
+
+    partial = _prepare()({"question": "What was my weight?", "history": history})
+
+    messages = partial["messages"]
+    assert [m.role for m in messages] == ["system", "user", "assistant", "user"]
+    assert [m.content for m in messages[1:]] == [
+        "I weigh 80 kg.",
+        "Noted.",
+        "What was my weight?",
+    ]
+
+
+def test_history_beyond_the_cap_drops_the_oldest() -> None:
+    history = _turns("oldest", "old", "recent", "newest")
+
+    partial = _prepare(max_history_turns=2)({"question": "q", "history": history})
+
+    assert _past(partial) == ["recent", "newest"]
+
+
+def test_history_exactly_at_the_cap_is_sent_in_full() -> None:
+    history = _turns("I weigh 80 kg.", "Noted.")
+
+    partial = _prepare(max_history_turns=2)({"question": "q", "history": history})
+
+    assert _past(partial) == ["I weigh 80 kg.", "Noted."]
+
+
+def test_an_odd_cap_sends_a_leading_assistant_turn_without_its_question() -> None:
+    """The cap counts messages, not exchanges, so an orphan reply is accepted."""
+    history = _turns("I weigh 80 kg.", "Noted.", "And I am 1.80 m.", "Got it.")
+
+    partial = _prepare(max_history_turns=3)({"question": "q", "history": history})
+
+    assert _past(partial) == ["Noted.", "And I am 1.80 m.", "Got it."]
+    assert partial["messages"][1].role == "assistant"
+
+
+def test_a_cap_of_zero_sends_no_history_at_all() -> None:
+    history = _turns("I weigh 80 kg.", "Noted.")
+
+    partial = _prepare(max_history_turns=0)({"question": "q", "history": history})
+
+    assert [m.role for m in partial["messages"]] == ["system", "user"]
+
+
+def test_the_system_message_carries_the_plugin_prompt_and_the_agents_rules() -> None:
+    partial = _prepare(prompt="You are a fitness coach.")({"question": "q"})
+
+    system = partial["messages"][0]
+    assert system.role == "system"
+    assert "You are a fitness coach." in system.content
+    assert SEARCH_TOOL_NAME in system.content
+    assert "[n]" in system.content
