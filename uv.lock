@@ -13,6 +13,24 @@ resolution-markers = [
     "python_full_version < '3.13' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
+[manifest]
+members = [
+    "cora-adapters",
+    "cora-app",
+    "cora-core",
+    "cora-fitness",
+]
+
+[manifest.dependency-groups]
+dev = [
+    { name = "cora-app", editable = "packages/cora-app" },
+    { name = "cora-fitness", editable = "packages/cora-fitness" },
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest-watcher", specifier = ">=0.6.3" },
+    { name = "ruff", specifier = ">=0.15.22" },
+    { name = "ty", specifier = ">=0.0.60" },
+]
+
 [[package]]
 name = "aiohappyeyeballs"
 version = "2.7.1"
@@ -414,47 +432,70 @@ wheels = [
 ]
 
 [[package]]
-name = "cora"
+name = "cora-adapters"
 version = "0.1.0"
-source = { editable = "." }
+source = { editable = "packages/cora-adapters" }
 dependencies = [
     { name = "chromadb" },
-    { name = "jsonschema" },
+    { name = "cora-core" },
     { name = "langchain-openai" },
     { name = "langgraph" },
-    { name = "pypdf" },
     { name = "rank-bm25" },
     { name = "sentence-transformers" },
-    { name = "streamlit" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-watcher" },
-    { name = "ruff" },
-    { name = "ty" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "chromadb", specifier = ">=1.5,<2" },
-    { name = "jsonschema", specifier = ">=4.26,<5" },
+    { name = "cora-core", editable = "packages/cora-core" },
     { name = "langchain-openai", specifier = ">=1.4.1" },
     { name = "langgraph", specifier = ">=1.2.10,<2" },
-    { name = "pypdf", specifier = ">=6.14,<7" },
     { name = "rank-bm25", specifier = ">=0.2.2" },
     { name = "sentence-transformers", specifier = ">=5.3,<6" },
+]
+
+[[package]]
+name = "cora-app"
+version = "0.1.0"
+source = { editable = "packages/cora-app" }
+dependencies = [
+    { name = "cora-adapters" },
+    { name = "cora-core" },
+    { name = "streamlit" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cora-adapters", editable = "packages/cora-adapters" },
+    { name = "cora-core", editable = "packages/cora-core" },
     { name = "streamlit", specifier = "~=1.60.0" },
 ]
 
-[package.metadata.requires-dev]
-dev = [
-    { name = "pytest", specifier = ">=9.1.1" },
-    { name = "pytest-watcher", specifier = ">=0.6.3" },
-    { name = "ruff", specifier = ">=0.15.22" },
-    { name = "ty", specifier = ">=0.0.60" },
+[[package]]
+name = "cora-core"
+version = "0.1.0"
+source = { editable = "packages/cora-core" }
+dependencies = [
+    { name = "jsonschema" },
+    { name = "pypdf" },
 ]
+
+[package.metadata]
+requires-dist = [
+    { name = "jsonschema", specifier = ">=4.26,<5" },
+    { name = "pypdf", specifier = ">=6.14,<7" },
+]
+
+[[package]]
+name = "cora-fitness"
+version = "0.1.0"
+source = { editable = "packages/cora-fitness" }
+dependencies = [
+    { name = "cora-core" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "cora-core", editable = "packages/cora-core" }]
 
 [[package]]
 name = "cuda-bindings"

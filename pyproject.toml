@@ -1,40 +1,45 @@
-[project]
-name = "cora"
-version = "0.1.0"
-description = "NotebookLM-style RAG chatbot with domain plugins (reference domain: fitness coach)"
-readme = "README.md"
-authors = [
-    { name = "Georg Wirtenberger", email = "georg.wirtenberger@icloud.com" }
-]
-requires-python = ">=3.12"
-dependencies = [
-    "chromadb>=1.5,<2",
-    "jsonschema>=4.26,<5",
-    "langchain-openai>=1.4.1",
-    "langgraph>=1.2.10,<2",
-    "pypdf>=6.14,<7",
-    "rank-bm25>=0.2.2",
-    "sentence-transformers>=5.3,<6",
-    "streamlit~=1.60.0",
-]
+[tool.uv.workspace]
+members = ["packages/*"]
 
-[build-system]
-requires = ["uv_build>=0.11.26,<0.12.0"]
-build-backend = "uv_build"
+[tool.uv.sources]
+cora-core = { workspace = true }
+cora-adapters = { workspace = true }
+cora-fitness = { workspace = true }
+cora-app = { workspace = true }
 
-[tool.uv.build-backend]
-module-name = ["cora"]
-
+# A virtual root: it ships nothing. The four packages under packages/ are the
+# distributions, and the layer each one may depend on is written in its own
+# manifest — which is what makes "core knows no framework" a fact of the install
+# rather than a rule a test polices.
 [dependency-groups]
 dev = [
+    "cora-app",
+    "cora-fitness",
     "pytest>=9.1.1",
     "pytest-watcher>=0.6.3",
     "ruff>=0.15.22",
     "ty>=0.0.60",
 ]
 
+# Spelled out rather than inferred: with no src/ at the root there is no layout for
+# ty to guess from, and `tests` carries the shared fakes every package's tests import.
+[tool.ty.environment]
+root = [
+    "packages/cora-core/src",
+    "packages/cora-adapters/src",
+    "packages/cora-fitness/src",
+    "packages/cora-app/src",
+    "tests",
+]
+
 [tool.ruff]
-src = ["src", "tests"]
+src = [
+    "packages/cora-core/src",
+    "packages/cora-adapters/src",
+    "packages/cora-fitness/src",
+    "packages/cora-app/src",
+    "tests",
+]
 
 [tool.ruff.lint]
 select = [
@@ -50,7 +55,11 @@ select = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+# Each package's own tests sit beside it; tests/ keeps the shared fakes and the
+# suites that cross packages. Nothing under tests/ may be named for a shipped
+# module: pythonpath puts it on sys.path, and a directory called cora would join
+# the cora namespace as its first portion.
+testpaths = ["packages", "tests"]
 pythonpath = ["tests"]
 addopts = "--strict-markers --import-mode=importlib -m 'not integration and not llm'"
 markers = [

@@ -48,12 +48,15 @@ They are separate commits so each can be verified alone.
 
 #### The workspace holds four packages
 
-- [ ] each package's own test suite passes with that package installed alone, so a layer
-      cannot quietly lean on a dependency it does not declare
-- [ ] `cora-core` imports with neither `chromadb`, `langgraph`, `sentence_transformers`,
+- [x] each package's tests sit beside it, and the shared fakes stay at the root — nothing
+      under `tests/` may be named for a shipped module, or it joins the `cora` namespace as
+      its first portion and shadows the real one
+- [ ] a package's tests run against that package installed alone — needs the shared fakes
+      to stop being a root-level import first, so it is deferred, not done
+- [x] `cora-core` imports with neither `chromadb`, `langgraph`, `sentence_transformers`,
       `streamlit` nor `rank_bm25` importable — the purity `test_architecture.py` asserts,
       now enforced by what the distribution installs
-- [ ] `cora-fitness` imports with only `cora-core` present, so a plugin author needs none
+- [x] `cora-fitness` imports with only `cora-core` present, so a plugin author needs none
       of the adapter stack
 - [ ] the loaders move to `cora-adapters`: a PDF reader is a driven adapter over a file
       format, and it is the only reason `pypdf` sat in core
@@ -70,12 +73,14 @@ They are separate commits so each can be verified alone.
       obvious home *(moved)*
 - [ ] `ContextSource` moves into `core.ports`, so "ports live in `ports/`" is true without
       exception
-- [ ] `test_architecture.py` walks the new roots and still fails on a planted violation —
-      the rules outlive the layout
+- [x] `test_architecture.py` walks all four package roots and still fails on a planted
+      violation — rooted at one package it silently stopped covering the other three
 
 #### Nothing changed but the shape
 
-- [ ] the suite count before and after the move is the same, tier by tier
+- [x] every change in the suite count is accounted for: 650 to 653 — the two namespace
+      `__init__.py` files gone from four parametrised guards (-4), the smoke test split in
+      two (+1), and the packaging manifests pinned (+6)
 - [ ] **(int)** the app assembles and answers a document question through the composition
       root, exactly as before
 - [ ] the pre-commit hook and CI run from the workspace root and gate every package

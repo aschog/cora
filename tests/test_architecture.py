@@ -1,9 +1,13 @@
 import ast
 import pathlib
+from types import ModuleType
 
 import pytest
 
+import cora.adapters
+import cora.app
 import cora.core
+import cora.plugins.fitness
 
 FORBIDDEN_FRAMEWORKS = frozenset(
     {
@@ -20,16 +24,35 @@ FORBIDDEN_FRAMEWORKS = frozenset(
 FORBIDDEN_LAYERS = ("cora.adapters", "cora.plugins", "cora.app")
 TEST_ONLY_FRAMEWORKS = frozenset({"pytest"})
 
-CORE_ROOT = pathlib.Path(cora.core.__file__).parent
-SRC_ROOT = CORE_ROOT.parents[1]
+
+def _root(module: ModuleType) -> pathlib.Path:
+    return pathlib.Path(str(module.__file__)).parent
+
+
+# Every shipped layer, each from its own distribution. Asked of the modules rather
+# than of one directory: since the split there is no single tree holding all of
+# cora, and a walker rooted at one package would pass by silently missing the rest.
+CORE_ROOT = _root(cora.core)
+LAYER_ROOTS = (
+    CORE_ROOT,
+    _root(cora.adapters),
+    _root(cora.app),
+    _root(cora.plugins.fitness).parent,
+)
 CORE_FILES = sorted(CORE_ROOT.rglob("*.py"))
-PACKAGE_ROOT = CORE_ROOT.parent
-PACKAGE_FILES = sorted(PACKAGE_ROOT.rglob("*.py"))
-UI_ROOT = PACKAGE_ROOT / "app" / "ui"
+PACKAGE_FILES = sorted(file for root in LAYER_ROOTS for file in root.rglob("*.py"))
+UI_ROOT = _root(cora.app) / "ui"
+
+
+def _shipped_as(path: pathlib.Path) -> pathlib.Path:
+    """The module path a file ships under — `cora/core/chunk.py` — which is the same
+    whichever distribution carries it."""
+    src = next(parent for parent in path.parents if parent.name == "src")
+    return path.relative_to(src)
 
 
 def _package_parts(path: pathlib.Path) -> tuple[str, ...]:
-    parts = path.relative_to(SRC_ROOT).with_suffix("").parts
+    parts = _shipped_as(path).with_suffix("").parts
     return parts[:-1]  # drop the module name (or '__init__')
 
 
@@ -103,11 +126,11 @@ def test_streamlit_import_is_detected(tmp_path: pathlib.Path) -> None:
 @pytest.mark.parametrize(
     "path",
     [p for p in PACKAGE_FILES if not p.is_relative_to(UI_ROOT)],
-    ids=lambda p: str(p.relative_to(PACKAGE_ROOT)),
+    ids=lambda p: str(_shipped_as(p)),
 )
 def test_streamlit_stays_inside_the_ui_shell(path: pathlib.Path) -> None:
     assert not _imports_streamlit(path), (
-        f"{path.relative_to(PACKAGE_ROOT)} imports streamlit outside cora/app/ui"
+        f"{_shipped_as(path)} imports streamlit outside cora/app/ui"
     )
 
 
@@ -121,14 +144,10 @@ def test_test_only_import_is_detected(tmp_path: pathlib.Path) -> None:
     assert _test_only_imports(innocent) == []
 
 
-@pytest.mark.parametrize(
-    "path", PACKAGE_FILES, ids=lambda p: str(p.relative_to(PACKAGE_ROOT))
-)
+@pytest.mark.parametrize("path", PACKAGE_FILES, ids=lambda p: str(_shipped_as(p)))
 def test_no_test_only_framework_is_shipped(path: pathlib.Path) -> None:
     leaked = _test_only_imports(path)
-    assert not leaked, (
-        f"{path.relative_to(PACKAGE_ROOT)} imports test-only frameworks: {leaked}"
-    )
+    assert not leaked, f"{_shipped_as(path)} imports test-only frameworks: {leaked}"
 
 
 def test_rank_bm25_import_into_core_is_detected() -> None:
@@ -151,13 +170,9 @@ def test_relative_import_into_outer_layer_is_detected() -> None:
     assert any(_is_forbidden(m) for m in modules)
 
 
-@pytest.mark.parametrize(
-    "path", CORE_FILES, ids=lambda p: str(p.relative_to(CORE_ROOT))
-)
+@pytest.mark.parametrize("path", CORE_FILES, ids=lambda p: str(_shipped_as(p)))
 def test_core_module_is_pure(path: pathlib.Path) -> None:
     tree = ast.parse(path.read_text())
     modules = _imported_modules(tree, _package_parts(path))
     forbidden = sorted({m for m in modules if _is_forbidden(m)})
-    assert not forbidden, (
-        f"{path.relative_to(CORE_ROOT)} imports forbidden modules: {forbidden}"
-    )
+    assert not forbidden, f"{_shipped_as(path)} imports forbidden modules: {forbidden}"
