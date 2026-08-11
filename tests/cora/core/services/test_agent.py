@@ -4,13 +4,14 @@ import pytest
 
 from cora.core.agent_state import AgentState
 from cora.core.citations import Source
-from cora.core.errors import LlmError
+from cora.core.errors import GraphRunError, LlmError
 from cora.core.services.agent import Agent
-from cora.core.trace import ModelDecision, ToolUse, TraceStep
+from cora.core.trace import ModelDecision, Reconsidered, ToolUse, TraceStep
 from cora.core.turn import Turn
 
 SEARCHED = ToolUse(name="search_documents", arguments={"query": "protein"})
 ANSWERED = ModelDecision()
+RECONSIDERED = Reconsidered()
 
 
 class _StubRunner:
@@ -82,6 +83,43 @@ def test_a_step_already_reported_is_never_reported_twice() -> None:
     Agent(runner).answer("q", on_step=seen.append)
 
     assert seen == [SEARCHED, ANSWERED]
+
+
+def test_an_answer_already_in_hand_survives_a_failed_second_look() -> None:
+    """The grounding gate makes a run that already has an answer take one more
+    round. If that round dies, the user still gets the answer it had."""
+    runner = _StubRunner(
+        {"answer": "Hello!", "trace": [ANSWERED]},
+        {"answer": "Hello!", "trace": [ANSWERED, RECONSIDERED], "nudged": True},
+        then=LlmError(),
+    )
+
+    result = Agent(runner).answer("Hi!")
+
+    assert result.answer == "Hello!"
+
+
+def test_a_failure_before_any_answer_still_travels_out() -> None:
+    runner = _StubRunner({"trace": [SEARCHED]}, then=LlmError())
+
+    with pytest.raises(LlmError):
+        Agent(runner).answer("q")
+
+
+def test_a_failed_first_round_is_not_rescued_by_an_unnudged_answer() -> None:
+    """Only the gate's extra round is forgiven: any other failure after an answer
+    would be hiding a real one."""
+    runner = _StubRunner({"answer": "Hello!", "trace": [ANSWERED]}, then=LlmError())
+
+    with pytest.raises(LlmError):
+        Agent(runner).answer("Hi!")
+
+
+def test_a_runner_that_walks_no_step_at_all_is_a_failure_not_an_empty_answer() -> None:
+    """The port promises at least one state. A runner that yields none would
+    otherwise return a blank answer that reads like a successful turn."""
+    with pytest.raises(GraphRunError):
+        Agent(_StubRunner()).answer("q")
 
 
 def test_a_run_that_fails_midway_keeps_the_steps_it_already_reported() -> None:
