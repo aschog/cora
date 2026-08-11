@@ -11,7 +11,7 @@ from cora.adapters.openrouter_chat_model import (
     to_langchain_message,
     to_model_reply,
 )
-from cora.core.errors import LlmError
+from cora.core.domain.errors import LlmError
 from cora.core.ports.chat_model import Message, ModelReply
 from cora.core.ports.plugin import ToolCall
 from fakes import add_tool

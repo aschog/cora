@@ -5,21 +5,21 @@ from cora.adapters.langgraph_runner import (
     Step,
     recursion_limit_for,
 )
-from cora.core.agent_state import AgentState
-from cora.core.citations import Source
-from cora.core.errors import InputRejectedError, LlmError, ToolLoopLimitError
+from cora.core.domain.agent_state import AgentState
+from cora.core.domain.citations import Source
+from cora.core.domain.errors import InputRejectedError, LlmError, ToolLoopLimitError
+from cora.core.domain.trace import ToolUse
 from cora.core.ports.chat_model import ChatModel, Message, ModelReply, Role
 from cora.core.ports.plugin import Tool, ToolCall
-from cora.core.services.steps import (
+from cora.core.service_layer.steps import (
     GroundStep,
     ModelStep,
     PrepareStep,
     Router,
     ToolStep,
 )
-from cora.core.services.tool_runtime import ToolRuntime
-from cora.core.services.validation import EmptyInputRule, ValidationPipeline
-from cora.core.trace import ToolUse
+from cora.core.service_layer.tool_runtime import ToolRuntime
+from cora.core.service_layer.validation import EmptyInputRule, ValidationPipeline
 from fakes import FailingChatModel, FakeContextSource, add_tool
 
 ROUNDS = 8

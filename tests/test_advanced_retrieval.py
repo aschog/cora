@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from cora.core.ports.chat_model import ModelReply
-from cora.core.services.fusion_context_source import FusionContextSource
-from cora.core.services.knowledge_base import KnowledgeBase
-from cora.core.services.query_planner import QueryPlanner
+from cora.core.service_layer.fusion_context_source import FusionContextSource
+from cora.core.service_layer.knowledge_base import KnowledgeBase
+from cora.core.service_layer.query_planner import QueryPlanner
 from fakes import FakeEmbedder, ScriptedChatModel
 
 if TYPE_CHECKING:

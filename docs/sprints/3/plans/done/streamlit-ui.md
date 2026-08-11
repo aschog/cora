@@ -25,7 +25,7 @@ From the architecture plan (§4 UI-shell role, §6 runtime flows, §8 testing ti
 `<<existing>>` = reused unchanged.
 
 - **`App` facade** (`cora.app.assembly`) — frozen dataclass `{engine: ChatEngine, knowledge_base: KnowledgeBase}`. `assemble` builds the KB once and returns it inside `App`; `build(Config) -> App` wires real adapters. `ChatEngine` `<<existing>>` stays a pure orchestrator (no ingestion role).
-- **UI shell** (`cora.app.ui`) — the sole `import streamlit`:
+- **UI shell** (`cora.app.entrypoints`) — the sole `import streamlit`:
   - `main()` — resolves the `App` from an **injectable factory** (`@st.cache_resource`, built once), then renders. Injectable so the smoke test wires fakes without env/adapters.
   - **Sidebar** — file uploader (txt/md/pdf); on upload `st.spinner("Ingesting…")` → `kb.add_file(bytes, name)` (dedupe is free — KB hashes); below it, source list from `kb.list_sources()`.
   - **Main** — chat thread from `st.session_state` history; on submit `st.spinner("Thinking…")` → `engine.answer(text)`; render answer with **sources** and **tool results** each in an `st.expander`.
@@ -63,7 +63,7 @@ sequenceDiagram
 
 - **Unit (default)** — pure helpers: `ChatResult`/`ToolResult` → display parts; no Streamlit, no network.
 - **Integration (CI)** — one **headless `streamlit.testing.v1.AppTest`** smoke test with a **fake-wired `App`**: upload a doc, ask a question, assert answer + sources render and no exception surfaces.
-- **Architecture** — extend `test_architecture.py`: `streamlit` importable only from `cora.app.ui`.
+- **Architecture** — extend `test_architecture.py`: `streamlit` importable only from `cora.app.entrypoints`.
 
 ---
 
@@ -86,7 +86,7 @@ Display helpers (pure, framework-free)
 - [x] `numbered_sources(sources)` renders `("a.pdf", "b.md")` → `["[1] a.pdf", "[2] b.md"]`; empty → `[]`.
 - [x] `format_tool_result(tool_result)` shows the `error` message when set, else the payload (str as-is, other → JSON) — never both.
 
-UI shell (`cora.app.ui`) & architecture guard
+UI shell (`cora.app.entrypoints`) & architecture guard
 
 - [x] architecture test: any `cora` module importing `streamlit` lives under `cora/app/ui/`; `cora.core` / `cora.adapters` / `cora.plugins` stay `streamlit`-free (extends `test_architecture.py`). Add `streamlit` (pinned minor) via `uv add`.
 - [x] `render(app)` smoke (AppTest, integration): with a fake-wired `App`, uploading a text doc lists its source in the sidebar, asking a question shows the answer and its numbered sources, and no exception surfaces.

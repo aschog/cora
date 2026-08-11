@@ -1,7 +1,7 @@
 import pytest
 
 from cora.app.config import Config
-from cora.core.errors import ConfigurationError
+from cora.core.domain.errors import ConfigurationError
 
 
 def test_from_env_reads_every_field() -> None:

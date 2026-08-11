@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from cora.core.chunk import Chunk
-from cora.core.errors import RetrievalError
-from cora.core.metadata_filter import MetadataFilter
+from cora.core.domain.chunk import Chunk
+from cora.core.domain.errors import RetrievalError
+from cora.core.domain.metadata_filter import MetadataFilter
 from fakes import FakeEmbedder
 
 if TYPE_CHECKING:

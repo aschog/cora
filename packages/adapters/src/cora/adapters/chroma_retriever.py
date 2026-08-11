@@ -5,9 +5,9 @@ from typing import cast
 import chromadb
 from chromadb.errors import ChromaError
 
-from cora.core.chunk import Chunk
-from cora.core.errors import RetrievalError
-from cora.core.metadata_filter import MetadataFilter
+from cora.core.domain.chunk import Chunk
+from cora.core.domain.errors import RetrievalError
+from cora.core.domain.metadata_filter import MetadataFilter
 from cora.core.ports.retrieval import RetrievedChunk
 
 

@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from cora.core.chunk import Chunk
-from cora.core.metadata_filter import MetadataFilter
+from cora.core.domain.chunk import Chunk
+from cora.core.domain.metadata_filter import MetadataFilter
 
 
 @dataclass(frozen=True)

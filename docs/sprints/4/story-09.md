@@ -65,13 +65,13 @@ They are separate commits so each can be verified alone.
 
 #### The layers are named
 
-- [ ] `cora.core.domain` holds what the problem is made of, `cora.core.service_layer` the
+- [x] `cora.core.domain` holds what the problem is made of, `cora.core.service_layer` the
       use cases, and every test still finds them *(moved)*
-- [ ] a domain module may not import the service layer — the guard the shared package still
+- [x] a domain module may not import the service layer — the guard the shared package still
       needs, since siblings inside one distribution are not separated by metadata
-- [ ] `cora.app.entrypoints` holds the Streamlit app, so a second entrypoint has an
+- [x] `cora.app.entrypoints` holds the Streamlit app, so a second entrypoint has an
       obvious home *(moved)*
-- [ ] `ContextSource` moves into `core.ports`, so "ports live in `ports/`" is true without
+- [x] `ContextSource` moves into `core.ports`, so "ports live in `ports/`" is true without
       exception
 - [x] `test_architecture.py` walks all four package roots and still fails on a planted
       violation — rooted at one package it silently stopped covering the other three

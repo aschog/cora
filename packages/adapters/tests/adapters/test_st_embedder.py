@@ -35,7 +35,7 @@ def test_embedder_produces_384_dim_unit_vectors() -> None:
 
 def test_embedder_failure_surfaces_as_embedding_error() -> None:
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
-    from cora.core.errors import EmbeddingError
+    from cora.core.domain.errors import EmbeddingError
 
     embedder = SentenceTransformerEmbedder(model_name="core/not-a-real-model-xyz")
 

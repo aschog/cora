@@ -9,8 +9,8 @@ from cora.adapters.port_logging import (
     LoggingRetriever,
     truncate,
 )
-from cora.core.chunk import Chunk
-from cora.core.errors import EmbeddingError, LlmError, RetrievalError
+from cora.core.domain.chunk import Chunk
+from cora.core.domain.errors import EmbeddingError, LlmError, RetrievalError
 from cora.core.ports.chat_model import Message, ModelReply
 from cora.core.ports.plugin import ToolCall
 from fakes import (

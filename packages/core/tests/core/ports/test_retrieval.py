@@ -3,7 +3,7 @@ from collections.abc import Callable
 
 import pytest
 
-from cora.core.chunk import Chunk
+from cora.core.domain.chunk import Chunk
 from cora.core.ports.retrieval import RetrievedChunk
 
 

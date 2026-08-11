@@ -1,13 +1,13 @@
 from collections.abc import Callable
 from typing import Protocol
 
-from cora.core.context_source import ContextSource
-from cora.core.errors import ConfigurationError
+from cora.core.domain.errors import ConfigurationError
 from cora.core.ports.chat_model import ChatModel
-from cora.core.services.fusion_context_source import FusionContextSource
-from cora.core.services.hybrid_context_source import HybridContextSource
-from cora.core.services.knowledge_base import KeywordIndex, KnowledgeBase
-from cora.core.services.query_planner import QueryPlanner
+from cora.core.ports.context_source import ContextSource
+from cora.core.service_layer.fusion_context_source import FusionContextSource
+from cora.core.service_layer.hybrid_context_source import HybridContextSource
+from cora.core.service_layer.knowledge_base import KeywordIndex, KnowledgeBase
+from cora.core.service_layer.query_planner import QueryPlanner
 
 RETRIEVAL_PLAIN = "plain"
 RETRIEVAL_ADVANCED = "advanced"

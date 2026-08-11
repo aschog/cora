@@ -5,9 +5,9 @@ from typing import Any, Protocol
 from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 
-from cora.core.agent_state import AgentState
-from cora.core.errors import ToolLoopLimitError
-from cora.core.services.steps import DONE, GROUND, TOOLS
+from cora.core.domain.agent_state import AgentState
+from cora.core.domain.errors import ToolLoopLimitError
+from cora.core.service_layer.steps import DONE, GROUND, TOOLS
 
 PREPARE = "prepare"
 MODEL = "model"

@@ -1,4 +1,4 @@
-from cora.core.services.knowledge_base import KnowledgeBase
+from cora.core.service_layer.knowledge_base import KnowledgeBase
 from cora.plugins.fitness.seed_docs import SEED_DOCS
 
 

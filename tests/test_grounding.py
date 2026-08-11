@@ -1,11 +1,11 @@
 import pytest
 
 from cora.app.assembly import App, assemble
-from cora.core.errors import LlmError, RetrievalError, ToolLoopLimitError
+from cora.core.domain.errors import LlmError, RetrievalError, ToolLoopLimitError
+from cora.core.domain.trace import Reconsidered, SecondLookLost, ToolUse
 from cora.core.ports.chat_model import ChatModel, Message, ModelReply
 from cora.core.ports.plugin import Tool, ToolCall
-from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME
-from cora.core.trace import Reconsidered, SecondLookLost, ToolUse
+from cora.core.service_layer.retrieval_tool import SEARCH_TOOL_NAME
 from fakes import CountingRetriever, FakeEmbedder, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin
 

@@ -1,6 +1,6 @@
 import pytest
 
-from cora.core.errors import InputRejectedError
+from cora.core.domain.errors import InputRejectedError
 from cora.plugins.fitness.safety import MedicalSafetyRule
 
 

@@ -1,7 +1,7 @@
 from collections.abc import Callable
 
 from cora.adapters.bm25_keyword_index import Bm25KeywordIndex
-from cora.core.chunk import Chunk
+from cora.core.domain.chunk import Chunk
 
 
 def test_search_ranks_the_lexical_match_first(

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, cast
 
-from cora.core.errors import EmbeddingError
+from cora.core.domain.errors import EmbeddingError
 
 if TYPE_CHECKING:
     from sentence_transformers import SentenceTransformer

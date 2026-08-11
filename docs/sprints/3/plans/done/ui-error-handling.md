@@ -26,7 +26,7 @@
 
 ## Design (architecture level)
 
-Everything lives in `cora.app.ui.chat`, the layer that owns Streamlit's rerun
+Everything lives in `cora.app.entrypoints.chat`, the layer that owns Streamlit's rerun
 semantics. `<<existing>>` = reused unchanged.
 
 - **Thread entry model** — `ThreadEntry` gains an error variant carrying the

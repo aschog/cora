@@ -23,6 +23,7 @@ FORBIDDEN_FRAMEWORKS = frozenset(
 )
 FORBIDDEN_LAYERS = ("cora.adapters", "cora.plugins", "cora.app")
 TEST_ONLY_FRAMEWORKS = frozenset({"pytest"})
+SERVICE_LAYER = "cora.core.service_layer"
 
 
 def _root(module: ModuleType) -> pathlib.Path:
@@ -40,8 +41,9 @@ LAYER_ROOTS = (
     _root(cora.plugins.fitness).parent,
 )
 CORE_FILES = sorted(CORE_ROOT.rglob("*.py"))
+DOMAIN_ROOT = CORE_ROOT / "domain"
 PACKAGE_FILES = sorted(file for root in LAYER_ROOTS for file in root.rglob("*.py"))
-UI_ROOT = _root(cora.app) / "ui"
+UI_ROOT = _root(cora.app) / "entrypoints"
 
 
 def _shipped_as(path: pathlib.Path) -> pathlib.Path:
@@ -130,7 +132,7 @@ def test_streamlit_import_is_detected(tmp_path: pathlib.Path) -> None:
 )
 def test_streamlit_stays_inside_the_ui_shell(path: pathlib.Path) -> None:
     assert not _imports_streamlit(path), (
-        f"{_shipped_as(path)} imports streamlit outside cora/app/ui"
+        f"{_shipped_as(path)} imports streamlit outside cora/app/entrypoints"
     )
 
 
@@ -176,3 +178,30 @@ def test_core_module_is_pure(path: pathlib.Path) -> None:
     modules = _imported_modules(tree, _package_parts(path))
     forbidden = sorted({m for m in modules if _is_forbidden(m)})
     assert not forbidden, f"{_shipped_as(path)} imports forbidden modules: {forbidden}"
+
+
+def _service_layer_imports(
+    tree: ast.Module, package_parts: tuple[str, ...]
+) -> list[str]:
+    modules = _imported_modules(tree, package_parts)
+    return sorted(
+        {m for m in modules if m == SERVICE_LAYER or m.startswith(f"{SERVICE_LAYER}.")}
+    )
+
+
+def test_a_service_layer_import_into_the_domain_is_detected() -> None:
+    tree = ast.parse(f"from {SERVICE_LAYER}.knowledge_base import KnowledgeBase\n")
+    assert _service_layer_imports(tree, ("cora", "core", "domain")) == [
+        f"{SERVICE_LAYER}.knowledge_base"
+    ]
+
+
+@pytest.mark.parametrize(
+    "path", sorted(DOMAIN_ROOT.rglob("*.py")), ids=lambda p: str(_shipped_as(p))
+)
+def test_a_domain_module_does_not_import_the_service_layer(path: pathlib.Path) -> None:
+    """The one boundary metadata cannot draw: domain and service layer ship in the same
+    distribution, so nothing but a rule keeps the dependency running one way. Sitting in
+    sibling directories makes a violation visible; this makes it fail."""
+    leaked = _service_layer_imports(ast.parse(path.read_text()), _package_parts(path))
+    assert not leaked, f"{_shipped_as(path)} imports the service layer: {leaked}"

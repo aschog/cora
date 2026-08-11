@@ -20,25 +20,25 @@ from cora.app.retrieval import (
     build_context_source,
     needs_keyword_index,
 )
-from cora.core.context_source import ContextSource
-from cora.core.errors import ConfigurationError
+from cora.core.domain.errors import ConfigurationError
 from cora.core.ports.chat_model import ChatModel
+from cora.core.ports.context_source import ContextSource
 from cora.core.ports.embedding import Embedder
 from cora.core.ports.plugin import Plugin, Tool
 from cora.core.ports.retrieval import Retriever
-from cora.core.services.agent import Agent
-from cora.core.services.knowledge_base import KnowledgeBase
-from cora.core.services.plugin_registry import load_plugin
-from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME, search_tool
-from cora.core.services.steps import (
+from cora.core.service_layer.agent import Agent
+from cora.core.service_layer.knowledge_base import KnowledgeBase
+from cora.core.service_layer.plugin_registry import load_plugin
+from cora.core.service_layer.retrieval_tool import SEARCH_TOOL_NAME, search_tool
+from cora.core.service_layer.steps import (
     GroundStep,
     ModelStep,
     PrepareStep,
     Router,
     ToolStep,
 )
-from cora.core.services.tool_runtime import ToolRuntime
-from cora.core.services.validation import (
+from cora.core.service_layer.tool_runtime import ToolRuntime
+from cora.core.service_layer.validation import (
     EmptyInputRule,
     MaxLengthRule,
     PromptInjectionRule,

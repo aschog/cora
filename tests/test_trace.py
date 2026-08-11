@@ -4,7 +4,7 @@ from streamlit.testing.v1 import AppTest
 from cora.app.assembly import App, assemble
 from cora.core.ports.chat_model import ModelReply
 from cora.core.ports.plugin import ToolCall
-from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME
+from cora.core.service_layer.retrieval_tool import SEARCH_TOOL_NAME
 from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel, add_tool
 from fixture_plugins import make_plugin
 
@@ -35,7 +35,7 @@ def _app() -> App:
 
 
 def _page(app) -> None:  # AppTest re-executes this without the module's globals
-    from cora.app.ui.chat import render
+    from cora.app.entrypoints.chat import render
 
     render(app)
 

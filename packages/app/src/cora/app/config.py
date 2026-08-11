@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 from cora.adapters.openrouter_chat_model import OPENROUTER_BASE_URL
 from cora.app.retrieval import DEFAULT_RETRIEVAL, RETRIEVAL_MODES
-from cora.core.errors import ConfigurationError
+from cora.core.domain.errors import ConfigurationError
 
 DEFAULT_MODEL = "openai/gpt-4o-mini"
 DEFAULT_PLUGIN = "cora.plugins.fitness"

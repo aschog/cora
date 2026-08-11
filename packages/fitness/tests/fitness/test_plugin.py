@@ -1,9 +1,9 @@
 import pytest
 
-from cora.core.errors import InputRejectedError
+from cora.core.domain.errors import InputRejectedError
 from cora.core.ports.plugin import Plugin
-from cora.core.services.plugin_registry import load_plugin
-from cora.core.services.validation import (
+from cora.core.service_layer.plugin_registry import load_plugin
+from cora.core.service_layer.validation import (
     EmptyInputRule,
     MaxLengthRule,
     ValidationPipeline,

@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from cora.core.chunk import Chunk
-from cora.core.services.knowledge_base import KnowledgeBase
+from cora.core.domain.chunk import Chunk
+from cora.core.service_layer.knowledge_base import KnowledgeBase
 from fakes import FakeEmbedder, FakeRetriever
 
 if TYPE_CHECKING:

@@ -9,7 +9,7 @@ from langchain_core.messages import (
 )
 from langchain_openai import ChatOpenAI
 
-from cora.core.errors import LlmError
+from cora.core.domain.errors import LlmError
 from cora.core.ports.chat_model import Message, ModelReply
 from cora.core.ports.plugin import Tool, ToolCall
 
