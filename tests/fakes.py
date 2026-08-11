@@ -5,12 +5,12 @@ import math
 from dataclasses import dataclass, field
 from typing import NamedTuple
 
-from cora.core.domain.chunk import Chunk
-from cora.core.domain.metadata_filter import MetadataFilter
-from cora.core.ports.chat_model import Message, ModelReply
-from cora.core.ports.loading import Loaders
-from cora.core.ports.plugin import Tool
-from cora.core.ports.retrieval import RetrievedChunk
+from cora.domain.chunk import Chunk
+from cora.domain.metadata_filter import MetadataFilter
+from cora.ports.chat_model import Message, ModelReply
+from cora.ports.loading import Loaders
+from cora.ports.plugin import Tool
+from cora.ports.retrieval import RetrievedChunk
 
 
 def _add(a: int, b: int) -> int:

@@ -1,10 +1,10 @@
 [project]
 name = "cora-fitness"
 version = "0.1.0"
-description = "cora's reference domain plugin: a fitness coach. Needs the core alone, none of the adapter stack"
+description = "cora's reference domain plugin: a fitness coach. Needs the contract alone, neither the engine nor the adapter stack"
 requires-python = ">=3.12"
 dependencies = [
-    "cora-core",
+    "cora-api",
 ]
 
 [build-system]
@@ -13,4 +13,3 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "cora.plugins.fitness"
-namespace = true

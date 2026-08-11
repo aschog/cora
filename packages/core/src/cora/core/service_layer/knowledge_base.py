@@ -2,12 +2,12 @@ import hashlib
 from dataclasses import dataclass
 from typing import Protocol
 
-from cora.core.domain.chunk import Chunk
-from cora.core.domain.metadata_filter import MetadataFilter
-from cora.core.ports.embedding import Embedder
-from cora.core.ports.loading import Loaders
-from cora.core.ports.retrieval import RetrievedChunk, Retriever
 from cora.core.service_layer.ingestion import ingest
+from cora.domain.chunk import Chunk
+from cora.domain.metadata_filter import MetadataFilter
+from cora.ports.embedding import Embedder
+from cora.ports.loading import Loaders
+from cora.ports.retrieval import RetrievedChunk, Retriever
 
 
 class KeywordIndex(Protocol):

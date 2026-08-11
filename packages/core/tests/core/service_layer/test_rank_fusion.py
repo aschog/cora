@@ -2,9 +2,9 @@ from collections.abc import Callable
 
 import pytest
 
-from cora.core.domain.chunk import Chunk
-from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.service_layer.rank_fusion import reciprocal_rank_fusion
+from cora.domain.chunk import Chunk
+from cora.ports.retrieval import RetrievedChunk
 
 
 def test_rrf_orders_by_summed_reciprocal_rank_with_c_60(

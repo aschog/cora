@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from cora.core.ports.plugin import ToolCall, ToolResult
+from cora.ports.plugin import ToolCall, ToolResult
 from fakes import add_tool
 from fixture_plugins import make_plugin
 

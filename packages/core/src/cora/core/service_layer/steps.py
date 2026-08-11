@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from cora.core.domain.agent_state import AgentState
-from cora.core.domain.citations import Citable, CitableHits, Source
-from cora.core.domain.errors import AdapterError, ToolLoopLimitError
-from cora.core.domain.trace import ModelDecision, Reconsidered, ToolUse, TraceStep
-from cora.core.ports.chat_model import ChatModel, Message
-from cora.core.ports.context_source import ContextSource
-from cora.core.ports.plugin import Tool, ToolCall, ToolResult
 from cora.core.service_layer.retrieval_tool import SEARCH_TOOL_NAME
+from cora.domain.agent_state import AgentState
+from cora.domain.citations import Citable, CitableHits, Source
+from cora.domain.errors import AdapterError, ToolLoopLimitError
+from cora.domain.trace import ModelDecision, Reconsidered, ToolUse, TraceStep
+from cora.ports.chat_model import ChatModel, Message
+from cora.ports.context_source import ContextSource
+from cora.ports.plugin import Tool, ToolCall, ToolResult
 
 
 class ToolExecutor(Protocol):

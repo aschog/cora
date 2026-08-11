@@ -5,8 +5,9 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from cora.app.assembly import App, assemble
-from cora.core.domain.chunk import Chunk
-from cora.core.domain.errors import (
+from cora.core.service_layer.retrieval_tool import SEARCH_TOOL_NAME
+from cora.domain.chunk import Chunk
+from cora.domain.errors import (
     ConfigurationError,
     EmptyDocumentError,
     InputRejectedError,
@@ -14,10 +15,9 @@ from cora.core.domain.errors import (
     PluginLoadError,
     RetrievalError,
 )
-from cora.core.ports.chat_model import ChatModel, ModelReply
-from cora.core.ports.plugin import Plugin, ToolCall
-from cora.core.ports.retrieval import Retriever
-from cora.core.service_layer.retrieval_tool import SEARCH_TOOL_NAME
+from cora.ports.chat_model import ChatModel, ModelReply
+from cora.ports.plugin import Plugin, ToolCall
+from cora.ports.retrieval import Retriever
 from fakes import (
     FailingChatModel,
     FakeEmbedder,

@@ -2,8 +2,8 @@ import importlib
 
 from jsonschema import Draft202012Validator, SchemaError
 
-from cora.core.domain.errors import PluginLoadError
-from cora.core.ports.plugin import Plugin
+from cora.domain.errors import PluginLoadError
+from cora.ports.plugin import Plugin
 
 
 def load_plugin(module_path: str) -> Plugin:

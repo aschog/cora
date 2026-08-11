@@ -1,12 +1,12 @@
 import logging
 from dataclasses import dataclass
 
-from cora.core.domain.chunk import Chunk
-from cora.core.domain.metadata_filter import MetadataFilter
-from cora.core.ports.chat_model import ChatModel, Message, ModelReply
-from cora.core.ports.embedding import Embedder
-from cora.core.ports.plugin import Tool
-from cora.core.ports.retrieval import RetrievedChunk, Retriever
+from cora.domain.chunk import Chunk
+from cora.domain.metadata_filter import MetadataFilter
+from cora.ports.chat_model import ChatModel, Message, ModelReply
+from cora.ports.embedding import Embedder
+from cora.ports.plugin import Tool
+from cora.ports.retrieval import RetrievedChunk, Retriever
 
 MAX_LOGGED_CHARS = 120
 

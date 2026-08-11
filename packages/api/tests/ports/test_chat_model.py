@@ -2,8 +2,8 @@ import dataclasses
 
 import pytest
 
-from cora.core.ports.chat_model import Message, ModelReply
-from cora.core.ports.plugin import ToolCall
+from cora.ports.chat_model import Message, ModelReply
+from cora.ports.plugin import ToolCall
 
 
 def test_reply_is_final_without_tool_calls() -> None:

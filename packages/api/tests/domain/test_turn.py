@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from cora.core.domain.turn import Turn
+from cora.domain.turn import Turn
 
 
 def test_turns_are_equal_by_content() -> None:

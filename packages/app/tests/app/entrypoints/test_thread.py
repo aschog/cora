@@ -1,5 +1,5 @@
 from cora.app.entrypoints.thread import thread_to_turns
-from cora.core.domain.turn import Turn
+from cora.domain.turn import Turn
 
 
 def test_thread_to_turns_maps_an_empty_thread_to_nothing() -> None:

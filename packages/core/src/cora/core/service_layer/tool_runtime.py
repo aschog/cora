@@ -2,8 +2,8 @@ from dataclasses import dataclass
 
 from jsonschema import Draft202012Validator, ValidationError
 
-from cora.core.domain.errors import AdapterError
-from cora.core.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult
+from cora.domain.errors import AdapterError
+from cora.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult
 
 
 @dataclass(frozen=True)

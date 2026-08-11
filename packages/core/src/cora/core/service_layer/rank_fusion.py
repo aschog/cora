@@ -1,5 +1,5 @@
-from cora.core.domain.chunk import Chunk
-from cora.core.ports.retrieval import RetrievedChunk
+from cora.domain.chunk import Chunk
+from cora.ports.retrieval import RetrievedChunk
 
 RRF_C = 60
 

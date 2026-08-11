@@ -1,4 +1,4 @@
-from cora.core.domain.errors import InputRejectedError
+from cora.domain.errors import InputRejectedError
 
 _REDIRECT = (
     "I can't help with medical or medication questions. Please consult a "

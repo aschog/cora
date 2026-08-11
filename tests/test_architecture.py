@@ -7,7 +7,9 @@ import pytest
 import cora.adapters
 import cora.app
 import cora.core
+import cora.domain
 import cora.plugins.fitness
+import cora.ports
 
 FORBIDDEN_FRAMEWORKS = frozenset(
     {
@@ -23,25 +25,24 @@ FORBIDDEN_FRAMEWORKS = frozenset(
 )
 FORBIDDEN_LAYERS = ("cora.adapters", "cora.plugins", "cora.app")
 TEST_ONLY_FRAMEWORKS = frozenset({"pytest"})
-SERVICE_LAYER = "cora.core.service_layer"
 
 
 def _root(module: ModuleType) -> pathlib.Path:
     return pathlib.Path(str(module.__file__)).parent
 
 
-# Every shipped layer, each from its own distribution. Asked of the modules rather
-# than of one directory: since the split there is no single tree holding all of
-# cora, and a walker rooted at one package would pass by silently missing the rest.
-CORE_ROOT = _root(cora.core)
+# Every shipped layer, each asked of its module rather than of a directory: since the
+# split there is no single tree holding all of cora, and a walker rooted at one package
+# passes while silently covering none of the others. The contract now ships apart from
+# the engine, so the pure set spans two distributions and three modules.
+PURE_ROOTS = (_root(cora.domain), _root(cora.ports), _root(cora.core))
 LAYER_ROOTS = (
-    CORE_ROOT,
+    *PURE_ROOTS,
     _root(cora.adapters),
     _root(cora.app),
     _root(cora.plugins.fitness).parent,
 )
-CORE_FILES = sorted(CORE_ROOT.rglob("*.py"))
-DOMAIN_ROOT = CORE_ROOT / "domain"
+CORE_FILES = sorted(file for root in PURE_ROOTS for file in root.rglob("*.py"))
 PACKAGE_FILES = sorted(file for root in LAYER_ROOTS for file in root.rglob("*.py"))
 UI_ROOT = _root(cora.app) / "entrypoints"
 
@@ -111,8 +112,9 @@ def _is_forbidden(module: str) -> bool:
     )
 
 
-def test_core_modules_discovered() -> None:
-    assert CORE_FILES, "no cora.core modules discovered — walker is misconfigured"
+def test_the_pure_modules_are_discovered() -> None:
+    assert len(PURE_ROOTS) == 3, "the contract and the engine span three modules"
+    assert CORE_FILES, "no pure modules discovered — the walker is misconfigured"
 
 
 def test_streamlit_import_is_detected(tmp_path: pathlib.Path) -> None:
@@ -178,30 +180,3 @@ def test_core_module_is_pure(path: pathlib.Path) -> None:
     modules = _imported_modules(tree, _package_parts(path))
     forbidden = sorted({m for m in modules if _is_forbidden(m)})
     assert not forbidden, f"{_shipped_as(path)} imports forbidden modules: {forbidden}"
-
-
-def _service_layer_imports(
-    tree: ast.Module, package_parts: tuple[str, ...]
-) -> list[str]:
-    modules = _imported_modules(tree, package_parts)
-    return sorted(
-        {m for m in modules if m == SERVICE_LAYER or m.startswith(f"{SERVICE_LAYER}.")}
-    )
-
-
-def test_a_service_layer_import_into_the_domain_is_detected() -> None:
-    tree = ast.parse(f"from {SERVICE_LAYER}.knowledge_base import KnowledgeBase\n")
-    assert _service_layer_imports(tree, ("cora", "core", "domain")) == [
-        f"{SERVICE_LAYER}.knowledge_base"
-    ]
-
-
-@pytest.mark.parametrize(
-    "path", sorted(DOMAIN_ROOT.rglob("*.py")), ids=lambda p: str(_shipped_as(p))
-)
-def test_a_domain_module_does_not_import_the_service_layer(path: pathlib.Path) -> None:
-    """The one boundary metadata cannot draw: domain and service layer ship in the same
-    distribution, so nothing but a rule keeps the dependency running one way. Sitting in
-    sibling directories makes a violation visible; this makes it fail."""
-    leaked = _service_layer_imports(ast.parse(path.read_text()), _package_parts(path))
-    assert not leaked, f"{_shipped_as(path)} imports the service layer: {leaked}"

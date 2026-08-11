@@ -1,8 +1,8 @@
 import re
 from dataclasses import dataclass
 
-from cora.core.domain.errors import InputRejectedError
-from cora.core.ports.plugin import ValidationRule
+from cora.domain.errors import InputRejectedError
+from cora.ports.plugin import ValidationRule
 
 _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(

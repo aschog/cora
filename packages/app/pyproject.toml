@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "cora's composition root, configuration and entrypoints"
 requires-python = ">=3.12"
 dependencies = [
+    "cora-api",
     "cora-core",
     "cora-adapters",
     "streamlit~=1.60.0",
@@ -15,4 +16,3 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "cora.app"
-namespace = true

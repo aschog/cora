@@ -1,7 +1,7 @@
 from collections.abc import Iterator
 from typing import Protocol
 
-from cora.core.domain.agent_state import AgentState
+from cora.domain.agent_state import AgentState
 
 
 class GraphRunner(Protocol):

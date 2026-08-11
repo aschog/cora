@@ -43,16 +43,22 @@ def _resolves(reference: str) -> bool:
     return any(candidate.exists() for candidate in candidates)
 
 
-def test_the_namespace_roots_are_discovered() -> None:
-    assert len(NAMESPACES) == 4, f"expected one cora/ per package, got {NAMESPACES}"
+def test_every_package_contributes_a_namespace_root() -> None:
+    """Counted against the workspace rather than pinned to a number: a location claim is
+    resolved against every package, so a package the glob missed would make a stale path
+    look fine."""
+    members = {
+        path.name for path in pathlib.Path("packages").iterdir() if path.is_dir()
+    }
+    assert {root.parent.parent.name for root in NAMESPACES} == members
 
 
 def test_a_reference_is_resolved_against_the_packages() -> None:
-    """`core/domain/chunk.py` is a location even though no such path exists from the
-    root: the docs name modules the way an import does, from `cora/` down."""
-    assert _resolves("core/domain/chunk.py")
+    """`domain/chunk.py` is a location even though no such path exists from the root:
+    the docs name modules the way an import does, from `cora/` down."""
+    assert _resolves("domain/chunk.py")
     assert _resolves("app/entrypoints/")
-    assert not _resolves("core/domain/no_such_module.py")
+    assert not _resolves("domain/no_such_module.py")
 
 
 def test_the_docs_claim_something() -> None:

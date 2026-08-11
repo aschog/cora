@@ -1,5 +1,5 @@
-from cora.core.domain.chunk import Chunk
-from cora.core.domain.citations import (
+from cora.domain.chunk import Chunk
+from cora.domain.citations import (
     NO_MATCHES,
     CitableHits,
     Source,
@@ -7,7 +7,7 @@ from cora.core.domain.citations import (
     cited_numbers,
     cited_sources,
 )
-from cora.core.ports.retrieval import RetrievedChunk
+from cora.ports.retrieval import RetrievedChunk
 
 
 def _hit(source: str, text: str = "t") -> RetrievedChunk:

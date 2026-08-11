@@ -6,13 +6,13 @@ beside it.
 
 import pytest
 
-from cora.core.domain.errors import (
+from cora.core.service_layer.ingestion import ingest
+from cora.domain.errors import (
     EmptyDocumentError,
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
-from cora.core.ports.loading import Loaders
-from cora.core.service_layer.ingestion import ingest
+from cora.ports.loading import Loaders
 
 
 def _text(data: bytes, filename: str) -> str:

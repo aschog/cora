@@ -9,9 +9,9 @@ from langchain_core.messages import (
 )
 from langchain_openai import ChatOpenAI
 
-from cora.core.domain.errors import LlmError
-from cora.core.ports.chat_model import Message, ModelReply
-from cora.core.ports.plugin import Tool, ToolCall
+from cora.domain.errors import LlmError
+from cora.ports.chat_model import Message, ModelReply
+from cora.ports.plugin import Tool, ToolCall
 
 
 def to_model_reply(reply: AIMessage) -> ModelReply:

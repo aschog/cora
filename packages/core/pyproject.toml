@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "cora's domain, service layer and ports — the agent with no framework and no I/O"
 requires-python = ">=3.12"
 dependencies = [
+    "cora-api",
     "jsonschema>=4.26,<5",
 ]
 
@@ -13,4 +14,3 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "cora.core"
-namespace = true

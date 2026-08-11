@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from cora.core.domain.chunk import Chunk
+from cora.domain.chunk import Chunk
 
 
 def test_chunks_are_equal_by_content() -> None:

@@ -2,6 +2,7 @@
 members = ["packages/*"]
 
 [tool.uv.sources]
+cora-api = { workspace = true }
 cora-core = { workspace = true }
 cora-adapters = { workspace = true }
 cora-fitness = { workspace = true }
@@ -25,6 +26,7 @@ dev = [
 # ty to guess from, and `tests` carries the shared fakes every package's tests import.
 [tool.ty.environment]
 root = [
+    "packages/api/src",
     "packages/core/src",
     "packages/adapters/src",
     "packages/fitness/src",
@@ -34,6 +36,7 @@ root = [
 
 [tool.ruff]
 src = [
+    "packages/api/src",
     "packages/core/src",
     "packages/adapters/src",
     "packages/fitness/src",

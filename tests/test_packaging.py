@@ -13,7 +13,7 @@ import re
 import tomllib
 
 PACKAGES = pathlib.Path("packages")
-LAYERS = ("core", "adapters", "fitness", "app")
+LAYERS = ("api", "core", "adapters", "fitness", "app")
 HEAVY = frozenset(
     {
         "chromadb",
@@ -37,23 +37,24 @@ def _requires(name: str) -> set[str]:
     return {re.split(r"[<>=!~\[;\s]", requirement)[0] for requirement in declared}
 
 
-def _module_root(name: str) -> pathlib.Path:
-    module = _manifest(name)["tool"]["uv"]["build-backend"]["module-name"]
-    return PACKAGES / name / "src" / pathlib.Path(*module.split("."))
+def _module_roots(name: str) -> list[pathlib.Path]:
+    """A manifest may name one module or several: `cora-api` carries `cora.domain` and
+    `cora.ports` as two portions of the namespace, so `module-name` is a list there."""
+    declared = _manifest(name)["tool"]["uv"]["build-backend"]["module-name"]
+    modules = [declared] if isinstance(declared, str) else declared
+    src = PACKAGES / name / "src"
+    return [src / pathlib.Path(*module.split(".")) for module in modules]
 
 
-def test_the_workspace_holds_exactly_the_four_layers() -> None:
-    """Directories are named for the layer, distributions for the project. Nothing in
-    the tree may be called `cora`: the root goes on `sys.path` for anything run from
-    it, and a directory of that name joins the namespace as its first portion — which
-    is enough to make `import cora.fitness` resolve to an empty phantom."""
-    assert {path.name for path in PACKAGES.iterdir() if path.is_dir()} == {
-        "core",
-        "adapters",
-        "fitness",
-        "app",
-    }
+def test_the_workspace_holds_exactly_its_layers() -> None:
+    """Directories are named for the layer, distributions for the audience that installs
+    them. Nothing in the tree may be called `cora`: the root goes on `sys.path` for
+    anything run from it, and a directory of that name joins the namespace as its first
+    portion — which is enough to make `import cora.fitness` resolve to an empty
+    phantom."""
+    assert {path.name for path in PACKAGES.iterdir() if path.is_dir()} == set(LAYERS)
     assert {layer: _manifest(layer)["project"]["name"] for layer in LAYERS} == {
+        "api": "cora-api",
         "core": "cora-core",
         "adapters": "cora-adapters",
         "fitness": "cora-fitness",
@@ -67,7 +68,10 @@ def test_every_layer_ships_its_typing_marker() -> None:
     untyped while the file sits in the tree looking like it is doing its job — nothing
     else fails on that, which is why the stray copy is asserted against as well."""
     unmarked = [
-        layer for layer in LAYERS if not (_module_root(layer) / "py.typed").is_file()
+        str(root)
+        for layer in LAYERS
+        for root in _module_roots(layer)
+        if not (root / "py.typed").is_file()
     ]
     assert unmarked == [], f"no py.typed inside the packaged module: {unmarked}"
 
@@ -75,7 +79,7 @@ def test_every_layer_ships_its_typing_marker() -> None:
         str(marker)
         for layer in LAYERS
         for marker in (PACKAGES / layer / "src").rglob("py.typed")
-        if marker.parent != _module_root(layer)
+        if marker.parent not in _module_roots(layer)
     )
     assert strays == [], f"py.typed outside the packaged module: {strays}"
 
@@ -93,14 +97,23 @@ def test_core_reads_no_file_format_of_its_own() -> None:
     assert "pypdf" in _requires("adapters")
 
 
-def test_core_depends_on_no_other_layer() -> None:
-    assert not {name for name in _requires("core") if name.startswith("cora-")}
+def test_the_contract_declares_nothing_at_all() -> None:
+    """What a plugin author installs: no layer, and no third party either. The engine is
+    what *checks* a tool's schema, so `jsonschema` is the engine's dependency — the
+    contract only says a tool has one."""
+    assert _requires("api") == set()
 
 
-def test_a_plugin_needs_the_core_alone() -> None:
-    """A plugin author installs one package. Wanting an adapter here would mean the
-    domain had been written against a technology."""
-    assert _requires("fitness") == {"cora-core"}
+def test_the_engine_needs_the_contract_and_no_other_layer() -> None:
+    assert {name for name in _requires("core") if name.startswith("cora-")} == {
+        "cora-api"
+    }
+
+
+def test_a_plugin_needs_the_contract_alone() -> None:
+    """A plugin author installs one package, and it is not the engine: the fitness
+    bundle uses four names — `Plugin`, `Tool`, `ToolRefusal`, `InputRejectedError`."""
+    assert _requires("fitness") == {"cora-api"}
 
 
 def test_the_adapters_bind_the_core_to_its_technologies() -> None:

@@ -1,9 +1,9 @@
-from cora.core.domain.chunk import Chunk
-from cora.core.domain.citations import CitableHits
-from cora.core.ports.plugin import ToolCall
-from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.service_layer.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.core.service_layer.tool_runtime import ToolRuntime
+from cora.domain.chunk import Chunk
+from cora.domain.citations import CitableHits
+from cora.ports.plugin import ToolCall
+from cora.ports.retrieval import RetrievedChunk
 from fakes import FakeContextSource
 
 

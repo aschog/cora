@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from itertools import zip_longest
 from typing import Any
 
-from cora.core.domain.turn import Turn
+from cora.domain.turn import Turn
 
 ThreadEntry = dict[str, Any]
 

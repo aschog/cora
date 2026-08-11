@@ -1,7 +1,7 @@
 from cora.app.assembly import App, assemble
-from cora.core.domain.trace import ToolUse
-from cora.core.ports.chat_model import ModelReply
-from cora.core.ports.plugin import ToolCall
+from cora.domain.trace import ToolUse
+from cora.ports.chat_model import ModelReply
+from cora.ports.plugin import ToolCall
 from fakes import (
     CountingRetriever,
     FakeEmbedder,

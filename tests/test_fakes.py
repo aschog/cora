@@ -1,8 +1,8 @@
 from collections.abc import Callable
 
-from cora.core.domain.chunk import Chunk
-from cora.core.domain.metadata_filter import MetadataFilter
-from cora.core.ports.chat_model import Message, ModelReply
+from cora.domain.chunk import Chunk
+from cora.domain.metadata_filter import MetadataFilter
+from cora.ports.chat_model import Message, ModelReply
 from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel, add_tool
 
 

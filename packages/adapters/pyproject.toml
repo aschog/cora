@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "The technologies cora's ports are bound to: Chroma, OpenRouter, LangGraph, BM25, sentence-transformers"
 requires-python = ">=3.12"
 dependencies = [
+    "cora-api",
     "cora-core",
     "chromadb>=1.5,<2",
     "langchain-openai>=1.4.1",
@@ -19,4 +20,3 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "cora.adapters"
-namespace = true

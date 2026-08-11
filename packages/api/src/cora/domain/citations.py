@@ -2,8 +2,8 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
-from cora.core.domain.prose import counted, listed
-from cora.core.ports.retrieval import RetrievedChunk
+from cora.domain.prose import counted, listed
+from cora.ports.retrieval import RetrievedChunk
 
 NO_MATCHES = "No matching documents."
 

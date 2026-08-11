@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 
-from cora.core.domain.citations import Source
-from cora.core.domain.trace import TraceStep
+from cora.domain.citations import Source
+from cora.domain.trace import TraceStep
 
 DETAIL_CAP = 800
 SUMMARY_CAP = 200

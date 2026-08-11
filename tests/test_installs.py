@@ -96,16 +96,47 @@ def test_an_empty_environment_has_nothing_in_it(
     assert not _imports(python, "cora.plugins.fitness")
 
 
+def _import_failures(python: pathlib.Path, package: str) -> list[str]:
+    """Every module under `package`, imported for real. A leak out of the contract
+    shows up as an unresolvable import — the guarantee the AST walker used to give the
+    domain, except asked of an environment that genuinely lacks the engine rather than
+    of one where everything happens to be present."""
+    listing = _probe(
+        python,
+        "import importlib, json, pkgutil\n"
+        f"pkg = importlib.import_module({package!r})\n"
+        "broken = []\n"
+        "for found in pkgutil.walk_packages(pkg.__path__, pkg.__name__ + '.'):\n"
+        "    try:\n"
+        "        importlib.import_module(found.name)\n"
+        "    except Exception as exc:\n"
+        "        broken.append(f'{found.name}: {exc!r}')\n"
+        "print(json.dumps(broken))\n",
+    )
+    return json.loads(listing)
+
+
 @pytest.mark.integration
-@pytest.mark.xfail(
-    strict=True,
-    reason="a plugin still depends on cora-core, which carries the engine; cora-api "
-    "does not exist yet",
-)
 def test_a_plugin_installs_the_contract_and_nothing_else(
     tmp_path: pathlib.Path, wheelhouse: pathlib.Path
 ) -> None:
+    """The story, as an environment: four names is what the fitness bundle uses, so the
+    engine, the adapters and every framework stay out of a plugin author's venv."""
     python = _install(tmp_path / "plugin", wheelhouse, "cora-fitness")
 
     assert _imports(python, "cora.plugins.fitness")
     assert _installed(python) == {"cora-fitness", "cora-api"}
+
+
+@pytest.mark.integration
+def test_the_contract_stands_up_with_nothing_installed_beside_it(
+    tmp_path: pathlib.Path, wheelhouse: pathlib.Path
+) -> None:
+    """Stdlib only, and self-contained: every domain and port module imports with no
+    engine, no adapter and no third party present. This is what lets the walker's
+    domain-may-not-import-the-service-layer guard be deleted rather than moved."""
+    python = _install(tmp_path / "contract", wheelhouse, "cora-api")
+
+    assert _installed(python) == {"cora-api"}
+    assert _import_failures(python, "cora.domain") == []
+    assert _import_failures(python, "cora.ports") == []

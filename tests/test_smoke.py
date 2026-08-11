@@ -8,9 +8,17 @@ import cora
 import cora.adapters
 import cora.app
 import cora.core
+import cora.domain
 import cora.plugins.fitness
+import cora.ports
 
-DISTRIBUTIONS = ("cora-core", "cora-adapters", "cora-fitness", "cora-app")
+DISTRIBUTIONS = (
+    "cora-api",
+    "cora-core",
+    "cora-adapters",
+    "cora-fitness",
+    "cora-app",
+)
 
 
 def _carrier(module: ModuleType) -> str:
@@ -23,7 +31,7 @@ def _carrier(module: ModuleType) -> str:
     return src.parent.name
 
 
-def test_the_layers_share_one_namespace_across_four_distributions() -> None:
+def test_the_layers_share_one_namespace_across_its_distributions() -> None:
     """`cora` is a namespace, not a package: each layer ships separately and they meet
     at import time. A stray `cora/__init__.py` in any of them would claim the name for
     one distribution and hide the others."""
@@ -34,10 +42,19 @@ def test_the_layers_share_one_namespace_across_four_distributions() -> None:
 def test_each_layer_is_carried_by_its_own_workspace_member() -> None:
     carriers = {
         module.__name__: _carrier(module)
-        for module in (cora.core, cora.adapters, cora.app, cora.plugins.fitness)
+        for module in (
+            cora.domain,
+            cora.ports,
+            cora.core,
+            cora.adapters,
+            cora.app,
+            cora.plugins.fitness,
+        )
     }
 
     assert carriers == {
+        "cora.domain": "api",
+        "cora.ports": "api",
         "cora.core": "core",
         "cora.adapters": "adapters",
         "cora.app": "app",

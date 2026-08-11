@@ -1,14 +1,14 @@
 import pytest
 
-from cora.core.domain.errors import InputRejectedError
-from cora.core.ports.plugin import Plugin
 from cora.core.service_layer.plugin_registry import load_plugin
 from cora.core.service_layer.validation import (
     EmptyInputRule,
     MaxLengthRule,
     ValidationPipeline,
 )
+from cora.domain.errors import InputRejectedError
 from cora.plugins.fitness import PLUGIN, SYSTEM_PROMPT
+from cora.ports.plugin import Plugin
 
 
 def test_system_prompt_sets_persona_and_load_bearing_instructions() -> None:

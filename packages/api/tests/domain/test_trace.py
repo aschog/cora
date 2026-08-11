@@ -1,4 +1,4 @@
-from cora.core.domain.trace import ModelDecision, ToolUse
+from cora.domain.trace import ModelDecision, ToolUse
 
 
 def test_a_decision_names_the_tools_it_asked_for() -> None:

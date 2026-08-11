@@ -1,12 +1,12 @@
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from cora.core.domain.agent_state import AgentState
-from cora.core.domain.citations import Source, cited_sources
-from cora.core.domain.errors import AdapterError, GraphRunError
-from cora.core.domain.trace import SecondLookLost, TraceStep
-from cora.core.domain.turn import Turn
-from cora.core.ports.graph import GraphRunner
+from cora.domain.agent_state import AgentState
+from cora.domain.citations import Source, cited_sources
+from cora.domain.errors import AdapterError, GraphRunError
+from cora.domain.trace import SecondLookLost, TraceStep
+from cora.domain.turn import Turn
+from cora.ports.graph import GraphRunner
 
 
 @dataclass(frozen=True)

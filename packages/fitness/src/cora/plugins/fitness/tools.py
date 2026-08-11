@@ -1,9 +1,9 @@
-from cora.core.ports.plugin import Tool
 from cora.plugins.fitness.calculators import (
     calculate_bmi,
     calculate_daily_energy,
     plan_macros,
 )
+from cora.ports.plugin import Tool
 
 
 def _bmi(weight_kg: float, height_m: float) -> float:

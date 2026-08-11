@@ -1,8 +1,8 @@
 import pytest
 
-from cora.core.domain.errors import RetrievalError
-from cora.core.ports.plugin import Tool, ToolCall, ToolRefusal
 from cora.core.service_layer.tool_runtime import ToolRuntime
+from cora.domain.errors import RetrievalError
+from cora.ports.plugin import Tool, ToolCall, ToolRefusal
 from fakes import add_tool
 
 

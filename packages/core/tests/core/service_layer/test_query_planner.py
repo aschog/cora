@@ -1,8 +1,8 @@
-from cora.core.domain.errors import LlmError
-from cora.core.domain.metadata_filter import MetadataFilter
-from cora.core.domain.query_plan import QueryPlan
-from cora.core.ports.chat_model import ModelReply
 from cora.core.service_layer.query_planner import QueryPlanner, parse_plan
+from cora.domain.errors import LlmError
+from cora.domain.metadata_filter import MetadataFilter
+from cora.domain.query_plan import QueryPlan
+from cora.ports.chat_model import ModelReply
 from fakes import FailingChatModel, ScriptedChatModel
 
 

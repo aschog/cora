@@ -2,20 +2,20 @@ from collections.abc import Iterator
 
 import pytest
 
-from cora.core.domain.agent_state import AgentState
-from cora.core.domain.citations import Source
-from cora.core.domain.errors import GraphRunError, LlmError, ToolLoopLimitError
-from cora.core.domain.trace import (
+from cora.core.service_layer.agent import Agent
+from cora.domain.agent_state import AgentState
+from cora.domain.citations import Source
+from cora.domain.errors import GraphRunError, LlmError, ToolLoopLimitError
+from cora.domain.trace import (
     ModelDecision,
     Reconsidered,
     SecondLookLost,
     ToolUse,
     TraceStep,
 )
-from cora.core.domain.turn import Turn
-from cora.core.ports.chat_model import Message
-from cora.core.ports.plugin import ToolCall
-from cora.core.service_layer.agent import Agent
+from cora.domain.turn import Turn
+from cora.ports.chat_model import Message
+from cora.ports.plugin import ToolCall
 
 SEARCHED = ToolUse(name="search_documents", arguments={"query": "protein"})
 ANSWERED = ModelDecision()

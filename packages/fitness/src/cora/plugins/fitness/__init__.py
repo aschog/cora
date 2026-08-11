@@ -1,7 +1,7 @@
-from cora.core.ports.plugin import Plugin
 from cora.plugins.fitness.safety import MedicalSafetyRule
 from cora.plugins.fitness.seed_docs import SEED_DOCS
 from cora.plugins.fitness.tools import TOOLS
+from cora.ports.plugin import Plugin
 
 SYSTEM_PROMPT = """\
 You are a knowledgeable, evidence-based fitness and nutrition coach. Answer

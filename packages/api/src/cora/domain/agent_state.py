@@ -1,10 +1,10 @@
 import operator
 from typing import Annotated, TypedDict
 
-from cora.core.domain.citations import Source
-from cora.core.domain.trace import TraceStep
-from cora.core.domain.turn import Turn
-from cora.core.ports.chat_model import Message
+from cora.domain.citations import Source
+from cora.domain.trace import TraceStep
+from cora.domain.turn import Turn
+from cora.ports.chat_model import Message
 
 
 class AgentState(TypedDict, total=False):

@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
-from cora.core.domain.citations import CitableHits
-from cora.core.ports.context_source import ContextSource
-from cora.core.ports.plugin import Tool
+from cora.domain.citations import CitableHits
+from cora.ports.context_source import ContextSource
+from cora.ports.plugin import Tool
 
 SEARCH_TOOL_NAME = "search_documents"
 SEARCH_TOOL_DESCRIPTION = (

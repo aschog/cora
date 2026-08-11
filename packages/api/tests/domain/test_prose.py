@@ -1,4 +1,4 @@
-from cora.core.domain.prose import counted, listed
+from cora.domain.prose import counted, listed
 
 
 def test_a_list_reads_as_english() -> None:

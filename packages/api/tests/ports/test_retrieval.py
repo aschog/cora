@@ -3,8 +3,8 @@ from collections.abc import Callable
 
 import pytest
 
-from cora.core.domain.chunk import Chunk
-from cora.core.ports.retrieval import RetrievedChunk
+from cora.domain.chunk import Chunk
+from cora.ports.retrieval import RetrievedChunk
 
 
 def test_retrieved_chunks_are_equal_by_content(

@@ -1,12 +1,12 @@
 import pytest
 
-from cora.core.ports.plugin import ToolRefusal
 from cora.plugins.fitness.calculators import (
     calculate_bmi,
     calculate_bmr,
     calculate_daily_energy,
     plan_macros,
 )
+from cora.ports.plugin import ToolRefusal
 
 
 @pytest.mark.parametrize(

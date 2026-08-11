@@ -1,10 +1,10 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from cora.core.domain.metadata_filter import MetadataFilter
-from cora.core.domain.query_plan import QueryPlan
-from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.service_layer.rank_fusion import reciprocal_rank_fusion
+from cora.domain.metadata_filter import MetadataFilter
+from cora.domain.query_plan import QueryPlan
+from cora.ports.retrieval import RetrievedChunk
 
 
 class Planner(Protocol):

@@ -2,8 +2,8 @@ import dataclasses
 
 import pytest
 
-from cora.core.domain.metadata_filter import MetadataFilter
-from cora.core.domain.query_plan import QueryPlan
+from cora.domain.metadata_filter import MetadataFilter
+from cora.domain.query_plan import QueryPlan
 
 
 def test_query_plans_are_equal_by_content() -> None:

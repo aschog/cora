@@ -7,10 +7,10 @@ from streamlit.runtime.uploaded_file_manager import UploadedFile
 from cora.app.assembly import App
 from cora.app.entrypoints.formatting import ingest_message, numbered_sources, step_text
 from cora.app.entrypoints.thread import ThreadEntry, thread_to_turns
-from cora.core.domain.errors import AdapterError, CoreError
-from cora.core.domain.trace import TraceStep
 from cora.core.service_layer.agent import Agent, ChatResult
 from cora.core.service_layer.knowledge_base import KnowledgeBase
+from cora.domain.errors import AdapterError, CoreError
+from cora.domain.trace import TraceStep
 
 MAX_INGEST_ATTEMPTS = 2
 WORKING = "Working…"

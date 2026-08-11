@@ -1,4 +1,4 @@
-from cora.core.domain.chunk import Chunk
+from cora.domain.chunk import Chunk
 
 DEFAULT_CHUNK_SIZE = 1000
 DEFAULT_OVERLAP = 150

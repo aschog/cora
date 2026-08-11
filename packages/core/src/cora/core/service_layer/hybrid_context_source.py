@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
-from cora.core.ports.context_source import ContextSource
-from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.service_layer.rank_fusion import reciprocal_rank_fusion
+from cora.ports.context_source import ContextSource
+from cora.ports.retrieval import RetrievedChunk
 
 
 @dataclass(frozen=True)

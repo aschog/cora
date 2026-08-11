@@ -5,10 +5,10 @@ from typing import cast
 import chromadb
 from chromadb.errors import ChromaError
 
-from cora.core.domain.chunk import Chunk
-from cora.core.domain.errors import RetrievalError
-from cora.core.domain.metadata_filter import MetadataFilter
-from cora.core.ports.retrieval import RetrievedChunk
+from cora.domain.chunk import Chunk
+from cora.domain.errors import RetrievalError
+from cora.domain.metadata_filter import MetadataFilter
+from cora.ports.retrieval import RetrievedChunk
 
 
 def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:

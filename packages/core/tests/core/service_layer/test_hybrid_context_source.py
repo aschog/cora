@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
-from cora.core.domain.chunk import Chunk
-from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.service_layer.hybrid_context_source import HybridContextSource
+from cora.domain.chunk import Chunk
+from cora.ports.retrieval import RetrievedChunk
 
 
 @dataclass

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from cora.core.domain.metadata_filter import MetadataFilter
+from cora.domain.metadata_filter import MetadataFilter
 
 
 @dataclass(frozen=True)

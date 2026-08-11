@@ -1,4 +1,4 @@
-from cora.core.ports.plugin import ToolRefusal
+from cora.ports.plugin import ToolRefusal
 
 
 def calculate_bmi(weight_kg: float, height_m: float) -> float:

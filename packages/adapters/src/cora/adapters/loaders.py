@@ -3,8 +3,8 @@ from io import BytesIO
 from pypdf import PdfReader
 from pypdf.errors import PyPdfError
 
-from cora.core.domain.errors import UnreadableFileError
-from cora.core.ports.loading import Loaders
+from cora.domain.errors import UnreadableFileError
+from cora.ports.loading import Loaders
 
 
 def load_txt(data: bytes, filename: str) -> str:

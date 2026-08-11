@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from cora.core.ports.retrieval import RetrievedChunk
+from cora.ports.retrieval import RetrievedChunk
 
 
 class ContextSource(Protocol):

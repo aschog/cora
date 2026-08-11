@@ -2,7 +2,7 @@ import dataclasses
 
 import pytest
 
-from cora.core.domain.metadata_filter import MetadataFilter
+from cora.domain.metadata_filter import MetadataFilter
 
 
 def test_metadata_filters_are_equal_by_content() -> None:

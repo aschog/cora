@@ -1,6 +1,6 @@
 import pytest
 
-from cora.core.domain.errors import (
+from cora.domain.errors import (
     AdapterError,
     CoreError,
     EmbeddingError,

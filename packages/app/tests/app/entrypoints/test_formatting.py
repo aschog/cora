@@ -5,8 +5,8 @@ from cora.app.entrypoints.formatting import (
     numbered_sources,
     step_text,
 )
-from cora.core.domain.citations import Source
-from cora.core.domain.trace import ModelDecision, ToolUse
+from cora.domain.citations import Source
+from cora.domain.trace import ModelDecision, ToolUse
 
 
 def test_numbered_sources_renders_each_source_under_its_own_number() -> None:

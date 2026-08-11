@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
-from cora.core.domain.prose import listed
+from cora.domain.prose import listed
 
 
 class TraceStep(ABC):

@@ -21,13 +21,6 @@ from cora.app.retrieval import (
     build_context_source,
     needs_keyword_index,
 )
-from cora.core.domain.errors import ConfigurationError
-from cora.core.ports.chat_model import ChatModel
-from cora.core.ports.context_source import ContextSource
-from cora.core.ports.embedding import Embedder
-from cora.core.ports.loading import Loaders
-from cora.core.ports.plugin import Plugin, Tool
-from cora.core.ports.retrieval import Retriever
 from cora.core.service_layer.agent import Agent
 from cora.core.service_layer.knowledge_base import KnowledgeBase
 from cora.core.service_layer.plugin_registry import load_plugin
@@ -46,6 +39,13 @@ from cora.core.service_layer.validation import (
     PromptInjectionRule,
     ValidationPipeline,
 )
+from cora.domain.errors import ConfigurationError
+from cora.ports.chat_model import ChatModel
+from cora.ports.context_source import ContextSource
+from cora.ports.embedding import Embedder
+from cora.ports.loading import Loaders
+from cora.ports.plugin import Plugin, Tool
+from cora.ports.retrieval import Retriever
 
 MAX_INPUT_CHARS = 4000
 DEFAULT_COLLECTION = "documents"

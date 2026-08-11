@@ -1,8 +1,8 @@
 import pytest
 
-from cora.core.ports.plugin import ToolCall, ToolResult
 from cora.core.service_layer.tool_runtime import ToolRuntime
 from cora.plugins.fitness.tools import TOOLS
+from cora.ports.plugin import ToolCall, ToolResult
 
 
 def _run(name: str, arguments: dict[str, object]) -> ToolResult:

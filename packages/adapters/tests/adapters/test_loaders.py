@@ -1,8 +1,8 @@
 import pytest
 
 from cora.adapters.loaders import LOADERS, load_pdf, load_txt
-from cora.core.domain.errors import EmptyDocumentError, UnreadableFileError
 from cora.core.service_layer.ingestion import ingest
+from cora.domain.errors import EmptyDocumentError, UnreadableFileError
 from pdf_fixtures import make_pdf_bytes
 
 

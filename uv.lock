@@ -16,6 +16,7 @@ resolution-markers = [
 [manifest]
 members = [
     "cora-adapters",
+    "cora-api",
     "cora-app",
     "cora-core",
     "cora-fitness",
@@ -437,6 +438,7 @@ version = "0.1.0"
 source = { editable = "packages/adapters" }
 dependencies = [
     { name = "chromadb" },
+    { name = "cora-api" },
     { name = "cora-core" },
     { name = "langchain-openai" },
     { name = "langgraph" },
@@ -448,6 +450,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "chromadb", specifier = ">=1.5,<2" },
+    { name = "cora-api", editable = "packages/api" },
     { name = "cora-core", editable = "packages/core" },
     { name = "langchain-openai", specifier = ">=1.4.1" },
     { name = "langgraph", specifier = ">=1.2.10,<2" },
@@ -457,11 +460,17 @@ requires-dist = [
 ]
 
 [[package]]
+name = "cora-api"
+version = "0.1.0"
+source = { editable = "packages/api" }
+
+[[package]]
 name = "cora-app"
 version = "0.1.0"
 source = { editable = "packages/app" }
 dependencies = [
     { name = "cora-adapters" },
+    { name = "cora-api" },
     { name = "cora-core" },
     { name = "streamlit" },
 ]
@@ -469,6 +478,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "cora-adapters", editable = "packages/adapters" },
+    { name = "cora-api", editable = "packages/api" },
     { name = "cora-core", editable = "packages/core" },
     { name = "streamlit", specifier = "~=1.60.0" },
 ]
@@ -478,22 +488,26 @@ name = "cora-core"
 version = "0.1.0"
 source = { editable = "packages/core" }
 dependencies = [
+    { name = "cora-api" },
     { name = "jsonschema" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "jsonschema", specifier = ">=4.26,<5" }]
+requires-dist = [
+    { name = "cora-api", editable = "packages/api" },
+    { name = "jsonschema", specifier = ">=4.26,<5" },
+]
 
 [[package]]
 name = "cora-fitness"
 version = "0.1.0"
 source = { editable = "packages/fitness" }
 dependencies = [
-    { name = "cora-core" },
+    { name = "cora-api" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "cora-core", editable = "packages/core" }]
+requires-dist = [{ name = "cora-api", editable = "packages/api" }]
 
 [[package]]
 name = "cuda-bindings"

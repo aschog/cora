@@ -1,14 +1,14 @@
 from pathlib import Path
 
-from cora.core.domain.chunk import Chunk
-from cora.core.domain.errors import (
+from cora.core.service_layer.chunker import chunk_text
+from cora.core.service_layer.cleaning import clean_text
+from cora.domain.chunk import Chunk
+from cora.domain.errors import (
     EmptyDocumentError,
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
-from cora.core.ports.loading import Loaders
-from cora.core.service_layer.chunker import chunk_text
-from cora.core.service_layer.cleaning import clean_text
+from cora.ports.loading import Loaders
 
 DEFAULT_MAX_BYTES = 10 * 1024 * 1024
 
