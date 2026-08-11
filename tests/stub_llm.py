@@ -1,6 +1,5 @@
 import json
 import threading
-import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, cast
 
@@ -14,12 +13,10 @@ class StubLlm:
     def __init__(self) -> None:
         self._answer = ""
         self._tool_call: tuple[str, dict[str, Any]] | None = None
-        self._endless = False
         self._status = 200
         self._requests: list[dict[str, Any]] = []
         self._lock = threading.Lock()
         self._overlap: threading.Barrier | None = None
-        self._delay = 0.0
         self._server = _StubServer(("127.0.0.1", 0), _Handler)
         self._server.stub = self
         self._thread = threading.Thread(target=self._server.serve_forever, daemon=True)
@@ -51,18 +48,11 @@ class StubLlm:
     def script_tool_call(self, name: str, arguments: dict[str, Any]) -> None:
         self._tool_call = (name, arguments)
 
-    def script_endless_tool_calls(self, name: str, arguments: dict[str, Any]) -> None:
-        self._tool_call = (name, arguments)
-        self._endless = True
-
     def script_status(self, code: int) -> None:
         self._status = code
 
     def require_overlap(self, count: int) -> None:
         self._overlap = threading.Barrier(count, timeout=10)
-
-    def script_delay(self, seconds: float) -> None:
-        self._delay = seconds
 
     def response(self, request: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         with self._lock:
@@ -71,15 +61,11 @@ class StubLlm:
         if overlap is not None:
             overlap.wait()
             self._overlap = None  # after the trip: clearing first strands the waiter
-        if self._delay:
-            time.sleep(self._delay)
         if self._status != 200:
             return self._status, {
                 "error": {"message": "scripted failure", "code": self._status}
             }
-        if self._tool_call is not None and (
-            self._endless or not _carries_tool_result(request)
-        ):
+        if self._tool_call is not None and not _carries_tool_result(request):
             return 200, _envelope("tool_calls", _tool_call_message(*self._tool_call))
         return 200, _envelope("stop", {"role": "assistant", "content": self._answer})
 

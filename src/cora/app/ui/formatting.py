@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from cora.core.services.chat_engine import Source
+from cora.core.citations import Source
 
 
 def numbered_sources(sources: Sequence[Source]) -> list[str]:

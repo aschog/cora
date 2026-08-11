@@ -11,6 +11,7 @@ FORBIDDEN_FRAMEWORKS = frozenset(
         "langchain_openai",
         "langchain_core",
         "chromadb",
+        "langgraph",
         "sentence_transformers",
         "streamlit",
         "rank_bm25",
@@ -132,6 +133,12 @@ def test_no_test_only_framework_is_shipped(path: pathlib.Path) -> None:
 
 def test_rank_bm25_import_into_core_is_detected() -> None:
     tree = ast.parse("import rank_bm25\n")
+    modules = set(_imported_modules(tree, ("cora", "core", "services")))
+    assert any(_is_forbidden(m) for m in modules)
+
+
+def test_langgraph_import_into_core_is_detected() -> None:
+    tree = ast.parse("from langgraph.graph import StateGraph\n")
     modules = set(_imported_modules(tree, ("cora", "core", "services")))
     assert any(_is_forbidden(m) for m in modules)
 

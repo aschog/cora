@@ -2,6 +2,7 @@ from dataclasses import dataclass
 
 from jsonschema import Draft202012Validator, ValidationError
 
+from cora.core.errors import AdapterError
 from cora.core.ports.plugin import Tool, ToolCall, ToolResult
 
 
@@ -21,6 +22,8 @@ class ToolRuntime:
             )
         try:
             payload = tool.run(**call.arguments)
+        except AdapterError:
+            raise
         except Exception as exc:
             return ToolResult(
                 call_id=call.call_id, error=f"tool '{call.name}' failed: {exc}"

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
+from cora.core.context_source import ContextSource
 from cora.core.ports.retrieval import RetrievedChunk
-from cora.core.services.chat_engine import ContextSource
 from cora.core.services.rank_fusion import reciprocal_rank_fusion
 
 

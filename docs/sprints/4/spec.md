@@ -33,21 +33,28 @@ pre-emptively.
 `ChatEngine` is refactored into those steps rather than kept beside them: one agent, not
 two paths.
 
+**A fifth port.** Driving the graph is a technology the core must not name, so the `Agent`
+facade in core reaches its runner through a new port and `assemble` binds
+`LangGraphRunner` to it like the other four. The core has said "four ports" so far; this
+sprint makes it five, deliberately. The line it follows is the one the code mostly draws:
+`core/ports/` holds Protocols whose implementations live *outside* core, while
+collaborator Protocols implemented *inside* it (`ContextSource`, `InputValidator`,
+`ToolExecutor`) sit beside the service that uses them. A heuristic, not a law —
+`ValidationRule` sits in `ports/plugin.py` with three core implementations, and
+`Bm25KeywordIndex` satisfies `ContextSource` from outside. The alternative — moving `Agent`
+into the shell to avoid the port — would push the assembly of `ChatResult` into the
+composition root and leave the core with no use case.
+
+The **router stays in core**: a plain function from state to the next step, budget check
+included. The adapter contributes edges and nothing else, so the one decision worth
+testing needs no LangGraph. `big-picture.md` is redrawn around this at merge.
+
 ## Stories
 
-In merge order. Each ends on main as a working, demoable app.
+In merge order. Each ends on main as a working, demoable app. A story in flight moves
+into its own file and leaves a pointer behind.
 
-### 1. The agent plans its own steps
-
-**As a** user · **I want** to ask in my own words · **So that** I get an answer that took
-whatever steps were needed
-
-> **Given** an indexed document and a question needing both a lookup and a calculation
-> **When** I ask it
-> **Then** the answer uses both — and a question needing neither is answered without
-> retrieving or calling a tool
-
-Satisfies the hard bonus *Agentic RAG*: retrieval becomes a decision, not a fixed step.
+### [1. The agent plans its own steps](done/story-01.md) ✔
 
 ### 2. I can see what it did
 

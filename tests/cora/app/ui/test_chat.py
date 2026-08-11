@@ -17,6 +17,7 @@ from cora.core.errors import (
 from cora.core.ports.chat_model import ChatModel, ModelReply
 from cora.core.ports.plugin import Plugin, ToolCall
 from cora.core.ports.retrieval import Retriever
+from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME
 from fakes import (
     FailingChatModel,
     FakeEmbedder,
@@ -407,7 +408,14 @@ def test_tool_results_are_shown_with_the_answer() -> None:
 @pytest.mark.integration
 def test_upload_then_ask_shows_answer_with_sources() -> None:
     answer = "Protein supports muscle growth [1]."
-    at = _run_page(_app(ScriptedChatModel([ModelReply(text=answer)])))
+    searching = ModelReply(
+        tool_calls=(
+            ToolCall(
+                name=SEARCH_TOOL_NAME, arguments={"query": "protein"}, call_id="call-1"
+            ),
+        )
+    )
+    at = _run_page(_app(ScriptedChatModel([searching, ModelReply(text=answer)])))
     assert not at.exception
 
     at.file_uploader[0].set_value(("note.md", b"protein facts", "text/markdown"))
@@ -418,5 +426,8 @@ def test_upload_then_ask_shows_answer_with_sources() -> None:
     at.chat_input[0].set_value("What about protein?").run()
     assert not at.exception
     assert answer in _visible_text(at)
-    panel = [md.value for md in at.markdown if re.match(r"^\[\d+\] ", md.value)]
-    assert panel == ["[1] note.md"]
+    numbered = [md.value for md in at.markdown if re.match(r"^\[\d+\] ", md.value)]
+    assert numbered == ["[1] note.md", "[1] note.md: protein facts"]
+    assert "untrusted" not in _visible_text(at).lower(), (
+        "the model's framing of the passages must not reach the user"
+    )

@@ -6,9 +6,36 @@ test-driven development, pair programming, continuous integration, small release
 and relentless refactoring. The TDD loop is driven by **human + AI together** — the
 AI is a pair partner, not an autopilot. Every phase should be an atomic commit.
 
-**Division of labour, this sprint:** I decide and dictate *which* test to write next;
-the AI writes that test and the production code. The goal I'm climbing towards is
-writing the tests myself and leaving only production code to the AI.
+---
+
+## Where the docs live
+
+Everything about a sprint lives in `docs/sprints/<n>/`:
+
+```
+docs/sprints/4/
+  assignment.md           the brief, verbatim
+  spec.md                 the story cut, requirement coverage, out of scope
+  sprint-4-feedback.md    last review's findings, as a tracked backlog
+  story-01.md             one file per story: the story + its test list
+  done/                   story files whose test list is fully ticked
+  retrospective.md        written at sprint close
+```
+
+- **Planning reads the current sprint only.** The folder of the sprint in flight is the
+  whole input. Earlier sprint folders are history: `docs/sprints/3/plans/done/` records
+  how that code was *built*, not how it works today, so it is not consulted when
+  planning. Only `workflow.md` and `big-picture.md` sit outside a sprint folder — they
+  describe the project, not a sprint.
+- **`story-NN.md` is the planning artefact**: the story (*As a · I want · So that* with
+  its *Given/When/Then*) followed by a **test list**. `docs/sprints/4/done/story-01.md` is the
+  current reference shape — match it.
+- **A story lives in exactly one place.** When it gets its own `story-NN.md`, its text
+  moves there and `spec.md` keeps only its heading, linked to the story file, so the
+  story cut still reads in order and no criterion is stated twice.
+- **The test list is Beck's, not a work breakdown** — every item is one failing test.
+  It is expected to change as you go: add items as they surface, and if an item can't be
+  phrased as "write a test that shows X", it does not belong on the list.
 
 ---
 
@@ -25,8 +52,11 @@ writing the tests myself and leaving only production code to the AI.
   > handle term saturation?" · **Then** I receive an answer citing that paper
 
 - [ ] **Day one — turn the last review's findings into a backlog**: each one becomes
-      a tracked checklist item in `docs/plans/<sprint>-feedback.md`, so feedback is
-      "tracked and ticked" instead of "in my head"
+      a tracked checklist item in `docs/sprints/<n>/sprint-<n>-feedback.md`, so feedback
+      is "tracked and ticked" instead of "in my head"
+
+- [ ] **Give each story in flight its own `story-NN.md`**, numbered in merge order, and
+      move it out of `spec.md` as you do
 
 ---
 
@@ -59,17 +89,20 @@ writing the tests myself and leaving only production code to the AI.
       retrofitted test can't, and it is what stops out-of-scope work: no story, no
       outer test, no code. Mark it `@pytest.mark.xfail(strict=True)` (or a `wip`
       marker) so CI stays green while the slice is in progress
-- [ ] **Refine the plan into a TDD checklist**: decompose it so that every item is
+- [ ] **Refine the plan into a test list**: decompose it so that every item is
       one failing-test-sized increment — if it can't be phrased as "write a test
       that shows X", split it
-- [ ] Save the checklist as `docs/plans/<feature>.md` and commit it to the branch
+- [ ] Write the test list into the story's `docs/sprints/<n>/story-NN.md`, under the
+      story it serves, and commit it to the branch. The design rationale behind it does
+      **not** go in the file — it belongs in the conversation, the commit messages and
+      the tests
 
 ---
 
 ## Phase 2 — TDD double loop (repeat until the outer test is green)
 
 The outer test from Phase 1 stays red and defines "done". The unit loop runs
-*inside* it — you stop when it goes green, not when the checklist looks finished.
+*inside* it — you stop when it goes green, not when the test list looks finished.
 The same red-green cycle covers bug fixes (reproduce first) and characterizing
 legacy code.
 
@@ -84,7 +117,8 @@ write failing functional test   ←── outer loop (feature)
 functional test goes green  →  feature done
 ```
 
-- [ ] Pick the next unchecked item from `docs/plans/<feature>.md`
+- [ ] Pick the next unchecked item from the story's test list in
+      `docs/sprints/<n>/story-NN.md`
 - [ ] **Red** — write a failing test; run it and *see it fail* for the right reason
 - [ ] **Green** — write the minimal code to make it pass; all tests green
 - [ ] **Refactor** — clean up code *and tests*; stay green
@@ -95,12 +129,12 @@ functional test goes green  →  feature done
 - [ ] **Auto-commit** the green step after human has approved it (Conventional Commit message; hooks enforce green)
       — messages must read as a **history**: the commit log of a branch tells the
       story of the feature growing, each message says *what* changed and *why*
-- [ ] **Update the checklist**: tick the item; add any newly discovered items or
-      scope changes — the plan is a living document
+- [ ] **Update the test list**: tick the item; add any newly discovered items or
+      scope changes — the list is a living document
 - [ ] Repeat — but if an increment reveals the plan itself is wrong, stop and
-      **re-plan** (back to Phase 1 with `ai-architect`); don't improvise off-checklist
-- [ ] When the checklist is done, **drop the outer test's `xfail` marker and watch it
-      pass**. Still red means the slice isn't finished, whatever the checklist says
+      **re-plan** (back to Phase 1 with `ai-architect`); don't improvise off-list
+- [ ] When the test list is done, **drop the outer test's `xfail` marker and watch it
+      pass**. Still red means the slice isn't finished, whatever the list says
 
 > Every green step is a save point. If a cycle goes sideways, reset to the last
 > green commit instead of untangling a big diff.
@@ -143,14 +177,14 @@ functional test goes green  →  feature done
 - [ ] **Run the feature for real** and check it against the Phase 1 acceptance
       criteria — green tests alone don't prove the feature works
 - [ ] Final sanity check: format, lint, type check, full test suite — and CI green
-- [ ] All checklist items in `docs/plans/<feature>.md` ticked
+- [ ] Every item in the story's test list ticked
 - [ ] Update project docs the feature touched (`README`, `CLAUDE.md`, `docs/`)
 - [ ] **Merge manually** into trunk as **one atomic commit** — squash the
       micro-commits so trunk history reads one green, self-contained commit
       per feature
 - [ ] **Keep the feature branch** (don't delete) — the micro-commit trail stays
       publicly visible as evidence of the TDD process
-- [ ] Mark the plan as done by moving it into `docs/plans/done/`
+- [ ] **A fully ticked `story-NN.md`** is moved into `docs/sprints/<n>/done/`
 
 ---
 
@@ -181,7 +215,3 @@ functional test goes green  →  feature done
   - **Push the tag on its own.** Tags do not travel with a normal `git push`.
   - No GitHub Release: the tag is the marker, and a release adds a second thing
     to keep true.
-
-- [ ] **Retrospective** — three questions, written to `docs/retrospective.md`;
-      its actions become next sprint's process changes and feed
-      *Sprint preparation* above

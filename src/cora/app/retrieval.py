@@ -1,9 +1,9 @@
 from collections.abc import Callable
 from typing import Protocol
 
+from cora.core.context_source import ContextSource
 from cora.core.errors import ConfigurationError
 from cora.core.ports.chat_model import ChatModel
-from cora.core.services.chat_engine import ContextSource
 from cora.core.services.fusion_context_source import FusionContextSource
 from cora.core.services.hybrid_context_source import HybridContextSource
 from cora.core.services.knowledge_base import KeywordIndex, KnowledgeBase
