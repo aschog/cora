@@ -98,8 +98,11 @@ model. **(migrated)** marks a test that moves rather than a new one.
 
 - [x] a document carrying its own code fence cannot forge trace lines — the evidence is
       rendered as code, never as markdown
-- [x] nor can it forge one through the summary, which names the tool the model asked for:
-      a step line is one line, and only the marks cora wrote are markdown *(review, twice)*
+- [x] nor can it forge one through the summary, which names the tool the model asked for —
+      a step is one line of *text*, since escaping markdown by hand left autolinks, KaTeX
+      and strikethrough through *(review, three times)*
+- [x] a summary carries the same length cap as the evidence: a tool returning a blob renders
+      it as its own outcome *(review)*
 - [x] a tool's escaped exception reaches neither the model nor the trace by its message,
       only by its kind — a refusal is declared (`ToolRefusal`), not guessed from a type, so
       a library's accidental `ValueError` is treated as the escape it is *(review, twice)*

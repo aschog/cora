@@ -31,8 +31,16 @@ the spec's story numbers are referenced elsewhere; it merges with story 2.
       a ground as a document, and nudging it would retrieve for arithmetic *(review)*
 - [x] a failure in the gate's extra round returns the answer it was second-guessing, while
       a failure once that round has landed still travels out — the nudge remembers the round
-      it interrupted, so a later `LlmError` or the round-budget apology is never swallowed
-      and a stale answer never collects citations from a search it never saw *(review, twice)*
+      it interrupted, and a stale answer never collects citations from a search it never saw
+      *(review, twice)*
+- [x] the round-budget apology is never forgiven: only an `AdapterError` is, because the
+      state a run yielded last can predate a verdict the router reached *(review, three times)*
+- [x] the trace says the second look never came back, rather than showing a step the run
+      took and an answer from before it *(review)*
+- [x] the gate does not fire without budget for the round to search and then answer, at
+      `CORA_MAX_TOOL_ROUNDS` 1 and 2 *(review)*
+- [x] **(int)** the plugin cora actually ships is the one under test, for both its grounding
+      and its prompt — every other test here builds its own *(review)*
 - [x] **(int)** all three through the assembled app, not a stub runner *(review)*
 - [x] once nudged, a final reply routes to `done` even with no search — the gate fires once
       per run, so a run can never loop on it
