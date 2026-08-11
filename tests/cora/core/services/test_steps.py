@@ -1,5 +1,4 @@
 import dataclasses
-import json
 from dataclasses import dataclass
 
 import pytest
@@ -444,6 +443,27 @@ def test_an_answer_that_followed_a_search_is_grounded_enough() -> None:
     assert router(_after_searching({**_replied(), "rounds": 2})) == DONE
 
 
+def test_an_answer_the_tools_already_worked_for_is_left_alone() -> None:
+    """The gate is for an answer the model made up, not for one a calculator
+    produced: a plugin's own tools are as good a ground as its documents."""
+    router = Router(max_tool_rounds=8, grounded=True)
+    calculated = Message(role="assistant", content="", tool_calls=(_add_call("c1"),))
+    state: AgentState = {"messages": [calculated, *_replied()["messages"]], "rounds": 2}
+
+    assert router(state) == DONE
+
+
+def test_the_gate_reads_the_transcript_not_the_trace() -> None:
+    router = Router(max_tool_rounds=8, grounded=True)
+    only_traced: AgentState = {
+        **_replied(),
+        "rounds": 1,
+        "trace": [ToolUse(name=SEARCH_TOOL_NAME, outcome="1 passage")],
+    }
+
+    assert router(only_traced) == GROUND
+
+
 def test_the_gate_fires_once_so_a_run_can_never_loop_on_it() -> None:
     router = Router(max_tool_rounds=8, grounded=True)
 
@@ -495,4 +515,6 @@ def test_a_payload_that_only_looks_citable_is_fed_back_untouched() -> None:
 
     assert partial["sources"] == []
     [message] = partial["messages"]
-    assert message.content == json.dumps(_Booking("Ada"), default=str)
+    assert message.content == "\"_Booking(member='Ada')\""
+    [used] = partial["trace"]
+    assert used.detail == message.content

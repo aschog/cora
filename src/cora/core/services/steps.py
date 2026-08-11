@@ -126,13 +126,11 @@ class Router:
     grounded: bool = False
 
     def __call__(self, state: AgentState) -> str:
-        """Reads the model's own last reply, never the `answer` key: an answer
-        from an earlier round outlives the round that wrote it."""
         if _requested_calls(state):
             if state.get("rounds", 0) >= self.max_tool_rounds:
                 raise ToolLoopLimitError
             return TOOLS
-        if self.grounded and not state.get("nudged") and not _searched(state):
+        if self.grounded and not state.get("nudged") and not _used_a_tool(state):
             return GROUND
         return DONE
 
@@ -142,12 +140,8 @@ def _requested_calls(state: AgentState) -> tuple[ToolCall, ...]:
     return messages[-1].tool_calls if messages else ()
 
 
-def _searched(state: AgentState) -> bool:
-    return any(
-        call.name == SEARCH_TOOL_NAME
-        for message in state.get("messages", ())
-        for call in message.tool_calls
-    )
+def _used_a_tool(state: AgentState) -> bool:
+    return any(message.tool_calls for message in state.get("messages", ()))
 
 
 def _tool_message(result: ToolResult, *, cites: bool) -> Message:
