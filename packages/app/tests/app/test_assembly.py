@@ -5,7 +5,6 @@ from typing import Any
 import pytest
 
 from cora.adapters.langgraph_runner import LangGraphRunner
-from cora.adapters.port_logging import LoggingEmbedder, LoggingRetriever
 from cora.app.assembly import App, assemble, build
 from cora.app.config import Config
 from cora.app.log_config import DEBUG_HANDLER_NAME, FILE_HANDLER_NAME
@@ -22,6 +21,7 @@ from cora.domain.turn import Turn
 from cora.engine.fusion_context_source import FusionContextSource
 from cora.engine.hybrid_context_source import HybridContextSource
 from cora.engine.plugin_registry import load_plugin
+from cora.engine.port_logging import LoggingEmbedder, LoggingRetriever
 from cora.engine.query_planner import QueryPlanner
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.steps import ModelStep, PrepareStep, Router
@@ -441,3 +441,34 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
     offered = {tool.name for tool in runner.model.tools}
     assert offered == {SEARCH_TOOL_NAME, *(tool.name for tool in plugin.tools)}
     assert any(tmp_path.iterdir()), "the store must land under the configured path"
+
+
+def test_the_graph_is_a_slot_like_every_other_port() -> None:
+    """The fifth port, injected like the other four. Handed a factory, `assemble` builds
+    no graph of its own — which is what makes "put a different technology in a slot
+    without changing the core" true of the runner and not only of the other four."""
+    asked: dict[str, Any] = {}
+
+    class _OneStepRunner:
+        def __init__(self, prepare: Any, model: Any) -> None:
+            self._prepare = prepare
+            self._model = model
+
+        def run(self, state: Any) -> Any:
+            prepared = {**state, **self._prepare(state)}
+            replied = {**prepared, **self._model(prepared)}
+            yield replied
+
+    def _graph_for(*, prepare: Any, model: Any, **rest: Any) -> Any:
+        asked.update(rest)
+        return _OneStepRunner(prepare, model)
+
+    app = _assemble(
+        make_plugin(),
+        chat_model=ScriptedChatModel([ModelReply(text="from the injected graph")]),
+        graph=_graph_for,
+    )
+
+    assert app.agent.answer("hi").answer == "from the injected graph"
+    assert asked["max_tool_rounds"] == 8
+    assert isinstance(asked["router"], Router)

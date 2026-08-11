@@ -86,8 +86,10 @@ cora-streamlit  cora.frontends.streamlit                  → cora
       without editing the composition root is the one the map calls a slot
 - [ ] the logging wrappers live in the engine: they decorate ports and import no technology,
       so shipping them with Chroma and LangGraph misfiles them *(moved)*
-- [ ] `cora.app.assembly` imports with `cora.adapters` absent — the composition function is
-      technology-agnostic, and only `build` names a technology
+- [ ] a graph factory handed to `assemble` runs the turn, and `assemble` builds no runner
+      of its own — replaces "assembly imports with cora.adapters absent", which turned out
+      to be reachable only by deferring imports to fake a property the slot itself states
+      honestly; `cora` ships the default wiring and depends on the adapters by design
 
 #### The frontend is one of many
 

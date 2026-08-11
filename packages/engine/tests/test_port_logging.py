@@ -2,15 +2,15 @@ import logging
 
 import pytest
 
-from cora.adapters.port_logging import (
+from cora.domain.chunk import Chunk
+from cora.domain.errors import EmbeddingError, LlmError, RetrievalError
+from cora.engine.port_logging import (
     MAX_LOGGED_CHARS,
     LoggingChatModel,
     LoggingEmbedder,
     LoggingRetriever,
     truncate,
 )
-from cora.domain.chunk import Chunk
-from cora.domain.errors import EmbeddingError, LlmError, RetrievalError
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.plugin import ToolCall
 from fakes import (

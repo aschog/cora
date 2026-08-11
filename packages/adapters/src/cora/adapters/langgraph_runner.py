@@ -1,21 +1,17 @@
-from collections.abc import Callable, Iterator
+from collections.abc import Iterator
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
 from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 
 from cora.domain.agent_state import AgentState
 from cora.domain.errors import ToolLoopLimitError
-from cora.ports.graph import DONE, GROUND, TOOLS
+from cora.ports.graph import DONE, GROUND, TOOLS, GraphRunner, Route, Step
 
 PREPARE = "prepare"
 MODEL = "model"
 SUPERSTEPS_PER_ROUND = 2
-
-
-class Step(Protocol):
-    def __call__(self, state: AgentState) -> AgentState: ...
 
 
 def recursion_limit_for(max_tool_rounds: int) -> int:
@@ -32,7 +28,7 @@ class LangGraphRunner:
     model: Step
     tools: Step
     ground: Step
-    router: Callable[[AgentState], str]
+    router: Route
     recursion_limit: int
 
     def run(self, state: AgentState) -> Iterator[AgentState]:
@@ -61,3 +57,22 @@ class LangGraphRunner:
         builder.add_edge(TOOLS, MODEL)
         builder.add_edge(GROUND, MODEL)
         return builder.compile()
+
+
+def langgraph_for(
+    *,
+    prepare: Step,
+    model: Step,
+    tools: Step,
+    ground: Step,
+    router: Route,
+    max_tool_rounds: int,
+) -> GraphRunner:
+    return LangGraphRunner(
+        prepare=prepare,
+        model=model,
+        tools=tools,
+        ground=ground,
+        router=router,
+        recursion_limit=recursion_limit_for(max_tool_rounds),
+    )

@@ -1,12 +1,7 @@
 from dataclasses import dataclass
 
-from cora.adapters.langgraph_runner import LangGraphRunner, recursion_limit_for
+from cora.adapters.langgraph_runner import langgraph_for
 from cora.adapters.loaders import LOADERS
-from cora.adapters.port_logging import (
-    LoggingChatModel,
-    LoggingEmbedder,
-    LoggingRetriever,
-)
 from cora.app.config import (
     DEFAULT_FUSION_QUERIES,
     DEFAULT_HISTORY_TURNS,
@@ -25,6 +20,11 @@ from cora.domain.errors import ConfigurationError
 from cora.engine.agent import Agent
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.plugin_registry import load_plugin
+from cora.engine.port_logging import (
+    LoggingChatModel,
+    LoggingEmbedder,
+    LoggingRetriever,
+)
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.engine.steps import (
     GroundStep,
@@ -43,6 +43,7 @@ from cora.engine.validation import (
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
 from cora.ports.embedding import Embedder
+from cora.ports.graph import GraphFor
 from cora.ports.loading import Loaders
 from cora.ports.plugin import Plugin, Tool
 from cora.ports.retrieval import Retriever
@@ -71,6 +72,7 @@ def assemble(
     fusion_queries: int = DEFAULT_FUSION_QUERIES,
     keyword_index: KeywordStore | None = None,
     loaders: Loaders = LOADERS,
+    graph: GraphFor = langgraph_for,
     seed: bool = True,
     debug: bool = False,
 ) -> App:
@@ -104,7 +106,7 @@ def assemble(
         ),
         plugin_rules=plugin.validation_rules,
     )
-    runner = LangGraphRunner(
+    runner = graph(
         prepare=PrepareStep(
             validation=validation,
             system_prompt=plugin.system_prompt,
@@ -116,7 +118,7 @@ def assemble(
             reminder=grounding, context_source=context_source, top_k=top_k
         ),
         router=Router(max_tool_rounds=max_tool_rounds, grounded=bool(grounding)),
-        recursion_limit=recursion_limit_for(max_tool_rounds),
+        max_tool_rounds=max_tool_rounds,
     )
     return App(
         agent=Agent(runner=runner),
