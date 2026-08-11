@@ -17,7 +17,7 @@ flowchart TB
 
   subgraph core["cora.core"]
     agent["Agent"]
-    steps["Steps<br/><i>prepare · model · tools</i>"]
+    steps["Steps<br/><i>prepare · model · tools · ground</i>"]
     router["Router<br/><i>one more round, or done</i>"]
     val["ValidationPipeline"]
     rt["ToolRuntime"]
@@ -114,16 +114,19 @@ The shell uses the core through two main methods: `answer()` and `add_file()` (p
 1. **Prepare** — check the question against the core rules (not empty, at most 4000 characters, no prompt-injection), then the plugin's rules. If a rule says no, raise `InputRejectedError`; the model never sees the question. Then lay out the messages: the plugin's system prompt together with cora's own rules (call `search_documents`, cite `[n]`), the last `CORA_HISTORY_TURNS` turns of chat (default 20; `0` means no memory), and last the question. Validation sees the question only, never the chat history.
 2. **Model** — one round. The model is offered `search_documents` beside the plugin's tools. It either answers or asks for tools.
 3. **Tools** — run what it asked for, in order. A result that can cite itself — a set of search hits — is numbered `[n]` continuing from the numbers this run already handed out, and comes back as a `tool` message marked *untrusted document data*. Any other result is fed back exactly as it renders.
-4. **Round again, or stop** — the router reads the reply. An answer ends the run; anything else goes back to step 2, at most `CORA_MAX_TOOL_ROUNDS` times (default 8), after which `ToolLoopLimitError` apologises.
-5. **Return** — the answer, the sources it really used (only the `[n]` numbers that appear in the reply, with duplicates removed), and the run's trace.
+4. **Round again, or stop** — the router reads the model's last reply. A reply asking for tools goes back to step 2, at most `CORA_MAX_TOOL_ROUNDS` times (default 8), after which `ToolLoopLimitError` apologises. A reply that answers ends the run.
+5. **Grounding** — unless the plugin set `grounding` and nothing was searched. Then the answer is sent back once, with the plugin's own reminder, and the model gets one more go at step 2. The reminder is the plugin's words, so it also says what to do with a question that is not about its subject: the fitness one tells the model to repeat its answer for small talk, which is why a greeting still costs no retrieval. The gate fires at most once per run, so a run can never loop on it.
+6. **Return** — the answer, the sources it really used (only the `[n]` numbers that appear in the reply, with duplicates removed), and the run's trace.
 
 **The run reports itself as it goes.** Each step records what it did — the model's decision and
 the tools it asked for, then every call with its arguments and what came back. `answer()` takes
 an optional `on_step`, called the moment a step lands, so the UI can show the work while it is
 still happening; the finished trace comes back on the `ChatResult` and stays with the answer.
 
-**Retrieval is a decision, not a step.** A greeting is answered without touching the documents;
-a question about them makes the model call `search_documents`, more than once if it needs to.
+**Retrieval is a decision, not a step — but a plugin can insist on it.** A greeting is answered
+without touching the documents; a question about them makes the model call `search_documents`,
+more than once if it needs to. When the subject is the plugin's own, an answer that skipped the
+documents does not stand: it goes back once with the reminder above.
 That is also why document text can never act as an instruction: it arrives in a `tool` message,
 labelled as data, and cora's own rules stay in the system message.
 
@@ -142,8 +145,8 @@ because the map shows them inside another part.
 | Component | Job | Where |
 |---|---|---|
 | **Agent** | The one main use case. It seeds a run from the question and the history, then turns the run's final state into a `ChatResult`. | `core/services/agent.py` |
-| **Steps** | The three moves of a turn: *prepare* validates and lays out the messages, *model* takes one round with the chat model, *tools* runs what the model asked for. Each one returns only what it added to the run. | `core/services/steps.py` |
-| **Router** | The one decision: an answer ends the run, no answer means run the tools, and a model still asking for tools at the round budget gets a friendly apology. | `core/services/steps.py` |
+| **Steps** | The moves of a turn: *prepare* validates and lays out the messages, *model* takes one round with the chat model, *tools* runs what the model asked for, and *ground* sends an answer back to the documents when the plugin asks. Each one returns only what it added to the run. | `core/services/steps.py` |
+| **Router** | The one decision, read off the model's last reply: asking for tools runs them (a friendly apology at the round budget), answering ends the run — or is sent back once when the plugin wants the documents used and none were. | `core/services/steps.py` |
 | **Trace** *(folded)* | What the user reads afterwards: one step per model decision and per tool call, each with a one-line summary and the evidence behind it. A new kind of step is a new class, not a new branch. | `core/trace.py` |
 | **Citations** *(folded)* | Numbers a retrieval's passages `[n]`, continues that numbering when the same run retrieves again, and works out which sources an answer really cited. | `core/citations.py` |
 | **search_documents** | Document search as a tool, so whether to use the documents is the model's decision. Its hits arrive able to number themselves. | `core/services/retrieval_tool.py` |
@@ -168,7 +171,7 @@ is about). So an adapter and a plugin work the same way: each one is chosen in o
 | **ChatModel** | `complete(messages, tools) -> ModelReply` | `OpenRouterChatModel` — the only file that uses LangChain. It talks to OpenRouter, an OpenAI-style endpoint set by `CORA_MODEL`. |
 | **Embedder** | `embed(texts) -> list[list[float]]` | `SentenceTransformerEmbedder` — the all-MiniLM-L6-v2 model. It runs on your machine and loads only when first used. |
 | **Retriever** | `add(chunks, vectors, file_hash)`, `query(query_vector, k, metadata_filter=None)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a saved, built-in database that uses cosine distance. The optional filter limits a search to matching metadata (self-query). |
-| **Plugin** | data only: `system_prompt`, `tools`, `validation_rules`, `seed_docs` | `cora.plugins.fitness` — change it with `CORA_PLUGIN`. It is a frozen dataclass, not a class you subclass. |
+| **Plugin** | data only: `system_prompt`, `tools`, `validation_rules`, `seed_docs`, `grounding` | `cora.plugins.fitness` — change it with `CORA_PLUGIN`. It is a frozen dataclass, not a class you subclass. |
 
 Set `CORA_DEBUG=1` to wrap the three technology ports in a logger (`cora.adapters.port_logging`).
 It prints one short line each time data crosses a port. The core, the plugins, and the UI do
@@ -181,7 +184,7 @@ not notice any change.
 - **The steps do not depend on any real helper.** They are plain callables over small Protocols (`ContextSource`, `InputValidator`, `ToolExecutor`), so a test walks a whole turn with fakes and no graph at all.
 - **One thing the core shares with the graph on purpose.** `core/agent_state.py` marks the keys that accumulate (`Annotated[list[Message], operator.add]`). No core code reads those marks — they are the convention LangGraph uses to merge each step's partial state, so this one file is written to be understood by a graph engine, without importing one. The steps and the router stay framework-free; the state's *shape* is the shared word.
 - **Document text can never act as an instruction.** A test drives a turn that retrieves and checks that the document's words appear only in a `tool` message — never in the system prompt, where cora's own rules live.
-- **Retrieving is the model's decision.** A live-model test asks a document question and a greeting through the same agent: only the first comes back with sources, and only the first calls a tool.
+- **Retrieving is the model's decision, but the documents get the first claim on it.** A live-model test asks a plain training question — never saying "my documents" — and a greeting, through the same agent: only the first comes back with sources. A first answer that skipped the documents is sent back to them once, so what a plugin claims as its subject is answered from the user's material, not from what the model happens to know.
 - **A runaway agent still ends politely.** The core's round budget is set to trip before the graph's own recursion limit, and a graph that overruns anyway is turned into the same friendly apology — never a framework error.
 - **A new topic needs no change to the core.** A plugin is a frozen dataclass. Point `CORA_PLUGIN` at another plugin and the topic changes. The word *fitness* never appears in the core.
 - **Nothing the agent does is hidden.** Every turn carries a trace: what the model decided, which tool ran with which arguments, and what it returned — including a call that failed. A test drives a turn that searches and calculates and reads all of it back out of the page.
