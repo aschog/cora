@@ -203,13 +203,17 @@ def _real_runner(
     )
 
 
-def test_the_round_budget_fires_before_the_graphs_own_limit() -> None:
+@pytest.mark.parametrize("rounds", [1, 2, 3, 8, 12])
+def test_the_round_budget_fires_before_the_graphs_own_limit(rounds: int) -> None:
+    """Across the budgets a deployment can actually be set to, including the
+    default: the graph's limit must never be what cuts a run short."""
     model = _AlwaysCalling()
 
-    with pytest.raises(ToolLoopLimitError):
-        _final(_real_runner(model, rounds=3), {"question": "loop forever"})
+    with pytest.raises(ToolLoopLimitError) as exc_info:
+        _final(_real_runner(model, rounds=rounds), {"question": "loop forever"})
 
-    assert model.completions == 3
+    assert model.completions == rounds
+    assert exc_info.value.__cause__ is None
 
 
 def test_the_round_budget_still_fires_first_when_the_gate_has_added_a_round() -> None:

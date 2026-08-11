@@ -3,9 +3,9 @@ from dataclasses import dataclass
 
 from cora.core.agent_state import AgentState
 from cora.core.citations import Source, cited_sources
-from cora.core.errors import CoreError, GraphRunError
+from cora.core.errors import AdapterError, GraphRunError
 from cora.core.ports.graph import GraphRunner
-from cora.core.trace import TraceStep
+from cora.core.trace import SecondLookLost, TraceStep
 from cora.core.turn import Turn
 
 
@@ -21,9 +21,11 @@ def _ignore(step: TraceStep) -> None:
 
 
 def _died_taking_the_second_look(state: AgentState) -> bool:
-    """True only while the gate's own extra round is the one that has not landed:
-    the nudge remembers the round it interrupted, and any round completed since
-    makes the failure an ordinary one, with an answer too old to stand for it."""
+    """The gate's own extra round is the one that has not landed: the nudge
+    remembers the round it interrupted, and any round completed since makes the
+    failure an ordinary one, with an answer too old to stand for it. Read only
+    for an `AdapterError` — the state a run yielded last can predate a failure the
+    router raised, so it is no evidence about a verdict the router reached."""
     if "nudged_at" not in state:
         return False
     return state["nudged_at"] == state.get("rounds", 0) and bool(state.get("answer"))
@@ -53,9 +55,11 @@ class Agent:
                 for step in steps[reported:]:
                     on_step(step)
                 reported = len(steps)
-        except CoreError:
+        except AdapterError:
             if not _died_taking_the_second_look(final):
                 raise
+            on_step(SecondLookLost())
+            final = {**final, "trace": [*final.get("trace", []), SecondLookLost()]}
         if not final:
             raise GraphRunError
         answer = final.get("answer", "")

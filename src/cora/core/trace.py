@@ -42,6 +42,17 @@ class Reconsidered(TraceStep):
 
 
 @dataclass(frozen=True)
+class SecondLookLost(TraceStep):
+    @property
+    def summary(self) -> str:
+        return "The second look never came back — keeping the first answer"
+
+    @property
+    def failed(self) -> bool:
+        return True
+
+
+@dataclass(frozen=True)
 class ToolUse(TraceStep):
     name: str
     arguments: dict[str, Any] = field(default_factory=dict)

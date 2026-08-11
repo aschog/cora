@@ -141,11 +141,30 @@ def test_a_failure_after_the_second_look_worked_is_not_forgiven() -> None:
 
 
 @pytest.mark.integration
-def test_the_friendly_give_up_is_never_swallowed_by_the_gate() -> None:
-    app = _assemble_with(_SearchesForever(), max_tool_rounds=3)
+@pytest.mark.parametrize("budget", [3, 4, 5, 8])
+def test_the_friendly_give_up_is_never_swallowed_by_the_gate(budget: int) -> None:
+    """The apology is a verdict the router already reached; forgiving it would
+    show work the run never did."""
+    app = _assemble_with(_SearchesForever(), max_tool_rounds=budget)
 
     with pytest.raises(ToolLoopLimitError):
         app.agent.answer("How much protein should I eat?")
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("budget", [1, 2])
+def test_a_budget_too_small_for_a_second_look_leaves_the_answer_alone(
+    budget: int,
+) -> None:
+    """Sending an answer back with no room to search would spend the budget on
+    a round that cannot finish, and end a good turn in an apology."""
+    model = _SearchesForever()
+    app = _assemble_with(model, max_tool_rounds=budget)
+
+    result = app.agent.answer("How much protein should I eat?")
+
+    assert result.answer == OFF_THE_CUFF
+    assert model.completions == 1
 
 
 class _SearchesForever:
@@ -175,3 +194,47 @@ def test_a_plugin_that_asks_for_no_grounding_answers_in_one_round() -> None:
 
     assert result.answer == OFF_THE_CUFF
     assert retriever.queries == 0
+
+
+@pytest.mark.integration
+def test_the_shipped_plugin_sends_an_ungrounded_answer_back() -> None:
+    """Every other test here builds its own plugin, so the one cora actually
+    ships could lose its grounding and no test would notice."""
+    from cora.plugins.fitness import PLUGIN
+
+    model = ScriptedChatModel(
+        [ModelReply(text=OFF_THE_CUFF), _searching(), ModelReply(text=GROUNDED)]
+    )
+    app = assemble(
+        chat_model=model,
+        embedder=FakeEmbedder(),
+        retriever=CountingRetriever(),
+        plugin=PLUGIN,
+    )
+
+    result = app.agent.answer("How much protein should I eat?")
+
+    assert result.answer == GROUNDED
+    assert any(isinstance(step, Reconsidered) for step in result.trace)
+
+
+@pytest.mark.integration
+def test_the_shipped_prompt_asks_for_the_users_own_documents() -> None:
+    """The sprint-3 wording assumed the passages were already in the prompt; a
+    plugin that still said it would be asking for something that never arrives."""
+    from cora.plugins.fitness import PLUGIN
+
+    model = ScriptedChatModel([ModelReply(text=OFF_THE_CUFF), ModelReply(text="ok")])
+    app = assemble(
+        chat_model=model,
+        embedder=FakeEmbedder(),
+        retriever=CountingRetriever(),
+        plugin=PLUGIN,
+    )
+
+    app.agent.answer("How much protein should I eat?")
+
+    assert model.last_messages is not None
+    system = model.last_messages[0].content
+    assert "retrieved context" not in system
+    assert SEARCH_TOOL_NAME in system
