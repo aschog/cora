@@ -37,6 +37,11 @@ def _requires(name: str) -> set[str]:
     return {re.split(r"[<>=!~\[;\s]", requirement)[0] for requirement in declared}
 
 
+def _module_root(name: str) -> pathlib.Path:
+    module = _manifest(name)["tool"]["uv"]["build-backend"]["module-name"]
+    return PACKAGES / name / "src" / pathlib.Path(*module.split("."))
+
+
 def test_the_workspace_holds_exactly_the_four_layers() -> None:
     """Directories are named for the layer, distributions for the project. Nothing in
     the tree may be called `cora`: the root goes on `sys.path` for anything run from
@@ -54,6 +59,25 @@ def test_the_workspace_holds_exactly_the_four_layers() -> None:
         "fitness": "cora-fitness",
         "app": "cora-app",
     }
+
+
+def test_every_layer_ships_its_typing_marker() -> None:
+    """`py.typed` is packaged only from inside the module `module-name` names. One
+    directory up it reaches neither the wheel nor the sdist, so the layer installs
+    untyped while the file sits in the tree looking like it is doing its job — nothing
+    else fails on that, which is why the stray copy is asserted against as well."""
+    unmarked = [
+        layer for layer in LAYERS if not (_module_root(layer) / "py.typed").is_file()
+    ]
+    assert unmarked == [], f"no py.typed inside the packaged module: {unmarked}"
+
+    strays = sorted(
+        str(marker)
+        for layer in LAYERS
+        for marker in (PACKAGES / layer / "src").rglob("py.typed")
+        if marker.parent != _module_root(layer)
+    )
+    assert strays == [], f"py.typed outside the packaged module: {strays}"
 
 
 def test_core_declares_no_framework() -> None:
