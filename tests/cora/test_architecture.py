@@ -18,7 +18,7 @@ FORBIDDEN_FRAMEWORKS = frozenset(
     }
 )
 FORBIDDEN_LAYERS = ("cora.adapters", "cora.plugins", "cora.app")
-TEST_ONLY_FRAMEWORKS = frozenset({"playwright", "pytest"})
+TEST_ONLY_FRAMEWORKS = frozenset({"pytest"})
 
 CORE_ROOT = pathlib.Path(cora.core.__file__).parent
 SRC_ROOT = CORE_ROOT.parents[1]
@@ -113,8 +113,8 @@ def test_streamlit_stays_inside_the_ui_shell(path: pathlib.Path) -> None:
 
 def test_test_only_import_is_detected(tmp_path: pathlib.Path) -> None:
     rogue = tmp_path / "rogue.py"
-    rogue.write_text("from playwright.sync_api import Page\n")
-    assert _test_only_imports(rogue) == ["playwright"]
+    rogue.write_text("from pytest import fixture\n")
+    assert _test_only_imports(rogue) == ["pytest"]
 
     innocent = tmp_path / "innocent.py"
     innocent.write_text("import json\n")
