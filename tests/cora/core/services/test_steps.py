@@ -34,9 +34,11 @@ from cora.core.turn import Turn
 from fakes import FailingChatModel, FakeContextSource, ScriptedChatModel, add_tool
 
 
-def _hit(source: str, text: str = "protein builds muscle") -> RetrievedChunk:
+def _hit(
+    source: str, text: str = "protein builds muscle", score: float = 1.0
+) -> RetrievedChunk:
     return RetrievedChunk(
-        chunk=Chunk(text=text, source=source, index=0, offset=0), score=1.0
+        chunk=Chunk(text=text, source=source, index=0, offset=0), score=score
     )
 
 
@@ -545,6 +547,25 @@ def test_a_search_that_matches_nothing_says_so_instead_of_implying_evidence() ->
     [message] = partial["messages"]
     assert NO_MATCHES in message.content
     assert partial["sources"] == []
+
+
+def test_a_passage_too_far_from_the_question_is_not_evidence() -> None:
+    """Top-k always returns something, so a greeting gets the nearest passage however
+    far it is. Measured with the real embedder, a question in the documents' subject
+    scores 0.34 to 0.69 and small talk -0.02 to 0.08; below the floor there is
+    nothing to weigh, and the answer stands."""
+    partial = _gate(_hit("protein.md", score=0.02))({"question": "hi there!"})
+
+    [message] = partial["messages"]
+    assert NO_MATCHES in message.content
+    assert partial["sources"] == []
+
+
+def test_a_passage_near_enough_to_the_question_is_weighed() -> None:
+    partial = _gate(_hit("protein.md", score=0.34))({"question": "how much protein?"})
+
+    [message] = partial["messages"]
+    assert "[1] protein.md" in message.content
 
 
 def test_a_gate_whose_own_search_fails_keeps_the_answer_and_says_the_look_failed() -> (
