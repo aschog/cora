@@ -14,9 +14,9 @@ Closes manual finding #5 — raw, unlabelled payloads printed beside the answer.
 **Tiers:** unit unless marked — **(int)** integration, **(e2e)** browser, **(llm)** live
 model. **(migrated)** marks a test that moves rather than a new one.
 
-#### The outer test (`tests/test_trace.py`, `xfail(strict=True)` until the list is done)
+#### The outer test (`tests/test_trace.py`)
 
-- [ ] **(int)** a turn that searches and calculates shows a trace naming both tools, their
+- [x] **(int)** a turn that searches and calculates shows a trace naming both tools, their
       arguments and what each returned — and no payload outside it
 
 #### `TraceStep` (`core/trace.py`)
@@ -33,69 +33,70 @@ model. **(migrated)** marks a test that moves rather than a new one.
 
 #### A citable payload describes itself (`citations.py`)
 
-- [ ] `Citable` requires a `summary` beside `register`, so a plugin's own citable payload
+- [x] `Citable` requires a `summary` beside `register`, so a plugin's own citable payload
       phrases its own outcome
-- [ ] `CitableHits.summary` counts the passages and names the distinct sources in order
-- [ ] a single hit reads "1 passage", not "1 passages"
-- [ ] no hits reads "no matching documents"
+- [x] `CitableHits.summary` counts the passages and names the distinct sources in order
+- [x] a single hit reads "1 passage", not "1 passages"
+- [x] no hits reads "no matching documents"
 
 #### The steps record what they did
 
-- [ ] `ModelStep` appends one decision naming the tools the reply asked for
-- [ ] a final reply's text is the answer, so its decision repeats none of it as detail
-- [ ] `ToolStep` appends one step per call, in order, each carrying the tool's name and the
+- [x] `ModelStep` appends one decision naming the tools the reply asked for
+- [x] a final reply's text is the answer, so its decision repeats none of it as detail
+- [x] `ToolStep` appends one step per call, in order, each carrying the tool's name and the
       arguments it was called with
-- [ ] a citable payload's outcome is the payload's own summary and its detail is the
+- [x] a citable payload's outcome is the payload's own summary and its detail is the
       numbered block that was registered — the untrusted-data label stays out of it
-- [ ] a plain payload's outcome and detail come from the result's `render()`
-- [ ] a failed call appends a step marked failed, and no `ToolResult` reaches the user
-- [ ] `AgentState.trace` accumulates across steps; `tool_results` is deleted from the state
+- [x] a plain payload's outcome and detail come from the result's `render()`
+- [x] a failed call appends a step marked failed, and no `ToolResult` reaches the user
+- [x] `AgentState.trace` accumulates across steps; `tool_results` is deleted from the state
       and from `ChatResult`, its callers re-pointed at the trace *(migrated)*
 
 #### The run streams (`GraphRunner` port, `LangGraphRunner`)
 
-- [ ] `run` yields the accumulated state after each step, the last one carrying the run
+- [x] `run` yields the accumulated state after each step, the last one carrying the run
       *(migrated)*
-- [ ] the caller sees a step before the run ends — pulling one state leaves the later steps
+- [x] the caller sees a step before the run ends — pulling one state leaves the later steps
       uncalled
-- [ ] a runaway graph still surfaces as `ToolLoopLimitError` while iterating, never
+- [x] a runaway graph still surfaces as `ToolLoopLimitError` while iterating, never
       `GraphRecursionError` *(migrated)*
-- [ ] an `InputRejectedError` from `PrepareStep` travels out of the iteration unwrapped
+- [x] an `InputRejectedError` from `PrepareStep` travels out of the iteration unwrapped
       *(migrated)*
-- [ ] an `AdapterError` raised inside a step does too *(migrated)*
+- [x] an `AdapterError` raised inside a step does too *(migrated)*
 
 #### `Agent`
 
-- [ ] `answer` still returns the answer and its cited sources over a streaming runner
+- [x] `answer` still returns the answer and its cited sources over a streaming runner
       *(migrated)*
-- [ ] `ChatResult.trace` carries the run's steps in order
-- [ ] `on_step` is called once per step as it arrives, before the run finishes
-- [ ] a step already reported is never reported again
-- [ ] when the run fails midway the error propagates, and the steps already reported stand
+- [x] `ChatResult.trace` carries the run's steps in order
+- [x] `on_step` is called once per step as it arrives, before the run finishes
+- [x] a step already reported is never reported again
+- [x] when the run fails midway the error propagates, and the steps already reported stand
 
 #### Rendering (`app/ui/formatting.py`)
 
-- [ ] a step renders as its summary line; a failed step is marked as failed
-- [ ] its detail follows as a fenced block, and a detail past the cap ends in a truncation
+- [x] a step renders as its summary line; a failed step is marked as failed
+- [x] its detail follows as a fenced block, and a detail past the cap ends in a truncation
       marker
-- [ ] a step with no detail renders the summary alone
+- [x] a step with no detail renders the summary alone
 
 #### The trace on screen (`app/ui/chat.py`)
 
-- [ ] **(int)** the steps appear while the run is working, in a status container that
-      settles to a collapsed "How I got there"
-- [ ] **(int)** the answer bubble prints no raw payload — the "Tool results" expander is
+- [x] **(int)** the finished turn carries a collapsed "How I got there" naming the tool,
+      its arguments and what came back
+- [x] **(int)** the answer bubble prints no raw payload — the "Tool results" expander is
       gone *(finding #5)*
-- [ ] **(int)** the trace survives a rerun: after a second question the first answer still
+- [x] **(int)** the trace survives a rerun: after a second question the first answer still
       carries its own steps
-- [ ] **(int)** a turn whose tool failed shows the failed step and still shows the answer
-- [ ] **(int)** a run that ends in an error shows the error with the steps taken so far
-      beside it
-- [ ] **(int)** a greeting shows the one-step trace that says no tool was needed
+- [x] **(int)** a turn whose tool failed shows the failed step and still shows the answer
+- [x] **(int)** a run that ends in an error shows the error with the steps taken so far
+      beside it — they can only have come from `on_step`, which is what proves the UI
+      draws them while the run is still going
+- [x] **(int)** a greeting shows the one-step trace that says no tool was needed
 
 #### Close
 
-- [ ] **(e2e)** the browser trace opens and names the search tool, its query and its
+- [x] **(e2e)** the browser trace opens and names the search tool, its query and its
       outcome — re-points `test_chat.py` and the tool evidence in `test_llm_acceptance.py`,
       whose greeting assertion moves from "no expanders" to "no Sources"
-- [ ] `README.md` and `big-picture.md` say the run is traced
+- [x] `README.md` and `big-picture.md` say the run is traced

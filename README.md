@@ -33,8 +33,10 @@ uv run streamlit run src/cora/app/ui/streamlit_app.py
 ```
 
 Upload a document (txt/md/pdf) in the sidebar, then ask about it — answers cite
-the sources they used, and any tool runs appear under the answer. A question that
-needs no documents is answered without searching them.
+the sources they used. The steps appear as cora takes them and stay with the
+answer under *How I got there*: what it decided, which tool it ran with which
+arguments, and what came back. A question that needs no documents is answered
+without searching them.
 
 Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
 `CORA_PLUGIN` (default `cora.plugins.fitness`), `CORA_TOP_K` (default `5`),
