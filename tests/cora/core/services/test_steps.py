@@ -8,12 +8,14 @@ from cora.core.chunk import Chunk
 from cora.core.citations import Source
 from cora.core.errors import InputRejectedError, LlmError, ToolLoopLimitError
 from cora.core.ports.chat_model import Message, ModelReply, Role
-from cora.core.ports.plugin import Tool, ToolCall, ToolResult
+from cora.core.ports.plugin import Tool, ToolCall
 from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.core.services.steps import (
     DONE,
+    GROUND,
     TOOLS,
+    GroundStep,
     ModelStep,
     PrepareStep,
     Router,
@@ -21,6 +23,7 @@ from cora.core.services.steps import (
 )
 from cora.core.services.tool_runtime import ToolRuntime
 from cora.core.services.validation import EmptyInputRule, ValidationPipeline
+from cora.core.trace import ModelDecision, ToolUse
 from cora.core.turn import Turn
 from fakes import FailingChatModel, FakeContextSource, ScriptedChatModel, add_tool
 
@@ -49,15 +52,59 @@ def _add_call(call_id: str, a: int = 1, b: int = 2) -> ToolCall:
     return ToolCall(name="add", arguments={"a": a, "b": b}, call_id=call_id)
 
 
-def test_a_tool_call_runs_and_its_result_lands_in_the_partial_state() -> None:
+def test_a_tool_call_runs_and_answers_the_model_it_was_asked_by() -> None:
     step = ToolStep(ToolRuntime(tools=(add_tool(),)))
 
     partial = step(_asked(_add_call("c1")))
 
-    assert partial["tool_results"] == [ToolResult(call_id="c1", payload=3)]
     [message] = partial["messages"]
     assert message.role == "tool"
     assert message.tool_call_id == "c1"
+
+
+def test_a_call_is_traced_with_the_tool_and_the_arguments_it_ran_with() -> None:
+    step = ToolStep(ToolRuntime(tools=(add_tool(),)))
+
+    partial = step(_asked(_add_call("c1")))
+
+    [used] = partial["trace"]
+    assert used == ToolUse(
+        name="add", arguments={"a": 1, "b": 2}, outcome="3", detail="3"
+    )
+
+
+def test_a_citable_payload_is_traced_by_its_own_summary_and_its_block() -> None:
+    step = ToolStep(ToolRuntime(tools=(_searcher(_hit("note.md")),)))
+
+    partial = step(_asked(_search_call("c1")))
+
+    [used] = partial["trace"]
+    assert (
+        used.summary == f'{SEARCH_TOOL_NAME}(query="protein") → 1 passage from note.md'
+    )
+    assert used.detail == "[1] note.md: protein builds muscle"
+    assert "untrusted" not in used.detail.lower()
+
+
+def test_a_failed_call_is_traced_as_failed_and_carries_the_error() -> None:
+    step = ToolStep(ToolRuntime(tools=(add_tool(),)))
+
+    partial = step(_asked(ToolCall(name="nope", arguments={}, call_id="c1")))
+
+    [used] = partial["trace"]
+    assert used.failed
+    assert "nope" in used.summary
+
+
+def test_every_call_of_a_round_is_traced_in_order() -> None:
+    step = ToolStep(ToolRuntime(tools=(add_tool(),)))
+
+    partial = step(_asked(_add_call("c1"), _add_call("c2", a=3, b=4)))
+
+    assert [used.summary for used in partial["trace"]] == [
+        "add(a=1, b=2) → 3",
+        "add(a=3, b=4) → 7",
+    ]
 
 
 def test_a_payload_that_registers_nothing_is_fed_back_as_it_renders() -> None:
@@ -65,19 +112,9 @@ def test_a_payload_that_registers_nothing_is_fed_back_as_it_renders() -> None:
 
     partial = step(_asked(_add_call("c1")))
 
-    [result] = partial["tool_results"]
     [message] = partial["messages"]
-    assert message.content == result.render() == "3"
+    assert message.content == "3"
     assert partial["sources"] == []
-
-
-def test_a_citable_payload_is_registered_and_its_result_renders_the_block() -> None:
-    step = ToolStep(ToolRuntime(tools=(_searcher(_hit("note.md")),)))
-
-    partial = step(_asked(_search_call("c1")))
-
-    [result] = partial["tool_results"]
-    assert result.render() == "[1] note.md: protein builds muscle"
 
 
 def test_the_model_gets_the_passages_labelled_as_untrusted_data() -> None:
@@ -85,13 +122,13 @@ def test_the_model_gets_the_passages_labelled_as_untrusted_data() -> None:
 
     partial = step(_asked(_search_call("c1")))
 
-    [result] = partial["tool_results"]
+    [used] = partial["trace"]
     [message] = partial["messages"]
     notice, _, body = message.content.partition("[1]")
     assert "untrusted" in notice.lower()
     assert "instructions" in notice.lower()
     assert body in message.content
-    assert "untrusted" not in result.render().lower()
+    assert "untrusted" not in used.detail.lower()
 
 
 def test_passages_are_labelled_even_when_they_add_no_new_source() -> None:
@@ -119,8 +156,8 @@ def test_a_later_retrieval_in_the_same_run_continues_the_numbering() -> None:
     partial = step(_asked(_search_call("c2"), known=(Source(1, "note.md"),)))
 
     assert partial["sources"] == [Source(2, "later.md")]
-    [result] = partial["tool_results"]
-    assert "[2] later.md" in result.render()
+    [used] = partial["trace"]
+    assert "[2] later.md" in used.detail
 
 
 def test_any_tool_returning_a_citable_payload_is_registered_the_same_way() -> None:
@@ -136,9 +173,9 @@ def test_any_tool_returning_a_citable_payload_is_registered_the_same_way() -> No
     )
 
     assert partial["sources"] == [Source(1, "note.md"), Source(2, "diary.md")]
-    searched, recalled = partial["tool_results"]
-    assert "[1] note.md" in searched.render()
-    assert "[2] diary.md" in recalled.render()
+    searched, recalled = partial["trace"]
+    assert "[1] note.md" in searched.detail
+    assert "[2] diary.md" in recalled.detail
 
 
 def test_several_calls_in_one_round_all_run_in_order() -> None:
@@ -146,11 +183,8 @@ def test_several_calls_in_one_round_all_run_in_order() -> None:
 
     partial = step(_asked(_add_call("c1"), _add_call("c2", a=3, b=4)))
 
-    assert partial["tool_results"] == [
-        ToolResult(call_id="c1", payload=3),
-        ToolResult(call_id="c2", payload=7),
-    ]
     assert [m.tool_call_id for m in partial["messages"]] == ["c1", "c2"]
+    assert [m.content for m in partial["messages"]] == ["3", "7"]
 
 
 def test_an_unknown_tool_comes_back_as_a_tool_message() -> None:
@@ -158,11 +192,9 @@ def test_an_unknown_tool_comes_back_as_a_tool_message() -> None:
 
     partial = step(_asked(ToolCall(name="nope", arguments={}, call_id="c1")))
 
-    [result] = partial["tool_results"]
-    assert result.error is not None and "nope" in result.error
     [message] = partial["messages"]
     assert message.role == "tool"
-    assert message.content == result.error
+    assert "nope" in message.content
 
 
 def test_malformed_arguments_come_back_as_a_tool_message() -> None:
@@ -172,10 +204,8 @@ def test_malformed_arguments_come_back_as_a_tool_message() -> None:
         _asked(ToolCall(name="add", arguments={"a": "one", "b": 2}, call_id="c1"))
     )
 
-    [result] = partial["tool_results"]
-    assert result.error is not None and "invalid arguments" in result.error
     [message] = partial["messages"]
-    assert message.content == result.error
+    assert "invalid arguments" in message.content
 
 
 def _model_step(*replies: ModelReply) -> ModelStep:
@@ -220,6 +250,22 @@ def test_a_final_reply_sets_the_answer_and_a_tool_calling_one_does_not() -> None
 
     assert final["answer"] == "The sum is 3."
     assert "answer" not in calling
+
+
+def test_a_tool_calling_reply_is_traced_as_the_decision_it_was() -> None:
+    calling = ModelReply(text="Let me add those.", tool_calls=(_add_call("c1"),))
+
+    partial = _model_step(calling)(_asking())
+
+    assert partial["trace"] == [
+        ModelDecision(detail="Let me add those.", tools=("add",))
+    ]
+
+
+def test_a_final_reply_is_traced_without_repeating_the_answer() -> None:
+    partial = _model_step(ModelReply(text="The sum is 3."))(_asking())
+
+    assert partial["trace"] == [ModelDecision()]
 
 
 def test_each_visit_adds_one_round() -> None:
@@ -349,19 +395,106 @@ def test_the_system_message_carries_the_plugin_prompt_and_the_agents_rules() -> 
     assert "[n]" in system.content
 
 
+def _replied(*calls: ToolCall, text: str = "The sum is 3.") -> AgentState:
+    return {"messages": [Message(role="assistant", content=text, tool_calls=calls)]}
+
+
+def _after_searching(state: AgentState) -> AgentState:
+    searched = Message(role="assistant", content="", tool_calls=(_search_call("c1"),))
+    return {**state, "messages": [searched, *state["messages"]]}
+
+
 def test_a_final_reply_routes_to_done() -> None:
-    assert Router(max_tool_rounds=8)({"answer": "The sum is 3.", "rounds": 1}) == DONE
+    assert Router(max_tool_rounds=8)({**_replied(), "rounds": 1}) == DONE
 
 
 def test_a_tool_calling_reply_under_budget_routes_to_the_tools() -> None:
-    assert Router(max_tool_rounds=8)({"rounds": 1}) == TOOLS
+    assert (
+        Router(max_tool_rounds=8)({**_replied(_add_call("c1")), "rounds": 1}) == TOOLS
+    )
 
 
 def test_a_tool_calling_reply_at_the_round_budget_gives_up_kindly() -> None:
     with pytest.raises(ToolLoopLimitError) as exc_info:
-        Router(max_tool_rounds=2)({"rounds": 2})
+        Router(max_tool_rounds=2)({**_replied(_add_call("c1")), "rounds": 2})
 
     assert exc_info.value.user_message == ToolLoopLimitError().user_message
+
+
+def test_an_answer_from_an_earlier_round_can_no_longer_end_the_run() -> None:
+    asking_again: AgentState = {
+        **_replied(_add_call("c1")),
+        "answer": "stale",
+        "rounds": 1,
+    }
+
+    assert Router(max_tool_rounds=8)(asking_again) == TOOLS
+
+
+def test_an_ungrounded_answer_is_sent_back_when_the_plugin_asks_for_it() -> None:
+    router = Router(max_tool_rounds=8, grounded=True)
+
+    assert router({**_replied(), "rounds": 1}) == GROUND
+
+
+def test_an_answer_that_followed_a_search_is_grounded_enough() -> None:
+    router = Router(max_tool_rounds=8, grounded=True)
+
+    assert router(_after_searching({**_replied(), "rounds": 2})) == DONE
+
+
+def test_an_answer_the_tools_already_worked_for_is_left_alone() -> None:
+    """The gate is for an answer the model made up, not for one a calculator
+    produced: a plugin's own tools are as good a ground as its documents."""
+    router = Router(max_tool_rounds=8, grounded=True)
+    calculated = Message(role="assistant", content="", tool_calls=(_add_call("c1"),))
+    state: AgentState = {"messages": [calculated, *_replied()["messages"]], "rounds": 2}
+
+    assert router(state) == DONE
+
+
+def test_the_gate_reads_the_transcript_not_the_trace() -> None:
+    router = Router(max_tool_rounds=8, grounded=True)
+    only_traced: AgentState = {
+        **_replied(),
+        "rounds": 1,
+        "trace": [ToolUse(name=SEARCH_TOOL_NAME, outcome="1 passage")],
+    }
+
+    assert router(only_traced) == GROUND
+
+
+def test_the_gate_fires_once_so_a_run_can_never_loop_on_it() -> None:
+    router = Router(max_tool_rounds=8, grounded=True)
+
+    assert router({**_replied(), "rounds": 2, "answer_in_hand": "earlier"}) == DONE
+
+
+def test_a_plugin_that_asks_for_no_grounding_goes_straight_to_done() -> None:
+    assert Router(max_tool_rounds=8)({**_replied(), "rounds": 1}) == DONE
+
+
+def test_the_step_sends_the_answer_back_with_the_plugins_own_reminder() -> None:
+    partial = GroundStep(reminder="Search the documents first.")({"rounds": 1})
+
+    [message] = partial["messages"]
+    assert message.role == "system"
+    assert message.content == "Search the documents first."
+
+
+def test_the_nudge_holds_on_to_the_answer_it_is_second_guessing() -> None:
+    """Holding the answer is what tells a failed second look apart from a failure
+    after one: nothing has to count rounds to know which happened."""
+    held = GroundStep(reminder="Look again.")({"answer": "Off the cuff."})
+
+    assert held["answer_in_hand"] == "Off the cuff."
+
+
+def test_the_reconsideration_shows_up_in_the_trace() -> None:
+    partial = GroundStep(reminder="Search the documents first.")({})
+
+    [step] = partial["trace"]
+    assert step.summary == "Sent it back to search the documents first"
 
 
 @dataclass(frozen=True)
@@ -387,8 +520,8 @@ def test_a_payload_that_only_looks_citable_is_fed_back_untouched() -> None:
 
     partial = step(_asked(ToolCall(name="book", arguments={}, call_id="c1")))
 
-    [result] = partial["tool_results"]
-    assert result.payload == _Booking("Ada")
     assert partial["sources"] == []
     [message] = partial["messages"]
-    assert message.content == result.render()
+    assert message.content == "\"_Booking(member='Ada')\""
+    [used] = partial["trace"]
+    assert used.detail == message.content

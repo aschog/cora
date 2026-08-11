@@ -1,29 +1,19 @@
 from cora.app.assembly import App, assemble
-from cora.core.metadata_filter import MetadataFilter
 from cora.core.ports.chat_model import ModelReply
 from cora.core.ports.plugin import ToolCall
-from cora.core.ports.retrieval import RetrievedChunk
-from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel, add_tool
+from cora.core.trace import ToolUse
+from fakes import (
+    CountingRetriever,
+    FakeEmbedder,
+    FakeRetriever,
+    ScriptedChatModel,
+    add_tool,
+)
 from fixture_plugins import make_plugin
 
 SEED_DOC = ("note.md", b"protein builds muscle")
 QUESTION = "What do my notes say about protein, and what is 20 + 22?"
 ANSWER = "Protein builds muscle [1], and 20 + 22 = 42."
-
-
-class CountingRetriever(FakeRetriever):
-    def __init__(self) -> None:
-        super().__init__()
-        self.queries = 0
-
-    def query(
-        self,
-        query_vector: list[float],
-        k: int,
-        metadata_filter: MetadataFilter | None = None,
-    ) -> list[RetrievedChunk]:
-        self.queries += 1
-        return super().query(query_vector, k, metadata_filter)
 
 
 def _call(name: str, call_id: str, **arguments: object) -> ModelReply:
@@ -57,9 +47,9 @@ def test_a_question_needing_a_lookup_and_a_calculation_uses_both() -> None:
     assert [(source.number, source.name) for source in result.sources] == [
         (1, "note.md")
     ]
-    lookup, calculation = result.tool_results
-    assert "protein builds muscle" in lookup.render()
-    assert calculation.payload == 42
+    lookup, calculation = [step for step in result.trace if isinstance(step, ToolUse)]
+    assert "protein builds muscle" in lookup.detail
+    assert calculation.outcome == "42"
 
 
 def test_a_question_needing_neither_retrieves_nothing_and_calls_no_tool() -> None:
@@ -69,6 +59,6 @@ def test_a_question_needing_neither_retrieves_nothing_and_calls_no_tool() -> Non
     result = app.agent.answer("Hello there!")
 
     assert result.answer == "Hello! How can I help?"
-    assert result.tool_results == ()
+    assert [step for step in result.trace if isinstance(step, ToolUse)] == []
     assert result.sources == ()
     assert retriever.queries == 0

@@ -5,13 +5,16 @@ import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from cora.app.assembly import App
-from cora.app.ui.formatting import ingest_message, numbered_sources
+from cora.app.ui.formatting import ingest_message, numbered_sources, step_text
 from cora.app.ui.thread import ThreadEntry, thread_to_turns
 from cora.core.errors import AdapterError, CoreError
 from cora.core.services.agent import Agent, ChatResult
 from cora.core.services.knowledge_base import KnowledgeBase
+from cora.core.trace import TraceStep
 
 MAX_INGEST_ATTEMPTS = 2
+WORKING = "Working…"
+TRACE_LABEL = "How I got there"
 
 
 def main(app_factory: Callable[[], App]) -> None:
@@ -89,13 +92,27 @@ def _thread() -> None:
 def _answer(agent: Agent, prompt: str) -> None:
     history = thread_to_turns(st.session_state.messages)
     _append_and_show({"role": "user", "content": prompt})
+    taken: list[TraceStep] = []
+    live = st.empty()
     try:
-        with st.spinner("Thinking…"):
-            result = agent.answer(prompt, history)
+        with live.container(), st.status(WORKING, expanded=True):
+            result = agent.answer(prompt, history, _watch(taken))
     except CoreError as error:
-        _append_and_show({"role": "assistant", "error": error.user_message})
+        live.empty()
+        _append_and_show(
+            {"role": "assistant", "error": error.user_message, "trace": taken}
+        )
         return
+    live.empty()
     _append_and_show(_assistant_message(result))
+
+
+def _watch(taken: list[TraceStep]) -> Callable[[TraceStep], None]:
+    def note(step: TraceStep) -> None:
+        taken.append(step)
+        _show_step(step)
+
+    return note
 
 
 def _assistant_message(result: ChatResult) -> ThreadEntry:
@@ -103,7 +120,7 @@ def _assistant_message(result: ChatResult) -> ThreadEntry:
         "role": "assistant",
         "content": result.answer,
         "sources": numbered_sources(result.sources),
-        "tool_results": [r.render() for r in result.tool_results],
+        "trace": list(result.trace),
     }
 
 
@@ -116,10 +133,30 @@ def _show(message: ThreadEntry) -> None:
     with st.chat_message(message["role"]):
         if "error" in message:
             st.error(message["error"])
-            return
-        st.markdown(message["content"])
-        _expander("Sources", message.get("sources", ()))
-        _expander("Tool results", message.get("tool_results", ()))
+        else:
+            st.markdown(message["content"])
+            _expander("Sources", message.get("sources", ()))
+        _trace(message.get("trace", ()), failed=_went_wrong(message))
+
+
+def _went_wrong(message: ThreadEntry) -> bool:
+    """A failed step sits inside a collapsed panel, so the panel has to carry the
+    news: nothing else above the fold would."""
+    if "error" in message:
+        return True
+    return any(step.failed for step in message.get("trace", ()))
+
+
+def _trace(steps: Sequence[TraceStep], *, failed: bool) -> None:
+    if not steps:
+        return
+    with st.status(TRACE_LABEL, state="error" if failed else "complete"):
+        for step in steps:
+            _show_step(step)
+
+
+def _show_step(step: TraceStep) -> None:
+    st.code(step_text(step), language="text")
 
 
 def _expander(label: str, lines: Sequence[str]) -> None:

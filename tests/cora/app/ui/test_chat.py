@@ -390,19 +390,139 @@ def test_main_shows_friendly_error_for_any_startup_core_error() -> None:
     assert not at.chat_input
 
 
-@pytest.mark.integration
-def test_tool_results_are_shown_with_the_answer() -> None:
+def _calculating() -> ScriptedChatModel:
     call = ToolCall(name="add", arguments={"a": 17, "b": 25}, call_id="c1")
-    scripted = ScriptedChatModel(
+    return ScriptedChatModel(
         [ModelReply(tool_calls=(call,)), ModelReply(text="Sum computed.")]
     )
-    at = _run_page(_app(scripted, plugin=make_plugin(tools=(add_tool(),))))
+
+
+def _traced(at: AppTest) -> str:
+    """The trace reads as its summary lines plus the evidence under them, which
+    is rendered as code rather than markdown so a document cannot forge a line."""
+    [trace] = at.status
+    written = [*(md.value for md in trace.markdown), *(c.value for c in trace.code)]
+    return "\n".join([trace.label, *written])
+
+
+@pytest.mark.integration
+def test_the_trace_names_the_tool_its_arguments_and_what_came_back() -> None:
+    at = _run_page(_app(_calculating(), plugin=make_plugin(tools=(add_tool(),))))
 
     at.chat_input[0].set_value("17 + 25?").run()
 
     assert not at.exception
     assert "Sum computed." in _visible_text(at)
-    assert "42" in _visible_text(at)
+    assert "How I got there" in _traced(at)
+    assert "add(a=17, b=25) → 42" in _traced(at)
+
+
+@pytest.mark.integration
+def test_the_answer_no_longer_prints_the_raw_payload_beside_itself() -> None:
+    at = _run_page(_app(_calculating(), plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("17 + 25?").run()
+
+    assert "42" not in _visible_text(at), "the payload belongs in the trace only"
+    assert "42" in _traced(at)
+    assert [e.label for e in at.expander] == []
+
+
+@pytest.mark.integration
+def test_a_trace_survives_the_next_question() -> None:
+    call = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1")
+    scripted = ScriptedChatModel(
+        [
+            ModelReply(tool_calls=(call,)),
+            ModelReply(text="Three."),
+            ModelReply(text="Hello!"),
+        ]
+    )
+    at = _run_page(_app(scripted, plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("1 + 2?").run()
+    at.chat_input[0].set_value("Hi!").run()
+
+    assert not at.exception
+    first, second = at.status
+    assert "add(a=1, b=2) → 3" in "\n".join(c.value for c in first.code)
+    assert "Decided no tool was needed" in "\n".join(c.value for c in second.code)
+
+
+@pytest.mark.integration
+def test_a_greeting_is_traced_as_the_decision_not_to_use_a_tool() -> None:
+    at = _run_page(_app(ScriptedChatModel([ModelReply(text="Hello!")])))
+
+    at.chat_input[0].set_value("Hi!").run()
+
+    assert not at.exception
+    assert "Decided no tool was needed" in _traced(at)
+
+
+@pytest.mark.integration
+def test_a_turn_that_went_wrong_does_not_read_as_a_clean_one() -> None:
+    """The warning is inside a collapsed panel, so the panel itself has to say
+    the run degraded — otherwise nothing above the fold does."""
+    call = ToolCall(name="add", arguments={"a": "one"}, call_id="c1")
+    scripted = ScriptedChatModel(
+        [ModelReply(tool_calls=(call,)), ModelReply(text="I could not add those.")]
+    )
+    at = _run_page(_app(scripted, plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("one + 25?").run()
+
+    [trace] = at.status
+    assert trace.state == "error"
+
+
+@pytest.mark.integration
+def test_a_turn_that_went_well_reads_as_a_clean_one() -> None:
+    at = _run_page(_app(_calculating(), plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("17 + 25?").run()
+
+    [trace] = at.status
+    assert trace.state == "complete"
+
+
+@pytest.mark.integration
+def test_a_failed_tool_is_traced_as_failed_and_the_answer_still_arrives() -> None:
+    call = ToolCall(name="add", arguments={"a": "one"}, call_id="c1")
+    scripted = ScriptedChatModel(
+        [ModelReply(tool_calls=(call,)), ModelReply(text="I could not add those.")]
+    )
+    at = _run_page(_app(scripted, plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("one + 25?").run()
+
+    assert not at.exception
+    assert "I could not add those." in _visible_text(at)
+    assert "invalid arguments" in _traced(at)
+
+
+class _FailsOnTheSecondRound:
+    def __init__(self, call: ToolCall) -> None:
+        self.call = call
+        self.completions = 0
+
+    def complete(self, messages, tools) -> ModelReply:
+        self.completions += 1
+        if self.completions > 1:
+            raise LlmError
+        return ModelReply(tool_calls=(self.call,))
+
+
+@pytest.mark.integration
+def test_a_failed_run_keeps_the_steps_it_had_taken() -> None:
+    call = ToolCall(name="add", arguments={"a": 17, "b": 25}, call_id="c1")
+    model = _FailsOnTheSecondRound(call)
+    at = _run_page(_app(model, plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("17 + 25?").run()
+    at.run()
+
+    assert [e.value for e in at.error] == [LlmError().user_message]
+    assert "add(a=17, b=25) → 42" in _traced(at)
 
 
 @pytest.mark.integration
@@ -427,7 +547,8 @@ def test_upload_then_ask_shows_answer_with_sources() -> None:
     assert not at.exception
     assert answer in _visible_text(at)
     numbered = [md.value for md in at.markdown if re.match(r"^\[\d+\] ", md.value)]
-    assert numbered == ["[1] note.md", "[1] note.md: protein facts"]
+    assert numbered == ["[1] note.md"]
+    assert "[1] note.md: protein facts" in _traced(at)
     assert "untrusted" not in _visible_text(at).lower(), (
         "the model's framing of the passages must not reach the user"
     )

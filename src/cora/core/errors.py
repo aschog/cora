@@ -83,6 +83,13 @@ class LlmError(AdapterError):
     message = "The assistant is temporarily unavailable. Please try again."
 
 
+class GraphRunError(AdapterError):
+    """A runner that walked no step at all: the run cannot be reported on, and a
+    blank answer would read like a successful turn."""
+
+    message = "The assistant could not start. Please try again."
+
+
 class ToolLoopLimitError(CoreError):
     def __init__(self) -> None:
         super().__init__(

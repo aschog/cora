@@ -54,14 +54,16 @@ def sources(page: Page) -> Locator:
     return page.get_by_test_id(SIDEBAR).get_by_test_id(MARKDOWN)
 
 
-def expander(page: Page, label: str) -> Locator:
-    return page.get_by_test_id(EXPANDER).filter(has_text=label)
+def expander(within: Page | Locator, label: str) -> Locator:
+    return within.get_by_test_id(EXPANDER).filter(has_text=label)
 
 
-def open_expander(page: Page, label: str) -> Locator:
+def open_expander(within: Page | Locator, label: str) -> Locator:
     """Streamlit expanders start collapsed, and collapsed content reads as empty
-    text, so a spec must open one before asserting on what it holds."""
-    panel = expander(page, label)
+    text, so a spec must open one before asserting on what it holds. Scope it to
+    one message once a thread has more than one: the same panel appears on every
+    turn, and a locator matching two of them is an error, not a choice."""
+    panel = expander(within, label)
     panel.get_by_text(label).click()
     details = panel.get_by_test_id(EXPANDER_DETAILS)
     expect(details).to_be_visible()

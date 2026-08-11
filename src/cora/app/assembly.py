@@ -30,7 +30,13 @@ from cora.core.services.agent import Agent
 from cora.core.services.knowledge_base import KnowledgeBase
 from cora.core.services.plugin_registry import load_plugin
 from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME, search_tool
-from cora.core.services.steps import ModelStep, PrepareStep, Router, ToolStep
+from cora.core.services.steps import (
+    GroundStep,
+    ModelStep,
+    PrepareStep,
+    Router,
+    ToolStep,
+)
 from cora.core.services.tool_runtime import ToolRuntime
 from cora.core.services.validation import (
     EmptyInputRule,
@@ -83,6 +89,7 @@ def assemble(
         fusion_queries=fusion_queries,
     )
     tools = _offered_tools(plugin, context_source, top_k)
+    grounding = plugin.grounding.strip()
     validation = ValidationPipeline(
         core_rules=(
             EmptyInputRule(),
@@ -99,7 +106,8 @@ def assemble(
         ),
         model=ModelStep(chat_model=chat_model, tools=tools),
         tools=ToolStep(tool_runtime=ToolRuntime(tools=tools)),
-        router=Router(max_tool_rounds=max_tool_rounds),
+        ground=GroundStep(reminder=grounding),
+        router=Router(max_tool_rounds=max_tool_rounds, grounded=bool(grounding)),
         recursion_limit=recursion_limit_for(max_tool_rounds),
     )
     return App(

@@ -9,9 +9,9 @@ def test_thread_to_turns_maps_an_empty_thread_to_nothing() -> None:
 def test_thread_to_turns_keeps_answered_pairs_in_order() -> None:
     thread = [
         {"role": "user", "content": "I weigh 80 kg."},
-        {"role": "assistant", "content": "Noted.", "sources": [], "tool_results": []},
+        {"role": "assistant", "content": "Noted.", "sources": [], "trace": []},
         {"role": "user", "content": "And I'm 1.80 m."},
-        {"role": "assistant", "content": "Got it.", "sources": [], "tool_results": []},
+        {"role": "assistant", "content": "Got it.", "sources": [], "trace": []},
     ]
 
     assert thread_to_turns(thread) == (
@@ -31,7 +31,7 @@ def test_thread_to_turns_drops_an_error_entry_and_the_question_that_caused_it() 
             "role": "assistant",
             "content": "1.6 g/kg.",
             "sources": [],
-            "tool_results": [],
+            "trace": [],
         },
     ]
 

@@ -4,6 +4,13 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 
+class ToolRefusal(Exception):
+    """Raised by a tool that will not run on the input it was given. The message
+    is written for whoever reads it — the model, the log, the user's trace — and
+    is the only exception text passed on: anything else that escapes a tool could
+    be carrying whatever the tool was holding."""
+
+
 @dataclass(frozen=True)
 class Tool:
     name: str
@@ -43,7 +50,13 @@ class ValidationRule(Protocol):
 
 @dataclass(frozen=True)
 class Plugin:
+    """`grounding` is the domain's answer to "may this be answered without the
+    documents?". Empty means yes, and the model decides alone. Any other value is
+    the reminder sent back to a model that answered without searching — worded by
+    the plugin, because which questions belong to the documents is domain policy."""
+
     system_prompt: str
     tools: tuple[Tool, ...]
     validation_rules: tuple[ValidationRule, ...]
     seed_docs: tuple[tuple[str, bytes], ...] = ()
+    grounding: str = ""

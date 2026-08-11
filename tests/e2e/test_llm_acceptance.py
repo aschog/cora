@@ -36,9 +36,9 @@ def test_a_real_model_answers_and_calls_a_tool(app: Page) -> None:
 
     expect(messages(app).last.get_by_test_id(MARKDOWN).first).to_be_visible()
 
-    results = open_expander(app, "Tool results").inner_text()
-    assert NUMBER.search(results), f"a real tool call must carry a number: {results!r}"
-    assert not TOOL_ERROR.search(results), f"the tool did not run: {results!r}"
+    trace = open_expander(messages(app).last, "How I got there").inner_text()
+    assert NUMBER.search(trace), f"a real tool call must carry a number: {trace!r}"
+    assert not TOOL_ERROR.search(trace), f"the tool did not run: {trace!r}"
 
     expect(app.get_by_test_id(EXCEPTION)).to_have_count(0)
 
@@ -53,19 +53,25 @@ def test_a_real_model_retrieves_for_a_document_question_but_not_for_a_greeting(
     app: Page,
 ) -> None:
     """The honest proof that retrieval is the model's decision: the same agent,
-    two questions, and only one of them reaches the documents."""
+    two questions, and only one of them reaches the documents. The question never
+    says "my documents" — one that does gives the answer away, and the model
+    answering a plain domain question from its own knowledge is the bug this
+    guards."""
     upload(app, "protein.md", PROTEIN_DOC)
 
-    ask(app, "According to my documents, how much protein should I eat per kg?")
+    ask(app, "How much protein should I eat per kg of bodyweight?")
 
     answered = messages(app).last
     expect(answered.get_by_test_id(MARKDOWN).first).to_be_visible()
-    listed = open_expander(app, "Sources").inner_text()
+    listed = open_expander(answered, "Sources").inner_text()
     assert "protein.md" in listed, f"the model answered without retrieving: {listed!r}"
 
     ask(app, "Hi there!")
 
     greeted = messages(app).last
     expect(greeted.get_by_test_id(MARKDOWN).first).to_be_visible()
-    expect(greeted.get_by_test_id(EXPANDER)).to_have_count(0)
+    expect(greeted.get_by_test_id(EXPANDER).filter(has_text="Sources")).to_have_count(0)
+    greeting_trace = open_expander(greeted, "How I got there").inner_text()
+    assert "Decided no tool was needed" in greeting_trace
+    assert "protein.md" not in greeting_trace
     expect(app.get_by_test_id(EXCEPTION)).to_have_count(0)

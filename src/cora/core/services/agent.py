@@ -1,8 +1,11 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 
+from cora.core.agent_state import AgentState
 from cora.core.citations import Source, cited_sources
+from cora.core.errors import AdapterError, GraphRunError
 from cora.core.ports.graph import GraphRunner
-from cora.core.ports.plugin import ToolResult
+from cora.core.trace import SecondLookLost, TraceStep
 from cora.core.turn import Turn
 
 
@@ -10,18 +13,58 @@ from cora.core.turn import Turn
 class ChatResult:
     answer: str
     sources: tuple[Source, ...] = ()
-    tool_results: tuple[ToolResult, ...] = ()
+    trace: tuple[TraceStep, ...] = ()
+
+
+def _ignore(step: TraceStep) -> None:
+    pass
+
+
+def _still_holding_the_answer(state: AgentState) -> bool:
+    """The gate is holding an answer and the run has nothing to show for the look
+    it asked for: the model has not answered again and no source was found. Asked
+    of the gate's own record, never of round counting — the state a run yielded
+    last can predate the failure, so it cannot be counted against."""
+    if "answer_in_hand" not in state:
+        return False
+    held = state["answer_in_hand"]
+    return bool(held) and state.get("answer") == held and not state.get("sources")
 
 
 @dataclass(frozen=True)
 class Agent:
     runner: GraphRunner
 
-    def answer(self, question: str, history: tuple[Turn, ...] = ()) -> ChatResult:
-        final = self.runner.run({"question": question, "history": history})
+    def answer(
+        self,
+        question: str,
+        history: tuple[Turn, ...] = (),
+        on_step: Callable[[TraceStep], None] = _ignore,
+    ) -> ChatResult:
+        """Reports each step the moment the run takes it, so a caller can show
+        the work in progress; a run that fails keeps the steps already reported.
+        A failure inside the grounding gate's extra round is survivable — the run
+        already had an answer, and losing it to a second look would be worse than
+        an ungrounded one."""
+        final: AgentState = {}
+        reported = 0
+        try:
+            for state in self.runner.run({"question": question, "history": history}):
+                final = state
+                steps = state.get("trace", [])
+                for step in steps[reported:]:
+                    on_step(step)
+                reported = len(steps)
+        except AdapterError:
+            if not _still_holding_the_answer(final):
+                raise
+            on_step(SecondLookLost())
+            final = {**final, "trace": [*final.get("trace", []), SecondLookLost()]}
+        if not final:
+            raise GraphRunError
         answer = final.get("answer", "")
         return ChatResult(
             answer=answer,
             sources=cited_sources(answer, tuple(final.get("sources", ()))),
-            tool_results=tuple(final.get("tool_results", ())),
+            trace=tuple(final.get("trace", ())),
         )

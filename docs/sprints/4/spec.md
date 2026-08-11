@@ -56,11 +56,7 @@ into its own file and leaves a pointer behind.
 
 ### [1. The agent plans its own steps](done/story-01.md) ✔
 
-### 2. I can see what it did
-
-> **Given** an answer that took several steps
-> **When** I expand the trace
-> **Then** each step shows the decision, the tool and its arguments, and what came back
+### [2. I can see what it did](story-02.md)
 
 ### 3. It remembers me between sessions
 

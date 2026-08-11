@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
 from cora.core.ports.retrieval import RetrievedChunk
+from cora.core.prose import counted, listed
 
 NO_MATCHES = "No matching documents."
 
@@ -56,12 +57,17 @@ def build_context_block(
 
 class Citable(ABC):
     """A tool payload that cites its own material: it takes the numbers already
-    handed out and renders itself as a numbered block. Declared by inheritance,
-    not by shape — a plugin payload with a `register` of its own is not citable.
+    handed out, renders itself as a numbered block, and says in one line what it
+    found. Declared by inheritance, not by shape — a plugin payload with a
+    `register` of its own is not citable.
     """
 
     @abstractmethod
     def register(self, known: tuple[Source, ...]) -> Context: ...
+
+    @property
+    @abstractmethod
+    def summary(self) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -70,3 +76,10 @@ class CitableHits(Citable):
 
     def register(self, known: tuple[Source, ...]) -> Context:
         return build_context_block(self.hits, known)
+
+    @property
+    def summary(self) -> str:
+        if not self.hits:
+            return NO_MATCHES
+        sources = dict.fromkeys(hit.chunk.source for hit in self.hits)
+        return f"{counted(len(self.hits), 'passage')} from {listed(list(sources))}"
