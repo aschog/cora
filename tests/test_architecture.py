@@ -149,16 +149,6 @@ def test_the_pure_modules_are_discovered() -> None:
     assert CORE_FILES, "no pure modules discovered — the walker is misconfigured"
 
 
-def test_streamlit_import_is_detected(tmp_path: pathlib.Path) -> None:
-    rogue = tmp_path / "rogue.py"
-    rogue.write_text("import streamlit as st\n")
-    assert _imports_streamlit(rogue)
-
-    innocent = tmp_path / "innocent.py"
-    innocent.write_text("import json\n")
-    assert not _imports_streamlit(innocent)
-
-
 @pytest.mark.parametrize(
     "path",
     [p for p in PACKAGE_FILES if not p.is_relative_to(UI_ROOT)],
@@ -170,40 +160,10 @@ def test_streamlit_stays_inside_the_ui_shell(path: pathlib.Path) -> None:
     )
 
 
-def test_test_only_import_is_detected(tmp_path: pathlib.Path) -> None:
-    rogue = tmp_path / "rogue.py"
-    rogue.write_text("from pytest import fixture\n")
-    assert _test_only_imports(rogue) == ["pytest"]
-
-    innocent = tmp_path / "innocent.py"
-    innocent.write_text("import json\n")
-    assert _test_only_imports(innocent) == []
-
-
 @pytest.mark.parametrize("path", PACKAGE_FILES, ids=lambda p: str(_shipped_as(p)))
 def test_no_test_only_framework_is_shipped(path: pathlib.Path) -> None:
     leaked = _test_only_imports(path)
     assert not leaked, f"{_shipped_as(path)} imports test-only frameworks: {leaked}"
-
-
-def test_rank_bm25_import_into_core_is_detected() -> None:
-    tree = ast.parse("import rank_bm25\n")
-    modules = set(_imported_modules(tree, ("cora", "core", "services")))
-    assert any(_is_forbidden(m) for m in modules)
-
-
-def test_langgraph_import_into_core_is_detected() -> None:
-    tree = ast.parse("from langgraph.graph import StateGraph\n")
-    modules = set(_imported_modules(tree, ("cora", "core", "services")))
-    assert any(_is_forbidden(m) for m in modules)
-
-
-def test_relative_import_into_outer_layer_is_detected() -> None:
-    tree = ast.parse("from ...adapters import chroma_retriever\n")
-    pkg = ("cora", "core", "services")
-    modules = set(_imported_modules(tree, pkg))
-    assert "cora.adapters" in modules
-    assert any(_is_forbidden(m) for m in modules)
 
 
 @pytest.mark.parametrize("path", CORE_FILES, ids=lambda p: str(_shipped_as(p)))
@@ -219,12 +179,6 @@ def _reaches(
 ) -> list[str]:
     modules = _imported_modules(tree, package_parts)
     return sorted({module for module in modules if _reaches_any(module, layers)})
-
-
-def test_a_layer_reaching_outward_is_detected() -> None:
-    tree = ast.parse("from cora.engine.steps import Router\n")
-    layers, _ = OUT_OF_REACH["the adapters"]
-    assert _reaches(tree, ("cora", "adapters"), layers) == ["cora.engine.steps"]
 
 
 def test_every_layer_with_a_rule_has_files_to_apply_it_to() -> None:
@@ -247,3 +201,53 @@ def test_a_layer_reaches_no_further_than_its_rule(
     layers, because = OUT_OF_REACH[layer]
     reached = _reaches(ast.parse(path.read_text()), _package_parts(path), layers)
     assert not reached, f"{_shipped_as(path)} reaches {reached}: {because}"
+
+
+def test_the_walkers_catch_a_planted_violation(tmp_path: pathlib.Path) -> None:
+    """One rogue module where eight self-tests of the detectors used to be. What it
+    proves is that the walks above are not vacuous: they pass by finding nothing, and a
+    broken detector is indistinguishable from clean code. Those eight are also what
+    rotted — three passed a `("cora", "core", "services")` package tuple naming a
+    directory gone for two commits, so they could not have failed."""
+    rogue = tmp_path / "rogue.py"
+    rogue.write_text(
+        "import streamlit as st\n"
+        "import rank_bm25\n"
+        "from langgraph.graph import StateGraph\n"
+        "from pytest import fixture\n"
+        "from cora.app.config import Config\n"
+        "from ..adapters import chroma_retriever\n"
+    )
+    tree = ast.parse(rogue.read_text())
+
+    assert _imports_streamlit(rogue)
+    assert _test_only_imports(rogue) == ["pytest"]
+
+    reached = set(_imported_modules(tree, ("cora", "engine")))
+    assert "cora.adapters" in reached, (
+        "a relative import out of the layer went unresolved"
+    )
+    assert {
+        "streamlit",
+        "rank_bm25",
+        "langgraph.graph",
+        "cora.app.config",
+        "cora.adapters",
+    } <= {module for module in reached if _is_forbidden(module)}
+
+    outward, _ = OUT_OF_REACH["the adapters"]
+    assert _reaches(tree, ("cora", "adapters"), outward) == ["cora.app.config"]
+
+
+def test_the_walkers_pass_innocent_code(tmp_path: pathlib.Path) -> None:
+    innocent = tmp_path / "innocent.py"
+    innocent.write_text("import json\n\nfrom cora.domain.chunk import Chunk\n")
+    tree = ast.parse(innocent.read_text())
+
+    assert not _imports_streamlit(innocent)
+    assert _test_only_imports(innocent) == []
+    assert not [
+        module
+        for module in _imported_modules(tree, ("cora", "engine"))
+        if _is_forbidden(module)
+    ]
