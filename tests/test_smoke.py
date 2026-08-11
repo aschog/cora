@@ -9,6 +9,7 @@ import cora.adapters
 import cora.app
 import cora.domain
 import cora.engine
+import cora.frontends.streamlit
 import cora.plugins.fitness
 import cora.ports
 
@@ -17,7 +18,8 @@ DISTRIBUTIONS = (
     "cora-engine",
     "cora-adapters",
     "cora-fitness",
-    "cora-app",
+    "cora",
+    "cora-streamlit",
 )
 
 
@@ -49,6 +51,7 @@ def test_each_layer_is_carried_by_its_own_workspace_member() -> None:
             cora.adapters,
             cora.app,
             cora.plugins.fitness,
+            cora.frontends.streamlit,
         )
     }
 
@@ -59,4 +62,5 @@ def test_each_layer_is_carried_by_its_own_workspace_member() -> None:
         "cora.adapters": "adapters",
         "cora.app": "app",
         "cora.plugins.fitness": "fitness",
+        "cora.frontends.streamlit": "streamlit",
     }

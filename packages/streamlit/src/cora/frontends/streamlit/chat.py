@@ -2,15 +2,18 @@ import hashlib
 from collections.abc import Callable, Sequence
 
 import streamlit as st
-from streamlit.runtime.uploaded_file_manager import UploadedFile
-
 from cora.app.assembly import App
-from cora.app.entrypoints.formatting import ingest_message, numbered_sources, step_text
-from cora.app.entrypoints.thread import ThreadEntry, thread_to_turns
 from cora.domain.errors import AdapterError, CoreError
 from cora.domain.trace import TraceStep
 from cora.engine.agent import Agent, ChatResult
 from cora.engine.knowledge_base import KnowledgeBase
+from cora.frontends.streamlit.formatting import (
+    ingest_message,
+    numbered_sources,
+    step_text,
+)
+from cora.frontends.streamlit.thread import ThreadEntry, thread_to_turns
+from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 MAX_INGEST_ATTEMPTS = 2
 WORKING = "Working…"

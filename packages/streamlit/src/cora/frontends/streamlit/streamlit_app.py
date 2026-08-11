@@ -1,10 +1,9 @@
 import logging
 
 import streamlit as st
-
 from cora.app.assembly import App, build
 from cora.app.config import Config
-from cora.app.entrypoints.chat import main
+from cora.frontends.streamlit.chat import main
 
 # Streamlit's source watcher probes every module for __path__, which trips
 # transformers' lazy imports and logs a warning-level traceback per model

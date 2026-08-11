@@ -13,7 +13,7 @@ import re
 import tomllib
 
 PACKAGES = pathlib.Path("packages")
-LAYERS = ("api", "engine", "adapters", "fitness", "app")
+LAYERS = ("api", "engine", "adapters", "fitness", "app", "streamlit")
 HEAVY = frozenset(
     {
         "chromadb",
@@ -58,7 +58,8 @@ def test_the_workspace_holds_exactly_its_layers() -> None:
         "engine": "cora-engine",
         "adapters": "cora-adapters",
         "fitness": "cora-fitness",
-        "app": "cora-app",
+        "app": "cora",
+        "streamlit": "cora-streamlit",
     }
 
 
@@ -127,11 +128,23 @@ def test_the_adapters_bind_the_contract_to_its_technologies() -> None:
     assert "streamlit" not in requires, "the UI is an entrypoint, not an adapter"
 
 
-def test_the_app_wires_the_layers_and_owns_the_ui() -> None:
+def test_the_app_wires_the_layers_and_owns_no_ui() -> None:
+    """`cora` is what a frontend installs: the composition root, the engine and the
+    adapters, and no way of talking to a user. A Streamlit dependency here would mean a
+    command-line or HTTP shell had to install a web UI to reuse the wiring."""
     requires = _requires("app")
 
-    assert {"cora-engine", "cora-adapters", "streamlit"} <= requires
+    assert {"cora-api", "cora-engine", "cora-adapters"} <= requires
+    assert "streamlit" not in requires, "the UI is a frontend, not the app"
     assert "cora-fitness" not in requires, (
         "the shipped app names its default plugin in config, but must not depend on a "
         "domain: that is what keeps the agent domain-agnostic"
     )
+
+
+def test_a_frontend_needs_the_app_and_its_own_toolkit() -> None:
+    """One of several possible shells: it takes `cora` and the one technology it draws
+    with, and nothing of the engine or the adapters directly."""
+    requires = _requires("streamlit")
+
+    assert requires == {"cora", "streamlit"}

@@ -75,13 +75,13 @@ def _app_on(retriever: Retriever, plugin: Plugin | None = None) -> App:
 
 
 def _page(app) -> None:
-    from cora.app.entrypoints.chat import render
+    from cora.frontends.streamlit.chat import render
 
     render(app)
 
 
 def _main_page(app_factory) -> None:
-    from cora.app.entrypoints.chat import main
+    from cora.frontends.streamlit.chat import main
 
     main(app_factory)
 

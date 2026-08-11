@@ -35,7 +35,7 @@ def _app() -> App:
 
 
 def _page(app) -> None:  # AppTest re-executes this without the module's globals
-    from cora.app.entrypoints.chat import render
+    from cora.frontends.streamlit.chat import render
 
     render(app)
 

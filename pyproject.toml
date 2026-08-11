@@ -6,15 +6,16 @@ cora-api = { workspace = true }
 cora-engine = { workspace = true }
 cora-adapters = { workspace = true }
 cora-fitness = { workspace = true }
-cora-app = { workspace = true }
+cora = { workspace = true }
+cora-streamlit = { workspace = true }
 
 # A virtual root: it ships nothing. The packages under packages/ are the
 # distributions, one per audience that installs it, and what each may depend on is
-# written in its own manifest — which is what makes "core knows no framework" a fact of the install
-# rather than a rule a test polices.
+# written in its own manifest — which is what makes "the engine knows no framework" a fact
+# of the install rather than a rule a test polices.
 [dependency-groups]
 dev = [
-    "cora-app",
+    "cora-streamlit",
     "cora-fitness",
     "pytest>=9.1.1",
     "pytest-watcher>=0.6.3",
@@ -31,6 +32,7 @@ root = [
     "packages/adapters/src",
     "packages/fitness/src",
     "packages/app/src",
+    "packages/streamlit/src",
     "tests",
 ]
 
@@ -41,6 +43,7 @@ src = [
     "packages/adapters/src",
     "packages/fitness/src",
     "packages/app/src",
+    "packages/streamlit/src",
     "tests",
 ]
 

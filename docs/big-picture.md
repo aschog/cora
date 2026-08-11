@@ -159,7 +159,7 @@ because the map shows them inside another part.
 | **ToolRuntime** | Finds the tool, checks the arguments against its JSON Schema, runs it, and turns a tool's own failure into a `ToolResult`. An infrastructure failure is not tool output, so it travels on unchanged. | `engine/tool_runtime.py` |
 | **Plugin registry** *(folded)* | Loads a plugin by its module path and checks it before the app starts: the prompt exists, tool names are unique, schemas are valid. | `engine/plugin_registry.py` |
 | **Composition root** | The only place that names a real adapter. It reads the settings, loads the plugin, picks the strategy, builds the graph, and returns an `App`. | `app/config.py`, `app/assembly.py`, `app/retrieval.py` |
-| **UI shell** | Only widgets: the uploader, the chat, the sources box, the *How I got there* trace — rendered as text, because a step names the tool the model asked for — and error text shown exactly as the error gives it. | `app/entrypoints/` |
+| **UI shell** | Only widgets: the uploader, the chat, the sources box, the *How I got there* trace — rendered as text, because a step names the tool the model asked for — and error text shown exactly as the error gives it. | `frontends/streamlit/` |
 
 ## The ports
 
@@ -182,7 +182,7 @@ not notice any change.
 ## Backed by tests
 
 - **The core cannot use a framework.** A test reads every `cora.core` file. If one imports LangGraph, LangChain, Chroma, sentence-transformers, Streamlit, or any outer layer, the test fails. A fake bad import is added on purpose to prove the test catches it.
-- **Streamlit is used in one folder only.** No file outside `app/entrypoints/` may import it. This is why you can really replace the user interface.
+- **Streamlit is used in one folder only.** No file outside `frontends/streamlit/` may import it. This is why you can really replace the user interface.
 - **The steps do not depend on any real helper.** They are plain callables over small Protocols (`ContextSource`, `InputValidator`, `ToolExecutor`), so a test walks a whole turn with fakes and no graph at all.
 - **One thing the core shares with the graph on purpose.** `domain/agent_state.py` marks the keys that accumulate (`Annotated[list[Message], operator.add]`). No core code reads those marks — they are the convention LangGraph uses to merge each step's partial state, so this one file is written to be understood by a graph engine, without importing one. The steps and the router stay framework-free; the state's *shape* is the shared word.
 - **Document text can never act as an instruction.** A test drives a turn that retrieves and checks that the document's words appear only in a `tool` message — never in the system prompt, where cora's own rules live.

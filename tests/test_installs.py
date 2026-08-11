@@ -6,11 +6,15 @@ is importable and nothing is ever missing. This builds the wheels and installs o
 distribution into an empty environment, which is the only place "a plugin needs the
 contract alone" can actually fail.
 
-Integration tier: it builds every wheel in the workspace and resolves what they require.
+The cheap half asks the resolver, which is transitive where a manifest sees one edge and
+costs nothing where installing `cora` would fetch Chroma and torch. The expensive half
+builds the wheels and installs one distribution into an empty environment, and is marked
+integration for it.
 """
 
 import json
 import pathlib
+import re
 import subprocess
 
 import pytest
@@ -22,6 +26,31 @@ def _uv(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         ("uv", *args), cwd=REPO, capture_output=True, text=True, check=True
     )
+
+
+def _resolved(dist: str) -> set[str]:
+    """Every distribution `dist` would bring with it, read off the lockfile."""
+    tree = _uv("tree", "--package", dist, "--no-dev").stdout
+    return set(re.findall(r"([A-Za-z0-9][A-Za-z0-9._-]*) v\d", tree))
+
+
+def test_the_contract_resolves_to_itself_alone() -> None:
+    assert _resolved("cora-api") == {"cora-api"}
+
+
+def test_a_plugin_resolves_the_contract_and_stops() -> None:
+    """Transitively, not just in the manifest: an engine reached through cora-api would
+    show up here even though nothing declares it."""
+    assert _resolved("cora-fitness") == {"cora-fitness", "cora-api"}
+
+
+def test_the_app_resolves_without_any_user_interface() -> None:
+    """What makes a second frontend possible, stated so it can fail: a command-line or
+    HTTP shell installs `cora` and gets the wiring without a web toolkit."""
+    resolved = _resolved("cora")
+
+    assert "streamlit" not in resolved
+    assert {"cora-api", "cora-engine", "cora-adapters"} <= resolved
 
 
 @pytest.fixture(scope="session")

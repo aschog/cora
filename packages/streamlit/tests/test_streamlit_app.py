@@ -40,7 +40,7 @@ def test_shell_silences_watcher_import_noise(
             plugin=make_plugin(),
         ),
     )
-    spec = importlib.util.find_spec("cora.app.entrypoints.streamlit_app")
+    spec = importlib.util.find_spec("cora.frontends.streamlit.streamlit_app")
     assert spec is not None and spec.origin is not None
     at = AppTest.from_file(spec.origin)
     at.run()

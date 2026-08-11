@@ -15,17 +15,18 @@ resolution-markers = [
 
 [manifest]
 members = [
+    "cora",
     "cora-adapters",
     "cora-api",
-    "cora-app",
     "cora-engine",
     "cora-fitness",
+    "cora-streamlit",
 ]
 
 [manifest.dependency-groups]
 dev = [
-    { name = "cora-app", editable = "packages/app" },
     { name = "cora-fitness", editable = "packages/fitness" },
+    { name = "cora-streamlit", editable = "packages/streamlit" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-watcher", specifier = ">=0.6.3" },
     { name = "ruff", specifier = ">=0.15.22" },
@@ -433,6 +434,23 @@ wheels = [
 ]
 
 [[package]]
+name = "cora"
+version = "0.1.0"
+source = { editable = "packages/app" }
+dependencies = [
+    { name = "cora-adapters" },
+    { name = "cora-api" },
+    { name = "cora-engine" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cora-adapters", editable = "packages/adapters" },
+    { name = "cora-api", editable = "packages/api" },
+    { name = "cora-engine", editable = "packages/engine" },
+]
+
+[[package]]
 name = "cora-adapters"
 version = "0.1.0"
 source = { editable = "packages/adapters" }
@@ -463,25 +481,6 @@ version = "0.1.0"
 source = { editable = "packages/api" }
 
 [[package]]
-name = "cora-app"
-version = "0.1.0"
-source = { editable = "packages/app" }
-dependencies = [
-    { name = "cora-adapters" },
-    { name = "cora-api" },
-    { name = "cora-engine" },
-    { name = "streamlit" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "cora-adapters", editable = "packages/adapters" },
-    { name = "cora-api", editable = "packages/api" },
-    { name = "cora-engine", editable = "packages/engine" },
-    { name = "streamlit", specifier = "~=1.60.0" },
-]
-
-[[package]]
 name = "cora-engine"
 version = "0.1.0"
 source = { editable = "packages/engine" }
@@ -506,6 +505,21 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [{ name = "cora-api", editable = "packages/api" }]
+
+[[package]]
+name = "cora-streamlit"
+version = "0.1.0"
+source = { editable = "packages/streamlit" }
+dependencies = [
+    { name = "cora" },
+    { name = "streamlit" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cora", editable = "packages/app" },
+    { name = "streamlit", specifier = "~=1.60.0" },
+]
 
 [[package]]
 name = "cuda-bindings"

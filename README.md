@@ -29,7 +29,7 @@ git config core.hooksPath .githooks       # enable pre-commit + commit-msg hooks
 
 ```sh
 export OPENROUTER_API_KEY=sk-or-...        # required (https://openrouter.ai/keys)
-uv run streamlit run packages/app/src/cora/app/entrypoints/streamlit_app.py
+uv run streamlit run packages/streamlit/src/cora/frontends/streamlit/streamlit_app.py
 ```
 
 Upload a document (txt/md/pdf) in the sidebar, then ask about it — answers cite
@@ -63,7 +63,7 @@ never enabled by accident; the API key never crosses a port.
 With the API key in a local `.env` file (`OPENROUTER_API_KEY=sk-or-...`):
 
 ```sh
-uv run --env-file .env streamlit run packages/app/src/cora/app/entrypoints/streamlit_app.py
+uv run --env-file .env streamlit run packages/streamlit/src/cora/frontends/streamlit/streamlit_app.py
 ```
 
 Sample documents for exercising the upload paths (txt, md, and pdf) live in

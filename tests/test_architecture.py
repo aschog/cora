@@ -8,6 +8,7 @@ import cora.adapters
 import cora.app
 import cora.domain
 import cora.engine
+import cora.frontends.streamlit
 import cora.plugins.fitness
 import cora.ports
 
@@ -23,7 +24,6 @@ FORBIDDEN_FRAMEWORKS = frozenset(
         "rank_bm25",
     }
 )
-FORBIDDEN_LAYERS = ("cora.adapters", "cora.plugins", "cora.app")
 TEST_ONLY_FRAMEWORKS = frozenset({"pytest"})
 
 
@@ -41,12 +41,39 @@ LAYER_ROOTS = (
     _root(cora.adapters),
     _root(cora.app),
     _root(cora.plugins.fitness).parent,
+    _root(cora.frontends.streamlit).parent,
 )
 CORE_FILES = sorted(file for root in PURE_ROOTS for file in root.rglob("*.py"))
-ADAPTER_FILES = sorted(_root(cora.adapters).rglob("*.py"))
-BEYOND_THE_ADAPTERS = ("cora.engine", "cora.app", "cora.frontends")
 PACKAGE_FILES = sorted(file for root in LAYER_ROOTS for file in root.rglob("*.py"))
-UI_ROOT = _root(cora.app) / "entrypoints"
+UI_ROOT = _root(cora.frontends.streamlit)
+
+# What each layer may not reach for, and the reason it may not. One table rather than a
+# test per layer: a rule added here is enforced over every file of that layer, and the
+# reason travels into the failure message instead of a docstring nobody reads on the way
+# to fixing it.
+OUT_OF_REACH: dict[str, tuple[tuple[str, ...], str]] = {
+    "the contract and the engine": (
+        ("cora.adapters", "cora.plugins", "cora.app", "cora.frontends"),
+        "the use cases and the slots they drive are what every outer layer depends on, "
+        "so they may depend on none of them",
+    ),
+    "the adapters": (
+        ("cora.engine", "cora.app", "cora.frontends"),
+        "an adapter fills a slot and is reusable by every frontend and every "
+        "version of the use cases, which it can only be if it knows the ports alone",
+    ),
+    "the app": (
+        ("cora.frontends",),
+        "the composition root is what a frontend installs, so naming one would mean a "
+        "command-line shell had to install a web UI to reuse the wiring",
+    ),
+}
+LAYER_FILES: dict[str, list[pathlib.Path]] = {
+    "the contract and the engine": CORE_FILES,
+    "the adapters": sorted(_root(cora.adapters).rglob("*.py")),
+    "the app": sorted(_root(cora.app).rglob("*.py")),
+}
+REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in files]
 
 
 def _shipped_as(path: pathlib.Path) -> pathlib.Path:
@@ -107,11 +134,14 @@ def _test_only_imports(path: pathlib.Path) -> list[str]:
 
 
 def _is_forbidden(module: str) -> bool:
+    """A framework, or a layer the contract and the engine may not reach for."""
     if module.split(".")[0] in FORBIDDEN_FRAMEWORKS:
         return True
-    return any(
-        module == layer or module.startswith(f"{layer}.") for layer in FORBIDDEN_LAYERS
-    )
+    return bool(_reaches_any(module, OUT_OF_REACH["the contract and the engine"][0]))
+
+
+def _reaches_any(module: str, layers: tuple[str, ...]) -> bool:
+    return any(module == layer or module.startswith(f"{layer}.") for layer in layers)
 
 
 def test_the_pure_modules_are_discovered() -> None:
@@ -136,7 +166,7 @@ def test_streamlit_import_is_detected(tmp_path: pathlib.Path) -> None:
 )
 def test_streamlit_stays_inside_the_ui_shell(path: pathlib.Path) -> None:
     assert not _imports_streamlit(path), (
-        f"{_shipped_as(path)} imports streamlit outside cora/app/entrypoints"
+        f"{_shipped_as(path)} imports streamlit outside cora/frontends/streamlit"
     )
 
 
@@ -188,31 +218,32 @@ def _reaches(
     tree: ast.Module, package_parts: tuple[str, ...], layers: tuple[str, ...]
 ) -> list[str]:
     modules = _imported_modules(tree, package_parts)
-    return sorted(
-        {
-            module
-            for module in modules
-            if any(
-                module == layer or module.startswith(f"{layer}.") for layer in layers
-            )
-        }
-    )
+    return sorted({module for module in modules if _reaches_any(module, layers)})
 
 
-def test_an_adapter_reaching_past_the_contract_is_detected() -> None:
+def test_a_layer_reaching_outward_is_detected() -> None:
     tree = ast.parse("from cora.engine.steps import Router\n")
-    assert _reaches(tree, ("cora", "adapters"), BEYOND_THE_ADAPTERS) == [
-        "cora.engine.steps"
-    ]
+    layers, _ = OUT_OF_REACH["the adapters"]
+    assert _reaches(tree, ("cora", "adapters"), layers) == ["cora.engine.steps"]
 
 
-@pytest.mark.parametrize("path", ADAPTER_FILES, ids=lambda p: str(_shipped_as(p)))
-def test_an_adapter_binds_the_contract_alone(path: pathlib.Path) -> None:
-    """Every frontend and every version of the use cases can reuse an adapter because it
-    knows the ports and nothing else. Reaching for the engine is what put `DONE` and its
-    two siblings behind the graph port; reaching for the app or a frontend would tie a
-    technology to one of them."""
-    reached = _reaches(
-        ast.parse(path.read_text()), _package_parts(path), BEYOND_THE_ADAPTERS
-    )
-    assert not reached, f"{_shipped_as(path)} reaches past the contract: {reached}"
+def test_every_layer_with_a_rule_has_files_to_apply_it_to() -> None:
+    assert OUT_OF_REACH.keys() == LAYER_FILES.keys()
+    assert all(LAYER_FILES[layer] for layer in OUT_OF_REACH)
+
+
+@pytest.mark.parametrize(
+    ("layer", "path"),
+    REACH_CASES,
+    ids=lambda value: (
+        str(_shipped_as(value))
+        if isinstance(value, pathlib.Path)
+        else value.replace(" ", "-")
+    ),
+)
+def test_a_layer_reaches_no_further_than_its_rule(
+    layer: str, path: pathlib.Path
+) -> None:
+    layers, because = OUT_OF_REACH[layer]
+    reached = _reaches(ast.parse(path.read_text()), _package_parts(path), layers)
+    assert not reached, f"{_shipped_as(path)} reaches {reached}: {because}"

@@ -1,13 +1,12 @@
 [project]
-name = "cora-app"
+name = "cora"
 version = "0.1.0"
-description = "cora's composition root, configuration and entrypoints"
+description = "cora itself: the composition root and its configuration, over the engine and the adapters. What a frontend installs"
 requires-python = ">=3.12"
 dependencies = [
     "cora-api",
     "cora-engine",
     "cora-adapters",
-    "streamlit~=1.60.0",
 ]
 
 [build-system]

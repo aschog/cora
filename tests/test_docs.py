@@ -57,7 +57,7 @@ def test_a_reference_is_resolved_against_the_packages() -> None:
     """`domain/chunk.py` is a location even though no such path exists from the root:
     the docs name modules the way an import does, from `cora/` down."""
     assert _resolves("domain/chunk.py")
-    assert _resolves("app/entrypoints/")
+    assert _resolves("frontends/streamlit/")
     assert not _resolves("domain/no_such_module.py")
 
 
