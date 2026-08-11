@@ -24,9 +24,9 @@ The agent runs on **LangGraph** — the graph, the checkpointer (thread memory),
 (long-term memory) and `interrupt()` (human-in-the-loop) are the wheel we don't re-cut,
 and they are what this sprint is marked on.
 
-It stays hexagonal: `cora.core` keeps the agent's state shape and its steps as plain
-functions; an adapter wires those steps into a `StateGraph`. Core does not import
-LangGraph, so the framework-free architecture test stands unchanged. If keeping that
+It stays hexagonal: `cora.domain` keeps the agent's state shape and `cora.engine` its
+steps as plain functions; an adapter wires those steps into a `StateGraph`. Neither
+imports LangGraph, so the framework-free architecture test stands unchanged. If keeping that
 purity starts contorting the port, we weaken the rule deliberately and record why — not
 pre-emptively.
 
