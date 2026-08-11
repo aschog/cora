@@ -21,14 +21,17 @@ def _ignore(step: TraceStep) -> None:
 
 
 def _still_holding_the_answer(state: AgentState) -> bool:
-    """The gate is holding an answer and the run has nothing to show for the look
-    it asked for: the model has not answered again and no source was found. Asked
-    of the gate's own record, never of round counting — the state a run yielded
-    last can predate the failure, so it cannot be counted against."""
+    """The gate is holding an answer and nothing has answered the look it took: its
+    reminder is still the last thing said. A found source proves nothing either way —
+    the gate does the searching, so it registers passages whether or not the model
+    ever replies to them. Asked of the gate's own record, never of round counting —
+    the state a run yielded last can predate the failure."""
     if "answer_in_hand" not in state:
         return False
     held = state["answer_in_hand"]
-    return bool(held) and state.get("answer") == held and not state.get("sources")
+    messages = state.get("messages") or []
+    unanswered = bool(messages) and messages[-1].role == "system"
+    return bool(held) and state.get("answer") == held and unanswered
 
 
 @dataclass(frozen=True)

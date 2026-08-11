@@ -94,8 +94,13 @@ look.
 - [ ] a second look costs one round, not two, so the budget lets it through on less room
 - [ ] the shipped plugin asks the model to weigh the passages it was given, not to call
       `search_documents`
-- [ ] **(int)** a greeting whose evidence is irrelevant keeps its first answer, cites
-      nothing, and shows no sources
+- [ ] a gate whose own search fails keeps the answer rather than losing it, and the trace
+      says the look failed — the search is the gate's now, so its failure is the gate's too
+- [ ] a second look that never came back is still told from one that did: the gate registers
+      sources itself, so "no source was found" no longer proves the model never replied
+- [ ] **(int)** a greeting whose evidence is irrelevant keeps its answer, cites nothing, and
+      shows no sources — it does query the index, which the old wording called "not touching
+      the documents"
 
 #### Close
 

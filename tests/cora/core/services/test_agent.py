@@ -5,6 +5,8 @@ import pytest
 from cora.core.agent_state import AgentState
 from cora.core.citations import Source
 from cora.core.errors import GraphRunError, LlmError, ToolLoopLimitError
+from cora.core.ports.chat_model import Message
+from cora.core.ports.plugin import ToolCall
 from cora.core.services.agent import Agent
 from cora.core.trace import (
     ModelDecision,
@@ -18,16 +20,31 @@ from cora.core.turn import Turn
 SEARCHED = ToolUse(name="search_documents", arguments={"query": "protein"})
 ANSWERED = ModelDecision()
 RECONSIDERED = Reconsidered()
+_A_CALL = ToolCall(name="search_documents", arguments={"query": "p"}, call_id="c1")
 
 
 def _held(answer: str) -> AgentState:
-    """The state the gate leaves behind: the answer it is holding while the run
-    takes one more look, with nothing found yet."""
+    """The state the gate leaves behind: the answer it is holding, the passages it
+    found, and its reminder still the last thing said — nothing has answered it."""
     return {
         "answer": answer,
         "answer_in_hand": answer,
+        "messages": [Message(role="system", content="weigh these")],
+        "sources": [Source(1, "note.md")],
         "trace": [ANSWERED, RECONSIDERED],
         "rounds": 1,
+    }
+
+
+def _answered_the_gate(answer: str) -> AgentState:
+    """The gate's look came back: the model replied after the reminder."""
+    return {
+        **_held(answer),
+        "messages": [
+            Message(role="system", content="weigh these"),
+            Message(role="assistant", content="", tool_calls=(_A_CALL,)),
+        ],
+        "rounds": 2,
     }
 
 
@@ -135,11 +152,9 @@ def test_a_failed_first_round_is_not_rescued_by_an_unnudged_answer() -> None:
 
 
 def test_a_failure_once_the_second_look_has_landed_is_an_ordinary_failure() -> None:
-    runner = _StubRunner(
-        _held("Hello!"),
-        {**_held("Hello!"), "sources": [Source(1, "note.md")], "rounds": 2},
-        then=LlmError(),
-    )
+    """What tells the two apart is whether anything answered the gate, not whether a
+    source turned up: the gate registers the passages it found either way."""
+    runner = _StubRunner(_held("Hello!"), _answered_the_gate("Hello!"), then=LlmError())
 
     with pytest.raises(LlmError):
         Agent(runner).answer("Hi!")

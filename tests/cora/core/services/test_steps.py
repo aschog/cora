@@ -6,7 +6,12 @@ import pytest
 from cora.core.agent_state import AgentState
 from cora.core.chunk import Chunk
 from cora.core.citations import NO_MATCHES, Source
-from cora.core.errors import InputRejectedError, LlmError, ToolLoopLimitError
+from cora.core.errors import (
+    InputRejectedError,
+    LlmError,
+    RetrievalError,
+    ToolLoopLimitError,
+)
 from cora.core.ports.chat_model import Message, ModelReply, Role
 from cora.core.ports.plugin import Tool, ToolCall
 from cora.core.ports.retrieval import RetrievedChunk
@@ -475,6 +480,18 @@ def test_a_plugin_that_asks_for_no_grounding_goes_straight_to_done() -> None:
     assert Router(max_tool_rounds=8)({**_replied(), "rounds": 1}) == DONE
 
 
+def test_a_second_look_costs_one_round_now_that_the_gate_does_the_searching() -> None:
+    """The gate no longer spends a round on tools, so the room a second look needs
+    is the one model call that reads the evidence."""
+    assert (
+        Router(max_tool_rounds=2, grounded=True)({**_replied(), "rounds": 1}) == GROUND
+    )
+
+
+def test_a_budget_with_no_room_for_the_second_look_still_leaves_it_alone() -> None:
+    assert Router(max_tool_rounds=1, grounded=True)({**_replied(), "rounds": 1}) == DONE
+
+
 def _gate(*hits: RetrievedChunk, reminder: str = "Weigh these.") -> GroundStep:
     return GroundStep(
         reminder=reminder, context_source=FakeContextSource(list(hits)), top_k=3
@@ -530,11 +547,46 @@ def test_a_search_that_matches_nothing_says_so_instead_of_implying_evidence() ->
     assert partial["sources"] == []
 
 
-def test_the_reconsideration_shows_up_in_the_trace() -> None:
-    partial = _gate()({"question": "anything?"})
+def test_a_gate_whose_own_search_fails_keeps_the_answer_and_says_the_look_failed() -> (
+    None
+):
+    """The search is the gate's own now, so its failure is the gate's: losing a good
+    answer to a round nothing asked for is the one thing the gate must never do."""
+    step = GroundStep(reminder="Weigh these.", context_source=_BrokenSource(), top_k=3)
+
+    partial = step({"question": "how much protein?", "answer": "Off the cuff."})
+
+    assert partial["answer_in_hand"] == "Off the cuff."
+    assert partial["sources"] == []
+    [recorded] = partial["trace"]
+    assert recorded.failed
+    [message] = partial["messages"]
+    assert NO_MATCHES in message.content
+
+
+class _BrokenSource:
+    def search(self, query: str, k: int) -> list[RetrievedChunk]:
+        raise RetrievalError
+
+
+def test_the_trace_names_the_search_the_gate_ran_and_what_came_back() -> None:
+    """A citation in the revised answer has to have a visible origin: the gate did
+    the searching, so the step it records is the one that found the passages."""
+    partial = _gate(_hit("protein.md"))({"question": "how much protein?"})
 
     [step] = partial["trace"]
-    assert step.summary == "Sent it back to search the documents first"
+    assert (
+        step.summary
+        == "Checked the documents and asked again → 1 passage from protein.md"
+    )
+    assert step.detail == "[1] protein.md: protein builds muscle"
+
+
+def test_a_gate_that_found_nothing_says_so_in_the_trace() -> None:
+    partial = _gate()({"question": "hi there!"})
+
+    [step] = partial["trace"]
+    assert step.summary == f"Checked the documents and asked again → {NO_MATCHES}"
 
 
 @dataclass(frozen=True)
