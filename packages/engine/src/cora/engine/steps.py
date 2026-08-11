@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from cora.core.service_layer.retrieval_tool import SEARCH_TOOL_NAME
 from cora.domain.agent_state import AgentState
 from cora.domain.citations import Citable, CitableHits, Source
 from cora.domain.errors import AdapterError, ToolLoopLimitError
 from cora.domain.trace import ModelDecision, Reconsidered, ToolUse, TraceStep
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ChatModel, Message
 from cora.ports.context_source import ContextSource
 from cora.ports.graph import DONE, GROUND, TOOLS

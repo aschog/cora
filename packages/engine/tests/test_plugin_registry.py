@@ -1,7 +1,7 @@
 import pytest
 
-from cora.core.service_layer.plugin_registry import load_plugin
 from cora.domain.errors import PluginLoadError
+from cora.engine.plugin_registry import load_plugin
 
 
 def test_resolving_a_name_returns_the_module_level_plugin_bundle() -> None:

@@ -21,25 +21,25 @@ from cora.app.retrieval import (
     build_context_source,
     needs_keyword_index,
 )
-from cora.core.service_layer.agent import Agent
-from cora.core.service_layer.knowledge_base import KnowledgeBase
-from cora.core.service_layer.plugin_registry import load_plugin
-from cora.core.service_layer.retrieval_tool import SEARCH_TOOL_NAME, search_tool
-from cora.core.service_layer.steps import (
+from cora.domain.errors import ConfigurationError
+from cora.engine.agent import Agent
+from cora.engine.knowledge_base import KnowledgeBase
+from cora.engine.plugin_registry import load_plugin
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
+from cora.engine.steps import (
     GroundStep,
     ModelStep,
     PrepareStep,
     Router,
     ToolStep,
 )
-from cora.core.service_layer.tool_runtime import ToolRuntime
-from cora.core.service_layer.validation import (
+from cora.engine.tool_runtime import ToolRuntime
+from cora.engine.validation import (
     EmptyInputRule,
     MaxLengthRule,
     PromptInjectionRule,
     ValidationPipeline,
 )
-from cora.domain.errors import ConfigurationError
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
 from cora.ports.embedding import Embedder

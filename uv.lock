@@ -18,7 +18,7 @@ members = [
     "cora-adapters",
     "cora-api",
     "cora-app",
-    "cora-core",
+    "cora-engine",
     "cora-fitness",
 ]
 
@@ -469,7 +469,7 @@ source = { editable = "packages/app" }
 dependencies = [
     { name = "cora-adapters" },
     { name = "cora-api" },
-    { name = "cora-core" },
+    { name = "cora-engine" },
     { name = "streamlit" },
 ]
 
@@ -477,14 +477,14 @@ dependencies = [
 requires-dist = [
     { name = "cora-adapters", editable = "packages/adapters" },
     { name = "cora-api", editable = "packages/api" },
-    { name = "cora-core", editable = "packages/core" },
+    { name = "cora-engine", editable = "packages/engine" },
     { name = "streamlit", specifier = "~=1.60.0" },
 ]
 
 [[package]]
-name = "cora-core"
+name = "cora-engine"
 version = "0.1.0"
-source = { editable = "packages/core" }
+source = { editable = "packages/engine" }
 dependencies = [
     { name = "cora-api" },
     { name = "jsonschema" },

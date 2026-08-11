@@ -1,10 +1,10 @@
 from collections.abc import Callable
 from dataclasses import dataclass, field
 
-from cora.core.service_layer.fusion_context_source import FusionContextSource
 from cora.domain.chunk import Chunk
 from cora.domain.metadata_filter import MetadataFilter
 from cora.domain.query_plan import QueryPlan
+from cora.engine.fusion_context_source import FusionContextSource
 from cora.ports.retrieval import RetrievedChunk
 
 

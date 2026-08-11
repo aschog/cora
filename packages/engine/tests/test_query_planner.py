@@ -1,7 +1,7 @@
-from cora.core.service_layer.query_planner import QueryPlanner, parse_plan
 from cora.domain.errors import LlmError
 from cora.domain.metadata_filter import MetadataFilter
 from cora.domain.query_plan import QueryPlan
+from cora.engine.query_planner import QueryPlanner, parse_plan
 from cora.ports.chat_model import ModelReply
 from fakes import FailingChatModel, ScriptedChatModel
 

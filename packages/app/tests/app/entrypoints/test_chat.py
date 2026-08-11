@@ -5,7 +5,6 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from cora.app.assembly import App, assemble
-from cora.core.service_layer.retrieval_tool import SEARCH_TOOL_NAME
 from cora.domain.chunk import Chunk
 from cora.domain.errors import (
     ConfigurationError,
@@ -15,6 +14,7 @@ from cora.domain.errors import (
     PluginLoadError,
     RetrievalError,
 )
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.plugin import Plugin, ToolCall
 from cora.ports.retrieval import Retriever

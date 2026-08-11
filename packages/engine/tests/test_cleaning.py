@@ -1,4 +1,4 @@
-from cora.core.service_layer.cleaning import clean_text
+from cora.engine.cleaning import clean_text
 
 
 def test_crlf_becomes_lf() -> None:

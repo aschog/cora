@@ -1,7 +1,7 @@
 [project]
-name = "cora-core"
+name = "cora-engine"
 version = "0.1.0"
-description = "cora's domain, service layer and ports — the agent with no framework and no I/O"
+description = "cora's use cases: the agent, the knowledge base and the steps of a turn, over the ports alone"
 requires-python = ">=3.12"
 dependencies = [
     "cora-api",
@@ -13,4 +13,4 @@ requires = ["uv_build>=0.11.26,<0.12.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
-module-name = "cora.core"
+module-name = "cora.engine"

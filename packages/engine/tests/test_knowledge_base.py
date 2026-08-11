@@ -3,11 +3,11 @@ from dataclasses import dataclass, field
 
 import pytest
 
-from cora.core.service_layer.ingestion import ingest
-from cora.core.service_layer.knowledge_base import KnowledgeBase
 from cora.domain.chunk import Chunk
 from cora.domain.errors import EmptyDocumentError, UnsupportedFileTypeError
 from cora.domain.metadata_filter import MetadataFilter
+from cora.engine.ingestion import ingest
+from cora.engine.knowledge_base import KnowledgeBase
 from fakes import TEXT_LOADERS, FakeEmbedder, FakeRetriever
 
 

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from cora.core.service_layer.rank_fusion import reciprocal_rank_fusion
+from cora.engine.rank_fusion import reciprocal_rank_fusion
 from cora.ports.context_source import ContextSource
 from cora.ports.retrieval import RetrievedChunk
 

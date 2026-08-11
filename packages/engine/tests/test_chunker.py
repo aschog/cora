@@ -2,8 +2,8 @@ import itertools
 
 import pytest
 
-from cora.core.service_layer.chunker import chunk_text
 from cora.domain.chunk import Chunk
+from cora.engine.chunker import chunk_text
 
 
 def test_empty_text_yields_no_chunks() -> None:

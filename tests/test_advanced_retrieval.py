@@ -3,9 +3,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from cora.core.service_layer.fusion_context_source import FusionContextSource
-from cora.core.service_layer.knowledge_base import KnowledgeBase
-from cora.core.service_layer.query_planner import QueryPlanner
+from cora.engine.fusion_context_source import FusionContextSource
+from cora.engine.knowledge_base import KnowledgeBase
+from cora.engine.query_planner import QueryPlanner
 from cora.ports.chat_model import ModelReply
 from fakes import TEXT_LOADERS, FakeEmbedder, ScriptedChatModel
 

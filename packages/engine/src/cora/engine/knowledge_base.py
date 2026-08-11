@@ -2,9 +2,9 @@ import hashlib
 from dataclasses import dataclass
 from typing import Protocol
 
-from cora.core.service_layer.ingestion import ingest
 from cora.domain.chunk import Chunk
 from cora.domain.metadata_filter import MetadataFilter
+from cora.engine.ingestion import ingest
 from cora.ports.embedding import Embedder
 from cora.ports.loading import Loaders
 from cora.ports.retrieval import RetrievedChunk, Retriever

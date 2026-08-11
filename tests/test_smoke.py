@@ -7,14 +7,14 @@ from types import ModuleType
 import cora
 import cora.adapters
 import cora.app
-import cora.core
 import cora.domain
+import cora.engine
 import cora.plugins.fitness
 import cora.ports
 
 DISTRIBUTIONS = (
     "cora-api",
-    "cora-core",
+    "cora-engine",
     "cora-adapters",
     "cora-fitness",
     "cora-app",
@@ -45,7 +45,7 @@ def test_each_layer_is_carried_by_its_own_workspace_member() -> None:
         for module in (
             cora.domain,
             cora.ports,
-            cora.core,
+            cora.engine,
             cora.adapters,
             cora.app,
             cora.plugins.fitness,
@@ -55,7 +55,7 @@ def test_each_layer_is_carried_by_its_own_workspace_member() -> None:
     assert carriers == {
         "cora.domain": "api",
         "cora.ports": "api",
-        "cora.core": "core",
+        "cora.engine": "engine",
         "cora.adapters": "adapters",
         "cora.app": "app",
         "cora.plugins.fitness": "fitness",

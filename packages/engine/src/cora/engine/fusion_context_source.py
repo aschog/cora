@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import Protocol
 
-from cora.core.service_layer.rank_fusion import reciprocal_rank_fusion
 from cora.domain.metadata_filter import MetadataFilter
 from cora.domain.query_plan import QueryPlan
+from cora.engine.rank_fusion import reciprocal_rank_fusion
 from cora.ports.retrieval import RetrievedChunk
 
 

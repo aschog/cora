@@ -1,6 +1,6 @@
 import pytest
 
-from cora.core.service_layer.tool_runtime import ToolRuntime
+from cora.engine.tool_runtime import ToolRuntime
 from cora.plugins.fitness.tools import TOOLS
 from cora.ports.plugin import ToolCall, ToolResult
 

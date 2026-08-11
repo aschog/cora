@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
-from cora.core.service_layer.knowledge_base import KnowledgeBase
+from cora.engine.knowledge_base import KnowledgeBase
 from fakes import TEXT_LOADERS
 
 if TYPE_CHECKING:

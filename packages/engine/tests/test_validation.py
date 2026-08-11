@@ -2,13 +2,13 @@ from dataclasses import dataclass
 
 import pytest
 
-from cora.core.service_layer.validation import (
+from cora.domain.errors import InputRejectedError
+from cora.engine.validation import (
     EmptyInputRule,
     MaxLengthRule,
     PromptInjectionRule,
     ValidationPipeline,
 )
-from cora.domain.errors import InputRejectedError
 
 
 @dataclass

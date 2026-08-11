@@ -9,12 +9,6 @@ from cora.adapters.port_logging import LoggingEmbedder, LoggingRetriever
 from cora.app.assembly import App, assemble, build
 from cora.app.config import Config
 from cora.app.log_config import DEBUG_HANDLER_NAME, FILE_HANDLER_NAME
-from cora.core.service_layer.fusion_context_source import FusionContextSource
-from cora.core.service_layer.hybrid_context_source import HybridContextSource
-from cora.core.service_layer.plugin_registry import load_plugin
-from cora.core.service_layer.query_planner import QueryPlanner
-from cora.core.service_layer.retrieval_tool import SEARCH_TOOL_NAME
-from cora.core.service_layer.steps import ModelStep, PrepareStep, Router
 from cora.domain.chunk import Chunk
 from cora.domain.citations import Source
 from cora.domain.errors import (
@@ -25,6 +19,12 @@ from cora.domain.errors import (
 from cora.domain.metadata_filter import MetadataFilter
 from cora.domain.trace import ToolUse
 from cora.domain.turn import Turn
+from cora.engine.fusion_context_source import FusionContextSource
+from cora.engine.hybrid_context_source import HybridContextSource
+from cora.engine.plugin_registry import load_plugin
+from cora.engine.query_planner import QueryPlanner
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.engine.steps import ModelStep, PrepareStep, Router
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import Plugin, ToolCall
 from cora.ports.retrieval import RetrievedChunk

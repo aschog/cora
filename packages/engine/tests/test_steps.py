@@ -3,17 +3,6 @@ from dataclasses import dataclass
 
 import pytest
 
-from cora.core.service_layer.retrieval_tool import SEARCH_TOOL_NAME, search_tool
-from cora.core.service_layer.steps import (
-    UNTRUSTED_NOTICE,
-    GroundStep,
-    ModelStep,
-    PrepareStep,
-    Router,
-    ToolStep,
-)
-from cora.core.service_layer.tool_runtime import ToolRuntime
-from cora.core.service_layer.validation import EmptyInputRule, ValidationPipeline
 from cora.domain.agent_state import AgentState
 from cora.domain.chunk import Chunk
 from cora.domain.citations import NO_MATCHES, Source
@@ -25,6 +14,17 @@ from cora.domain.errors import (
 )
 from cora.domain.trace import ModelDecision, ToolUse
 from cora.domain.turn import Turn
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
+from cora.engine.steps import (
+    UNTRUSTED_NOTICE,
+    GroundStep,
+    ModelStep,
+    PrepareStep,
+    Router,
+    ToolStep,
+)
+from cora.engine.tool_runtime import ToolRuntime
+from cora.engine.validation import EmptyInputRule, ValidationPipeline
 from cora.ports.chat_model import Message, ModelReply, Role
 from cora.ports.graph import DONE, GROUND, TOOLS
 from cora.ports.plugin import Tool, ToolCall

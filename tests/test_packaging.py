@@ -13,7 +13,7 @@ import re
 import tomllib
 
 PACKAGES = pathlib.Path("packages")
-LAYERS = ("api", "core", "adapters", "fitness", "app")
+LAYERS = ("api", "engine", "adapters", "fitness", "app")
 HEAVY = frozenset(
     {
         "chromadb",
@@ -55,7 +55,7 @@ def test_the_workspace_holds_exactly_its_layers() -> None:
     assert {path.name for path in PACKAGES.iterdir() if path.is_dir()} == set(LAYERS)
     assert {layer: _manifest(layer)["project"]["name"] for layer in LAYERS} == {
         "api": "cora-api",
-        "core": "cora-core",
+        "engine": "cora-engine",
         "adapters": "cora-adapters",
         "fitness": "cora-fitness",
         "app": "cora-app",
@@ -87,13 +87,13 @@ def test_every_layer_ships_its_typing_marker() -> None:
 def test_core_declares_no_framework() -> None:
     """The purity rule, as metadata: a core that never installs Chroma or LangGraph
     cannot import them by accident, whatever a walker does or does not catch."""
-    assert not _requires("core") & HEAVY
+    assert not _requires("engine") & HEAVY
 
 
 def test_core_reads_no_file_format_of_its_own() -> None:
     """Which formats can be read is the adapters' business: core is handed loaders
     through a port, so pypdf ships with the loader that needs it."""
-    assert "pypdf" not in _requires("core")
+    assert "pypdf" not in _requires("engine")
     assert "pypdf" in _requires("adapters")
 
 
@@ -105,7 +105,7 @@ def test_the_contract_declares_nothing_at_all() -> None:
 
 
 def test_the_engine_needs_the_contract_and_no_other_layer() -> None:
-    assert {name for name in _requires("core") if name.startswith("cora-")} == {
+    assert {name for name in _requires("engine") if name.startswith("cora-")} == {
         "cora-api"
     }
 
@@ -121,7 +121,7 @@ def test_the_adapters_bind_the_contract_to_its_technologies() -> None:
     on the engine would tie a technology to one version of the use cases it serves."""
     requires = _requires("adapters")
 
-    assert "cora-core" not in requires
+    assert "cora-engine" not in requires
     assert "cora-api" in requires
     assert HEAVY - {"streamlit"} <= requires, "an adapter's technology went missing"
     assert "streamlit" not in requires, "the UI is an entrypoint, not an adapter"
@@ -130,7 +130,7 @@ def test_the_adapters_bind_the_contract_to_its_technologies() -> None:
 def test_the_app_wires_the_layers_and_owns_the_ui() -> None:
     requires = _requires("app")
 
-    assert {"cora-core", "cora-adapters", "streamlit"} <= requires
+    assert {"cora-engine", "cora-adapters", "streamlit"} <= requires
     assert "cora-fitness" not in requires, (
         "the shipped app names its default plugin in config, but must not depend on a "
         "domain: that is what keeps the agent domain-agnostic"

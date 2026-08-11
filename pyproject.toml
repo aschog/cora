@@ -3,14 +3,14 @@ members = ["packages/*"]
 
 [tool.uv.sources]
 cora-api = { workspace = true }
-cora-core = { workspace = true }
+cora-engine = { workspace = true }
 cora-adapters = { workspace = true }
 cora-fitness = { workspace = true }
 cora-app = { workspace = true }
 
-# A virtual root: it ships nothing. The four packages under packages/ are the
-# distributions, and the layer each one may depend on is written in its own
-# manifest — which is what makes "core knows no framework" a fact of the install
+# A virtual root: it ships nothing. The packages under packages/ are the
+# distributions, one per audience that installs it, and what each may depend on is
+# written in its own manifest — which is what makes "core knows no framework" a fact of the install
 # rather than a rule a test polices.
 [dependency-groups]
 dev = [
@@ -27,7 +27,7 @@ dev = [
 [tool.ty.environment]
 root = [
     "packages/api/src",
-    "packages/core/src",
+    "packages/engine/src",
     "packages/adapters/src",
     "packages/fitness/src",
     "packages/app/src",
@@ -37,7 +37,7 @@ root = [
 [tool.ruff]
 src = [
     "packages/api/src",
-    "packages/core/src",
+    "packages/engine/src",
     "packages/adapters/src",
     "packages/fitness/src",
     "packages/app/src",

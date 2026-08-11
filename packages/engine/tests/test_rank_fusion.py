@@ -2,8 +2,8 @@ from collections.abc import Callable
 
 import pytest
 
-from cora.core.service_layer.rank_fusion import reciprocal_rank_fusion
 from cora.domain.chunk import Chunk
+from cora.engine.rank_fusion import reciprocal_rank_fusion
 from cora.ports.retrieval import RetrievedChunk
 
 

@@ -5,9 +5,9 @@ from cora.app.retrieval import (
     RETRIEVAL_MODES,
     build_context_source,
 )
-from cora.core.service_layer.fusion_context_source import FusionContextSource
-from cora.core.service_layer.knowledge_base import KnowledgeBase
 from cora.domain.errors import ConfigurationError
+from cora.engine.fusion_context_source import FusionContextSource
+from cora.engine.knowledge_base import KnowledgeBase
 from cora.ports.chat_model import ModelReply
 from fakes import TEXT_LOADERS, FakeEmbedder, FakeRetriever, ScriptedChatModel
 

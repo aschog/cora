@@ -5,19 +5,19 @@ from cora.adapters.langgraph_runner import (
     Step,
     recursion_limit_for,
 )
-from cora.core.service_layer.steps import (
+from cora.domain.agent_state import AgentState
+from cora.domain.citations import Source
+from cora.domain.errors import InputRejectedError, LlmError, ToolLoopLimitError
+from cora.domain.trace import ToolUse
+from cora.engine.steps import (
     GroundStep,
     ModelStep,
     PrepareStep,
     Router,
     ToolStep,
 )
-from cora.core.service_layer.tool_runtime import ToolRuntime
-from cora.core.service_layer.validation import EmptyInputRule, ValidationPipeline
-from cora.domain.agent_state import AgentState
-from cora.domain.citations import Source
-from cora.domain.errors import InputRejectedError, LlmError, ToolLoopLimitError
-from cora.domain.trace import ToolUse
+from cora.engine.tool_runtime import ToolRuntime
+from cora.engine.validation import EmptyInputRule, ValidationPipeline
 from cora.ports.chat_model import ChatModel, Message, ModelReply, Role
 from cora.ports.plugin import Tool, ToolCall
 from fakes import FailingChatModel, FakeContextSource, add_tool

@@ -109,7 +109,7 @@ just five ports.
 The shell uses the core through two main methods: `answer()` and `add_file()` (plus
 `list_sources()` to show the file list in the sidebar).
 
-**`agent.answer(question, history=()) -> ChatResult`** — `core/service_layer/agent.py`
+**`agent.answer(question, history=()) -> ChatResult`** — `engine/agent.py`
 
 1. **Prepare** — check the question against the core rules (not empty, at most 4000 characters, no prompt-injection), then the plugin's rules. If a rule says no, raise `InputRejectedError`; the model never sees the question. Then lay out the messages: the plugin's system prompt together with cora's own rules (call `search_documents`, cite `[n]`), the last `CORA_HISTORY_TURNS` turns of chat (default 20; `0` means no memory), and last the question. Validation sees the question only, never the chat history.
 2. **Model** — one round. The model is offered `search_documents` beside the plugin's tools. It either answers or asks for tools.
@@ -132,7 +132,7 @@ for does not stand: it goes back once with the reminder above.
 That is also why document text can never act as an instruction: it arrives in a `tool` message,
 labelled as data, and cora's own rules stay in the system message.
 
-**`kb.add_file(data, filename) -> int`** — `core/service_layer/knowledge_base.py`
+**`kb.add_file(data, filename) -> int`** — `engine/knowledge_base.py`
 
 1. **Dedupe** — make a SHA-256 hash of the file. If the store already has this hash, stop and return `0`.
 2. **Ingest** — the file must be `.txt`, `.md`, or `.pdf`, at most 10 MB, and not empty after cleaning. Each problem raises its own `IngestionError`.
@@ -146,18 +146,18 @@ because the map shows them inside another part.
 
 | Component | Job | Where |
 |---|---|---|
-| **Agent** | The one main use case. It seeds a run from the question and the history, then turns the run's final state into a `ChatResult`. | `core/service_layer/agent.py` |
-| **Steps** | The moves of a turn: *prepare* validates and lays out the messages, *model* takes one round with the chat model, *tools* runs what the model asked for, and *ground* looks in the documents itself and puts what it found to the model when the plugin asks. Each one returns only what it added to the run. | `core/service_layer/steps.py` |
-| **Router** | The one decision, read off the model's last reply: asking for tools runs them (a friendly apology at the round budget), answering ends the run — or is sent back once when the plugin wants its subject worked for and no tool was used. | `core/service_layer/steps.py` |
+| **Agent** | The one main use case. It seeds a run from the question and the history, then turns the run's final state into a `ChatResult`. | `engine/agent.py` |
+| **Steps** | The moves of a turn: *prepare* validates and lays out the messages, *model* takes one round with the chat model, *tools* runs what the model asked for, and *ground* looks in the documents itself and puts what it found to the model when the plugin asks. Each one returns only what it added to the run. | `engine/steps.py` |
+| **Router** | The one decision, read off the model's last reply: asking for tools runs them (a friendly apology at the round budget), answering ends the run — or is sent back once when the plugin wants its subject worked for and no tool was used. | `engine/steps.py` |
 | **Trace** *(folded)* | What the user reads afterwards: one step per model decision and per tool call, each with a one-line summary and the evidence behind it. A new kind of step is a new class, not a new branch. | `domain/trace.py` |
 | **Citations** *(folded)* | Numbers a retrieval's passages `[n]`, continues that numbering when the same run retrieves again, and works out which sources an answer really cited. | `domain/citations.py` |
-| **search_documents** | Document search as a tool, so whether to use the documents is the model's decision. Its hits arrive able to number themselves. | `core/service_layer/retrieval_tool.py` |
-| **KnowledgeBase** | A simple front for ingest, embed, and store. It also does search, lists sources, and skips files already uploaded. | `core/service_layer/knowledge_base.py` |
-| **Ingestion** *(folded)* | Turns bytes into clean text, then into overlapping chunks with their origin. Rejects the wrong type, too large, or empty. | `core/service_layer/ingestion.py`, `core/service_layer/cleaning.py`, `core/service_layer/chunker.py` — and the loaders themselves in `adapters/loaders.py`, since which file formats can be read is a technology's business |
-| **Retrieval strategy** | How the search tool gets its chunks: `plain` (KnowledgeBase), `advanced`, or `hybrid`. Both wrappers merge results with RRF. | `core/service_layer/fusion_context_source.py`, `core/service_layer/hybrid_context_source.py`, `core/service_layer/query_planner.py`, `core/service_layer/rank_fusion.py` |
-| **ValidationPipeline** | A list of rules run in order: core rules first, then the plugin's. To add a check, add a rule; you do not change the code. | `core/service_layer/validation.py` |
-| **ToolRuntime** | Finds the tool, checks the arguments against its JSON Schema, runs it, and turns a tool's own failure into a `ToolResult`. An infrastructure failure is not tool output, so it travels on unchanged. | `core/service_layer/tool_runtime.py` |
-| **Plugin registry** *(folded)* | Loads a plugin by its module path and checks it before the app starts: the prompt exists, tool names are unique, schemas are valid. | `core/service_layer/plugin_registry.py` |
+| **search_documents** | Document search as a tool, so whether to use the documents is the model's decision. Its hits arrive able to number themselves. | `engine/retrieval_tool.py` |
+| **KnowledgeBase** | A simple front for ingest, embed, and store. It also does search, lists sources, and skips files already uploaded. | `engine/knowledge_base.py` |
+| **Ingestion** *(folded)* | Turns bytes into clean text, then into overlapping chunks with their origin. Rejects the wrong type, too large, or empty. | `engine/ingestion.py`, `engine/cleaning.py`, `engine/chunker.py` — and the loaders themselves in `adapters/loaders.py`, since which file formats can be read is a technology's business |
+| **Retrieval strategy** | How the search tool gets its chunks: `plain` (KnowledgeBase), `advanced`, or `hybrid`. Both wrappers merge results with RRF. | `engine/fusion_context_source.py`, `engine/hybrid_context_source.py`, `engine/query_planner.py`, `engine/rank_fusion.py` |
+| **ValidationPipeline** | A list of rules run in order: core rules first, then the plugin's. To add a check, add a rule; you do not change the code. | `engine/validation.py` |
+| **ToolRuntime** | Finds the tool, checks the arguments against its JSON Schema, runs it, and turns a tool's own failure into a `ToolResult`. An infrastructure failure is not tool output, so it travels on unchanged. | `engine/tool_runtime.py` |
+| **Plugin registry** *(folded)* | Loads a plugin by its module path and checks it before the app starts: the prompt exists, tool names are unique, schemas are valid. | `engine/plugin_registry.py` |
 | **Composition root** | The only place that names a real adapter. It reads the settings, loads the plugin, picks the strategy, builds the graph, and returns an `App`. | `app/config.py`, `app/assembly.py`, `app/retrieval.py` |
 | **UI shell** | Only widgets: the uploader, the chat, the sources box, the *How I got there* trace — rendered as text, because a step names the tool the model asked for — and error text shown exactly as the error gives it. | `app/entrypoints/` |
 

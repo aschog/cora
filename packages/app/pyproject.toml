@@ -5,7 +5,7 @@ description = "cora's composition root, configuration and entrypoints"
 requires-python = ">=3.12"
 dependencies = [
     "cora-api",
-    "cora-core",
+    "cora-engine",
     "cora-adapters",
     "streamlit~=1.60.0",
 ]

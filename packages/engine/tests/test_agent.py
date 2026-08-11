@@ -2,7 +2,6 @@ from collections.abc import Iterator
 
 import pytest
 
-from cora.core.service_layer.agent import Agent
 from cora.domain.agent_state import AgentState
 from cora.domain.citations import Source
 from cora.domain.errors import GraphRunError, LlmError, ToolLoopLimitError
@@ -14,6 +13,7 @@ from cora.domain.trace import (
     TraceStep,
 )
 from cora.domain.turn import Turn
+from cora.engine.agent import Agent
 from cora.ports.chat_model import Message
 from cora.ports.plugin import ToolCall
 

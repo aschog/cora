@@ -1,11 +1,11 @@
 from collections.abc import Callable
 from typing import Protocol
 
-from cora.core.service_layer.fusion_context_source import FusionContextSource
-from cora.core.service_layer.hybrid_context_source import HybridContextSource
-from cora.core.service_layer.knowledge_base import KeywordIndex, KnowledgeBase
-from cora.core.service_layer.query_planner import QueryPlanner
 from cora.domain.errors import ConfigurationError
+from cora.engine.fusion_context_source import FusionContextSource
+from cora.engine.hybrid_context_source import HybridContextSource
+from cora.engine.knowledge_base import KeywordIndex, KnowledgeBase
+from cora.engine.query_planner import QueryPlanner
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
 

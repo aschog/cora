@@ -6,8 +6,8 @@ import pytest
 
 import cora.adapters
 import cora.app
-import cora.core
 import cora.domain
+import cora.engine
 import cora.plugins.fitness
 import cora.ports
 
@@ -35,7 +35,7 @@ def _root(module: ModuleType) -> pathlib.Path:
 # split there is no single tree holding all of cora, and a walker rooted at one package
 # passes while silently covering none of the others. The contract now ships apart from
 # the engine, so the pure set spans two distributions and three modules.
-PURE_ROOTS = (_root(cora.domain), _root(cora.ports), _root(cora.core))
+PURE_ROOTS = (_root(cora.domain), _root(cora.ports), _root(cora.engine))
 LAYER_ROOTS = (
     *PURE_ROOTS,
     _root(cora.adapters),
@@ -44,7 +44,7 @@ LAYER_ROOTS = (
 )
 CORE_FILES = sorted(file for root in PURE_ROOTS for file in root.rglob("*.py"))
 ADAPTER_FILES = sorted(_root(cora.adapters).rglob("*.py"))
-BEYOND_THE_ADAPTERS = ("cora.core", "cora.app", "cora.frontends")
+BEYOND_THE_ADAPTERS = ("cora.engine", "cora.app", "cora.frontends")
 PACKAGE_FILES = sorted(file for root in LAYER_ROOTS for file in root.rglob("*.py"))
 UI_ROOT = _root(cora.app) / "entrypoints"
 
@@ -200,9 +200,9 @@ def _reaches(
 
 
 def test_an_adapter_reaching_past_the_contract_is_detected() -> None:
-    tree = ast.parse("from cora.core.service_layer.steps import Router\n")
+    tree = ast.parse("from cora.engine.steps import Router\n")
     assert _reaches(tree, ("cora", "adapters"), BEYOND_THE_ADAPTERS) == [
-        "cora.core.service_layer.steps"
+        "cora.engine.steps"
     ]
 
 
