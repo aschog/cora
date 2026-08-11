@@ -20,7 +20,7 @@ SUFFIXES = (".py", ".md", ".toml", "/")
 
 BACKTICKED = re.compile(r"`([A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+)`")
 BARE = re.compile(r"(?<![`\w])([A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+)")
-NAMESPACES = tuple(sorted(pathlib.Path("packages").glob("*/src/cora")))
+NAMESPACES = tuple(sorted(pathlib.Path("packages").glob("**/src/cora")))
 
 
 def _claims() -> list[tuple[str, str]]:
@@ -47,10 +47,11 @@ def test_every_package_contributes_a_namespace_root() -> None:
     """Counted against the workspace rather than pinned to a number: a location claim is
     resolved against every package, so a package the glob missed would make a stale path
     look fine."""
+    packages = pathlib.Path("packages")
     members = {
-        path.name for path in pathlib.Path("packages").iterdir() if path.is_dir()
+        path.parent.relative_to(packages) for path in packages.rglob("pyproject.toml")
     }
-    assert {root.parent.parent.name for root in NAMESPACES} == members
+    assert {root.parent.parent.relative_to(packages) for root in NAMESPACES} == members
 
 
 def test_a_reference_is_resolved_against_the_packages() -> None:

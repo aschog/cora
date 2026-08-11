@@ -175,7 +175,10 @@ def test_the_contract_stands_up_with_nothing_installed_beside_it(
 
 
 def _layers() -> list[str]:
-    return sorted(path.name for path in PACKAGES.iterdir() if path.is_dir())
+    return sorted(
+        str(path.parent.relative_to(PACKAGES))
+        for path in PACKAGES.rglob("pyproject.toml")
+    )
 
 
 def _wheel(wheelhouse: pathlib.Path, layer: str) -> pathlib.Path:

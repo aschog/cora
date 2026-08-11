@@ -1,5 +1,9 @@
 [tool.uv.workspace]
-members = ["packages/*"]
+# Depth mirrors the namespace: a distribution that ships cora.frontends.streamlit lives
+# at packages/frontends/streamlit. The two container directories hold no manifest of their
+# own, so they are excluded rather than matched.
+members = ["packages/*", "packages/frontends/*", "packages/plugins/*"]
+exclude = ["packages/frontends", "packages/plugins"]
 
 [tool.uv.sources]
 cora-api = { workspace = true }
@@ -30,9 +34,9 @@ root = [
     "packages/api/src",
     "packages/engine/src",
     "packages/adapters/src",
-    "packages/fitness/src",
     "packages/app/src",
-    "packages/streamlit/src",
+    "packages/frontends/streamlit/src",
+    "packages/plugins/fitness/src",
     "tests",
 ]
 
@@ -41,9 +45,9 @@ src = [
     "packages/api/src",
     "packages/engine/src",
     "packages/adapters/src",
-    "packages/fitness/src",
     "packages/app/src",
-    "packages/streamlit/src",
+    "packages/frontends/streamlit/src",
+    "packages/plugins/fitness/src",
     "tests",
 ]
 

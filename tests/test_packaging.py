@@ -13,7 +13,15 @@ import re
 import tomllib
 
 PACKAGES = pathlib.Path("packages")
-LAYERS = ("api", "engine", "adapters", "fitness", "app", "streamlit")
+ROOT = pathlib.Path("pyproject.toml")
+# A member is a directory with a manifest, found rather than listed: the tree nests
+# where the namespace nests, so `plugins/fitness` is as much a member as `engine`.
+LAYERS = tuple(
+    sorted(
+        str(path.parent.relative_to(PACKAGES))
+        for path in PACKAGES.rglob("pyproject.toml")
+    )
+)
 HEAVY = frozenset(
     {
         "chromadb",
@@ -37,6 +45,21 @@ def _requires(name: str) -> set[str]:
     return {re.split(r"[<>=!~\[;\s]", requirement)[0] for requirement in declared}
 
 
+def _globbed_members() -> set[str]:
+    """The members uv itself would resolve, by running the root manifest's globs. uv
+    refuses to sync when a glob matches a directory holding no manifest, so that half is
+    covered; the half nothing covers is a manifest at a depth no glob reaches, which uv
+    silently ignores — it is simply never locked, never installed, and never built."""
+    workspace = tomllib.loads(ROOT.read_text())["tool"]["uv"]["workspace"]
+    excluded = set(workspace.get("exclude", ()))
+    return {
+        str(path.relative_to(PACKAGES))
+        for pattern in workspace["members"]
+        for path in pathlib.Path().glob(pattern)
+        if path.is_dir() and str(path) not in excluded
+    }
+
+
 def _module_roots(name: str) -> list[pathlib.Path]:
     """A manifest may name one module or several: `cora-api` carries `cora.domain` and
     `cora.ports` as two portions of the namespace, so `module-name` is a list there."""
@@ -52,14 +75,14 @@ def test_the_workspace_holds_exactly_its_layers() -> None:
     anything run from it, and a directory of that name joins the namespace as its first
     portion — which is enough to make `import cora.fitness` resolve to an empty
     phantom."""
-    assert {path.name for path in PACKAGES.iterdir() if path.is_dir()} == set(LAYERS)
+    assert _globbed_members() == set(LAYERS)
     assert {layer: _manifest(layer)["project"]["name"] for layer in LAYERS} == {
         "api": "cora-api",
         "engine": "cora-engine",
         "adapters": "cora-adapters",
-        "fitness": "cora-fitness",
         "app": "cora",
-        "streamlit": "cora-streamlit",
+        "frontends/streamlit": "cora-streamlit",
+        "plugins/fitness": "cora-fitness",
     }
 
 
@@ -114,7 +137,7 @@ def test_the_engine_needs_the_contract_and_no_other_layer() -> None:
 def test_a_plugin_needs_the_contract_alone() -> None:
     """A plugin author installs one package, and it is not the engine: the fitness
     bundle uses four names — `Plugin`, `Tool`, `ToolRefusal`, `InputRejectedError`."""
-    assert _requires("fitness") == {"cora-api"}
+    assert _requires("plugins/fitness") == {"cora-api"}
 
 
 def test_the_adapters_bind_the_contract_to_its_technologies() -> None:
@@ -145,7 +168,7 @@ def test_the_app_wires_the_layers_and_owns_no_ui() -> None:
 def test_a_frontend_needs_the_app_and_its_own_toolkit() -> None:
     """One of several possible shells: it takes `cora` and the one technology it draws
     with, and nothing of the engine or the adapters directly."""
-    requires = _requires("streamlit")
+    requires = _requires("frontends/streamlit")
 
     assert requires == {"cora", "streamlit"}
 
