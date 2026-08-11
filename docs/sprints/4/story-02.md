@@ -21,16 +21,15 @@ model. **(migrated)** marks a test that moves rather than a new one.
 
 #### `TraceStep` (`core/trace.py`)
 
-- [ ] a decision that asked for tools summarises as "Decided to call search_documents",
+- [x] a decision that asked for tools summarises as "Decided to call search_documents",
       two tools joined
-- [ ] a decision that asked for none summarises as "Decided no tool was needed" — it reads
+- [x] a decision that asked for none summarises as "Decided no tool was needed" — it reads
       the same as the last step of a long run and as the only step of a greeting
-- [ ] a decision's detail is the prose the model sent alongside its tool calls
-- [ ] a final reply's text is the answer, so the decision repeats none of it as detail
-- [ ] a tool use summarises as the tool's name, its arguments as `name=value` in the order
+- [x] a decision's detail is the prose the model sent alongside its tool calls
+- [x] a tool use summarises as the tool's name, its arguments as `name=value` in the order
       given, and the outcome
-- [ ] a call with no arguments summarises as the bare name
-- [ ] a failed tool use is marked failed and its outcome is the tool's error
+- [x] a call with no arguments summarises as the bare name
+- [x] a failed tool use is marked failed and its outcome is the tool's error
 
 #### A citable payload describes itself (`citations.py`)
 
@@ -43,6 +42,7 @@ model. **(migrated)** marks a test that moves rather than a new one.
 #### The steps record what they did
 
 - [ ] `ModelStep` appends one decision naming the tools the reply asked for
+- [ ] a final reply's text is the answer, so its decision repeats none of it as detail
 - [ ] `ToolStep` appends one step per call, in order, each carrying the tool's name and the
       arguments it was called with
 - [ ] a citable payload's outcome is the payload's own summary and its detail is the
