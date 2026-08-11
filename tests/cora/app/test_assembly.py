@@ -26,6 +26,7 @@ from cora.core.services.plugin_registry import load_plugin
 from cora.core.services.query_planner import QueryPlanner
 from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME
 from cora.core.services.steps import ModelStep, PrepareStep, Router
+from cora.core.trace import ToolUse
 from cora.core.turn import Turn
 from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin, make_tool
@@ -118,8 +119,8 @@ def test_the_model_is_offered_the_search_tool_beside_the_plugins_own() -> None:
     names = {tool.name for tool in model.last_tools}
     assert SEARCH_TOOL_NAME in names
     assert {"one", "two", "three"} <= names
-    [lookup] = result.tool_results
-    assert SEED_TEXT.decode() in lookup.render()
+    [lookup] = [step for step in result.trace if isinstance(step, ToolUse)]
+    assert SEED_TEXT.decode() in lookup.detail
     assert result.sources == (Source(1, "note.md"),)
 
 
@@ -171,7 +172,7 @@ def test_a_run_that_spends_the_whole_round_budget_still_answers() -> None:
     result = app.agent.answer("What about protein?")
 
     assert result.answer == "Found it [1]."
-    assert len(result.tool_results) == 2
+    assert len([step for step in result.trace if isinstance(step, ToolUse)]) == 2
 
 
 def test_the_plugins_system_prompt_reaches_the_model() -> None:

@@ -1,18 +1,35 @@
+from collections.abc import Iterator
+
+import pytest
+
 from cora.core.agent_state import AgentState
 from cora.core.citations import Source
-from cora.core.ports.plugin import ToolResult
+from cora.core.errors import LlmError
 from cora.core.services.agent import Agent
+from cora.core.trace import ModelDecision, ToolUse, TraceStep
 from cora.core.turn import Turn
+
+SEARCHED = ToolUse(name="search_documents", arguments={"query": "protein"})
+ANSWERED = ModelDecision()
 
 
 class _StubRunner:
-    def __init__(self, final: AgentState) -> None:
-        self.final = final
+    """Yields each state the way a graph would: accumulated, one per step."""
+
+    def __init__(self, *states: AgentState, then: Exception | None = None) -> None:
+        self.states = states
+        self.then = then
         self.seeded: AgentState | None = None
 
-    def run(self, state: AgentState) -> AgentState:
+    def run(self, state: AgentState) -> Iterator[AgentState]:
         self.seeded = state
-        return self.final
+        yield from self.states
+        if self.then is not None:
+            raise self.then
+
+
+def _traced(*steps: TraceStep) -> AgentState:
+    return {"answer": "done", "trace": list(steps)}
 
 
 def test_answer_seeds_the_run_from_the_question_and_history() -> None:
@@ -34,13 +51,44 @@ def test_only_the_cited_sources_are_reported_under_their_own_numbers() -> None:
     assert result.sources == (Source(1, "a.md"), Source(3, "c.md"))
 
 
-def test_the_runs_tool_results_come_back_in_order() -> None:
-    results = [
-        ToolResult(call_id="c1", payload="passages"),
-        ToolResult(call_id="c2", payload=42),
-    ]
-    runner = _StubRunner({"answer": "done", "tool_results": results})
+def test_the_runs_steps_come_back_in_order() -> None:
+    runner = _StubRunner(_traced(SEARCHED, ANSWERED))
 
     result = Agent(runner).answer("q")
 
-    assert result.tool_results == tuple(results)
+    assert result.trace == (SEARCHED, ANSWERED)
+
+
+def test_every_step_is_reported_as_it_arrives() -> None:
+    seen: list[str] = []
+    runner = _StubRunner(
+        {"trace": [SEARCHED]},
+        _traced(SEARCHED, ANSWERED),
+    )
+
+    Agent(runner).answer("q", on_step=lambda step: seen.append(step.summary))
+
+    assert seen == [SEARCHED.summary, ANSWERED.summary]
+
+
+def test_a_step_already_reported_is_never_reported_twice() -> None:
+    seen: list[TraceStep] = []
+    runner = _StubRunner(
+        {"trace": [SEARCHED]},
+        {"trace": [SEARCHED]},
+        _traced(SEARCHED, ANSWERED),
+    )
+
+    Agent(runner).answer("q", on_step=seen.append)
+
+    assert seen == [SEARCHED, ANSWERED]
+
+
+def test_a_run_that_fails_midway_keeps_the_steps_it_already_reported() -> None:
+    seen: list[TraceStep] = []
+    runner = _StubRunner({"trace": [SEARCHED]}, then=LlmError())
+
+    with pytest.raises(LlmError):
+        Agent(runner).answer("q", on_step=seen.append)
+
+    assert seen == [SEARCHED]

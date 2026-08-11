@@ -9,13 +9,18 @@ from cora.core.agent_state import AgentState
 from cora.core.citations import Source
 from cora.core.errors import InputRejectedError, LlmError, ToolLoopLimitError
 from cora.core.ports.chat_model import ChatModel, Message, ModelReply, Role
-from cora.core.ports.plugin import Tool, ToolCall, ToolResult
+from cora.core.ports.plugin import Tool, ToolCall
 from cora.core.services.steps import ModelStep, PrepareStep, Router, ToolStep
 from cora.core.services.tool_runtime import ToolRuntime
 from cora.core.services.validation import EmptyInputRule, ValidationPipeline
+from cora.core.trace import ToolUse
 from fakes import FailingChatModel, add_tool
 
 ROUNDS = 8
+
+
+def _final(runner: LangGraphRunner, state: AgentState) -> AgentState:
+    return list(runner.run(state))[-1]
 
 
 def _said(role: Role, content: str) -> list[Message]:
@@ -64,7 +69,9 @@ def test_run_walks_prepare_then_model_then_tools_then_model() -> None:
         visited.append("tools")
         return {"messages": _said("tool", "ran")}
 
-    final = _runner(prepare=prepare, model=model, tools=tools).run({"question": "q"})
+    final = _final(
+        _runner(prepare=prepare, model=model, tools=tools), {"question": "q"}
+    )
 
     assert visited == ["prepare", "model", "tools", "model"]
     assert final["answer"] == "d"
@@ -79,16 +86,29 @@ def test_the_returned_state_accumulated_every_partial() -> None:
     def tools(state: AgentState) -> AgentState:
         return {
             "messages": _said("tool", "ran"),
-            "tool_results": [ToolResult(call_id="c1", payload="passages")],
+            "trace": [ToolUse(name="search_documents", outcome="1 passage")],
             "sources": [Source(1, "note.md")],
         }
 
-    final = _runner(model=model, tools=tools).run({"question": "q"})
+    final = _final(_runner(model=model, tools=tools), {"question": "q"})
 
     assert [m.content for m in final["messages"]] == ["q", "asking", "ran", "done"]
-    assert final["tool_results"] == [ToolResult(call_id="c1", payload="passages")]
+    assert final["trace"] == [ToolUse(name="search_documents", outcome="1 passage")]
     assert final["sources"] == [Source(1, "note.md")]
     assert final["rounds"] == 2
+
+
+def test_a_step_is_seen_before_the_run_is_over() -> None:
+    reached: list[str] = []
+
+    def model(state: AgentState) -> AgentState:
+        reached.append("model")
+        return {"messages": _said("assistant", "done"), "rounds": 1, "answer": "d"}
+
+    states = _runner(model=model).run({"question": "q"})
+    next(iter(states))
+
+    assert reached == []
 
 
 def test_a_runaway_graph_surfaces_as_the_friendly_give_up() -> None:
@@ -98,7 +118,7 @@ def test_a_runaway_graph_surfaces_as_the_friendly_give_up() -> None:
     runner = _runner(model=endless, rounds=999, recursion_limit=4)
 
     with pytest.raises(ToolLoopLimitError):
-        runner.run({"question": "q"})
+        _final(runner, {"question": "q"})
 
 
 class _AlwaysCalling:
@@ -138,20 +158,20 @@ def test_the_round_budget_fires_before_the_graphs_own_limit() -> None:
     model = _AlwaysCalling()
 
     with pytest.raises(ToolLoopLimitError):
-        _real_runner(model, rounds=3).run({"question": "loop forever"})
+        _final(_real_runner(model, rounds=3), {"question": "loop forever"})
 
     assert model.completions == 3
 
 
 def test_an_input_rejection_from_prepare_travels_out_unwrapped() -> None:
     with pytest.raises(InputRejectedError):
-        _real_runner(_AlwaysCalling(), rounds=3).run({"question": "   "})
+        _final(_real_runner(_AlwaysCalling(), rounds=3), {"question": "   "})
 
 
 def test_an_adapter_error_from_a_step_travels_out_unwrapped() -> None:
     error = LlmError()
 
     with pytest.raises(LlmError) as exc_info:
-        _real_runner(FailingChatModel(error), rounds=3).run({"question": "hi"})
+        _final(_real_runner(FailingChatModel(error), rounds=3), {"question": "hi"})
 
     assert exc_info.value is error

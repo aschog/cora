@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -32,10 +32,12 @@ class LangGraphRunner:
     router: Callable[[AgentState], str]
     recursion_limit: int
 
-    def run(self, state: AgentState) -> AgentState:
+    def run(self, state: AgentState) -> Iterator[AgentState]:
         try:
-            return self._graph().invoke(
-                state, {"recursion_limit": self.recursion_limit}
+            yield from self._graph().stream(
+                state,
+                {"recursion_limit": self.recursion_limit},
+                stream_mode="values",
             )
         except GraphRecursionError as exhausted:
             raise ToolLoopLimitError from exhausted

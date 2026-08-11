@@ -41,7 +41,6 @@ def _page(app) -> None:  # AppTest re-executes this without the module's globals
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(strict=True, reason="story 2: the run is not traced yet")
 def test_the_trace_shows_each_step_with_its_tool_arguments_and_result() -> None:
     at = AppTest.from_function(_page, args=(_app(),)).run()
 

@@ -83,7 +83,6 @@ class ToolStep:
     def __call__(self, state: AgentState) -> AgentState:
         known = tuple(state.get("sources", ()))
         messages: list[Message] = []
-        results: list[ToolResult] = []
         trace: list[TraceStep] = []
         added: list[Source] = []
         for call in _requested_calls(state):
@@ -96,7 +95,6 @@ class ToolStep:
                 added.extend(context.sources)
                 outcome = citable.summary
             messages.append(_tool_message(result, cites=citable is not None))
-            results.append(result)
             trace.append(
                 ToolUse(
                     name=call.name,
@@ -106,12 +104,7 @@ class ToolStep:
                     failed=result.error is not None,
                 )
             )
-        return {
-            "messages": messages,
-            "tool_results": results,
-            "trace": trace,
-            "sources": added,
-        }
+        return {"messages": messages, "trace": trace, "sources": added}
 
 
 @dataclass(frozen=True)

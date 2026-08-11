@@ -1,4 +1,5 @@
 import dataclasses
+import json
 from dataclasses import dataclass
 
 import pytest
@@ -8,7 +9,7 @@ from cora.core.chunk import Chunk
 from cora.core.citations import Source
 from cora.core.errors import InputRejectedError, LlmError, ToolLoopLimitError
 from cora.core.ports.chat_model import Message, ModelReply, Role
-from cora.core.ports.plugin import Tool, ToolCall, ToolResult
+from cora.core.ports.plugin import Tool, ToolCall
 from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.core.services.steps import (
@@ -50,12 +51,11 @@ def _add_call(call_id: str, a: int = 1, b: int = 2) -> ToolCall:
     return ToolCall(name="add", arguments={"a": a, "b": b}, call_id=call_id)
 
 
-def test_a_tool_call_runs_and_its_result_lands_in_the_partial_state() -> None:
+def test_a_tool_call_runs_and_answers_the_model_it_was_asked_by() -> None:
     step = ToolStep(ToolRuntime(tools=(add_tool(),)))
 
     partial = step(_asked(_add_call("c1")))
 
-    assert partial["tool_results"] == [ToolResult(call_id="c1", payload=3)]
     [message] = partial["messages"]
     assert message.role == "tool"
     assert message.tool_call_id == "c1"
@@ -111,19 +111,9 @@ def test_a_payload_that_registers_nothing_is_fed_back_as_it_renders() -> None:
 
     partial = step(_asked(_add_call("c1")))
 
-    [result] = partial["tool_results"]
     [message] = partial["messages"]
-    assert message.content == result.render() == "3"
+    assert message.content == "3"
     assert partial["sources"] == []
-
-
-def test_a_citable_payload_is_registered_and_its_result_renders_the_block() -> None:
-    step = ToolStep(ToolRuntime(tools=(_searcher(_hit("note.md")),)))
-
-    partial = step(_asked(_search_call("c1")))
-
-    [result] = partial["tool_results"]
-    assert result.render() == "[1] note.md: protein builds muscle"
 
 
 def test_the_model_gets_the_passages_labelled_as_untrusted_data() -> None:
@@ -131,13 +121,13 @@ def test_the_model_gets_the_passages_labelled_as_untrusted_data() -> None:
 
     partial = step(_asked(_search_call("c1")))
 
-    [result] = partial["tool_results"]
+    [used] = partial["trace"]
     [message] = partial["messages"]
     notice, _, body = message.content.partition("[1]")
     assert "untrusted" in notice.lower()
     assert "instructions" in notice.lower()
     assert body in message.content
-    assert "untrusted" not in result.render().lower()
+    assert "untrusted" not in used.detail.lower()
 
 
 def test_passages_are_labelled_even_when_they_add_no_new_source() -> None:
@@ -165,8 +155,8 @@ def test_a_later_retrieval_in_the_same_run_continues_the_numbering() -> None:
     partial = step(_asked(_search_call("c2"), known=(Source(1, "note.md"),)))
 
     assert partial["sources"] == [Source(2, "later.md")]
-    [result] = partial["tool_results"]
-    assert "[2] later.md" in result.render()
+    [used] = partial["trace"]
+    assert "[2] later.md" in used.detail
 
 
 def test_any_tool_returning_a_citable_payload_is_registered_the_same_way() -> None:
@@ -182,9 +172,9 @@ def test_any_tool_returning_a_citable_payload_is_registered_the_same_way() -> No
     )
 
     assert partial["sources"] == [Source(1, "note.md"), Source(2, "diary.md")]
-    searched, recalled = partial["tool_results"]
-    assert "[1] note.md" in searched.render()
-    assert "[2] diary.md" in recalled.render()
+    searched, recalled = partial["trace"]
+    assert "[1] note.md" in searched.detail
+    assert "[2] diary.md" in recalled.detail
 
 
 def test_several_calls_in_one_round_all_run_in_order() -> None:
@@ -192,11 +182,8 @@ def test_several_calls_in_one_round_all_run_in_order() -> None:
 
     partial = step(_asked(_add_call("c1"), _add_call("c2", a=3, b=4)))
 
-    assert partial["tool_results"] == [
-        ToolResult(call_id="c1", payload=3),
-        ToolResult(call_id="c2", payload=7),
-    ]
     assert [m.tool_call_id for m in partial["messages"]] == ["c1", "c2"]
+    assert [m.content for m in partial["messages"]] == ["3", "7"]
 
 
 def test_an_unknown_tool_comes_back_as_a_tool_message() -> None:
@@ -204,11 +191,9 @@ def test_an_unknown_tool_comes_back_as_a_tool_message() -> None:
 
     partial = step(_asked(ToolCall(name="nope", arguments={}, call_id="c1")))
 
-    [result] = partial["tool_results"]
-    assert result.error is not None and "nope" in result.error
     [message] = partial["messages"]
     assert message.role == "tool"
-    assert message.content == result.error
+    assert "nope" in message.content
 
 
 def test_malformed_arguments_come_back_as_a_tool_message() -> None:
@@ -218,10 +203,8 @@ def test_malformed_arguments_come_back_as_a_tool_message() -> None:
         _asked(ToolCall(name="add", arguments={"a": "one", "b": 2}, call_id="c1"))
     )
 
-    [result] = partial["tool_results"]
-    assert result.error is not None and "invalid arguments" in result.error
     [message] = partial["messages"]
-    assert message.content == result.error
+    assert "invalid arguments" in message.content
 
 
 def _model_step(*replies: ModelReply) -> ModelStep:
@@ -449,8 +432,6 @@ def test_a_payload_that_only_looks_citable_is_fed_back_untouched() -> None:
 
     partial = step(_asked(ToolCall(name="book", arguments={}, call_id="c1")))
 
-    [result] = partial["tool_results"]
-    assert result.payload == _Booking("Ada")
     assert partial["sources"] == []
     [message] = partial["messages"]
-    assert message.content == result.render()
+    assert message.content == json.dumps(_Booking("Ada"), default=str)

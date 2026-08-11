@@ -3,6 +3,7 @@ from cora.core.metadata_filter import MetadataFilter
 from cora.core.ports.chat_model import ModelReply
 from cora.core.ports.plugin import ToolCall
 from cora.core.ports.retrieval import RetrievedChunk
+from cora.core.trace import ToolUse
 from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel, add_tool
 from fixture_plugins import make_plugin
 
@@ -57,9 +58,9 @@ def test_a_question_needing_a_lookup_and_a_calculation_uses_both() -> None:
     assert [(source.number, source.name) for source in result.sources] == [
         (1, "note.md")
     ]
-    lookup, calculation = result.tool_results
-    assert "protein builds muscle" in lookup.render()
-    assert calculation.payload == 42
+    lookup, calculation = [step for step in result.trace if isinstance(step, ToolUse)]
+    assert "protein builds muscle" in lookup.detail
+    assert calculation.outcome == "42"
 
 
 def test_a_question_needing_neither_retrieves_nothing_and_calls_no_tool() -> None:
@@ -69,6 +70,6 @@ def test_a_question_needing_neither_retrieves_nothing_and_calls_no_tool() -> Non
     result = app.agent.answer("Hello there!")
 
     assert result.answer == "Hello! How can I help?"
-    assert result.tool_results == ()
+    assert [step for step in result.trace if isinstance(step, ToolUse)] == []
     assert result.sources == ()
     assert retriever.queries == 0
