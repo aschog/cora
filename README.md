@@ -18,6 +18,25 @@ Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangGraph · LangChain over
 OpenRouter · Chroma · sentence-transformers · Streamlit — with ruff, ty and pytest as
 quality gates. Runtime dependencies are added feature-by-feature, story by story.
 
+## The packages
+
+A `uv` workspace of six distributions sharing the `cora` namespace. Which one you install
+is decided by what you are writing, and what each may depend on is written in its own
+manifest — so a plugin that reached for the engine, or a frontend's toolkit that reached
+the app, would not resolve. See [`docs/big-picture.md`](docs/big-picture.md#the-distributions).
+
+| Package | Ships | Depends on |
+|---|---|---|
+| `cora-api` | `cora.domain` · `cora.ports` — the contract | nothing at all |
+| `cora-engine` | `cora.engine` — the agent, the knowledge base, a turn's steps | `cora-api` |
+| `cora-adapters` | `cora.adapters` — Chroma, OpenRouter, LangGraph, BM25, MiniLM | `cora-api` |
+| `cora` | `cora.app` — the composition root and its configuration | `cora-engine`, `cora-adapters` |
+| `cora-fitness` | `cora.plugins.fitness` — the reference domain plugin | `cora-api` |
+| `cora-streamlit` | `cora.frontends.streamlit` — the app you run below | `cora` |
+
+`cora.plugins.*` and `cora.frontends.*` are the extension points: a second domain or a
+second user interface is a package to add, not a file to edit.
+
 ## Setup
 
 ```sh

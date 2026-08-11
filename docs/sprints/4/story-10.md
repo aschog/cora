@@ -49,75 +49,80 @@ cora-streamlit  cora.frontends.streamlit                  → cora
 
 #### First, the outer test — the boundary as an install
 
-- [ ] **(int)** every distribution's wheel builds, and each module its manifest names
+- [x] **(int)** every distribution's wheel builds, and each module its manifest names
       imports from that wheel in a clean venv — nothing builds a wheel today, so
       `module-name` is unverified data and a mis-declared module ships as nothing
-- [ ] **(int)** `cora-fitness` installed alone imports, with `cora.engine` absent — the
+- [x] **(int)** `cora-fitness` installed alone imports, with `cora.engine` absent — the
       cheap install, and the one that carries the story
-- [ ] `streamlit` is absent from `cora`'s resolved dependency graph, and `cora-engine` from
+- [x] `streamlit` is absent from `cora`'s resolved dependency graph, and `cora-engine` from
       `cora-fitness`'s — asked of the resolver rather than of TOML, so it is transitive, and
       without installing chromadb and torch to learn it
-- [ ] `cora-api` resolves to itself alone: no third-party dependency at all — `jsonschema`
+- [x] `cora-api` resolves to itself alone: no third-party dependency at all — `jsonschema`
       belongs to the engine, which *checks* schemas; the contract only says a tool has one
 
 #### The contract has a name of its own
 
-- [ ] `cora.domain` and `cora.ports` import with `cora.engine` absent — the domain-may-not-
+- [x] `cora.domain` and `cora.ports` import with `cora.engine` absent — the domain-may-not-
       import-the-service-layer rule stops being a walker's rule and becomes a fact of the
       install, and its AST guard is deleted rather than moved
-- [ ] the fitness plugin's imports resolve against `cora-api` alone: `Plugin`, `Tool`,
+- [x] the fitness plugin's imports resolve against `cora-api` alone: `Plugin`, `Tool`,
       `ToolRefusal`, `InputRejectedError` — the four names it actually uses
-- [ ] every module each manifest names exists on disk, loose `.py` files included — a
+- [x] every module each manifest names exists on disk, loose `.py` files included — a
       list-valued `module-name` ships only what it names, and the editable install never
       consults it
 
 #### The adapters bind the contract, not the engine
 
-- [ ] the router reads `DONE`, `TOOLS` and `GROUND` from `cora.ports.graph`, and
+- [x] the router reads `DONE`, `TOOLS` and `GROUND` from `cora.ports.graph`, and
       `LangGraphRunner` imports them from there *(moved)*
-- [ ] no `cora.adapters` module imports `cora.engine`
-- [ ] no `cora.adapters` module imports `cora.app` or any frontend — an adapter reusable by
+- [x] no `cora.adapters` module imports `cora.engine`
+- [x] no `cora.adapters` module imports `cora.app` or any frontend — an adapter reusable by
       every frontend, which nothing enforces today
 
 #### Five ports, five slots
 
-- [ ] `assemble` takes its `GraphRunner` as an argument like the other four ports — today it
+- [x] `assemble` takes its `GraphRunner` as an argument like the other four ports — today it
       builds a `LangGraphRunner` itself, so the one port whose technology cannot be changed
       without editing the composition root is the one the map calls a slot
-- [ ] the logging wrappers live in the engine: they decorate ports and import no technology,
+- [x] the logging wrappers live in the engine: they decorate ports and import no technology,
       so shipping them with Chroma and LangGraph misfiles them *(moved)*
-- [ ] a graph factory handed to `assemble` runs the turn, and `assemble` builds no runner
+- [x] a graph factory handed to `assemble` runs the turn, and `assemble` builds no runner
       of its own — replaces "assembly imports with cora.adapters absent", which turned out
       to be reachable only by deferring imports to fake a property the slot itself states
       honestly; `cora` ships the default wiring and depends on the adapters by design
 
 #### The frontend is one of many
 
-- [ ] `cora.frontends.streamlit` holds the Streamlit app and its helpers *(moved)*
-- [ ] `cora.app` imports no frontend, so the backend assembles with none installed
-- [ ] `streamlit` is imported nowhere outside `cora.frontends.*` *(moved — re-points the
+- [x] `cora.frontends.streamlit` holds the Streamlit app and its helpers *(moved)*
+- [x] `cora.app` imports no frontend, so the backend assembles with none installed
+- [x] `streamlit` is imported nowhere outside `cora.frontends.*` *(moved — re-points the
       existing guard off `cora/app/entrypoints`)*
 
 #### The walker, smaller
 
-- [ ] one planted module carrying a framework import, an outer-layer import and a `pytest`
+- [x] one planted module carrying a framework import, an outer-layer import and a `pytest`
       import is caught on all three counts — replacing eight self-tests of the detectors,
       which is the part that rotted: three still name `core/services`, a directory gone two
       commits before this story
-- [ ] the forbidden-layer walk covers every shipped layer, not core files alone, and still
+- [x] the forbidden-layer walk covers every shipped layer, not core files alone, and still
       fails on a planted violation in an adapter
 
 #### Nothing changed but the shape
 
-- [ ] every test that named `cora.core.*` finds its module under the new path *(moved)*
-- [ ] each layer's `py.typed` still sits inside the module its manifest names, six
+- [x] every test that named `cora.core.*` finds its module under the new path *(moved)*
+- [x] each layer's `py.typed` still sits inside the module its manifest names, six
       distributions now *(moved)*
-- [ ] every change in the suite count is accounted for
-- [ ] **(int)** the app assembles and answers a document question through the composition
+- [x] every change in the suite count is accounted for: 678 collected to 718, diffed by
+      test *name* against the pre-story commit so a test that merely moved package does not
+      read as one lost. 24 cases gone — the ten domain-import guards and their self-test,
+      five detector self-tests, and eight renames — against 66 new, of which 46 are the
+      cross-layer walk now covering the adapters and the app as well as the pure set. Two
+      parametrised walks each lost one case, `cora/core/__init__.py` having ceased to exist
+- [x] **(int)** the app assembles and answers a document question through the composition
       root, exactly as before
 - [ ] **(llm)** the live acceptance answers a training question with a citation, through the
       moved frontend *(moved)*
-- [ ] every location the docs claim resolves, and `big-picture.md` names the six
+- [x] every location the docs claim resolves, and `big-picture.md` names the six
       distributions and both extension points
 
 ## Order

@@ -10,12 +10,15 @@ the code was built, not how it works today.
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 45, "rankSpacing": 55, "curve": "basis"}}}%%
 flowchart TB
-  subgraph shell["cora.app"]
+  subgraph shell["cora.frontends.streamlit"]
     ui["UI<br/><i>Streamlit widgets</i>"]
+  end
+
+  subgraph wiring["cora.app"]
     root["Composition root<br/><i>loads plugin, binds ports, picks strategy</i>"]
   end
 
-  subgraph core["cora.core"]
+  subgraph core["cora.engine"]
     agent["Agent"]
     steps["Steps<br/><i>prepare · model · tools · ground</i>"]
     router["Router<br/><i>one more round, or done</i>"]
@@ -26,7 +29,7 @@ flowchart TB
     kb["KnowledgeBase"]
   end
 
-  subgraph seam["cora.core.ports"]
+  subgraph seam["cora.ports"]
     gr{{"GraphRunner"}}
     cm{{"ChatModel"}}
     emb{{"Embedder"}}
@@ -72,15 +75,15 @@ flowchart TB
   class agent,steps,router,val,rt,search,retr,kb logic;
 ```
 
-Read the map from top to bottom. The shell (top) calls the core (middle). The core has five
-ports. When the app starts, each port is connected to one adapter (bottom). The core does not
+Read the map from top to bottom. The frontend (top) calls the engine (middle) through the
+app that wired it. The engine has five ports. When the app starts, each port is connected to one adapter (bottom). The core does not
 know which adapter it uses. The one arrow that points back up is `LangGraphRunner` driving the
 core's steps: the adapter supplies the graph, the core supplies every step it walks.
 
 | Mark | Means |
 |---|---|
-| blue box | A part of the core. It is plain Python, so a test can build it with fakes. |
-| amber hexagon | A port — a slot in the core for one kind of technology. The five ports are the only way in and out of the core. |
+| blue box | A part of the engine. It is plain Python, so a test can build it with fakes. |
+| amber hexagon | A port — a slot for one kind of technology. The five ports are the only way in and out of the engine. |
 | thin arrow | A call made while answering a request. |
 | thick arrow | Built by the composition root when the app starts. |
 | dotted arrow | The adapter behind a port. Change this one line to use a different technology. |
@@ -96,13 +99,58 @@ are three options:
 - `advanced` — use RAG-Fusion. A `QueryPlanner` writes the question in a few different ways, and RRF joins the results. (RRF, Reciprocal Rank Fusion, is a simple way to merge ranked lists.)
 - `hybrid` — run two searches over the same files, one by meaning (dense) and one by keywords (BM25), and join them with the same RRF. This needs no planner and no extra model call.
 
-A **port** is a fixed slot in the core for one kind of technology. The core has exactly five
-slots: one for driving the agent, one for chat, one for embedding, one for retrieval, and one for
-the plugin. You can put a different technology in a slot without changing the core.
+A **port** is a fixed slot in the engine for one kind of technology. There are exactly five:
+one for driving the agent, one for chat, one for embedding, one for retrieval, and one for the
+plugin. Every one of them is an argument to `assemble`, so a different technology goes in a
+slot without the engine or the composition root changing.
 
 BM25 has no slot like this. Only the `hybrid` search uses it, wired straight into that search.
-So BM25 is a technology with no port. It is kept with the other adapters, and the core still has
+So BM25 is a technology with no port. It is kept with the other adapters, and there are still
 just five ports.
+
+## The distributions
+
+Six packages, one per audience. Which one you install is decided by what you are writing,
+not by which layer you happen to be reading — and what a package may depend on is written
+in its own manifest, so the boundary is a fact of the install rather than a rule a test
+polices.
+
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 40, "rankSpacing": 50, "curve": "basis"}}}%%
+flowchart BT
+  api["cora-api<br/><i>cora.domain · cora.ports</i><br/>stdlib only"]
+  engine["cora-engine<br/><i>cora.engine</i>"]
+  adapters["cora-adapters<br/><i>cora.adapters</i><br/>Chroma · OpenRouter · LangGraph · BM25 · MiniLM"]
+  app["cora<br/><i>cora.app</i>"]
+  fitness["cora-fitness<br/><i>cora.plugins.fitness</i>"]
+  shell["cora-streamlit<br/><i>cora.frontends.streamlit</i>"]
+
+  engine --> api
+  adapters --> api
+  fitness --> api
+  app --> engine
+  app --> adapters
+  shell --> app
+
+  classDef contract fill:#8c4b00,stroke:#d98a1f,color:#fff;
+  classDef logic fill:#134e6f,stroke:#1f78b4,color:#fff;
+  class api contract;
+  class engine logic;
+```
+
+An arrow means *depends on*, so the contract sits at the top: everything is written against
+it and it is written against nothing.
+
+| If you are writing | You install | You do not get |
+|---|---|---|
+| a domain plugin | `cora-api` | the engine, the adapters, any framework — the fitness bundle uses four names from it |
+| a second frontend | `cora` | Streamlit, or any other way of talking to a user |
+| an adapter for a port | `cora-api` | the engine, so the binding outlives any version of the use cases |
+| the app you can run today | `cora-streamlit` | nothing — it is the whole stack |
+
+`cora` is a namespace, not a package: no distribution owns the name, and each contributes
+a portion of it. `cora.plugins.*` and `cora.frontends.*` are the two extension
+points, and a new one of either is a package to install rather than a file to edit.
 
 ## Two calls in
 
@@ -181,7 +229,12 @@ not notice any change.
 
 ## Backed by tests
 
-- **The core cannot use a framework.** A test reads every `cora.core` file. If one imports LangGraph, LangChain, Chroma, sentence-transformers, Streamlit, or any outer layer, the test fails. A fake bad import is added on purpose to prove the test catches it.
+- **The engine cannot use a framework.** A test reads every `cora.domain`, `cora.ports` and `cora.engine` file. If one imports LangGraph, LangChain, Chroma, sentence-transformers, Streamlit, or any outer layer, the test fails. A fake bad import is added on purpose to prove the test catches it.
+- **A plugin needs the contract alone, proved by installing it.** `cora-fitness` is built
+  into a wheel, installed into an empty environment, and imported there: the environment
+  holds exactly two packages, and the engine is not one of them. Every manifest read and
+  every import walked runs where all six packages are present, so this is the only check
+  that can tell a declaration from a fact.
 - **Streamlit is used in one folder only.** No file outside `frontends/streamlit/` may import it. This is why you can really replace the user interface.
 - **The steps do not depend on any real helper.** They are plain callables over small Protocols (`ContextSource`, `InputValidator`, `ToolExecutor`), so a test walks a whole turn with fakes and no graph at all.
 - **One thing the core shares with the graph on purpose.** `domain/agent_state.py` marks the keys that accumulate (`Annotated[list[Message], operator.add]`). No core code reads those marks — they are the convention LangGraph uses to merge each step's partial state, so this one file is written to be understood by a graph engine, without importing one. The steps and the router stay framework-free; the state's *shape* is the shared word.
