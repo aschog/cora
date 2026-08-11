@@ -51,7 +51,7 @@ def test_the_trace_shows_each_step_with_its_tool_arguments_and_result() -> None:
 
     [trace] = at.status
     assert trace.label == "How I got there"
-    steps = "\n".join(md.value for md in trace.markdown)
+    steps = "\n".join(c.value for c in trace.code)
     assert f"Decided to call {SEARCH_TOOL_NAME}" in steps
     assert f'{SEARCH_TOOL_NAME}(query="protein")' in steps
     assert "1 passage from note.md" in steps

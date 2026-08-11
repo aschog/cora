@@ -423,7 +423,7 @@ def test_the_answer_no_longer_prints_the_raw_payload_beside_itself() -> None:
 
     at.chat_input[0].set_value("17 + 25?").run()
 
-    assert _visible_text(at).count("42") == 1, "the payload belongs in the trace only"
+    assert "42" not in _visible_text(at), "the payload belongs in the trace only"
     assert "42" in _traced(at)
     assert [e.label for e in at.expander] == []
 
@@ -445,8 +445,8 @@ def test_a_trace_survives_the_next_question() -> None:
 
     assert not at.exception
     first, second = at.status
-    assert "add(a=1, b=2) → 3" in "\n".join(md.value for md in first.markdown)
-    assert "Decided no tool was needed" in "\n".join(md.value for md in second.markdown)
+    assert "add(a=1, b=2) → 3" in "\n".join(c.value for c in first.code)
+    assert "Decided no tool was needed" in "\n".join(c.value for c in second.code)
 
 
 @pytest.mark.integration
