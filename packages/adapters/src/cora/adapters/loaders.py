@@ -1,10 +1,10 @@
-from collections.abc import Callable
 from io import BytesIO
 
 from pypdf import PdfReader
 from pypdf.errors import PyPdfError
 
 from cora.core.domain.errors import UnreadableFileError
+from cora.core.ports.loading import Loaders
 
 
 def load_txt(data: bytes, filename: str) -> str:
@@ -23,7 +23,7 @@ def load_pdf(data: bytes, filename: str) -> str:
     return "\n\n".join(page for page in pages if page)
 
 
-LOADERS: dict[str, Callable[[bytes, str], str]] = {
+LOADERS: Loaders = {
     ".txt": load_txt,
     ".md": load_txt,
     ".pdf": load_pdf,

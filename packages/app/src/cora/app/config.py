@@ -2,11 +2,11 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from cora.adapters.openrouter_chat_model import OPENROUTER_BASE_URL
 from cora.app.retrieval import DEFAULT_RETRIEVAL, RETRIEVAL_MODES
 from cora.core.domain.errors import ConfigurationError
 
 DEFAULT_MODEL = "openai/gpt-4o-mini"
+DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_PLUGIN = "cora.plugins.fitness"
 DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
@@ -40,7 +40,7 @@ class Config:
         return cls(
             api_key=api_key,
             model=env.get("CORA_MODEL", DEFAULT_MODEL),
-            base_url=env.get("OPENROUTER_BASE_URL", OPENROUTER_BASE_URL),
+            base_url=env.get("OPENROUTER_BASE_URL", DEFAULT_BASE_URL),
             plugin_module=env.get("CORA_PLUGIN", DEFAULT_PLUGIN),
             top_k=_int(env, "CORA_TOP_K", DEFAULT_TOP_K, minimum=1),
             max_tool_rounds=_int(

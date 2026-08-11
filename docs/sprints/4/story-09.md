@@ -58,10 +58,11 @@ They are separate commits so each can be verified alone.
       now enforced by what the distribution installs
 - [x] `cora-fitness` imports with only `cora-core` present, so a plugin author needs none
       of the adapter stack
-- [ ] the loaders move to `cora-adapters`: a PDF reader is a driven adapter over a file
-      format, and it is the only reason `pypdf` sat in core
-- [ ] `config` no longer reads a constant out of an adapter — it owns its own default, so
-      the app package does not depend on an adapter for a string
+- [x] the loaders move to `cora-adapters` behind a port: a PDF reader is a driven adapter
+      over a file format, it was the only reason `pypdf` sat in core, and injecting the
+      registry means a new format is an entry rather than an edit inside ingestion
+- [x] `config` owns the default endpoint and the adapter is handed one — the constant
+      lived in two places otherwise, and which host answers is a deployment's choice
 
 #### The layers are named
 

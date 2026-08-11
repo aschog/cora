@@ -8,7 +8,7 @@ from cora.core.domain.errors import EmptyDocumentError, UnsupportedFileTypeError
 from cora.core.domain.metadata_filter import MetadataFilter
 from cora.core.service_layer.ingestion import ingest
 from cora.core.service_layer.knowledge_base import KnowledgeBase
-from fakes import FakeEmbedder, FakeRetriever
+from fakes import TEXT_LOADERS, FakeEmbedder, FakeRetriever
 
 
 def test_add_file_embeds_and_stores_one_record_per_chunk(
@@ -18,7 +18,7 @@ def test_add_file_embeds_and_stores_one_record_per_chunk(
 
     added = kb.add_file(data, "doc.txt")
 
-    assert added == len(ingest(data, "doc.txt"))
+    assert added == len(ingest(data, "doc.txt", TEXT_LOADERS))
     assert added >= 2
     assert retriever.sources() == ["doc.txt"]
 
@@ -90,7 +90,7 @@ class _CountingEmbedder:
 def test_re_adding_identical_bytes_is_a_no_op(retriever: FakeRetriever) -> None:
     data = ("same content " * 100).encode()
     embedder = _CountingEmbedder()
-    kb = KnowledgeBase(embedder=embedder, retriever=retriever)
+    kb = KnowledgeBase(embedder=embedder, retriever=retriever, loaders=TEXT_LOADERS)
 
     first = kb.add_file(data, "doc.txt")
     second = kb.add_file(data, "doc.txt")
@@ -116,19 +116,29 @@ def test_add_file_fans_out_the_same_chunks_to_the_keyword_index(
     embedder: FakeEmbedder, retriever: FakeRetriever
 ) -> None:
     keyword = FakeKeywordIndex()
-    kb = KnowledgeBase(embedder=embedder, retriever=retriever, keyword_index=keyword)
+    kb = KnowledgeBase(
+        embedder=embedder,
+        retriever=retriever,
+        loaders=TEXT_LOADERS,
+        keyword_index=keyword,
+    )
     data = ("protein supports muscle " * 100).encode()
 
     kb.add_file(data, "doc.txt")
 
-    assert keyword.added == ingest(data, "doc.txt")
+    assert keyword.added == ingest(data, "doc.txt", TEXT_LOADERS)
 
 
 def test_duplicate_reupload_leaves_the_keyword_index_untouched(
     embedder: FakeEmbedder, retriever: FakeRetriever
 ) -> None:
     keyword = FakeKeywordIndex()
-    kb = KnowledgeBase(embedder=embedder, retriever=retriever, keyword_index=keyword)
+    kb = KnowledgeBase(
+        embedder=embedder,
+        retriever=retriever,
+        loaders=TEXT_LOADERS,
+        keyword_index=keyword,
+    )
     data = ("protein supports muscle " * 100).encode()
 
     kb.add_file(data, "doc.txt")

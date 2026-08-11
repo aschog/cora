@@ -13,8 +13,6 @@ from cora.core.domain.errors import LlmError
 from cora.core.ports.chat_model import Message, ModelReply
 from cora.core.ports.plugin import Tool, ToolCall
 
-OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-
 
 def to_model_reply(reply: AIMessage) -> ModelReply:
     tool_calls = tuple(
@@ -58,9 +56,9 @@ def to_langchain_message(message: Message) -> BaseMessage:
 
 
 class OpenRouterChatModel:
-    def __init__(
-        self, model: str, api_key: str, base_url: str = OPENROUTER_BASE_URL
-    ) -> None:
+    def __init__(self, model: str, api_key: str, base_url: str) -> None:
+        """The endpoint is passed in, never assumed: which host answers is the
+        deployment's choice, and `cora.app.config` is where it is written down."""
         self._client = ChatOpenAI(model=model, api_key=api_key, base_url=base_url)
 
     def complete(

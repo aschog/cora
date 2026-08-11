@@ -99,7 +99,7 @@ def test_tool_schemas_are_bound_onto_the_client(
         "cora.adapters.openrouter_chat_model.ChatOpenAI", _FakeChatOpenAI
     )
     tool = add_tool()
-    model = OpenRouterChatModel(model="m", api_key="k")
+    model = OpenRouterChatModel(model="m", api_key="k", base_url="https://example/api")
 
     model.complete((Message(role="user", content="hi"),), (tool,))
 
@@ -128,7 +128,7 @@ def test_provider_exception_is_wrapped_as_llm_error(
     monkeypatch.setattr(
         "cora.adapters.openrouter_chat_model.ChatOpenAI", _FailingChatOpenAI
     )
-    model = OpenRouterChatModel(model="m", api_key="k")
+    model = OpenRouterChatModel(model="m", api_key="k", base_url="https://example/api")
 
     with pytest.raises(LlmError):
         model.complete((Message(role="user", content="hi"),), ())
@@ -140,7 +140,7 @@ def test_complete_returns_the_mapped_model_reply(
     monkeypatch.setattr(
         "cora.adapters.openrouter_chat_model.ChatOpenAI", _FakeChatOpenAI
     )
-    model = OpenRouterChatModel(model="m", api_key="k")
+    model = OpenRouterChatModel(model="m", api_key="k", base_url="https://example/api")
 
     reply = model.complete((Message(role="user", content="hi"),), ())
 

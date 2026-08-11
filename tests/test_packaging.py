@@ -62,6 +62,13 @@ def test_core_declares_no_framework() -> None:
     assert not _requires("core") & HEAVY
 
 
+def test_core_reads_no_file_format_of_its_own() -> None:
+    """Which formats can be read is the adapters' business: core is handed loaders
+    through a port, so pypdf ships with the loader that needs it."""
+    assert "pypdf" not in _requires("core")
+    assert "pypdf" in _requires("adapters")
+
+
 def test_core_depends_on_no_other_layer() -> None:
     assert not {name for name in _requires("core") if name.startswith("cora-")}
 

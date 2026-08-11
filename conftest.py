@@ -7,7 +7,7 @@ import pytest
 
 from cora.core.domain.chunk import Chunk
 from cora.core.service_layer.knowledge_base import KnowledgeBase
-from fakes import FakeEmbedder, FakeRetriever
+from fakes import TEXT_LOADERS, FakeEmbedder, FakeRetriever
 
 if TYPE_CHECKING:
     from cora.adapters.chroma_retriever import ChromaRetriever
@@ -38,7 +38,7 @@ def retriever() -> FakeRetriever:
 
 @pytest.fixture
 def kb(embedder: FakeEmbedder, retriever: FakeRetriever) -> KnowledgeBase:
-    return KnowledgeBase(embedder=embedder, retriever=retriever)
+    return KnowledgeBase(embedder=embedder, retriever=retriever, loaders=TEXT_LOADERS)
 
 
 @pytest.fixture

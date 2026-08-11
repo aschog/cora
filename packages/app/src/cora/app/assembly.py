@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from cora.adapters.langgraph_runner import LangGraphRunner, recursion_limit_for
+from cora.adapters.loaders import LOADERS
 from cora.adapters.port_logging import (
     LoggingChatModel,
     LoggingEmbedder,
@@ -24,6 +25,7 @@ from cora.core.domain.errors import ConfigurationError
 from cora.core.ports.chat_model import ChatModel
 from cora.core.ports.context_source import ContextSource
 from cora.core.ports.embedding import Embedder
+from cora.core.ports.loading import Loaders
 from cora.core.ports.plugin import Plugin, Tool
 from cora.core.ports.retrieval import Retriever
 from cora.core.service_layer.agent import Agent
@@ -68,6 +70,7 @@ def assemble(
     retrieval: str = DEFAULT_RETRIEVAL,
     fusion_queries: int = DEFAULT_FUSION_QUERIES,
     keyword_index: KeywordStore | None = None,
+    loaders: Loaders = LOADERS,
     seed: bool = True,
     debug: bool = False,
 ) -> App:
@@ -76,7 +79,10 @@ def assemble(
         embedder = LoggingEmbedder(embedder)
         retriever = LoggingRetriever(retriever)
     knowledge_base = KnowledgeBase(
-        embedder=embedder, retriever=retriever, keyword_index=keyword_index
+        embedder=embedder,
+        retriever=retriever,
+        loaders=loaders,
+        keyword_index=keyword_index,
     )
     if seed:
         for filename, data in plugin.seed_docs:

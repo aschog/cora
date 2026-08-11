@@ -1,7 +1,8 @@
 import pytest
 
-from cora.core.domain.errors import UnreadableFileError
-from cora.core.service_layer.loaders import LOADERS, load_pdf, load_txt
+from cora.adapters.loaders import LOADERS, load_pdf, load_txt
+from cora.core.domain.errors import EmptyDocumentError, UnreadableFileError
+from cora.core.service_layer.ingestion import ingest
 from pdf_fixtures import make_pdf_bytes
 
 
@@ -59,3 +60,23 @@ def test_md_bytes_load_with_markup_preserved() -> None:
     data = markdown.encode()
 
     assert LOADERS[".md"](data, "notes.md") == markdown
+
+
+def test_image_only_pdf_raises_empty_document_error() -> None:
+    """Ingestion's own rules are covered in core against loaders of its making; these
+    two ride the real registry, because a PDF that parses to nothing is a fact about
+    pypdf rather than about the policy."""
+    with pytest.raises(EmptyDocumentError):
+        ingest(make_pdf_bytes("", ""), "scanned.pdf", LOADERS)
+
+
+def test_ingest_pdf_end_to_end_with_provenance() -> None:
+    data = make_pdf_bytes("First page content.", "Second page content.")
+
+    chunks = ingest(data, "doc.pdf", LOADERS)
+
+    assert chunks
+    assert all(chunk.source == "doc.pdf" for chunk in chunks)
+    combined = " ".join(chunk.text for chunk in chunks)
+    assert "First page content." in combined
+    assert "Second page content." in combined

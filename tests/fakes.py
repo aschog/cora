@@ -8,6 +8,7 @@ from typing import NamedTuple
 from cora.core.domain.chunk import Chunk
 from cora.core.domain.metadata_filter import MetadataFilter
 from cora.core.ports.chat_model import Message, ModelReply
+from cora.core.ports.loading import Loaders
 from cora.core.ports.plugin import Tool
 from cora.core.ports.retrieval import RetrievedChunk
 
@@ -178,3 +179,11 @@ class FakeContextSource:
         self.last_query = query
         self.last_k = k
         return self.results
+
+
+def _decode(data: bytes, filename: str) -> str:
+    return data.decode("utf-8")
+
+
+TEXT_LOADERS: Loaders = {".txt": _decode, ".md": _decode}
+"""What most tests need: no PDF, so no reason to reach for the real registry."""
