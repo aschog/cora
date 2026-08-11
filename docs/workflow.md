@@ -28,7 +28,7 @@ docs/sprints/4/
   planning. Only `workflow.md` and `big-picture.md` sit outside a sprint folder — they
   describe the project, not a sprint.
 - **`story-NN.md` is the planning artefact**: the story (*As a · I want · So that* with
-  its *Given/When/Then*) followed by a **test list**. `docs/sprints/4/story-01.md` is the
+  its *Given/When/Then*) followed by a **test list**. `docs/sprints/4/done/story-01.md` is the
   current reference shape — match it.
 - **A story lives in exactly one place.** When it gets its own `story-NN.md`, its text
   moves there and `spec.md` keeps only its heading, linked to the story file, so the
