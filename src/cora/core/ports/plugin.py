@@ -4,6 +4,13 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 
+class ToolRefusal(Exception):
+    """Raised by a tool that will not run on the input it was given. The message
+    is written for whoever reads it — the model, the log, the user's trace — and
+    is the only exception text passed on: anything else that escapes a tool could
+    be carrying whatever the tool was holding."""
+
+
 @dataclass(frozen=True)
 class Tool:
     name: str

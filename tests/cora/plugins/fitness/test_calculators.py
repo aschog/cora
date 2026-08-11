@@ -1,5 +1,6 @@
 import pytest
 
+from cora.core.ports.plugin import ToolRefusal
 from cora.plugins.fitness.calculators import (
     calculate_bmi,
     calculate_bmr,
@@ -91,5 +92,5 @@ def test_macro_grams_reconstruct_the_calorie_target_exactly(
 
 
 def test_macros_reject_a_budget_too_low_for_bodyweight() -> None:
-    with pytest.raises(ValueError, match="calorie target"):
+    with pytest.raises(ToolRefusal, match="calorie target"):
         plan_macros(kcal=1200, weight_kg=150)

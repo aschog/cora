@@ -1,3 +1,6 @@
+from cora.core.ports.plugin import ToolRefusal
+
+
 def calculate_bmi(weight_kg: float, height_m: float) -> float:
     return weight_kg / height_m**2
 
@@ -42,7 +45,7 @@ def plan_macros(kcal: float, weight_kg: float) -> dict[str, float]:
     fat_kcal = _KCAL_PER_G_FAT * fat_g
     carbs_g = (kcal - protein_kcal - fat_kcal) / _KCAL_PER_G_PROTEIN_CARB
     if carbs_g < 0:
-        raise ValueError(
+        raise ToolRefusal(
             "the calorie target is too low for this bodyweight — "
             "protein and fat alone exceed it, leaving no room for carbs"
         )

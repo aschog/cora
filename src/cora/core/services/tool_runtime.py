@@ -3,16 +3,15 @@ from dataclasses import dataclass
 from jsonschema import Draft202012Validator, ValidationError
 
 from cora.core.errors import AdapterError
-from cora.core.ports.plugin import Tool, ToolCall, ToolResult
+from cora.core.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult
 
 
 @dataclass(frozen=True)
 class ToolRuntime:
-    """A tool refuses its input by raising `ValueError`, and that message is
-    quoted: the tool wrote it for whoever reads it. Any other exception escaped
-    rather than being written, so only its kind is passed on — the message could
-    be carrying anything the tool was holding, and it travels to the model, the
-    log and the user's trace alike."""
+    """A tool's `ToolRefusal` is quoted; any other exception escaped rather than
+    being written, so only its kind is passed on — its message could be carrying
+    anything the tool was holding, and it reaches the model, the log and the
+    user's trace alike."""
 
     tools: tuple[Tool, ...]
 
@@ -30,7 +29,7 @@ class ToolRuntime:
             payload = tool.run(**call.arguments)
         except AdapterError:
             raise
-        except ValueError as refused:
+        except ToolRefusal as refused:
             return ToolResult(
                 call_id=call.call_id, error=f"tool '{call.name}' failed: {refused}"
             )
