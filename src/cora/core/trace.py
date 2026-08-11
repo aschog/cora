@@ -7,9 +7,7 @@ from cora.core.prose import listed
 
 
 class TraceStep(ABC):
-    """One step of a run, as the user reads it: a headline that stands alone,
-    the evidence behind it, and whether it went wrong. A step fills `detail` and
-    `failed` in as fields when it has them to give."""
+    """A step fills `detail` and `failed` in as fields when it has them to give."""
 
     @property
     @abstractmethod

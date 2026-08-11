@@ -8,6 +8,12 @@ from cora.core.ports.plugin import Tool, ToolCall, ToolResult
 
 @dataclass(frozen=True)
 class ToolRuntime:
+    """A tool refuses its input by raising `ValueError`, and that message is
+    quoted: the tool wrote it for whoever reads it. Any other exception escaped
+    rather than being written, so only its kind is passed on — the message could
+    be carrying anything the tool was holding, and it travels to the model, the
+    log and the user's trace alike."""
+
     tools: tuple[Tool, ...]
 
     def execute(self, call: ToolCall) -> ToolResult:
@@ -24,9 +30,14 @@ class ToolRuntime:
             payload = tool.run(**call.arguments)
         except AdapterError:
             raise
+        except ValueError as refused:
+            return ToolResult(
+                call_id=call.call_id, error=f"tool '{call.name}' failed: {refused}"
+            )
         except Exception as exc:
             return ToolResult(
-                call_id=call.call_id, error=f"tool '{call.name}' failed: {exc}"
+                call_id=call.call_id,
+                error=f"tool '{call.name}' failed: {type(exc).__name__}",
             )
         if payload is None:
             return ToolResult(

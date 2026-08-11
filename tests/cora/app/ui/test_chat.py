@@ -398,8 +398,11 @@ def _calculating() -> ScriptedChatModel:
 
 
 def _traced(at: AppTest) -> str:
+    """The trace reads as its summary lines plus the evidence under them, which
+    is rendered as code rather than markdown so a document cannot forge a line."""
     [trace] = at.status
-    return f"{trace.label}\n" + "\n".join(md.value for md in trace.markdown)
+    written = [*(md.value for md in trace.markdown), *(c.value for c in trace.code)]
+    return "\n".join([trace.label, *written])
 
 
 @pytest.mark.integration

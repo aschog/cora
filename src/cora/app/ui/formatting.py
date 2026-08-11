@@ -6,11 +6,16 @@ from cora.core.trace import TraceStep
 DETAIL_CAP = 800
 
 
-def step_lines(step: TraceStep) -> list[str]:
-    headline = f"⚠️ **{step.summary}**" if step.failed else f"**{step.summary}**"
+def step_line(step: TraceStep) -> str:
+    return f"⚠️ **{step.summary}**" if step.failed else f"**{step.summary}**"
+
+
+def step_detail(step: TraceStep) -> str:
+    """Returned as plain text, never wrapped in markdown: the caller renders it
+    as code, so a document carrying its own fence cannot forge trace lines."""
     if not step.detail or step.detail in step.summary:
-        return [headline]
-    return [headline, f"```text\n{_capped(step.detail)}\n```"]
+        return ""
+    return _capped(step.detail)
 
 
 def _capped(detail: str) -> str:

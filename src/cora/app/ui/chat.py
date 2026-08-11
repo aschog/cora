@@ -5,7 +5,12 @@ import streamlit as st
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 from cora.app.assembly import App
-from cora.app.ui.formatting import ingest_message, numbered_sources, step_lines
+from cora.app.ui.formatting import (
+    ingest_message,
+    numbered_sources,
+    step_detail,
+    step_line,
+)
 from cora.app.ui.thread import ThreadEntry, thread_to_turns
 from cora.core.errors import AdapterError, CoreError
 from cora.core.services.agent import Agent, ChatResult
@@ -108,9 +113,6 @@ def _answer(agent: Agent, prompt: str) -> None:
 
 
 def _watch(taken: list[TraceStep]) -> Callable[[TraceStep], None]:
-    """Draws each step where the run is happening, so the work is visible while
-    it is still going on."""
-
     def note(step: TraceStep) -> None:
         taken.append(step)
         _show_step(step)
@@ -151,8 +153,9 @@ def _trace(steps: Sequence[TraceStep], *, failed: bool) -> None:
 
 
 def _show_step(step: TraceStep) -> None:
-    for line in step_lines(step):
-        st.markdown(line)
+    st.markdown(step_line(step))
+    if detail := step_detail(step):
+        st.code(detail, language="text")
 
 
 def _expander(label: str, lines: Sequence[str]) -> None:
