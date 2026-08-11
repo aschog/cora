@@ -36,7 +36,7 @@ def test_a_real_model_answers_and_calls_a_tool(app: Page) -> None:
 
     expect(messages(app).last.get_by_test_id(MARKDOWN).first).to_be_visible()
 
-    trace = open_expander(app, "How I got there").inner_text()
+    trace = open_expander(messages(app).last, "How I got there").inner_text()
     assert NUMBER.search(trace), f"a real tool call must carry a number: {trace!r}"
     assert not TOOL_ERROR.search(trace), f"the tool did not run: {trace!r}"
 
@@ -63,7 +63,7 @@ def test_a_real_model_retrieves_for_a_document_question_but_not_for_a_greeting(
 
     answered = messages(app).last
     expect(answered.get_by_test_id(MARKDOWN).first).to_be_visible()
-    listed = open_expander(app, "Sources").inner_text()
+    listed = open_expander(answered, "Sources").inner_text()
     assert "protein.md" in listed, f"the model answered without retrieving: {listed!r}"
 
     ask(app, "Hi there!")
@@ -71,6 +71,7 @@ def test_a_real_model_retrieves_for_a_document_question_but_not_for_a_greeting(
     greeted = messages(app).last
     expect(greeted.get_by_test_id(MARKDOWN).first).to_be_visible()
     expect(greeted.get_by_test_id(EXPANDER).filter(has_text="Sources")).to_have_count(0)
-    assert "Decided no tool was needed" in greeted.inner_text()
-    assert "protein.md" not in greeted.inner_text()
+    greeting_trace = open_expander(greeted, "How I got there").inner_text()
+    assert "Decided no tool was needed" in greeting_trace
+    assert "protein.md" not in greeting_trace
     expect(app.get_by_test_id(EXCEPTION)).to_have_count(0)

@@ -111,6 +111,8 @@ model. **(migrated)** marks a test that moves rather than a new one.
 - [x] a payload that only looks citable is asserted against a literal, not against a value
       recomputed the way the code computes it
 - [x] a runner that walks no step at all is a `GraphRunError`, not a blank answer
+- [x] a turn that went wrong does not read as a clean one: a failed step is inside a
+      collapsed panel, so the panel itself carries the news *(review)*
 
 #### Close
 

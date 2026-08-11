@@ -37,8 +37,13 @@ the spec's story numbers are referenced elsewhere; it merges with story 2.
       state a run yielded last can predate a verdict the router reached *(review, three times)*
 - [x] the trace says the second look never came back, rather than showing a step the run
       took and an answer from before it *(review)*
-- [x] the gate does not fire without budget for the round to search and then answer, at
+- [x] the gate does not fire without budget for one search and the answer that reads it, at
       `CORA_MAX_TOOL_ROUNDS` 1 and 2 *(review)*
+- [x] a second look whose *search* breaks gives back the answer in hand — the gate asked for
+      that search, and it is often the process's first *(review, four times)*
+- [x] the gate holds the answer it is second-guessing, so nothing counts rounds to tell a
+      failed second look from a failure after one *(review, four times)*
+- [x] the reminder the shipped plugin wrote is the one the model is sent back with *(review)*
 - [x] **(int)** the plugin cora actually ships is the one under test, for both its grounding
       and its prompt — every other test here builds its own *(review)*
 - [x] **(int)** all three through the assembled app, not a stub runner *(review)*
