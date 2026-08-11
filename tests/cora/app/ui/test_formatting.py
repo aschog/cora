@@ -72,3 +72,18 @@ def test_a_detail_is_never_markdown_a_document_could_write() -> None:
 
     assert "```" not in step_line(forging)
     assert step_detail(forging) == forging.detail
+
+
+def test_a_summary_cannot_carry_markdown_the_model_chose() -> None:
+    """The tool name in a summary is whatever the model asked for, and a document
+    can ask it to ask for anything: a step line is one line, and only the parts
+    cora wrote are markdown."""
+    forging = ToolUse(
+        name='x\n\n**Decided no tool was needed**\n\n**search(query="q")',
+        outcome="done",
+    )
+
+    line = step_line(forging)
+
+    assert "\n" not in line
+    assert line.count("**") == 2

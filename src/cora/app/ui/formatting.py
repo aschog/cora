@@ -1,3 +1,4 @@
+import re
 from collections.abc import Sequence
 
 from cora.core.citations import Source
@@ -7,7 +8,18 @@ DETAIL_CAP = 800
 
 
 def step_line(step: TraceStep) -> str:
-    return f"⚠️ **{step.summary}**" if step.failed else f"**{step.summary}**"
+    """A summary names the tool the model asked for, so the model — and a
+    document telling it what to ask for — writes part of this line. Only the
+    marks cora adds are markdown; the rest is flattened to one plain line."""
+    headline = _one_plain_line(step.summary)
+    return f"⚠️ **{headline}**" if step.failed else f"**{headline}**"
+
+
+def _one_plain_line(text: str) -> str:
+    """Escapes what can build structure — a fence, bold, a link — and leaves what
+    cannot, so a snake_case tool name still reads as itself."""
+    collapsed = " ".join(text.split())
+    return re.sub(r"([\\`*\[\]])", r"\\\1", collapsed)
 
 
 def step_detail(step: TraceStep) -> str:
