@@ -14,7 +14,9 @@ from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.core.services.steps import (
     DONE,
+    GROUND,
     TOOLS,
+    GroundStep,
     ModelStep,
     PrepareStep,
     Router,
@@ -394,19 +396,78 @@ def test_the_system_message_carries_the_plugin_prompt_and_the_agents_rules() -> 
     assert "[n]" in system.content
 
 
+def _replied(*calls: ToolCall, text: str = "The sum is 3.") -> AgentState:
+    return {"messages": [Message(role="assistant", content=text, tool_calls=calls)]}
+
+
+def _after_searching(state: AgentState) -> AgentState:
+    searched = Message(role="assistant", content="", tool_calls=(_search_call("c1"),))
+    return {**state, "messages": [searched, *state["messages"]]}
+
+
 def test_a_final_reply_routes_to_done() -> None:
-    assert Router(max_tool_rounds=8)({"answer": "The sum is 3.", "rounds": 1}) == DONE
+    assert Router(max_tool_rounds=8)({**_replied(), "rounds": 1}) == DONE
 
 
 def test_a_tool_calling_reply_under_budget_routes_to_the_tools() -> None:
-    assert Router(max_tool_rounds=8)({"rounds": 1}) == TOOLS
+    assert (
+        Router(max_tool_rounds=8)({**_replied(_add_call("c1")), "rounds": 1}) == TOOLS
+    )
 
 
 def test_a_tool_calling_reply_at_the_round_budget_gives_up_kindly() -> None:
     with pytest.raises(ToolLoopLimitError) as exc_info:
-        Router(max_tool_rounds=2)({"rounds": 2})
+        Router(max_tool_rounds=2)({**_replied(_add_call("c1")), "rounds": 2})
 
     assert exc_info.value.user_message == ToolLoopLimitError().user_message
+
+
+def test_an_answer_from_an_earlier_round_can_no_longer_end_the_run() -> None:
+    asking_again: AgentState = {
+        **_replied(_add_call("c1")),
+        "answer": "stale",
+        "rounds": 1,
+    }
+
+    assert Router(max_tool_rounds=8)(asking_again) == TOOLS
+
+
+def test_an_ungrounded_answer_is_sent_back_when_the_plugin_asks_for_it() -> None:
+    router = Router(max_tool_rounds=8, grounded=True)
+
+    assert router({**_replied(), "rounds": 1}) == GROUND
+
+
+def test_an_answer_that_followed_a_search_is_grounded_enough() -> None:
+    router = Router(max_tool_rounds=8, grounded=True)
+
+    assert router(_after_searching({**_replied(), "rounds": 2})) == DONE
+
+
+def test_the_gate_fires_once_so_a_run_can_never_loop_on_it() -> None:
+    router = Router(max_tool_rounds=8, grounded=True)
+
+    assert router({**_replied(), "rounds": 2, "nudged": True}) == DONE
+
+
+def test_a_plugin_that_asks_for_no_grounding_goes_straight_to_done() -> None:
+    assert Router(max_tool_rounds=8)({**_replied(), "rounds": 1}) == DONE
+
+
+def test_the_step_sends_the_answer_back_with_the_plugins_own_reminder() -> None:
+    partial = GroundStep(reminder="Search the documents first.")({})
+
+    [message] = partial["messages"]
+    assert message.role == "system"
+    assert message.content == "Search the documents first."
+    assert partial["nudged"] is True
+
+
+def test_the_reconsideration_shows_up_in_the_trace() -> None:
+    partial = GroundStep(reminder="Search the documents first.")({})
+
+    [step] = partial["trace"]
+    assert step.summary == "Sent it back to search the documents first"
 
 
 @dataclass(frozen=True)

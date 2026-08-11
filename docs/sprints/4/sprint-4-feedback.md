@@ -35,7 +35,7 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       in depth *behind* story 1's fix, not a substitute: a scanner has false negatives,
       message roles do not.
 
-- [ ] **No grounding or scope decision** — the prompt asks the model to ground its answer
+- [x] **No grounding or scope decision** — the prompt asks the model to ground its answer
       (`plugins/fitness/__init__.py:10`) but nothing enforces or tests it, so an
       out-of-domain question is answered from model knowledge. Add a tested rule that
       declines unsupported answers, evaluated against in-domain, out-of-domain and
@@ -48,6 +48,10 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       Story 1 also makes retrieval a *decision*, so any rule phrased as "no context →
       refuse" would contradict its second criterion (a greeting is answered without
       retrieving); it has to be scoped to questions the documents were asked to answer.
+      **Done in story 8** (`story-08.md`), after it showed up in use: a plugin now carries a
+      `grounding` reminder, and a first answer with no search behind it is sent back through
+      the model once. Scoping stays with the model — the reminder tells it to answer small
+      talk as it did — so a greeting still costs no retrieval.
 
 - [ ] **Planner JSON is hand-parsed and fails silently** — `parse_plan` scrapes fences and
       braces, and a parse failure falls back to plain search with no signal

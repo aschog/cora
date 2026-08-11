@@ -43,7 +43,13 @@ class ValidationRule(Protocol):
 
 @dataclass(frozen=True)
 class Plugin:
+    """`grounding` is the domain's answer to "may this be answered without the
+    documents?". Empty means yes, and the model decides alone. Any other value is
+    the reminder sent back to a model that answered without searching — worded by
+    the plugin, because which questions belong to the documents is domain policy."""
+
     system_prompt: str
     tools: tuple[Tool, ...]
     validation_rules: tuple[ValidationRule, ...]
     seed_docs: tuple[tuple[str, bytes], ...] = ()
+    grounding: str = ""

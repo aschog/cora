@@ -53,10 +53,13 @@ def test_a_real_model_retrieves_for_a_document_question_but_not_for_a_greeting(
     app: Page,
 ) -> None:
     """The honest proof that retrieval is the model's decision: the same agent,
-    two questions, and only one of them reaches the documents."""
+    two questions, and only one of them reaches the documents. The question never
+    says "my documents" — one that does gives the answer away, and the model
+    answering a plain domain question from its own knowledge is the bug this
+    guards."""
     upload(app, "protein.md", PROTEIN_DOC)
 
-    ask(app, "According to my documents, how much protein should I eat per kg?")
+    ask(app, "How much protein should I eat per kg of bodyweight?")
 
     answered = messages(app).last
     expect(answered.get_by_test_id(MARKDOWN).first).to_be_visible()
@@ -69,4 +72,5 @@ def test_a_real_model_retrieves_for_a_document_question_but_not_for_a_greeting(
     expect(greeted.get_by_test_id(MARKDOWN).first).to_be_visible()
     expect(greeted.get_by_test_id(EXPANDER).filter(has_text="Sources")).to_have_count(0)
     assert "Decided no tool was needed" in greeted.inner_text()
+    assert "protein.md" not in greeted.inner_text()
     expect(app.get_by_test_id(EXCEPTION)).to_have_count(0)

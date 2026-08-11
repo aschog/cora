@@ -7,11 +7,12 @@ from langgraph.graph import END, START, StateGraph
 
 from cora.core.agent_state import AgentState
 from cora.core.errors import ToolLoopLimitError
-from cora.core.services.steps import DONE, TOOLS
+from cora.core.services.steps import DONE, GROUND, TOOLS
 
 PREPARE = "prepare"
 MODEL = "model"
 SUPERSTEPS_PER_ROUND = 2
+GROUNDING_SUPERSTEPS = 2
 
 
 class Step(Protocol):
@@ -20,8 +21,9 @@ class Step(Protocol):
 
 def recursion_limit_for(max_tool_rounds: int) -> int:
     """Wide enough that the core's round budget always trips first: preparing
-    costs one superstep, then each round costs a model call and its tools."""
-    return SUPERSTEPS_PER_ROUND * max_tool_rounds + 2
+    costs one superstep, then each round costs a model call and its tools, and
+    the grounding gate can add a nudge and the model call that answers it."""
+    return SUPERSTEPS_PER_ROUND * max_tool_rounds + GROUNDING_SUPERSTEPS + 2
 
 
 @dataclass(frozen=True)
@@ -29,6 +31,7 @@ class LangGraphRunner:
     prepare: Step
     model: Step
     tools: Step
+    ground: Step
     router: Callable[[AgentState], str]
     recursion_limit: int
 
@@ -49,8 +52,12 @@ class LangGraphRunner:
         builder.add_node(PREPARE, self.prepare)
         builder.add_node(MODEL, self.model)
         builder.add_node(TOOLS, self.tools)
+        builder.add_node(GROUND, self.ground)
         builder.add_edge(START, PREPARE)
         builder.add_edge(PREPARE, MODEL)
-        builder.add_conditional_edges(MODEL, self.router, {DONE: END, TOOLS: TOOLS})
+        builder.add_conditional_edges(
+            MODEL, self.router, {DONE: END, TOOLS: TOOLS, GROUND: GROUND}
+        )
         builder.add_edge(TOOLS, MODEL)
+        builder.add_edge(GROUND, MODEL)
         return builder.compile()

@@ -10,7 +10,13 @@ from cora.core.citations import Source
 from cora.core.errors import InputRejectedError, LlmError, ToolLoopLimitError
 from cora.core.ports.chat_model import ChatModel, Message, ModelReply, Role
 from cora.core.ports.plugin import Tool, ToolCall
-from cora.core.services.steps import ModelStep, PrepareStep, Router, ToolStep
+from cora.core.services.steps import (
+    GroundStep,
+    ModelStep,
+    PrepareStep,
+    Router,
+    ToolStep,
+)
 from cora.core.services.tool_runtime import ToolRuntime
 from cora.core.services.validation import EmptyInputRule, ValidationPipeline
 from cora.core.trace import ToolUse
@@ -27,6 +33,12 @@ def _said(role: Role, content: str) -> list[Message]:
     return [Message(role=role, content=content)]
 
 
+def _asked_for_a_tool(content: str) -> list[Message]:
+    """A reply the router reads as unfinished: it is asking for a tool."""
+    call = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1")
+    return [Message(role="assistant", content=content, tool_calls=(call,))]
+
+
 def _prepare(state: AgentState) -> AgentState:
     return {"messages": _said("user", state["question"])}
 
@@ -35,11 +47,17 @@ def _ran(state: AgentState) -> AgentState:
     return {"messages": _said("tool", "ran")}
 
 
+def _nudge(state: AgentState) -> AgentState:
+    return {"messages": _said("system", "search first"), "nudged": True}
+
+
 def _runner(
     *,
     prepare: Step = _prepare,
     model: Step,
     tools: Step = _ran,
+    ground: Step = _nudge,
+    grounded: bool = False,
     rounds: int = ROUNDS,
     recursion_limit: int | None = None,
 ) -> LangGraphRunner:
@@ -47,7 +65,8 @@ def _runner(
         prepare=prepare,
         model=model,
         tools=tools,
-        router=Router(max_tool_rounds=rounds),
+        ground=ground,
+        router=Router(max_tool_rounds=rounds, grounded=grounded),
         recursion_limit=recursion_limit or recursion_limit_for(rounds),
     )
 
@@ -63,7 +82,7 @@ def test_run_walks_prepare_then_model_then_tools_then_model() -> None:
         visited.append("model")
         if state.get("rounds"):
             return {"messages": _said("assistant", "done"), "rounds": 1, "answer": "d"}
-        return {"messages": _said("assistant", "asking"), "rounds": 1}
+        return {"messages": _asked_for_a_tool("asking"), "rounds": 1}
 
     def tools(state: AgentState) -> AgentState:
         visited.append("tools")
@@ -81,7 +100,7 @@ def test_the_returned_state_accumulated_every_partial() -> None:
     def model(state: AgentState) -> AgentState:
         if state.get("rounds"):
             return {"messages": _said("assistant", "done"), "rounds": 1, "answer": "d"}
-        return {"messages": _said("assistant", "asking"), "rounds": 1}
+        return {"messages": _asked_for_a_tool("asking"), "rounds": 1}
 
     def tools(state: AgentState) -> AgentState:
         return {
@@ -96,6 +115,27 @@ def test_the_returned_state_accumulated_every_partial() -> None:
     assert final["trace"] == [ToolUse(name="search_documents", outcome="1 passage")]
     assert final["sources"] == [Source(1, "note.md")]
     assert final["rounds"] == 2
+
+
+def test_an_ungrounded_answer_goes_back_through_the_model() -> None:
+    visited: list[str] = []
+
+    def model(state: AgentState) -> AgentState:
+        visited.append("model")
+        if state.get("nudged"):
+            return {"messages": _said("assistant", "grounded"), "answer": "grounded"}
+        return {"messages": _said("assistant", "off the cuff"), "answer": "off"}
+
+    def ground(state: AgentState) -> AgentState:
+        visited.append("ground")
+        return {"messages": _said("system", "search first"), "nudged": True}
+
+    final = _final(
+        _runner(model=model, ground=ground, grounded=True), {"question": "q"}
+    )
+
+    assert visited == ["model", "ground", "model"]
+    assert final["answer"] == "grounded"
 
 
 def test_a_step_is_seen_before_the_run_is_over() -> None:
@@ -113,7 +153,7 @@ def test_a_step_is_seen_before_the_run_is_over() -> None:
 
 def test_a_runaway_graph_surfaces_as_the_friendly_give_up() -> None:
     def endless(state: AgentState) -> AgentState:
-        return {"messages": _said("assistant", "again"), "rounds": 1}
+        return {"messages": _asked_for_a_tool("again"), "rounds": 1}
 
     runner = _runner(model=endless, rounds=999, recursion_limit=4)
 
@@ -142,6 +182,7 @@ class _AlwaysCalling:
 
 def _real_runner(model: ChatModel, rounds: int) -> LangGraphRunner:
     return LangGraphRunner(
+        ground=GroundStep(reminder="search first"),
         prepare=PrepareStep(
             validation=ValidationPipeline((EmptyInputRule(),), ()),
             system_prompt="SYS",
