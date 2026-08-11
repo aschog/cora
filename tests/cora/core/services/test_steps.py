@@ -5,8 +5,13 @@ import pytest
 
 from cora.core.agent_state import AgentState
 from cora.core.chunk import Chunk
-from cora.core.citations import Source
-from cora.core.errors import InputRejectedError, LlmError, ToolLoopLimitError
+from cora.core.citations import NO_MATCHES, Source
+from cora.core.errors import (
+    InputRejectedError,
+    LlmError,
+    RetrievalError,
+    ToolLoopLimitError,
+)
 from cora.core.ports.chat_model import Message, ModelReply, Role
 from cora.core.ports.plugin import Tool, ToolCall
 from cora.core.ports.retrieval import RetrievedChunk
@@ -15,6 +20,7 @@ from cora.core.services.steps import (
     DONE,
     GROUND,
     TOOLS,
+    UNTRUSTED_NOTICE,
     GroundStep,
     ModelStep,
     PrepareStep,
@@ -28,9 +34,11 @@ from cora.core.turn import Turn
 from fakes import FailingChatModel, FakeContextSource, ScriptedChatModel, add_tool
 
 
-def _hit(source: str, text: str = "protein builds muscle") -> RetrievedChunk:
+def _hit(
+    source: str, text: str = "protein builds muscle", score: float = 1.0
+) -> RetrievedChunk:
     return RetrievedChunk(
-        chunk=Chunk(text=text, source=source, index=0, offset=0), score=1.0
+        chunk=Chunk(text=text, source=source, index=0, offset=0), score=score
     )
 
 
@@ -474,27 +482,132 @@ def test_a_plugin_that_asks_for_no_grounding_goes_straight_to_done() -> None:
     assert Router(max_tool_rounds=8)({**_replied(), "rounds": 1}) == DONE
 
 
-def test_the_step_sends_the_answer_back_with_the_plugins_own_reminder() -> None:
-    partial = GroundStep(reminder="Search the documents first.")({"rounds": 1})
+def test_a_second_look_costs_one_round_now_that_the_gate_does_the_searching() -> None:
+    """The gate no longer spends a round on tools, so the room a second look needs
+    is the one model call that reads the evidence."""
+    assert (
+        Router(max_tool_rounds=2, grounded=True)({**_replied(), "rounds": 1}) == GROUND
+    )
 
+
+def test_a_budget_with_no_room_for_the_second_look_still_leaves_it_alone() -> None:
+    assert Router(max_tool_rounds=1, grounded=True)({**_replied(), "rounds": 1}) == DONE
+
+
+def _gate(*hits: RetrievedChunk, reminder: str = "Weigh these.") -> GroundStep:
+    return GroundStep(
+        reminder=reminder, context_source=FakeContextSource(list(hits)), top_k=3
+    )
+
+
+def test_the_step_searches_the_question_and_hands_the_passages_to_the_model() -> None:
+    """The second look weighs evidence rather than an instruction: the gate runs the
+    search itself, so a model that ignores being told to look still sees what the
+    documents say."""
+    source = FakeContextSource([_hit("protein.md")])
+    step = GroundStep(reminder="Weigh these.", context_source=source, top_k=3)
+
+    partial = step({"question": "how much protein?", "rounds": 1})
+
+    assert source.last_query == "how much protein?"
+    assert source.last_k == 3
     [message] = partial["messages"]
     assert message.role == "system"
-    assert message.content == "Search the documents first."
+    assert message.content.startswith("Weigh these.")
+    assert "[1] protein.md: protein builds muscle" in message.content
 
 
 def test_the_nudge_holds_on_to_the_answer_it_is_second_guessing() -> None:
     """Holding the answer is what tells a failed second look apart from a failure
     after one: nothing has to count rounds to know which happened."""
-    held = GroundStep(reminder="Look again.")({"answer": "Off the cuff."})
+    held = _gate()({"question": "anything?", "answer": "Off the cuff."})
 
     assert held["answer_in_hand"] == "Off the cuff."
 
 
-def test_the_reconsideration_shows_up_in_the_trace() -> None:
-    partial = GroundStep(reminder="Search the documents first.")({})
+def test_the_passages_reach_the_model_behind_the_untrusted_data_label() -> None:
+    partial = _gate(_hit("protein.md"))({"question": "how much protein?"})
+
+    [message] = partial["messages"]
+    assert UNTRUSTED_NOTICE in message.content
+    assert message.content.index(UNTRUSTED_NOTICE) < message.content.index("[1]")
+
+
+def test_the_sources_it_found_are_numbered_after_the_ones_already_known() -> None:
+    partial = _gate(_hit("protein.md"))(
+        {"question": "how much protein?", "sources": [Source(1, "creatine.md")]}
+    )
+
+    assert partial["sources"] == [Source(2, "protein.md")]
+
+
+def test_a_search_that_matches_nothing_says_so_instead_of_implying_evidence() -> None:
+    partial = _gate()({"question": "hi there!"})
+
+    [message] = partial["messages"]
+    assert NO_MATCHES in message.content
+    assert partial["sources"] == []
+
+
+def test_a_passage_too_far_from_the_question_is_not_evidence() -> None:
+    """Top-k always returns something, so a greeting gets the nearest passage however
+    far it is. Measured with the real embedder, a question in the documents' subject
+    scores 0.34 to 0.69 and small talk -0.02 to 0.08; below the floor there is
+    nothing to weigh, and the answer stands."""
+    partial = _gate(_hit("protein.md", score=0.02))({"question": "hi there!"})
+
+    [message] = partial["messages"]
+    assert NO_MATCHES in message.content
+    assert partial["sources"] == []
+
+
+def test_a_passage_near_enough_to_the_question_is_weighed() -> None:
+    partial = _gate(_hit("protein.md", score=0.34))({"question": "how much protein?"})
+
+    [message] = partial["messages"]
+    assert "[1] protein.md" in message.content
+
+
+def test_a_gate_whose_own_search_fails_keeps_the_answer_and_says_the_look_failed() -> (
+    None
+):
+    """The search is the gate's own now, so its failure is the gate's: losing a good
+    answer to a round nothing asked for is the one thing the gate must never do."""
+    step = GroundStep(reminder="Weigh these.", context_source=_BrokenSource(), top_k=3)
+
+    partial = step({"question": "how much protein?", "answer": "Off the cuff."})
+
+    assert partial["answer_in_hand"] == "Off the cuff."
+    assert partial["sources"] == []
+    [recorded] = partial["trace"]
+    assert recorded.failed
+    [message] = partial["messages"]
+    assert NO_MATCHES in message.content
+
+
+class _BrokenSource:
+    def search(self, query: str, k: int) -> list[RetrievedChunk]:
+        raise RetrievalError
+
+
+def test_the_trace_names_the_search_the_gate_ran_and_what_came_back() -> None:
+    """A citation in the revised answer has to have a visible origin: the gate did
+    the searching, so the step it records is the one that found the passages."""
+    partial = _gate(_hit("protein.md"))({"question": "how much protein?"})
 
     [step] = partial["trace"]
-    assert step.summary == "Sent it back to search the documents first"
+    assert (
+        step.summary
+        == "Checked the documents and asked again → 1 passage from protein.md"
+    )
+    assert step.detail == "[1] protein.md: protein builds muscle"
+
+
+def test_a_gate_that_found_nothing_says_so_in_the_trace() -> None:
+    partial = _gate()({"question": "hi there!"})
+
+    [step] = partial["trace"]
+    assert step.summary == f"Checked the documents and asked again → {NO_MATCHES}"
 
 
 @dataclass(frozen=True)

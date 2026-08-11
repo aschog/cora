@@ -47,10 +47,11 @@ def _searching() -> ModelReply:
 
 @pytest.mark.integration
 def test_an_answer_that_skipped_the_documents_is_sent_back_for_them() -> None:
+    """One search, and the gate runs it: the model is handed the passages rather
+    than asked to fetch them, so the grounded answer costs one round, not three."""
     retriever = CountingRetriever()
     app = _assemble(
-        [ModelReply(text=OFF_THE_CUFF), _searching(), ModelReply(text=GROUNDED)],
-        retriever,
+        [ModelReply(text=OFF_THE_CUFF), ModelReply(text=GROUNDED)], retriever
     )
 
     result = app.agent.answer("How much protein should I eat?")
@@ -75,16 +76,16 @@ def test_the_trace_shows_the_answer_being_sent_back() -> None:
 
 
 @pytest.mark.integration
-def test_small_talk_is_still_answered_without_the_documents() -> None:
+def test_small_talk_keeps_its_answer_and_cites_nothing() -> None:
+    """The gate looks for every ungrounded answer, small talk included — what it must
+    not do is put a citation on a greeting. Irrelevant evidence leaves the answer as
+    it was, so nothing is registered against it."""
     retriever = CountingRetriever()
-    app = _assemble(
-        [ModelReply(text="Hello!"), ModelReply(text="Hello again!")], retriever
-    )
+    app = _assemble([ModelReply(text="Hello!"), ModelReply(text="Hello!")], retriever)
 
     result = app.agent.answer("Hi there!")
 
-    assert result.answer == "Hello again!"
-    assert retriever.queries == 0
+    assert result.answer == "Hello!"
     assert result.sources == ()
 
 
@@ -152,12 +153,12 @@ def test_the_friendly_give_up_is_never_swallowed_by_the_gate(budget: int) -> Non
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("budget", [1, 2])
+@pytest.mark.parametrize("budget", [1])
 def test_a_budget_too_small_for_a_second_look_leaves_the_answer_alone(
     budget: int,
 ) -> None:
-    """Sending an answer back with no room to search would spend the budget on
-    a round that cannot finish, and end a good turn in an apology."""
+    """Sending an answer back with no room to read the evidence would spend the
+    budget on a round that cannot finish, and end a good turn in an apology."""
     model = _SearchesForever()
     app = _assemble_with(model, max_tool_rounds=budget)
 
@@ -203,10 +204,12 @@ class _FailingRetrieverOnSearch(CountingRetriever):
 
 @pytest.mark.integration
 def test_a_second_look_whose_search_breaks_gives_back_the_answer_in_hand() -> None:
-    """The gate demanded the search, and it is often the process's first, so an
+    """The search is the gate's own, and it is often the process's first, so an
     adapter failure there is likelier than anywhere. Losing a good answer to a
     round nothing asked for is the one thing the gate must never do."""
-    model = ScriptedChatModel([ModelReply(text=OFF_THE_CUFF), _searching()])
+    model = ScriptedChatModel(
+        [ModelReply(text=OFF_THE_CUFF), ModelReply(text=OFF_THE_CUFF)]
+    )
     app = assemble(
         chat_model=model,
         embedder=FakeEmbedder(),
@@ -218,6 +221,8 @@ def test_a_second_look_whose_search_breaks_gives_back_the_answer_in_hand() -> No
 
     assert result.answer == OFF_THE_CUFF
     assert result.sources == ()
+    [looked] = [s for s in result.trace if isinstance(s, Reconsidered)]
+    assert looked.failed
 
 
 @pytest.mark.integration
@@ -249,7 +254,10 @@ def test_the_shipped_reminder_is_what_the_model_is_sent_back_with() -> None:
     app.agent.answer("How much protein should I eat?")
 
     assert model.last_messages is not None
-    assert GROUNDING.strip() in [m.content for m in model.last_messages]
+    sent_back = [
+        m for m in model.last_messages if m.content.startswith(GROUNDING.strip())
+    ]
+    assert len(sent_back) == 1
 
 
 @pytest.mark.integration

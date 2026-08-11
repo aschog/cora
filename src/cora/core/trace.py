@@ -36,9 +36,13 @@ class ModelDecision(TraceStep):
 
 @dataclass(frozen=True)
 class Reconsidered(TraceStep):
+    outcome: str = ""
+    detail: str = ""
+    failed: bool = False
+
     @property
     def summary(self) -> str:
-        return "Sent it back to search the documents first"
+        return f"Checked the documents and asked again → {self.outcome}"
 
 
 @dataclass(frozen=True)

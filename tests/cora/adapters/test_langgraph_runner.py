@@ -20,7 +20,7 @@ from cora.core.services.steps import (
 from cora.core.services.tool_runtime import ToolRuntime
 from cora.core.services.validation import EmptyInputRule, ValidationPipeline
 from cora.core.trace import ToolUse
-from fakes import FailingChatModel, add_tool
+from fakes import FailingChatModel, FakeContextSource, add_tool
 
 ROUNDS = 8
 
@@ -190,7 +190,9 @@ def _real_runner(
     model: ChatModel, rounds: int, grounded: bool = False
 ) -> LangGraphRunner:
     return LangGraphRunner(
-        ground=GroundStep(reminder="search first"),
+        ground=GroundStep(
+            reminder="weigh these", context_source=FakeContextSource(), top_k=3
+        ),
         prepare=PrepareStep(
             validation=ValidationPipeline((EmptyInputRule(),), ()),
             system_prompt="SYS",

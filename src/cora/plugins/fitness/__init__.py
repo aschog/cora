@@ -16,10 +16,10 @@ questions about training and nutrition clearly and practically.
 """
 
 GROUNDING = """\
-You answered without searching the user's documents. If this question is about
-training or nutrition, call search_documents now and answer from what it returns,
-citing [n]. If it is small talk or outside training and nutrition, give the same
-answer again.
+You answered without consulting the user's documents, so here is what they say. If
+these passages bear on the question, answer from them and cite [n]. If they do not
+bear on it — small talk, or anything outside training and nutrition — give the same
+answer again and cite nothing.
 """
 
 PLUGIN = Plugin(
