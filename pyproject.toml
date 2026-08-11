@@ -1,7 +1,10 @@
 [tool.uv.workspace]
-# Depth mirrors the namespace: a distribution that ships cora.frontends.streamlit lives
-# at packages/frontends/streamlit. The two container directories hold no manifest of their
-# own, so they are excluded rather than matched.
+# Depth carries the meaning. A directory directly under packages/ is a distribution; a
+# directory holding distributions is an extension point, named in the plural because it
+# expects siblings. So the four one-of-a-kind pieces sit flat and the two extensible ones
+# nest, which is also where the namespace nests: packages/frontends/streamlit ships
+# cora.frontends.streamlit. The container directories carry no manifest of their own, so
+# they are excluded rather than matched.
 members = ["packages/*", "packages/frontends/*", "packages/plugins/*"]
 exclude = ["packages/frontends", "packages/plugins"]
 

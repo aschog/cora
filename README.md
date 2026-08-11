@@ -37,6 +37,20 @@ the app, would not resolve. See [`docs/big-picture.md`](docs/big-picture.md#the-
 `cora.plugins.*` and `cora.frontends.*` are the extension points: a second domain or a
 second user interface is a package to add, not a file to edit.
 
+The tree says which is which by its depth:
+
+```
+packages/api  engine  adapters  app     one of a kind — a distribution each
+packages/frontends/streamlit             one of many  — the directory expects siblings
+packages/plugins/fitness
+```
+
+A directory directly under `packages/` is a distribution. A directory holding
+distributions is an extension point, named in the plural for that reason — so the flat
+four and the nested two are not an inconsistency, they are the difference between a piece
+there is only one of and a piece you are meant to add another of. `ls packages/` is
+therefore the shortest description of what can be extended.
+
 ## Setup
 
 ```sh
