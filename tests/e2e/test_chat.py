@@ -12,6 +12,23 @@ pytestmark = [pytest.mark.e2e, pytest.mark.timeout(180)]
 CITATION = re.compile(r"\[(\d+)\]")
 
 
+TRACE = "How I got there"
+
+
+def test_the_trace_names_the_search_its_query_and_what_it_returned(
+    app: Page, stub: StubLlm
+) -> None:
+    upload(app, "protein.md", b"# Protein\n\nAim for ~1.6 g of protein per kg per day.")
+    stub.script_tool_call(SEARCH_TOOL_NAME, {"query": "protein"})
+    stub.script_answer("Protein supports recovery [1].")
+
+    ask(app, "How much protein should I eat?")
+
+    trace = open_expander(app, TRACE).inner_text()
+    assert f'{SEARCH_TOOL_NAME}(query="protein")' in trace
+    assert "passage from protein.md" in trace
+
+
 def test_an_answer_cites_only_sources_it_lists(app: Page, stub: StubLlm) -> None:
     upload(app, "protein.md", b"# Protein\n\nAim for ~1.6 g of protein per kg per day.")
     stub.script_tool_call(SEARCH_TOOL_NAME, {"query": "protein"})

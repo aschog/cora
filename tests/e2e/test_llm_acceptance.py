@@ -36,9 +36,9 @@ def test_a_real_model_answers_and_calls_a_tool(app: Page) -> None:
 
     expect(messages(app).last.get_by_test_id(MARKDOWN).first).to_be_visible()
 
-    results = open_expander(app, "Tool results").inner_text()
-    assert NUMBER.search(results), f"a real tool call must carry a number: {results!r}"
-    assert not TOOL_ERROR.search(results), f"the tool did not run: {results!r}"
+    trace = open_expander(app, "How I got there").inner_text()
+    assert NUMBER.search(trace), f"a real tool call must carry a number: {trace!r}"
+    assert not TOOL_ERROR.search(trace), f"the tool did not run: {trace!r}"
 
     expect(app.get_by_test_id(EXCEPTION)).to_have_count(0)
 
@@ -67,5 +67,6 @@ def test_a_real_model_retrieves_for_a_document_question_but_not_for_a_greeting(
 
     greeted = messages(app).last
     expect(greeted.get_by_test_id(MARKDOWN).first).to_be_visible()
-    expect(greeted.get_by_test_id(EXPANDER)).to_have_count(0)
+    expect(greeted.get_by_test_id(EXPANDER).filter(has_text="Sources")).to_have_count(0)
+    assert "Decided no tool was needed" in greeted.inner_text()
     expect(app.get_by_test_id(EXCEPTION)).to_have_count(0)
