@@ -74,11 +74,32 @@ the spec's story numbers are referenced elsewhere; it merges with story 2.
       round — the gate needs no extra allowance, because its nudge takes the superstep the
       interrupted round would have spent on tools (the allowance was removed)
 
+#### The gate weighs evidence instead of asking for compliance
+
+Run against a real model, the nudge sent small talk to the documents: "Hi there!" searched
+for `"Hi there!"` and came back citing a protein passage. The gate reads the evidence itself
+now, so the model revises against what the documents say rather than being told to go and
+look.
+
+- [ ] `GroundStep` searches the question itself and appends the passages it found, so the
+      second look weighs evidence rather than an instruction
+- [ ] the appended passages carry the untrusted-data label, like any other document text
+      that reaches the model
+- [ ] the sources it found are registered on the state, numbered after those already known
+- [ ] a search that matches nothing says so in the message it appends, rather than implying
+      there is evidence to weigh
+- [ ] the trace names the search the gate ran and what came back, so a citation in the
+      revised answer has a visible origin
+- [ ] the reconsideration step no longer says it sent the answer back to search
+- [ ] a second look costs one round, not two, so the budget lets it through on less room
+- [ ] the shipped plugin asks the model to weigh the passages it was given, not to call
+      `search_documents`
+- [ ] **(int)** a greeting whose evidence is irrelevant keeps its first answer, cites
+      nothing, and shows no sources
+
 #### Close
 
 - [ ] **(llm)** a real model, asked a plain training question that never mentions documents,
-      answers with a citation — replaces the live test that gave the answer away by asking
-      "according to my documents". **Written, not run**: the llm tier needs a real key, so
-      this is the one item that cannot be ticked from a green suite. It is also the only
-      test that would show whether a provider minds the reminder arriving as a *system*
-      message mid-transcript. Run it before merge.
+      answers with a citation — and the same run's greeting cites nothing. **Written, not
+      run**: the llm tier needs a real key, so this is the one item that cannot be ticked
+      from a green suite. Run it before merge.
