@@ -1,6 +1,6 @@
 # Big picture
 
-Read this page first. It shows the core of cora, its five ports, and the technology behind
+Read this page first. It shows cora's engine, its six ports, and the technology behind
 each port. The design is called *hexagonal* (also known as *ports and adapters*).
 The tests show how the code really works. The story files in `docs/sprints/` show how
 the code was built, not how it works today.
@@ -34,6 +34,7 @@ flowchart TB
     cm{{"ChatModel"}}
     emb{{"Embedder"}}
     ret{{"Retriever"}}
+    load{{"Loaders"}}
     plug{{"Plugin"}}
   end
 
@@ -43,6 +44,7 @@ flowchart TB
     ste["SentenceTransformerEmbedder<br/><i>all-MiniLM-L6-v2</i>"]
     chroma["ChromaRetriever<br/><i>Chroma</i>"]
     bm25["Bm25KeywordIndex<br/><i>rank_bm25</i>"]
+    load_reg["load_txt · load_pdf<br/><i>pypdf</i>"]
     fit["fitness plugin"]
   end
 
@@ -62,31 +64,34 @@ flowchart TB
   retr --> kb
   kb --> emb
   kb --> ret
+  kb --> load
   retr -.->|"hybrid"| bm25
   gr -.-> lg
   cm -.-> orc
   emb -.-> ste
   ret -.-> chroma
+  load -.-> load_reg
   plug -.-> fit
 
   classDef port fill:#8c4b00,stroke:#d98a1f,color:#fff;
   classDef logic fill:#134e6f,stroke:#1f78b4,color:#fff;
-  class gr,cm,emb,ret,plug port;
+  class gr,cm,emb,ret,load,plug port;
   class agent,steps,router,val,rt,search,retr,kb logic;
 ```
 
 Read the map from top to bottom. The frontend (top) calls the engine (middle) through the
-app that wired it. The engine has five ports. When the app starts, each port is connected to one adapter (bottom). The core does not
-know which adapter it uses. The one arrow that points back up is `LangGraphRunner` driving the
-core's steps: the adapter supplies the graph, the core supplies every step it walks.
+app that wired it. The engine has six ports. When the app starts, each port is connected to
+one adapter (bottom); the engine does not know which. The one arrow pointing back up is
+`LangGraphRunner` driving the engine's steps: the adapter supplies the graph, the engine
+supplies every step it walks.
 
 | Mark | Means |
 |---|---|
 | blue box | A part of the engine. It is plain Python, so a test can build it with fakes. |
-| amber hexagon | A port — a slot for one kind of technology. The five ports are the only way in and out of the engine. |
+| amber hexagon | A port — a slot for one kind of technology. The six ports are the only way in and out of the engine. |
 | thin arrow | A call made while answering a request. |
 | thick arrow | Built by the composition root when the app starts. |
-| dotted arrow | The adapter behind a port. Change this one line to use a different technology. |
+| dotted arrow | The adapter behind a port. Every one is an argument to `assemble`, so a different technology is a different argument. |
 
 **Ingestion**, the **plugin registry** and the **citation numbering** are real parts of the code.
 To keep the map simple, they are shown inside KnowledgeBase, the composition root, and the
@@ -99,14 +104,14 @@ are three options:
 - `advanced` — use RAG-Fusion. A `QueryPlanner` writes the question in a few different ways, and RRF joins the results. (RRF, Reciprocal Rank Fusion, is a simple way to merge ranked lists.)
 - `hybrid` — run two searches over the same files, one by meaning (dense) and one by keywords (BM25), and join them with the same RRF. This needs no planner and no extra model call.
 
-A **port** is a fixed slot in the engine for one kind of technology. There are exactly five:
-one for driving the agent, one for chat, one for embedding, one for retrieval, and one for the
-plugin. Every one of them is an argument to `assemble`, so a different technology goes in a
-slot without the engine or the composition root changing.
+A **port** is a fixed slot in the engine for one kind of technology. There are exactly six:
+one for driving the agent, one for chat, one for embedding, one for retrieval, one for reading
+a file format, and one for the plugin. Every one of them is an argument to `assemble`, so a
+different technology goes in a slot without the engine or the composition root changing.
 
 BM25 has no slot like this. Only the `hybrid` search uses it, wired straight into that search.
 So BM25 is a technology with no port. It is kept with the other adapters, and there are still
-just five ports.
+just six ports.
 
 ## The distributions
 
@@ -154,7 +159,7 @@ points, and a new one of either is a package to install rather than a file to ed
 
 ## Two calls in
 
-The shell uses the core through two main methods: `answer()` and `add_file()` (plus
+A frontend uses the engine through two main methods: `answer()` and `add_file()` (plus
 `list_sources()` to show the file list in the sidebar).
 
 **`agent.answer(question, history=()) -> ChatResult`** — `engine/agent.py`
@@ -206,14 +211,15 @@ because the map shows them inside another part.
 | **ValidationPipeline** | A list of rules run in order: core rules first, then the plugin's. To add a check, add a rule; you do not change the code. | `engine/validation.py` |
 | **ToolRuntime** | Finds the tool, checks the arguments against its JSON Schema, runs it, and turns a tool's own failure into a `ToolResult`. An infrastructure failure is not tool output, so it travels on unchanged. | `engine/tool_runtime.py` |
 | **Plugin registry** *(folded)* | Loads a plugin by its module path and checks it before the app starts: the prompt exists, tool names are unique, schemas are valid. | `engine/plugin_registry.py` |
-| **Composition root** | The only place that names a real adapter. It reads the settings, loads the plugin, picks the strategy, builds the graph, and returns an `App`. | `app/config.py`, `app/assembly.py`, `app/retrieval.py` |
+| **Composition root** | The only place that names a real adapter. It reads the settings, loads the plugin, picks the strategy, asks the graph slot for a runner, and returns an `App`. | `app/config.py`, `app/assembly.py`, `app/retrieval.py` |
 | **UI shell** | Only widgets: the uploader, the chat, the sources box, the *How I got there* trace — rendered as text, because a step names the tool the model asked for — and error text shown exactly as the error gives it. | `frontends/streamlit/` |
 
 ## The ports
 
-The five ports are the only outward surface of the core. Four of them are **Protocols** (the
-technology). The fifth, **Plugin**, is a frozen **dataclass** (the domain — the topic the app
-is about). So an adapter and a plugin work the same way: each one is chosen in one place.
+The six ports are the only outward surface of the engine. Five of them describe technology —
+four Protocols and one registry of them. The sixth, **Plugin**, is a frozen **dataclass** (the
+domain — the topic the app is about). So an adapter and a plugin work the same way: each one
+is chosen in one place.
 
 | Port | Surface | Bound at startup to |
 |---|---|---|
@@ -221,11 +227,13 @@ is about). So an adapter and a plugin work the same way: each one is chosen in o
 | **ChatModel** | `complete(messages, tools) -> ModelReply` | `OpenRouterChatModel` — the only file that uses LangChain. It talks to OpenRouter, an OpenAI-style endpoint set by `CORA_MODEL`. |
 | **Embedder** | `embed(texts) -> list[list[float]]` | `SentenceTransformerEmbedder` — the all-MiniLM-L6-v2 model. It runs on your machine and loads only when first used. |
 | **Retriever** | `add(chunks, vectors, file_hash)`, `query(query_vector, k, metadata_filter=None)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a saved, built-in database that uses cosine distance. The optional filter limits a search to matching metadata (self-query). |
+| **Loaders** | `Mapping[str, Loader]`, each `Loader` a `(data, filename) -> str` | `cora.adapters.loaders.LOADERS` — `.txt` and `.md` read directly, `.pdf` through pypdf. Which formats a deployment accepts is an entry in the registry, not an edit inside ingestion. |
 | **Plugin** | data only: `system_prompt`, `tools`, `validation_rules`, `seed_docs`, `grounding` | `cora.plugins.fitness` — change it with `CORA_PLUGIN`. It is a frozen dataclass, not a class you subclass. |
 
-Set `CORA_DEBUG=1` to wrap the three technology ports in a logger (`cora.adapters.port_logging`).
-It prints one short line each time data crosses a port. The core, the plugins, and the UI do
-not notice any change.
+Set `CORA_DEBUG=1` to wrap the chat, embedding and retrieval ports in a logger
+(`cora.engine.port_logging` — a decorator over ports, so it ships with the engine and imports
+no technology of its own). It prints one short line each time data crosses a port. The engine,
+the plugins, and the UI do not notice any change.
 
 ## Backed by tests
 
@@ -237,10 +245,10 @@ not notice any change.
   that can tell a declaration from a fact.
 - **Streamlit is used in one folder only.** No file outside `frontends/streamlit/` may import it. This is why you can really replace the user interface.
 - **The steps do not depend on any real helper.** They are plain callables over small Protocols (`ContextSource`, `InputValidator`, `ToolExecutor`), so a test walks a whole turn with fakes and no graph at all.
-- **One thing the core shares with the graph on purpose.** `domain/agent_state.py` marks the keys that accumulate (`Annotated[list[Message], operator.add]`). No core code reads those marks — they are the convention LangGraph uses to merge each step's partial state, so this one file is written to be understood by a graph engine, without importing one. The steps and the router stay framework-free; the state's *shape* is the shared word.
+- **One thing the engine shares with the graph on purpose.** `domain/agent_state.py` marks the keys that accumulate (`Annotated[list[Message], operator.add]`). No engine code reads those marks — they are the convention LangGraph uses to merge each step's partial state, so this one file is written to be understood by a graph engine, without importing one. The steps and the router stay framework-free; the state's *shape* is the shared word.
 - **Document text can never act as an instruction.** A test drives a turn that retrieves and checks that the document's words appear only in a `tool` message — never in the system prompt, where cora's own rules live.
 - **Retrieving is the model's decision, but the documents get the first claim on it.** A live-model test asks a plain training question — never saying "my documents" — and a greeting, through the same agent: only the first comes back with sources. A first answer the run did no work for is sent back once, so what a plugin claims as its subject is answered from the user's material — or at least from its tools — and not from what the model happens to know.
-- **A runaway agent still ends politely.** The core's round budget is set to trip before the graph's own recursion limit, and a graph that overruns anyway is turned into the same friendly apology — never a framework error.
-- **A new topic needs no change to the core.** A plugin is a frozen dataclass. Point `CORA_PLUGIN` at another plugin and the topic changes. The word *fitness* never appears in the core.
+- **A runaway agent still ends politely.** The engine's round budget is set to trip before the graph's own recursion limit, and a graph that overruns anyway is turned into the same friendly apology — never a framework error.
+- **A new topic needs no change to the engine.** A plugin is a frozen dataclass. Point `CORA_PLUGIN` at another plugin and the topic changes, and a test reads every contract and engine file to check the word *fitness* appears in none of them. `cora.app.config` names it as the default and is allowed to: which domain a deployment ships is its choice.
 - **Nothing the agent does is hidden.** Every turn carries a trace: what the model decided, which tool ran with which arguments, and what it returned — including a call that failed. A test drives a turn that searches and calculates and reads all of it back out of the page.
 - **A broken tool cannot break the chat, and users never see a stack trace.** ToolRuntime turns a tool's own failure into a `ToolResult` with an error message. Every `CoreError` has a message written for a person.

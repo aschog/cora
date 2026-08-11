@@ -167,6 +167,19 @@ def test_no_test_only_framework_is_shipped(path: pathlib.Path) -> None:
 
 
 @pytest.mark.parametrize("path", CORE_FILES, ids=lambda p: str(_shipped_as(p)))
+def test_no_reference_domain_word_reaches_the_contract_or_the_engine(
+    path: pathlib.Path,
+) -> None:
+    """Domain-agnostic is a claim about words as much as imports: the plugin supplies
+    the topic, so the reference domain's name has no business in the layers every other
+    domain reuses. `cora.app.config` names it as the default plugin and is allowed to —
+    which domain a deployment ships is its choice, not the engine's."""
+    assert "fitness" not in path.read_text().lower(), (
+        f"{_shipped_as(path)} names the reference domain"
+    )
+
+
+@pytest.mark.parametrize("path", CORE_FILES, ids=lambda p: str(_shipped_as(p)))
 def test_core_module_is_pure(path: pathlib.Path) -> None:
     tree = ast.parse(path.read_text())
     modules = _imported_modules(tree, _package_parts(path))

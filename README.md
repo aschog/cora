@@ -7,7 +7,7 @@ domain-agnostic; domain specialisation (reference domain: fitness coach) is
 provided exclusively through plugins.
 
 - Architecture (start here): [`docs/big-picture.md`](docs/big-picture.md) — the map, the
-  five ports, and what the tests pin down
+  six ports, and what the tests pin down
 - Development workflow (TDD): [`docs/workflow.md`](docs/workflow.md)
 - Assignment brief: [`docs/sprints/4/assignment.md`](docs/sprints/4/assignment.md) —
   current sprint; sprint 3's brief, spec and test findings are in `docs/sprints/3/`
