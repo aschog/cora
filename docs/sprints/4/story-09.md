@@ -41,7 +41,7 @@ They are separate commits so each can be verified alone.
 
 #### First, a net for the move
 
-- [ ] **(llm)** the live acceptance runs over `AppTest` instead of a browser: a plain
+- [x] **(llm)** the live acceptance runs over `AppTest` instead of a browser: a plain
       training question answers with a citation and a greeting beside it cites nothing —
       the one check that exercises the assembled stack end to end, and the move's only
       cover against a wiring mistake no unit test would see

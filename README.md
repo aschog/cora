@@ -76,14 +76,22 @@ e.g. "How much protein should I eat?" or "What are common deadlift mistakes?".
 uv run ptw .                  # test watch mode (unit tier, reruns on save)
 uv run pytest                 # unit tests (default; fast, no network/models/UI)
 uv run pytest -m integration  # integration tier (real Chroma, embeddings, Streamlit)
+uv run --env-file .env pytest -m llm   # live acceptance: real OpenRouter round-trip, costs tokens
 uv run ruff format .          # format
 uv run ruff check .           # lint
 uv run ty check               # type check
 ```
 
-Nothing in the suite spends money or reaches the network: the UI is driven
-headlessly through Streamlit's `AppTest`, and a real OpenRouter round-trip is
-manual testing (above), not a test tier.
+No browser is needed anywhere: the UI is driven headlessly through Streamlit's
+`AppTest`, including the live tier.
+
+The `llm` tier is the only one that spends money. It runs the whole shipped stack —
+the composition root, a real Chroma store and embedder, and OpenRouter over the
+network — against the assembled page, because a scripted model answers however the
+script says and so can never show the real one ignoring an instruction. It needs
+`OPENROUTER_API_KEY` (here via `--env-file .env`); without the key it skips with a
+reason naming the variable — never a failure, never a silent pass — which is why it
+stays out of CI.
 
 The pre-commit hook runs format check, lint, type check and unit tests;
 commit messages must follow [Conventional Commits](https://www.conventionalcommits.org).

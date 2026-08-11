@@ -52,9 +52,10 @@ select = [
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["tests"]
-addopts = "--strict-markers --import-mode=importlib -m 'not integration'"
+addopts = "--strict-markers --import-mode=importlib -m 'not integration and not llm'"
 markers = [
     "integration: touches real infrastructure (Chroma, embedding model, Streamlit); run in CI",
+    "llm: real OpenRouter round-trip through the assembled app; manual acceptance only, never in CI",
 ]
 
 [tool.pytest-watcher]
