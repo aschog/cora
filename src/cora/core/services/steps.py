@@ -2,7 +2,8 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from cora.core.agent_state import AgentState
-from cora.core.citations import Citable, Source
+from cora.core.citations import Citable, CitableHits, Source
+from cora.core.context_source import ContextSource
 from cora.core.errors import ToolLoopLimitError
 from cora.core.ports.chat_model import ChatModel, Message
 from cora.core.ports.plugin import Tool, ToolCall, ToolResult
@@ -112,14 +113,28 @@ class ToolStep:
 @dataclass(frozen=True)
 class GroundStep:
     reminder: str
+    context_source: ContextSource
+    top_k: int
 
     def __call__(self, state: AgentState) -> AgentState:
-        """Holds on to the answer it is second-guessing. That is what tells a
-        failed second look apart from a failure after one: the answer changes
-        when the model replies again, and nothing else has to be counted."""
+        """Searches on the model's behalf rather than telling it to search: a model
+        that ignores the instruction still has to answer the evidence. Holds on to
+        the answer it is second-guessing, which is what tells a failed second look
+        apart from a failure after one — the answer changes when the model replies
+        again, and nothing else has to be counted."""
+        hits = CitableHits(self.context_source.search(state["question"], self.top_k))
+        context = hits.register(tuple(state.get("sources", ())))
         return {
-            "messages": [Message(role="system", content=self.reminder)],
+            "messages": [
+                Message(
+                    role="system",
+                    content="\n\n".join(
+                        (self.reminder, UNTRUSTED_NOTICE, context.text)
+                    ),
+                )
+            ],
             "trace": [Reconsidered()],
+            "sources": list(context.sources),
             "answer_in_hand": state.get("answer", ""),
         }
 

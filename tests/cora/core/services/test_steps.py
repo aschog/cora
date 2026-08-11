@@ -5,7 +5,7 @@ import pytest
 
 from cora.core.agent_state import AgentState
 from cora.core.chunk import Chunk
-from cora.core.citations import Source
+from cora.core.citations import NO_MATCHES, Source
 from cora.core.errors import InputRejectedError, LlmError, ToolLoopLimitError
 from cora.core.ports.chat_model import Message, ModelReply, Role
 from cora.core.ports.plugin import Tool, ToolCall
@@ -15,6 +15,7 @@ from cora.core.services.steps import (
     DONE,
     GROUND,
     TOOLS,
+    UNTRUSTED_NOTICE,
     GroundStep,
     ModelStep,
     PrepareStep,
@@ -474,24 +475,63 @@ def test_a_plugin_that_asks_for_no_grounding_goes_straight_to_done() -> None:
     assert Router(max_tool_rounds=8)({**_replied(), "rounds": 1}) == DONE
 
 
-def test_the_step_sends_the_answer_back_with_the_plugins_own_reminder() -> None:
-    partial = GroundStep(reminder="Search the documents first.")({"rounds": 1})
+def _gate(*hits: RetrievedChunk, reminder: str = "Weigh these.") -> GroundStep:
+    return GroundStep(
+        reminder=reminder, context_source=FakeContextSource(list(hits)), top_k=3
+    )
 
+
+def test_the_step_searches_the_question_and_hands_the_passages_to_the_model() -> None:
+    """The second look weighs evidence rather than an instruction: the gate runs the
+    search itself, so a model that ignores being told to look still sees what the
+    documents say."""
+    source = FakeContextSource([_hit("protein.md")])
+    step = GroundStep(reminder="Weigh these.", context_source=source, top_k=3)
+
+    partial = step({"question": "how much protein?", "rounds": 1})
+
+    assert source.last_query == "how much protein?"
+    assert source.last_k == 3
     [message] = partial["messages"]
     assert message.role == "system"
-    assert message.content == "Search the documents first."
+    assert message.content.startswith("Weigh these.")
+    assert "[1] protein.md: protein builds muscle" in message.content
 
 
 def test_the_nudge_holds_on_to_the_answer_it_is_second_guessing() -> None:
     """Holding the answer is what tells a failed second look apart from a failure
     after one: nothing has to count rounds to know which happened."""
-    held = GroundStep(reminder="Look again.")({"answer": "Off the cuff."})
+    held = _gate()({"question": "anything?", "answer": "Off the cuff."})
 
     assert held["answer_in_hand"] == "Off the cuff."
 
 
+def test_the_passages_reach_the_model_behind_the_untrusted_data_label() -> None:
+    partial = _gate(_hit("protein.md"))({"question": "how much protein?"})
+
+    [message] = partial["messages"]
+    assert UNTRUSTED_NOTICE in message.content
+    assert message.content.index(UNTRUSTED_NOTICE) < message.content.index("[1]")
+
+
+def test_the_sources_it_found_are_numbered_after_the_ones_already_known() -> None:
+    partial = _gate(_hit("protein.md"))(
+        {"question": "how much protein?", "sources": [Source(1, "creatine.md")]}
+    )
+
+    assert partial["sources"] == [Source(2, "protein.md")]
+
+
+def test_a_search_that_matches_nothing_says_so_instead_of_implying_evidence() -> None:
+    partial = _gate()({"question": "hi there!"})
+
+    [message] = partial["messages"]
+    assert NO_MATCHES in message.content
+    assert partial["sources"] == []
+
+
 def test_the_reconsideration_shows_up_in_the_trace() -> None:
-    partial = GroundStep(reminder="Search the documents first.")({})
+    partial = _gate()({"question": "anything?"})
 
     [step] = partial["trace"]
     assert step.summary == "Sent it back to search the documents first"

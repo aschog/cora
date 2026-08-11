@@ -106,7 +106,9 @@ def assemble(
         ),
         model=ModelStep(chat_model=chat_model, tools=tools),
         tools=ToolStep(tool_runtime=ToolRuntime(tools=tools)),
-        ground=GroundStep(reminder=grounding),
+        ground=GroundStep(
+            reminder=grounding, context_source=context_source, top_k=top_k
+        ),
         router=Router(max_tool_rounds=max_tool_rounds, grounded=bool(grounding)),
         recursion_limit=recursion_limit_for(max_tool_rounds),
     )
