@@ -25,19 +25,19 @@ dev = [
 # ty to guess from, and `tests` carries the shared fakes every package's tests import.
 [tool.ty.environment]
 root = [
-    "packages/cora-core/src",
-    "packages/cora-adapters/src",
-    "packages/cora-fitness/src",
-    "packages/cora-app/src",
+    "packages/core/src",
+    "packages/adapters/src",
+    "packages/fitness/src",
+    "packages/app/src",
     "tests",
 ]
 
 [tool.ruff]
 src = [
-    "packages/cora-core/src",
-    "packages/cora-adapters/src",
-    "packages/cora-fitness/src",
-    "packages/cora-app/src",
+    "packages/core/src",
+    "packages/adapters/src",
+    "packages/fitness/src",
+    "packages/app/src",
     "tests",
 ]
 

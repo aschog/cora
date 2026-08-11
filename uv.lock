@@ -23,8 +23,8 @@ members = [
 
 [manifest.dependency-groups]
 dev = [
-    { name = "cora-app", editable = "packages/cora-app" },
-    { name = "cora-fitness", editable = "packages/cora-fitness" },
+    { name = "cora-app", editable = "packages/app" },
+    { name = "cora-fitness", editable = "packages/fitness" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-watcher", specifier = ">=0.6.3" },
     { name = "ruff", specifier = ">=0.15.22" },
@@ -434,7 +434,7 @@ wheels = [
 [[package]]
 name = "cora-adapters"
 version = "0.1.0"
-source = { editable = "packages/cora-adapters" }
+source = { editable = "packages/adapters" }
 dependencies = [
     { name = "chromadb" },
     { name = "cora-core" },
@@ -447,7 +447,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "chromadb", specifier = ">=1.5,<2" },
-    { name = "cora-core", editable = "packages/cora-core" },
+    { name = "cora-core", editable = "packages/core" },
     { name = "langchain-openai", specifier = ">=1.4.1" },
     { name = "langgraph", specifier = ">=1.2.10,<2" },
     { name = "rank-bm25", specifier = ">=0.2.2" },
@@ -457,7 +457,7 @@ requires-dist = [
 [[package]]
 name = "cora-app"
 version = "0.1.0"
-source = { editable = "packages/cora-app" }
+source = { editable = "packages/app" }
 dependencies = [
     { name = "cora-adapters" },
     { name = "cora-core" },
@@ -466,15 +466,15 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cora-adapters", editable = "packages/cora-adapters" },
-    { name = "cora-core", editable = "packages/cora-core" },
+    { name = "cora-adapters", editable = "packages/adapters" },
+    { name = "cora-core", editable = "packages/core" },
     { name = "streamlit", specifier = "~=1.60.0" },
 ]
 
 [[package]]
 name = "cora-core"
 version = "0.1.0"
-source = { editable = "packages/cora-core" }
+source = { editable = "packages/core" }
 dependencies = [
     { name = "jsonschema" },
     { name = "pypdf" },
@@ -489,13 +489,13 @@ requires-dist = [
 [[package]]
 name = "cora-fitness"
 version = "0.1.0"
-source = { editable = "packages/cora-fitness" }
+source = { editable = "packages/fitness" }
 dependencies = [
     { name = "cora-core" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "cora-core", editable = "packages/cora-core" }]
+requires-dist = [{ name = "cora-core", editable = "packages/core" }]
 
 [[package]]
 name = "cuda-bindings"

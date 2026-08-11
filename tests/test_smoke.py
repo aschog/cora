@@ -14,8 +14,10 @@ DISTRIBUTIONS = ("cora-core", "cora-adapters", "cora-fitness", "cora-app")
 
 
 def _carrier(module: ModuleType) -> str:
-    """Which distribution a layer was installed from, read off the path rather than
-    the nesting depth — `cora.plugins.fitness` sits one level deeper than the rest."""
+    """Which workspace member a layer was installed from, read off the path rather than
+    the nesting depth — `cora.plugins.fitness` sits one level deeper than the rest. The
+    directory is named for the layer; the distribution it builds keeps the `cora-`
+    prefix, and `test_packaging.py` pins that mapping."""
     path = pathlib.Path(str(module.__file__))
     src = next(parent for parent in path.parents if parent.name == "src")
     return src.parent.name
@@ -29,15 +31,15 @@ def test_the_layers_share_one_namespace_across_four_distributions() -> None:
     assert {version(name) for name in DISTRIBUTIONS} == {"0.1.0"}
 
 
-def test_each_layer_is_carried_by_its_own_distribution() -> None:
+def test_each_layer_is_carried_by_its_own_workspace_member() -> None:
     carriers = {
         module.__name__: _carrier(module)
         for module in (cora.core, cora.adapters, cora.app, cora.plugins.fitness)
     }
 
     assert carriers == {
-        "cora.core": "cora-core",
-        "cora.adapters": "cora-adapters",
-        "cora.app": "cora-app",
-        "cora.plugins.fitness": "cora-fitness",
+        "cora.core": "core",
+        "cora.adapters": "adapters",
+        "cora.app": "app",
+        "cora.plugins.fitness": "fitness",
     }

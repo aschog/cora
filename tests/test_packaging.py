@@ -13,6 +13,7 @@ import re
 import tomllib
 
 PACKAGES = pathlib.Path("packages")
+LAYERS = ("core", "adapters", "fitness", "app")
 HEAVY = frozenset(
     {
         "chromadb",
@@ -37,32 +38,42 @@ def _requires(name: str) -> set[str]:
 
 
 def test_the_workspace_holds_exactly_the_four_layers() -> None:
+    """Directories are named for the layer, distributions for the project. Nothing in
+    the tree may be called `cora`: the root goes on `sys.path` for anything run from
+    it, and a directory of that name joins the namespace as its first portion — which
+    is enough to make `import cora.fitness` resolve to an empty phantom."""
     assert {path.name for path in PACKAGES.iterdir() if path.is_dir()} == {
-        "cora-core",
-        "cora-adapters",
-        "cora-fitness",
-        "cora-app",
+        "core",
+        "adapters",
+        "fitness",
+        "app",
+    }
+    assert {layer: _manifest(layer)["project"]["name"] for layer in LAYERS} == {
+        "core": "cora-core",
+        "adapters": "cora-adapters",
+        "fitness": "cora-fitness",
+        "app": "cora-app",
     }
 
 
 def test_core_declares_no_framework() -> None:
     """The purity rule, as metadata: a core that never installs Chroma or LangGraph
     cannot import them by accident, whatever a walker does or does not catch."""
-    assert not _requires("cora-core") & HEAVY
+    assert not _requires("core") & HEAVY
 
 
 def test_core_depends_on_no_other_layer() -> None:
-    assert not {name for name in _requires("cora-core") if name.startswith("cora-")}
+    assert not {name for name in _requires("core") if name.startswith("cora-")}
 
 
 def test_a_plugin_needs_the_core_alone() -> None:
     """A plugin author installs one package. Wanting an adapter here would mean the
     domain had been written against a technology."""
-    assert _requires("cora-fitness") == {"cora-core"}
+    assert _requires("fitness") == {"cora-core"}
 
 
 def test_the_adapters_bind_the_core_to_its_technologies() -> None:
-    requires = _requires("cora-adapters")
+    requires = _requires("adapters")
 
     assert "cora-core" in requires
     assert HEAVY - {"streamlit"} <= requires, "an adapter's technology went missing"
@@ -70,7 +81,7 @@ def test_the_adapters_bind_the_core_to_its_technologies() -> None:
 
 
 def test_the_app_wires_the_layers_and_owns_the_ui() -> None:
-    requires = _requires("cora-app")
+    requires = _requires("app")
 
     assert {"cora-core", "cora-adapters", "streamlit"} <= requires
     assert "cora-fitness" not in requires, (
