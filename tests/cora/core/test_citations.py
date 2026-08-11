@@ -1,5 +1,6 @@
 from cora.core.chunk import Chunk
 from cora.core.citations import (
+    NO_MATCHES,
     CitableHits,
     Source,
     build_context_block,
@@ -89,6 +90,20 @@ def test_a_hit_list_with_no_hits_says_so_and_adds_nothing() -> None:
 
     assert "no matching documents" in context.text.lower()
     assert context.sources == ()
+
+
+def test_a_hit_list_summarises_itself_by_count_and_distinct_source() -> None:
+    hits = [_hit("a.txt"), _hit("b.txt"), _hit("a.txt")]
+
+    assert CitableHits(hits).summary == "3 passages from a.txt and b.txt"
+
+
+def test_a_single_hit_is_one_passage() -> None:
+    assert CitableHits([_hit("a.txt")]).summary == "1 passage from a.txt"
+
+
+def test_a_hit_list_with_no_hits_summarises_as_no_matches() -> None:
+    assert CitableHits([]).summary == NO_MATCHES
 
 
 def test_only_the_cited_sources_come_back_in_ascending_order() -> None:

@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any
 
+from cora.core.prose import listed
+
 
 class TraceStep(ABC):
     """One step of a run, as the user reads it: a headline that stands alone,
@@ -31,7 +33,7 @@ class ModelDecision(TraceStep):
     def summary(self) -> str:
         if not self.tools:
             return "Decided no tool was needed"
-        return f"Decided to call {' and '.join(self.tools)}"
+        return f"Decided to call {listed(self.tools)}"
 
 
 @dataclass(frozen=True)
