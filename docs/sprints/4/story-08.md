@@ -29,8 +29,11 @@ the spec's story numbers are referenced elsewhere; it merges with story 2.
 - [x] a final reply that followed a search routes to `done`
 - [x] an answer a plugin's own tool worked for routes to `done` — a calculation is as good
       a ground as a document, and nudging it would retrieve for arithmetic *(review)*
-- [x] a failure in the gate's extra round returns the answer the run already had, while a
-      failure anywhere else still travels out *(review)*
+- [x] a failure in the gate's extra round returns the answer it was second-guessing, while
+      a failure once that round has landed still travels out — the nudge remembers the round
+      it interrupted, so a later `LlmError` or the round-budget apology is never swallowed
+      and a stale answer never collects citations from a search it never saw *(review, twice)*
+- [x] **(int)** all three through the assembled app, not a stub runner *(review)*
 - [x] once nudged, a final reply routes to `done` even with no search — the gate fires once
       per run, so a run can never loop on it
 - [x] the tools used are read from the transcript's own tool calls, not from the trace
@@ -62,4 +65,7 @@ the spec's story numbers are referenced elsewhere; it merges with story 2.
 
 - [ ] **(llm)** a real model, asked a plain training question that never mentions documents,
       answers with a citation — replaces the live test that gave the answer away by asking
-      "according to my documents". Written; needs a run with `OPENROUTER_API_KEY`
+      "according to my documents". **Written, not run**: the llm tier needs a real key, so
+      this is the one item that cannot be ticked from a green suite. It is also the only
+      test that would show whether a provider minds the reminder arriving as a *system*
+      message mid-transcript. Run it before merge.

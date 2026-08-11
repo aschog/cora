@@ -98,8 +98,11 @@ model. **(migrated)** marks a test that moves rather than a new one.
 
 - [x] a document carrying its own code fence cannot forge trace lines — the evidence is
       rendered as code, never as markdown
+- [x] nor can it forge one through the summary, which names the tool the model asked for:
+      a step line is one line, and only the marks cora wrote are markdown *(review, twice)*
 - [x] a tool's escaped exception reaches neither the model nor the trace by its message,
-      only by its kind; a `ValueError` a tool raised to explain itself is still quoted
+      only by its kind — a refusal is declared (`ToolRefusal`), not guessed from a type, so
+      a library's accidental `ValueError` is treated as the escape it is *(review, twice)*
 - [x] the caller really does see a step before the run is over — the old test only showed
       that the seed state arrives before any node runs
 - [x] a payload that only looks citable is asserted against a literal, not against a value

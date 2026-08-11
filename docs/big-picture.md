@@ -115,7 +115,7 @@ The shell uses the core through two main methods: `answer()` and `add_file()` (p
 2. **Model** — one round. The model is offered `search_documents` beside the plugin's tools. It either answers or asks for tools.
 3. **Tools** — run what it asked for, in order. A result that can cite itself — a set of search hits — is numbered `[n]` continuing from the numbers this run already handed out, and comes back as a `tool` message marked *untrusted document data*. Any other result is fed back exactly as it renders.
 4. **Round again, or stop** — the router reads the model's last reply. A reply asking for tools goes back to step 2, at most `CORA_MAX_TOOL_ROUNDS` times (default 8), after which `ToolLoopLimitError` apologises. A reply that answers ends the run.
-5. **Grounding** — unless the plugin set `grounding` and nothing was searched. Then the answer is sent back once, with the plugin's own reminder, and the model gets one more go at step 2. The reminder is the plugin's words, so it also says what to do with a question that is not about its subject: the fitness one tells the model to repeat its answer for small talk, which is why a greeting still costs no retrieval. The gate fires at most once per run, so a run can never loop on it.
+5. **Grounding** — a plugin that sets `grounding` will not take an answer the run did no work for. If the model answers without having called a single tool, that answer is sent back once, with the plugin's own reminder, and the model gets one more go at step 2. An answer a tool already worked for stands: a calculation grounds it as well as a document does. The reminder is the plugin's words, so it also says what to do with a question that is not about its subject — the fitness one tells the model to repeat its answer for small talk, which is why a greeting still costs no retrieval. The gate fires at most once per run, so a run can never loop on it, and if that one extra round fails the answer it was second-guessing is returned rather than lost.
 6. **Return** — the answer, the sources it really used (only the `[n]` numbers that appear in the reply, with duplicates removed), and the run's trace.
 
 **The run reports itself as it goes.** Each step records what it did — the model's decision and
@@ -125,8 +125,8 @@ still happening; the finished trace comes back on the `ChatResult` and stays wit
 
 **Retrieval is a decision, not a step — but a plugin can insist on it.** A greeting is answered
 without touching the documents; a question about them makes the model call `search_documents`,
-more than once if it needs to. When the subject is the plugin's own, an answer that skipped the
-documents does not stand: it goes back once with the reminder above.
+more than once if it needs to. When the subject is the plugin's own, an answer the run did no work
+for does not stand: it goes back once with the reminder above.
 That is also why document text can never act as an instruction: it arrives in a `tool` message,
 labelled as data, and cora's own rules stay in the system message.
 
@@ -146,7 +146,7 @@ because the map shows them inside another part.
 |---|---|---|
 | **Agent** | The one main use case. It seeds a run from the question and the history, then turns the run's final state into a `ChatResult`. | `core/services/agent.py` |
 | **Steps** | The moves of a turn: *prepare* validates and lays out the messages, *model* takes one round with the chat model, *tools* runs what the model asked for, and *ground* sends an answer back to the documents when the plugin asks. Each one returns only what it added to the run. | `core/services/steps.py` |
-| **Router** | The one decision, read off the model's last reply: asking for tools runs them (a friendly apology at the round budget), answering ends the run — or is sent back once when the plugin wants the documents used and none were. | `core/services/steps.py` |
+| **Router** | The one decision, read off the model's last reply: asking for tools runs them (a friendly apology at the round budget), answering ends the run — or is sent back once when the plugin wants its subject worked for and no tool was used. | `core/services/steps.py` |
 | **Trace** *(folded)* | What the user reads afterwards: one step per model decision and per tool call, each with a one-line summary and the evidence behind it. A new kind of step is a new class, not a new branch. | `core/trace.py` |
 | **Citations** *(folded)* | Numbers a retrieval's passages `[n]`, continues that numbering when the same run retrieves again, and works out which sources an answer really cited. | `core/citations.py` |
 | **search_documents** | Document search as a tool, so whether to use the documents is the model's decision. Its hits arrive able to number themselves. | `core/services/retrieval_tool.py` |
@@ -184,7 +184,7 @@ not notice any change.
 - **The steps do not depend on any real helper.** They are plain callables over small Protocols (`ContextSource`, `InputValidator`, `ToolExecutor`), so a test walks a whole turn with fakes and no graph at all.
 - **One thing the core shares with the graph on purpose.** `core/agent_state.py` marks the keys that accumulate (`Annotated[list[Message], operator.add]`). No core code reads those marks — they are the convention LangGraph uses to merge each step's partial state, so this one file is written to be understood by a graph engine, without importing one. The steps and the router stay framework-free; the state's *shape* is the shared word.
 - **Document text can never act as an instruction.** A test drives a turn that retrieves and checks that the document's words appear only in a `tool` message — never in the system prompt, where cora's own rules live.
-- **Retrieving is the model's decision, but the documents get the first claim on it.** A live-model test asks a plain training question — never saying "my documents" — and a greeting, through the same agent: only the first comes back with sources. A first answer that skipped the documents is sent back to them once, so what a plugin claims as its subject is answered from the user's material, not from what the model happens to know.
+- **Retrieving is the model's decision, but the documents get the first claim on it.** A live-model test asks a plain training question — never saying "my documents" — and a greeting, through the same agent: only the first comes back with sources. A first answer the run did no work for is sent back once, so what a plugin claims as its subject is answered from the user's material — or at least from its tools — and not from what the model happens to know.
 - **A runaway agent still ends politely.** The core's round budget is set to trip before the graph's own recursion limit, and a graph that overruns anyway is turned into the same friendly apology — never a framework error.
 - **A new topic needs no change to the core.** A plugin is a frozen dataclass. Point `CORA_PLUGIN` at another plugin and the topic changes. The word *fitness* never appears in the core.
 - **Nothing the agent does is hidden.** Every turn carries a trace: what the model decided, which tool ran with which arguments, and what it returned — including a call that failed. A test drives a turn that searches and calculates and reads all of it back out of the page.
