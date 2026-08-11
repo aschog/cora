@@ -109,6 +109,23 @@ class ScriptedChatModel:
         return self._replies.pop(0)
 
 
+class CountingRetriever(FakeRetriever):
+    """Counts searches, so a test can show that a turn never reached the store."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.queries = 0
+
+    def query(
+        self,
+        query_vector: list[float],
+        k: int,
+        metadata_filter: MetadataFilter | None = None,
+    ) -> list[RetrievedChunk]:
+        self.queries += 1
+        return super().query(query_vector, k, metadata_filter)
+
+
 @dataclass
 class FailingEmbedder:
     error: Exception

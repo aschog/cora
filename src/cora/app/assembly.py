@@ -89,6 +89,7 @@ def assemble(
         fusion_queries=fusion_queries,
     )
     tools = _offered_tools(plugin, context_source, top_k)
+    grounding = plugin.grounding.strip()
     validation = ValidationPipeline(
         core_rules=(
             EmptyInputRule(),
@@ -105,8 +106,8 @@ def assemble(
         ),
         model=ModelStep(chat_model=chat_model, tools=tools),
         tools=ToolStep(tool_runtime=ToolRuntime(tools=tools)),
-        ground=GroundStep(reminder=plugin.grounding),
-        router=Router(max_tool_rounds=max_tool_rounds, grounded=bool(plugin.grounding)),
+        ground=GroundStep(reminder=grounding),
+        router=Router(max_tool_rounds=max_tool_rounds, grounded=bool(grounding)),
         recursion_limit=recursion_limit_for(max_tool_rounds),
     )
     return App(

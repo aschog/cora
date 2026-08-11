@@ -94,6 +94,18 @@ model. **(migrated)** marks a test that moves rather than a new one.
       draws them while the run is still going
 - [x] **(int)** a greeting shows the one-step trace that says no tool was needed
 
+#### Found by the review
+
+- [x] a document carrying its own code fence cannot forge trace lines — the evidence is
+      rendered as code, never as markdown
+- [x] a tool's escaped exception reaches neither the model nor the trace by its message,
+      only by its kind; a `ValueError` a tool raised to explain itself is still quoted
+- [x] the caller really does see a step before the run is over — the old test only showed
+      that the seed state arrives before any node runs
+- [x] a payload that only looks citable is asserted against a literal, not against a value
+      recomputed the way the code computes it
+- [x] a runner that walks no step at all is a `GraphRunError`, not a blank answer
+
 #### Close
 
 - [x] **(e2e)** the browser trace opens and names the search tool, its query and its

@@ -139,16 +139,22 @@ def test_an_ungrounded_answer_goes_back_through_the_model() -> None:
 
 
 def test_a_step_is_seen_before_the_run_is_over() -> None:
-    reached: list[str] = []
+    """Pull states until the first round's work shows up: the second round must
+    not have run yet, or the caller is being handed a finished run."""
+    completions: list[str] = []
 
     def model(state: AgentState) -> AgentState:
-        reached.append("model")
-        return {"messages": _said("assistant", "done"), "rounds": 1, "answer": "d"}
+        completions.append(f"round {len(completions) + 1}")
+        if state.get("rounds"):
+            return {"messages": _said("assistant", "done"), "rounds": 1}
+        return {"messages": _asked_for_a_tool("asking"), "rounds": 1}
 
     states = _runner(model=model).run({"question": "q"})
-    next(iter(states))
+    for state in states:
+        if state.get("rounds"):
+            break
 
-    assert reached == []
+    assert completions == ["round 1"]
 
 
 def test_a_runaway_graph_surfaces_as_the_friendly_give_up() -> None:
@@ -180,7 +186,9 @@ class _AlwaysCalling:
         )
 
 
-def _real_runner(model: ChatModel, rounds: int) -> LangGraphRunner:
+def _real_runner(
+    model: ChatModel, rounds: int, grounded: bool = False
+) -> LangGraphRunner:
     return LangGraphRunner(
         ground=GroundStep(reminder="search first"),
         prepare=PrepareStep(
@@ -190,7 +198,7 @@ def _real_runner(model: ChatModel, rounds: int) -> LangGraphRunner:
         ),
         model=ModelStep(chat_model=model, tools=(add_tool(),)),
         tools=ToolStep(ToolRuntime(tools=(add_tool(),))),
-        router=Router(max_tool_rounds=rounds),
+        router=Router(max_tool_rounds=rounds, grounded=grounded),
         recursion_limit=recursion_limit_for(rounds),
     )
 
@@ -202,6 +210,36 @@ def test_the_round_budget_fires_before_the_graphs_own_limit() -> None:
         _final(_real_runner(model, rounds=3), {"question": "loop forever"})
 
     assert model.completions == 3
+
+
+def test_the_round_budget_still_fires_first_when_the_gate_has_added_a_round() -> None:
+    """The gate costs the graph two supersteps that the budget does not count, so
+    the headroom in `recursion_limit_for` has to cover them."""
+
+    class _AnswersThenLoops:
+        def __init__(self) -> None:
+            self.completions = 0
+
+        def complete(
+            self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+        ) -> ModelReply:
+            self.completions += 1
+            if self.completions == 1:
+                return ModelReply(text="off the cuff")
+            return ModelReply(
+                tool_calls=(
+                    ToolCall(
+                        name="add",
+                        arguments={"a": 1, "b": 2},
+                        call_id=f"c{self.completions}",
+                    ),
+                )
+            )
+
+    model = _AnswersThenLoops()
+
+    with pytest.raises(ToolLoopLimitError):
+        _final(_real_runner(model, rounds=3, grounded=True), {"question": "q"})
 
 
 def test_an_input_rejection_from_prepare_travels_out_unwrapped() -> None:

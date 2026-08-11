@@ -119,9 +119,14 @@ Recorded with a decision, not scheduled — none is in the sprint-4 story cut.
 
 ## Carried over from the manual test run
 
-- [ ] **#5 Tool results shown raw and unlabelled** — `chat.py:106` renders bare payloads
+- [x] **#5 Tool results shown raw and unlabelled** — `chat.py:106` renders bare payloads
       with no tool name, and internal recovered-from failures leak into the user's view.
       → covered by **story 2** (the trace names the step, the tool and its arguments).
+      **Done in story 2**: `ChatResult.tool_results` is gone, so a payload has nowhere to
+      print but the trace, which names the tool and its arguments. The second half —
+      leaking failures — took the story-2 review to spot: a tool's own exception text was
+      still shown verbatim, so `ToolRuntime` now passes on the kind of an exception that
+      merely escaped, and quotes only the `ValueError` a tool raised to explain itself.
 - [ ] **#8 No way to remove a document or clear the store** — the sidebar lists sources
       with no chunk count, no removal, no clear (`app/ui/chat.py:34-39`).
       → memory clearing lands in **story 3**; document removal stays open here.

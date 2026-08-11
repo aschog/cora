@@ -25,11 +25,15 @@ the spec's story numbers are referenced elsewhere; it merges with story 2.
 
 #### The gate
 
-- [x] a final reply with no search behind it routes to `ground` when the plugin asks for it
+- [x] a final reply with no tool behind it routes to `ground` when the plugin asks for it
 - [x] a final reply that followed a search routes to `done`
+- [x] an answer a plugin's own tool worked for routes to `done` — a calculation is as good
+      a ground as a document, and nudging it would retrieve for arithmetic *(review)*
+- [x] a failure in the gate's extra round returns the answer the run already had, while a
+      failure anywhere else still travels out *(review)*
 - [x] once nudged, a final reply routes to `done` even with no search — the gate fires once
       per run, so a run can never loop on it
-- [x] the search is looked for in the transcript's own tool calls, not in the trace
+- [x] the tools used are read from the transcript's own tool calls, not from the trace
 
 #### `GroundStep`
 
@@ -50,7 +54,9 @@ the spec's story numbers are referenced elsewhere; it merges with story 2.
       answer arrives after a search
 - [x] **(int)** the trace shows the reconsideration between the two answers
 - [x] **(int)** a greeting is still answered without retrieving
-- [x] the recursion limit leaves room for the extra round the gate can add
+- [x] the round budget still trips before the graph's own limit when the gate has added a
+      round — the gate needs no extra allowance, because its nudge takes the superstep the
+      interrupted round would have spent on tools (the allowance was removed)
 
 #### Close
 

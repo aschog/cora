@@ -12,7 +12,6 @@ from cora.core.services.steps import DONE, GROUND, TOOLS
 PREPARE = "prepare"
 MODEL = "model"
 SUPERSTEPS_PER_ROUND = 2
-GROUNDING_SUPERSTEPS = 2
 
 
 class Step(Protocol):
@@ -21,9 +20,10 @@ class Step(Protocol):
 
 def recursion_limit_for(max_tool_rounds: int) -> int:
     """Wide enough that the core's round budget always trips first: preparing
-    costs one superstep, then each round costs a model call and its tools, and
-    the grounding gate can add a nudge and the model call that answers it."""
-    return SUPERSTEPS_PER_ROUND * max_tool_rounds + GROUNDING_SUPERSTEPS + 2
+    costs one superstep, then each round costs a model call and its tools. The
+    grounding gate needs no allowance of its own — its nudge takes the superstep
+    the round it interrupts would have spent on tools."""
+    return SUPERSTEPS_PER_ROUND * max_tool_rounds + 2
 
 
 @dataclass(frozen=True)

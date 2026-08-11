@@ -1,30 +1,19 @@
 from cora.app.assembly import App, assemble
-from cora.core.metadata_filter import MetadataFilter
 from cora.core.ports.chat_model import ModelReply
 from cora.core.ports.plugin import ToolCall
-from cora.core.ports.retrieval import RetrievedChunk
 from cora.core.trace import ToolUse
-from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel, add_tool
+from fakes import (
+    CountingRetriever,
+    FakeEmbedder,
+    FakeRetriever,
+    ScriptedChatModel,
+    add_tool,
+)
 from fixture_plugins import make_plugin
 
 SEED_DOC = ("note.md", b"protein builds muscle")
 QUESTION = "What do my notes say about protein, and what is 20 + 22?"
 ANSWER = "Protein builds muscle [1], and 20 + 22 = 42."
-
-
-class CountingRetriever(FakeRetriever):
-    def __init__(self) -> None:
-        super().__init__()
-        self.queries = 0
-
-    def query(
-        self,
-        query_vector: list[float],
-        k: int,
-        metadata_filter: MetadataFilter | None = None,
-    ) -> list[RetrievedChunk]:
-        self.queries += 1
-        return super().query(query_vector, k, metadata_filter)
 
 
 def _call(name: str, call_id: str, **arguments: object) -> ModelReply:
