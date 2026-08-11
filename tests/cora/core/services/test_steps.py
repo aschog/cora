@@ -21,6 +21,7 @@ from cora.core.services.steps import (
 )
 from cora.core.services.tool_runtime import ToolRuntime
 from cora.core.services.validation import EmptyInputRule, ValidationPipeline
+from cora.core.trace import ModelDecision, ToolUse
 from cora.core.turn import Turn
 from fakes import FailingChatModel, FakeContextSource, ScriptedChatModel, add_tool
 
@@ -58,6 +59,51 @@ def test_a_tool_call_runs_and_its_result_lands_in_the_partial_state() -> None:
     [message] = partial["messages"]
     assert message.role == "tool"
     assert message.tool_call_id == "c1"
+
+
+def test_a_call_is_traced_with_the_tool_and_the_arguments_it_ran_with() -> None:
+    step = ToolStep(ToolRuntime(tools=(add_tool(),)))
+
+    partial = step(_asked(_add_call("c1")))
+
+    [used] = partial["trace"]
+    assert used == ToolUse(
+        name="add", arguments={"a": 1, "b": 2}, outcome="3", detail="3"
+    )
+
+
+def test_a_citable_payload_is_traced_by_its_own_summary_and_its_block() -> None:
+    step = ToolStep(ToolRuntime(tools=(_searcher(_hit("note.md")),)))
+
+    partial = step(_asked(_search_call("c1")))
+
+    [used] = partial["trace"]
+    assert (
+        used.summary == f'{SEARCH_TOOL_NAME}(query="protein") → 1 passage from note.md'
+    )
+    assert used.detail == "[1] note.md: protein builds muscle"
+    assert "untrusted" not in used.detail.lower()
+
+
+def test_a_failed_call_is_traced_as_failed_and_carries_the_error() -> None:
+    step = ToolStep(ToolRuntime(tools=(add_tool(),)))
+
+    partial = step(_asked(ToolCall(name="nope", arguments={}, call_id="c1")))
+
+    [used] = partial["trace"]
+    assert used.failed
+    assert "nope" in used.summary
+
+
+def test_every_call_of_a_round_is_traced_in_order() -> None:
+    step = ToolStep(ToolRuntime(tools=(add_tool(),)))
+
+    partial = step(_asked(_add_call("c1"), _add_call("c2", a=3, b=4)))
+
+    assert [used.summary for used in partial["trace"]] == [
+        "add(a=1, b=2) → 3",
+        "add(a=3, b=4) → 7",
+    ]
 
 
 def test_a_payload_that_registers_nothing_is_fed_back_as_it_renders() -> None:
@@ -220,6 +266,22 @@ def test_a_final_reply_sets_the_answer_and_a_tool_calling_one_does_not() -> None
 
     assert final["answer"] == "The sum is 3."
     assert "answer" not in calling
+
+
+def test_a_tool_calling_reply_is_traced_as_the_decision_it_was() -> None:
+    calling = ModelReply(text="Let me add those.", tool_calls=(_add_call("c1"),))
+
+    partial = _model_step(calling)(_asking())
+
+    assert partial["trace"] == [
+        ModelDecision(detail="Let me add those.", tools=("add",))
+    ]
+
+
+def test_a_final_reply_is_traced_without_repeating_the_answer() -> None:
+    partial = _model_step(ModelReply(text="The sum is 3."))(_asking())
+
+    assert partial["trace"] == [ModelDecision()]
 
 
 def test_each_visit_adds_one_round() -> None:

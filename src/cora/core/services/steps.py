@@ -7,6 +7,7 @@ from cora.core.errors import ToolLoopLimitError
 from cora.core.ports.chat_model import ChatModel, Message
 from cora.core.ports.plugin import Tool, ToolCall, ToolResult
 from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME
+from cora.core.trace import ModelDecision, ToolUse, TraceStep
 
 
 class ToolExecutor(Protocol):
@@ -61,7 +62,15 @@ class ModelStep:
         appended = Message(
             role="assistant", content=reply.text, tool_calls=reply.tool_calls
         )
-        partial: AgentState = {"messages": [appended], "rounds": 1}
+        decision = ModelDecision(
+            detail="" if reply.is_final else reply.text,
+            tools=tuple(call.name for call in reply.tool_calls),
+        )
+        partial: AgentState = {
+            "messages": [appended],
+            "rounds": 1,
+            "trace": [decision],
+        }
         if reply.is_final:
             partial["answer"] = reply.text
         return partial
@@ -75,17 +84,34 @@ class ToolStep:
         known = tuple(state.get("sources", ()))
         messages: list[Message] = []
         results: list[ToolResult] = []
+        trace: list[TraceStep] = []
         added: list[Source] = []
         for call in _requested_calls(state):
             result = self.tool_runtime.execute(call)
             citable = result.payload if isinstance(result.payload, Citable) else None
+            outcome = result.render()
             if citable is not None:
                 context = citable.register(known + tuple(added))
                 result = ToolResult(call_id=result.call_id, payload=context.text)
                 added.extend(context.sources)
+                outcome = citable.summary
             messages.append(_tool_message(result, cites=citable is not None))
             results.append(result)
-        return {"messages": messages, "tool_results": results, "sources": added}
+            trace.append(
+                ToolUse(
+                    name=call.name,
+                    arguments=call.arguments,
+                    outcome=outcome,
+                    detail=result.render(),
+                    failed=result.error is not None,
+                )
+            )
+        return {
+            "messages": messages,
+            "tool_results": results,
+            "trace": trace,
+            "sources": added,
+        }
 
 
 @dataclass(frozen=True)
