@@ -460,6 +460,32 @@ def test_a_greeting_is_traced_as_the_decision_not_to_use_a_tool() -> None:
 
 
 @pytest.mark.integration
+def test_a_turn_that_went_wrong_does_not_read_as_a_clean_one() -> None:
+    """The warning is inside a collapsed panel, so the panel itself has to say
+    the run degraded — otherwise nothing above the fold does."""
+    call = ToolCall(name="add", arguments={"a": "one"}, call_id="c1")
+    scripted = ScriptedChatModel(
+        [ModelReply(tool_calls=(call,)), ModelReply(text="I could not add those.")]
+    )
+    at = _run_page(_app(scripted, plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("one + 25?").run()
+
+    [trace] = at.status
+    assert trace.state == "error"
+
+
+@pytest.mark.integration
+def test_a_turn_that_went_well_reads_as_a_clean_one() -> None:
+    at = _run_page(_app(_calculating(), plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("17 + 25?").run()
+
+    [trace] = at.status
+    assert trace.state == "complete"
+
+
+@pytest.mark.integration
 def test_a_failed_tool_is_traced_as_failed_and_the_answer_still_arrives() -> None:
     call = ToolCall(name="add", arguments={"a": "one"}, call_id="c1")
     scripted = ScriptedChatModel(
@@ -474,7 +500,6 @@ def test_a_failed_tool_is_traced_as_failed_and_the_answer_still_arrives() -> Non
     assert "invalid arguments" in _traced(at)
 
 
-@pytest.mark.integration
 class _FailsOnTheSecondRound:
     def __init__(self, call: ToolCall) -> None:
         self.call = call

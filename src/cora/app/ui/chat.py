@@ -136,7 +136,15 @@ def _show(message: ThreadEntry) -> None:
         else:
             st.markdown(message["content"])
             _expander("Sources", message.get("sources", ()))
-        _trace(message.get("trace", ()), failed="error" in message)
+        _trace(message.get("trace", ()), failed=_went_wrong(message))
+
+
+def _went_wrong(message: ThreadEntry) -> bool:
+    """A failed step sits inside a collapsed panel, so the panel has to carry the
+    news: nothing else above the fold would."""
+    if "error" in message:
+        return True
+    return any(step.failed for step in message.get("trace", ()))
 
 
 def _trace(steps: Sequence[TraceStep], *, failed: bool) -> None:
