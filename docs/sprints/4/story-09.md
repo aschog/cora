@@ -53,6 +53,9 @@ They are separate commits so each can be verified alone.
       its first portion and shadows the real one
 - [ ] a package's tests run against that package installed alone — needs the shared fakes
       to stop being a root-level import first, so it is deferred, not done
+- [x] each layer's `py.typed` sits inside the module its manifest names — a marker one
+      directory up reaches neither the wheel nor the sdist, so the layer installs untyped
+      with the file still sitting in the tree looking like it is doing its job
 - [x] `cora-core` imports with neither `chromadb`, `langgraph`, `sentence_transformers`,
       `streamlit` nor `rank_bm25` importable — the purity `test_architecture.py` asserts,
       now enforced by what the distribution installs
@@ -85,6 +88,9 @@ They are separate commits so each can be verified alone.
 - [ ] **(int)** the app assembles and answers a document question through the composition
       root, exactly as before
 - [ ] the pre-commit hook and CI run from the workspace root and gate every package
+- [x] every location the docs claim resolves — the move left fourteen pointing at
+      `core/services/`, `core/trace.py` and `app/ui/`, and prose drifts silently because
+      nothing reads it; `docs/sprints/**` stays unpoliced, being true of its own day
 - [ ] `README.md` and `big-picture.md` describe the packages, and the package-structure
       diagram is redrawn
 

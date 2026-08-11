@@ -21,6 +21,6 @@ relevant.
 - **Answers** — brief by default; expand only when asked.
 - **Plans** — planning happens in the **current sprint's folder only**
   (`docs/sprints/<n>/`), and the artefact is `story-NN.md`: the story followed by a
-  **test list** of failing-test-sized items. Match `docs/sprints/4/story-01.md`. Design
+  **test list** of failing-test-sized items. Match `docs/sprints/4/done/story-01.md`. Design
   rationale does not go in the file — it lives in the conversation, the commit messages
   and the tests. Earlier sprint folders are build history, not planning input.
