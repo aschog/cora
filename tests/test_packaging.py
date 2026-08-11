@@ -116,10 +116,13 @@ def test_a_plugin_needs_the_contract_alone() -> None:
     assert _requires("fitness") == {"cora-api"}
 
 
-def test_the_adapters_bind_the_core_to_its_technologies() -> None:
+def test_the_adapters_bind_the_contract_to_its_technologies() -> None:
+    """An adapter fills a slot, so the contract is all it needs to know. Depending
+    on the engine would tie a technology to one version of the use cases it serves."""
     requires = _requires("adapters")
 
-    assert "cora-core" in requires
+    assert "cora-core" not in requires
+    assert "cora-api" in requires
     assert HEAVY - {"streamlit"} <= requires, "an adapter's technology went missing"
     assert "streamlit" not in requires, "the UI is an entrypoint, not an adapter"
 

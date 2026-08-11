@@ -3,6 +3,14 @@ from typing import Protocol
 
 from cora.domain.agent_state import AgentState
 
+DONE = "done"
+TOOLS = "tools"
+GROUND = "ground"
+"""What the router can decide, and therefore what a `GraphRunner` has to understand. It
+belongs beside the port for the same reason `AgentState` marks its accumulating keys: a
+graph engine is told the shape and the vocabulary, and imports nothing of the engine to
+learn them."""
+
 
 class GraphRunner(Protocol):
     """Drives one run of the agent's steps, yielding the state as it accumulates:

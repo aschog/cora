@@ -43,6 +43,8 @@ LAYER_ROOTS = (
     _root(cora.plugins.fitness).parent,
 )
 CORE_FILES = sorted(file for root in PURE_ROOTS for file in root.rglob("*.py"))
+ADAPTER_FILES = sorted(_root(cora.adapters).rglob("*.py"))
+BEYOND_THE_ADAPTERS = ("cora.core", "cora.app", "cora.frontends")
 PACKAGE_FILES = sorted(file for root in LAYER_ROOTS for file in root.rglob("*.py"))
 UI_ROOT = _root(cora.app) / "entrypoints"
 
@@ -180,3 +182,37 @@ def test_core_module_is_pure(path: pathlib.Path) -> None:
     modules = _imported_modules(tree, _package_parts(path))
     forbidden = sorted({m for m in modules if _is_forbidden(m)})
     assert not forbidden, f"{_shipped_as(path)} imports forbidden modules: {forbidden}"
+
+
+def _reaches(
+    tree: ast.Module, package_parts: tuple[str, ...], layers: tuple[str, ...]
+) -> list[str]:
+    modules = _imported_modules(tree, package_parts)
+    return sorted(
+        {
+            module
+            for module in modules
+            if any(
+                module == layer or module.startswith(f"{layer}.") for layer in layers
+            )
+        }
+    )
+
+
+def test_an_adapter_reaching_past_the_contract_is_detected() -> None:
+    tree = ast.parse("from cora.core.service_layer.steps import Router\n")
+    assert _reaches(tree, ("cora", "adapters"), BEYOND_THE_ADAPTERS) == [
+        "cora.core.service_layer.steps"
+    ]
+
+
+@pytest.mark.parametrize("path", ADAPTER_FILES, ids=lambda p: str(_shipped_as(p)))
+def test_an_adapter_binds_the_contract_alone(path: pathlib.Path) -> None:
+    """Every frontend and every version of the use cases can reuse an adapter because it
+    knows the ports and nothing else. Reaching for the engine is what put `DONE` and its
+    two siblings behind the graph port; reaching for the app or a frontend would tie a
+    technology to one of them."""
+    reached = _reaches(
+        ast.parse(path.read_text()), _package_parts(path), BEYOND_THE_ADAPTERS
+    )
+    assert not reached, f"{_shipped_as(path)} reaches past the contract: {reached}"

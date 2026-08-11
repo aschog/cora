@@ -8,6 +8,7 @@ from cora.domain.errors import AdapterError, ToolLoopLimitError
 from cora.domain.trace import ModelDecision, Reconsidered, ToolUse, TraceStep
 from cora.ports.chat_model import ChatModel, Message
 from cora.ports.context_source import ContextSource
+from cora.ports.graph import DONE, GROUND, TOOLS
 from cora.ports.plugin import Tool, ToolCall, ToolResult
 
 
@@ -19,9 +20,6 @@ class InputValidator(Protocol):
     def validate(self, user_input: str) -> str: ...
 
 
-DONE = "done"
-TOOLS = "tools"
-GROUND = "ground"
 ROUNDS_A_SECOND_LOOK_NEEDS = 1
 EVIDENCE_FLOOR = 0.15
 """How near a passage must be to count as evidence the gate hands over. Top-k always

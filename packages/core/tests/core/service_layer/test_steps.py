@@ -5,9 +5,6 @@ import pytest
 
 from cora.core.service_layer.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.core.service_layer.steps import (
-    DONE,
-    GROUND,
-    TOOLS,
     UNTRUSTED_NOTICE,
     GroundStep,
     ModelStep,
@@ -29,6 +26,7 @@ from cora.domain.errors import (
 from cora.domain.trace import ModelDecision, ToolUse
 from cora.domain.turn import Turn
 from cora.ports.chat_model import Message, ModelReply, Role
+from cora.ports.graph import DONE, GROUND, TOOLS
 from cora.ports.plugin import Tool, ToolCall
 from cora.ports.retrieval import RetrievedChunk
 from fakes import FailingChatModel, FakeContextSource, ScriptedChatModel, add_tool
