@@ -48,7 +48,7 @@ def _ran(state: AgentState) -> AgentState:
 
 
 def _nudge(state: AgentState) -> AgentState:
-    return {"messages": _said("system", "search first"), "nudged": True}
+    return {"messages": _said("system", "search first"), "nudged_at": 0}
 
 
 def _runner(
@@ -122,13 +122,13 @@ def test_an_ungrounded_answer_goes_back_through_the_model() -> None:
 
     def model(state: AgentState) -> AgentState:
         visited.append("model")
-        if state.get("nudged"):
+        if "nudged_at" in state:
             return {"messages": _said("assistant", "grounded"), "answer": "grounded"}
         return {"messages": _said("assistant", "off the cuff"), "answer": "off"}
 
     def ground(state: AgentState) -> AgentState:
         visited.append("ground")
-        return {"messages": _said("system", "search first"), "nudged": True}
+        return {"messages": _said("system", "search first"), "nudged_at": 0}
 
     final = _final(
         _runner(model=model, ground=ground, grounded=True), {"question": "q"}
@@ -213,8 +213,9 @@ def test_the_round_budget_fires_before_the_graphs_own_limit() -> None:
 
 
 def test_the_round_budget_still_fires_first_when_the_gate_has_added_a_round() -> None:
-    """The gate costs the graph two supersteps that the budget does not count, so
-    the headroom in `recursion_limit_for` has to cover them."""
+    """`run` turns a `GraphRecursionError` into the same `ToolLoopLimitError`, so
+    the count is what tells the two apart: the budget tripping means every round
+    was spent, the graph tripping means it was cut short."""
 
     class _AnswersThenLoops:
         def __init__(self) -> None:
@@ -238,8 +239,11 @@ def test_the_round_budget_still_fires_first_when_the_gate_has_added_a_round() ->
 
     model = _AnswersThenLoops()
 
-    with pytest.raises(ToolLoopLimitError):
+    with pytest.raises(ToolLoopLimitError) as exc_info:
         _final(_real_runner(model, rounds=3, grounded=True), {"question": "q"})
+
+    assert model.completions == 3
+    assert exc_info.value.__cause__ is None
 
 
 def test_an_input_rejection_from_prepare_travels_out_unwrapped() -> None:

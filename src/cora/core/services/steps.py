@@ -116,7 +116,7 @@ class GroundStep:
         return {
             "messages": [Message(role="system", content=self.reminder)],
             "trace": [Reconsidered()],
-            "nudged": True,
+            "nudged_at": state.get("rounds", 0),
         }
 
 
@@ -130,7 +130,7 @@ class Router:
             if state.get("rounds", 0) >= self.max_tool_rounds:
                 raise ToolLoopLimitError
             return TOOLS
-        if self.grounded and not state.get("nudged") and not _used_a_tool(state):
+        if self.grounded and "nudged_at" not in state and not _used_a_tool(state):
             return GROUND
         return DONE
 

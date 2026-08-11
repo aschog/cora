@@ -89,8 +89,13 @@ def test_an_answer_already_in_hand_survives_a_failed_second_look() -> None:
     """The grounding gate makes a run that already has an answer take one more
     round. If that round dies, the user still gets the answer it had."""
     runner = _StubRunner(
-        {"answer": "Hello!", "trace": [ANSWERED]},
-        {"answer": "Hello!", "trace": [ANSWERED, RECONSIDERED], "nudged": True},
+        {"answer": "Hello!", "trace": [ANSWERED], "rounds": 1},
+        {
+            "answer": "Hello!",
+            "trace": [ANSWERED, RECONSIDERED],
+            "rounds": 1,
+            "nudged_at": 1,
+        },
         then=LlmError(),
     )
 
@@ -109,7 +114,25 @@ def test_a_failure_before_any_answer_still_travels_out() -> None:
 def test_a_failed_first_round_is_not_rescued_by_an_unnudged_answer() -> None:
     """Only the gate's extra round is forgiven: any other failure after an answer
     would be hiding a real one."""
-    runner = _StubRunner({"answer": "Hello!", "trace": [ANSWERED]}, then=LlmError())
+    runner = _StubRunner(
+        {"answer": "Hello!", "trace": [ANSWERED], "rounds": 1}, then=LlmError()
+    )
+
+    with pytest.raises(LlmError):
+        Agent(runner).answer("Hi!")
+
+
+def test_a_failure_once_the_second_look_has_landed_is_an_ordinary_failure() -> None:
+    runner = _StubRunner(
+        {
+            "answer": "Hello!",
+            "trace": [ANSWERED, RECONSIDERED],
+            "rounds": 1,
+            "nudged_at": 1,
+        },
+        {"answer": "Hello!", "trace": [ANSWERED, RECONSIDERED, SEARCHED], "rounds": 2},
+        then=LlmError(),
+    )
 
     with pytest.raises(LlmError):
         Agent(runner).answer("Hi!")

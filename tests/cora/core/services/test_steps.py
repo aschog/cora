@@ -467,7 +467,7 @@ def test_the_gate_reads_the_transcript_not_the_trace() -> None:
 def test_the_gate_fires_once_so_a_run_can_never_loop_on_it() -> None:
     router = Router(max_tool_rounds=8, grounded=True)
 
-    assert router({**_replied(), "rounds": 2, "nudged": True}) == DONE
+    assert router({**_replied(), "rounds": 2, "nudged_at": 1}) == DONE
 
 
 def test_a_plugin_that_asks_for_no_grounding_goes_straight_to_done() -> None:
@@ -475,12 +475,17 @@ def test_a_plugin_that_asks_for_no_grounding_goes_straight_to_done() -> None:
 
 
 def test_the_step_sends_the_answer_back_with_the_plugins_own_reminder() -> None:
-    partial = GroundStep(reminder="Search the documents first.")({})
+    partial = GroundStep(reminder="Search the documents first.")({"rounds": 1})
 
     [message] = partial["messages"]
     assert message.role == "system"
     assert message.content == "Search the documents first."
-    assert partial["nudged"] is True
+
+
+def test_the_nudge_remembers_the_round_it_interrupted() -> None:
+    """Which round the gate is second-guessing is what tells a later failure
+    apart from a failure of the second look itself."""
+    assert GroundStep(reminder="Look again.")({"rounds": 2})["nudged_at"] == 2
 
 
 def test_the_reconsideration_shows_up_in_the_trace() -> None:

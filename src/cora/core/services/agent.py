@@ -20,8 +20,13 @@ def _ignore(step: TraceStep) -> None:
     pass
 
 
-def _was_reconsidering(state: AgentState) -> bool:
-    return bool(state.get("nudged")) and bool(state.get("answer"))
+def _died_taking_the_second_look(state: AgentState) -> bool:
+    """True only while the gate's own extra round is the one that has not landed:
+    the nudge remembers the round it interrupted, and any round completed since
+    makes the failure an ordinary one, with an answer too old to stand for it."""
+    if "nudged_at" not in state:
+        return False
+    return state["nudged_at"] == state.get("rounds", 0) and bool(state.get("answer"))
 
 
 @dataclass(frozen=True)
@@ -49,7 +54,7 @@ class Agent:
                     on_step(step)
                 reported = len(steps)
         except CoreError:
-            if not _was_reconsidering(final):
+            if not _died_taking_the_second_look(final):
                 raise
         if not final:
             raise GraphRunError
