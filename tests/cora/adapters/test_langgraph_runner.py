@@ -48,7 +48,7 @@ def _ran(state: AgentState) -> AgentState:
 
 
 def _nudge(state: AgentState) -> AgentState:
-    return {"messages": _said("system", "search first"), "nudged_at": 0}
+    return {"messages": _said("system", "search first"), "answer_in_hand": "off"}
 
 
 def _runner(
@@ -122,13 +122,13 @@ def test_an_ungrounded_answer_goes_back_through_the_model() -> None:
 
     def model(state: AgentState) -> AgentState:
         visited.append("model")
-        if "nudged_at" in state:
+        if "answer_in_hand" in state:
             return {"messages": _said("assistant", "grounded"), "answer": "grounded"}
         return {"messages": _said("assistant", "off the cuff"), "answer": "off"}
 
     def ground(state: AgentState) -> AgentState:
         visited.append("ground")
-        return {"messages": _said("system", "search first"), "nudged_at": 0}
+        return {"messages": _said("system", "search first"), "answer_in_hand": "off"}
 
     final = _final(
         _runner(model=model, ground=ground, grounded=True), {"question": "q"}

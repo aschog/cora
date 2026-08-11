@@ -114,10 +114,13 @@ class GroundStep:
     reminder: str
 
     def __call__(self, state: AgentState) -> AgentState:
+        """Holds on to the answer it is second-guessing. That is what tells a
+        failed second look apart from a failure after one: the answer changes
+        when the model replies again, and nothing else has to be counted."""
         return {
             "messages": [Message(role="system", content=self.reminder)],
             "trace": [Reconsidered()],
-            "nudged_at": state.get("rounds", 0),
+            "answer_in_hand": state.get("answer", ""),
         }
 
 
@@ -136,10 +139,10 @@ class Router:
         return DONE
 
     def _may_send_back(self, state: AgentState) -> bool:
-        """A second look needs room to search and then answer. Without it the
-        gate would spend the budget on a round that cannot finish, turning a good
-        answer into the give-up apology."""
-        if not self.grounded or "nudged_at" in state:
+        """A second look needs room for one search and the answer that reads it.
+        Without that much budget the gate would spend a good answer on a round
+        that cannot finish, and the turn would end in the give-up apology."""
+        if not self.grounded or "answer_in_hand" in state:
             return False
         room = state.get("rounds", 0) + ROUNDS_A_SECOND_LOOK_NEEDS
         return room <= self.max_tool_rounds

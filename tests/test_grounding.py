@@ -1,11 +1,11 @@
 import pytest
 
 from cora.app.assembly import App, assemble
-from cora.core.errors import LlmError, ToolLoopLimitError
+from cora.core.errors import LlmError, RetrievalError, ToolLoopLimitError
 from cora.core.ports.chat_model import ChatModel, Message, ModelReply
 from cora.core.ports.plugin import Tool, ToolCall
 from cora.core.services.retrieval_tool import SEARCH_TOOL_NAME
-from cora.core.trace import Reconsidered, ToolUse
+from cora.core.trace import Reconsidered, SecondLookLost, ToolUse
 from fakes import CountingRetriever, FakeEmbedder, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin
 
@@ -194,6 +194,62 @@ def test_a_plugin_that_asks_for_no_grounding_answers_in_one_round() -> None:
 
     assert result.answer == OFF_THE_CUFF
     assert retriever.queries == 0
+
+
+class _FailingRetrieverOnSearch(CountingRetriever):
+    def query(self, query_vector, k, metadata_filter=None):
+        raise RetrievalError
+
+
+@pytest.mark.integration
+def test_a_second_look_whose_search_breaks_gives_back_the_answer_in_hand() -> None:
+    """The gate demanded the search, and it is often the process's first, so an
+    adapter failure there is likelier than anywhere. Losing a good answer to a
+    round nothing asked for is the one thing the gate must never do."""
+    model = ScriptedChatModel([ModelReply(text=OFF_THE_CUFF), _searching()])
+    app = assemble(
+        chat_model=model,
+        embedder=FakeEmbedder(),
+        retriever=_FailingRetrieverOnSearch(),
+        plugin=make_plugin(seed_docs=(SEED_DOC,), grounding=REMINDER),
+    )
+
+    result = app.agent.answer("How much protein should I eat?")
+
+    assert result.answer == OFF_THE_CUFF
+    assert result.sources == ()
+
+
+@pytest.mark.integration
+def test_a_rescued_turn_says_the_second_look_never_came_back() -> None:
+    seen: list[str] = []
+    app = _assemble_with(_DiesAfterTheNudge())
+
+    result = app.agent.answer(
+        "How much protein should I eat?", on_step=lambda s: seen.append(s.summary)
+    )
+
+    assert isinstance(result.trace[-1], SecondLookLost)
+    assert result.trace[-1].failed
+    assert seen[-1] == result.trace[-1].summary
+
+
+@pytest.mark.integration
+def test_the_shipped_reminder_is_what_the_model_is_sent_back_with() -> None:
+    from cora.plugins.fitness import GROUNDING, PLUGIN
+
+    model = ScriptedChatModel([ModelReply(text=OFF_THE_CUFF), ModelReply(text="ok")])
+    app = assemble(
+        chat_model=model,
+        embedder=FakeEmbedder(),
+        retriever=CountingRetriever(),
+        plugin=PLUGIN,
+    )
+
+    app.agent.answer("How much protein should I eat?")
+
+    assert model.last_messages is not None
+    assert GROUNDING.strip() in [m.content for m in model.last_messages]
 
 
 @pytest.mark.integration

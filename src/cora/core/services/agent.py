@@ -20,15 +20,15 @@ def _ignore(step: TraceStep) -> None:
     pass
 
 
-def _died_taking_the_second_look(state: AgentState) -> bool:
-    """The gate's own extra round is the one that has not landed: the nudge
-    remembers the round it interrupted, and any round completed since makes the
-    failure an ordinary one, with an answer too old to stand for it. Read only
-    for an `AdapterError` — the state a run yielded last can predate a failure the
-    router raised, so it is no evidence about a verdict the router reached."""
-    if "nudged_at" not in state:
+def _still_holding_the_answer(state: AgentState) -> bool:
+    """The gate is holding an answer and the run has nothing to show for the look
+    it asked for: the model has not answered again and no source was found. Asked
+    of the gate's own record, never of round counting — the state a run yielded
+    last can predate the failure, so it cannot be counted against."""
+    if "answer_in_hand" not in state:
         return False
-    return state["nudged_at"] == state.get("rounds", 0) and bool(state.get("answer"))
+    held = state["answer_in_hand"]
+    return bool(held) and state.get("answer") == held and not state.get("sources")
 
 
 @dataclass(frozen=True)
@@ -56,7 +56,7 @@ class Agent:
                     on_step(step)
                 reported = len(steps)
         except AdapterError:
-            if not _died_taking_the_second_look(final):
+            if not _still_holding_the_answer(final):
                 raise
             on_step(SecondLookLost())
             final = {**final, "trace": [*final.get("trace", []), SecondLookLost()]}

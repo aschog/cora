@@ -17,5 +17,5 @@ class AgentState(TypedDict, total=False):
     trace: Annotated[list[TraceStep], operator.add]
     sources: Annotated[list[Source], operator.add]
     rounds: Annotated[int, operator.add]
-    nudged_at: int
+    answer_in_hand: str
     answer: str

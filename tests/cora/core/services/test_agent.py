@@ -4,14 +4,31 @@ import pytest
 
 from cora.core.agent_state import AgentState
 from cora.core.citations import Source
-from cora.core.errors import GraphRunError, LlmError
+from cora.core.errors import GraphRunError, LlmError, ToolLoopLimitError
 from cora.core.services.agent import Agent
-from cora.core.trace import ModelDecision, Reconsidered, ToolUse, TraceStep
+from cora.core.trace import (
+    ModelDecision,
+    Reconsidered,
+    SecondLookLost,
+    ToolUse,
+    TraceStep,
+)
 from cora.core.turn import Turn
 
 SEARCHED = ToolUse(name="search_documents", arguments={"query": "protein"})
 ANSWERED = ModelDecision()
 RECONSIDERED = Reconsidered()
+
+
+def _held(answer: str) -> AgentState:
+    """The state the gate leaves behind: the answer it is holding while the run
+    takes one more look, with nothing found yet."""
+    return {
+        "answer": answer,
+        "answer_in_hand": answer,
+        "trace": [ANSWERED, RECONSIDERED],
+        "rounds": 1,
+    }
 
 
 class _StubRunner:
@@ -90,12 +107,7 @@ def test_an_answer_already_in_hand_survives_a_failed_second_look() -> None:
     round. If that round dies, the user still gets the answer it had."""
     runner = _StubRunner(
         {"answer": "Hello!", "trace": [ANSWERED], "rounds": 1},
-        {
-            "answer": "Hello!",
-            "trace": [ANSWERED, RECONSIDERED],
-            "rounds": 1,
-            "nudged_at": 1,
-        },
+        _held("Hello!"),
         then=LlmError(),
     )
 
@@ -124,18 +136,31 @@ def test_a_failed_first_round_is_not_rescued_by_an_unnudged_answer() -> None:
 
 def test_a_failure_once_the_second_look_has_landed_is_an_ordinary_failure() -> None:
     runner = _StubRunner(
-        {
-            "answer": "Hello!",
-            "trace": [ANSWERED, RECONSIDERED],
-            "rounds": 1,
-            "nudged_at": 1,
-        },
-        {"answer": "Hello!", "trace": [ANSWERED, RECONSIDERED, SEARCHED], "rounds": 2},
+        _held("Hello!"),
+        {**_held("Hello!"), "sources": [Source(1, "note.md")], "rounds": 2},
         then=LlmError(),
     )
 
     with pytest.raises(LlmError):
         Agent(runner).answer("Hi!")
+
+
+def test_the_give_up_apology_is_never_forgiven_even_mid_second_look() -> None:
+    """A verdict the router reached is not a failure to reach the model."""
+    runner = _StubRunner(_held("Hello!"), then=ToolLoopLimitError())
+
+    with pytest.raises(ToolLoopLimitError):
+        Agent(runner).answer("Hi!")
+
+
+def test_a_rescue_records_that_the_second_look_never_came_back() -> None:
+    seen: list[TraceStep] = []
+    runner = _StubRunner(_held("Hello!"), then=LlmError())
+
+    result = Agent(runner).answer("Hi!", on_step=seen.append)
+
+    assert isinstance(result.trace[-1], SecondLookLost)
+    assert seen[-1] == result.trace[-1]
 
 
 def test_a_runner_that_walks_no_step_at_all_is_a_failure_not_an_empty_answer() -> None:
