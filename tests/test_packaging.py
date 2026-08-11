@@ -148,3 +148,17 @@ def test_a_frontend_needs_the_app_and_its_own_toolkit() -> None:
     requires = _requires("streamlit")
 
     assert requires == {"cora", "streamlit"}
+
+
+def test_no_module_sits_outside_what_its_manifest_names() -> None:
+    """`module-name = "cora.engine"` walks that subtree; a *list* of names ships only
+    what it lists. So a layer added beside a listed one, or a loose module dropped under
+    `src/`, imports and type-checks and passes the suite while the built wheel omits it
+    entirely — the editable install the workspace runs on never reads `module-name`."""
+    unshipped = [
+        str(path)
+        for layer in LAYERS
+        for path in sorted((PACKAGES / layer / "src").rglob("*.py"))
+        if not any(path.is_relative_to(root) for root in _module_roots(layer))
+    ]
+    assert unshipped == [], f"outside every declared module: {unshipped}"

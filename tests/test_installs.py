@@ -16,10 +16,13 @@ import json
 import pathlib
 import re
 import subprocess
+import zipfile
 
 import pytest
+import tomllib
 
 REPO = pathlib.Path(__file__).resolve().parent.parent
+PACKAGES = REPO / "packages"
 
 
 def _uv(*args: str) -> subprocess.CompletedProcess[str]:
@@ -169,3 +172,36 @@ def test_the_contract_stands_up_with_nothing_installed_beside_it(
     assert _installed(python) == {"cora-api"}
     assert _import_failures(python, "cora.domain") == []
     assert _import_failures(python, "cora.ports") == []
+
+
+def _layers() -> list[str]:
+    return sorted(path.name for path in PACKAGES.iterdir() if path.is_dir())
+
+
+def _wheel(wheelhouse: pathlib.Path, layer: str) -> pathlib.Path:
+    manifest = tomllib.loads((PACKAGES / layer / "pyproject.toml").read_text())
+    stem = manifest["project"]["name"].replace("-", "_")
+    version = manifest["project"]["version"]
+    found = list(wheelhouse.glob(f"{stem}-{version}-*.whl"))
+    assert len(found) == 1, f"{layer}: expected one wheel, found {found}"
+    return found[0]
+
+
+@pytest.mark.integration
+def test_every_wheel_carries_every_module_its_package_holds(
+    wheelhouse: pathlib.Path,
+) -> None:
+    """The wheel is the only artefact `module-name` can be wrong about, and the one
+    nothing built until this story. A module the manifest forgot to name is not an error
+    anywhere else in the toolchain — it just is not in here."""
+    missing = []
+    for layer in _layers():
+        src = PACKAGES / layer / "src"
+        with zipfile.ZipFile(_wheel(wheelhouse, layer)) as archive:
+            shipped = set(archive.namelist())
+        missing += [
+            f"{layer}: {path.relative_to(src)}"
+            for path in sorted(src.rglob("*.py"))
+            if str(path.relative_to(src)) not in shipped
+        ]
+    assert missing == [], f"built but not shipped: {missing}"
