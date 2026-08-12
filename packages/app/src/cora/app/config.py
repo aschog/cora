@@ -7,7 +7,7 @@ from cora.domain.errors import ConfigurationError
 
 DEFAULT_MODEL = "openai/gpt-4o-mini"
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_PLUGIN = "cora.plugins.fitness"
+DEFAULT_PLUGINS = ("cora.plugins.fitness",)
 DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
 DEFAULT_HISTORY_TURNS = 20
@@ -21,7 +21,7 @@ class Config:
     api_key: str
     model: str
     base_url: str
-    plugin_module: str
+    plugin_modules: tuple[str, ...]
     top_k: int
     max_tool_rounds: int
     history_turns: int
@@ -43,7 +43,7 @@ class Config:
             api_key=api_key,
             model=env.get("CORA_MODEL", DEFAULT_MODEL),
             base_url=env.get("OPENROUTER_BASE_URL", DEFAULT_BASE_URL),
-            plugin_module=env.get("CORA_PLUGIN", DEFAULT_PLUGIN),
+            plugin_modules=_plugin_modules(env),
             top_k=_int(env, "CORA_TOP_K", DEFAULT_TOP_K, minimum=1),
             max_tool_rounds=_int(
                 env, "CORA_MAX_TOOL_ROUNDS", DEFAULT_MAX_TOOL_ROUNDS, minimum=1
@@ -59,6 +59,15 @@ class Config:
             ),
             debug=_bool(env, "CORA_DEBUG"),
         )
+
+
+def _plugin_modules(env: Mapping[str, str]) -> tuple[str, ...]:
+    """Unset takes the default set; set and empty asks for none. Distinguishing the
+    two is what makes bare cora something a deployment can choose."""
+    if "CORA_PLUGINS" not in env:
+        return DEFAULT_PLUGINS
+    named = env["CORA_PLUGINS"].split(",")
+    return tuple(module.strip() for module in named if module.strip())
 
 
 def _retrieval_mode(env: Mapping[str, str]) -> str:

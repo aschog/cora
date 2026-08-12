@@ -172,7 +172,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         ),
         embedder=SentenceTransformerEmbedder(),
         retriever=retriever,
-        plugins=load_plugins([config.plugin_module]),
+        plugins=load_plugins(config.plugin_modules),
         memory=SqliteStoreMemory.at(config.memory_path),
         top_k=config.top_k,
         max_tool_rounds=config.max_tool_rounds,

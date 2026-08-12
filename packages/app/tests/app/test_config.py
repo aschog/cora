@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from cora.app.config import Config
+from cora.app.config import DEFAULT_PLUGINS, Config
 from cora.domain.errors import ConfigurationError
 
 
@@ -12,7 +12,7 @@ def test_from_env_reads_every_field() -> None:
             "OPENROUTER_API_KEY": "key-123",
             "CORA_MODEL": "anthropic/claude",
             "OPENROUTER_BASE_URL": "https://example/api",
-            "CORA_PLUGIN": "cora.plugins.custom",
+            "CORA_PLUGINS": "cora.plugins.custom",
             "CORA_TOP_K": "7",
             "CORA_MAX_TOOL_ROUNDS": "3",
             "CORA_HISTORY_TURNS": "9",
@@ -25,7 +25,7 @@ def test_from_env_reads_every_field() -> None:
         api_key="key-123",
         model="anthropic/claude",
         base_url="https://example/api",
-        plugin_module="cora.plugins.custom",
+        plugin_modules=("cora.plugins.custom",),
         top_k=7,
         max_tool_rounds=3,
         history_turns=9,
@@ -39,12 +39,33 @@ def test_from_env_applies_defaults_for_optional_fields() -> None:
 
     assert config.model
     assert config.base_url
-    assert config.plugin_module
+    assert config.plugin_modules == DEFAULT_PLUGINS
     assert config.top_k > 0
     assert config.max_tool_rounds > 0
     assert config.history_turns > 0
     assert config.db_path
     assert config.memory_path
+
+
+def test_several_plugins_are_read_in_the_order_they_were_named() -> None:
+    config = Config.from_env(
+        {
+            "OPENROUTER_API_KEY": "k",
+            "CORA_PLUGINS": "cora.plugins.security, cora.plugins.fitness",
+        }
+    )
+
+    assert config.plugin_modules == ("cora.plugins.security", "cora.plugins.fitness")
+
+
+def test_the_setting_left_empty_asks_for_no_plugins_at_all() -> None:
+    """Unset and set-empty must stay distinguishable, or bare cora cannot be asked
+    for: one takes the default set, the other takes none."""
+    empty = Config.from_env({"OPENROUTER_API_KEY": "k", "CORA_PLUGINS": ""})
+    unset = Config.from_env({"OPENROUTER_API_KEY": "k"})
+
+    assert empty.plugin_modules == ()
+    assert unset.plugin_modules == DEFAULT_PLUGINS
 
 
 def test_the_memory_default_sits_beside_the_document_store() -> None:
