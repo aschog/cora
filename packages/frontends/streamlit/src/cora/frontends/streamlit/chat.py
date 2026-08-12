@@ -1,4 +1,5 @@
 import hashlib
+import uuid
 from collections.abc import Callable, Sequence
 
 import streamlit as st
@@ -12,12 +13,16 @@ from cora.frontends.streamlit.formatting import (
     numbered_sources,
     step_text,
 )
-from cora.frontends.streamlit.thread import ThreadEntry, thread_to_turns
+from cora.frontends.streamlit.thread import ThreadEntry
+from cora.ports.memory import Memory
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 MAX_INGEST_ATTEMPTS = 2
 WORKING = "Working…"
 TRACE_LABEL = "How I got there"
+REMEMBER_HEADING = "What I remember"
+NOTHING_REMEMBERED = "Nothing yet — tell me something about yourself."
+FORGET_LABEL = "✕"
 
 
 def main(app_factory: Callable[[], App]) -> None:
@@ -32,6 +37,7 @@ def main(app_factory: Callable[[], App]) -> None:
 def render(app: App) -> None:
     with st.sidebar:
         _documents(app.knowledge_base)
+        _memory(app.memory)
     _thread()
     if prompt := st.chat_input("Ask about your documents"):
         _answer(app.agent, prompt)
@@ -43,6 +49,50 @@ def _documents(knowledge_base: KnowledgeBase) -> None:
     _ingest_once(knowledge_base, uploaded)
     for source in knowledge_base.list_sources():
         st.markdown(source)
+
+
+def _memory(memory: Memory | None) -> None:
+    """Forgetting runs as a callback, so the list a rerun draws is the list after the
+    click rather than the one that was clicked. A callback's failure has to survive
+    into that rerun to be shown at all, which is what `memory_error` carries."""
+    if memory is None:
+        return
+    st.header(REMEMBER_HEADING)
+    if failed := st.session_state.pop("memory_error", None):
+        st.error(failed)
+    try:
+        facts = memory.recall()
+    except AdapterError as error:
+        st.error(error.user_message)
+        return
+    if not facts:
+        st.markdown(NOTHING_REMEMBERED)
+        return
+    for fact in facts:
+        said, forget = st.columns([5, 1])
+        said.markdown(fact.text)
+        forget.button(
+            FORGET_LABEL,
+            key=f"forget_{fact.key}",
+            help="Forget this",
+            on_click=_forgetting(memory.forget, fact.key),
+        )
+    st.button(
+        "Forget everything", key="clear_memory", on_click=_forgetting(memory.clear)
+    )
+
+
+def _forgetting(write: Callable[..., None], *args: str) -> Callable[[], None]:
+    """A store that went away takes the panel with it, never the chat: the sidebar is
+    where memory is shown, so it is where memory's failures belong."""
+
+    def attempt() -> None:
+        try:
+            write(*args)
+        except AdapterError as error:
+            st.session_state.memory_error = error.user_message
+
+    return attempt
 
 
 def _ingest_once(knowledge_base: KnowledgeBase, uploaded: UploadedFile | None) -> None:
@@ -86,20 +136,22 @@ def _ingest(knowledge_base: KnowledgeBase, data: bytes, filename: str) -> bool:
 
 
 def _thread() -> None:
+    """The session's thread id names the conversation the agent keeps; what is stored
+    here is only what the screen has to redraw."""
     if "messages" not in st.session_state:
         st.session_state.messages = []
+        st.session_state.thread_id = str(uuid.uuid4())
     for message in st.session_state.messages:
         _show(message)
 
 
 def _answer(agent: Agent, prompt: str) -> None:
-    history = thread_to_turns(st.session_state.messages)
     _append_and_show({"role": "user", "content": prompt})
     taken: list[TraceStep] = []
     live = st.empty()
     try:
         with live.container(), st.status(WORKING, expanded=True):
-            result = agent.answer(prompt, history, _watch(taken))
+            result = agent.answer(prompt, st.session_state.thread_id, _watch(taken))
     except CoreError as error:
         live.empty()
         _append_and_show(

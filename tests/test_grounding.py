@@ -14,6 +14,7 @@ OFF_THE_CUFF = "Beginners should train three times a week."
 GROUNDED = "Your notes say 1.6 g per kg [1]."
 REMINDER = "You answered without searching. Search the documents first."
 FABRICATED = "Protein is 1.6 g per kg [1]."
+THREAD = "t1"
 
 
 def _assemble_with(chat_model: ChatModel, max_tool_rounds: int = 8) -> App:
@@ -54,7 +55,7 @@ def test_an_answer_that_skipped_the_documents_is_sent_back_for_them() -> None:
         [ModelReply(text=OFF_THE_CUFF), ModelReply(text=GROUNDED)], retriever
     )
 
-    result = app.agent.answer("How much protein should I eat?")
+    result = app.agent.answer("How much protein should I eat?", THREAD)
 
     assert result.answer == GROUNDED
     assert [source.name for source in result.sources] == ["protein.md"]
@@ -68,7 +69,7 @@ def test_the_trace_shows_the_answer_being_sent_back() -> None:
         CountingRetriever(),
     )
 
-    result = app.agent.answer("How much protein should I eat?")
+    result = app.agent.answer("How much protein should I eat?", THREAD)
 
     kinds = [type(step) for step in result.trace]
     assert Reconsidered in kinds
@@ -83,7 +84,7 @@ def test_small_talk_keeps_its_answer_and_cites_nothing() -> None:
     retriever = CountingRetriever()
     app = _assemble([ModelReply(text="Hello!"), ModelReply(text="Hello!")], retriever)
 
-    result = app.agent.answer("Hi there!")
+    result = app.agent.answer("Hi there!", THREAD)
 
     assert result.answer == "Hello!"
     assert result.sources == ()
@@ -125,7 +126,7 @@ class _DiesAfterSearching:
 def test_a_dead_second_look_gives_back_the_answer_it_was_second_guessing() -> None:
     app = _assemble_with(_DiesAfterTheNudge())
 
-    result = app.agent.answer("How much protein should I eat?")
+    result = app.agent.answer("How much protein should I eat?", THREAD)
 
     assert result.answer == OFF_THE_CUFF
     assert result.sources == ()
@@ -138,7 +139,7 @@ def test_a_failure_after_the_second_look_worked_is_not_forgiven() -> None:
     app = _assemble_with(_DiesAfterSearching())
 
     with pytest.raises(LlmError):
-        app.agent.answer("How much protein should I eat?")
+        app.agent.answer("How much protein should I eat?", THREAD)
 
 
 @pytest.mark.integration
@@ -149,7 +150,7 @@ def test_the_friendly_give_up_is_never_swallowed_by_the_gate(budget: int) -> Non
     app = _assemble_with(_SearchesForever(), max_tool_rounds=budget)
 
     with pytest.raises(ToolLoopLimitError):
-        app.agent.answer("How much protein should I eat?")
+        app.agent.answer("How much protein should I eat?", THREAD)
 
 
 @pytest.mark.integration
@@ -162,7 +163,7 @@ def test_a_budget_too_small_for_a_second_look_leaves_the_answer_alone(
     model = _SearchesForever()
     app = _assemble_with(model, max_tool_rounds=budget)
 
-    result = app.agent.answer("How much protein should I eat?")
+    result = app.agent.answer("How much protein should I eat?", THREAD)
 
     assert result.answer == OFF_THE_CUFF
     assert model.completions == 1
@@ -191,7 +192,7 @@ def test_a_plugin_that_asks_for_no_grounding_answers_in_one_round() -> None:
         plugin=make_plugin(seed_docs=(SEED_DOC,)),
     )
 
-    result = app.agent.answer("How much protein should I eat?")
+    result = app.agent.answer("How much protein should I eat?", THREAD)
 
     assert result.answer == OFF_THE_CUFF
     assert retriever.queries == 0
@@ -217,7 +218,7 @@ def test_a_second_look_whose_search_breaks_gives_back_the_answer_in_hand() -> No
         plugin=make_plugin(seed_docs=(SEED_DOC,), grounding=REMINDER),
     )
 
-    result = app.agent.answer("How much protein should I eat?")
+    result = app.agent.answer("How much protein should I eat?", THREAD)
 
     assert result.answer == OFF_THE_CUFF
     assert result.sources == ()
@@ -231,7 +232,9 @@ def test_a_rescued_turn_says_the_second_look_never_came_back() -> None:
     app = _assemble_with(_DiesAfterTheNudge())
 
     result = app.agent.answer(
-        "How much protein should I eat?", on_step=lambda s: seen.append(s.summary)
+        "How much protein should I eat?",
+        THREAD,
+        on_step=lambda s: seen.append(s.summary),
     )
 
     assert isinstance(result.trace[-1], SecondLookLost)
@@ -251,7 +254,7 @@ def test_the_shipped_reminder_is_what_the_model_is_sent_back_with() -> None:
         plugin=PLUGIN,
     )
 
-    app.agent.answer("How much protein should I eat?")
+    app.agent.answer("How much protein should I eat?", THREAD)
 
     assert model.last_messages is not None
     sent_back = [
@@ -276,7 +279,7 @@ def test_the_shipped_plugin_sends_an_ungrounded_answer_back() -> None:
         plugin=PLUGIN,
     )
 
-    result = app.agent.answer("How much protein should I eat?")
+    result = app.agent.answer("How much protein should I eat?", THREAD)
 
     assert result.answer == GROUNDED
     assert any(isinstance(step, Reconsidered) for step in result.trace)
@@ -296,7 +299,7 @@ def test_the_shipped_prompt_asks_for_the_users_own_documents() -> None:
         plugin=PLUGIN,
     )
 
-    app.agent.answer("How much protein should I eat?")
+    app.agent.answer("How much protein should I eat?", THREAD)
 
     assert model.last_messages is not None
     system = model.last_messages[0].content

@@ -12,6 +12,7 @@ from fakes import (
 from fixture_plugins import make_plugin
 
 SEED_DOC = ("note.md", b"protein builds muscle")
+THREAD = "t1"
 QUESTION = "What do my notes say about protein, and what is 20 + 22?"
 ANSWER = "Protein builds muscle [1], and 20 + 22 = 42."
 
@@ -41,7 +42,7 @@ def test_a_question_needing_a_lookup_and_a_calculation_uses_both() -> None:
         CountingRetriever(),
     )
 
-    result = app.agent.answer(QUESTION)
+    result = app.agent.answer(QUESTION, THREAD)
 
     assert result.answer == ANSWER
     assert [(source.number, source.name) for source in result.sources] == [
@@ -56,7 +57,7 @@ def test_a_question_needing_neither_retrieves_nothing_and_calls_no_tool() -> Non
     retriever = CountingRetriever()
     app = _assemble([ModelReply(text="Hello! How can I help?")], retriever)
 
-    result = app.agent.answer("Hello there!")
+    result = app.agent.answer("Hello there!", THREAD)
 
     assert result.answer == "Hello! How can I help?"
     assert [step for step in result.trace if isinstance(step, ToolUse)] == []

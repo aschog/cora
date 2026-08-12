@@ -12,6 +12,7 @@ DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
 DEFAULT_HISTORY_TURNS = 20
 DEFAULT_DB_PATH = ".cora/chroma"
+DEFAULT_MEMORY_PATH = ".cora/memory.sqlite"
 DEFAULT_FUSION_QUERIES = 4
 
 
@@ -25,6 +26,7 @@ class Config:
     max_tool_rounds: int
     history_turns: int
     db_path: str
+    memory_path: str = DEFAULT_MEMORY_PATH
     retrieval: str = DEFAULT_RETRIEVAL
     fusion_queries: int = DEFAULT_FUSION_QUERIES
     debug: bool = False
@@ -50,6 +52,7 @@ class Config:
                 env, "CORA_HISTORY_TURNS", DEFAULT_HISTORY_TURNS, minimum=0
             ),
             db_path=env.get("CORA_DB_PATH", DEFAULT_DB_PATH),
+            memory_path=env.get("CORA_MEMORY_PATH", DEFAULT_MEMORY_PATH),
             retrieval=_retrieval_mode(env),
             fusion_queries=_int(
                 env, "CORA_FUSION_QUERIES", DEFAULT_FUSION_QUERIES, minimum=1

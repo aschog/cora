@@ -11,17 +11,25 @@ from cora.domain.errors import (
     EmptyDocumentError,
     InputRejectedError,
     LlmError,
+    MemoryStoreError,
     PluginLoadError,
     RetrievalError,
 )
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.frontends.streamlit.chat import (
+    NOTHING_REMEMBERED,
+    REMEMBER_HEADING,
+)
 from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.plugin import Plugin, ToolCall
 from cora.ports.retrieval import Retriever
 from fakes import (
     FailingChatModel,
+    FailingMemory,
     FakeEmbedder,
+    FakeMemory,
     FakeRetriever,
+    ReadOnlyMemory,
     ScriptedChatModel,
     add_tool,
 )
@@ -552,3 +560,88 @@ def test_upload_then_ask_shows_answer_with_sources() -> None:
     assert "untrusted" not in _visible_text(at).lower(), (
         "the model's framing of the passages must not reach the user"
     )
+
+
+def _remembering_app(memory) -> App:
+    return assemble(
+        chat_model=ScriptedChatModel([ModelReply(text="ok")]),
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        plugin=make_plugin(),
+        memory=memory,
+    )
+
+
+@pytest.mark.integration
+def test_the_sidebar_lists_every_remembered_fact() -> None:
+    memory = FakeMemory(("trains on Tuesdays", "is vegetarian"))
+
+    at = _run_page(_remembering_app(memory))
+
+    listed = _sidebar_sources(at)
+    assert "trains on Tuesdays" in listed
+    assert "is vegetarian" in listed
+
+
+@pytest.mark.integration
+def test_a_facts_own_button_forgets_just_that_fact() -> None:
+    memory = FakeMemory(("trains on Tuesdays", "is vegetarian"))
+    doomed = memory.recall()[0]
+    at = _run_page(_remembering_app(memory))
+
+    at.sidebar.button(key=f"forget_{doomed.key}").click().run()
+
+    assert [fact.text for fact in memory.recall()] == ["is vegetarian"]
+    assert "trains on Tuesdays" not in _sidebar_sources(at)
+
+
+@pytest.mark.integration
+def test_clearing_empties_the_panel_and_a_rerun_keeps_it_empty() -> None:
+    memory = FakeMemory(("trains on Tuesdays", "is vegetarian"))
+    at = _run_page(_remembering_app(memory))
+
+    at.sidebar.button(key="clear_memory").click().run()
+
+    assert memory.recall() == ()
+    assert NOTHING_REMEMBERED in _sidebar_sources(at) + [c.value for c in at.caption]
+
+    at.run()
+
+    assert memory.recall() == ()
+
+
+@pytest.mark.integration
+def test_a_memory_that_cannot_be_reached_says_so_and_leaves_the_chat_alone() -> None:
+    """The panel is a sidebar, not the app: a broken store must not take the chat
+    down with it."""
+    at = _run_page(_remembering_app(FailingMemory(MemoryStoreError())))
+
+    assert not at.exception
+    assert MemoryStoreError().user_message in [e.value for e in at.error]
+    assert at.chat_input
+
+
+@pytest.mark.integration
+def test_an_app_without_a_memory_shows_no_panel() -> None:
+    at = _run_page(_app(ScriptedChatModel([])))
+
+    assert REMEMBER_HEADING not in _sidebar_sources(at)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("button", ["clear_memory", "forget"])
+def test_a_write_that_cannot_reach_the_store_says_so_and_keeps_the_chat(
+    button: str,
+) -> None:
+    """The panel is a sidebar, not the app — and the buttons are the half of it that a
+    broken store reaches while they are already on screen."""
+    memory = ReadOnlyMemory(("trains on Tuesdays",))
+    at = _run_page(_remembering_app(memory))
+    key = button if button == "clear_memory" else f"forget_{memory.recall()[0].key}"
+
+    at.sidebar.button(key=key).click().run()
+
+    assert not at.exception
+    assert MemoryStoreError().user_message in [e.value for e in at.error]
+    assert at.chat_input
+    assert "trains on Tuesdays" in _sidebar_sources(at)

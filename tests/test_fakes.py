@@ -3,7 +3,13 @@ from collections.abc import Callable
 from cora.domain.chunk import Chunk
 from cora.domain.metadata_filter import MetadataFilter
 from cora.ports.chat_model import Message, ModelReply
-from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel, add_tool
+from fakes import (
+    FakeEmbedder,
+    FakeMemory,
+    FakeRetriever,
+    ScriptedChatModel,
+    add_tool,
+)
 
 
 def _add(
@@ -143,3 +149,33 @@ def test_scripted_chat_model_records_last_messages_and_tools() -> None:
 
     assert model.last_messages == messages
     assert model.last_tools == tools
+
+
+def test_fake_memory_recalls_facts_oldest_first_under_stable_keys() -> None:
+    memory = FakeMemory()
+
+    memory.remember("trains on Tuesdays")
+    memory.remember("is vegetarian")
+
+    first, second = memory.recall()
+    assert [fact.text for fact in (first, second)] == [
+        "trains on Tuesdays",
+        "is vegetarian",
+    ]
+    assert first.key != second.key
+    assert [fact.key for fact in memory.recall()] == [first.key, second.key]
+
+
+def test_fake_memory_forgets_one_fact_and_clears_them_all() -> None:
+    memory = FakeMemory()
+    memory.remember("trains on Tuesdays")
+    memory.remember("is vegetarian")
+    kept = memory.recall()[1]
+
+    memory.forget(memory.recall()[0].key)
+
+    assert [fact.text for fact in memory.recall()] == [kept.text]
+
+    memory.clear()
+
+    assert memory.recall() == ()

@@ -45,6 +45,11 @@ collaborator Protocols implemented *inside* it (`ContextSource`, `InputValidator
 into the shell to avoid the port — would push the assembly of `ChatResult` into the
 composition root and leave the core with no use case.
 
+**A seventh port.** Story 3 adds `Memory` on the same line (seventh by
+`big-picture.md`'s count, which includes `Loaders` and `Plugin`): a Protocol whose implementation
+lives outside core, four verbs of intent rather than a key-value store, and the one slot
+that may be left empty — an app assembled without it is offered no `remember` tool at all.
+
 The **router stays in core**: a plain function from state to the next step, budget check
 included. The adapter contributes edges and nothing else, so the one decision worth
 testing needs no LangGraph. `big-picture.md` is redrawn around this at merge.
@@ -56,16 +61,9 @@ into its own file and leaves a pointer behind.
 
 ### [1. The agent plans its own steps](done/story-01.md) ✔
 
-### [2. I can see what it did](story-02.md)
+### [2. I can see what it did](done/story-02.md) ✔
 
-### 3. It remembers me between sessions
-
-> **Given** I told it something about myself last session
-> **When** I reopen the app and ask a question that depends on it
-> **Then** the answer reflects it without me repeating it, and I can see and clear what
-> it remembers
-
-Satisfies the medium bonus *long-term / short-term memory*.
+### [3. It remembers me between sessions](story-03.md)
 
 ### 4. It asks before acting
 

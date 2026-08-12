@@ -2,12 +2,13 @@
 
 A "chat with your documents" web app. Ask in your own words and the agent plans
 its own steps: it looks things up when a question needs your documents, runs the
-domain's tools, and answers directly when neither is needed. The core is
-domain-agnostic; domain specialisation (reference domain: fitness coach) is
-provided exclusively through plugins.
+domain's tools, remembers what you tell it about yourself between sessions, and
+answers directly when none of that is needed. The core is domain-agnostic; domain
+specialisation (reference domain: fitness coach) is provided exclusively through
+plugins.
 
 - Architecture (start here): [`docs/big-picture.md`](docs/big-picture.md) — the map, the
-  six ports, and what the tests pin down
+  seven ports, and what the tests pin down
 - Development workflow (TDD): [`docs/workflow.md`](docs/workflow.md)
 - Assignment brief: [`docs/sprints/4/assignment.md`](docs/sprints/4/assignment.md) —
   current sprint; sprint 3's brief, spec and test findings are in `docs/sprints/3/`
@@ -75,6 +76,13 @@ answer under *How I got there*: what it decided, which tool it ran with which
 arguments, and what came back. A question that needs no documents is answered
 without searching them.
 
+Ask it to remember something — "remember that I train on Tuesdays and Thursdays",
+"I'm vegetarian, keep that in mind" — and it keeps that between sessions: the
+sidebar's *What I remember* lists every fact it holds, forgets one at a time, or
+forgets everything. It only remembers when you ask it to, never on its own judgement,
+and each save appears in the trace like any other tool call. The conversation itself
+lives as long as the browser session; what is remembered outlives it.
+
 Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
 `CORA_PLUGIN` (default `cora.plugins.fitness`), `CORA_TOP_K` (default `5`),
 `CORA_RETRIEVAL` (`plain` by default; `advanced` turns on query translation and
@@ -82,11 +90,13 @@ self-query filtering — RAG-Fusion — for one extra model call per question;
 `hybrid` fuses dense and BM25 keyword rankings with no extra model call),
 `CORA_FUSION_QUERIES` (default `4`; sub-queries advanced mode fans out per
 question), `CORA_MAX_TOOL_ROUNDS` (default `8`; one round is a model call plus the tools it
-asks for, document search included), `CORA_HISTORY_TURNS` (past
-messages sent with each question — the default `20` is about ten
-question-and-answer exchanges, and `0` switches memory off), `CORA_DB_PATH`
-(where Chroma persists; the default `.cora/chroma` is relative to the working
-directory), `OPENROUTER_BASE_URL`, `CORA_DEBUG`. The counts are rejected at
+asks for, document search included — and the budget is per question, not per
+conversation), `CORA_HISTORY_TURNS` (past messages of the conversation sent with
+each question — the default `20` is about ten question-and-answer exchanges, and
+`0` sends none), `CORA_DB_PATH` (where Chroma persists; the default `.cora/chroma`
+is relative to the working directory), `CORA_MEMORY_PATH` (where remembered facts
+persist; the default `.cora/memory.sqlite` sits beside it, and is relative the same
+way), `OPENROUTER_BASE_URL`, `CORA_DEBUG`. The counts are rejected at
 startup if they fall below their lowest useful value — `0` for history turns, `1`
 for the others — and `CORA_RETRIEVAL` must be `plain`, `advanced`, or `hybrid`.
 
