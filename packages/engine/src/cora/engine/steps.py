@@ -5,10 +5,12 @@ from cora.domain.agent_state import AgentState
 from cora.domain.citations import Citable, CitableHits, Source
 from cora.domain.errors import AdapterError, ToolLoopLimitError
 from cora.domain.trace import ModelDecision, Reconsidered, ToolUse, TraceStep
+from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ChatModel, Message
 from cora.ports.context_source import ContextSource
 from cora.ports.graph import DONE, GROUND, TOOLS
+from cora.ports.memory import Memory
 from cora.ports.plugin import Tool, ToolCall, ToolResult
 
 
@@ -35,6 +37,12 @@ AGENT_RULES = (
     "user's own documents, and cite the numbered passages it returns as [n]. "
     "Answer directly when the question needs no documents."
 )
+MEMORY_RULE = (
+    f"Call the {REMEMBER_TOOL_NAME} tool when the user shares something durable "
+    "about themselves — a goal, a constraint, a preference — so the next session "
+    "still has it."
+)
+REMEMBERED_HEADING = "What you already know about this user:"
 
 
 @dataclass(frozen=True)
@@ -42,6 +50,7 @@ class PrepareStep:
     validation: InputValidator
     system_prompt: str
     max_history_turns: int
+    memory: Memory | None = None
 
     def __call__(self, state: AgentState) -> AgentState:
         question = self.validation.validate(state["question"])
@@ -49,13 +58,27 @@ class PrepareStep:
         recent = history[max(len(history) - self.max_history_turns, 0) :]
         return {
             "messages": [
-                Message(
-                    role="system", content=f"{self.system_prompt}\n\n{AGENT_RULES}"
-                ),
+                Message(role="system", content=self._brief()),
                 *(Message(role=turn.role, content=turn.text) for turn in recent),
                 Message(role="user", content=question),
             ]
         }
+
+    def _brief(self) -> str:
+        """No memory in the slot means no remembering: the rule is left out with the
+        tool it names, so the model is never told to call what it was not offered."""
+        if self.memory is None:
+            return f"{self.system_prompt}\n\n{AGENT_RULES}"
+        return "\n\n".join(
+            (self.system_prompt, AGENT_RULES, MEMORY_RULE, *self._remembered())
+        )
+
+    def _remembered(self) -> tuple[str, ...]:
+        facts = self.memory.recall() if self.memory else ()
+        if not facts:
+            return ()
+        listed = "\n".join(f"- {fact.text}" for fact in facts)
+        return (f"{REMEMBERED_HEADING}\n{listed}",)
 
 
 @dataclass(frozen=True)

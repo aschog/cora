@@ -24,38 +24,39 @@ inversion continues on the branch. The **(llm)** close is optional to the merge.
 
 #### The outer test (`tests/test_memory.py`)
 
-- [ ] **(int)** a session where the user shares a fact ends with the model calling
+- [x] **(int)** a session where the user shares a fact ends with the model calling
       `remember`; a fresh session over the same memory file briefs the model with that
-      fact, and the sidebar lists it — `xfail(strict=True)` until the slice lands
-- [ ] **(int)** clearing from the sidebar empties the panel and the store alike, and the
+      fact, and the sidebar lists it — the `xfail` came off when half one landed
+- [x] **(int)** clearing from the sidebar empties the panel and the store alike, and the
       next turn's brief carries nothing
 
 #### The `Memory` port and its fake (`ports/memory.py`, `tests/fakes.py`)
 
-- [ ] the fake recalls remembered facts oldest first, each under a stable key
-- [ ] forgetting a key removes that fact alone; clearing removes them all
+- [x] the fake recalls remembered facts oldest first, each under a stable key
+- [x] forgetting a key removes that fact alone; clearing removes them all
 
 #### The sqlite adapter (over LangGraph's `SqliteStore`)
 
-- [ ] a remembered fact is recalled by a new adapter over the same file — the reopen in
+- [x] a remembered fact is recalled by a new adapter over the same file — the reopen in
       miniature
-- [ ] forget and clear behave as the fake does, against the file
-- [ ] facts live under the user's namespace — another user id recalls nothing
-- [ ] a fresh path's directories are created, and opening the same file twice is harmless
-- [ ] a broken database surfaces as `AdapterError`, so the friendly-failure path holds
+- [x] forget and clear behave as the fake does, against the file
+- [x] facts live under the user's namespace — another user id recalls nothing
+- [x] a fresh path's directories are created, and opening the same file twice is harmless
+- [x] a broken database surfaces as `AdapterError`, so the friendly-failure path holds
 
 #### The remember tool (`engine/`, beside the search tool)
 
-- [ ] the tool stores the model's `fact` through the port and confirms in words the model
+- [x] the tool stores the model's `fact` through the port and confirms in words the model
       can relay
-- [ ] dispatched through `ToolRuntime`, a call with no `fact` comes back an
+- [x] dispatched through `ToolRuntime`, a call with no `fact` comes back an
       invalid-arguments tool error
+- [x] a fact remembered through the runtime reaches the port intact
 
 #### Recall reaches the model (`PrepareStep`)
 
-- [ ] the turn's brief carries every remembered fact beneath the plugin prompt
-- [ ] nothing remembered → no memory section in the brief
-- [ ] the rules tell the model to call `remember` when the user shares something durable
+- [x] the turn's brief carries every remembered fact beneath the plugin prompt
+- [x] nothing remembered → no memory section in the brief
+- [x] the rules tell the model to call `remember` when the user shares something durable
 
 #### The thread owns the conversation
 
@@ -89,16 +90,20 @@ inversion continues on the branch. The **(llm)** close is optional to the merge.
 
 #### ⇄ Switchover (`assemble`, config, UI)
 
-- [ ] `assemble` offers `remember` beside `search_documents` and the runtime dispatches it
-- [ ] a plugin tool named `remember` is rejected at assembly, like `search_documents`
-- [ ] `assemble(memory=…)` reaches both the tool and the recall — behavioural
-- [ ] `App` exposes `memory`, so the sidebar has a port and no adapter
-- [ ] `Config` reads `CORA_MEMORY_PATH`, default beside the chroma default
+- [x] `assemble` offers `remember` beside `search_documents` and the runtime dispatches it
+- [x] a plugin tool named `remember` is rejected at assembly, like `search_documents`
+- [x] `assemble(memory=…)` reaches both the tool and the recall — behavioural
+- [x] `App` exposes `memory`, so the sidebar has a port and no adapter
+- [x] `Config` reads `CORA_MEMORY_PATH`, default beside the chroma default
 - [ ] the chat passes a per-session thread id and no history — `thread_to_turns` retires
       *(migrated)*
-- [ ] **(int)** the sidebar lists each remembered fact
-- [ ] **(int)** a fact's delete button removes just that fact
-- [ ] **(int)** clear-all empties the panel, and a rerun keeps it empty
+- [x] **(int)** the sidebar lists each remembered fact
+- [x] **(int)** a fact's delete button removes just that fact
+- [x] **(int)** clear-all empties the panel, and a rerun keeps it empty
+- [x] **(int)** a memory that cannot be reached says so and leaves the chat alone —
+      the panel is a sidebar, not the app
+- [x] **(int)** an app assembled with no memory shows no panel, is offered no
+      `remember`, and is told no rule about it: the absence is visible, not silent
 
 #### Close
 

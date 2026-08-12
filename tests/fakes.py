@@ -9,6 +9,7 @@ from cora.domain.chunk import Chunk
 from cora.domain.metadata_filter import MetadataFilter
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.loading import Loaders
+from cora.ports.memory import Fact
 from cora.ports.plugin import Tool
 from cora.ports.retrieval import RetrievedChunk
 
@@ -125,6 +126,42 @@ class CountingRetriever(FakeRetriever):
     ) -> list[RetrievedChunk]:
         self.queries += 1
         return super().query(query_vector, k, metadata_filter)
+
+
+class FakeMemory:
+    def __init__(self, facts: tuple[str, ...] = ()) -> None:
+        self._facts: list[Fact] = []
+        for text in facts:
+            self.remember(text)
+
+    def remember(self, text: str) -> None:
+        self._facts.append(Fact(key=f"f{len(self._facts) + 1}", text=text))
+
+    def recall(self) -> tuple[Fact, ...]:
+        return tuple(self._facts)
+
+    def forget(self, key: str) -> None:
+        self._facts = [fact for fact in self._facts if fact.key != key]
+
+    def clear(self) -> None:
+        self._facts.clear()
+
+
+@dataclass
+class FailingMemory:
+    error: Exception
+
+    def remember(self, text: str) -> None:
+        raise self.error
+
+    def recall(self) -> tuple[Fact, ...]:
+        raise self.error
+
+    def forget(self, key: str) -> None:
+        raise self.error
+
+    def clear(self) -> None:
+        raise self.error
 
 
 @dataclass

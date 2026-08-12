@@ -13,11 +13,15 @@ from cora.frontends.streamlit.formatting import (
     step_text,
 )
 from cora.frontends.streamlit.thread import ThreadEntry, thread_to_turns
+from cora.ports.memory import Memory
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 MAX_INGEST_ATTEMPTS = 2
 WORKING = "Working…"
 TRACE_LABEL = "How I got there"
+REMEMBER_HEADING = "What I remember"
+NOTHING_REMEMBERED = "Nothing yet — tell me something about yourself."
+FORGET_LABEL = "✕"
 
 
 def main(app_factory: Callable[[], App]) -> None:
@@ -32,6 +36,7 @@ def main(app_factory: Callable[[], App]) -> None:
 def render(app: App) -> None:
     with st.sidebar:
         _documents(app.knowledge_base)
+        _memory(app.memory)
     _thread()
     if prompt := st.chat_input("Ask about your documents"):
         _answer(app.agent, prompt)
@@ -43,6 +48,33 @@ def _documents(knowledge_base: KnowledgeBase) -> None:
     _ingest_once(knowledge_base, uploaded)
     for source in knowledge_base.list_sources():
         st.markdown(source)
+
+
+def _memory(memory: Memory | None) -> None:
+    """Forgetting runs as a callback, so the list a rerun draws is the list after the
+    click rather than the one that was clicked."""
+    if memory is None:
+        return
+    st.header(REMEMBER_HEADING)
+    try:
+        facts = memory.recall()
+    except AdapterError as error:
+        st.error(error.user_message)
+        return
+    if not facts:
+        st.markdown(NOTHING_REMEMBERED)
+        return
+    for fact in facts:
+        said, forget = st.columns([5, 1])
+        said.markdown(fact.text)
+        forget.button(
+            FORGET_LABEL,
+            key=f"forget_{fact.key}",
+            help="Forget this",
+            on_click=memory.forget,
+            args=(fact.key,),
+        )
+    st.button("Forget everything", key="clear_memory", on_click=memory.clear)
 
 
 def _ingest_once(knowledge_base: KnowledgeBase, uploaded: UploadedFile | None) -> None:

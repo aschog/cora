@@ -83,6 +83,10 @@ class LlmError(AdapterError):
     message = "The assistant is temporarily unavailable. Please try again."
 
 
+class MemoryStoreError(AdapterError):
+    message = "What I remember about you is temporarily unavailable. Please try again."
+
+
 class GraphRunError(AdapterError):
     """A runner that walked no step at all: the run cannot be reported on, and a
     blank answer would read like a successful turn."""

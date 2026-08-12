@@ -20,6 +20,7 @@ from cora.domain.trace import ToolUse
 from cora.domain.turn import Turn
 from cora.engine.fusion_context_source import FusionContextSource
 from cora.engine.hybrid_context_source import HybridContextSource
+from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.plugin_registry import load_plugin
 from cora.engine.port_logging import LoggingEmbedder, LoggingRetriever
 from cora.engine.query_planner import QueryPlanner
@@ -28,7 +29,7 @@ from cora.engine.steps import ModelStep, PrepareStep, Router
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import Plugin, ToolCall
 from cora.ports.retrieval import RetrievedChunk
-from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel
+from fakes import FakeEmbedder, FakeMemory, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin, make_tool
 
 SEED_TEXT = b"protein supports muscle growth"
@@ -247,6 +248,65 @@ def test_a_plugin_tool_shadowing_the_search_tool_is_rejected() -> None:
     assert SEARCH_TOOL_NAME in excinfo.value.user_message
 
 
+def test_the_model_is_offered_the_remember_tool_and_the_runtime_dispatches_it() -> None:
+    memory = FakeMemory()
+    model = ScriptedChatModel(
+        [
+            ModelReply(
+                tool_calls=(
+                    ToolCall(
+                        name=REMEMBER_TOOL_NAME,
+                        arguments={"fact": "is vegetarian"},
+                        call_id="m1",
+                    ),
+                )
+            ),
+            ModelReply(text="Noted."),
+        ]
+    )
+    app = _assemble(make_plugin(), chat_model=model, memory=memory)
+
+    result = app.agent.answer("I'm vegetarian.")
+
+    assert model.last_tools is not None
+    assert REMEMBER_TOOL_NAME in {tool.name for tool in model.last_tools}
+    assert [fact.text for fact in memory.recall()] == ["is vegetarian"]
+    assert [step.name for step in result.trace if isinstance(step, ToolUse)] == [
+        REMEMBER_TOOL_NAME
+    ]
+
+
+def test_a_plugin_tool_shadowing_the_remember_tool_is_rejected() -> None:
+    with pytest.raises(ConfigurationError) as excinfo:
+        _assemble(make_plugin(tools=(make_tool(REMEMBER_TOOL_NAME),)))
+
+    assert REMEMBER_TOOL_NAME in excinfo.value.user_message
+
+
+def test_what_is_remembered_reaches_the_model_as_part_of_its_brief() -> None:
+    """The other half of the same wiring: one memory serves the tool that writes and
+    the brief that reads, so a fact kept last session is in hand this one."""
+    model = ScriptedChatModel([ModelReply(text="Lentils.")])
+    app = _assemble(
+        make_plugin(),
+        chat_model=model,
+        memory=FakeMemory(("is vegetarian",)),
+    )
+
+    app.agent.answer("What should I eat?")
+
+    assert model.last_messages is not None
+    assert "is vegetarian" in model.last_messages[0].content
+
+
+def test_the_app_exposes_its_memory_so_the_ui_needs_no_adapter() -> None:
+    memory = FakeMemory()
+
+    app = _assemble(make_plugin(), memory=memory)
+
+    assert app.memory is memory
+
+
 def test_assemble_plain_mode_uses_the_knowledge_base_as_context_source() -> None:
     app = _assemble(make_plugin())
 
@@ -349,6 +409,7 @@ def _config(db_path: Path, *, debug: bool = False) -> Config:
         max_tool_rounds=4,
         history_turns=6,
         db_path=str(db_path),
+        memory_path=str(db_path / "memory.sqlite"),
         debug=debug,
     )
 
@@ -439,7 +500,14 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
     assert runner.router.max_tool_rounds == 4
     assert isinstance(runner.model, ModelStep)
     offered = {tool.name for tool in runner.model.tools}
-    assert offered == {SEARCH_TOOL_NAME, *(tool.name for tool in plugin.tools)}
+    assert offered == {
+        SEARCH_TOOL_NAME,
+        REMEMBER_TOOL_NAME,
+        *(tool.name for tool in plugin.tools),
+    }
+    assert app.memory is runner.prepare.memory, (
+        "one memory, so what the tool writes is what the brief reads"
+    )
     assert any(tmp_path.iterdir()), "the store must land under the configured path"
 
 

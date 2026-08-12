@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from cora.app.config import Config
@@ -15,6 +17,7 @@ def test_from_env_reads_every_field() -> None:
             "CORA_MAX_TOOL_ROUNDS": "3",
             "CORA_HISTORY_TURNS": "9",
             "CORA_DB_PATH": "/tmp/vectors",
+            "CORA_MEMORY_PATH": "/tmp/memory.sqlite",
         }
     )
 
@@ -27,6 +30,7 @@ def test_from_env_reads_every_field() -> None:
         max_tool_rounds=3,
         history_turns=9,
         db_path="/tmp/vectors",
+        memory_path="/tmp/memory.sqlite",
     )
 
 
@@ -40,6 +44,14 @@ def test_from_env_applies_defaults_for_optional_fields() -> None:
     assert config.max_tool_rounds > 0
     assert config.history_turns > 0
     assert config.db_path
+    assert config.memory_path
+
+
+def test_the_memory_default_sits_beside_the_document_store() -> None:
+    """Two files, one directory: whatever fixes the CWD-relative default fixes both."""
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert Path(config.memory_path).parent == Path(config.db_path).parent
 
 
 def test_from_env_reads_retrieval_mode_and_fusion_queries() -> None:

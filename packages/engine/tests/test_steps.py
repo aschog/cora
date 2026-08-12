@@ -1,5 +1,5 @@
 import dataclasses
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import pytest
 
@@ -14,8 +14,10 @@ from cora.domain.errors import (
 )
 from cora.domain.trace import ModelDecision, ToolUse
 from cora.domain.turn import Turn
+from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.engine.steps import (
+    REMEMBERED_HEADING,
     UNTRUSTED_NOTICE,
     GroundStep,
     ModelStep,
@@ -27,9 +29,16 @@ from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import EmptyInputRule, ValidationPipeline
 from cora.ports.chat_model import Message, ModelReply, Role
 from cora.ports.graph import DONE, GROUND, TOOLS
+from cora.ports.memory import Memory
 from cora.ports.plugin import Tool, ToolCall
 from cora.ports.retrieval import RetrievedChunk
-from fakes import FailingChatModel, FakeContextSource, ScriptedChatModel, add_tool
+from fakes import (
+    FailingChatModel,
+    FakeContextSource,
+    FakeMemory,
+    ScriptedChatModel,
+    add_tool,
+)
 
 
 def _hit(
@@ -291,11 +300,16 @@ def test_an_llm_error_from_the_chat_model_propagates_unchanged() -> None:
     assert exc_info.value is error
 
 
-def _prepare(max_history_turns: int = 20, prompt: str = "SYS") -> PrepareStep:
+def _prepare(
+    max_history_turns: int = 20,
+    prompt: str = "SYS",
+    memory: Memory | None = None,
+) -> PrepareStep:
     return PrepareStep(
         validation=ValidationPipeline((EmptyInputRule(),), ()),
         system_prompt=prompt,
         max_history_turns=max_history_turns,
+        memory=memory or FakeMemory(),
     )
 
 
@@ -328,7 +342,7 @@ def test_an_invalid_question_is_rejected() -> None:
 
 def test_the_validator_sees_the_question_alone_never_the_history() -> None:
     validator = _RecordingValidator()
-    step = PrepareStep(validation=validator, system_prompt="SYS", max_history_turns=20)
+    step = replace(_prepare(), validation=validator)
 
     step({"question": "What about protein?", "history": _turns("I weigh 80 kg.")})
 
@@ -399,6 +413,28 @@ def test_the_system_message_carries_the_plugin_prompt_and_the_agents_rules() -> 
     assert "You are a fitness coach." in system.content
     assert SEARCH_TOOL_NAME in system.content
     assert "[n]" in system.content
+
+
+def test_the_brief_carries_every_remembered_fact_beneath_the_plugin_prompt() -> None:
+    memory = FakeMemory(("trains on Tuesdays", "is vegetarian"))
+
+    partial = _prepare(prompt="You are a coach.", memory=memory)({"question": "q"})
+
+    brief = partial["messages"][0].content
+    assert brief.index("You are a coach.") < brief.index("trains on Tuesdays")
+    assert "is vegetarian" in brief
+
+
+def test_nothing_remembered_leaves_no_memory_section_in_the_brief() -> None:
+    partial = _prepare(memory=FakeMemory())({"question": "q"})
+
+    assert REMEMBERED_HEADING not in partial["messages"][0].content
+
+
+def test_the_rules_tell_the_model_to_remember_what_the_user_shares() -> None:
+    partial = _prepare()({"question": "q"})
+
+    assert REMEMBER_TOOL_NAME in partial["messages"][0].content
 
 
 def _replied(*calls: ToolCall, text: str = "The sum is 3.") -> AgentState:
