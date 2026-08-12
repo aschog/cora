@@ -67,24 +67,25 @@ cora-security cora.plugins.security — PromptInjectionRule, out of the engine
   (`memory_tool.py:9`).
 - **Validation happens once**, in `PrepareStep`, immediately before the model step. Two
   seams go with the change:
-  - `ValidationPipeline` takes **one ordered tuple**. `core_rules`/`plugin_rules`
-    (`validation.py:66-73`) stops naming a distinction once the injection rule is a plugin
-    rule and `_fact_rules()` — the only *production* caller that ever passed
-    `plugin_rules=()` — is gone. Three tests pass the empty second tuple as well;
-    `test_langgraph_runner.py:235` is the one outside the engine and app suites, and the
-    easy miss on the sweep. Cora's rules still run first; that is now `PluginSet`'s doing,
-    and its test.
+  - `ValidationPipeline` and `InputValidator` **go entirely** (`validation.py:9-14,65-73`).
+    `core_rules`/`plugin_rules` stops naming a distinction once the injection rule is a
+    plugin rule and `_fact_rules()` — the only *production* caller that ever passed
+    `plugin_rules=()` — is gone. What is left then is a Protocol with one implementation, one
+    consumer (`steps.py:60`) and a body that loops over a tuple and hands back its argument,
+    so `PrepareStep` takes the tuple and does the loop. `PluginSet` composes that tuple
+    anyway; a class whose only job is to hold it is a hop, not a seam. `ValidationRule`
+    stays — that one is the plugin author's port. Three tests pass the empty second tuple;
+    `test_langgraph_runner.py:235` is the one outside the engine and app suites, and the easy
+    miss on the sweep.
   - `_fact_rules()` goes: the `remember` tool keeps a non-blank check and a length cap as
     plain guards, which stop a blank or oversized blob reaching the store and are not prompt
     validation. With one answer left, `RememberFact.validation`, its `None` branch and
     `_checked` (`memory_tool.py:28,40-46`) go too — the seam existed only because assembly
-    had a second pipeline to pass. Two parameterisations lose their last caller with it: the
-    `refusal` argument on cora's three rules (`validation.py:35-38,48,58`), which only the
-    fact path ever overrode, and `InputValidator.validate()`'s `str` return
-    (`validation.py:9-14,70-73`) — no rule rewrites input, and the return existed so
-    `_checked` could hand the fact back. It becomes `None` and `PrepareStep` reads
-    `state["question"]`. Both are cheaper now than after the rule emigrates to
-    `cora-security`.
+    had a second pipeline to pass. The `refusal` argument on cora's three rules
+    (`validation.py:35-38,48,58`) loses its last caller with it — only the fact path ever
+    overrode those messages — and it is cheaper to take off now than after the injection rule
+    emigrates to `cora-security`. The returned-input hop goes the same way: nothing rewrites
+    input, so `PrepareStep` reads `state["question"]`.
 
   A stored fact is therefore no longer screened for injection — the engine cannot import a
   rule that now lives in a plugin — and it is replayed into the brief every turn
@@ -123,9 +124,8 @@ had no story since story 6 left the cut.
 - [ ] bare cora's system prompt is the preamble alone and names no domain
 - [ ] bare cora answers without a refusal and without a second model call, no scope having
       been declared
-- [ ] the `remember` tool stores a fact with no `ValidationPipeline` behind it, and still
-      refuses a blank one and one over the length cap — `remember_tool` takes a memory and
-      nothing else
+- [ ] the `remember` tool stores a fact with no validation behind it, and still refuses a
+      blank one and one over the length cap — `remember_tool` takes a memory and nothing else
 
 #### The set composes in order
 
@@ -137,9 +137,9 @@ had no story since story 6 left the cut.
 - [ ] the offered tools are cora's first, then each plugin's in list order
 - [ ] every plugin's rules run, and the first refusal in list order is the message the user
       sees — cora's own rules ahead of all of them
-- [ ] `ValidationPipeline` runs one ordered tuple of rules and stops at the first refusal
-      *(moved — `test_pipeline_runs_core_rules_before_plugin_rules` becomes the item above,
-      where the order is now decided)*
+- [ ] no module imports `ValidationPipeline` or `InputValidator` — `PrepareStep` holds the
+      tuple *(the pipeline's three tests in `test_validation.py:104-138` are deleted, not
+      rewritten: the two items above are the same assertions where the order is now decided)*
 - [ ] two scopes join into one reminder; a plugin with an empty scope adds nothing to it, and
       one plugin with a scope is enough to turn the gate on
 
@@ -184,7 +184,11 @@ had no story since story 6 left the cut.
 1. the contract opens up — optional fields, `kw_only`, `name` in, `seed_docs` out; still one
    plugin
 2. `PluginSet` and `load_plugins`; it takes over the collision checks — reserved name, tool
-   clash, duplicate path — and cora's own rules with them, and `assemble` takes the set
+   clash, duplicate path — and cora's own rules with them, and `assemble` takes the set. It
+   exposes the composed rules as a **tuple**, not a pipeline: that is what decides step 6, and
+   it is cheap to choose here and expensive to reverse there. `assemble`'s `loaders` parameter
+   goes while the signature is open — no caller has ever passed it, and a test wanting other
+   loaders builds `KnowledgeBase` directly
 3. `CORA_PLUGINS` becomes a list
 4. cora takes the preamble and words the reminder; `instructions` and `scope` are renamed and
    the fitness plugin is rewritten to a section and a phrase. `PrepareStep._brief()` is
@@ -192,9 +196,9 @@ had no story since story 6 left the cut.
    list with conditional members, not two joins (`steps.py:87,95`)
 5. `PromptInjectionRule` leaves for `cora-security`, and the default set changes; the
    architecture guards widen to the workspace before the second plugin tree exists to hide in
-6. `_fact_rules()` goes, and behind it `ValidationPipeline` collapses to one tuple, `refusal`
-   comes off cora's rules and `validate()` stops returning the input — every last caller of
-   those three is in what this step deletes
+6. `_fact_rules()` goes, and behind it `ValidationPipeline`, `InputValidator` and the `refusal`
+   argument — every last caller of the three is in what this step deletes, and `PrepareStep`
+   takes the tuple step 2 hands it
 7. docs and diagram
 
 Steps 1 and 4 are each one atomic commit: a renamed field with the old text still in the
