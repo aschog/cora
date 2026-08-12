@@ -62,8 +62,12 @@ git config core.hooksPath .githooks       # enable pre-commit + commit-msg hooks
 
 ```sh
 export OPENROUTER_API_KEY=sk-or-...        # required (https://openrouter.ai/keys)
-uv run streamlit run packages/frontends/streamlit/src/cora/frontends/streamlit/streamlit_app.py
+make run                                   # or: make run-env, to read the key from .env
 ```
+
+`make run` wraps `uv run streamlit run` over the app's module path. The target exists so
+the command survives the next time a package moves — the path itself is one line, in the
+`Makefile`.
 
 Upload a document (txt/md/pdf) in the sidebar, then ask about it — answers cite
 the sources they used. The steps appear as cora takes them and stay with the
@@ -96,7 +100,7 @@ never enabled by accident; the API key never crosses a port.
 With the API key in a local `.env` file (`OPENROUTER_API_KEY=sk-or-...`):
 
 ```sh
-uv run --env-file .env streamlit run packages/frontends/streamlit/src/cora/frontends/streamlit/streamlit_app.py
+make run-env
 ```
 
 Sample documents for exercising the upload paths (txt, md, and pdf) live in

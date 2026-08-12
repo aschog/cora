@@ -15,7 +15,7 @@ import pathlib
 import re
 
 PAGES = ("README.md", "CLAUDE.md", "docs/big-picture.md", "docs/workflow.md")
-CONFIGS = (".streamlit/config.toml",)
+CONFIGS = (".streamlit/config.toml", "Makefile")
 SUFFIXES = (".py", ".md", ".toml", "/")
 
 BACKTICKED = re.compile(r"`([A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+)`")
