@@ -44,11 +44,15 @@ cora-security cora.plugins.security — PromptInjectionRule, out of the engine
 - **Config order is composition order** — sections, tool offers and rule precedence all read
   down the list. It is the only ordering rule.
 - **Collisions are config errors at assembly**, never runtime surprises. The set is curated
-  from an env var, so two plugins offering one tool name is a typo.
+  from an env var, so two plugins offering one tool name is a typo. Errors quote module
+  paths, which are unique by construction and are what the user typed; `name` only words a
+  prompt heading, so two plugins may share one.
 - **Validation happens once**, in `PrepareStep`, immediately before the model step.
   `_fact_rules()` goes: the `remember` tool keeps a non-blank check and a length cap as plain
   guards, which stop a blank or oversized blob reaching the store and are not prompt
-  validation.
+  validation. A stored fact is therefore no longer screened for injection — the engine
+  cannot import a rule that now lives in a plugin — and it is replayed into the brief every
+  turn (`steps.py:221`). `REMEMBERED_NOTICE` is what stands behind it, and already ships.
 
 ## Test list
 
@@ -61,14 +65,17 @@ cora-security cora.plugins.security — PromptInjectionRule, out of the engine
       citation, a diagnosis question is refused by the medical rule, and an override attempt
       is refused by the injection screen — `xfail(strict=True)` until the set lands
 
+It passes with the substring matcher `sprint-4-feedback.md` has open as broken, which
+refuses "I have diabetes, how should I train?" outright. The rule is here to show a domain
+plugin refusing beside a guard plugin; this story does not fix it, and the backlog item has
+had no story since story 6 left the cut.
+
 #### A plugin contributes what it has
 
 - [ ] a bundle carrying only `name` and `validation_rules` loads — today's loader refuses it
       for having no tools, which is what makes a security plugin impossible
 - [ ] a bundle carrying only `name` and `tools` loads and contributes no prompt section
 - [ ] a blank `name` is a `PluginLoadError`
-- [ ] a bundle that contributes nothing at all is a `PluginLoadError` — four empty fields is
-      a typo, and it would otherwise load silently and do nothing
 - [ ] no module in the workspace reads `seed_docs`, and `assemble` has no `seed` flag
       *(moved — the seeding tests go with the field)*
 
@@ -86,7 +93,8 @@ cora-security cora.plugins.security — PromptInjectionRule, out of the engine
 #### The set composes in order
 
 - [ ] two plugins' instructions appear as two sections under their names, in config order,
-      after cora's preamble
+      between cora's preamble and the remembered facts — rules first, then the domains,
+      then the user's own notes, which is where `PrepareStep` puts them today
 - [ ] the offered tools are cora's first, then each plugin's in list order
 - [ ] every plugin's rules run, and the first refusal in list order is the message the user
       sees
@@ -95,12 +103,10 @@ cora-security cora.plugins.security — PromptInjectionRule, out of the engine
 
 #### Collisions are config errors, not surprises
 
-- [ ] two plugins offering the same tool name is a `ConfigurationError` naming both plugins
-      and the tool — which is why `Plugin` needs a `name` the loader can quote
-- [ ] a plugin taking `search` or `remember` raises today's error, now naming the plugin
+- [ ] two plugins offering the same tool name is a `ConfigurationError` naming both module
+      paths and the tool
+- [ ] a plugin taking `search` or `remember` raises today's error, now naming the module
       *(moved)*
-- [ ] two plugins with the same `name`, and the same module listed twice, are each a
-      `PluginLoadError`
 - [ ] one unimportable module in a list of three names that module, not the list
 
 #### Security becomes a plugin
@@ -119,7 +125,8 @@ cora-security cora.plugins.security — PromptInjectionRule, out of the engine
 - [ ] **(llm)** the live acceptance answers a training question with a citation, fitness now
       named explicitly *(moved)*
 - [ ] `README.md` and `big-picture.md` name `CORA_PLUGINS`, the default set, the seven
-      distributions, and that bare cora screens nothing
+      distributions, and that bare cora screens nothing; `spec.md`'s bonus bar stops
+      claiming the injection screen as `engine/validation.py` and says where it went
 
 ## Order
 
@@ -143,6 +150,9 @@ plugin is a prompt that says everything twice.
   the developer settings out of the user experience.
 - **A second domain plugin.** The composition is proven by a guard beside a domain, not by a
   new domain.
+- **Saying so when the store is empty.** An in-scope question with nothing indexed is still
+  answered from model knowledge, uncited. [Story 12](story-12.md) changes that, and needs the
+  reminder step 4 moves into cora before it can.
 - **Retrieval settings, UI panels and specialist sub-agents as contributions.** Four
   contribution kinds; a fifth is a field with a default later, not a breaking change.
 - **Entry-point discovery.** Still the later convenience story 10 called it.
