@@ -84,7 +84,9 @@ and each save appears in the trace like any other tool call. The conversation it
 lives as long as the browser session; what is remembered outlives it.
 
 Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
-`CORA_PLUGIN` (default `cora.plugins.fitness`), `CORA_TOP_K` (default `5`),
+`CORA_PLUGINS` (comma-separated, in composition order; default `cora.plugins.security`
+— add `cora.plugins.fitness` for the coaching domain, and set it empty for a plain
+assistant that carries no persona and screens nothing), `CORA_TOP_K` (default `5`),
 `CORA_RETRIEVAL` (`plain` by default; `advanced` turns on query translation and
 self-query filtering — RAG-Fusion — for one extra model call per question;
 `hybrid` fuses dense and BM25 keyword rankings with no extra model call),

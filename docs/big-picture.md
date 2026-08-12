@@ -15,14 +15,14 @@ flowchart TB
   end
 
   subgraph wiring["cora.app"]
-    root["Composition root<br/><i>loads plugin, binds ports, picks strategy</i>"]
+    root["Composition root<br/><i>loads plugins, binds ports, picks strategy</i>"]
   end
 
   subgraph core["cora.engine"]
     agent["Agent"]
     steps["Steps<br/><i>prepare · model · tools · ground</i>"]
     router["Router<br/><i>one more round, or done</i>"]
-    val["ValidationPipeline"]
+    pset["PluginSet<br/><i>sections · tools · rules · scope</i>"]
     rt["ToolRuntime"]
     search["search_documents<br/><i>retrieval as a tool</i>"]
     remember["remember<br/><i>memory as a tool</i>"]
@@ -48,7 +48,8 @@ flowchart TB
     bm25["Bm25KeywordIndex<br/><i>rank_bm25</i>"]
     load_reg["load_txt · load_pdf<br/><i>pypdf</i>"]
     store["SqliteStoreMemory<br/><i>LangGraph store · SQLite</i>"]
-    fit["fitness plugin"]
+    fit["fitness plugin<br/><i>a domain</i>"]
+    sec["security plugin<br/><i>a guard</i>"]
   end
 
   ui -->|"answer()"| agent
@@ -56,12 +57,13 @@ flowchart TB
   ui -->|"recall() · forget()"| mem
   root ==> agent
   root ==> kb
-  root ==> plug
+  root ==> pset
+  pset --> plug
   agent --> gr
   lg -->|"walks"| steps
   lg -->|"asks"| router
   steps --> cm
-  steps --> val
+  steps -->|"rules"| pset
   steps --> rt
   rt --> search
   rt --> remember
@@ -80,11 +82,12 @@ flowchart TB
   load -.-> load_reg
   mem -.-> store
   plug -.-> fit
+  plug -.-> sec
 
   classDef port fill:#8c4b00,stroke:#d98a1f,color:#fff;
   classDef logic fill:#134e6f,stroke:#1f78b4,color:#fff;
   class gr,cm,emb,ret,load,mem,plug port;
-  class agent,steps,router,val,rt,search,remember,retr,kb logic;
+  class agent,steps,router,pset,rt,search,remember,retr,kb logic;
 ```
 
 Read the map from top to bottom. The frontend (top) calls the engine (middle) through the
@@ -131,7 +134,7 @@ not a slot a technology fills.
 
 ## The distributions
 
-Six packages, one per audience. Which one you install is decided by what you are writing,
+Seven packages, one per audience. Which one you install is decided by what you are writing,
 not by which layer you happen to be reading — and what a package may depend on is written
 in its own manifest, so the boundary is a fact of the install rather than a rule a test
 polices.
@@ -144,11 +147,13 @@ flowchart BT
   adapters["cora-adapters<br/><i>cora.adapters</i><br/>Chroma · OpenRouter · LangGraph · BM25 · MiniLM"]
   app["cora<br/><i>cora.app</i>"]
   fitness["cora-plugin-fitness<br/><i>cora.plugins.fitness</i>"]
+  security["cora-plugin-security<br/><i>cora.plugins.security</i>"]
   shell["cora-frontend-streamlit<br/><i>cora.frontends.streamlit</i>"]
 
   engine --> api
   adapters --> api
   fitness --> api
+  security --> api
   app --> api
   app --> engine
   app --> adapters
@@ -165,7 +170,7 @@ it and it is written against nothing.
 
 | If you are writing | You install | You do not get |
 |---|---|---|
-| a domain plugin | `cora-api` | the engine, the adapters, any framework — the fitness bundle uses four names from it |
+| a plugin, domain or guard | `cora-api` | the engine, the adapters, any framework — the fitness bundle uses four names from it |
 | a second frontend | `cora` | Streamlit, or any other way of talking to a user |
 | an adapter for a port | `cora-api` | the engine, so the binding outlives any version of the use cases |
 | the app you can run today | `cora-frontend-streamlit` | nothing — it is the whole stack |
@@ -186,11 +191,11 @@ The conversation belongs to the thread, not to the caller: a turn is seeded with
 question alone, and the graph's checkpointer supplies everything said before it. The
 frontend keeps one thread id per browser session.
 
-1. **Prepare** — check the question against the core rules (not empty, at most 4000 characters, no prompt-injection), then the plugin's rules. If a rule says no, raise `InputRejectedError`; the model never sees the question. Then add the question to the thread's transcript and write this turn's **brief**: the plugin's system prompt, cora's own rules (call `search_documents`, cite `[n]`, call `remember` when the user asks to be remembered), and whatever is already remembered about the user — labelled as notes rather than rules, and stated after them, because a fact is kept user input. The brief is rewritten each turn, so a ten-turn thread carries one, and a fact learned mid-conversation is in hand the next turn. Validation sees the question only.
+1. **Prepare** — check the question against one ordered tuple of rules: cora's own first (not empty, at most 4000 characters), then every loaded plugin's, in the order they were named. If a rule says no, raise `InputRejectedError`; the model never sees the question. Screening for prompt injection is one of those plugin rules — `cora-plugin-security`, in the default set — and not the engine's, so an app asked for no plugins screens nothing. Then add the question to the thread's transcript and write this turn's **brief**: cora's preamble, cora's own rules (call `search_documents`, cite `[n]`, call `remember` when the user asks to be remembered), one section per plugin under its `name`, and whatever is already remembered about the user — labelled as notes rather than rules, and stated last, because a fact is kept user input. The brief is rewritten each turn, so a ten-turn thread carries one, and a fact learned mid-conversation is in hand the next turn. Rules see the question only.
 2. **Model** — one round. The model is offered `search_documents` and `remember` beside the plugin's tools. It is sent the brief, then the previous turns' words — the last `CORA_HISTORY_TURNS` of them (default 20; `0` means no history) — then this turn verbatim. Old tool calls and their results stay in the thread but out of the prompt. It either answers or asks for tools.
 3. **Tools** — run what it asked for, in order. A result that can cite itself — a set of search hits — is numbered `[n]` continuing from the numbers the *conversation* has already handed out, so `[1]` means one document for as long as the thread lives, and comes back as a `tool` message marked *untrusted document data*. Any other result is fed back exactly as it renders.
 4. **Round again, or stop** — the router reads the model's last reply. A reply asking for tools goes back to step 2, at most `CORA_MAX_TOOL_ROUNDS` times (default 8), after which `ToolLoopLimitError` apologises. A reply that answers ends the run. Rounds are counted from where this turn began in the transcript, so the budget is the turn's and a long conversation cannot exhaust it.
-5. **Grounding** — a plugin that sets `grounding` will not take an answer the run did no work for. If the model answers without having called a single tool, the gate searches the question *itself* and hands the passages back with the plugin's own reminder, and the model gets one more go at step 2 — weighing evidence in front of it rather than being told to go and fetch some, which a model is free to ignore and, asked "Hi there!", once did by searching for `"Hi there!"`. An answer a tool already worked for stands: a calculation grounds it as well as a document does. Only passages near enough to the question are offered: top-k always returns something, so without a floor a greeting is handed whatever sits closest and invited to cite it. Small talk therefore still costs one vector lookup, but nothing is offered for it to cite. The gate fires at most once per run, and only when the budget has room for the **one** model call that reads the evidence. If the look comes back with nothing — the model unreachable — the answer it was second-guessing is returned rather than lost, and the trace says so; a store that is down is the gate's own failure now, absorbed so it costs the answer nothing, and marked failed in the trace.
+5. **Grounding** — a plugin that names a `scope` will not take an answer the run did no work for. If the model answers without having called a single tool, the gate searches the question *itself* and hands the passages back with cora's reminder — worded once, naming every loaded plugin's scope — and the model gets one more go at step 2 — weighing evidence in front of it rather than being told to go and fetch some, which a model is free to ignore and, asked "Hi there!", once did by searching for `"Hi there!"`. An answer a tool already worked for stands: a calculation grounds it as well as a document does. Only passages near enough to the question are offered: top-k always returns something, so without a floor a greeting is handed whatever sits closest and invited to cite it. Small talk therefore still costs one vector lookup, but nothing is offered for it to cite. The gate fires at most once per run, and only when the budget has room for the **one** model call that reads the evidence. If the look comes back with nothing — the model unreachable — the answer it was second-guessing is returned rather than lost, and the trace says so; a store that is down is the gate's own failure now, absorbed so it costs the answer nothing, and marked failed in the trace.
 
 The cost is a second model call on every turn that answers without using a tool, greetings included. That is the price of the guarantee, and it is why the gate is a plugin's choice rather than the core's.
 6. **Return** — the answer, the sources it really used (only the `[n]` numbers that appear in the reply, with duplicates removed, resolved against every source the conversation has registered), and this turn's trace — the thread arrives carrying every step of every earlier turn, and replaying those would show work this turn never did.
@@ -235,7 +240,7 @@ because the map shows them inside another part.
 | **ValidationPipeline** | A list of rules run in order: core rules first, then the plugin's. To add a check, add a rule; you do not change the code. | `engine/validation.py` |
 | **ToolRuntime** | Finds the tool, checks the arguments against its JSON Schema, runs it, and turns a tool's own failure into a `ToolResult`. An infrastructure failure is not tool output, so it travels on unchanged. | `engine/tool_runtime.py` |
 | **Plugin registry** *(folded)* | Loads a plugin by its module path and checks it before the app starts: the prompt exists, tool names are unique, schemas are valid. | `engine/plugin_registry.py` |
-| **Composition root** | The only place that names a real adapter. It reads the settings, loads the plugin, picks the strategy, asks the graph slot for a runner, and returns an `App`. | `app/config.py`, `app/assembly.py`, `app/retrieval.py` |
+| **Composition root** | The only place that names a real adapter. It reads the settings, loads the plugins it was named, picks the strategy, asks the graph slot for a runner, and returns an `App`. | `app/config.py`, `app/assembly.py`, `app/retrieval.py` |
 | **UI shell** | Only widgets: the uploader, the chat, the sources box, the *How I got there* trace — rendered as text, because a step names the tool the model asked for — and error text shown exactly as the error gives it. | `frontends/streamlit/` |
 
 ## The ports
@@ -253,7 +258,7 @@ is chosen in one place.
 | **Retriever** | `add(chunks, vectors, file_hash)`, `query(query_vector, k, metadata_filter=None)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a saved, built-in database that uses cosine distance. The optional filter limits a search to matching metadata (self-query). |
 | **Loaders** | `Mapping[str, Loader]`, each `Loader` a `(data, filename) -> str` | `cora.adapters.loaders.LOADERS` — `.txt` and `.md` read directly, `.pdf` through pypdf. Which formats a deployment accepts is an entry in the registry, not an edit inside ingestion. |
 | **Memory** | `remember(text)`, `recall() -> tuple[Fact, ...]`, `forget(key)`, `clear()` | `SqliteStoreMemory` — LangGraph's SQLite-backed store (the second adapter to use LangGraph, behind a port of its own), one namespace per user, at `CORA_MEMORY_PATH`. `recall()` hands back the newest 100 facts, oldest first. The only optional slot: with nothing bound, the agent is offered no `remember` tool. |
-| **Plugin** | data only: `system_prompt`, `tools`, `validation_rules`, `seed_docs`, `grounding` | `cora.plugins.fitness` — change it with `CORA_PLUGIN`. It is a frozen dataclass, not a class you subclass. |
+| **Plugin** | data only: `name`, and any of `instructions`, `tools`, `validation_rules`, `scope` | `cora.plugins.security` by default — `CORA_PLUGINS` names the set, in order, and takes as many as you like. It is a frozen dataclass, not a class you subclass. |
 
 Set `CORA_DEBUG=1` to wrap the chat, embedding and retrieval ports in a logger
 (`cora.engine.port_logging` — a decorator over ports, so it ships with the engine and imports
@@ -266,7 +271,7 @@ the plugins, and the UI do not notice any change.
 - **A plugin needs the contract alone, proved by installing it.** `cora-plugin-fitness` is built
   into a wheel, installed into an empty environment, and imported there: the environment
   holds exactly two packages, and the engine is not one of them. Every manifest read and
-  every import walked runs where all six packages are present, so this is the only check
+  every import walked runs where all seven packages are present, so this is the only check
   that can tell a declaration from a fact.
 - **Streamlit is used in one folder only.** No file outside `frontends/streamlit/` may import it. This is why you can really replace the user interface.
 - **The steps do not depend on any real helper.** They are plain callables over small Protocols (`ContextSource`, `InputValidator`, `ToolExecutor`), so a test walks a whole turn with fakes and no graph at all.
@@ -274,6 +279,6 @@ the plugins, and the UI do not notice any change.
 - **Document text can never act as an instruction.** A test drives a turn that retrieves and checks that the document's words appear only in a `tool` message — never in the system prompt, where cora's own rules live.
 - **Retrieving is the model's decision, but the documents get the first claim on it.** A live-model test asks a plain training question — never saying "my documents" — and a greeting, through the same agent: only the first comes back with sources. A first answer the run did no work for is sent back once, so what a plugin claims as its subject is answered from the user's material — or at least from its tools — and not from what the model happens to know.
 - **A runaway agent still ends politely.** The engine's round budget is set to trip before the graph's own recursion limit, and a graph that overruns anyway is turned into the same friendly apology — never a framework error.
-- **A new topic needs no change to the engine.** A plugin is a frozen dataclass. Point `CORA_PLUGIN` at another plugin and the topic changes, and a test reads every contract and engine file to check the word *fitness* appears in none of them. `cora.app.config` names it as the default and is allowed to: which domain a deployment ships is its choice.
+- **A new topic needs no change to the engine.** A plugin is a frozen dataclass, and cora on its own carries no domain at all: every persona, restriction and specialisation arrives as one. List them in `CORA_PLUGINS` and they compose — preamble then sections, cora's tools then theirs, every rule in order, one reminder over every scope — while `CORA_PLUGINS=` leaves a plain assistant that screens nothing. A test reads every contract and engine file to check the word *fitness* appears in none of them.
 - **Nothing the agent does is hidden.** Every turn carries a trace: what the model decided, which tool ran with which arguments, and what it returned — including a call that failed. A test drives a turn that searches and calculates and reads all of it back out of the page.
 - **A broken tool cannot break the chat, and users never see a stack trace.** ToolRuntime turns a tool's own failure into a `ToolResult` with an error message. Every `CoreError` has a message written for a person.
