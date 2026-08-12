@@ -79,10 +79,10 @@ flowchart LR
 
 | Old | New |
 |---|---|
-| `core.chunk` | `cora.core.chunk` |
+| `core.chunk` | `cora.core.domain.chunk` |
 | `core.{chat_model,retrieval,embedding,plugin}` | `cora.core.ports.*` |
-| `core.errors` | `cora.core.errors` |
-| `core.{chat_engine,ingestion,knowledge_base,validation,tool_runtime,plugin_registry,cleaning,chunker,loaders}` | `cora.core.services.*` |
+| `core.errors` | `cora.core.domain.errors` |
+| `core.{chat_engine,ingestion,knowledge_base,validation,tool_runtime,plugin_registry,cleaning,chunker,loaders}` | `cora.core.service_layer.*` |
 | `core.{openrouter_chat_model,chroma_retriever,sentence_transformer_embedder}` | `cora.adapters.*` |
 | `plugins.fitness.*` | `cora.plugins.fitness.*` |
 | `cora.{config,composition}` | `cora.app.*` |

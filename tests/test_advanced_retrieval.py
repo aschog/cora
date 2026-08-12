@@ -3,11 +3,11 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from cora.core.ports.chat_model import ModelReply
-from cora.core.services.fusion_context_source import FusionContextSource
-from cora.core.services.knowledge_base import KnowledgeBase
-from cora.core.services.query_planner import QueryPlanner
-from fakes import FakeEmbedder, ScriptedChatModel
+from cora.engine.fusion_context_source import FusionContextSource
+from cora.engine.knowledge_base import KnowledgeBase
+from cora.engine.query_planner import QueryPlanner
+from cora.ports.chat_model import ModelReply
+from fakes import TEXT_LOADERS, FakeEmbedder, ScriptedChatModel
 
 if TYPE_CHECKING:
     from cora.adapters.chroma_retriever import ChromaRetriever
@@ -18,7 +18,9 @@ pytestmark = pytest.mark.integration
 def test_advanced_retrieval_filters_by_source_and_fuses(
     make_chroma: "Callable[[], ChromaRetriever]",
 ) -> None:
-    kb = KnowledgeBase(embedder=FakeEmbedder(), retriever=make_chroma())
+    kb = KnowledgeBase(
+        embedder=FakeEmbedder(), retriever=make_chroma(), loaders=TEXT_LOADERS
+    )
     kb.add_file(("protein supports muscle growth " * 40).encode(), "protein.md")
     kb.add_file(("energy balance drives weight change " * 40).encode(), "energy.md")
 

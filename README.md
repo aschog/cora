@@ -7,7 +7,7 @@ domain-agnostic; domain specialisation (reference domain: fitness coach) is
 provided exclusively through plugins.
 
 - Architecture (start here): [`docs/big-picture.md`](docs/big-picture.md) — the map, the
-  five ports, and what the tests pin down
+  six ports, and what the tests pin down
 - Development workflow (TDD): [`docs/workflow.md`](docs/workflow.md)
 - Assignment brief: [`docs/sprints/4/assignment.md`](docs/sprints/4/assignment.md) —
   current sprint; sprint 3's brief, spec and test findings are in `docs/sprints/3/`
@@ -17,6 +17,39 @@ provided exclusively through plugins.
 Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangGraph · LangChain over
 OpenRouter · Chroma · sentence-transformers · Streamlit — with ruff, ty and pytest as
 quality gates. Runtime dependencies are added feature-by-feature, story by story.
+
+## The packages
+
+A `uv` workspace of six distributions sharing the `cora` namespace. Which one you install
+is decided by what you are writing, and what each may depend on is written in its own
+manifest — so a plugin that reached for the engine, or a frontend's toolkit that reached
+the app, would not resolve. See [`docs/big-picture.md`](docs/big-picture.md#the-distributions).
+
+| Package | Ships | Depends on |
+|---|---|---|
+| `cora-api` | `cora.domain` · `cora.ports` — the contract | nothing at all |
+| `cora-engine` | `cora.engine` — the agent, the knowledge base, a turn's steps | `cora-api` |
+| `cora-adapters` | `cora.adapters` — Chroma, OpenRouter, LangGraph, BM25, MiniLM | `cora-api` |
+| `cora` | `cora.app` — the composition root and its configuration | `cora-engine`, `cora-adapters` |
+| `cora-plugin-fitness` | `cora.plugins.fitness` — the reference domain plugin | `cora-api` |
+| `cora-frontend-streamlit` | `cora.frontends.streamlit` — the app you run below | `cora` |
+
+`cora.plugins.*` and `cora.frontends.*` are the extension points: a second domain or a
+second user interface is a package to add, not a file to edit.
+
+The tree says which is which by its depth:
+
+```
+packages/api  engine  adapters  app     one of a kind — a distribution each
+packages/frontends/streamlit             one of many  — the directory expects siblings
+packages/plugins/fitness
+```
+
+A directory directly under `packages/` is a distribution. A directory holding
+distributions is an extension point, named in the plural for that reason — so the flat
+four and the nested two are not an inconsistency, they are the difference between a piece
+there is only one of and a piece you are meant to add another of. `ls packages/` is
+therefore the shortest description of what can be extended.
 
 ## Setup
 
@@ -29,8 +62,12 @@ git config core.hooksPath .githooks       # enable pre-commit + commit-msg hooks
 
 ```sh
 export OPENROUTER_API_KEY=sk-or-...        # required (https://openrouter.ai/keys)
-uv run streamlit run src/cora/app/ui/streamlit_app.py
+make run                                   # or: make run-env, to read the key from .env
 ```
+
+`make run` wraps `uv run streamlit run` over the app's module path. The target exists so
+the command survives the next time a package moves — the path itself is one line, in the
+`Makefile`.
 
 Upload a document (txt/md/pdf) in the sidebar, then ask about it — answers cite
 the sources they used. The steps appear as cora takes them and stay with the
@@ -63,7 +100,7 @@ never enabled by accident; the API key never crosses a port.
 With the API key in a local `.env` file (`OPENROUTER_API_KEY=sk-or-...`):
 
 ```sh
-uv run --env-file .env streamlit run src/cora/app/ui/streamlit_app.py
+make run-env
 ```
 
 Sample documents for exercising the upload paths (txt, md, and pdf) live in
@@ -76,14 +113,22 @@ e.g. "How much protein should I eat?" or "What are common deadlift mistakes?".
 uv run ptw .                  # test watch mode (unit tier, reruns on save)
 uv run pytest                 # unit tests (default; fast, no network/models/UI)
 uv run pytest -m integration  # integration tier (real Chroma, embeddings, Streamlit)
+uv run --env-file .env pytest -m llm   # live acceptance: real OpenRouter round-trip, costs tokens
 uv run ruff format .          # format
 uv run ruff check .           # lint
 uv run ty check               # type check
 ```
 
-Nothing in the suite spends money or reaches the network: the UI is driven
-headlessly through Streamlit's `AppTest`, and a real OpenRouter round-trip is
-manual testing (above), not a test tier.
+No browser is needed anywhere: the UI is driven headlessly through Streamlit's
+`AppTest`, including the live tier.
+
+The `llm` tier is the only one that spends money. It runs the whole shipped stack —
+the composition root, a real Chroma store and embedder, and OpenRouter over the
+network — against the assembled page, because a scripted model answers however the
+script says and so can never show the real one ignoring an instruction. It needs
+`OPENROUTER_API_KEY` (here via `--env-file .env`); without the key it skips with a
+reason naming the variable — never a failure, never a silent pass — which is why it
+stays out of CI.
 
 The pre-commit hook runs format check, lint, type check and unit tests;
 commit messages must follow [Conventional Commits](https://www.conventionalcommits.org).

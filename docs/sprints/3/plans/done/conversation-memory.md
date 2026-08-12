@@ -30,7 +30,7 @@
 
 `<<existing>>` = reused unchanged.
 
-- **`Turn`** (`cora.core.turn`) — frozen `{role, text}`, a root value object
+- **`Turn`** (`cora.core.domain.turn`) — frozen `{role, text}`, a root value object
   beside `chunk.py`. What the UI hands inward: plain conversational facts, not
   the chat-model port's vocabulary. The engine owns the translation into
   `Message`, so tool-call plumbing never reaches the shell.

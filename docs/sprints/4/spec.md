@@ -24,9 +24,9 @@ The agent runs on **LangGraph** — the graph, the checkpointer (thread memory),
 (long-term memory) and `interrupt()` (human-in-the-loop) are the wheel we don't re-cut,
 and they are what this sprint is marked on.
 
-It stays hexagonal: `cora.core` keeps the agent's state shape and its steps as plain
-functions; an adapter wires those steps into a `StateGraph`. Core does not import
-LangGraph, so the framework-free architecture test stands unchanged. If keeping that
+It stays hexagonal: `cora.domain` keeps the agent's state shape and `cora.engine` its
+steps as plain functions; an adapter wires those steps into a `StateGraph`. Neither
+imports LangGraph, so the framework-free architecture test stands unchanged. If keeping that
 purity starts contorting the port, we weaken the rule deliberately and record why — not
 pre-emptively.
 
@@ -100,6 +100,17 @@ experience*.
 
 Cushion only — cut first if the hours run out.
 
+### 8. Installed plugins announce themselves *(stretch)*
+
+> **Given** a plugin distribution installed alongside cora
+> **When** the app starts
+> **Then** the plugin is found by name and the available plugins can be listed — so a
+> second plugin is an install, not a module path someone has to know
+
+Replaces the `CORA_PLUGIN` module-path env var with entry-point discovery
+(`[project.entry-points."cora.plugins"]`): a plugin declares itself in its own manifest,
+and cora asks the environment what is installed.
+
 ## Requirement coverage
 
 | Requirement | Where |
@@ -117,8 +128,8 @@ with the conversation intact and a retry available.
 ## Bonus bar
 
 Two medium plus one hard is the maximum-points bar. Cleared by core work — agentic RAG
-(story 1, hard) and memory (story 3, medium) — plus story 6 (medium). Story 7 is the only
-cushion.
+(story 1, hard) and memory (story 3, medium) — plus story 6 (medium). Stories 7 and 8 are
+cushion only; neither counts toward the bar.
 
 ## Out of scope
 

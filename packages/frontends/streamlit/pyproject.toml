@@ -1,0 +1,18 @@
+[project]
+name = "cora-frontend-streamlit"
+version = "0.1.0"
+description = "cora's Streamlit frontend: widgets over the assembled app, and one of several possible shells"
+requires-python = ">=3.12"
+dependencies = [
+    "cora",
+    "cora-api",
+    "cora-engine",
+    "streamlit~=1.60.0",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.26,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "cora.frontends.streamlit"

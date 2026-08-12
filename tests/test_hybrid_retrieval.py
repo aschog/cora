@@ -6,8 +6,8 @@ import pytest
 from cora.adapters.bm25_keyword_index import Bm25KeywordIndex
 from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
 from cora.app.assembly import assemble
-from cora.core.ports.chat_model import ModelReply
-from cora.core.services.hybrid_context_source import HybridContextSource
+from cora.engine.hybrid_context_source import HybridContextSource
+from cora.ports.chat_model import ModelReply
 from fakes import ScriptedChatModel
 from fixture_plugins import make_plugin
 

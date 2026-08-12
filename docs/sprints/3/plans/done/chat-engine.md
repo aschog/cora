@@ -2,7 +2,7 @@
 
 > **Roadmap** item 6 (`webapp-overview.md` §10) · **Branch** `feature/chat-engine` · **Builds on** tools & plugin contract (item 4) + knowledge base (item 3), both done
 >
-> **Note:** `src/core/…` paths below predate the package-layout refactor; those modules now live under `src/cora/` (`cora.core.ports`, `cora.core.services`, `cora.adapters`, `cora.app`) — see `docs/plans/done/package-layout-refactor.md`.
+> **Note:** `src/core/…` paths below predate the package-layout refactor; those modules now live under `src/cora/` (`cora.core.ports`, `cora.core.service_layer`, `cora.adapters`, `cora.app`) — see `docs/plans/done/package-layout-refactor.md`.
 
 ---
 
