@@ -114,8 +114,9 @@ Recorded with a decision, not scheduled — none is in the sprint-4 story cut.
       another the next, so a model that echoes an earlier `[1]` while paraphrasing its own
       previous answer has it resolved against *this* turn's sources
       (`core/services/agent.py`). Pre-dates the agent — sprint 3 numbered per turn too.
-      → candidate for **story 3**, where the thread's memory arrives and numbering could
-      become per conversation rather than per turn.
+      → scheduled in **story 3** (`story-03.md`): the checkpointer makes the thread the
+      owner of `sources`, so numbering becomes per conversation rather than per turn, and
+      the story's test list pins it.
 
 ## Carried over from the manual test run
 

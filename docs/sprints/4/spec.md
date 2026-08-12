@@ -56,16 +56,9 @@ into its own file and leaves a pointer behind.
 
 ### [1. The agent plans its own steps](done/story-01.md) ✔
 
-### [2. I can see what it did](story-02.md)
+### [2. I can see what it did](done/story-02.md) ✔
 
-### 3. It remembers me between sessions
-
-> **Given** I told it something about myself last session
-> **When** I reopen the app and ask a question that depends on it
-> **Then** the answer reflects it without me repeating it, and I can see and clear what
-> it remembers
-
-Satisfies the medium bonus *long-term / short-term memory*.
+### [3. It remembers me between sessions](story-03.md)
 
 ### 4. It asks before acting
 
