@@ -1,7 +1,7 @@
 import pytest
 
 from cora.domain.errors import PluginLoadError
-from cora.engine.plugin_registry import load_plugin
+from cora.engine.plugin_registry import load_plugin, load_plugins
 
 
 def test_resolving_a_name_returns_the_module_level_plugin_bundle() -> None:
@@ -73,3 +73,17 @@ def test_bad_plugin_bundle_raises_typed_error_naming_the_failure(
 
     assert module_path in excinfo.value.user_message
     assert reason in excinfo.value.user_message
+
+
+def test_one_bad_module_in_a_list_names_that_module_not_the_list() -> None:
+    with pytest.raises(PluginLoadError) as excinfo:
+        load_plugins(
+            [
+                "fixture_plugins.valid",
+                "fixture_plugins.no_such_module",
+                "fixture_plugins.rules_only",
+            ]
+        )
+
+    assert "fixture_plugins.no_such_module" in excinfo.value.user_message
+    assert "fixture_plugins.valid" not in excinfo.value.user_message

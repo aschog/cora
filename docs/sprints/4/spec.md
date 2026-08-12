@@ -66,13 +66,13 @@ The backlog's *no grounding or scope decision*, found in use.
 
 Structural refactors: no user-facing change, no bonus.
 
-## In flight
-
-### [11. The plugins I choose, or none](story-11.md)
+### [11. The plugins I choose, or none](done/story-11.md) ✔
 
 cora becomes domain-agnostic by default: `CORA_PLUGINS` takes an ordered list, a plugin
 contributes whatever it has, and the prompt-injection guard becomes the one plugin the
 default set ships. The backlog's *stronger injection rules as a plugin* is blocked on it.
+
+## In flight
 
 ### [12. It says when it has nothing to answer from](story-12.md)
 

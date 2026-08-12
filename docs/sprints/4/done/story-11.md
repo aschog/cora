@@ -98,9 +98,9 @@ cora-security cora.plugins.security — PromptInjectionRule, out of the engine
 
 #### First, the outer test
 
-- [ ] **(int)** security and fitness loaded together: a training question is answered with a
+- [x] **(int)** security and fitness loaded together: a training question is answered with a
       citation, a diagnosis question is refused by the medical rule, and an override attempt
-      is refused by the injection screen — `xfail(strict=True)` until the set lands
+      is refused by the injection screen — the marker was dropped and it passed
 
 It passes with the substring matcher `sprint-4-feedback.md` has open as broken, which
 refuses "I have diabetes, how should I train?" outright. The rule is here to show a domain
@@ -109,73 +109,73 @@ had no story since story 6 left the cut.
 
 #### A plugin contributes what it has
 
-- [ ] a bundle carrying only `name` and `validation_rules` loads — today's loader refuses it
+- [x] a bundle carrying only `name` and `validation_rules` loads — today's loader refuses it
       for having no tools, which is what makes a security plugin impossible
-- [ ] a bundle carrying only `name` and `tools` loads and contributes no prompt section
-- [ ] a blank `name` is a `PluginLoadError`
-- [ ] no module in the workspace reads `seed_docs`, and `assemble` has no `seed` flag
+- [x] a bundle carrying only `name` and `tools` loads and contributes no prompt section
+- [x] a blank `name` is a `PluginLoadError`
+- [x] no module in the workspace reads `seed_docs`, and `assemble` has no `seed` flag
       *(moved — the seeding tests go with the field)*
 
 #### Zero plugins is a working app
 
-- [ ] `CORA_PLUGINS` set empty assembles an app with no plugin instructions, no plugin rules
+- [x] `CORA_PLUGINS` set empty assembles an app with no plugin instructions, no plugin rules
       and no gate; unset resolves to `cora.plugins.security` alone — the two must stay
       distinguishable or bare cora cannot be asked for
-- [ ] bare cora's system prompt is the preamble alone and names no domain
-- [ ] bare cora answers without a refusal and without a second model call, no scope having
+- [x] bare cora's system prompt is the preamble alone and names no domain
+- [x] bare cora answers without a refusal and without a second model call, no scope having
       been declared
-- [ ] the `remember` tool stores a fact with no validation behind it, and still refuses a
+- [x] the `remember` tool stores a fact with no validation behind it, and still refuses a
       blank one and one over the length cap — `remember_tool` takes a memory and nothing else
 
 #### The set composes in order
 
-- [ ] two plugins' instructions appear as two sections under their names, in config order,
+- [x] two plugins' instructions appear as two sections under their names, in config order,
       between cora's preamble and the remembered facts — cora's rules first, then the
       domains, then the user's own notes. That is a flip: today the plugin prompt comes
       first and the rules after it (`steps.py:87,94`), and `test_steps.py:403` asserts
       membership, not order, so nothing currently catches it
-- [ ] the offered tools are cora's first, then each plugin's in list order
-- [ ] every plugin's rules run, and the first refusal in list order is the message the user
+- [x] the offered tools are cora's first, then each plugin's in list order
+- [x] every plugin's rules run, and the first refusal in list order is the message the user
       sees — cora's own rules ahead of all of them
-- [ ] no module imports `ValidationPipeline` or `InputValidator` — `PrepareStep` holds the
+- [x] no module imports `ValidationPipeline` or `InputValidator` — `PrepareStep` holds the
       tuple *(the pipeline's three tests in `test_validation.py:104-138` are deleted, not
       rewritten: the two items above are the same assertions where the order is now decided)*
-- [ ] two scopes join into one reminder; a plugin with an empty scope adds nothing to it, and
+- [x] two scopes join into one reminder; a plugin with an empty scope adds nothing to it, and
       one plugin with a scope is enough to turn the gate on
 
 #### Collisions are config errors, not surprises
 
-- [ ] two plugins offering the same tool name is a `ConfigurationError` naming both module
+- [x] two plugins offering the same tool name is a `ConfigurationError` naming both module
       paths and the tool
-- [ ] the same module path listed twice is its own `ConfigurationError`, ahead of the tool
+- [x] the same module path listed twice is its own `ConfigurationError`, ahead of the tool
       check — otherwise the collision error names a plugin as colliding with itself
-- [ ] a plugin taking `search` or `remember` raises today's error, now naming the module
+- [x] a plugin taking `search` or `remember` raises today's error, now naming the module
       *(moved — off `assemble`, onto the set)*
-- [ ] one unimportable module in a list of three names that module, not the list
-- [ ] both collisions are raised by `PluginSet`, not by `assemble`: the composition root
+- [x] one unimportable module in a list of three names that module, not the list
+- [x] both collisions are raised by `PluginSet`, not by `assemble`: the composition root
       wires an already-valid set, so `ConfigurationError` is no longer named in `assembly.py`
 
 #### Security becomes a plugin
 
-- [ ] **(int)** `cora-security` builds as a wheel and imports in a clean venv with
+- [x] **(int)** `cora-security` builds as a wheel and imports in a clean venv with
       `cora.engine` absent — the seventh distribution, on story 10's terms
-- [ ] the architecture guards walk *both* plugin distributions: `test_architecture.py:44`
+- [x] the architecture guards walk *both* plugin distributions: `test_architecture.py:44`
       reaches the layer as `_root(cora.plugins.fitness).parent`, so a second plugin tree is
       one the streamlit-containment and no-test-framework guards never open — they pass by
       finding nothing. Roots come from the workspace glob, as `test_docs.py` and
       `test_packaging.py` already do, and a mutation shows the wider walk bites
-- [ ] `PromptInjectionRule` is absent from `cora.engine.validation`, and the security plugin
+- [x] `PromptInjectionRule` is absent from `cora.engine.validation`, and the security plugin
       carries it *(moved)*
-- [ ] the default set refuses an override attempt in the conversation, and bare cora does
+- [x] the default set refuses an override attempt in the conversation, and bare cora does
       not — the guard is opt-out by design
 
 #### Nothing else changed
 
-- [ ] **(int)** the app assembles and answers a document question through the composition
+- [x] **(int)** the app assembles and answers a document question through the composition
       root, exactly as before
 - [ ] **(llm)** the live acceptance answers a training question with a citation, fitness now
-      named explicitly *(moved)*
-- [ ] `README.md` and `big-picture.md` name `CORA_PLUGINS`, the default set, the seven
+      named explicitly *(moved)* — written and named; unrun, the tier needs a real key
+- [x] `README.md` and `big-picture.md` name `CORA_PLUGINS`, the default set, the seven
       distributions, and that bare cora screens nothing; `spec.md`'s bonus bar stops
       claiming the injection screen as `engine/validation.py` and says where it went
 
@@ -213,7 +213,7 @@ plugin is a prompt that says everything twice.
 - **A second domain plugin.** The composition is proven by a guard beside a domain, not by a
   new domain.
 - **Saying so when the store is empty.** An in-scope question with nothing indexed is still
-  answered from model knowledge, uncited. [Story 12](story-12.md) changes that, and needs the
+  answered from model knowledge, uncited. [Story 12](../story-12.md) changes that, and needs the
   reminder step 4 moves into cora before it can.
 - **Retrieval settings, UI panels and specialist sub-agents as contributions.** Four
   contribution kinds; a fifth is a field with a default later, not a breaking change.

@@ -373,6 +373,25 @@ def test_an_invalid_question_is_rejected() -> None:
         step({"question": "   "})
 
 
+def test_the_first_rule_to_refuse_in_order_is_the_message_the_user_reads() -> None:
+    """Every loaded plugin's rules run in the order the plugins were named, so which
+    refusal a user sees is decided by the set, not by the rules racing."""
+
+    class _Refuses:
+        def __init__(self, message: str) -> None:
+            self.message = message
+
+        def apply(self, user_input: str) -> None:
+            raise InputRejectedError(self.message)
+
+    step = replace(_prepare(), rules=(_Refuses("first"), _Refuses("second")))
+
+    with pytest.raises(InputRejectedError) as excinfo:
+        step({"question": "anything"})
+
+    assert excinfo.value.user_message == "first"
+
+
 def test_every_rule_sees_the_question_alone() -> None:
     rule = _RecordingRule()
     step = replace(_prepare(), rules=(rule,))

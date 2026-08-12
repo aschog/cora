@@ -128,6 +128,30 @@ def test_the_model_is_offered_the_search_tool_beside_the_plugins_own() -> None:
     assert result.sources == (Source(1, "note.md"),)
 
 
+def test_the_offered_tools_are_coras_first_then_each_plugins_in_order() -> None:
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    app = assembled(
+        chat_model=model,
+        memory=FakeMemory(),
+        plugins=PluginSet(
+            (
+                ("fixture_plugins.first", make_plugin(tools=(make_tool("bmi"),))),
+                ("fixture_plugins.second", make_plugin(tools=(make_tool("tdee"),))),
+            )
+        ),
+    )
+
+    app.agent.answer("q", THREAD)
+
+    assert model.last_tools is not None
+    assert [tool.name for tool in model.last_tools] == [
+        SEARCH_TOOL_NAME,
+        REMEMBER_TOOL_NAME,
+        "bmi",
+        "tdee",
+    ]
+
+
 def test_no_document_text_reaches_the_system_message() -> None:
     model = _retrieving_model()
     app = _indexed(make_plugin(), chat_model=model)
