@@ -63,7 +63,7 @@ into its own file and leaves a pointer behind.
 
 ### [2. I can see what it did](done/story-02.md) ✔
 
-### [3. It remembers me between sessions](story-03.md)
+### [3. It remembers me between sessions](done/story-03.md) ✔
 
 ### 4. It asks before acting
 
