@@ -166,11 +166,13 @@ def test_the_app_wires_the_layers_and_owns_no_ui() -> None:
 
 
 def test_a_frontend_needs_the_app_and_its_own_toolkit() -> None:
-    """One of several possible shells: it takes `cora` and the one technology it draws
-    with, and nothing of the engine or the adapters directly."""
+    """One of several possible shells: it takes `cora` for the wiring, the layers whose
+    types cross its screen — `ChatResult`, the trace, the errors — and the one
+    technology it draws with. The adapters it never names: what it shows is decided by
+    the use cases, what technology answers is decided at assembly."""
     requires = _requires("frontends/streamlit")
 
-    assert requires == {"cora", "streamlit"}
+    assert requires == {"cora", "cora-api", "cora-engine", "streamlit"}
 
 
 def test_no_module_sits_outside_what_its_manifest_names() -> None:

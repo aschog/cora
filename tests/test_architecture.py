@@ -67,11 +67,18 @@ OUT_OF_REACH: dict[str, tuple[tuple[str, ...], str]] = {
         "the composition root is what a frontend installs, so naming one would mean a "
         "command-line shell had to install a web UI to reuse the wiring",
     ),
+    "the frontends": (
+        ("cora.adapters", "cora.plugins"),
+        "a frontend shows what the app and the use cases hand it; reaching an adapter "
+        "ties the UI to one technology binding, and naming a plugin ties it to one "
+        "domain — both are chosen at assembly, not at the screen",
+    ),
 }
 LAYER_FILES: dict[str, list[pathlib.Path]] = {
     "the contract and the engine": CORE_FILES,
     "the adapters": sorted(_root(cora.adapters).rglob("*.py")),
     "the app": sorted(_root(cora.app).rglob("*.py")),
+    "the frontends": sorted(UI_ROOT.rglob("*.py")),
 }
 REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in files]
 

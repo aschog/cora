@@ -501,12 +501,16 @@ version = "0.1.0"
 source = { editable = "packages/frontends/streamlit" }
 dependencies = [
     { name = "cora" },
+    { name = "cora-api" },
+    { name = "cora-engine" },
     { name = "streamlit" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "cora", editable = "packages/app" },
+    { name = "cora-api", editable = "packages/api" },
+    { name = "cora-engine", editable = "packages/engine" },
     { name = "streamlit", specifier = "~=1.60.0" },
 ]
 

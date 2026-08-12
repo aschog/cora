@@ -5,6 +5,8 @@ description = "cora's Streamlit frontend: widgets over the assembled app, and on
 requires-python = ">=3.12"
 dependencies = [
     "cora",
+    "cora-api",
+    "cora-engine",
     "streamlit~=1.60.0",
 ]
 
