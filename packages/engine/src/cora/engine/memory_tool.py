@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
-from cora.domain.errors import AdapterError, CoreError
-from cora.engine.validation import InputValidator
+from cora.domain.errors import AdapterError
 from cora.ports.memory import Memory
 from cora.ports.plugin import Tool, ToolRefusal
 
@@ -10,6 +9,8 @@ MAX_FACT_CHARS = 300
 """A fact is a sentence about the user. The bound is here because memory is the one
 prompt-visible thing with no cap of its own: history is trimmed by turns and a turn by
 rounds, while a fact opens every future prompt for as long as it is kept."""
+NOTHING_TO_REMEMBER = "There was nothing to remember."
+TOO_LONG_TO_KEEP = "That note is too long to keep — the limit is {limit} characters."
 REMEMBER_TOOL_DESCRIPTION = (
     "Keep one fact about the user for future sessions, because they asked you to. "
     "Store what they asked you to store, in the third person — do not judge for "
@@ -19,34 +20,27 @@ REMEMBER_TOOL_DESCRIPTION = (
 
 @dataclass(frozen=True)
 class RememberFact:
-    """A fact is user input that reaches the model's brief and outlives the process, so
-    it passes the same rules the question does — the question's own validation never saw
-    it, because the model wrote it. A store that cannot be written refuses rather than
-    ending the turn: failing to file a note is not worth the user's answer."""
+    """The two guards are the tool's own, not prompt validation: they stop a blank or
+    oversized blob reaching the store. A store that cannot be written refuses rather
+    than ending the turn — failing to file a note is not worth the user's answer."""
 
     memory: Memory
-    validation: InputValidator | None = None
 
     def __call__(self, fact: str) -> str:
-        kept = self._checked(fact)
+        if not fact.strip():
+            raise ToolRefusal(NOTHING_TO_REMEMBER)
+        if len(fact) > MAX_FACT_CHARS:
+            raise ToolRefusal(TOO_LONG_TO_KEEP.format(limit=MAX_FACT_CHARS))
         try:
-            if any(known.text == kept for known in self.memory.recall()):
-                return f"Already remembered: {kept}"
-            self.memory.remember(kept)
+            if any(known.text == fact for known in self.memory.recall()):
+                return f"Already remembered: {fact}"
+            self.memory.remember(fact)
         except AdapterError as unreachable:
             raise ToolRefusal(unreachable.user_message) from unreachable
-        return f"Remembered: {kept}"
-
-    def _checked(self, fact: str) -> str:
-        if self.validation is None:
-            return fact
-        try:
-            return self.validation.validate(fact)
-        except CoreError as refused:
-            raise ToolRefusal(refused.user_message) from refused
+        return f"Remembered: {fact}"
 
 
-def remember_tool(memory: Memory, validation: InputValidator | None = None) -> Tool:
+def remember_tool(memory: Memory) -> Tool:
     return Tool(
         name=REMEMBER_TOOL_NAME,
         description=REMEMBER_TOOL_DESCRIPTION,
@@ -64,5 +58,5 @@ def remember_tool(memory: Memory, validation: InputValidator | None = None) -> T
             },
             "required": ["fact"],
         },
-        run=RememberFact(memory, validation),
+        run=RememberFact(memory),
     )

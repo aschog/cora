@@ -18,7 +18,7 @@ from cora.app.retrieval import (
 )
 from cora.engine.agent import Agent
 from cora.engine.knowledge_base import KnowledgeBase
-from cora.engine.memory_tool import MAX_FACT_CHARS, remember_tool
+from cora.engine.memory_tool import remember_tool
 from cora.engine.plugin_registry import load_plugins
 from cora.engine.plugin_set import PluginSet
 from cora.engine.port_logging import (
@@ -35,7 +35,6 @@ from cora.engine.steps import (
     ToolStep,
 )
 from cora.engine.tool_runtime import ToolRuntime
-from cora.engine.validation import EmptyInputRule, MaxLengthRule, ValidationPipeline
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
 from cora.ports.embedding import Embedder
@@ -89,11 +88,10 @@ def assemble(
         fusion_queries=fusion_queries,
     )
     scope = plugins.scope
-    validation = ValidationPipeline(plugins.rules)
     tools = _offered_tools(plugins, context_source, top_k, memory)
     runner = graph(
         prepare=PrepareStep(
-            validation=validation,
+            rules=plugins.rules,
             instructions=plugins.instructions,
             memory=memory,
         ),
@@ -121,24 +119,8 @@ def _offered_tools(
 ) -> tuple[Tool, ...]:
     """No memory slot behind the app means no `remember` offered, so the absence is
     visible to the model rather than a tool that quietly forgets."""
-    remembering = (remember_tool(memory, _fact_rules()),) if memory is not None else ()
+    remembering = (remember_tool(memory),) if memory is not None else ()
     return (search_tool(context_source, top_k), *remembering, *plugins.tools)
-
-
-def _fact_rules() -> ValidationPipeline:
-    """The core rules, sized for a fact, and no plugin rules: a plugin rule turns a
-    *question* down on domain grounds, and a note about the user is not a question —
-    the shipped medical filter would make "remember I have diabetes" unkeepable
-    without closing anything."""
-    return ValidationPipeline(
-        (
-            EmptyInputRule("There was nothing to remember."),
-            MaxLengthRule(
-                MAX_FACT_CHARS,
-                "That note is too long to keep — the limit is {limit} characters.",
-            ),
-        )
-    )
 
 
 def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:

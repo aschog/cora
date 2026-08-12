@@ -14,12 +14,11 @@ from cora.domain.trace import (
 from cora.domain.transcript import prompt_from
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
-from cora.engine.validation import InputValidator
 from cora.ports.chat_model import ChatModel, Message
 from cora.ports.context_source import ContextSource
 from cora.ports.graph import DONE, GROUND, TOOLS
 from cora.ports.memory import Fact, Memory
-from cora.ports.plugin import Tool, ToolCall, ToolResult
+from cora.ports.plugin import Tool, ToolCall, ToolResult, ValidationRule
 
 
 class ToolExecutor(Protocol):
@@ -72,7 +71,7 @@ REMEMBERED_NOTICE = (
 
 @dataclass(frozen=True)
 class PrepareStep:
-    validation: InputValidator
+    rules: tuple[ValidationRule, ...] = ()
     instructions: str = ""
     memory: Memory | None = None
 
@@ -81,7 +80,9 @@ class PrepareStep:
         transcript, the brief is restated for this turn alone, and what the last turn
         finished with is cleared — a held answer left behind would tell the gate it
         had already looked."""
-        question = self.validation.validate(state["question"])
+        question = state["question"]
+        for rule in self.rules:
+            rule.apply(question)
         brief, unread = self._brief()
         return {
             "messages": [Message(role="user", content=question)],

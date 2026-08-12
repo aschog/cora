@@ -29,7 +29,7 @@ from cora.engine.steps import (
     ToolStep,
 )
 from cora.engine.tool_runtime import ToolRuntime
-from cora.engine.validation import EmptyInputRule, ValidationPipeline
+from cora.engine.validation import EmptyInputRule
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.graph import DONE, GROUND, TOOLS
 from cora.ports.memory import Memory
@@ -352,19 +352,18 @@ def test_an_llm_error_from_the_chat_model_propagates_unchanged() -> None:
 
 def _prepare(instructions: str = "SYS", memory: Memory | None = None) -> PrepareStep:
     return PrepareStep(
-        validation=ValidationPipeline((EmptyInputRule(),)),
+        rules=(EmptyInputRule(),),
         instructions=instructions,
         memory=memory or FakeMemory(),
     )
 
 
-class _RecordingValidator:
+class _RecordingRule:
     def __init__(self) -> None:
         self.seen: str | None = None
 
-    def validate(self, user_input: str) -> str:
+    def apply(self, user_input: str) -> None:
         self.seen = user_input
-        return user_input
 
 
 def test_an_invalid_question_is_rejected() -> None:
@@ -374,13 +373,13 @@ def test_an_invalid_question_is_rejected() -> None:
         step({"question": "   "})
 
 
-def test_the_validator_sees_the_question_alone() -> None:
-    validator = _RecordingValidator()
-    step = replace(_prepare(), validation=validator)
+def test_every_rule_sees_the_question_alone() -> None:
+    rule = _RecordingRule()
+    step = replace(_prepare(), rules=(rule,))
 
     step({"question": "What about protein?"})
 
-    assert validator.seen == "What about protein?"
+    assert rule.seen == "What about protein?"
 
 
 def test_the_step_appends_the_validated_question_and_nothing_else() -> None:
