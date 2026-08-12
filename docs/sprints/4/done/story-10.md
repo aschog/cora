@@ -120,7 +120,7 @@ cora-streamlit  cora.frontends.streamlit                  → cora
       parametrised walks each lost one case, `cora/core/__init__.py` having ceased to exist
 - [x] **(int)** the app assembles and answers a document question through the composition
       root, exactly as before
-- [ ] **(llm)** the live acceptance answers a training question with a citation, through the
+- [x] **(llm)** the live acceptance answers a training question with a citation, through the
       moved frontend *(moved)*
 - [x] every location the docs claim resolves, and `big-picture.md` names the six
       distributions and both extension points
