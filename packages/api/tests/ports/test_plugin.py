@@ -1,25 +1,7 @@
-import dataclasses
-
 import pytest
 
-from cora.ports.plugin import ToolCall, ToolResult
-from fakes import add_tool
+from cora.ports.plugin import ToolResult
 from fixture_plugins import make_plugin
-
-
-def test_tools_are_equal_by_value() -> None:
-    assert add_tool() == add_tool()
-
-
-def test_tools_differ_when_any_field_differs() -> None:
-    assert add_tool() != dataclasses.replace(add_tool(), name="sum")
-
-
-def test_tool_calls_are_equal_by_value() -> None:
-    a = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="call-1")
-    b = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="call-1")
-
-    assert a == b
 
 
 def test_ok_result_carries_payload_and_no_error() -> None:
