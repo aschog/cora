@@ -3,13 +3,10 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from app_builder import assembled, indexed
 from cora.adapters.bm25_keyword_index import Bm25KeywordIndex
 from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
-from cora.app.assembly import assemble
 from cora.engine.hybrid_context_source import HybridContextSource
-from cora.ports.chat_model import ModelReply
-from fakes import ScriptedChatModel
-from fixture_plugins import make_plugin
 
 if TYPE_CHECKING:
     from cora.adapters.chroma_retriever import ChromaRetriever
@@ -44,13 +41,14 @@ _DOCS = (
 def test_hybrid_surfaces_a_lexical_match_dense_ranks_below_top_k(
     make_chroma: "Callable[[], ChromaRetriever]",
 ) -> None:
-    app = assemble(
-        chat_model=ScriptedChatModel([ModelReply(text="ok")]),
-        embedder=SentenceTransformerEmbedder(),
-        retriever=make_chroma(),
-        plugin=make_plugin(seed_docs=_DOCS),
-        retrieval="hybrid",
-        keyword_index=Bm25KeywordIndex(),
+    app = indexed(
+        assembled(
+            embedder=SentenceTransformerEmbedder(),
+            retriever=make_chroma(),
+            retrieval="hybrid",
+            keyword_index=Bm25KeywordIndex(),
+        ),
+        *_DOCS,
     )
     question = "how to get bigger stronger muscles"
 

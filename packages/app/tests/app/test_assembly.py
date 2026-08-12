@@ -4,8 +4,9 @@ from typing import Any
 
 import pytest
 
+from app_builder import assembled
 from cora.adapters.langgraph_runner import LangGraphRunner
-from cora.app.assembly import App, assemble, build
+from cora.app.assembly import App, build
 from cora.app.config import Config
 from cora.app.log_config import DEBUG_HANDLER_NAME, FILE_HANDLER_NAME
 from cora.domain.chunk import Chunk
@@ -28,7 +29,7 @@ from cora.engine.steps import ModelStep, PrepareStep, Router
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import Plugin, ToolCall
 from cora.ports.retrieval import RetrievedChunk
-from fakes import FakeEmbedder, FakeMemory, FakeRetriever, ScriptedChatModel
+from fakes import FakeMemory, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin, make_tool
 
 SEED_TEXT = b"protein supports muscle growth"
@@ -69,10 +70,9 @@ def _assemble(
     debug: bool = False,
     **overrides: Any,
 ) -> App:
-    return assemble(
-        chat_model=chat_model or ScriptedChatModel([ModelReply(text="ok")]),
-        embedder=FakeEmbedder(),
-        retriever=retriever or FakeRetriever(),
+    return assembled(
+        chat_model=chat_model,
+        retriever=retriever,
         plugin=plugin,
         debug=debug,
         **overrides,

@@ -1,11 +1,12 @@
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from cora.app.assembly import App, assemble
+from app_builder import assembled, indexed
+from cora.app.assembly import App
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import ToolCall
-from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel, add_tool
+from fakes import ScriptedChatModel, add_tool
 from fixture_plugins import make_plugin
 
 SEED_DOC = ("note.md", b"protein builds muscle")
@@ -20,17 +21,18 @@ def _call(name: str, call_id: str, **arguments: object) -> ModelReply:
 
 
 def _app() -> App:
-    return assemble(
-        chat_model=ScriptedChatModel(
-            [
-                _call(SEARCH_TOOL_NAME, "call-1", query="protein"),
-                _call("add", "call-2", a=20, b=22),
-                ModelReply(text=ANSWER),
-            ]
+    return indexed(
+        assembled(
+            chat_model=ScriptedChatModel(
+                [
+                    _call(SEARCH_TOOL_NAME, "call-1", query="protein"),
+                    _call("add", "call-2", a=20, b=22),
+                    ModelReply(text=ANSWER),
+                ]
+            ),
+            plugin=make_plugin(tools=(add_tool(),)),
         ),
-        embedder=FakeEmbedder(),
-        retriever=FakeRetriever(),
-        plugin=make_plugin(tools=(add_tool(),), seed_docs=(SEED_DOC,)),
+        SEED_DOC,
     )
 
 

@@ -4,7 +4,8 @@ from dataclasses import dataclass
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from cora.app.assembly import App, assemble
+from app_builder import assembled
+from cora.app.assembly import App
 from cora.domain.chunk import Chunk
 from cora.domain.errors import (
     ConfigurationError,
@@ -26,7 +27,6 @@ from cora.ports.retrieval import Retriever
 from fakes import (
     FailingChatModel,
     FailingMemory,
-    FakeEmbedder,
     FakeMemory,
     FakeRetriever,
     ReadOnlyMemory,
@@ -37,12 +37,7 @@ from fixture_plugins import make_plugin
 
 
 def _app(chat_model: ChatModel, plugin: Plugin | None = None) -> App:
-    return assemble(
-        chat_model=chat_model,
-        embedder=FakeEmbedder(),
-        retriever=FakeRetriever(),
-        plugin=plugin or make_plugin(),
-    )
+    return assembled(chat_model=chat_model, plugin=plugin)
 
 
 class _CountingRetriever(FakeRetriever):
@@ -74,11 +69,8 @@ class _FlakyRetriever(FakeRetriever):
 
 
 def _app_on(retriever: Retriever, plugin: Plugin | None = None) -> App:
-    return assemble(
-        chat_model=ScriptedChatModel([]),
-        embedder=FakeEmbedder(),
-        retriever=retriever,
-        plugin=plugin or make_plugin(),
+    return assembled(
+        chat_model=ScriptedChatModel([]), retriever=retriever, plugin=plugin
     )
 
 
@@ -563,13 +555,7 @@ def test_upload_then_ask_shows_answer_with_sources() -> None:
 
 
 def _remembering_app(memory) -> App:
-    return assemble(
-        chat_model=ScriptedChatModel([ModelReply(text="ok")]),
-        embedder=FakeEmbedder(),
-        retriever=FakeRetriever(),
-        plugin=make_plugin(),
-        memory=memory,
-    )
+    return assembled(memory=memory)
 
 
 @pytest.mark.integration

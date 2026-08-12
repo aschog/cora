@@ -3,7 +3,8 @@ length, and a budget that does not."""
 
 import pytest
 
-from cora.app.assembly import App, assemble
+from app_builder import assembled, indexed
+from cora.app.assembly import App
 from cora.domain.chunk import Chunk
 from cora.domain.citations import CitableHits, Source
 from cora.domain.errors import ToolLoopLimitError
@@ -12,7 +13,7 @@ from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ChatModel, Message, ModelReply
 from cora.ports.plugin import Tool, ToolCall
 from cora.ports.retrieval import RetrievedChunk
-from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel
+from fakes import ScriptedChatModel
 from fixture_plugins import make_plugin
 
 THREAD = "t1"
@@ -62,16 +63,14 @@ def _looking(call_id: str, name: str) -> ModelReply:
 
 
 def _app(chat_model: ChatModel, *, grounding: str = "", rounds: int = 8) -> App:
-    return assemble(
-        chat_model=chat_model,
-        embedder=FakeEmbedder(),
-        retriever=FakeRetriever(),
-        plugin=make_plugin(
-            tools=(_lookup_tool(),),
-            seed_docs=(PROTEIN, CREATINE),
-            grounding=grounding,
+    return indexed(
+        assembled(
+            chat_model=chat_model,
+            plugin=make_plugin(tools=(_lookup_tool(),), grounding=grounding),
+            max_tool_rounds=rounds,
         ),
-        max_tool_rounds=rounds,
+        PROTEIN,
+        CREATINE,
     )
 
 
