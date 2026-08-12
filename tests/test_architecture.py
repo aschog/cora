@@ -84,7 +84,7 @@ REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in
 
 
 def _shipped_as(path: pathlib.Path) -> pathlib.Path:
-    """The module path a file ships under — `cora/core/chunk.py` — which is the same
+    """The module path a file ships under — `cora/domain/chunk.py` — which is the same
     whichever distribution carries it."""
     src = next(parent for parent in path.parents if parent.name == "src")
     return path.relative_to(src)

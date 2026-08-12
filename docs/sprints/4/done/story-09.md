@@ -51,8 +51,8 @@ They are separate commits so each can be verified alone.
 - [x] each package's tests sit beside it, and the shared fakes stay at the root — nothing
       under `tests/` may be named for a shipped module, or it joins the `cora` namespace as
       its first portion and shadows the real one
-- [ ] a package's tests run against that package installed alone — needs the shared fakes
-      to stop being a root-level import first, so it is deferred, not done
+> Deferred, its own branch later: a package's tests running against that package
+> installed alone — needs the shared fakes to stop being a root-level import first.
 - [x] each layer's `py.typed` sits inside the module its manifest names — a marker one
       directory up reaches neither the wheel nor the sdist, so the layer installs untyped
       with the file still sitting in the tree looking like it is doing its job
@@ -85,13 +85,13 @@ They are separate commits so each can be verified alone.
 - [x] every change in the suite count is accounted for: 650 to 653 — the two namespace
       `__init__.py` files gone from four parametrised guards (-4), the smoke test split in
       two (+1), and the packaging manifests pinned (+6)
-- [ ] **(int)** the app assembles and answers a document question through the composition
+- [x] **(int)** the app assembles and answers a document question through the composition
       root, exactly as before
-- [ ] the pre-commit hook and CI run from the workspace root and gate every package
+- [x] the pre-commit hook and CI run from the workspace root and gate every package
 - [x] every location the docs claim resolves — the move left fourteen pointing at
       `core/services/`, `core/trace.py` and `app/ui/`, and prose drifts silently because
       nothing reads it; `docs/sprints/**` stays unpoliced, being true of its own day
-- [ ] `README.md` and `big-picture.md` describe the packages, and the package-structure
+- [x] `README.md` and `big-picture.md` describe the packages, and the package-structure
       diagram is redrawn
 
 ## Order

@@ -113,6 +113,10 @@ BM25 has no slot like this. Only the `hybrid` search uses it, wired straight int
 So BM25 is a technology with no port. It is kept with the other adapters, and there are still
 just six ports.
 
+A seventh file sits in `ports/` without being one: `ContextSource` is the engine's own seam
+between a search and the step that uses it, implemented inside the engine — a Protocol, but
+not a slot a technology fills.
+
 ## The distributions
 
 Six packages, one per audience. Which one you install is decided by what you are writing,
@@ -133,6 +137,7 @@ flowchart BT
   engine --> api
   adapters --> api
   fitness --> api
+  app --> api
   app --> engine
   app --> adapters
   shell --> app
