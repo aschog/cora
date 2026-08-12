@@ -57,6 +57,17 @@ class SecondLookLost(TraceStep):
 
 
 @dataclass(frozen=True)
+class MemoryUnread(TraceStep):
+    @property
+    def summary(self) -> str:
+        return "Could not read what I remember about you — answering without it"
+
+    @property
+    def failed(self) -> bool:
+        return True
+
+
+@dataclass(frozen=True)
 class ToolUse(TraceStep):
     name: str
     arguments: dict[str, Any] = field(default_factory=dict)

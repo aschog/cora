@@ -19,7 +19,7 @@ from cora.app.retrieval import (
 from cora.domain.errors import ConfigurationError
 from cora.engine.agent import Agent
 from cora.engine.knowledge_base import KnowledgeBase
-from cora.engine.memory_tool import REMEMBER_TOOL_NAME, remember_tool
+from cora.engine.memory_tool import MAX_FACT_CHARS, REMEMBER_TOOL_NAME, remember_tool
 from cora.engine.plugin_registry import load_plugin
 from cora.engine.port_logging import (
     LoggingChatModel,
@@ -100,7 +100,6 @@ def assemble(
         keyword_index=keyword_index,
         fusion_queries=fusion_queries,
     )
-    tools = _offered_tools(plugin, context_source, top_k, memory)
     grounding = plugin.grounding.strip()
     validation = ValidationPipeline(
         core_rules=(
@@ -110,6 +109,7 @@ def assemble(
         ),
         plugin_rules=plugin.validation_rules,
     )
+    tools = _offered_tools(plugin, context_source, top_k, memory)
     runner = graph(
         prepare=PrepareStep(
             validation=validation,
@@ -154,8 +154,23 @@ def _offered_tools(
                 f"A plugin tool may not be named '{tool.name}': that name belongs "
                 f"to {RESERVED_TOOL_NAMES[tool.name]}."
             )
-    remembering = (remember_tool(memory),) if memory is not None else ()
+    remembering = (remember_tool(memory, _fact_rules()),) if memory is not None else ()
     return (search_tool(context_source, top_k), *remembering, *plugin.tools)
+
+
+def _fact_rules() -> ValidationPipeline:
+    """The core rules, sized for a fact, and no plugin rules: a plugin rule turns a
+    *question* down on domain grounds, and a note about the user is not a question —
+    the shipped medical filter would make "remember I have diabetes" unkeepable
+    without closing anything."""
+    return ValidationPipeline(
+        core_rules=(
+            EmptyInputRule(),
+            MaxLengthRule(MAX_FACT_CHARS),
+            PromptInjectionRule(),
+        ),
+        plugin_rules=(),
+    )
 
 
 def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:

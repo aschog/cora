@@ -56,7 +56,8 @@ history parameter that was their only caller.
 
 - [x] the turn's brief carries every remembered fact beneath the plugin prompt
 - [x] nothing remembered → no memory section in the brief
-- [x] the rules tell the model to call `remember` when the user shares something durable
+- [x] the rules tell the model to call `remember` **only when the user asks** — never on
+      its own judgement, so a kept fact is one the user asked for
 
 #### The thread owns the conversation
 
@@ -65,8 +66,11 @@ history parameter that was their only caller.
 - [x] two thread ids share nothing
 - [x] `PrepareStep` appends the validated question alone; the brief lives in its own
       per-turn key, so a ten-turn thread holds one brief, not ten
-- [x] `PrepareStep` opens the turn: stale `answer` and `answer_in_hand` cleared, the
-      turn's trace and round baseline recorded
+- [x] `PrepareStep` opens the turn: stale `answer`, `answer_in_hand` and `reconsidered`
+      cleared, and `turn_start` recorded — the round baseline and the tool-use question
+      both read from it. The trace baseline is *not* in the state: a per-turn key is
+      stale on the pre-turn state a thread yields first, which is the one state the
+      baseline has to be taken from
 - [x] a previous turn reaches the model as its user and assistant words only — tool
       messages, tool-call stubs and grounding reminders stay in the thread *(migrated)*
 - [x] previous turns are capped at `max_history_turns`; the current turn is never cut
@@ -109,6 +113,40 @@ history parameter that was their only caller.
       the panel is a sidebar, not the app
 - [x] **(int)** an app assembled with no memory shows no panel, is offered no
       `remember`, and is told no rule about it: the absence is visible, not silent
+
+#### Found by the branch review
+
+- [x] a fact carrying an instruction is refused before it is stored, and an ordinary one
+      passes — the model writes the fact, so the question's validation never saw it, and
+      a stored instruction would open every future session
+- [x] the recalled block says of itself that it is notes and not rules, stated after
+      them — the treatment retrieved passages already get
+- [x] a fact longer than the bound is refused; memory was the one prompt-visible thing
+      with no cap of its own
+- [x] a fact already known is not kept twice
+- [x] a plugin's own rules do not police what is remembered — the shipped medical filter
+      would make "remember I have diabetes" unkeepable and close nothing
+- [x] `clear` removes more facts than one page holds — it read one page and deleted what
+      it had read, so "forget everything" left the rest and the panel repopulated
+- [x] `recall` returns the newest facts when there are more than it shows, ordered by the
+      adapter's own key: the store's timestamp ties at one second, so the window used to
+      be whatever the query planner yielded — in practice the oldest, which the user
+      could not delete because it was the newest that were hidden
+- [x] a forgotten fact brings a hidden one back into view
+- [x] **(int)** a write that cannot reach the store says so and keeps the chat — only the
+      read path was guarded, so a delete crashed the page with a traceback
+- [x] a memory that cannot be read costs the brief its facts, not the turn, and is traced
+      as a failed step
+- [x] a store that cannot be written refuses rather than ending the turn
+- [x] the gate fires again on a later turn of the same thread — `reconsidered` left
+      behind would silence it for the life of the thread, and the whole suite passed
+      without the reset
+- [x] an answer belongs to the turn that asked for it
+- [x] the first state a runner yields is the thread as the turn found it — the promise
+      `Agent` builds its per-turn slice on, pinned where it is made
+- [x] a second turn round-trips every type the state carries, against an explicit
+      checkpoint allowlist: LangGraph deserialises unregistered types with a logged
+      warning it says will become a block, and a logger warning is invisible to a suite
 
 #### Close
 

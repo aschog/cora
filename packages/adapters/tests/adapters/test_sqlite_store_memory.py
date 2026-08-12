@@ -2,7 +2,7 @@ import pathlib
 
 import pytest
 
-from cora.adapters.sqlite_store_memory import SqliteStoreMemory
+from cora.adapters.sqlite_store_memory import RECALL_LIMIT, SqliteStoreMemory
 from cora.domain.errors import AdapterError
 
 
@@ -93,3 +93,51 @@ def test_a_broken_database_surfaces_as_an_adapter_error(path: str) -> None:
         memory.recall()
     with pytest.raises(AdapterError):
         memory.remember("is vegetarian")
+
+
+MORE_THAN_A_PAGE = 150
+
+
+def test_clearing_removes_more_facts_than_one_page_holds(path: str) -> None:
+    """`clear` used to read one page and delete what it had read, so "forget
+    everything" left everything past the page behind and the panel repopulated."""
+    memory = SqliteStoreMemory.at(path)
+    for number in range(MORE_THAN_A_PAGE):
+        memory.remember(f"fact {number}")
+
+    memory.clear()
+
+    assert SqliteStoreMemory.at(path).recall() == ()
+
+
+def test_recall_returns_the_newest_facts_when_there_are_more_than_it_shows(
+    path: str,
+) -> None:
+    """The window has to be the newest, and it has to be a decision: the store orders
+    by a timestamp that ties at one second, so an unordered page handed back whatever
+    the query planner yielded — in practice the oldest, which no one can delete
+    because it is the newest that are hidden."""
+    memory = SqliteStoreMemory.at(path)
+    for number in range(MORE_THAN_A_PAGE):
+        memory.remember(f"fact {number}")
+
+    facts = memory.recall()
+
+    assert len(facts) == RECALL_LIMIT
+    assert facts[-1].text == f"fact {MORE_THAN_A_PAGE - 1}"
+    assert facts[0].text == f"fact {MORE_THAN_A_PAGE - RECALL_LIMIT}"
+
+
+def test_a_forgotten_fact_makes_room_for_a_hidden_one(path: str) -> None:
+    """The window is what the user can act on, so what falls outside it has to come
+    back into view once there is room — otherwise a hidden fact is unreachable."""
+    memory = SqliteStoreMemory.at(path)
+    for number in range(RECALL_LIMIT + 1):
+        memory.remember(f"fact {number}")
+    shown = memory.recall()
+
+    assert "fact 0" not in [fact.text for fact in shown]
+
+    memory.forget(shown[-1].key)
+
+    assert "fact 0" in [fact.text for fact in memory.recall()]

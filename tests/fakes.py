@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import NamedTuple
 
 from cora.domain.chunk import Chunk
+from cora.domain.errors import MemoryStoreError
 from cora.domain.metadata_filter import MetadataFilter
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.loading import Loaders
@@ -145,6 +146,30 @@ class FakeMemory:
 
     def clear(self) -> None:
         self._facts.clear()
+
+
+@dataclass
+class ReadOnlyMemory:
+    """Recalls what it holds and fails every write: the shape of a store that went
+    away mid-session, which is when the sidebar's buttons are already on screen."""
+
+    facts: tuple[str, ...] = ()
+    error: Exception = field(default_factory=MemoryStoreError)
+
+    def __post_init__(self) -> None:
+        self._readable = FakeMemory(self.facts)
+
+    def remember(self, text: str) -> None:
+        raise self.error
+
+    def recall(self) -> tuple[Fact, ...]:
+        return self._readable.recall()
+
+    def forget(self, key: str) -> None:
+        raise self.error
+
+    def clear(self) -> None:
+        raise self.error
 
 
 @dataclass

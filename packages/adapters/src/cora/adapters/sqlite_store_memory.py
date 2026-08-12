@@ -13,9 +13,12 @@ from cora.ports.memory import Fact
 MEMORIES = "memories"
 DEFAULT_USER = "local"
 TEXT = "text"
+PAGE = 100
 RECALL_LIMIT = 100
-"""Enough facts that a user meets the limit long after the prompt would have. The
-store pages, so this is the page — not a claim that a hundred is all there is."""
+"""How many facts `recall` hands back: the newest, because a fact just learned is the
+one a turn is likeliest to need and a hidden fact is one the user cannot delete. It is
+a deliberate window, not a page — everything kept is still there, and forgetting brings
+an older fact back into view."""
 
 
 def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
@@ -60,9 +63,23 @@ class SqliteStoreMemory:
     def remember(self, text: str) -> None:
         self._store.put(self._namespace, _ordinal(), {TEXT: text})
 
-    @_translate_errors
     def recall(self) -> tuple[Fact, ...]:
-        found = self._store.search(self._namespace, limit=RECALL_LIMIT)
+        kept = self._everything()
+        return kept[max(len(kept) - RECALL_LIMIT, 0) :]
+
+    @_translate_errors
+    def _everything(self) -> tuple[Fact, ...]:
+        """Every fact this user has, oldest first. The store orders by a timestamp
+        that ties at one second, so ordering is the adapter's own `key` — and reading
+        to the end is what makes "forget everything" true of everything."""
+        found = []
+        offset = 0
+        while True:
+            page = self._store.search(self._namespace, limit=PAGE, offset=offset)
+            found.extend(page)
+            if len(page) < PAGE:
+                break
+            offset += PAGE
         return tuple(
             Fact(key=item.key, text=str(item.value[TEXT]))
             for item in sorted(found, key=lambda item: item.key)
@@ -73,7 +90,7 @@ class SqliteStoreMemory:
         self._store.delete(self._namespace, key)
 
     def clear(self) -> None:
-        for fact in self.recall():
+        for fact in self._everything():
             self.forget(fact.key)
 
     def close(self) -> None:

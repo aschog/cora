@@ -45,7 +45,8 @@ collaborator Protocols implemented *inside* it (`ContextSource`, `InputValidator
 into the shell to avoid the port — would push the assembly of `ChatResult` into the
 composition root and leave the core with no use case.
 
-**A sixth port.** Story 3 adds `Memory` on the same line: a Protocol whose implementation
+**A seventh port.** Story 3 adds `Memory` on the same line (seventh by
+`big-picture.md`'s count, which includes `Loaders` and `Plugin`): a Protocol whose implementation
 lives outside core, four verbs of intent rather than a key-value store, and the one slot
 that may be left empty — an app assembled without it is offered no `remember` tool at all.
 

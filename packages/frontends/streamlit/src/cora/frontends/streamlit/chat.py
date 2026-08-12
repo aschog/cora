@@ -53,10 +53,13 @@ def _documents(knowledge_base: KnowledgeBase) -> None:
 
 def _memory(memory: Memory | None) -> None:
     """Forgetting runs as a callback, so the list a rerun draws is the list after the
-    click rather than the one that was clicked."""
+    click rather than the one that was clicked. A callback's failure has to survive
+    into that rerun to be shown at all, which is what `memory_error` carries."""
     if memory is None:
         return
     st.header(REMEMBER_HEADING)
+    if failed := st.session_state.pop("memory_error", None):
+        st.error(failed)
     try:
         facts = memory.recall()
     except AdapterError as error:
@@ -72,10 +75,24 @@ def _memory(memory: Memory | None) -> None:
             FORGET_LABEL,
             key=f"forget_{fact.key}",
             help="Forget this",
-            on_click=memory.forget,
-            args=(fact.key,),
+            on_click=_forgetting(memory.forget, fact.key),
         )
-    st.button("Forget everything", key="clear_memory", on_click=memory.clear)
+    st.button(
+        "Forget everything", key="clear_memory", on_click=_forgetting(memory.clear)
+    )
+
+
+def _forgetting(write: Callable[..., None], *args: str) -> Callable[[], None]:
+    """A store that went away takes the panel with it, never the chat: the sidebar is
+    where memory is shown, so it is where memory's failures belong."""
+
+    def attempt() -> None:
+        try:
+            write(*args)
+        except AdapterError as error:
+            st.session_state.memory_error = error.user_message
+
+    return attempt
 
 
 def _ingest_once(knowledge_base: KnowledgeBase, uploaded: UploadedFile | None) -> None:

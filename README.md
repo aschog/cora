@@ -76,12 +76,12 @@ answer under *How I got there*: what it decided, which tool it ran with which
 arguments, and what came back. A question that needs no documents is answered
 without searching them.
 
-Tell it something about yourself — "I train on Tuesdays and Thursdays", "I'm
-vegetarian" — and it keeps that between sessions: the sidebar's *What I remember*
-lists every fact it holds, forgets one at a time, or forgets everything. Facts are
-kept only when the model decides they are durable, and each save appears in the
-trace like any other tool call. The conversation itself lives as long as the browser
-session; what is remembered outlives it.
+Ask it to remember something — "remember that I train on Tuesdays and Thursdays",
+"I'm vegetarian, keep that in mind" — and it keeps that between sessions: the
+sidebar's *What I remember* lists every fact it holds, forgets one at a time, or
+forgets everything. It only remembers when you ask it to, never on its own judgement,
+and each save appears in the trace like any other tool call. The conversation itself
+lives as long as the browser session; what is remembered outlives it.
 
 Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
 `CORA_PLUGIN` (default `cora.plugins.fitness`), `CORA_TOP_K` (default `5`),

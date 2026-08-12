@@ -222,3 +222,43 @@ def test_two_conversations_on_one_app_know_nothing_of_each_other() -> None:
 
     assert model.last_messages is not None
     assert [m.content for m in model.last_messages[1:]] == ["And I here."]
+
+
+@pytest.mark.integration
+def test_the_gate_fires_again_on_a_later_turn_of_the_same_thread() -> None:
+    """The gate fires at most once *per turn*, and `reconsidered` is what says it has.
+    Left behind by the turn that set it, it would silence the gate for the life of the
+    thread — every later ungrounded answer going straight out. The first turn here has
+    to reach the gate, which is what makes this different from the turn-2 look above:
+    that one never sets the flag, so it cannot show the flag being cleared."""
+    model = ScriptedChatModel(
+        [
+            ModelReply(text="Beginners train three times a week."),
+            ModelReply(text="My notes say 1.6 g per kg."),
+            ModelReply(text="Creatine is 5 g a day."),
+            ModelReply(text="My notes say 5 g."),
+        ]
+    )
+    app = _app(model, grounding=REMINDER)
+
+    first = app.agent.answer("How much protein?", THREAD)
+    second = app.agent.answer("And creatine?", THREAD)
+
+    assert [type(step) for step in first.trace].count(Reconsidered) == 1
+    assert [type(step) for step in second.trace].count(Reconsidered) == 1
+
+
+@pytest.mark.integration
+def test_an_answer_belongs_to_the_turn_that_asked_for_it() -> None:
+    """`answer` is a per-turn key on a thread that keeps everything: a turn must never
+    be able to return the answer the turn before it gave."""
+    model = ScriptedChatModel(
+        [ModelReply(text="1.6 g per kg."), ModelReply(text="Five grams.")]
+    )
+    app = _app(model)
+
+    first = app.agent.answer("How much protein?", THREAD)
+    second = app.agent.answer("And creatine?", THREAD)
+
+    assert first.answer == "1.6 g per kg."
+    assert second.answer == "Five grams."

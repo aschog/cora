@@ -1,8 +1,18 @@
 import re
 from dataclasses import dataclass
+from typing import Protocol
 
 from cora.domain.errors import InputRejectedError
 from cora.ports.plugin import ValidationRule
+
+
+class InputValidator(Protocol):
+    """Returns the input to use, or raises `InputRejectedError`. Beside the pipeline
+    that implements it rather than beside one caller: the question and a remembered
+    fact are both user input, and both go through it."""
+
+    def validate(self, user_input: str) -> str: ...
+
 
 _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(

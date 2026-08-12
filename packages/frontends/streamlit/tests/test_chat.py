@@ -29,6 +29,7 @@ from fakes import (
     FakeEmbedder,
     FakeMemory,
     FakeRetriever,
+    ReadOnlyMemory,
     ScriptedChatModel,
     add_tool,
 )
@@ -625,3 +626,22 @@ def test_an_app_without_a_memory_shows_no_panel() -> None:
     at = _run_page(_app(ScriptedChatModel([])))
 
     assert REMEMBER_HEADING not in _sidebar_sources(at)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("button", ["clear_memory", "forget"])
+def test_a_write_that_cannot_reach_the_store_says_so_and_keeps_the_chat(
+    button: str,
+) -> None:
+    """The panel is a sidebar, not the app — and the buttons are the half of it that a
+    broken store reaches while they are already on screen."""
+    memory = ReadOnlyMemory(("trains on Tuesdays",))
+    at = _run_page(_remembering_app(memory))
+    key = button if button == "clear_memory" else f"forget_{memory.recall()[0].key}"
+
+    at.sidebar.button(key=key).click().run()
+
+    assert not at.exception
+    assert MemoryStoreError().user_message in [e.value for e in at.error]
+    assert at.chat_input
+    assert "trains on Tuesdays" in _sidebar_sources(at)

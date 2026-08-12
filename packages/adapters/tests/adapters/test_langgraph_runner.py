@@ -8,7 +8,14 @@ from cora.adapters.langgraph_runner import (
 from cora.domain.agent_state import AgentState
 from cora.domain.citations import Source
 from cora.domain.errors import InputRejectedError, LlmError, ToolLoopLimitError
-from cora.domain.trace import ToolUse
+from cora.domain.trace import (
+    MemoryUnread,
+    ModelDecision,
+    Reconsidered,
+    SecondLookLost,
+    ToolUse,
+    TraceStep,
+)
 from cora.engine.steps import (
     GroundStep,
     ModelStep,
@@ -26,6 +33,7 @@ ROUNDS = 8
 
 
 THREAD = "t1"
+_A_STEP = ToolUse(name="add", outcome="3")
 
 
 def _final(
@@ -315,3 +323,73 @@ def test_two_threads_share_nothing() -> None:
     final = _final(runner, {"question": "yours"}, thread_id="grace")
 
     assert [m.content for m in final["messages"]] == ["yours", "ok"]
+
+
+def test_the_first_state_yielded_is_the_thread_as_the_turn_found_it() -> None:
+    """The promise `GraphRunner` makes and `Agent` builds its per-turn slice on: the
+    first yield is the thread before any step of this turn ran. Nothing else pins it,
+    and a runner that yielded post-step states only would drop each turn's first step
+    from the trace with every test still green."""
+
+    def tracing(state: AgentState) -> AgentState:
+        return {"messages": _said("assistant", "ok"), "trace": [_A_STEP]}
+
+    runner = _runner(model=tracing)
+
+    _final(runner, {"question": "first"})
+    states = list(runner.run({"question": "second"}, THREAD))
+
+    found = states[0]
+    assert found["question"] == "second"
+    assert [m.content for m in found["messages"]] == ["first", "ok"], (
+        "the first yield must predate this turn's prepare"
+    )
+    assert found["trace"] == [_A_STEP], "and carry only the earlier turn's steps"
+    assert len(states[-1]["trace"]) == 2
+
+
+def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
+    """The state that crosses the checkpoint is core dataclasses — messages, tool
+    calls, trace steps, sources. LangGraph allows unregistered types today with a
+    logged warning it says will become a block, and a logger warning is invisible to a
+    test suite; the runner therefore names what it checkpoints, so an unlisted type
+    fails here instead of in a future release. Every trace kind the engine can produce
+    is in this state on purpose — one missing from the allowlist breaks a second turn,
+    and only a second turn reads a checkpoint back.
+
+    Asserted by kind and by what the step says rather than by equality: msgpack has no
+    tuple, so a replayed `tools=("add",)` comes back `["add"]`. Nothing reads those
+    fields for anything but iteration and truthiness, and the prompt is built from
+    fresh messages, so the flattening costs nothing — but it is why a replayed step is
+    not `==` to the one that was written."""
+
+    every_kind: list[TraceStep] = [
+        ModelDecision(detail="thinking", tools=("add",)),
+        ToolUse(name="add", arguments={"a": 1}, outcome="3"),
+        Reconsidered(outcome="1 passage"),
+        SecondLookLost(),
+        MemoryUnread(),
+    ]
+
+    def tracing(state: AgentState) -> AgentState:
+        if _answered(state):
+            return {"messages": _said("assistant", "done"), "answer": "done"}
+        return {
+            "messages": _asked_for_a_tool("ok"),
+            "trace": list(every_kind),
+            "sources": [Source(1, "note.md")],
+        }
+
+    runner = _runner(model=tracing)
+
+    _final(runner, {"question": "first"})
+    final = _final(runner, {"question": "second"})
+
+    assert [m.content for m in final["messages"]][:2] == ["first", "ok"]
+    assert final["messages"][1].tool_calls[0].name == "add"
+    assert final["sources"] == [Source(1, "note.md"), Source(1, "note.md")]
+
+    replayed = final["trace"][: len(every_kind)]
+    assert [type(step) for step in replayed] == [type(step) for step in every_kind]
+    assert [step.summary for step in replayed] == [step.summary for step in every_kind]
+    assert [step.failed for step in replayed] == [step.failed for step in every_kind]
