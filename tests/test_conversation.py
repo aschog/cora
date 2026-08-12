@@ -250,8 +250,11 @@ def test_the_gate_fires_again_on_a_later_turn_of_the_same_thread() -> None:
 
 @pytest.mark.integration
 def test_an_answer_belongs_to_the_turn_that_asked_for_it() -> None:
-    """`answer` is a per-turn key on a thread that keeps everything: a turn must never
-    be able to return the answer the turn before it gave."""
+    """`answer` is a per-turn key on a thread that keeps everything. A regression test
+    rather than a guard, and deliberately so: a final reply is one with no tool calls,
+    so the router only reaches `done` after this turn has written its own answer. The
+    reset in `PrepareStep` is belt and braces, pinned by the unit assertion on what
+    that step returns."""
     model = ScriptedChatModel(
         [ModelReply(text="1.6 g per kg."), ModelReply(text="Five grams.")]
     )

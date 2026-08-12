@@ -3,9 +3,12 @@ import pytest
 from cora.adapters.langgraph_runner import (
     LangGraphRunner,
     Step,
+    _trace_kinds,
+    checkpointed_types,
     recursion_limit_for,
 )
 from cora.domain.agent_state import AgentState
+from cora.domain.chunk import Chunk
 from cora.domain.citations import Source
 from cora.domain.errors import InputRejectedError, LlmError, ToolLoopLimitError
 from cora.domain.trace import (
@@ -393,3 +396,39 @@ def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
     assert [type(step) for step in replayed] == [type(step) for step in every_kind]
     assert [step.summary for step in replayed] == [step.summary for step in every_kind]
     assert [step.failed for step in replayed] == [step.failed for step in every_kind]
+
+
+def test_the_allowlist_covers_every_kind_of_step_a_trace_can_hold() -> None:
+    """The guard the round-trip test cannot be: a `TraceStep` added next sprint would
+    checkpoint fine on today's permissive default and break the first turn after
+    LangGraph makes good on blocking unregistered types."""
+    listed = set(checkpointed_types())
+
+    for kind in _trace_kinds():
+        assert (kind.__module__, kind.__name__) in listed, (
+            f"{kind.__name__} can be in a trace but not in a checkpoint"
+        )
+    assert {kind.__name__ for kind in _trace_kinds()} >= {
+        "ModelDecision",
+        "Reconsidered",
+        "SecondLookLost",
+        "MemoryUnread",
+        "ToolUse",
+    }, "the walk found fewer kinds than the engine ships"
+
+
+def test_an_unlisted_type_does_not_come_back_as_itself() -> None:
+    """What makes the allowlist a decision rather than a comment. Asked of the saver the
+    runner actually builds, not of a serializer a test made: LangGraph's default is
+    permissive, so a runner that forgot the allowlist would pass every round-trip test
+    there is and fail the first turn after the default changes."""
+    serde = _runner(model=_replies).checkpointer.serde
+
+    declared = serde.loads_typed(serde.dumps_typed(Message(role="user", content="hi")))
+    undeclared = serde.loads_typed(
+        serde.dumps_typed(Chunk(text="t", source="s.md", index=0, offset=0))
+    )
+
+    assert isinstance(declared, Message)
+    assert (declared.role, declared.content) == ("user", "hi")
+    assert not isinstance(undeclared, Chunk)

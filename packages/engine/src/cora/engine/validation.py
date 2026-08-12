@@ -26,31 +26,40 @@ _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
 )
 
 
+@dataclass(frozen=True)
 class PromptInjectionRule:
+    """`refusal` is what the user reads. It is a field because the same rule guards two
+    kinds of input — a question, and a note the user asked to be remembered — and a
+    refusal quoted into the trace has to name the one it turned down."""
+
+    refusal: str = (
+        "Your message looks like an attempt to change my instructions. "
+        "Please rephrase it as a genuine question."
+    )
+
     def apply(self, user_input: str) -> None:
         normalized = " ".join(user_input.lower().split())
         if any(pattern.search(normalized) for pattern in _INJECTION_PATTERNS):
-            raise InputRejectedError(
-                "Your message looks like an attempt to change my instructions. "
-                "Please rephrase it as a genuine question."
-            )
+            raise InputRejectedError(self.refusal)
 
 
+@dataclass(frozen=True)
 class EmptyInputRule:
+    refusal: str = "Please enter a question."
+
     def apply(self, user_input: str) -> None:
         if not user_input.strip():
-            raise InputRejectedError("Please enter a question.")
+            raise InputRejectedError(self.refusal)
 
 
 @dataclass(frozen=True)
 class MaxLengthRule:
     max_chars: int
+    refusal: str = "Your message is too long — the limit is {limit} characters."
 
     def apply(self, user_input: str) -> None:
         if len(user_input) > self.max_chars:
-            raise InputRejectedError(
-                f"Your message is too long — the limit is {self.max_chars} characters."
-            )
+            raise InputRejectedError(self.refusal.format(limit=self.max_chars))
 
 
 @dataclass(frozen=True)

@@ -1,23 +1,30 @@
+import pytest
+
 from cora.domain.errors import MemoryStoreError
 from cora.engine.memory_tool import MAX_FACT_CHARS, REMEMBER_TOOL_NAME, remember_tool
 from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import (
     EmptyInputRule,
+    InputValidator,
     MaxLengthRule,
     PromptInjectionRule,
     ValidationPipeline,
 )
-from cora.ports.plugin import ToolCall
+from cora.ports.plugin import ToolCall, ToolRefusal
 from fakes import FailingMemory, FakeMemory
 
+NOTE_REFUSALS = ("nothing to remember", "too long to keep", "not kept it")
 
-def _pipeline() -> ValidationPipeline:
-    """The core rules the question already passes through, which the fact never saw."""
+
+def _pipeline() -> InputValidator:
+    """The shape the composition root wires for a fact: the question's rules, worded
+    for a note. What the app really passes is pinned in the assembly tests — an engine
+    test may not reach for the composition root."""
     return ValidationPipeline(
         core_rules=(
-            EmptyInputRule(),
-            MaxLengthRule(MAX_FACT_CHARS),
-            PromptInjectionRule(),
+            EmptyInputRule("There was nothing to remember."),
+            MaxLengthRule(MAX_FACT_CHARS, "Too long to keep — limit {limit}."),
+            PromptInjectionRule("I have not kept it."),
         ),
         plugin_rules=(),
     )
@@ -139,3 +146,38 @@ def test_a_fact_already_known_is_not_kept_twice() -> None:
     tool.run(fact="trains on Tuesdays")
 
     assert [fact.text for fact in memory.recall()] == ["trains on Tuesdays"]
+
+
+def test_a_refusal_is_worded_for_a_note_not_for_a_question() -> None:
+    """The rules are the question's, reused; their messages are not. `ToolRuntime`
+    quotes a refusal into the trace, so "Please enter a question." would be shown to
+    the user as the reason a note was not kept."""
+    runtime = ToolRuntime(tools=(remember_tool(FakeMemory(), _pipeline()),))
+
+    empty = runtime.execute(
+        ToolCall(name=REMEMBER_TOOL_NAME, arguments={"fact": "   "}, call_id="c1")
+    )
+    long = runtime.execute(
+        ToolCall(
+            name=REMEMBER_TOOL_NAME,
+            arguments={"fact": "x" * (MAX_FACT_CHARS + 1)},
+            call_id="c2",
+        )
+    )
+
+    assert empty.error is not None and long.error is not None
+    for refusal in (empty.error, long.error):
+        assert "question" not in refusal.lower()
+        assert "message" not in refusal.lower()
+
+
+def test_an_empty_fact_is_refused() -> None:
+    """The schema bounds a fact's length but not its emptiness, so this rule is the
+    only thing standing between a blank note and a blank row in the sidebar."""
+    memory = FakeMemory()
+    tool = remember_tool(memory, _pipeline())
+
+    with pytest.raises(ToolRefusal):
+        tool.run(fact="   ")
+
+    assert memory.recall() == ()

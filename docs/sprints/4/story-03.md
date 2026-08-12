@@ -123,7 +123,8 @@ history parameter that was their only caller.
       them — the treatment retrieved passages already get
 - [x] a fact longer than the bound is refused; memory was the one prompt-visible thing
       with no cap of its own
-- [x] a fact already known is not kept twice
+- [x] a fact already known is not kept twice — within what `recall` shows, which is the
+      newest hundred: the tool holds a port, not the table
 - [x] a plugin's own rules do not police what is remembered — the shipped medical filter
       would make "remember I have diabetes" unkeepable and close nothing
 - [x] `clear` removes more facts than one page holds — it read one page and deleted what
@@ -141,12 +142,22 @@ history parameter that was their only caller.
 - [x] the gate fires again on a later turn of the same thread — `reconsidered` left
       behind would silence it for the life of the thread, and the whole suite passed
       without the reset
-- [x] an answer belongs to the turn that asked for it
+- [x] an answer belongs to the turn that asked for it — a regression test, not a guard:
+      a final reply is by definition one with no tool calls, so a turn always overwrites
+      `answer`, and the reset is belt and braces the unit assertion pins
 - [x] the first state a runner yields is the thread as the turn found it — the promise
       `Agent` builds its per-turn slice on, pinned where it is made
-- [x] a second turn round-trips every type the state carries, against an explicit
-      checkpoint allowlist: LangGraph deserialises unregistered types with a logged
-      warning it says will become a block, and a logger warning is invisible to a suite
+- [x] a second turn round-trips every type the state carries, against the allowlist the
+      runner's own saver is built with: LangGraph deserialises unregistered types with a
+      logged warning it says will become a block, and a logger warning is invisible to a
+      suite. Three tests, because the round trip alone cannot fail on today's permissive
+      default — the kinds are found by walking `TraceStep` so next sprint's step cannot
+      be forgotten, an unlisted type is shown not to survive the *saver the runner
+      builds*, and the walk is asserted to cover every kind the engine ships
+- [x] a refused note is explained as a note — the rules are the question's, reused, and
+      "Please enter a question." was being quoted into the trace as the reason a note
+      was not kept
+- [x] an empty fact is refused: the schema bounds a fact's length but not its emptiness
 
 #### Close
 

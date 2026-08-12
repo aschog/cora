@@ -165,9 +165,15 @@ def _fact_rules() -> ValidationPipeline:
     without closing anything."""
     return ValidationPipeline(
         core_rules=(
-            EmptyInputRule(),
-            MaxLengthRule(MAX_FACT_CHARS),
-            PromptInjectionRule(),
+            EmptyInputRule("There was nothing to remember."),
+            MaxLengthRule(
+                MAX_FACT_CHARS,
+                "That note is too long to keep — the limit is {limit} characters.",
+            ),
+            PromptInjectionRule(
+                "That note reads as an attempt to change my instructions, "
+                "so I have not kept it."
+            ),
         ),
         plugin_rules=(),
     )

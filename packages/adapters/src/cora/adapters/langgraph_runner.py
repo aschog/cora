@@ -3,16 +3,53 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from langgraph.checkpoint.memory import InMemorySaver
+from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 
 from cora.domain.agent_state import AgentState
 from cora.domain.errors import ToolLoopLimitError
+from cora.domain.trace import TraceStep
 from cora.ports.graph import DONE, GROUND, TOOLS, GraphRunner, Route, Step
 
 PREPARE = "prepare"
 MODEL = "model"
 SUPERSTEPS_PER_ROUND = 2
+CHECKPOINTED_DATA = (
+    ("cora.ports.chat_model", "Message"),
+    ("cora.ports.plugin", "ToolCall"),
+    ("cora.domain.citations", "Source"),
+)
+"""What a thread's state is made of besides its trace. Named because the alternative is
+LangGraph's default — deserialise anything and log a warning saying it will be blocked
+one day — which would make a lock bump the thing that breaks conversations, silently: a
+logged warning is invisible to a test suite."""
+
+
+def _trace_kinds() -> tuple[type[TraceStep], ...]:
+    """Every kind of step the engine can put in a trace, found rather than listed: a
+    kind added next sprint is checkpointable without anyone remembering this file."""
+    found: list[type[TraceStep]] = []
+    pending = [TraceStep]
+    while pending:
+        for kind in pending.pop().__subclasses__():
+            if kind not in found:
+                found.append(kind)
+                pending.append(kind)
+    return tuple(found)
+
+
+def checkpointed_types() -> tuple[tuple[str, str], ...]:
+    return (
+        *CHECKPOINTED_DATA,
+        *((kind.__module__, kind.__name__) for kind in _trace_kinds()),
+    )
+
+
+def _saver() -> InMemorySaver:
+    return InMemorySaver(
+        serde=JsonPlusSerializer(allowed_msgpack_modules=checkpointed_types())
+    )
 
 
 def recursion_limit_for(max_tool_rounds: int) -> int:
@@ -36,7 +73,7 @@ class LangGraphRunner:
     ground: Step
     router: Route
     recursion_limit: int
-    checkpointer: InMemorySaver = field(default_factory=InMemorySaver)
+    checkpointer: InMemorySaver = field(default_factory=_saver)
 
     def run(self, state: AgentState, thread_id: str) -> Iterator[AgentState]:
         try:
