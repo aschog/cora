@@ -1,4 +1,5 @@
 import hashlib
+import uuid
 from collections.abc import Callable, Sequence
 
 import streamlit as st
@@ -12,7 +13,7 @@ from cora.frontends.streamlit.formatting import (
     numbered_sources,
     step_text,
 )
-from cora.frontends.streamlit.thread import ThreadEntry, thread_to_turns
+from cora.frontends.streamlit.thread import ThreadEntry
 from cora.ports.memory import Memory
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
@@ -118,20 +119,22 @@ def _ingest(knowledge_base: KnowledgeBase, data: bytes, filename: str) -> bool:
 
 
 def _thread() -> None:
+    """The session's thread id names the conversation the agent keeps; what is stored
+    here is only what the screen has to redraw."""
     if "messages" not in st.session_state:
         st.session_state.messages = []
+        st.session_state.thread_id = str(uuid.uuid4())
     for message in st.session_state.messages:
         _show(message)
 
 
 def _answer(agent: Agent, prompt: str) -> None:
-    history = thread_to_turns(st.session_state.messages)
     _append_and_show({"role": "user", "content": prompt})
     taken: list[TraceStep] = []
     live = st.empty()
     try:
         with live.container(), st.status(WORKING, expanded=True):
-            result = agent.answer(prompt, history, _watch(taken))
+            result = agent.answer(prompt, st.session_state.thread_id, _watch(taken))
     except CoreError as error:
         live.empty()
         _append_and_show(

@@ -20,13 +20,15 @@ Route = Callable[[AgentState], str]
 
 
 class GraphRunner(Protocol):
-    """Drives one run of the agent's steps, yielding the state as it accumulates:
-    at least one state, one per step taken, the last of them the finished run.
-    Core errors raised inside a step travel out of the iteration unwrapped — and
-    the state yielded last may predate such a failure, so it is no evidence about
-    what the run had reached when it failed."""
+    """Drives one turn of the agent's steps on a named thread, yielding the state as
+    it accumulates: the thread as the turn found it, then one state per step taken,
+    the last of them the finished turn. A thread remembers its own conversation, so a
+    second turn is seeded with the question alone. Core errors raised inside a step
+    travel out of the iteration unwrapped — and the state yielded last may predate
+    such a failure, so it is no evidence about what the run had reached when it
+    failed."""
 
-    def run(self, state: AgentState) -> Iterator[AgentState]: ...
+    def run(self, state: AgentState, thread_id: str) -> Iterator[AgentState]: ...
 
 
 class GraphFor(Protocol):

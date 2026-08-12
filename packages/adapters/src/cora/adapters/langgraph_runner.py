@@ -1,7 +1,8 @@
 from collections.abc import Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
+from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 
@@ -24,18 +25,27 @@ def recursion_limit_for(max_tool_rounds: int) -> int:
 
 @dataclass(frozen=True)
 class LangGraphRunner:
+    """The checkpointer is the runner's own: which technology remembers a thread is a
+    binding, not something the core asks for. It is in memory because a thread is one
+    sitting at the app — what has to outlive the process is what the agent was told
+    about the user, and that lives behind the memory port."""
+
     prepare: Step
     model: Step
     tools: Step
     ground: Step
     router: Route
     recursion_limit: int
+    checkpointer: InMemorySaver = field(default_factory=InMemorySaver)
 
-    def run(self, state: AgentState) -> Iterator[AgentState]:
+    def run(self, state: AgentState, thread_id: str) -> Iterator[AgentState]:
         try:
             yield from self._graph().stream(
                 state,
-                {"recursion_limit": self.recursion_limit},
+                {
+                    "recursion_limit": self.recursion_limit,
+                    "configurable": {"thread_id": thread_id},
+                },
                 stream_mode="values",
             )
         except GraphRecursionError as exhausted:
@@ -56,7 +66,7 @@ class LangGraphRunner:
         )
         builder.add_edge(TOOLS, MODEL)
         builder.add_edge(GROUND, MODEL)
-        return builder.compile()
+        return builder.compile(checkpointer=self.checkpointer)
 
 
 def langgraph_for(

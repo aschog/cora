@@ -110,13 +110,14 @@ Recorded with a decision, not scheduled — none is in the sprint-4 story cut.
 
 ## Found by the story-1 review
 
-- [ ] **Citation numbers restart each turn** — `[1]` names one document this turn and
+- [x] **Citation numbers restart each turn** — `[1]` names one document this turn and
       another the next, so a model that echoes an earlier `[1]` while paraphrasing its own
       previous answer has it resolved against *this* turn's sources
       (`core/services/agent.py`). Pre-dates the agent — sprint 3 numbered per turn too.
-      → scheduled in **story 3** (`story-03.md`): the checkpointer makes the thread the
-      owner of `sources`, so numbering becomes per conversation rather than per turn, and
-      the story's test list pins it.
+      → **Done in story 3**: the checkpointer makes the thread the owner of `sources`, so
+      numbering runs the length of the conversation. A document keeps its number when it
+      is found again, a new one takes the next, and an answer echoing an earlier `[1]`
+      resolves to the source the user was shown.
 
 ## Carried over from the manual test run
 

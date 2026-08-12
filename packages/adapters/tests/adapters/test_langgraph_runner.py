@@ -25,8 +25,22 @@ from fakes import FailingChatModel, FakeContextSource, add_tool
 ROUNDS = 8
 
 
-def _final(runner: LangGraphRunner, state: AgentState) -> AgentState:
-    return list(runner.run(state))[-1]
+THREAD = "t1"
+
+
+def _final(
+    runner: LangGraphRunner, state: AgentState, thread_id: str = THREAD
+) -> AgentState:
+    return list(runner.run(state, thread_id))[-1]
+
+
+def _answered(state: AgentState) -> bool:
+    """A round has been spent this turn: the fake steps read the transcript for it,
+    exactly as the router does."""
+    return any(
+        message.role == "assistant"
+        for message in tuple(state.get("messages", ()))[state.get("turn_start", 0) :]
+    )
 
 
 def _said(role: Role, content: str) -> list[Message]:
@@ -40,7 +54,13 @@ def _asked_for_a_tool(content: str) -> list[Message]:
 
 
 def _prepare(state: AgentState) -> AgentState:
-    return {"messages": _said("user", state["question"])}
+    return {
+        "messages": _said("user", state["question"]),
+        "turn_start": len(state.get("messages", ())),
+        "answer": "",
+        "answer_in_hand": "",
+        "reconsidered": False,
+    }
 
 
 def _ran(state: AgentState) -> AgentState:
@@ -48,7 +68,11 @@ def _ran(state: AgentState) -> AgentState:
 
 
 def _nudge(state: AgentState) -> AgentState:
-    return {"messages": _said("system", "search first"), "answer_in_hand": "off"}
+    return {
+        "messages": _said("system", "search first"),
+        "answer_in_hand": "off",
+        "reconsidered": True,
+    }
 
 
 def _runner(
@@ -80,9 +104,9 @@ def test_run_walks_prepare_then_model_then_tools_then_model() -> None:
 
     def model(state: AgentState) -> AgentState:
         visited.append("model")
-        if state.get("rounds"):
-            return {"messages": _said("assistant", "done"), "rounds": 1, "answer": "d"}
-        return {"messages": _asked_for_a_tool("asking"), "rounds": 1}
+        if _answered(state):
+            return {"messages": _said("assistant", "done"), "answer": "d"}
+        return {"messages": _asked_for_a_tool("asking")}
 
     def tools(state: AgentState) -> AgentState:
         visited.append("tools")
@@ -98,9 +122,9 @@ def test_run_walks_prepare_then_model_then_tools_then_model() -> None:
 
 def test_the_returned_state_accumulated_every_partial() -> None:
     def model(state: AgentState) -> AgentState:
-        if state.get("rounds"):
-            return {"messages": _said("assistant", "done"), "rounds": 1, "answer": "d"}
-        return {"messages": _asked_for_a_tool("asking"), "rounds": 1}
+        if _answered(state):
+            return {"messages": _said("assistant", "done"), "answer": "d"}
+        return {"messages": _asked_for_a_tool("asking")}
 
     def tools(state: AgentState) -> AgentState:
         return {
@@ -114,7 +138,6 @@ def test_the_returned_state_accumulated_every_partial() -> None:
     assert [m.content for m in final["messages"]] == ["q", "asking", "ran", "done"]
     assert final["trace"] == [ToolUse(name="search_documents", outcome="1 passage")]
     assert final["sources"] == [Source(1, "note.md")]
-    assert final["rounds"] == 2
 
 
 def test_an_ungrounded_answer_goes_back_through_the_model() -> None:
@@ -122,13 +145,17 @@ def test_an_ungrounded_answer_goes_back_through_the_model() -> None:
 
     def model(state: AgentState) -> AgentState:
         visited.append("model")
-        if "answer_in_hand" in state:
+        if state.get("reconsidered"):
             return {"messages": _said("assistant", "grounded"), "answer": "grounded"}
         return {"messages": _said("assistant", "off the cuff"), "answer": "off"}
 
     def ground(state: AgentState) -> AgentState:
         visited.append("ground")
-        return {"messages": _said("system", "search first"), "answer_in_hand": "off"}
+        return {
+            "messages": _said("system", "search first"),
+            "answer_in_hand": "off",
+            "reconsidered": True,
+        }
 
     final = _final(
         _runner(model=model, ground=ground, grounded=True), {"question": "q"}
@@ -145,13 +172,13 @@ def test_a_step_is_seen_before_the_run_is_over() -> None:
 
     def model(state: AgentState) -> AgentState:
         completions.append(f"round {len(completions) + 1}")
-        if state.get("rounds"):
-            return {"messages": _said("assistant", "done"), "rounds": 1}
-        return {"messages": _asked_for_a_tool("asking"), "rounds": 1}
+        if _answered(state):
+            return {"messages": _said("assistant", "done")}
+        return {"messages": _asked_for_a_tool("asking")}
 
-    states = _runner(model=model).run({"question": "q"})
+    states = _runner(model=model).run({"question": "q"}, THREAD)
     for state in states:
-        if state.get("rounds"):
+        if _answered(state):
             break
 
     assert completions == ["round 1"]
@@ -159,7 +186,7 @@ def test_a_step_is_seen_before_the_run_is_over() -> None:
 
 def test_a_runaway_graph_surfaces_as_the_friendly_give_up() -> None:
     def endless(state: AgentState) -> AgentState:
-        return {"messages": _asked_for_a_tool("again"), "rounds": 1}
+        return {"messages": _asked_for_a_tool("again")}
 
     runner = _runner(model=endless, rounds=999, recursion_limit=4)
 
@@ -196,9 +223,8 @@ def _real_runner(
         prepare=PrepareStep(
             validation=ValidationPipeline((EmptyInputRule(),), ()),
             system_prompt="SYS",
-            max_history_turns=20,
         ),
-        model=ModelStep(chat_model=model, tools=(add_tool(),)),
+        model=ModelStep(chat_model=model, tools=(add_tool(),), max_history_turns=20),
         tools=ToolStep(ToolRuntime(tools=(add_tool(),))),
         router=Router(max_tool_rounds=rounds, grounded=grounded),
         recursion_limit=recursion_limit_for(rounds),
@@ -264,3 +290,28 @@ def test_an_adapter_error_from_a_step_travels_out_unwrapped() -> None:
         _final(_real_runner(FailingChatModel(error), rounds=3), {"question": "hi"})
 
     assert exc_info.value is error
+
+
+def _replies(state: AgentState) -> AgentState:
+    return {"messages": _said("assistant", "ok")}
+
+
+def test_a_second_run_on_one_thread_starts_where_the_first_finished() -> None:
+    """What makes the conversation the graph's rather than the caller's: the second
+    turn is seeded with a question alone and finds the first turn already there."""
+    runner = _runner(model=_replies)
+
+    _final(runner, {"question": "first"})
+    final = _final(runner, {"question": "second"})
+
+    assert [m.content for m in final["messages"]] == ["first", "ok", "second", "ok"]
+    assert final["turn_start"] == 2
+
+
+def test_two_threads_share_nothing() -> None:
+    runner = _runner(model=_replies)
+
+    _final(runner, {"question": "mine"}, thread_id="ada")
+    final = _final(runner, {"question": "yours"}, thread_id="grace")
+
+    assert [m.content for m in final["messages"]] == ["yours", "ok"]

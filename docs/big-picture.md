@@ -1,6 +1,6 @@
 # Big picture
 
-Read this page first. It shows cora's engine, its six ports, and the technology behind
+Read this page first. It shows cora's engine, its seven ports, and the technology behind
 each port. The design is called *hexagonal* (also known as *ports and adapters*).
 The tests show how the code really works. The story files in `docs/sprints/` show how
 the code was built, not how it works today.
@@ -25,6 +25,7 @@ flowchart TB
     val["ValidationPipeline"]
     rt["ToolRuntime"]
     search["search_documents<br/><i>retrieval as a tool</i>"]
+    remember["remember<br/><i>memory as a tool</i>"]
     retr["Retrieval strategy<br/><i>plain · RAG-Fusion · hybrid</i>"]
     kb["KnowledgeBase"]
   end
@@ -35,6 +36,7 @@ flowchart TB
     emb{{"Embedder"}}
     ret{{"Retriever"}}
     load{{"Loaders"}}
+    mem{{"Memory"}}
     plug{{"Plugin"}}
   end
 
@@ -45,11 +47,13 @@ flowchart TB
     chroma["ChromaRetriever<br/><i>Chroma</i>"]
     bm25["Bm25KeywordIndex<br/><i>rank_bm25</i>"]
     load_reg["load_txt · load_pdf<br/><i>pypdf</i>"]
+    store["SqliteStoreMemory<br/><i>LangGraph store · SQLite</i>"]
     fit["fitness plugin"]
   end
 
   ui -->|"answer()"| agent
   ui -->|"add_file()"| kb
+  ui -->|"recall() · forget()"| mem
   root ==> agent
   root ==> kb
   root ==> plug
@@ -60,6 +64,9 @@ flowchart TB
   steps --> val
   steps --> rt
   rt --> search
+  rt --> remember
+  remember --> mem
+  steps --> mem
   search --> retr
   retr --> kb
   kb --> emb
@@ -71,16 +78,17 @@ flowchart TB
   emb -.-> ste
   ret -.-> chroma
   load -.-> load_reg
+  mem -.-> store
   plug -.-> fit
 
   classDef port fill:#8c4b00,stroke:#d98a1f,color:#fff;
   classDef logic fill:#134e6f,stroke:#1f78b4,color:#fff;
-  class gr,cm,emb,ret,load,plug port;
-  class agent,steps,router,val,rt,search,retr,kb logic;
+  class gr,cm,emb,ret,load,mem,plug port;
+  class agent,steps,router,val,rt,search,remember,retr,kb logic;
 ```
 
 Read the map from top to bottom. The frontend (top) calls the engine (middle) through the
-app that wired it. The engine has six ports. When the app starts, each port is connected to
+app that wired it. The engine has seven ports. When the app starts, each port is connected to
 one adapter (bottom); the engine does not know which. The one arrow pointing back up is
 `LangGraphRunner` driving the engine's steps: the adapter supplies the graph, the engine
 supplies every step it walks.
@@ -88,7 +96,7 @@ supplies every step it walks.
 | Mark | Means |
 |---|---|
 | blue box | A part of the engine. It is plain Python, so a test can build it with fakes. |
-| amber hexagon | A port — a slot for one kind of technology. The six ports are the only way in and out of the engine. |
+| amber hexagon | A port — a slot for one kind of technology. The seven ports are the only way in and out of the engine. |
 | thin arrow | A call made while answering a request. |
 | thick arrow | Built by the composition root when the app starts. |
 | dotted arrow | The adapter behind a port. Every one is an argument to `assemble`, so a different technology is a different argument. |
@@ -104,16 +112,20 @@ are three options:
 - `advanced` — use RAG-Fusion. A `QueryPlanner` writes the question in a few different ways, and RRF joins the results. (RRF, Reciprocal Rank Fusion, is a simple way to merge ranked lists.)
 - `hybrid` — run two searches over the same files, one by meaning (dense) and one by keywords (BM25), and join them with the same RRF. This needs no planner and no extra model call.
 
-A **port** is a fixed slot in the engine for one kind of technology. There are exactly six:
+A **port** is a fixed slot in the engine for one kind of technology. There are exactly seven:
 one for driving the agent, one for chat, one for embedding, one for retrieval, one for reading
-a file format, and one for the plugin. Every one of them is an argument to `assemble`, so a
-different technology goes in a slot without the engine or the composition root changing.
+a file format, one for what the agent keeps about the user, and one for the plugin. Every one
+of them is an argument to `assemble`, so a different technology goes in a slot without the
+engine or the composition root changing.
+
+Memory is the one optional slot. Leave it out and the agent is offered no `remember` tool and
+told no rule about remembering — an app with no memory cannot quietly forget.
 
 BM25 has no slot like this. Only the `hybrid` search uses it, wired straight into that search.
 So BM25 is a technology with no port. It is kept with the other adapters, and there are still
-just six ports.
+just seven ports.
 
-A seventh file sits in `ports/` without being one: `ContextSource` is the engine's own seam
+One more file sits in `ports/` without being a slot: `ContextSource` is the engine's own seam
 between a search and the step that uses it, implemented inside the engine — a Protocol, but
 not a slot a technology fills.
 
@@ -165,18 +177,23 @@ points, and a new one of either is a package to install rather than a file to ed
 ## Two calls in
 
 A frontend uses the engine through two main methods: `answer()` and `add_file()` (plus
-`list_sources()` to show the file list in the sidebar).
+`list_sources()` to show the file list in the sidebar, and `recall()` / `forget()` to show
+and clear what is remembered).
 
-**`agent.answer(question, history=()) -> ChatResult`** — `engine/agent.py`
+**`agent.answer(question, thread_id) -> ChatResult`** — `engine/agent.py`
 
-1. **Prepare** — check the question against the core rules (not empty, at most 4000 characters, no prompt-injection), then the plugin's rules. If a rule says no, raise `InputRejectedError`; the model never sees the question. Then lay out the messages: the plugin's system prompt together with cora's own rules (call `search_documents`, cite `[n]`), the last `CORA_HISTORY_TURNS` turns of chat (default 20; `0` means no memory), and last the question. Validation sees the question only, never the chat history.
-2. **Model** — one round. The model is offered `search_documents` beside the plugin's tools. It either answers or asks for tools.
-3. **Tools** — run what it asked for, in order. A result that can cite itself — a set of search hits — is numbered `[n]` continuing from the numbers this run already handed out, and comes back as a `tool` message marked *untrusted document data*. Any other result is fed back exactly as it renders.
-4. **Round again, or stop** — the router reads the model's last reply. A reply asking for tools goes back to step 2, at most `CORA_MAX_TOOL_ROUNDS` times (default 8), after which `ToolLoopLimitError` apologises. A reply that answers ends the run.
+The conversation belongs to the thread, not to the caller: a turn is seeded with the
+question alone, and the graph's checkpointer supplies everything said before it. The
+frontend keeps one thread id per browser session.
+
+1. **Prepare** — check the question against the core rules (not empty, at most 4000 characters, no prompt-injection), then the plugin's rules. If a rule says no, raise `InputRejectedError`; the model never sees the question. Then add the question to the thread's transcript and write this turn's **brief**: the plugin's system prompt, cora's own rules (call `search_documents`, cite `[n]`, call `remember` for what the user shares), and whatever is already remembered about the user. The brief is rewritten each turn, so a ten-turn thread carries one, and a fact learned mid-conversation is in hand the next turn. Validation sees the question only.
+2. **Model** — one round. The model is offered `search_documents` and `remember` beside the plugin's tools. It is sent the brief, then the previous turns' words — the last `CORA_HISTORY_TURNS` of them (default 20; `0` means no history) — then this turn verbatim. Old tool calls and their results stay in the thread but out of the prompt. It either answers or asks for tools.
+3. **Tools** — run what it asked for, in order. A result that can cite itself — a set of search hits — is numbered `[n]` continuing from the numbers the *conversation* has already handed out, so `[1]` means one document for as long as the thread lives, and comes back as a `tool` message marked *untrusted document data*. Any other result is fed back exactly as it renders.
+4. **Round again, or stop** — the router reads the model's last reply. A reply asking for tools goes back to step 2, at most `CORA_MAX_TOOL_ROUNDS` times (default 8), after which `ToolLoopLimitError` apologises. A reply that answers ends the run. Rounds are counted from where this turn began in the transcript, so the budget is the turn's and a long conversation cannot exhaust it.
 5. **Grounding** — a plugin that sets `grounding` will not take an answer the run did no work for. If the model answers without having called a single tool, the gate searches the question *itself* and hands the passages back with the plugin's own reminder, and the model gets one more go at step 2 — weighing evidence in front of it rather than being told to go and fetch some, which a model is free to ignore and, asked "Hi there!", once did by searching for `"Hi there!"`. An answer a tool already worked for stands: a calculation grounds it as well as a document does. Only passages near enough to the question are offered: top-k always returns something, so without a floor a greeting is handed whatever sits closest and invited to cite it. Small talk therefore still costs one vector lookup, but nothing is offered for it to cite. The gate fires at most once per run, and only when the budget has room for the **one** model call that reads the evidence. If the look comes back with nothing — the model unreachable — the answer it was second-guessing is returned rather than lost, and the trace says so; a store that is down is the gate's own failure now, absorbed so it costs the answer nothing, and marked failed in the trace.
 
 The cost is a second model call on every turn that answers without using a tool, greetings included. That is the price of the guarantee, and it is why the gate is a plugin's choice rather than the core's.
-6. **Return** — the answer, the sources it really used (only the `[n]` numbers that appear in the reply, with duplicates removed), and the run's trace.
+6. **Return** — the answer, the sources it really used (only the `[n]` numbers that appear in the reply, with duplicates removed, resolved against every source the conversation has registered), and this turn's trace — the thread arrives carrying every step of every earlier turn, and replaying those would show work this turn never did.
 
 **The run reports itself as it goes.** Each step records what it did — the model's decision and
 the tools it asked for, then every call with its arguments and what came back. `answer()` takes
@@ -199,17 +216,19 @@ labelled as data, and cora's own rules stay in the system message.
 
 ## The components
 
-Fourteen parts, each with one job. Ten are on the map; four are marked *folded*
+Sixteen parts, each with one job. Eleven are on the map; five are marked *folded*
 because the map shows them inside another part.
 
 | Component | Job | Where |
 |---|---|---|
-| **Agent** | The one main use case. It seeds a run from the question and the history, then turns the run's final state into a `ChatResult`. | `engine/agent.py` |
-| **Steps** | The moves of a turn: *prepare* validates and lays out the messages, *model* takes one round with the chat model, *tools* runs what the model asked for, and *ground* looks in the documents itself and puts what it found to the model when the plugin asks. Each one returns only what it added to the run. | `engine/steps.py` |
+| **Agent** | The one main use case. It seeds a turn with the question, names the thread it belongs to, and turns the run's final state into a `ChatResult`. | `engine/agent.py` |
+| **Steps** | The moves of a turn: *prepare* validates, adds the question to the transcript and writes the brief, *model* takes one round with the chat model, *tools* runs what the model asked for, and *ground* looks in the documents itself and puts what it found to the model when the plugin asks. Each one returns only what it added to the run. | `engine/steps.py` |
 | **Router** | The one decision, read off the model's last reply: asking for tools runs them (a friendly apology at the round budget), answering ends the run — or is sent back once when the plugin wants its subject worked for and no tool was used. | `engine/steps.py` |
 | **Trace** *(folded)* | What the user reads afterwards: one step per model decision and per tool call, each with a one-line summary and the evidence behind it. A new kind of step is a new class, not a new branch. | `domain/trace.py` |
-| **Citations** *(folded)* | Numbers a retrieval's passages `[n]`, continues that numbering when the same run retrieves again, and works out which sources an answer really cited. | `domain/citations.py` |
+| **Citations** *(folded)* | Numbers a retrieval's passages `[n]`, continues that numbering for the life of the conversation, and works out which sources an answer really cited. | `domain/citations.py` |
+| **Transcript** *(folded)* | Projects the thread into one turn's prompt: the brief, the previous turns' words within the cap, then this turn as it stands. The thread keeps everything; the prompt is a view of it. | `domain/transcript.py` |
 | **search_documents** | Document search as a tool, so whether to use the documents is the model's decision. Its hits arrive able to number themselves. | `engine/retrieval_tool.py` |
+| **remember** | Keeping a fact about the user as a tool, so what is worth remembering is the model's decision and every save shows up in the trace. | `engine/memory_tool.py` |
 | **KnowledgeBase** | A simple front for ingest, embed, and store. It also does search, lists sources, and skips files already uploaded. | `engine/knowledge_base.py` |
 | **Ingestion** *(folded)* | Turns bytes into clean text, then into overlapping chunks with their origin. Rejects the wrong type, too large, or empty. | `engine/ingestion.py`, `engine/cleaning.py`, `engine/chunker.py` — and the loaders themselves in `adapters/loaders.py`, since which file formats can be read is a technology's business |
 | **Retrieval strategy** | How the search tool gets its chunks: `plain` (KnowledgeBase), `advanced`, or `hybrid`. Both wrappers merge results with RRF. | `engine/fusion_context_source.py`, `engine/hybrid_context_source.py`, `engine/query_planner.py`, `engine/rank_fusion.py` |
@@ -221,18 +240,19 @@ because the map shows them inside another part.
 
 ## The ports
 
-The six ports are the only outward surface of the engine. Five of them describe technology —
-four Protocols and one registry of them. The sixth, **Plugin**, is a frozen **dataclass** (the
+The seven ports are the only outward surface of the engine. Six of them describe technology —
+five Protocols and one registry of them. The seventh, **Plugin**, is a frozen **dataclass** (the
 domain — the topic the app is about). So an adapter and a plugin work the same way: each one
 is chosen in one place.
 
 | Port | Surface | Bound at startup to |
 |---|---|---|
-| **GraphRunner** | `run(state) -> Iterator[AgentState]` | `LangGraphRunner` — the only file that uses LangGraph. It wires the core's steps and router into a state graph and streams one run of it, yielding the state after every step. |
+| **GraphRunner** | `run(state, thread_id) -> Iterator[AgentState]` | `LangGraphRunner` — the only file that uses LangGraph. It wires the core's steps and router into a state graph, keeps each thread in a checkpointer, and streams one turn of it: the thread as the turn found it, then the state after every step. |
 | **ChatModel** | `complete(messages, tools) -> ModelReply` | `OpenRouterChatModel` — the only file that uses LangChain. It talks to OpenRouter, an OpenAI-style endpoint set by `CORA_MODEL`. |
 | **Embedder** | `embed(texts) -> list[list[float]]` | `SentenceTransformerEmbedder` — the all-MiniLM-L6-v2 model. It runs on your machine and loads only when first used. |
 | **Retriever** | `add(chunks, vectors, file_hash)`, `query(query_vector, k, metadata_filter=None)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a saved, built-in database that uses cosine distance. The optional filter limits a search to matching metadata (self-query). |
 | **Loaders** | `Mapping[str, Loader]`, each `Loader` a `(data, filename) -> str` | `cora.adapters.loaders.LOADERS` — `.txt` and `.md` read directly, `.pdf` through pypdf. Which formats a deployment accepts is an entry in the registry, not an edit inside ingestion. |
+| **Memory** | `remember(text)`, `recall() -> tuple[Fact, ...]`, `forget(key)`, `clear()` | `SqliteStoreMemory` — LangGraph's SQLite-backed store, one namespace per user, at `CORA_MEMORY_PATH`. The only optional slot: with nothing bound, the agent is offered no `remember` tool. |
 | **Plugin** | data only: `system_prompt`, `tools`, `validation_rules`, `seed_docs`, `grounding` | `cora.plugins.fitness` — change it with `CORA_PLUGIN`. It is a frozen dataclass, not a class you subclass. |
 
 Set `CORA_DEBUG=1` to wrap the chat, embedding and retrieval ports in a logger
@@ -250,7 +270,7 @@ the plugins, and the UI do not notice any change.
   that can tell a declaration from a fact.
 - **Streamlit is used in one folder only.** No file outside `frontends/streamlit/` may import it. This is why you can really replace the user interface.
 - **The steps do not depend on any real helper.** They are plain callables over small Protocols (`ContextSource`, `InputValidator`, `ToolExecutor`), so a test walks a whole turn with fakes and no graph at all.
-- **One thing the engine shares with the graph on purpose.** `domain/agent_state.py` marks the keys that accumulate (`Annotated[list[Message], operator.add]`). No engine code reads those marks — they are the convention LangGraph uses to merge each step's partial state, so this one file is written to be understood by a graph engine, without importing one. The steps and the router stay framework-free; the state's *shape* is the shared word.
+- **One thing the engine shares with the graph on purpose.** `domain/agent_state.py` marks the keys that accumulate across a conversation (`Annotated[list[Message], operator.add]`). No engine code reads those marks — they are the convention LangGraph uses to merge each step's partial state, so this one file is written to be understood by a graph engine, without importing one. The steps and the router stay framework-free; the state's *shape* is the shared word.
 - **Document text can never act as an instruction.** A test drives a turn that retrieves and checks that the document's words appear only in a `tool` message — never in the system prompt, where cora's own rules live.
 - **Retrieving is the model's decision, but the documents get the first claim on it.** A live-model test asks a plain training question — never saying "my documents" — and a greeting, through the same agent: only the first comes back with sources. A first answer the run did no work for is sent back once, so what a plugin claims as its subject is answered from the user's material — or at least from its tools — and not from what the model happens to know.
 - **A runaway agent still ends politely.** The engine's round budget is set to trip before the graph's own recursion limit, and a graph that overruns anyway is turned into the same friendly apology — never a framework error.

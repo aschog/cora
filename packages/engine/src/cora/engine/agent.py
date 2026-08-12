@@ -5,7 +5,6 @@ from cora.domain.agent_state import AgentState
 from cora.domain.citations import Source, cited_sources
 from cora.domain.errors import AdapterError, GraphRunError
 from cora.domain.trace import SecondLookLost, TraceStep
-from cora.domain.turn import Turn
 from cora.ports.graph import GraphRunner
 
 
@@ -26,9 +25,9 @@ def _still_holding_the_answer(state: AgentState) -> bool:
     the gate does the searching, so it registers passages whether or not the model
     ever replies to them. Asked of the gate's own record, never of round counting —
     the state a run yielded last can predate the failure."""
-    if "answer_in_hand" not in state:
+    if not state.get("reconsidered"):
         return False
-    held = state["answer_in_hand"]
+    held = state.get("answer_in_hand", "")
     messages = state.get("messages") or []
     unanswered = bool(messages) and messages[-1].role == "system"
     return bool(held) and state.get("answer") == held and unanswered
@@ -41,18 +40,25 @@ class Agent:
     def answer(
         self,
         question: str,
-        history: tuple[Turn, ...] = (),
+        thread_id: str,
         on_step: Callable[[TraceStep], None] = _ignore,
     ) -> ChatResult:
-        """Reports each step the moment the run takes it, so a caller can show
-        the work in progress; a run that fails keeps the steps already reported.
-        A failure inside the grounding gate's extra round is survivable — the run
-        already had an answer, and losing it to a second look would be worse than
-        an ungrounded one."""
+        """One turn on a named thread, which is where the conversation now lives: the
+        question alone is seeded, and the steps reported are this turn's — the thread
+        arrives carrying every step it has ever taken. Each step is reported the moment
+        the run takes it, so a caller can show the work in progress, and a run that
+        fails keeps the steps already reported. A failure inside the grounding gate's
+        extra round is survivable: the run already had an answer, and losing it to a
+        second look would be worse than an ungrounded one."""
+        found: AgentState | None = None
         final: AgentState = {}
-        reported = 0
+        started = reported = 0
         try:
-            for state in self.runner.run({"question": question, "history": history}):
+            for state in self.runner.run({"question": question}, thread_id):
+                if found is None:
+                    found = state
+                    started = reported = len(state.get("trace", ()))
+                    continue
                 final = state
                 steps = state.get("trace", [])
                 for step in steps[reported:]:
@@ -69,5 +75,5 @@ class Agent:
         return ChatResult(
             answer=answer,
             sources=cited_sources(answer, tuple(final.get("sources", ()))),
-            trace=tuple(final.get("trace", ())),
+            trace=tuple(final.get("trace", ()))[started:],
         )

@@ -114,10 +114,11 @@ def assemble(
         prepare=PrepareStep(
             validation=validation,
             system_prompt=plugin.system_prompt,
-            max_history_turns=history_turns,
             memory=memory,
         ),
-        model=ModelStep(chat_model=chat_model, tools=tools),
+        model=ModelStep(
+            chat_model=chat_model, tools=tools, max_history_turns=history_turns
+        ),
         tools=ToolStep(tool_runtime=ToolRuntime(tools=tools)),
         ground=GroundStep(
             reminder=grounding, context_source=context_source, top_k=top_k
