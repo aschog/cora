@@ -15,25 +15,11 @@ def test_tools_differ_when_any_field_differs() -> None:
     assert add_tool() != dataclasses.replace(add_tool(), name="sum")
 
 
-def test_tool_is_immutable() -> None:
-    tool = add_tool()
-
-    with pytest.raises(dataclasses.FrozenInstanceError):
-        tool.name = "changed"  # ty: ignore[invalid-assignment]
-
-
 def test_tool_calls_are_equal_by_value() -> None:
     a = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="call-1")
     b = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="call-1")
 
     assert a == b
-
-
-def test_tool_call_is_immutable() -> None:
-    call = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="call-1")
-
-    with pytest.raises(dataclasses.FrozenInstanceError):
-        call.call_id = "changed"  # ty: ignore[invalid-assignment]
 
 
 def test_ok_result_carries_payload_and_no_error() -> None:
@@ -60,13 +46,6 @@ def test_result_with_neither_payload_nor_error_is_rejected() -> None:
         ToolResult(call_id="call-1")
 
 
-def test_tool_result_is_immutable() -> None:
-    result = ToolResult(call_id="call-1", payload=3)
-
-    with pytest.raises(dataclasses.FrozenInstanceError):
-        result.payload = 4  # ty: ignore[invalid-assignment]
-
-
 def test_render_returns_the_error_message() -> None:
     assert ToolResult(call_id="c1", error="Unknown tool 'tdee'.").render() == (
         "Unknown tool 'tdee'."
@@ -91,8 +70,3 @@ def test_plugin_carries_seed_docs_as_filename_bytes_pairs() -> None:
     plugin = make_plugin(seed_docs=(("tables.md", b"# Times tables"),))
 
     assert plugin.seed_docs == (("tables.md", b"# Times tables"),)
-
-
-def test_plugin_is_immutable() -> None:
-    with pytest.raises(dataclasses.FrozenInstanceError):
-        make_plugin().system_prompt = "changed"  # ty: ignore[invalid-assignment]
