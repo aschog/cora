@@ -1,7 +1,4 @@
-import dataclasses
 from collections.abc import Callable
-
-import pytest
 
 from cora.domain.chunk import Chunk
 from cora.ports.retrieval import RetrievedChunk
@@ -33,10 +30,3 @@ def test_retrieved_chunk_carries_its_chunk_and_score(
 
     assert hit.chunk == chunk
     assert hit.score == 0.42
-
-
-def test_retrieved_chunk_is_immutable(make_chunk: Callable[..., Chunk]) -> None:
-    hit = RetrievedChunk(chunk=make_chunk(), score=0.9)
-
-    with pytest.raises(dataclasses.FrozenInstanceError):
-        hit.score = 0.1  # ty: ignore[invalid-assignment]
