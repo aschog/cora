@@ -3,19 +3,15 @@ from dataclasses import dataclass
 from cora.domain.errors import ConfigurationError
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
-from cora.engine.validation import (
-    MAX_INPUT_CHARS,
-    EmptyInputRule,
-    MaxLengthRule,
-    PromptInjectionRule,
-)
+from cora.engine.validation import MAX_INPUT_CHARS, EmptyInputRule, MaxLengthRule
 from cora.ports.plugin import Plugin, Tool, ValidationRule
 
 CORA_RULES: tuple[ValidationRule, ...] = (
     EmptyInputRule(),
     MaxLengthRule(MAX_INPUT_CHARS),
-    PromptInjectionRule(),
 )
+"""What cora asks of any input, whatever it was asked to be. Screening for injection is
+not here: it is a plugin, and one the default set loads."""
 
 RESERVED_TOOL_NAMES = {
     SEARCH_TOOL_NAME: "document search",

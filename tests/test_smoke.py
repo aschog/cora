@@ -4,6 +4,8 @@ import pathlib
 from importlib.metadata import version
 from types import ModuleType
 
+import tomllib
+
 import cora
 import cora.adapters
 import cora.app
@@ -11,16 +13,15 @@ import cora.domain
 import cora.engine
 import cora.frontends.streamlit
 import cora.plugins.fitness
+import cora.plugins.security
 import cora.ports
 
-DISTRIBUTIONS = (
-    "cora-api",
-    "cora-engine",
-    "cora-adapters",
-    "cora-plugin-fitness",
-    "cora",
-    "cora-frontend-streamlit",
+DISTRIBUTIONS = tuple(
+    tomllib.loads(manifest.read_text())["project"]["name"]
+    for manifest in pathlib.Path("packages").rglob("pyproject.toml")
 )
+"""Found, not listed: a distribution added to the workspace and forgotten here would
+otherwise go unversioned and unimported by every test in this file."""
 
 
 def _carrier(module: ModuleType) -> str:
@@ -51,6 +52,7 @@ def test_each_layer_is_carried_by_its_own_workspace_member() -> None:
             cora.adapters,
             cora.app,
             cora.plugins.fitness,
+            cora.plugins.security,
             cora.frontends.streamlit,
         )
     }
@@ -62,5 +64,6 @@ def test_each_layer_is_carried_by_its_own_workspace_member() -> None:
         "cora.adapters": "adapters",
         "cora.app": "app",
         "cora.plugins.fitness": "fitness",
+        "cora.plugins.security": "security",
         "cora.frontends.streamlit": "streamlit",
     }

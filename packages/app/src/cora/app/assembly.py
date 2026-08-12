@@ -35,12 +35,7 @@ from cora.engine.steps import (
     ToolStep,
 )
 from cora.engine.tool_runtime import ToolRuntime
-from cora.engine.validation import (
-    EmptyInputRule,
-    MaxLengthRule,
-    PromptInjectionRule,
-    ValidationPipeline,
-)
+from cora.engine.validation import EmptyInputRule, MaxLengthRule, ValidationPipeline
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
 from cora.ports.embedding import Embedder
@@ -141,10 +136,6 @@ def _fact_rules() -> ValidationPipeline:
             MaxLengthRule(
                 MAX_FACT_CHARS,
                 "That note is too long to keep — the limit is {limit} characters.",
-            ),
-            PromptInjectionRule(
-                "That note reads as an attempt to change my instructions, "
-                "so I have not kept it."
             ),
         )
     )

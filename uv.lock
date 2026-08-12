@@ -21,12 +21,14 @@ members = [
     "cora-engine",
     "cora-frontend-streamlit",
     "cora-plugin-fitness",
+    "cora-plugin-security",
 ]
 
 [manifest.dependency-groups]
 dev = [
     { name = "cora-frontend-streamlit", editable = "packages/frontends/streamlit" },
     { name = "cora-plugin-fitness", editable = "packages/plugins/fitness" },
+    { name = "cora-plugin-security", editable = "packages/plugins/security" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-watcher", specifier = ">=0.6.3" },
     { name = "ruff", specifier = ">=0.15.22" },
@@ -529,6 +531,17 @@ requires-dist = [
 name = "cora-plugin-fitness"
 version = "0.1.0"
 source = { editable = "packages/plugins/fitness" }
+dependencies = [
+    { name = "cora-api" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "cora-api", editable = "packages/api" }]
+
+[[package]]
+name = "cora-plugin-security"
+version = "0.1.0"
+source = { editable = "packages/plugins/security" }
 dependencies = [
     { name = "cora-api" },
 ]

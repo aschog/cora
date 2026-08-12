@@ -6,6 +6,7 @@ import pytest
 from app_builder import assembled, indexed
 from cora.domain.citations import Source
 from cora.domain.errors import InputRejectedError
+from cora.engine.plugin_registry import load_plugins
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import ToolCall
@@ -32,10 +33,7 @@ def _searching() -> ModelReply:
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(strict=True, reason="story 11: the plugin set does not exist yet")
 def test_a_guard_plugin_and_a_domain_plugin_are_live_in_one_app() -> None:
-    from cora.engine.plugin_registry import load_plugins
-
     model = ScriptedChatModel([_searching(), ModelReply(text=GROUNDED)])
     app = indexed(
         assembled(chat_model=model, plugins=load_plugins(DEFAULT_SET.split(","))),

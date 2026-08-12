@@ -148,16 +148,35 @@ def _import_failures(python: pathlib.Path, package: str) -> list[str]:
     return json.loads(listing)
 
 
-@pytest.mark.integration
-def test_a_plugin_installs_the_contract_and_nothing_else(
-    tmp_path: pathlib.Path, wheelhouse: pathlib.Path
-) -> None:
-    """The story, as an environment: four names is what the fitness bundle uses, so the
-    engine, the adapters and every framework stay out of a plugin author's venv."""
-    python = _install(tmp_path / "plugin", wheelhouse, "cora-plugin-fitness")
+def _plugin_distributions() -> list[tuple[str, str]]:
+    """Every plugin in the workspace, found rather than listed: a second plugin ships
+    from a tree of its own, and this is the guard that would otherwise cover one."""
+    return sorted(
+        (
+            tomllib.loads((path / "pyproject.toml").read_text())["project"]["name"],
+            tomllib.loads((path / "pyproject.toml").read_text())["tool"]["uv"][
+                "build-backend"
+            ]["module-name"],
+        )
+        for path in (PACKAGES / "plugins").iterdir()
+        if (path / "pyproject.toml").is_file()
+    )
 
-    assert _imports(python, "cora.plugins.fitness")
-    assert _installed(python) == {"cora-plugin-fitness", "cora-api"}
+
+@pytest.mark.integration
+@pytest.mark.parametrize(("distribution", "module"), _plugin_distributions())
+def test_a_plugin_installs_the_contract_and_nothing_else(
+    tmp_path: pathlib.Path,
+    wheelhouse: pathlib.Path,
+    distribution: str,
+    module: str,
+) -> None:
+    """The story, as an environment: the contract is all a bundle uses, so the engine,
+    the adapters and every framework stay out of a plugin author's venv."""
+    python = _install(tmp_path / distribution, wheelhouse, distribution)
+
+    assert _imports(python, module)
+    assert _installed(python) == {distribution, "cora-api"}
 
 
 @pytest.mark.integration

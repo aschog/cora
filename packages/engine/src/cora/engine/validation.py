@@ -1,4 +1,3 @@
-import re
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -16,35 +15,6 @@ class InputValidator(Protocol):
     fact are both user input, and both go through it."""
 
     def validate(self, user_input: str) -> str: ...
-
-
-_INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(
-        r"(ignore|disregard|forget|override)\b.{0,40}"
-        r"\b(previous|above|prior|earlier|system)\b.{0,30}(instruction|prompt)"
-    ),
-    re.compile(
-        r"(reveal|show|print|repeat|expose|tell me)\b.{0,40}"
-        r"\b(your (system )?(prompt|instructions)|system prompt)"
-    ),
-)
-
-
-@dataclass(frozen=True)
-class PromptInjectionRule:
-    """`refusal` is what the user reads. It is a field because the same rule guards two
-    kinds of input — a question, and a note the user asked to be remembered — and a
-    refusal quoted into the trace has to name the one it turned down."""
-
-    refusal: str = (
-        "Your message looks like an attempt to change my instructions. "
-        "Please rephrase it as a genuine question."
-    )
-
-    def apply(self, user_input: str) -> None:
-        normalized = " ".join(user_input.lower().split())
-        if any(pattern.search(normalized) for pattern in _INJECTION_PATTERNS):
-            raise InputRejectedError(self.refusal)
 
 
 @dataclass(frozen=True)

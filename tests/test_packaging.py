@@ -83,6 +83,7 @@ def test_the_workspace_holds_exactly_its_layers() -> None:
         "app": "cora",
         "frontends/streamlit": "cora-frontend-streamlit",
         "plugins/fitness": "cora-plugin-fitness",
+        "plugins/security": "cora-plugin-security",
     }
 
 

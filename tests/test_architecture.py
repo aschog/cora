@@ -36,12 +36,28 @@ def _root(module: ModuleType) -> pathlib.Path:
 # passes while silently covering none of the others. The contract now ships apart from
 # the engine, so the pure set spans two distributions and three modules.
 PURE_ROOTS = (_root(cora.domain), _root(cora.ports), _root(cora.engine))
+EXTENSION_POINTS = ("plugins", "frontends")
+"""The two directories that expect siblings. Their contents are found rather than
+listed: a second plugin ships from a tree of its own, and a walker rooted at the first
+one passes by covering none of it."""
+
+
+def _extension_roots() -> tuple[pathlib.Path, ...]:
+    return tuple(
+        sorted(
+            (path / "src" / "cora" / point).resolve()
+            for point in EXTENSION_POINTS
+            for path in pathlib.Path("packages", point).iterdir()
+            if (path / "pyproject.toml").is_file()
+        )
+    )
+
+
 LAYER_ROOTS = (
     *PURE_ROOTS,
     _root(cora.adapters),
     _root(cora.app),
-    _root(cora.plugins.fitness).parent,
-    _root(cora.frontends.streamlit).parent,
+    *_extension_roots(),
 )
 CORE_FILES = sorted(file for root in PURE_ROOTS for file in root.rglob("*.py"))
 PACKAGE_FILES = sorted(file for root in LAYER_ROOTS for file in root.rglob("*.py"))

@@ -7,7 +7,7 @@ from cora.domain.errors import ConfigurationError
 
 DEFAULT_MODEL = "openai/gpt-4o-mini"
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_PLUGINS = ("cora.plugins.fitness",)
+DEFAULT_PLUGINS = ("cora.plugins.security",)
 DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
 DEFAULT_HISTORY_TURNS = 20
