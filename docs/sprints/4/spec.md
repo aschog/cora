@@ -74,6 +74,11 @@ cora becomes domain-agnostic by default: `CORA_PLUGINS` takes an ordered list, a
 contributes whatever it has, and the prompt-injection guard becomes the one plugin the
 default set ships. The backlog's *stronger injection rules as a plugin* is blocked on it.
 
+### [12. It says when it has nothing to answer from](story-12.md)
+
+An in-scope question against an empty store is answered from model knowledge today. After
+story 11 cora words the grounding reminder, and it says it has no documents instead.
+
 ## Not built this sprint
 
 Planned, cut once the bonus bar was cleared and the hours ran down. None of them is needed
