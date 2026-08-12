@@ -24,9 +24,9 @@ without being opinionated.
 ## The shape
 
 ```
-Plugin        name · instructions · tools · validation_rules · scope
+Plugin        name · instructions · tools · validation_rules · scope — data, in ports
 PluginSet     the ordered set, composed: preamble + sections, cora's tools then theirs,
-              every rule, one reminder over every scope
+              every rule, one reminder over every scope — engine, beside the registry
 cora-security cora.plugins.security — PromptInjectionRule, out of the engine
 ```
 
@@ -43,16 +43,28 @@ cora-security cora.plugins.security — PromptInjectionRule, out of the engine
   that added them.
 - **Config order is composition order** — sections, tool offers and rule precedence all read
   down the list. It is the only ordering rule.
-- **Collisions are config errors at assembly**, never runtime surprises. The set is curated
-  from an env var, so two plugins offering one tool name is a typo. Errors quote module
-  paths, which are unique by construction and are what the user typed; `name` only words a
-  prompt heading, so two plugins may share one.
-- **Validation happens once**, in `PrepareStep`, immediately before the model step.
-  `_fact_rules()` goes: the `remember` tool keeps a non-blank check and a length cap as plain
-  guards, which stop a blank or oversized blob reaching the store and are not prompt
-  validation. A stored fact is therefore no longer screened for injection — the engine
-  cannot import a rule that now lives in a plugin — and it is replayed into the brief every
-  turn (`steps.py:221`). `REMEMBERED_NOTICE` is what stands behind it, and already ships.
+- **Collisions are config errors, and the set is what raises them.** The reserved-name check
+  lives in the composition root today (`assembly.py:137-158`) while every other plugin
+  refusal lives in `plugin_registry.py`; this story adds a second collision, so both move
+  onto `PluginSet` and `assemble` reads composed fields and rejects nothing. A third
+  collision is then a check on one object, not another branch in the root. Errors quote
+  module paths, which are unique by construction and are what the user typed; `name` only
+  words a prompt heading, so two plugins may share one.
+- **Validation happens once**, in `PrepareStep`, immediately before the model step. Two
+  seams go with the change:
+  - `ValidationPipeline` takes **one ordered tuple**. `core_rules`/`plugin_rules`
+    (`validation.py:66-73`) stops naming a distinction once the injection rule is a plugin
+    rule and `_fact_rules()` — the only caller that ever passed `plugin_rules=()` — is gone.
+    Cora's rules still run first; that is now `PluginSet`'s doing, and its test.
+  - `_fact_rules()` goes: the `remember` tool keeps a non-blank check and a length cap as
+    plain guards, which stop a blank or oversized blob reaching the store and are not prompt
+    validation. With one answer left, `RememberFact.validation`, its `None` branch and
+    `_checked` (`memory_tool.py:28,40-46`) go too — the seam existed only because assembly
+    had a second pipeline to pass.
+
+  A stored fact is therefore no longer screened for injection — the engine cannot import a
+  rule that now lives in a plugin — and it is replayed into the brief every turn
+  (`steps.py:221`). `REMEMBERED_NOTICE` is what stands behind it, and already ships.
 
 ## Test list
 
@@ -88,7 +100,8 @@ had no story since story 6 left the cut.
 - [ ] bare cora answers without a refusal and without a second model call, no scope having
       been declared
 - [ ] the `remember` tool stores a fact with no `ValidationPipeline` behind it, and still
-      refuses a blank one and one over the length cap
+      refuses a blank one and one over the length cap — `remember_tool` takes a memory and
+      nothing else
 
 #### The set composes in order
 
@@ -97,7 +110,10 @@ had no story since story 6 left the cut.
       then the user's own notes, which is where `PrepareStep` puts them today
 - [ ] the offered tools are cora's first, then each plugin's in list order
 - [ ] every plugin's rules run, and the first refusal in list order is the message the user
-      sees
+      sees — cora's own rules ahead of all of them
+- [ ] `ValidationPipeline` runs one ordered tuple of rules and stops at the first refusal
+      *(moved — `test_pipeline_runs_core_rules_before_plugin_rules` becomes the item above,
+      where the order is now decided)*
 - [ ] two scopes join into one reminder; a plugin with an empty scope adds nothing to it, and
       one plugin with a scope is enough to turn the gate on
 
@@ -106,8 +122,10 @@ had no story since story 6 left the cut.
 - [ ] two plugins offering the same tool name is a `ConfigurationError` naming both module
       paths and the tool
 - [ ] a plugin taking `search` or `remember` raises today's error, now naming the module
-      *(moved)*
+      *(moved — off `assemble`, onto the set)*
 - [ ] one unimportable module in a list of three names that module, not the list
+- [ ] both collisions are raised by `PluginSet`, not by `assemble`: the composition root
+      wires an already-valid set, so `ConfigurationError` is no longer named in `assembly.py`
 
 #### Security becomes a plugin
 
@@ -131,12 +149,16 @@ had no story since story 6 left the cut.
 ## Order
 
 1. the contract opens up — optional fields, `name` in, `seed_docs` out; still one plugin
-2. `PluginSet` and `load_plugins`; `assemble` takes the set
+2. `PluginSet` and `load_plugins`; it takes over both collision checks, and `assemble` takes
+   the set
 3. `CORA_PLUGINS` becomes a list
 4. cora takes the preamble and words the reminder; `instructions` and `scope` are renamed and
-   the fitness plugin is rewritten to a section and a phrase
+   the fitness plugin is rewritten to a section and a phrase. `PrepareStep._brief()` is
+   rewritten here anyway, so its `memory is None` early return goes with it: one section
+   list with conditional members, not two joins (`steps.py:87,95`)
 5. `PromptInjectionRule` leaves for `cora-security`, and the default set changes
-6. `_fact_rules()` goes
+6. `_fact_rules()` goes, and `ValidationPipeline` collapses to one tuple behind it — the
+   last caller of the two-field form is the one being deleted
 7. docs and diagram
 
 Steps 1 and 4 are each one atomic commit: a renamed field with the old text still in the
