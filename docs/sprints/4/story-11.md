@@ -32,7 +32,9 @@ cora-security cora.plugins.security — PromptInjectionRule, out of the engine
 
 - **Everything but `name` is optional.** The loader rejects a bundle with no tools today
   (`plugin_registry.py:36`), which makes a rules-only security plugin illegal. A plugin
-  contributes whatever it has.
+  contributes whatever it has, and the dataclass becomes `kw_only`: with one required field
+  and four defaults, declaration order would otherwise be API, and a fifth contribution kind
+  has to be an appended field rather than a break.
 - **`system_prompt` becomes `instructions`, `grounding` becomes `scope`.** Both were the
   whole thing and are now a part of it: cora writes the preamble and words the reminder, the
   plugin supplies its section and the phrase naming what its documents cover. N phrases join;
@@ -48,19 +50,41 @@ cora-security cora.plugins.security — PromptInjectionRule, out of the engine
   refusal lives in `plugin_registry.py`; this story adds a second collision, so both move
   onto `PluginSet` and `assemble` reads composed fields and rejects nothing. A third
   collision is then a check on one object, not another branch in the root. Errors quote
-  module paths, which are unique by construction and are what the user typed; `name` only
-  words a prompt heading, so two plugins may share one.
+  module paths, which are what the user typed; `name` only words a prompt heading, so two
+  plugins may share one. Paths are *not* unique by construction, though —
+  `CORA_PLUGINS=a,a` would otherwise read as "a and a both offer `calculate_bmi`", so a
+  path listed twice is its own refusal, ahead of the tool check. Not deduped silently: it
+  is a typo in something the user wrote.
+- **Two error types survive, and that is the seam, not sloppiness.** A module that won't load
+  raises `PluginLoadError`, a set that won't compose `ConfigurationError`. The UI treats them
+  alike (`chat.py:31`, `except CoreError`); the split says whether the plugin or the
+  combination is what the user has to change.
+- **Cora's own rules move into the engine, beside the set.** `EmptyInputRule`, `MaxLengthRule`
+  and `MAX_INPUT_CHARS` are built in the composition root today
+  (`assembly.py:53,104-111`). If `PluginSet` is what puts cora's rules ahead of every
+  plugin's, it has to hold them — otherwise the order is still the root's doing and the test
+  for it sits in the wrong package. `MAX_FACT_CHARS` already sits beside the tool it sizes
+  (`memory_tool.py:9`).
 - **Validation happens once**, in `PrepareStep`, immediately before the model step. Two
   seams go with the change:
   - `ValidationPipeline` takes **one ordered tuple**. `core_rules`/`plugin_rules`
     (`validation.py:66-73`) stops naming a distinction once the injection rule is a plugin
-    rule and `_fact_rules()` — the only caller that ever passed `plugin_rules=()` — is gone.
-    Cora's rules still run first; that is now `PluginSet`'s doing, and its test.
+    rule and `_fact_rules()` — the only *production* caller that ever passed
+    `plugin_rules=()` — is gone. Three tests pass the empty second tuple as well;
+    `test_langgraph_runner.py:235` is the one outside the engine and app suites, and the
+    easy miss on the sweep. Cora's rules still run first; that is now `PluginSet`'s doing,
+    and its test.
   - `_fact_rules()` goes: the `remember` tool keeps a non-blank check and a length cap as
     plain guards, which stop a blank or oversized blob reaching the store and are not prompt
     validation. With one answer left, `RememberFact.validation`, its `None` branch and
     `_checked` (`memory_tool.py:28,40-46`) go too — the seam existed only because assembly
-    had a second pipeline to pass.
+    had a second pipeline to pass. Two parameterisations lose their last caller with it: the
+    `refusal` argument on cora's three rules (`validation.py:35-38,48,58`), which only the
+    fact path ever overrode, and `InputValidator.validate()`'s `str` return
+    (`validation.py:9-14,70-73`) — no rule rewrites input, and the return existed so
+    `_checked` could hand the fact back. It becomes `None` and `PrepareStep` reads
+    `state["question"]`. Both are cheaper now than after the rule emigrates to
+    `cora-security`.
 
   A stored fact is therefore no longer screened for injection — the engine cannot import a
   rule that now lives in a plugin — and it is replayed into the brief every turn
@@ -106,8 +130,10 @@ had no story since story 6 left the cut.
 #### The set composes in order
 
 - [ ] two plugins' instructions appear as two sections under their names, in config order,
-      between cora's preamble and the remembered facts — rules first, then the domains,
-      then the user's own notes, which is where `PrepareStep` puts them today
+      between cora's preamble and the remembered facts — cora's rules first, then the
+      domains, then the user's own notes. That is a flip: today the plugin prompt comes
+      first and the rules after it (`steps.py:87,94`), and `test_steps.py:403` asserts
+      membership, not order, so nothing currently catches it
 - [ ] the offered tools are cora's first, then each plugin's in list order
 - [ ] every plugin's rules run, and the first refusal in list order is the message the user
       sees — cora's own rules ahead of all of them
@@ -121,6 +147,8 @@ had no story since story 6 left the cut.
 
 - [ ] two plugins offering the same tool name is a `ConfigurationError` naming both module
       paths and the tool
+- [ ] the same module path listed twice is its own `ConfigurationError`, ahead of the tool
+      check — otherwise the collision error names a plugin as colliding with itself
 - [ ] a plugin taking `search` or `remember` raises today's error, now naming the module
       *(moved — off `assemble`, onto the set)*
 - [ ] one unimportable module in a list of three names that module, not the list
@@ -131,6 +159,11 @@ had no story since story 6 left the cut.
 
 - [ ] **(int)** `cora-security` builds as a wheel and imports in a clean venv with
       `cora.engine` absent — the seventh distribution, on story 10's terms
+- [ ] the architecture guards walk *both* plugin distributions: `test_architecture.py:44`
+      reaches the layer as `_root(cora.plugins.fitness).parent`, so a second plugin tree is
+      one the streamlit-containment and no-test-framework guards never open — they pass by
+      finding nothing. Roots come from the workspace glob, as `test_docs.py` and
+      `test_packaging.py` already do, and a mutation shows the wider walk bites
 - [ ] `PromptInjectionRule` is absent from `cora.engine.validation`, and the security plugin
       carries it *(moved)*
 - [ ] the default set refuses an override attempt in the conversation, and bare cora does
@@ -148,17 +181,20 @@ had no story since story 6 left the cut.
 
 ## Order
 
-1. the contract opens up — optional fields, `name` in, `seed_docs` out; still one plugin
-2. `PluginSet` and `load_plugins`; it takes over both collision checks, and `assemble` takes
-   the set
+1. the contract opens up — optional fields, `kw_only`, `name` in, `seed_docs` out; still one
+   plugin
+2. `PluginSet` and `load_plugins`; it takes over the collision checks — reserved name, tool
+   clash, duplicate path — and cora's own rules with them, and `assemble` takes the set
 3. `CORA_PLUGINS` becomes a list
 4. cora takes the preamble and words the reminder; `instructions` and `scope` are renamed and
    the fitness plugin is rewritten to a section and a phrase. `PrepareStep._brief()` is
    rewritten here anyway, so its `memory is None` early return goes with it: one section
    list with conditional members, not two joins (`steps.py:87,95`)
-5. `PromptInjectionRule` leaves for `cora-security`, and the default set changes
-6. `_fact_rules()` goes, and `ValidationPipeline` collapses to one tuple behind it — the
-   last caller of the two-field form is the one being deleted
+5. `PromptInjectionRule` leaves for `cora-security`, and the default set changes; the
+   architecture guards widen to the workspace before the second plugin tree exists to hide in
+6. `_fact_rules()` goes, and behind it `ValidationPipeline` collapses to one tuple, `refusal`
+   comes off cora's rules and `validate()` stops returning the input — every last caller of
+   those three is in what this step deletes
 7. docs and diagram
 
 Steps 1 and 4 are each one atomic commit: a renamed field with the old text still in the
