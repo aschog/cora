@@ -12,9 +12,9 @@ exclude = ["packages/frontends", "packages/plugins"]
 cora-api = { workspace = true }
 cora-engine = { workspace = true }
 cora-adapters = { workspace = true }
-cora-fitness = { workspace = true }
+cora-plugin-fitness = { workspace = true }
 cora = { workspace = true }
-cora-streamlit = { workspace = true }
+cora-frontend-streamlit = { workspace = true }
 
 # A virtual root: it ships nothing. The packages under packages/ are the
 # distributions, one per audience that installs it, and what each may depend on is
@@ -22,8 +22,8 @@ cora-streamlit = { workspace = true }
 # of the install rather than a rule a test polices.
 [dependency-groups]
 dev = [
-    "cora-streamlit",
-    "cora-fitness",
+    "cora-frontend-streamlit",
+    "cora-plugin-fitness",
     "pytest>=9.1.1",
     "pytest-watcher>=0.6.3",
     "ruff>=0.15.22",

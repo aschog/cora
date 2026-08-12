@@ -81,8 +81,8 @@ def test_the_workspace_holds_exactly_its_layers() -> None:
         "engine": "cora-engine",
         "adapters": "cora-adapters",
         "app": "cora",
-        "frontends/streamlit": "cora-streamlit",
-        "plugins/fitness": "cora-fitness",
+        "frontends/streamlit": "cora-frontend-streamlit",
+        "plugins/fitness": "cora-plugin-fitness",
     }
 
 
@@ -159,7 +159,7 @@ def test_the_app_wires_the_layers_and_owns_no_ui() -> None:
 
     assert {"cora-api", "cora-engine", "cora-adapters"} <= requires
     assert "streamlit" not in requires, "the UI is a frontend, not the app"
-    assert "cora-fitness" not in requires, (
+    assert "cora-plugin-fitness" not in requires, (
         "the shipped app names its default plugin in config, but must not depend on a "
         "domain: that is what keeps the agent domain-agnostic"
     )

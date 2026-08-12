@@ -1,5 +1,5 @@
 [project]
-name = "cora-streamlit"
+name = "cora-frontend-streamlit"
 version = "0.1.0"
 description = "cora's Streamlit frontend: widgets over the assembled app, and one of several possible shells"
 requires-python = ">=3.12"

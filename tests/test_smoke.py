@@ -17,9 +17,9 @@ DISTRIBUTIONS = (
     "cora-api",
     "cora-engine",
     "cora-adapters",
-    "cora-fitness",
+    "cora-plugin-fitness",
     "cora",
-    "cora-streamlit",
+    "cora-frontend-streamlit",
 )
 
 

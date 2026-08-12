@@ -127,8 +127,8 @@ flowchart BT
   engine["cora-engine<br/><i>cora.engine</i>"]
   adapters["cora-adapters<br/><i>cora.adapters</i><br/>Chroma · OpenRouter · LangGraph · BM25 · MiniLM"]
   app["cora<br/><i>cora.app</i>"]
-  fitness["cora-fitness<br/><i>cora.plugins.fitness</i>"]
-  shell["cora-streamlit<br/><i>cora.frontends.streamlit</i>"]
+  fitness["cora-plugin-fitness<br/><i>cora.plugins.fitness</i>"]
+  shell["cora-frontend-streamlit<br/><i>cora.frontends.streamlit</i>"]
 
   engine --> api
   adapters --> api
@@ -151,7 +151,7 @@ it and it is written against nothing.
 | a domain plugin | `cora-api` | the engine, the adapters, any framework — the fitness bundle uses four names from it |
 | a second frontend | `cora` | Streamlit, or any other way of talking to a user |
 | an adapter for a port | `cora-api` | the engine, so the binding outlives any version of the use cases |
-| the app you can run today | `cora-streamlit` | nothing — it is the whole stack |
+| the app you can run today | `cora-frontend-streamlit` | nothing — it is the whole stack |
 
 `cora` is a namespace, not a package: no distribution owns the name, and each contributes
 a portion of it. `cora.plugins.*` and `cora.frontends.*` are the two extension
@@ -238,7 +238,7 @@ the plugins, and the UI do not notice any change.
 ## Backed by tests
 
 - **The engine cannot use a framework.** A test reads every `cora.domain`, `cora.ports` and `cora.engine` file. If one imports LangGraph, LangChain, Chroma, sentence-transformers, Streamlit, or any outer layer, the test fails. A fake bad import is added on purpose to prove the test catches it.
-- **A plugin needs the contract alone, proved by installing it.** `cora-fitness` is built
+- **A plugin needs the contract alone, proved by installing it.** `cora-plugin-fitness` is built
   into a wheel, installed into an empty environment, and imported there: the environment
   holds exactly two packages, and the engine is not one of them. Every manifest read and
   every import walked runs where all six packages are present, so this is the only check

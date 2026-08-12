@@ -44,7 +44,7 @@ def test_the_contract_resolves_to_itself_alone() -> None:
 def test_a_plugin_resolves_the_contract_and_stops() -> None:
     """Transitively, not just in the manifest: an engine reached through cora-api would
     show up here even though nothing declares it."""
-    assert _resolved("cora-fitness") == {"cora-fitness", "cora-api"}
+    assert _resolved("cora-plugin-fitness") == {"cora-plugin-fitness", "cora-api"}
 
 
 def test_the_app_resolves_without_any_user_interface() -> None:
@@ -154,10 +154,10 @@ def test_a_plugin_installs_the_contract_and_nothing_else(
 ) -> None:
     """The story, as an environment: four names is what the fitness bundle uses, so the
     engine, the adapters and every framework stay out of a plugin author's venv."""
-    python = _install(tmp_path / "plugin", wheelhouse, "cora-fitness")
+    python = _install(tmp_path / "plugin", wheelhouse, "cora-plugin-fitness")
 
     assert _imports(python, "cora.plugins.fitness")
-    assert _installed(python) == {"cora-fitness", "cora-api"}
+    assert _installed(python) == {"cora-plugin-fitness", "cora-api"}
 
 
 @pytest.mark.integration

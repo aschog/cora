@@ -31,8 +31,8 @@ the app, would not resolve. See [`docs/big-picture.md`](docs/big-picture.md#the-
 | `cora-engine` | `cora.engine` — the agent, the knowledge base, a turn's steps | `cora-api` |
 | `cora-adapters` | `cora.adapters` — Chroma, OpenRouter, LangGraph, BM25, MiniLM | `cora-api` |
 | `cora` | `cora.app` — the composition root and its configuration | `cora-engine`, `cora-adapters` |
-| `cora-fitness` | `cora.plugins.fitness` — the reference domain plugin | `cora-api` |
-| `cora-streamlit` | `cora.frontends.streamlit` — the app you run below | `cora` |
+| `cora-plugin-fitness` | `cora.plugins.fitness` — the reference domain plugin | `cora-api` |
+| `cora-frontend-streamlit` | `cora.frontends.streamlit` — the app you run below | `cora` |
 
 `cora.plugins.*` and `cora.frontends.*` are the extension points: a second domain or a
 second user interface is a package to add, not a file to edit.

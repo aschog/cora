@@ -19,14 +19,14 @@ members = [
     "cora-adapters",
     "cora-api",
     "cora-engine",
-    "cora-fitness",
-    "cora-streamlit",
+    "cora-frontend-streamlit",
+    "cora-plugin-fitness",
 ]
 
 [manifest.dependency-groups]
 dev = [
-    { name = "cora-fitness", editable = "packages/plugins/fitness" },
-    { name = "cora-streamlit", editable = "packages/frontends/streamlit" },
+    { name = "cora-frontend-streamlit", editable = "packages/frontends/streamlit" },
+    { name = "cora-plugin-fitness", editable = "packages/plugins/fitness" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-watcher", specifier = ">=0.6.3" },
     { name = "ruff", specifier = ">=0.15.22" },
@@ -496,18 +496,7 @@ requires-dist = [
 ]
 
 [[package]]
-name = "cora-fitness"
-version = "0.1.0"
-source = { editable = "packages/plugins/fitness" }
-dependencies = [
-    { name = "cora-api" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "cora-api", editable = "packages/api" }]
-
-[[package]]
-name = "cora-streamlit"
+name = "cora-frontend-streamlit"
 version = "0.1.0"
 source = { editable = "packages/frontends/streamlit" }
 dependencies = [
@@ -520,6 +509,17 @@ requires-dist = [
     { name = "cora", editable = "packages/app" },
     { name = "streamlit", specifier = "~=1.60.0" },
 ]
+
+[[package]]
+name = "cora-plugin-fitness"
+version = "0.1.0"
+source = { editable = "packages/plugins/fitness" }
+dependencies = [
+    { name = "cora-api" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "cora-api", editable = "packages/api" }]
 
 [[package]]
 name = "cuda-bindings"
