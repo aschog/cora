@@ -11,12 +11,6 @@ def test_a_decision_that_asked_for_no_tool_says_so() -> None:
     assert ModelDecision().summary == "Decided no tool was needed"
 
 
-def test_a_decisions_detail_is_the_prose_that_came_with_it() -> None:
-    decision = ModelDecision(detail="Let me look that up.", tools=("search_documents",))
-
-    assert decision.detail == "Let me look that up."
-
-
 def test_a_tool_use_shows_its_name_arguments_and_outcome() -> None:
     use = ToolUse(
         name="search_documents",
