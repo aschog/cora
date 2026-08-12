@@ -81,3 +81,41 @@ def test_one_module_listed_twice_is_a_config_error() -> None:
 
     assert FITNESS in excinfo.value.user_message
     assert "twice" in excinfo.value.user_message
+
+
+def test_two_plugins_are_two_sections_under_their_names_in_config_order() -> None:
+    coach = make_plugin(name="Fitness coaching", instructions="Be a coach.", tools=())
+    guard = make_plugin(name="Safety", instructions="Be careful.", tools=())
+
+    composed = PluginSet(((FITNESS, coach), (SECURITY, guard))).instructions
+
+    assert composed.index("Fitness coaching") < composed.index("Safety")
+    assert "Be a coach." in composed
+    assert "Be careful." in composed
+
+
+def test_a_plugin_with_nothing_to_say_adds_no_section() -> None:
+    silent = make_plugin(name="Silent", instructions="", tools=())
+
+    assert PluginSet(((SECURITY, silent),)).instructions == ""
+
+
+def test_two_scopes_join_into_one_phrase() -> None:
+    """N phrases join; N paragraphs contradict each other, which is why the plugin
+    supplies the phrase and cora words the reminder around it."""
+    coach = make_plugin(scope="training and nutrition", tools=())
+    safety = make_plugin(scope="workplace safety", tools=())
+
+    assert PluginSet(((FITNESS, coach), (SECURITY, safety))).scope == (
+        "training and nutrition, workplace safety"
+    )
+
+
+def test_a_plugin_without_a_scope_adds_nothing_to_the_phrase() -> None:
+    scoped = make_plugin(scope="training and nutrition", tools=())
+    unscoped = make_plugin(tools=())
+
+    composed = PluginSet(((SECURITY, unscoped), (FITNESS, scoped)))
+
+    assert composed.scope == "training and nutrition"
+    assert PluginSet(((SECURITY, unscoped),)).scope == ""

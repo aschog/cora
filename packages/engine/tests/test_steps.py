@@ -17,6 +17,8 @@ from cora.domain.trace import ModelDecision, ToolUse
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.engine.steps import (
+    AGENT_RULES,
+    CORA_PREAMBLE,
     MEMORY_RULE,
     REMEMBERED_HEADING,
     UNTRUSTED_NOTICE,
@@ -348,10 +350,10 @@ def test_an_llm_error_from_the_chat_model_propagates_unchanged() -> None:
     assert exc_info.value is error
 
 
-def _prepare(prompt: str = "SYS", memory: Memory | None = None) -> PrepareStep:
+def _prepare(instructions: str = "SYS", memory: Memory | None = None) -> PrepareStep:
     return PrepareStep(
         validation=ValidationPipeline((EmptyInputRule(),)),
-        system_prompt=prompt,
+        instructions=instructions,
         memory=memory or FakeMemory(),
     )
 
@@ -401,11 +403,35 @@ def test_the_turn_starts_where_the_transcript_had_reached() -> None:
 
 
 def test_the_brief_carries_the_plugin_prompt_and_the_agents_rules() -> None:
-    partial = _prepare(prompt="You are a fitness coach.")({"question": "q"})
+    partial = _prepare(instructions="You are a fitness coach.")({"question": "q"})
 
     assert "You are a fitness coach." in partial["brief"]
     assert SEARCH_TOOL_NAME in partial["brief"]
     assert "[n]" in partial["brief"]
+
+
+def test_the_brief_runs_cora_then_the_domains_then_the_users_own_notes() -> None:
+    """Rules ahead of the domains, because a domain section is what a plugin author
+    wrote and the rules are what cora will not have overridden; the user's notes come
+    last, being neither."""
+    memory = FakeMemory(("trains on Tuesdays",))
+    brief = _prepare(instructions="## Coaching\nBe a coach.", memory=memory)(
+        {"question": "q"}
+    )["brief"]
+
+    assert (
+        brief.index(CORA_PREAMBLE)
+        < brief.index(AGENT_RULES)
+        < brief.index("Be a coach.")
+        < brief.index("trains on Tuesdays")
+    )
+
+
+def test_a_brief_with_no_plugin_section_is_coras_voice_alone() -> None:
+    brief = _prepare(instructions="", memory=FakeMemory())({"question": "q"})["brief"]
+
+    assert brief.startswith(CORA_PREAMBLE)
+    assert "##" not in brief
 
 
 def test_the_step_opens_the_turn_by_dropping_what_the_last_one_left() -> None:
@@ -422,7 +448,9 @@ def test_the_step_opens_the_turn_by_dropping_what_the_last_one_left() -> None:
 def test_the_brief_carries_every_remembered_fact_beneath_the_plugin_prompt() -> None:
     memory = FakeMemory(("trains on Tuesdays", "is vegetarian"))
 
-    partial = _prepare(prompt="You are a coach.", memory=memory)({"question": "q"})
+    partial = _prepare(instructions="You are a coach.", memory=memory)(
+        {"question": "q"}
+    )
 
     brief = partial["brief"]
     assert brief.index("You are a coach.") < brief.index("trains on Tuesdays")
@@ -627,9 +655,9 @@ def test_a_search_from_an_earlier_turn_is_not_this_turns_tool_use() -> None:
     assert router(this_turn) == GROUND
 
 
-def _gate(*hits: RetrievedChunk, reminder: str = "Weigh these.") -> GroundStep:
+def _gate(*hits: RetrievedChunk, scope: str = "protein") -> GroundStep:
     return GroundStep(
-        reminder=reminder, context_source=FakeContextSource(list(hits)), top_k=3
+        scope=scope, context_source=FakeContextSource(list(hits)), top_k=3
     )
 
 
@@ -638,7 +666,7 @@ def test_the_step_searches_the_question_and_hands_the_passages_to_the_model() ->
     search itself, so a model that ignores being told to look still sees what the
     documents say."""
     source = FakeContextSource([_hit("protein.md")])
-    step = GroundStep(reminder="Weigh these.", context_source=source, top_k=3)
+    step = GroundStep(scope="protein", context_source=source, top_k=3)
 
     partial = step({"question": "how much protein?"})
 
@@ -646,7 +674,7 @@ def test_the_step_searches_the_question_and_hands_the_passages_to_the_model() ->
     assert source.last_k == 3
     [message] = partial["messages"]
     assert message.role == "system"
-    assert message.content.startswith("Weigh these.")
+    assert "anything outside protein" in message.content
     assert "[1] protein.md: protein builds muscle" in message.content
 
 
@@ -706,7 +734,7 @@ def test_a_gate_whose_own_search_fails_keeps_the_answer_and_says_the_look_failed
 ):
     """The search is the gate's own now, so its failure is the gate's: losing a good
     answer to a round nothing asked for is the one thing the gate must never do."""
-    step = GroundStep(reminder="Weigh these.", context_source=_BrokenSource(), top_k=3)
+    step = GroundStep(scope="protein", context_source=_BrokenSource(), top_k=3)
 
     partial = step({"question": "how much protein?", "answer": "Off the cuff."})
 

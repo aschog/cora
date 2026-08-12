@@ -228,12 +228,10 @@ def _real_runner(
     model: ChatModel, rounds: int, grounded: bool = False
 ) -> LangGraphRunner:
     return LangGraphRunner(
-        ground=GroundStep(
-            reminder="weigh these", context_source=FakeContextSource(), top_k=3
-        ),
+        ground=GroundStep(scope="protein", context_source=FakeContextSource(), top_k=3),
         prepare=PrepareStep(
             validation=ValidationPipeline((EmptyInputRule(),)),
-            system_prompt="SYS",
+            instructions="SYS",
         ),
         model=ModelStep(chat_model=model, tools=(add_tool(),), max_history_turns=20),
         tools=ToolStep(ToolRuntime(tools=(add_tool(),))),

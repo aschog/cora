@@ -93,23 +93,21 @@ def assemble(
         keyword_index=keyword_index,
         fusion_queries=fusion_queries,
     )
-    grounding = plugins.grounding
+    scope = plugins.scope
     validation = ValidationPipeline(plugins.rules)
     tools = _offered_tools(plugins, context_source, top_k, memory)
     runner = graph(
         prepare=PrepareStep(
             validation=validation,
-            system_prompt=plugins.system_prompt,
+            instructions=plugins.instructions,
             memory=memory,
         ),
         model=ModelStep(
             chat_model=chat_model, tools=tools, max_history_turns=history_turns
         ),
         tools=ToolStep(tool_runtime=ToolRuntime(tools=tools)),
-        ground=GroundStep(
-            reminder=grounding, context_source=context_source, top_k=top_k
-        ),
-        router=Router(max_tool_rounds=max_tool_rounds, grounded=bool(grounding)),
+        ground=GroundStep(scope=scope, context_source=context_source, top_k=top_k),
+        router=Router(max_tool_rounds=max_tool_rounds, grounded=bool(scope)),
         max_tool_rounds=max_tool_rounds,
     )
     return App(

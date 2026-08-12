@@ -52,19 +52,19 @@ class PluginSet:
         return CORA_RULES + offered
 
     @property
-    def system_prompt(self) -> str:
+    def instructions(self) -> str:
+        """One section per plugin that has something to say, headed by its name, in
+        the order they were named."""
         return "\n\n".join(
-            plugin.system_prompt.strip()
+            f"## {plugin.name}\n{plugin.instructions.strip()}"
             for _, plugin in self.entries
-            if plugin.system_prompt.strip()
+            if plugin.instructions.strip()
         )
 
     @property
-    def grounding(self) -> str:
-        return "\n\n".join(
-            plugin.grounding.strip()
-            for _, plugin in self.entries
-            if plugin.grounding.strip()
+    def scope(self) -> str:
+        return ", ".join(
+            plugin.scope.strip() for _, plugin in self.entries if plugin.scope.strip()
         )
 
     def _reject_a_module_named_twice(self) -> None:

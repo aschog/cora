@@ -20,18 +20,18 @@ def make_tool(name: str) -> Tool:
 
 def make_plugin(
     name: str = "test",
-    system_prompt: str = "You are a test plugin.",
+    instructions: str = "You are a test plugin.",
     tools: tuple[Tool, ...] | None = None,
     validation_rules: tuple[ValidationRule, ...] = (),
-    grounding: str = "",
+    scope: str = "",
 ) -> Plugin:
     """`tools=None` asks for the three default tools; `tools=()` for none."""
     if tools is None:
         tools = (make_tool("one"), make_tool("two"), make_tool("three"))
     return Plugin(
         name=name,
-        system_prompt=system_prompt,
+        instructions=instructions,
         tools=tools,
         validation_rules=validation_rules,
-        grounding=grounding,
+        scope=scope,
     )

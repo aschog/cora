@@ -48,10 +48,10 @@ def test_render_serialises_other_payloads_as_json() -> None:
 def test_a_plugin_needs_nothing_but_a_name() -> None:
     plugin = Plugin(name="bare")
 
-    assert plugin.system_prompt == ""
+    assert plugin.instructions == ""
     assert plugin.tools == ()
     assert plugin.validation_rules == ()
-    assert plugin.grounding == ""
+    assert plugin.scope == ""
 
 
 def test_every_plugin_field_is_keyword_only() -> None:

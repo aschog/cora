@@ -19,7 +19,7 @@ from fixture_plugins import make_plugin
 THREAD = "t1"
 PROTEIN = ("protein.md", b"aim for 1.6 g of protein per kg")
 CREATINE = ("creatine.md", b"5 g of creatine daily is the usual dose")
-REMINDER = "You answered without searching. Search the documents first."
+SCOPE = "training and nutrition"
 
 
 def _searching(call_id: str, query: str = "protein") -> ModelReply:
@@ -62,11 +62,11 @@ def _looking(call_id: str, name: str) -> ModelReply:
     )
 
 
-def _app(chat_model: ChatModel, *, grounding: str = "", rounds: int = 8) -> App:
+def _app(chat_model: ChatModel, *, scope: str = "", rounds: int = 8) -> App:
     return indexed(
         assembled(
             chat_model=chat_model,
-            plugin=make_plugin(tools=(_lookup_tool(),), grounding=grounding),
+            plugin=make_plugin(tools=(_lookup_tool(),), scope=scope),
             max_tool_rounds=rounds,
         ),
         PROTEIN,
@@ -186,7 +186,7 @@ def test_the_grounding_gate_still_looks_on_a_later_turn() -> None:
             ModelReply(text="Your notes do not say."),
         ]
     )
-    app = _app(model, grounding=REMINDER)
+    app = _app(model, scope=SCOPE)
 
     app.agent.answer("How much protein?", THREAD)
     second = app.agent.answer("How often should I train?", THREAD)
@@ -238,7 +238,7 @@ def test_the_gate_fires_again_on_a_later_turn_of_the_same_thread() -> None:
             ModelReply(text="My notes say 5 g."),
         ]
     )
-    app = _app(model, grounding=REMINDER)
+    app = _app(model, scope=SCOPE)
 
     first = app.agent.answer("How much protein?", THREAD)
     second = app.agent.answer("And creatine?", THREAD)

@@ -177,7 +177,7 @@ def test_a_run_that_spends_the_whole_round_budget_still_answers() -> None:
 def test_the_plugins_system_prompt_reaches_the_model() -> None:
     model = ScriptedChatModel([ModelReply(text="ok")])
     app = _assemble(
-        make_plugin(system_prompt="You are a fitness coach."), chat_model=model
+        make_plugin(instructions="You are a fitness coach."), chat_model=model
     )
 
     app.agent.answer("q", THREAD)
@@ -572,7 +572,7 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
     runner = app.agent.runner
     assert isinstance(runner, LangGraphRunner)
     assert isinstance(runner.prepare, PrepareStep)
-    assert runner.prepare.system_prompt == plugin.system_prompt
+    assert plugin.instructions in runner.prepare.instructions
     assert isinstance(runner.router, Router)
     assert runner.router.max_tool_rounds == 4
     assert isinstance(runner.model, ModelStep)

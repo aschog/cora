@@ -7,7 +7,7 @@ from cora.engine.plugin_registry import load_plugin
 def test_resolving_a_name_returns_the_module_level_plugin_bundle() -> None:
     plugin = load_plugin("fixture_plugins.valid")
 
-    assert plugin.system_prompt == "You are a test plugin."
+    assert plugin.instructions == "You are a test plugin."
     assert [tool.name for tool in plugin.tools] == ["one", "two", "three"]
 
 
@@ -18,13 +18,13 @@ def test_a_bundle_of_rules_alone_loads() -> None:
 
     assert plugin.tools == ()
     assert len(plugin.validation_rules) == 1
-    assert plugin.system_prompt == ""
+    assert plugin.instructions == ""
 
 
 def test_a_bundle_of_tools_alone_loads() -> None:
     plugin = load_plugin("fixture_plugins.tools_only")
 
-    assert plugin.system_prompt == ""
+    assert plugin.instructions == ""
     assert [tool.name for tool in plugin.tools] == ["one", "two", "three"]
 
 
