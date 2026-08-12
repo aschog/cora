@@ -5,6 +5,10 @@ from typing import Protocol
 from cora.domain.errors import InputRejectedError
 from cora.ports.plugin import ValidationRule
 
+MAX_INPUT_CHARS = 4000
+"""What a question may run to. Beside the rule that enforces it, as the fact bound is
+beside the tool it sizes."""
+
 
 class InputValidator(Protocol):
     """Returns the input to use, or raises `InputRejectedError`. Beside the pipeline
@@ -64,10 +68,9 @@ class MaxLengthRule:
 
 @dataclass(frozen=True)
 class ValidationPipeline:
-    core_rules: tuple[ValidationRule, ...]
-    plugin_rules: tuple[ValidationRule, ...]
+    rules: tuple[ValidationRule, ...]
 
     def validate(self, user_input: str) -> str:
-        for rule in self.core_rules + self.plugin_rules:
+        for rule in self.rules:
             rule.apply(user_input)
         return user_input

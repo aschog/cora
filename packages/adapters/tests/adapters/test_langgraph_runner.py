@@ -232,7 +232,7 @@ def _real_runner(
             reminder="weigh these", context_source=FakeContextSource(), top_k=3
         ),
         prepare=PrepareStep(
-            validation=ValidationPipeline((EmptyInputRule(),), ()),
+            validation=ValidationPipeline((EmptyInputRule(),)),
             system_prompt="SYS",
         ),
         model=ModelStep(chat_model=model, tools=(add_tool(),), max_history_turns=20),

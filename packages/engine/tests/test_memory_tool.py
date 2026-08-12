@@ -21,12 +21,11 @@ def _pipeline() -> InputValidator:
     for a note. What the app really passes is pinned in the assembly tests — an engine
     test may not reach for the composition root."""
     return ValidationPipeline(
-        core_rules=(
+        (
             EmptyInputRule("There was nothing to remember."),
             MaxLengthRule(MAX_FACT_CHARS, "Too long to keep — limit {limit}."),
             PromptInjectionRule("I have not kept it."),
-        ),
-        plugin_rules=(),
+        )
     )
 
 

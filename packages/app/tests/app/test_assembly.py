@@ -1,9 +1,11 @@
 import logging
+import pathlib
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+import cora.app.assembly as assembly
 from app_builder import assembled, indexed
 from cora.adapters.langgraph_runner import LangGraphRunner
 from cora.app.assembly import App, build
@@ -432,6 +434,14 @@ def test_assemble_without_a_keyword_index_leaves_the_knowledge_base_bare() -> No
 
     assert app.context_source is app.knowledge_base
     assert app.knowledge_base.keyword_index is None
+
+
+def test_the_composition_root_rejects_no_set_of_its_own() -> None:
+    """Every refusal a combination can earn is `PluginSet`'s, raised when it is built,
+    so a third collision is a check on one object rather than a branch added here."""
+    source = pathlib.Path(str(assembly.__file__)).read_text()
+
+    assert "ConfigurationError" not in source
 
 
 def test_an_uploaded_doc_reaches_the_keyword_index() -> None:

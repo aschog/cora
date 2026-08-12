@@ -4,11 +4,14 @@ from collections.abc import Iterable
 from jsonschema import Draft202012Validator, SchemaError
 
 from cora.domain.errors import PluginLoadError
+from cora.engine.plugin_set import PluginSet
 from cora.ports.plugin import Plugin
 
 
-def load_plugins(module_paths: Iterable[str]) -> tuple[Plugin, ...]:
-    return tuple(load_plugin(path) for path in module_paths)
+def load_plugins(module_paths: Iterable[str]) -> PluginSet:
+    """Each module is named in its own refusal, so one bad entry in a list of three
+    points at itself rather than at the list."""
+    return PluginSet(tuple((path, load_plugin(path)) for path in module_paths))
 
 
 def load_plugin(module_path: str) -> Plugin:

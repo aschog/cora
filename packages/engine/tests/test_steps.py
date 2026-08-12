@@ -350,7 +350,7 @@ def test_an_llm_error_from_the_chat_model_propagates_unchanged() -> None:
 
 def _prepare(prompt: str = "SYS", memory: Memory | None = None) -> PrepareStep:
     return PrepareStep(
-        validation=ValidationPipeline((EmptyInputRule(),), ()),
+        validation=ValidationPipeline((EmptyInputRule(),)),
         system_prompt=prompt,
         memory=memory or FakeMemory(),
     )

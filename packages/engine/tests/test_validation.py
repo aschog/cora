@@ -102,34 +102,26 @@ def test_prompt_injection_rejection_message_is_fixed_and_user_facing() -> None:
 
 
 def make_pipeline(
-    core_rejects: bool = False, plugin_rejects: bool = False
+    first_rejects: bool = False, second_rejects: bool = False
 ) -> tuple[ValidationPipeline, list[str]]:
     log: list[str] = []
     pipeline = ValidationPipeline(
-        core_rules=(RecordingRule("core", log, rejects=core_rejects),),
-        plugin_rules=(RecordingRule("plugin", log, rejects=plugin_rejects),),
+        (
+            RecordingRule("first", log, rejects=first_rejects),
+            RecordingRule("second", log, rejects=second_rejects),
+        )
     )
     return pipeline, log
 
 
-def test_pipeline_runs_core_rules_before_plugin_rules() -> None:
-    pipeline, log = make_pipeline(plugin_rejects=True)
-
-    with pytest.raises(InputRejectedError) as excinfo:
-        pipeline.validate("hello")
-
-    assert log == ["core", "plugin"]
-    assert excinfo.value.user_message == "plugin says no"
-
-
 def test_pipeline_raises_the_first_rejection_and_stops() -> None:
-    pipeline, log = make_pipeline(core_rejects=True, plugin_rejects=True)
+    pipeline, log = make_pipeline(first_rejects=True, second_rejects=True)
 
     with pytest.raises(InputRejectedError) as excinfo:
         pipeline.validate("hello")
 
-    assert log == ["core"]
-    assert excinfo.value.user_message == "core says no"
+    assert log == ["first"]
+    assert excinfo.value.user_message == "first says no"
 
 
 def test_pipeline_returns_the_input_unchanged_when_every_rule_accepts() -> None:
