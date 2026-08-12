@@ -1,5 +1,4 @@
 from cora.plugins.fitness.safety import MedicalSafetyRule
-from cora.plugins.fitness.seed_docs import SEED_DOCS
 from cora.plugins.fitness.tools import TOOLS
 from cora.ports.plugin import Plugin
 
@@ -23,9 +22,9 @@ answer again and cite nothing.
 """
 
 PLUGIN = Plugin(
+    name="Fitness coaching",
     system_prompt=SYSTEM_PROMPT,
     grounding=GROUNDING,
     tools=TOOLS,
     validation_rules=(MedicalSafetyRule(),),
-    seed_docs=SEED_DOCS,
 )

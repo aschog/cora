@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from app_builder import assembled
+from app_builder import assembled, indexed
 from cora.adapters.langgraph_runner import LangGraphRunner
 from cora.app.assembly import App, build
 from cora.app.config import Config
@@ -79,8 +79,8 @@ def _assemble(
     )
 
 
-def _seed_doc() -> tuple[tuple[str, bytes], ...]:
-    return (("note.md", SEED_TEXT),)
+def _indexed(plugin: Plugin, **overrides: Any) -> App:
+    return indexed(_assemble(plugin, **overrides), ("note.md", SEED_TEXT))
 
 
 def _searching(call_id: str = "call-1") -> ModelReply:
@@ -100,8 +100,8 @@ def _retrieving_model(
 
 
 def test_assemble_returns_an_app_whose_agent_answers_a_question() -> None:
-    app = _assemble(
-        make_plugin(seed_docs=_seed_doc()),
+    app = _indexed(
+        make_plugin(),
         chat_model=ScriptedChatModel([ModelReply(text="42")]),
     )
 
@@ -112,7 +112,7 @@ def test_assemble_returns_an_app_whose_agent_answers_a_question() -> None:
 
 def test_the_model_is_offered_the_search_tool_beside_the_plugins_own() -> None:
     model = _retrieving_model()
-    app = _assemble(make_plugin(seed_docs=_seed_doc()), chat_model=model)
+    app = _indexed(make_plugin(), chat_model=model)
 
     result = app.agent.answer("What about protein?", THREAD)
 
@@ -127,7 +127,7 @@ def test_the_model_is_offered_the_search_tool_beside_the_plugins_own() -> None:
 
 def test_no_document_text_reaches_the_system_message() -> None:
     model = _retrieving_model()
-    app = _assemble(make_plugin(seed_docs=_seed_doc()), chat_model=model)
+    app = _indexed(make_plugin(), chat_model=model)
 
     app.agent.answer("What about protein?", THREAD)
 
@@ -140,8 +140,8 @@ def test_no_document_text_reaches_the_system_message() -> None:
 
 def test_assemble_passes_top_k_to_the_search_tool() -> None:
     retriever = _RecordingRetriever()
-    app = _assemble(
-        make_plugin(seed_docs=_seed_doc()),
+    app = _indexed(
+        make_plugin(),
         chat_model=_retrieving_model(),
         retriever=retriever,
         top_k=7,
@@ -154,9 +154,7 @@ def test_assemble_passes_top_k_to_the_search_tool() -> None:
 
 def test_assemble_passes_max_tool_rounds_to_the_round_budget() -> None:
     model = ScriptedChatModel([_searching("c1"), _searching("c2")])
-    app = _assemble(
-        make_plugin(seed_docs=_seed_doc()), chat_model=model, max_tool_rounds=2
-    )
+    app = _indexed(make_plugin(), chat_model=model, max_tool_rounds=2)
 
     with pytest.raises(ToolLoopLimitError):
         app.agent.answer("go round in circles", THREAD)
@@ -166,9 +164,7 @@ def test_a_run_that_spends_the_whole_round_budget_still_answers() -> None:
     model = ScriptedChatModel(
         [_searching("c1"), _searching("c2"), ModelReply(text="Found it [1].")]
     )
-    app = _assemble(
-        make_plugin(seed_docs=_seed_doc()), chat_model=model, max_tool_rounds=3
-    )
+    app = _indexed(make_plugin(), chat_model=model, max_tool_rounds=3)
 
     result = app.agent.answer("What about protein?", THREAD)
 
@@ -438,38 +434,18 @@ def test_assemble_without_a_keyword_index_leaves_the_knowledge_base_bare() -> No
     assert app.knowledge_base.keyword_index is None
 
 
-def test_assemble_seeds_new_docs_into_the_keyword_index() -> None:
+def test_an_uploaded_doc_reaches_the_keyword_index() -> None:
     keyword = _FakeKeywordStore()
-    _assemble(
-        make_plugin(seed_docs=_seed_doc()), retrieval="hybrid", keyword_index=keyword
-    )
+    _indexed(make_plugin(), retrieval="hybrid", keyword_index=keyword)
 
     assert keyword.added
     assert all(chunk.source == "note.md" for chunk in keyword.added)
 
 
-def test_assemble_seeds_plugin_docs_into_the_knowledge_base() -> None:
-    retriever = FakeRetriever()
-
-    _assemble(make_plugin(seed_docs=_seed_doc()), retriever=retriever)
-
-    assert "note.md" in retriever.sources()
-
-
-def test_assemble_skips_seeding_when_seed_is_off() -> None:
-    retriever = FakeRetriever()
-
-    _assemble(make_plugin(seed_docs=_seed_doc()), retriever=retriever, seed=False)
-
-    assert retriever.sources() == []
-
-
 def test_assemble_with_debug_logs_every_port_of_a_retrieving_turn(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    app = _assemble(
-        make_plugin(seed_docs=_seed_doc()), chat_model=_retrieving_model(), debug=True
-    )
+    app = _indexed(make_plugin(), chat_model=_retrieving_model(), debug=True)
 
     with caplog.at_level(logging.DEBUG, logger="cora"):
         app.agent.answer("How much protein?", THREAD)
@@ -483,7 +459,7 @@ def test_assemble_with_debug_logs_every_port_of_a_retrieving_turn(
 def test_assemble_keeps_a_chat_turn_silent_without_debug(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    app = _assemble(make_plugin(seed_docs=_seed_doc()), chat_model=_retrieving_model())
+    app = _indexed(make_plugin(), chat_model=_retrieving_model())
 
     with caplog.at_level(logging.DEBUG, logger="cora"):
         app.agent.answer("How much protein?", THREAD)
@@ -507,14 +483,14 @@ def _config(db_path: Path, *, debug: bool = False) -> Config:
 
 
 @pytest.mark.integration
-def test_build_starts_with_an_empty_store_and_ignores_seed_docs(
-    tmp_path: Path,
-) -> None:
+def test_build_starts_with_an_empty_store(tmp_path: Path) -> None:
+    """The documents are the user's: a fresh install knows nothing until one is
+    uploaded."""
     config = Config(
         api_key="k",
         model="openai/gpt-4o-mini",
         base_url="https://openrouter.ai/api/v1",
-        plugin_module="fixture_plugins.seeded",
+        plugin_module="fixture_plugins.valid",
         top_k=3,
         max_tool_rounds=4,
         history_turns=6,

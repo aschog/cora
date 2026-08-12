@@ -4,7 +4,7 @@ from dataclasses import dataclass
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from app_builder import assembled
+from app_builder import assembled, indexed
 from cora.app.assembly import App
 from cora.domain.chunk import Chunk
 from cora.domain.errors import (
@@ -220,8 +220,7 @@ def test_successful_upload_confirms_with_its_chunk_count() -> None:
 
 @pytest.mark.integration
 def test_uploading_content_already_indexed_reports_a_duplicate() -> None:
-    plugin = make_plugin(seed_docs=(("seed.md", b"protein facts"),))
-    at = _run_page(_app(ScriptedChatModel([]), plugin=plugin))
+    at = _run_page(indexed(_app(ScriptedChatModel([])), ("seed.md", b"protein facts")))
 
     at.file_uploader[0].set_value(("copy.md", b"protein facts", "text/markdown"))
     at.run()
@@ -322,8 +321,7 @@ def test_detaching_a_file_restores_its_attempt_budget() -> None:
 @pytest.mark.integration
 def test_upload_error_clears_on_the_next_rerun_without_re_ingesting() -> None:
     retriever = _CountingRetriever()
-    plugin = make_plugin(seed_docs=(("seed.md", b"protein facts"),))
-    at = _run_page(_app_on(retriever, plugin))
+    at = _run_page(indexed(_app_on(retriever), ("seed.md", b"protein facts")))
     retriever.ingest_attempts = 0
 
     at.file_uploader[0].set_value(("empty.txt", b"", "text/plain"))

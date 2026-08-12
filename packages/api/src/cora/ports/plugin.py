@@ -48,15 +48,20 @@ class ValidationRule(Protocol):
     def apply(self, user_input: str) -> None: ...
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class Plugin:
-    """`grounding` is the domain's answer to "may this be answered without the
+    """Everything but `name` is optional: a plugin contributes whatever it has, and a
+    bundle of rules alone is as legitimate as a bundle of tools. Keyword-only so that
+    declaration order is not API — a fifth kind of contribution is then a field with a
+    default, not a break.
+
+    `grounding` is the domain's answer to "may this be answered without the
     documents?". Empty means yes, and the model decides alone. Any other value is
     the reminder sent back to a model that answered without searching — worded by
     the plugin, because which questions belong to the documents is domain policy."""
 
-    system_prompt: str
-    tools: tuple[Tool, ...]
-    validation_rules: tuple[ValidationRule, ...]
-    seed_docs: tuple[tuple[str, bytes], ...] = ()
+    name: str
+    system_prompt: str = ""
+    tools: tuple[Tool, ...] = ()
+    validation_rules: tuple[ValidationRule, ...] = ()
     grounding: str = ""

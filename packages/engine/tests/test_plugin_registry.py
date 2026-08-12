@@ -11,6 +11,23 @@ def test_resolving_a_name_returns_the_module_level_plugin_bundle() -> None:
     assert [tool.name for tool in plugin.tools] == ["one", "two", "three"]
 
 
+def test_a_bundle_of_rules_alone_loads() -> None:
+    """What makes a guard plugin possible: it offers the model nothing and only
+    turns input down."""
+    plugin = load_plugin("fixture_plugins.rules_only")
+
+    assert plugin.tools == ()
+    assert len(plugin.validation_rules) == 1
+    assert plugin.system_prompt == ""
+
+
+def test_a_bundle_of_tools_alone_loads() -> None:
+    plugin = load_plugin("fixture_plugins.tools_only")
+
+    assert plugin.system_prompt == ""
+    assert [tool.name for tool in plugin.tools] == ["one", "two", "three"]
+
+
 def test_missing_plugin_module_raises_typed_error() -> None:
     with pytest.raises(PluginLoadError) as excinfo:
         load_plugin("fixture_plugins.no_such_module")
@@ -38,8 +55,7 @@ def test_plugin_module_raising_during_import_surfaces_as_typed_error() -> None:
 BAD_PLUGIN_FIXTURES = [
     ("no_bundle", "defines no PLUGIN"),
     ("wrong_type", "not a Plugin bundle"),
-    ("blank_prompt", "system prompt is blank"),
-    ("no_tools", "provides no tools"),
+    ("blank_name", "name is blank"),
     ("duplicate_names", "share the same name"),
     ("non_callable_run", "no callable run"),
     ("bad_schema", "invalid parameter schema"),

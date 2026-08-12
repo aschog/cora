@@ -25,9 +25,9 @@ def test_load_plugin_returns_the_validated_bundle() -> None:
     plugin = load_plugin("cora.plugins.fitness")
 
     assert isinstance(plugin, Plugin)
+    assert plugin.name.strip()
     assert len(plugin.tools) == 3
     assert plugin.validation_rules
-    assert plugin.seed_docs
 
 
 def _pipeline() -> ValidationPipeline:

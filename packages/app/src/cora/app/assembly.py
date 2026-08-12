@@ -45,7 +45,6 @@ from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
 from cora.ports.embedding import Embedder
 from cora.ports.graph import GraphFor
-from cora.ports.loading import Loaders
 from cora.ports.memory import Memory
 from cora.ports.plugin import Plugin, Tool
 from cora.ports.retrieval import Retriever
@@ -75,9 +74,7 @@ def assemble(
     retrieval: str = DEFAULT_RETRIEVAL,
     fusion_queries: int = DEFAULT_FUSION_QUERIES,
     keyword_index: KeywordStore | None = None,
-    loaders: Loaders = LOADERS,
     graph: GraphFor = langgraph_for,
-    seed: bool = True,
     debug: bool = False,
 ) -> App:
     if debug:
@@ -87,12 +84,9 @@ def assemble(
     knowledge_base = KnowledgeBase(
         embedder=embedder,
         retriever=retriever,
-        loaders=loaders,
+        loaders=LOADERS,
         keyword_index=keyword_index,
     )
-    if seed:
-        for filename, data in plugin.seed_docs:
-            knowledge_base.add_file(data, filename)
     context_source = build_context_source(
         retrieval,
         chat_model=chat_model,
@@ -207,6 +201,5 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         retrieval=config.retrieval,
         fusion_queries=config.fusion_queries,
         keyword_index=keyword_index,
-        seed=False,
         debug=config.debug,
     )
