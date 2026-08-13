@@ -1,18 +1,20 @@
 """What this package alone is about, so it lives here rather than in scripts/: `make
 diagram` finds every `diagram.py` beside a manifest and writes its `diagrams.md`.
 
-The engine is where the contract's shapes are put to work, so this is the picture to
-read for how the code hangs together: what each class is built with, what it answers
-to, and which port it fills. The api's own classes are drawn beside it by name."""
+The engine is where the contract's shapes are put to work. One picture of the whole
+package, kept small by drawing only what a box cannot say for itself: a field and a
+signature already name their types, so the only line left is the one nothing writes
+down — which port a class could be handed to."""
 
 import uml
 
-PACKAGES = ("cora.engine",)
+PACKAGE = "cora.engine"
 CONTRACT = ("cora.domain", "cora.ports")
+KINDS = (uml.REALIZATION,)
 
 
 def render() -> str:
-    return uml.digraph("engine", PACKAGES, CONTRACT)
+    return uml.digraph("engine", (PACKAGE,), CONTRACT, kinds=KINDS, frame=False)
 
 
-SECTIONS = (("classes", "The engine, read off the source", "dot", render),)
+SECTIONS = (("engine", "The engine, read off the source", "dot", render),)

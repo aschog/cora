@@ -4,9 +4,9 @@
 
 ```dot
 digraph classes {
-  graph [rankdir=LR, fontname=Helvetica, labeljust=l];
+  graph [rankdir=LR, fontname=Helvetica, labeljust=l, ranksep=1.1, pack=true];
   node [shape=box, fontname=Helvetica, margin=0.12];
-  edge [fontname=Helvetica, fontsize=10, labeldistance=1.8, arrowhead=vee];
+  edge [fontname=Helvetica, fontsize=10, labelfontsize=9, labeldistance=2.6, arrowhead=vee];
   subgraph cluster_domain {
     label="domain";
     labeljust=l;
@@ -43,27 +43,27 @@ digraph classes {
     ToolResult [label=<ToolResult>];
     ValidationRule [label=<&#171;interface&#187;<BR/>ValidationRule>];
   }
-  AgentState -> Message [headlabel="*"];
-  AgentState -> Source [headlabel="*"];
-  AgentState -> TraceStep [headlabel="*"];
+  AgentState -> Message [headlabel="messages *"];
+  AgentState -> Source [headlabel="sources *"];
+  AgentState -> TraceStep [headlabel="trace *"];
   ChatModel -> Message [headlabel="*", style=dashed];
   ChatModel -> ModelReply [headlabel="1", style=dashed];
   ChatModel -> Tool [headlabel="*", style=dashed];
   Citable -> Context [headlabel="1", style=dashed];
   Citable -> Source [headlabel="*", style=dashed];
-  Context -> Source [headlabel="*"];
+  Context -> Source [headlabel="sources *"];
   ContextSource -> RetrievedChunk [headlabel="*", style=dashed];
   GraphFor -> AgentState [headlabel="1", style=dashed];
   GraphFor -> GraphRunner [headlabel="1", style=dashed];
   GraphFor -> Step [headlabel="1", style=dashed];
   GraphRunner -> AgentState [headlabel="*", style=dashed];
   Memory -> Fact [headlabel="*", style=dashed];
-  Message -> ToolCall [headlabel="*"];
-  ModelReply -> ToolCall [headlabel="*"];
-  Plugin -> Tool [headlabel="*"];
-  Plugin -> ValidationRule [headlabel="*"];
-  QueryPlan -> MetadataFilter [headlabel="0..1"];
-  RetrievedChunk -> Chunk [headlabel="1"];
+  Message -> ToolCall [headlabel="tool_calls *"];
+  ModelReply -> ToolCall [headlabel="tool_calls *"];
+  Plugin -> Tool [headlabel="tools *"];
+  Plugin -> ValidationRule [headlabel="validation_rules *"];
+  QueryPlan -> MetadataFilter [headlabel="metadata_filter 0..1"];
+  RetrievedChunk -> Chunk [headlabel="chunk 1"];
   Retriever -> Chunk [headlabel="*", style=dashed];
   Retriever -> MetadataFilter [headlabel="0..1", style=dashed];
   Retriever -> RetrievedChunk [headlabel="*", style=dashed];
