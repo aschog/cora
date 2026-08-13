@@ -149,9 +149,12 @@ These arrows are what each package **declares**. What its modules actually **imp
 Reading the two together is how the guard above shows up: the declared arrow from `cora` to `cora-plugin-security` has no
 import behind it, and must not.
 
-A diagram about one package alone lives with that package rather than here: the domain's
-classes are drawn in [`packages/api/diagrams.md`](../packages/api/diagrams.md), by the same
-command.
+Both are UML: the import diagram draws each package as a tabbed folder and each import as a
+dashed `«import»` dependency, nested the way the namespace nests. The page carries the DOT and
+`make diagram` draws the picture beside it, which nobody commits.
+
+A diagram about one package alone lives with that package rather than here: the api's classes
+are drawn in [`packages/api/diagrams.md`](../packages/api/diagrams.md), by the same command.
 
 | If you are writing | You install | You do not get |
 |---|---|---|

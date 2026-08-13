@@ -20,3 +20,7 @@ dist/
 # Local vector store (Chroma persistence)
 .cora/
 e2e-artifacts/
+
+# Diagram pictures (graphviz draws them again on demand)
+docs/*.svg
+packages/**/*.svg

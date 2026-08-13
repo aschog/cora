@@ -2,28 +2,53 @@
 
 ## The packages, read off the imports
 
-```mermaid
-%%{init: {"flowchart": {"nodeSpacing": 40, "rankSpacing": 50, "curve": "basis"}}}%%
-flowchart BT
-  cora.adapters --> cora.domain
-  cora.adapters --> cora.ports
-  cora.app --> cora.adapters
-  cora.app --> cora.domain
-  cora.app --> cora.engine
-  cora.app --> cora.ports
-  cora.domain --> cora.ports
-  cora.engine --> cora.domain
-  cora.engine --> cora.ports
-  cora.frontends.streamlit --> cora.app
-  cora.frontends.streamlit --> cora.domain
-  cora.frontends.streamlit --> cora.engine
-  cora.frontends.streamlit --> cora.ports
-  cora.plugins.fitness --> cora.domain
-  cora.plugins.fitness --> cora.ports
-  cora.plugins.security --> cora.domain
-  cora.plugins.security --> cora.ports
-  cora.ports --> cora.domain
+```dot
+digraph packages {
+  graph [rankdir=BT, fontname=Helvetica, labeljust=l, labelloc=b, ranksep=0.7];
+  node [shape=tab, fontname=Helvetica, margin=0.16];
+  edge [fontname=Helvetica, fontsize=9, fontcolor=gray40, style=dashed, arrowhead=vee];
+  subgraph cluster_cora {
+    label="cora";
+    labelloc=b;
+    "cora.adapters" [label="adapters"];
+    "cora.app" [label="app"];
+    "cora.domain" [label="domain"];
+    "cora.engine" [label="engine"];
+    "cora.ports" [label="ports"];
+    subgraph cluster_plugins {
+      label="plugins";
+      labelloc=b;
+      "cora.plugins.fitness" [label="fitness"];
+      "cora.plugins.security" [label="security"];
+    }
+    subgraph cluster_frontends {
+      label="frontends";
+      labelloc=b;
+      "cora.frontends.streamlit" [label="streamlit"];
+    }
+  }
+  "cora.adapters" -> "cora.domain" [label="«import»"];
+  "cora.adapters" -> "cora.ports" [label="«import»"];
+  "cora.app" -> "cora.adapters" [label="«import»"];
+  "cora.app" -> "cora.domain" [label="«import»"];
+  "cora.app" -> "cora.engine" [label="«import»"];
+  "cora.app" -> "cora.ports" [label="«import»"];
+  "cora.domain" -> "cora.ports" [label="«import»"];
+  "cora.engine" -> "cora.domain" [label="«import»"];
+  "cora.engine" -> "cora.ports" [label="«import»"];
+  "cora.frontends.streamlit" -> "cora.app" [label="«import»"];
+  "cora.frontends.streamlit" -> "cora.domain" [label="«import»"];
+  "cora.frontends.streamlit" -> "cora.engine" [label="«import»"];
+  "cora.frontends.streamlit" -> "cora.ports" [label="«import»"];
+  "cora.plugins.fitness" -> "cora.domain" [label="«import»"];
+  "cora.plugins.fitness" -> "cora.ports" [label="«import»"];
+  "cora.plugins.security" -> "cora.domain" [label="«import»"];
+  "cora.plugins.security" -> "cora.ports" [label="«import»"];
+  "cora.ports" -> "cora.domain" [label="«import»"];
+}
 ```
+
+`make diagram` draws this into `packages.svg` beside this page — open that for the laid-out picture. It is not committed; graphviz draws it again whenever you ask.
 
 ## One turn
 

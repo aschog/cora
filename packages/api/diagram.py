@@ -16,10 +16,15 @@ from typing import Any
 PACKAGES = ("cora.domain", "cora.ports")
 MANY = (list, tuple, set, frozenset, dict, Sequence, Iterable, Iterator, Mapping)
 MULTIPLICITIES = ("1", "0..1", "*")
-ASSOCIATION, DEPENDENCY = "-->", "..>"
-HEADER = ("  direction LR",)
-"""Wide rather than tall: two dozen boxes stack into a column the page has to be
-scrolled through otherwise."""
+ASSOCIATION, DEPENDENCY = "association", "dependency"
+HEADER = (
+    "  graph [rankdir=LR, fontname=Helvetica, labeljust=l];",
+    "  node [shape=box, fontname=Helvetica, margin=0.12];",
+    "  edge [fontname=Helvetica, fontsize=10, labeldistance=1.8, arrowhead=vee];",
+)
+"""UML's own notation, not a graph of boxes: a class is a plain rectangle, an
+association a solid line with an open arrowhead, a dependency a dashed one, and the
+multiplicity sits at the end it belongs to."""
 
 
 def boxes() -> dict[str, type]:
@@ -97,7 +102,8 @@ def arrows(drawn: dict[str, type]) -> list[str]:
         if kind == ASSOCIATION
     }
     return [
-        f'  {importer} {kind} "{count}" {imported}'
+        f'  {importer} -> {imported} [headlabel="{count}"'
+        + ("];" if kind == ASSOCIATION else ", style=dashed];")
         for (importer, kind, imported), count in sorted(edges.items())
         if kind == ASSOCIATION or (importer, imported) not in associated
     ]
@@ -107,18 +113,30 @@ def _folder(box: type) -> str:
     return box.__module__.rsplit(".", 2)[-2]
 
 
+def _label(box: type) -> str:
+    """What the class is, in UML's own marks: a Protocol is an «interface», a class
+    with an abstract member is written in italics, and the rest are plain."""
+    if getattr(box, "_is_protocol", False):
+        return f"<&#171;interface&#187;<BR/>{box.__name__}>"
+    if inspect.isabstract(box):
+        return f"<<I>{box.__name__}</I>>"
+    return f"<{box.__name__}>"
+
+
 def grouped(drawn: dict[str, type]) -> list[str]:
-    """One namespace per folder the classes were found in, which is the boundary the
-    package is built around: what the problem is made of, and the slots it is served
-    through."""
+    """One package per folder the classes were found in, which is the boundary the
+    distribution is built around: what the problem is made of, and the slots it is
+    served through."""
     folders = sorted({_folder(box) for box in drawn.values()})
     return [
         line
         for folder in folders
         for line in [
-            f"  namespace {folder} {{",
+            f"  subgraph cluster_{folder} {{",
+            f'    label="{folder}";',
+            "    labeljust=l;",
             *(
-                f"    class {name}"
+                f"    {name} [label={_label(box)}];"
                 for name, box in drawn.items()
                 if _folder(box) == folder
             ),
@@ -129,7 +147,9 @@ def grouped(drawn: dict[str, type]) -> list[str]:
 
 def render() -> str:
     drawn = dict(sorted(boxes().items()))
-    return "\n".join(["classDiagram", *HEADER, *grouped(drawn), *arrows(drawn)])
+    return "\n".join(
+        ["digraph classes {", *HEADER, *grouped(drawn), *arrows(drawn), "}"]
+    )
 
 
-SECTIONS = (("The classes, read off the source", render),)
+SECTIONS = (("classes", "The classes, read off the source", "dot", render),)

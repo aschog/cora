@@ -52,4 +52,4 @@ def render() -> str:
     return sequence(QUESTION, result.answer, result.trace)
 
 
-SECTIONS = (("One turn", render),)
+SECTIONS = (("turn", "One turn", "mermaid", render),)

@@ -135,13 +135,19 @@ make diagram                  # rewrite the generated diagram pages from the cod
 ```
 
 `make diagram` needs nothing but the dev group — `grimp` reads the imports, the api's classes
-are asked for their own annotations, one scripted turn reports its own trace, and every diagram
-is Mermaid, so there is no graphviz and no image to render. A picture that spans the workspace lands in
-`docs/diagrams.md`; a picture of one package lands beside that package, written by the
-`diagram.py` next to its manifest — `packages/api/diagram.py` draws
+are asked for their own annotations, and one scripted turn reports its own trace. A picture that
+spans the workspace lands in `docs/diagrams.md`; a picture of one package lands beside that
+package, written by the `diagram.py` next to its manifest — `packages/api/diagram.py` draws
 `packages/api/diagrams.md`, and the command finds it rather than naming it. Nothing checks that
 the committed pages are current: run the target after a change that moves an import, a class or
 a step.
+
+Every page carries its diagrams as text. The two UML ones — the packages and the api's classes —
+are DOT, drawn in UML's own notation: a package is a tabbed folder, an import a dashed
+`«import»`, a Protocol an `«interface»`. The page carries the source, and if `dot` is on your
+PATH (`brew install graphviz`) the command also draws `packages.svg` and `classes.svg` beside
+their pages — local pictures, ignored by git, redrawn whenever you run the target. The one turn
+stays Mermaid, so it still renders inline where the page does.
 
 No browser is needed anywhere: the UI is driven headlessly through Streamlit's
 `AppTest`, including the live tier.

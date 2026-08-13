@@ -15,7 +15,7 @@ run-env:
 	uv run --env-file .env streamlit run $(APP)
 
 # Rewrites every generated diagram page from the code — the workspace-wide one in docs/, and
-# one beside every package that ships a diagram.py. `tests` carries the fakes one scripted
-# turn needs.
+# one beside every package that ships a diagram.py, plus the SVG graphviz draws from the DOT
+# on that page. `tests` carries the fakes one scripted turn needs.
 diagram:
 	PYTHONPATH=tests:scripts uv run python scripts/diagrams.py
