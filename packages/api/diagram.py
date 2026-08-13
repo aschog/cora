@@ -17,6 +17,9 @@ PACKAGES = ("cora.domain", "cora.ports")
 MANY = (list, tuple, set, frozenset, dict, Sequence, Iterable, Iterator, Mapping)
 MULTIPLICITIES = ("1", "0..1", "*")
 ASSOCIATION, DEPENDENCY = "-->", "..>"
+HEADER = ("  direction LR",)
+"""Wide rather than tall: two dozen boxes stack into a column the page has to be
+scrolled through otherwise."""
 
 
 def boxes() -> dict[str, type]:
@@ -126,7 +129,7 @@ def grouped(drawn: dict[str, type]) -> list[str]:
 
 def render() -> str:
     drawn = dict(sorted(boxes().items()))
-    return "\n".join(["classDiagram", *grouped(drawn), *arrows(drawn)])
+    return "\n".join(["classDiagram", *HEADER, *grouped(drawn), *arrows(drawn)])
 
 
 SECTIONS = (("The classes, read off the source", render),)

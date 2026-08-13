@@ -4,6 +4,7 @@
 
 ```mermaid
 classDiagram
+  direction LR
   namespace domain {
     class AgentState
     class Chunk
