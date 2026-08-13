@@ -161,8 +161,12 @@ def test_the_app_wires_the_layers_and_owns_no_ui() -> None:
     assert {"cora-api", "cora-engine", "cora-adapters"} <= requires
     assert "streamlit" not in requires, "the UI is a frontend, not the app"
     assert "cora-plugin-fitness" not in requires, (
-        "the shipped app names its default plugin in config, but must not depend on a "
-        "domain: that is what keeps the agent domain-agnostic"
+        "the shipped app must not depend on a domain: that is what keeps the agent "
+        "domain-agnostic, and which domain a deployment ships is its own choice"
+    )
+    assert "cora-plugin-security" in requires, (
+        "the guard the default set names is not a domain, and an app that names a "
+        "plugin it does not install cannot start"
     )
 
 

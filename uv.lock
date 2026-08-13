@@ -452,6 +452,7 @@ dependencies = [
     { name = "cora-adapters" },
     { name = "cora-api" },
     { name = "cora-engine" },
+    { name = "cora-plugin-security" },
 ]
 
 [package.metadata]
@@ -459,6 +460,7 @@ requires-dist = [
     { name = "cora-adapters", editable = "packages/adapters" },
     { name = "cora-api", editable = "packages/api" },
     { name = "cora-engine", editable = "packages/engine" },
+    { name = "cora-plugin-security", editable = "packages/plugins/security" },
 ]
 
 [[package]]
