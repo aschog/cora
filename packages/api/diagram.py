@@ -11,6 +11,8 @@ NAMESPACE = pathlib.Path(__file__).resolve().parent / "src" / "cora"
 GENERATIONS = 0
 INHERITS = re.compile(r"^\s*(\w+) --\|> (\w+)$")
 NAMES = re.compile(r"\w+")
+MANY = ("list", "tuple", "sequence", "iterable", "iterator", "set", "frozenset")
+MULTIPLICITIES = ("1", "0..1", "*")
 
 
 def classes(packages: Iterable[pathlib.Path], name: str) -> str:
@@ -86,24 +88,53 @@ def near(diagram: str, generations: int) -> str:
     return "\n".join(line for block in kept for line in block)
 
 
+def _holder(line: str, at: int) -> str:
+    """What opened the innermost bracket the name sits in — `tuple` in
+    `Annotated[list[tuple[Source, ...]]]` is what makes that a many."""
+    depth = 0
+    for index in range(at - 1, -1, -1):
+        if line[index] == "]":
+            depth += 1
+        elif line[index] == "[":
+            if depth == 0:
+                word = re.search(r"(\w+)$", line[:index])
+                return word[1].lower() if word else ""
+            depth -= 1
+    return ""
+
+
+def _multiplicity(line: str, at: int, name: str) -> str:
+    holder = _holder(line, at)
+    if holder in MANY:
+        return "*"
+    if holder == "optional" or line[at + len(name) :].lstrip().startswith("| None"):
+        return "0..1"
+    return "1"
+
+
 def linked(diagram: str) -> str:
     """pyreverse draws an association from an attribute it sees a body assign, which a
     frozen dataclass and a Protocol never do — so the arrows are read off the member
-    lines instead: a class points at every other box its fields or signatures name."""
+    lines instead: a class points at every other box its fields or signatures name, and
+    how many of it, taken at its widest where the same pair is named more than once."""
     blocks = _blocks(diagram)
     drawn = {_subject(block) for block in blocks} - {""}
-    edges = sorted(
-        {
-            (subject, named)
-            for block in blocks
-            for subject in [_subject(block)]
-            if subject
-            for line in block[1:]
-            for named in NAMES.findall(line)
-            if named in drawn and named != subject
-        }
-    )
-    return "\n".join([diagram, *(f"  {a} --> {b}" for a, b in edges)])
+    edges: dict[tuple[str, str], str] = {}
+    for block in blocks:
+        subject = _subject(block)
+        for line in block[1:] if subject else []:
+            for found in NAMES.finditer(line):
+                named = found[0]
+                if named not in drawn or named == subject:
+                    continue
+                edge = (subject, named)
+                counts = [
+                    edges.get(edge, "1"),
+                    _multiplicity(line, found.start(), named),
+                ]
+                edges[edge] = max(counts, key=lambda count: MULTIPLICITIES.index(count))
+    arrows = [f'  {a} --> "{count}" {b}' for (a, b), count in sorted(edges.items())]
+    return "\n".join([diagram, *arrows])
 
 
 def unfilled(diagram: str) -> str:

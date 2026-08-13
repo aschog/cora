@@ -32,27 +32,27 @@ classDiagram
   class ToolResult
   class TraceStep
   class ValidationRule
-  AgentState --> Message
-  AgentState --> Source
-  AgentState --> TraceStep
-  ChatModel --> Message
-  ChatModel --> ModelReply
-  ChatModel --> Tool
-  Citable --> Context
-  Citable --> Source
-  Context --> Source
-  ContextSource --> RetrievedChunk
-  GraphFor --> GraphRunner
-  GraphRunner --> AgentState
-  Memory --> Fact
-  Message --> ToolCall
-  ModelReply --> ToolCall
-  Plugin --> Tool
-  Plugin --> ValidationRule
-  QueryPlan --> MetadataFilter
-  RetrievedChunk --> Chunk
-  Retriever --> Chunk
-  Retriever --> MetadataFilter
-  Retriever --> RetrievedChunk
-  Step --> AgentState
+  AgentState --> "*" Message
+  AgentState --> "*" Source
+  AgentState --> "*" TraceStep
+  ChatModel --> "*" Message
+  ChatModel --> "1" ModelReply
+  ChatModel --> "*" Tool
+  Citable --> "1" Context
+  Citable --> "*" Source
+  Context --> "*" Source
+  ContextSource --> "*" RetrievedChunk
+  GraphFor --> "1" GraphRunner
+  GraphRunner --> "*" AgentState
+  Memory --> "*" Fact
+  Message --> "*" ToolCall
+  ModelReply --> "*" ToolCall
+  Plugin --> "*" Tool
+  Plugin --> "*" ValidationRule
+  QueryPlan --> "0..1" MetadataFilter
+  RetrievedChunk --> "1" Chunk
+  Retriever --> "*" Chunk
+  Retriever --> "0..1" MetadataFilter
+  Retriever --> "*" RetrievedChunk
+  Step --> "1" AgentState
 ```
