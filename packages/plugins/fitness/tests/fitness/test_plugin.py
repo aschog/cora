@@ -1,6 +1,4 @@
-from cora.engine.plugin_registry import load_plugin
-from cora.plugins.fitness import INSTRUCTIONS, SCOPE
-from cora.ports.plugin import Plugin
+from cora.plugins.fitness import INSTRUCTIONS, PLUGIN, SCOPE
 
 
 def test_the_instructions_state_the_domains_own_business() -> None:
@@ -20,10 +18,7 @@ def test_the_scope_is_a_phrase_that_can_join_another() -> None:
     assert len(SCOPE.splitlines()) == 1
 
 
-def test_load_plugin_returns_the_validated_bundle() -> None:
-    plugin = load_plugin("cora.plugins.fitness")
-
-    assert isinstance(plugin, Plugin)
-    assert plugin.name.strip()
-    assert len(plugin.tools) == 3
-    assert plugin.validation_rules
+def test_the_bundle_offers_its_calculators_and_its_safety_rule() -> None:
+    assert PLUGIN.name.strip()
+    assert len(PLUGIN.tools) == 3
+    assert PLUGIN.validation_rules

@@ -78,7 +78,7 @@ REMEMBERED_NOTICE = (
 
 @dataclass(frozen=True)
 class PrepareStep:
-    rules: tuple[ValidationRule, ...] = ()
+    rules: tuple[ValidationRule, ...]
     instructions: str = ""
     memory: Memory | None = None
 
