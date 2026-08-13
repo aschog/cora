@@ -41,37 +41,47 @@ depends on `cora-plugin-security` in its manifest and imports it nowhere.
 
 #### First, the outer test
 
-- [ ] the Mermaid block regenerated from the workspace is identical to the one committed in
-      `docs/diagrams/packages.md` — `xfail(strict=True)` until the generator and the page exist
+- [x] the Mermaid block regenerated from the workspace is identical to the one committed in
+      `docs/diagrams/packages.md` — `xfail(strict=True)` until the generator and the page exist.
+      The seam had to exist for the gates: `ty` cannot resolve a module the test names, so the
+      commit carries `tools/package_diagram.py` raising `NotImplementedError` and the three
+      config entries that put `tools` on pytest's, ruff's and ty's paths
 
 #### Which boxes — the only judgement in the pipeline
 
-- [ ] a box per second-segment package, except the two extension points, which contribute their
+- [x] a box per second-segment package, except the two extension points, which contribute their
       children instead: `cora.plugins.fitness` and `cora.plugins.security` are boxes and
       `cora.plugins` is not
-- [ ] the boxes are read off the graph, so a second frontend becomes a box with no edit here
-- [ ] the namespace root itself is no box
+- [x] the boxes are read off the graph, so a second frontend becomes a box with no edit here
+- [x] the namespace root itself is no box
 
 #### Squashing tells the truth
 
-- [ ] several modules crossing one boundary are one arrow
-- [ ] a package's internal imports are no arrow from a box to itself
-- [ ] a mutually dependent pair is drawn both ways rather than deduped — `cora.domain` and
+- [x] several modules crossing one boundary are one arrow
+- [x] a package's internal imports are no arrow from a box to itself
+- [x] a mutually dependent pair is drawn both ways rather than deduped — `cora.domain` and
       `cora.ports` are that pair today, and hiding half of it would make the picture a lie
-- [ ] a framework import is no box: the graph is built over `cora` alone
+- [x] a framework import is no box: the graph is built over `cora` alone
 
 #### Mermaid that renders
 
-- [ ] node ids are the full dotted names, so two boxes sharing a leaf name stay two boxes — the
+- [x] node ids are the full dotted names, so two boxes sharing a leaf name stay two boxes — the
       trap pyreverse's own Mermaid output falls into
-- [ ] the block parses on Mermaid 10.2.3, checked with `mermaid.parse` rather than by eye
+- [x] a box nothing imports and that imports nothing is still drawn *(discovered — without it
+      a package joins the workspace and the diagram silently omits it)*
+- [x] the block parses on Mermaid 10.2.3 — checked against a local `mermaid@10.2.3`
+      `mermaid.parse`, which is where dotted node ids were confirmed legal. Not a committed
+      test: it would put node in CI for one assertion about syntax that does not change
 
 #### The two diagrams say different things
 
-- [ ] `cora` declares `cora-plugin-security` in its manifest and imports it in no module — the
+- [x] `cora` declares `cora-plugin-security` in its manifest and imports it in no module — the
       arrow the distributions diagram has and this one must not
-- [ ] `docs/big-picture.md` links the new page and says which diagram is manifests and which is
+- [x] `docs/big-picture.md` links the new page and says which diagram is manifests and which is
       imports — the link is a path, so `test_docs.py` fails the day the page moves
+- [x] `make diagram` rewrites the block and leaves the prose around it *(discovered — the page
+      is hand-written apart from the fence, so the command has to splice rather than write)*
+- [x] `README.md` names the command and that the dev group is the whole prerequisite
 
 ## Out of scope
 
