@@ -21,7 +21,7 @@ quality gates. Runtime dependencies are added feature-by-feature, story by story
 
 ## The packages
 
-A `uv` workspace of six distributions sharing the `cora` namespace. Which one you install
+A `uv` workspace of seven distributions sharing the `cora` namespace. Which one you install
 is decided by what you are writing, and what each may depend on is written in its own
 manifest — so a plugin that reached for the engine, or a frontend's toolkit that reached
 the app, would not resolve. See [`docs/big-picture.md`](docs/big-picture.md#the-distributions).
@@ -31,24 +31,26 @@ the app, would not resolve. See [`docs/big-picture.md`](docs/big-picture.md#the-
 | `cora-api` | `cora.domain` · `cora.ports` — the contract | nothing at all |
 | `cora-engine` | `cora.engine` — the agent, the knowledge base, a turn's steps | `cora-api` |
 | `cora-adapters` | `cora.adapters` — Chroma, OpenRouter, LangGraph, BM25, MiniLM | `cora-api` |
-| `cora` | `cora.app` — the composition root and its configuration | `cora-engine`, `cora-adapters` |
+| `cora` | `cora.app` — the composition root and its configuration | `cora-engine`, `cora-adapters`, `cora-plugin-security` |
 | `cora-plugin-fitness` | `cora.plugins.fitness` — the reference domain plugin | `cora-api` |
+| `cora-plugin-security` | `cora.plugins.security` — the prompt-injection screen, the one plugin the default set loads | `cora-api` |
 | `cora-frontend-streamlit` | `cora.frontends.streamlit` — the app you run below | `cora` |
 
-`cora.plugins.*` and `cora.frontends.*` are the extension points: a second domain or a
-second user interface is a package to add, not a file to edit.
+`cora.plugins.*` and `cora.frontends.*` are the extension points: another domain, another
+guard or a second user interface is a package to add, not a file to edit. A plugin need not
+be a domain — `cora-plugin-security` contributes one validation rule and nothing else.
 
 The tree says which is which by its depth:
 
 ```
 packages/api  engine  adapters  app     one of a kind — a distribution each
 packages/frontends/streamlit             one of many  — the directory expects siblings
-packages/plugins/fitness
+packages/plugins/fitness  security
 ```
 
 A directory directly under `packages/` is a distribution. A directory holding
 distributions is an extension point, named in the plural for that reason — so the flat
-four and the nested two are not an inconsistency, they are the difference between a piece
+four and the nested three are not an inconsistency, they are the difference between a piece
 there is only one of and a piece you are meant to add another of. `ls packages/` is
 therefore the shortest description of what can be extended.
 

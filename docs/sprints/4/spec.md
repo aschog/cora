@@ -35,7 +35,7 @@ it. Story 3 adds `Memory` on the same line: four verbs of intent rather than a k
 store, and the one slot that may be left empty — an app assembled without it is offered no
 `remember` tool at all. Both follow the line the code mostly draws: `ports/` holds
 Protocols whose implementations live *outside* the engine, while collaborator Protocols
-implemented *inside* it (`ContextSource`, `InputValidator`, `ToolExecutor`) sit beside the
+implemented *inside* it (`ContextSource`, `ToolExecutor`) sit beside the
 service that uses them.
 
 The **router stays in core**: a plain function from state to the next step, budget check
