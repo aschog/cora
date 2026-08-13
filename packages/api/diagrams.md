@@ -4,34 +4,38 @@
 
 ```mermaid
 classDiagram
-  class AgentState
-  class ChatModel
-  class Chunk
-  class Citable
-  class Context
-  class ContextSource
-  class CoreError
-  class Embedder
-  class Fact
-  class GraphFor
-  class GraphRunner
-  class Loader
-  class Memory
-  class Message
-  class MetadataFilter
-  class ModelReply
-  class Plugin
-  class QueryPlan
-  class RetrievedChunk
-  class Retriever
-  class Source
-  class Step
-  class Tool
-  class ToolCall
-  class ToolRefusal
-  class ToolResult
-  class TraceStep
-  class ValidationRule
+  namespace domain {
+    class AgentState
+    class Chunk
+    class Citable
+    class Context
+    class CoreError
+    class MetadataFilter
+    class QueryPlan
+    class Source
+    class TraceStep
+  }
+  namespace ports {
+    class ChatModel
+    class ContextSource
+    class Embedder
+    class Fact
+    class GraphFor
+    class GraphRunner
+    class Loader
+    class Memory
+    class Message
+    class ModelReply
+    class Plugin
+    class RetrievedChunk
+    class Retriever
+    class Step
+    class Tool
+    class ToolCall
+    class ToolRefusal
+    class ToolResult
+    class ValidationRule
+  }
   AgentState --> "*" Message
   AgentState --> "*" Source
   AgentState --> "*" TraceStep

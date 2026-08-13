@@ -100,11 +100,33 @@ def arrows(drawn: dict[str, type]) -> list[str]:
     ]
 
 
+def _folder(box: type) -> str:
+    return box.__module__.rsplit(".", 2)[-2]
+
+
+def grouped(drawn: dict[str, type]) -> list[str]:
+    """One namespace per folder the classes were found in, which is the boundary the
+    package is built around: what the problem is made of, and the slots it is served
+    through."""
+    folders = sorted({_folder(box) for box in drawn.values()})
+    return [
+        line
+        for folder in folders
+        for line in [
+            f"  namespace {folder} {{",
+            *(
+                f"    class {name}"
+                for name, box in drawn.items()
+                if _folder(box) == folder
+            ),
+            "  }",
+        ]
+    ]
+
+
 def render() -> str:
     drawn = dict(sorted(boxes().items()))
-    return "\n".join(
-        ["classDiagram", *(f"  class {name}" for name in drawn), *arrows(drawn)]
-    )
+    return "\n".join(["classDiagram", *grouped(drawn), *arrows(drawn)])
 
 
 SECTIONS = (("The classes, read off the source", render),)
