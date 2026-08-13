@@ -79,6 +79,11 @@ default set ships. The backlog's *stronger injection rules as a plugin* is block
 An in-scope question against an empty store is answered from model knowledge today. After
 story 11 cora words the grounding reminder, and it says it has no documents instead.
 
+### [13. The package diagram is read off the imports](story-13.md)
+
+Every diagram in the docs is drawn by hand and can drift silently. `grimp` squashes the import
+graph to one box per package, and a test fails when the committed diagram is stale.
+
 ## Not built this sprint
 
 Planned, cut once the bonus bar was cleared and the hours ran down. None of them is needed
