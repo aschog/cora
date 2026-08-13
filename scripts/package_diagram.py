@@ -1,11 +1,7 @@
-import pathlib
-
 import grimp
 from grimp import ImportGraph
 
-PAGE = (
-    pathlib.Path(__file__).resolve().parent.parent / "docs" / "diagrams" / "packages.md"
-)
+HEADING = "The packages, read off the imports"
 ROOT = "cora"
 EXTENSION_POINTS = ("plugins", "frontends")
 HEADER = (
@@ -59,13 +55,3 @@ def diagram(graph: ImportGraph) -> str:
 
 def render() -> str:
     return diagram(grimp.build_graph(ROOT))
-
-
-def write(page: pathlib.Path) -> None:
-    before, fence, rest = page.read_text().partition("```mermaid\n")
-    _, closing, after = rest.partition("```")
-    page.write_text(f"{before}{fence}{render()}\n{closing}{after}")
-
-
-if __name__ == "__main__":
-    write(PAGE)

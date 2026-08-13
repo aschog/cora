@@ -131,13 +131,13 @@ uv run --env-file .env pytest -m llm   # live acceptance: real OpenRouter round-
 uv run ruff format .          # format
 uv run ruff check .           # lint
 uv run ty check               # type check
-make diagram                  # rewrite docs/diagrams/packages.md from the import graph
+make diagram                  # rewrite docs/diagrams.md from the code
 ```
 
-`make diagram` needs nothing but the dev group — `grimp` reads the imports and the diagram
-is Mermaid, so there is no graphviz and no image to render. The committed page is compared
-against a fresh run by `tests/test_package_diagram.py`, so a moved import fails the suite
-rather than leaving the picture quietly wrong.
+`make diagram` needs nothing but the dev group — `grimp` reads the imports, one scripted turn
+reports its own trace, and both diagrams are Mermaid, so there is no graphviz and no image to
+render. Nothing checks that the committed pages are current: run the target after a change that
+moves an import or a step.
 
 No browser is needed anywhere: the UI is driven headlessly through Streamlit's
 `AppTest`, including the live tier.

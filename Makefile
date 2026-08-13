@@ -14,6 +14,6 @@ run:
 run-env:
 	uv run --env-file .env streamlit run $(APP)
 
-# Rewrites the mermaid block in docs/diagrams/packages.md from the import graph.
+# Rewrites docs/diagrams.md from the code. `tests` carries the fakes one scripted turn needs.
 diagram:
-	uv run python tools/package_diagram.py
+	PYTHONPATH=tests:scripts uv run python scripts/diagrams.py

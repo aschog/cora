@@ -145,10 +145,9 @@ without shipping a domain. And the shell names the layers whose types cross its 
 in for it.
 
 These arrows are what each package **declares**. What its modules actually **import** is
-[`docs/diagrams/packages.md`](diagrams/packages.md), generated from the source by
-`make diagram` and compared against a fresh run by the suite. Reading the two together is
-how the guard above shows up: the declared arrow from `cora` to `cora-plugin-security` has
-no import behind it, and must not.
+[`docs/diagrams.md`](diagrams.md#the-packages-read-off-the-imports), written by `make diagram`.
+Reading the two together is how the guard above shows up: the declared arrow from `cora` to `cora-plugin-security` has no
+import behind it, and must not.
 
 | If you are writing | You install | You do not get |
 |---|---|---|
@@ -166,6 +165,9 @@ points, and a new one of either is a package to install rather than a file to ed
 A frontend uses the engine through two main methods: `answer()` and `add_file()` (plus
 `list_sources()` to show the file list in the sidebar, and `recall()` / `forget()` /
 `clear()` to show what is remembered and drop one fact or all of them).
+
+One answered turn, drawn from the trace it produced, is
+[`docs/diagrams.md`](diagrams.md#one-turn).
 
 **`agent.answer(question, thread_id) -> ChatResult`** — `engine/agent.py`
 

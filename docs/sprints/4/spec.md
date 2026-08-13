@@ -84,6 +84,11 @@ story 11 cora words the grounding reminder, and it says it has no documents inst
 Every diagram in the docs is drawn by hand and can drift silently. `grimp` squashes the import
 graph to one box per package, and a test fails when the committed diagram is stale.
 
+### [14. One turn draws itself](story-14.md)
+
+The package diagram says which package depends on which; it cannot say how a turn works. The
+trace a turn already carries renders as a sequence diagram.
+
 ## Not built this sprint
 
 Planned, cut once the bonus bar was cleared and the hours ran down. None of them is needed

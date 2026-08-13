@@ -45,7 +45,7 @@ root = [
     "packages/plugins/fitness/src",
     "packages/plugins/security/src",
     "tests",
-    "tools",
+    "scripts",
 ]
 
 [tool.ruff]
@@ -58,7 +58,7 @@ src = [
     "packages/plugins/fitness/src",
     "packages/plugins/security/src",
     "tests",
-    "tools",
+    "scripts",
 ]
 
 [tool.ruff.lint]
@@ -80,7 +80,7 @@ select = [
 # module: pythonpath puts it on sys.path, and a directory called cora would join
 # the cora namespace as its first portion.
 testpaths = ["packages", "tests"]
-pythonpath = ["tests", "tools"]
+pythonpath = ["tests"]
 addopts = "--strict-markers --import-mode=importlib -m 'not integration and not llm'"
 markers = [
     "integration: touches real infrastructure (Chroma, embedding model, Streamlit); run in CI",
