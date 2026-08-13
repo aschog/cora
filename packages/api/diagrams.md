@@ -35,24 +35,26 @@ classDiagram
   AgentState --> "*" Message
   AgentState --> "*" Source
   AgentState --> "*" TraceStep
-  ChatModel --> "*" Message
-  ChatModel --> "1" ModelReply
-  ChatModel --> "*" Tool
-  Citable --> "1" Context
-  Citable --> "*" Source
+  ChatModel ..> "*" Message
+  ChatModel ..> "1" ModelReply
+  ChatModel ..> "*" Tool
+  Citable ..> "1" Context
+  Citable ..> "*" Source
   Context --> "*" Source
-  ContextSource --> "*" RetrievedChunk
-  GraphFor --> "1" GraphRunner
-  GraphRunner --> "*" AgentState
-  Memory --> "*" Fact
+  ContextSource ..> "*" RetrievedChunk
+  GraphFor ..> "1" AgentState
+  GraphFor ..> "1" GraphRunner
+  GraphFor ..> "1" Step
+  GraphRunner ..> "*" AgentState
+  Memory ..> "*" Fact
   Message --> "*" ToolCall
   ModelReply --> "*" ToolCall
   Plugin --> "*" Tool
   Plugin --> "*" ValidationRule
   QueryPlan --> "0..1" MetadataFilter
   RetrievedChunk --> "1" Chunk
-  Retriever --> "*" Chunk
-  Retriever --> "0..1" MetadataFilter
-  Retriever --> "*" RetrievedChunk
-  Step --> "1" AgentState
+  Retriever ..> "*" Chunk
+  Retriever ..> "0..1" MetadataFilter
+  Retriever ..> "*" RetrievedChunk
+  Step ..> "1" AgentState
 ```

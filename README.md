@@ -134,9 +134,9 @@ uv run ty check               # type check
 make diagram                  # rewrite the generated diagram pages from the code
 ```
 
-`make diagram` needs nothing but the dev group — `grimp` reads the imports, `pyreverse` reads the
-domain's classes, one scripted turn reports its own trace, and every diagram is Mermaid, so there
-is no graphviz and no image to render. A picture that spans the workspace lands in
+`make diagram` needs nothing but the dev group — `grimp` reads the imports, the api's classes
+are asked for their own annotations, one scripted turn reports its own trace, and every diagram
+is Mermaid, so there is no graphviz and no image to render. A picture that spans the workspace lands in
 `docs/diagrams.md`; a picture of one package lands beside that package, written by the
 `diagram.py` next to its manifest — `packages/api/diagram.py` draws
 `packages/api/diagrams.md`, and the command finds it rather than naming it. Nothing checks that

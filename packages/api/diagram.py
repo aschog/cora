@@ -1,154 +1,110 @@
 """What this package alone is about, so it lives here rather than in scripts/: `make
-diagram` finds every `diagram.py` beside a manifest and writes its `diagrams.md`."""
+diagram` finds every `diagram.py` beside a manifest and writes its `diagrams.md`.
 
-import pathlib
-import re
-import subprocess
-import tempfile
-from collections.abc import Iterable
+The picture is read off the classes themselves — imported, then asked for their
+annotations — rather than off a rendering of them. So an arrow is a type this package
+really declares, and what makes it an arrow is where the type was found: a field or a
+property is an association, a parameter or a return is a dependency."""
 
-NAMESPACE = pathlib.Path(__file__).resolve().parent / "src" / "cora"
-GENERATIONS = 0
-INHERITS = re.compile(r"^\s*(\w+) --\|> (\w+)$")
-NAMES = re.compile(r"\w+")
-MANY = ("list", "tuple", "sequence", "iterable", "iterator", "set", "frozenset")
+import importlib
+import inspect
+import pkgutil
+import typing
+from collections.abc import Iterable, Iterator, Mapping, Sequence
+from typing import Any
+
+PACKAGES = ("cora.domain", "cora.ports")
+MANY = (list, tuple, set, frozenset, dict, Sequence, Iterable, Iterator, Mapping)
 MULTIPLICITIES = ("1", "0..1", "*")
+ASSOCIATION, DEPENDENCY = "-->", "..>"
 
 
-def classes(packages: Iterable[pathlib.Path], name: str) -> str:
-    """pyreverse parses the packages and writes `classes_<name>.mmd` beside a package
-    diagram we don't want, so it renders into a directory of its own. One run over them
-    all, because a class one package names and another declares is one arrow, and
-    `-f OTHER` so that `__call__` counts: a Protocol that is one signature is the whole
-    port, and the members are stripped from the picture anyway."""
-    with tempfile.TemporaryDirectory() as directory:
-        subprocess.run(
-            [
-                "pyreverse",
-                "-f",
-                "OTHER",
-                "-o",
-                "mmd",
-                "-p",
-                name,
-                "-d",
-                directory,
-                *map(str, packages),
-            ],
-            check=True,
-            capture_output=True,
+def boxes() -> dict[str, type]:
+    """Every class the packages declare, minus the ones that inherit from another of
+    them: a subclass says its parent's name and nothing the picture is short of."""
+    found: dict[str, type] = {}
+    for name in PACKAGES:
+        package = importlib.import_module(name)
+        for module in pkgutil.iter_modules(package.__path__, f"{name}."):
+            members = vars(importlib.import_module(module.name)).items()
+            found.update(
+                {
+                    member.__name__: member
+                    for _, member in members
+                    if inspect.isclass(member) and member.__module__ == module.name
+                }
+            )
+    declared = set(found.values())
+    return {
+        name: box for name, box in found.items() if not declared & set(box.__mro__[1:])
+    }
+
+
+def _referenced(annotation: Any, drawn: set[type]) -> list[tuple[type, str]]:
+    """The classes an annotation names, each with how many of it the type allows: one
+    inside a `tuple` or an `Iterator` is a many, one beside `None` is an optional."""
+    if isinstance(annotation, list):
+        return [found for one in annotation for found in _referenced(one, drawn)]
+    if isinstance(annotation, type) and annotation in drawn:
+        return [(annotation, "1")]
+    origin = typing.get_origin(annotation)
+    if origin is None:
+        return []
+    arguments = typing.get_args(annotation)
+    optional = type(None) in arguments
+    many = origin in MANY
+    return [
+        (
+            referenced,
+            "*" if many else "0..1" if optional and count == "1" else count,
         )
-        return (pathlib.Path(directory) / f"classes_{name}.mmd").read_text().strip()
-
-
-def _blocks(diagram: str) -> list[list[str]]:
-    blocks: list[list[str]] = []
-    body: list[str] | None = None
-    for line in diagram.splitlines():
-        if body is not None:
-            body.append(line)
-            if line.strip() == "}":
-                blocks.append(body)
-                body = None
-        elif line.strip().startswith("class ") and line.rstrip().endswith("{"):
-            body = [line]
-        else:
-            blocks.append([line])
-    return blocks
-
-
-def _subject(block: list[str]) -> str:
-    heading = block[0].strip()
-    if not heading.startswith("class "):
-        return ""
-    return heading.removeprefix("class ").removesuffix("{").strip()
-
-
-def _generation(name: str, parents: dict[str, str]) -> int:
-    generation = 0
-    while name in parents:
-        name, generation = parents[name], generation + 1
-    return generation
-
-
-def near(diagram: str, generations: int) -> str:
-    """A class further than `generations` below the root of its hierarchy goes, and the
-    arrow to it with it. At zero the picture is the shapes alone: `CoreError` stands for
-    every error and `TraceStep` for every step, which is what their names are for."""
-    inheritance = [INHERITS.match(line) for line in diagram.splitlines()]
-    parents = {match[1]: match[2] for match in inheritance if match}
-    distant = {name for name in parents if _generation(name, parents) > generations}
-    kept = [
-        block
-        for block in _blocks(diagram)
-        for edge in [INHERITS.match(block[0])]
-        if _subject(block) not in distant
-        and not (edge and (edge[1] in distant or edge[2] in distant))
+        for argument in arguments
+        if argument is not Ellipsis and argument is not type(None)
+        for referenced, count in _referenced(argument, drawn)
     ]
-    return "\n".join(line for block in kept for line in block)
 
 
-def _holder(line: str, at: int) -> str:
-    """What opened the innermost bracket the name sits in — `tuple` in
-    `Annotated[list[tuple[Source, ...]]]` is what makes that a many."""
-    depth = 0
-    for index in range(at - 1, -1, -1):
-        if line[index] == "]":
-            depth += 1
-        elif line[index] == "[":
-            if depth == 0:
-                word = re.search(r"(\w+)$", line[:index])
-                return word[1].lower() if word else ""
-            depth -= 1
-    return ""
+def _annotations(box: type) -> Iterator[tuple[Any, str]]:
+    """Where a type was found decides the arrow it draws."""
+    for annotation in typing.get_type_hints(box, include_extras=False).values():
+        yield annotation, ASSOCIATION
+    for name, member in vars(box).items():
+        if isinstance(member, property) and member.fget is not None:
+            yield typing.get_type_hints(member.fget).get("return"), ASSOCIATION
+        elif inspect.isfunction(member) and (
+            not name.startswith("_") or name == "__call__"
+        ):
+            for annotation in typing.get_type_hints(member).values():
+                yield annotation, DEPENDENCY
 
 
-def _multiplicity(line: str, at: int, name: str) -> str:
-    holder = _holder(line, at)
-    if holder in MANY:
-        return "*"
-    if holder == "optional" or line[at + len(name) :].lstrip().startswith("| None"):
-        return "0..1"
-    return "1"
-
-
-def linked(diagram: str) -> str:
-    """pyreverse draws an association from an attribute it sees a body assign, which a
-    frozen dataclass and a Protocol never do — so the arrows are read off the member
-    lines instead: a class points at every other box its fields or signatures name, and
-    how many of it, taken at its widest where the same pair is named more than once."""
-    blocks = _blocks(diagram)
-    drawn = {_subject(block) for block in blocks} - {""}
-    edges: dict[tuple[str, str], str] = {}
-    for block in blocks:
-        subject = _subject(block)
-        for line in block[1:] if subject else []:
-            for found in NAMES.finditer(line):
-                named = found[0]
-                if named not in drawn or named == subject:
+def arrows(drawn: dict[str, type]) -> list[str]:
+    edges: dict[tuple[str, str, str], str] = {}
+    for name, box in drawn.items():
+        for annotation, kind in _annotations(box):
+            for referenced, count in _referenced(annotation, set(drawn.values())):
+                if referenced is box:
                     continue
-                edge = (subject, named)
-                counts = [
-                    edges.get(edge, "1"),
-                    _multiplicity(line, found.start(), named),
-                ]
-                edges[edge] = max(counts, key=lambda count: MULTIPLICITIES.index(count))
-    arrows = [f'  {a} --> "{count}" {b}' for (a, b), count in sorted(edges.items())]
-    return "\n".join([diagram, *arrows])
-
-
-def unfilled(diagram: str) -> str:
-    """The boxes empty: the members are what the arrows were computed from, and a name
-    with the lines it is joined by says more here than ninety fields do."""
-    return "\n".join(
-        f"  class {_subject(block)}" if _subject(block) else block[0]
-        for block in _blocks(diagram)
-    )
+                edge = (name, kind, referenced.__name__)
+                widest = max([edges.get(edge, "1"), count], key=MULTIPLICITIES.index)
+                edges[edge] = widest
+    associated = {
+        (importer, imported)
+        for importer, kind, imported in edges
+        if kind == ASSOCIATION
+    }
+    return [
+        f'  {importer} {kind} "{count}" {imported}'
+        for (importer, kind, imported), count in sorted(edges.items())
+        if kind == ASSOCIATION or (importer, imported) not in associated
+    ]
 
 
 def render() -> str:
-    drawn = classes((NAMESPACE / "domain", NAMESPACE / "ports"), "api")
-    return unfilled(linked(near(drawn, GENERATIONS)))
+    drawn = dict(sorted(boxes().items()))
+    return "\n".join(
+        ["classDiagram", *(f"  class {name}" for name in drawn), *arrows(drawn)]
+    )
 
 
 SECTIONS = (("The classes, read off the source", render),)
