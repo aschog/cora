@@ -696,6 +696,17 @@ def test_the_step_searches_the_question_and_hands_the_passages_to_the_model() ->
     assert "[1] protein.md: protein builds muscle" in message.content
 
 
+def test_a_gate_with_no_scope_words_no_reminder_at_all() -> None:
+    """Unreachable through the router today, which turns the gate off when no plugin
+    declared a scope — but the sentence is this class's to get right, and "anything
+    outside  —" is what the template gives back for a blank one."""
+    partial = _gate(scope="")({"question": "anything?"})
+
+    [message] = partial["messages"]
+    assert "outside" not in message.content
+    assert UNTRUSTED_NOTICE in message.content
+
+
 def test_the_nudge_holds_on_to_the_answer_it_is_second_guessing() -> None:
     """Holding the answer is what tells a failed second look apart from a failure
     after one: nothing has to count rounds to know which happened."""
