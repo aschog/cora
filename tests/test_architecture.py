@@ -82,9 +82,11 @@ OUT_OF_REACH: dict[str, tuple[tuple[str, ...], str]] = {
         "version of the use cases, which it can only be if it knows the ports alone",
     ),
     "the app": (
-        ("cora.frontends",),
-        "the composition root is what a frontend installs, so naming one would mean a "
-        "command-line shell had to install a web UI to reuse the wiring",
+        ("cora.frontends", "cora.plugins"),
+        "the composition root is what a frontend installs, so naming a frontend would "
+        "mean a command-line shell had to install a web UI to reuse the wiring; and it "
+        "now installs the guard its default set names, which is exactly why importing "
+        "a plugin rather than naming one in config has to stay impossible",
     ),
     "the plugins": (
         ("cora.engine", "cora.adapters", "cora.app", "cora.frontends"),

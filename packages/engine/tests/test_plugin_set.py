@@ -35,15 +35,13 @@ def test_the_offered_tools_run_in_config_order() -> None:
 
 
 def test_coras_rules_run_ahead_of_every_plugins_in_config_order() -> None:
-    first = make_plugin(tools=(), validation_rules=(_Refuses("first"),))
-    second = make_plugin(tools=(), validation_rules=(_Refuses("second"),))
+    guard, domain = _Refuses("first"), _Refuses("second")
+    first = make_plugin(tools=(), validation_rules=(guard,))
+    second = make_plugin(tools=(), validation_rules=(domain,))
 
     composed = PluginSet(((SECURITY, first), (FITNESS, second)))
 
-    theirs: list[_Refuses] = list(composed.rules[len(CORA_RULES) :])  # ty: ignore[invalid-assignment]
-
-    assert composed.rules[: len(CORA_RULES)] == CORA_RULES
-    assert [rule.message for rule in theirs] == ["first", "second"]
+    assert composed.rules == (*CORA_RULES, guard, domain)
 
 
 def test_two_plugins_offering_one_tool_name_is_a_config_error() -> None:

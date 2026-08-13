@@ -21,6 +21,8 @@ import zipfile
 import pytest
 import tomllib
 
+import workspace
+
 REPO = pathlib.Path(__file__).resolve().parent.parent
 PACKAGES = REPO / "packages"
 
@@ -37,43 +39,17 @@ def _resolved(dist: str) -> set[str]:
     return set(re.findall(r"([A-Za-z0-9][A-Za-z0-9._-]*) v\d", tree))
 
 
-def _plugin_distributions() -> list[tuple[str, str]]:
-    """Every plugin in the workspace, found rather than listed: a second plugin ships
-    from a tree of its own, and this is the guard that would otherwise cover one."""
-    return sorted(
-        (
-            tomllib.loads((path / "pyproject.toml").read_text())["project"]["name"],
-            tomllib.loads((path / "pyproject.toml").read_text())["tool"]["uv"][
-                "build-backend"
-            ]["module-name"],
-        )
-        for path in (PACKAGES / "plugins").iterdir()
-        if (path / "pyproject.toml").is_file()
-    )
-
-
 def test_the_contract_resolves_to_itself_alone() -> None:
     assert _resolved("cora-api") == {"cora-api"}
 
 
-@pytest.mark.parametrize(("distribution", "module"), _plugin_distributions())
+@pytest.mark.parametrize(("distribution", "module"), workspace.plugins())
 def test_a_plugin_resolves_the_contract_and_stops(
     distribution: str, module: str
 ) -> None:
     """Transitively, not just in the manifest: an engine reached through cora-api would
     show up here even though nothing declares it."""
     assert _resolved(distribution) == {distribution, "cora-api"}
-
-
-def _carrier_of(module: str) -> str:
-    """The distribution that ships a module, read off the manifests."""
-    for manifest in PACKAGES.rglob("pyproject.toml"):
-        declared = tomllib.loads(manifest.read_text())["tool"]["uv"]["build-backend"][
-            "module-name"
-        ]
-        if module in ([declared] if isinstance(declared, str) else declared):
-            return tomllib.loads(manifest.read_text())["project"]["name"]
-    raise AssertionError(f"no workspace member ships {module}")
 
 
 def test_the_app_resolves_every_plugin_it_defaults_to() -> None:
@@ -86,7 +62,7 @@ def test_the_app_resolves_every_plugin_it_defaults_to() -> None:
 
     assert DEFAULT_PLUGINS
     for module in DEFAULT_PLUGINS:
-        assert _carrier_of(module) in resolved, (
+        assert workspace.carrier_of(module) in resolved, (
             f"the default set names {module}, which `cora` does not install"
         )
 
@@ -193,7 +169,7 @@ def _import_failures(python: pathlib.Path, package: str) -> list[str]:
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize(("distribution", "module"), _plugin_distributions())
+@pytest.mark.parametrize(("distribution", "module"), workspace.plugins())
 def test_a_plugin_installs_the_contract_and_nothing_else(
     tmp_path: pathlib.Path,
     wheelhouse: pathlib.Path,
