@@ -153,8 +153,11 @@ Both are UML: the import diagram draws each package as a tabbed folder and each 
 dashed `«import»` dependency, nested the way the namespace nests. The page carries the DOT and
 `make diagram` draws the picture beside it, which nobody commits.
 
-A diagram about one package alone lives with that package rather than here: the api's classes
-are drawn in [`packages/api/diagrams.md`](../packages/api/diagrams.md), by the same command.
+A diagram about one package alone lives with that package rather than here, drawn by the same
+command. [`packages/api/diagrams.md`](../packages/api/diagrams.md) is the contract's inventory:
+the shapes and the slots, by name. [`packages/engine/diagrams.md`](../packages/engine/diagrams.md)
+is the one to read for how the code hangs together — every class with what it is built with,
+what it answers to, and which port it fills.
 
 | If you are writing | You install | You do not get |
 |---|---|---|
