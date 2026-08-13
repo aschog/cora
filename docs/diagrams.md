@@ -54,12 +54,26 @@ digraph packages {
 
 ```mermaid
 sequenceDiagram
-  User->>Agent: How does BM25 handle term saturation?
-  Agent->>ChatModel: complete()
-  ChatModel-->>Agent: Decided to call search_documents
-  Agent->>search_documents: query="term saturation"
-  search_documents-->>Agent: 1 passage from bm25.txt
-  Agent->>ChatModel: complete()
-  ChatModel-->>Agent: Decided no tool was needed
+  User->>Agent: answer("How does BM25 handle term saturation?")
+  Agent->>GraphRunner: run(dict, "turn-diagram")
+  GraphRunner-->>Agent: generator
+  GraphRunner->>PrepareStep: (dict)
+  PrepareStep->>Memory: recall()
+  Memory-->>PrepareStep: 1 Fact
+  GraphRunner->>ModelStep: (dict)
+  ModelStep->>ChatModel: complete(2 Messages, 5 Tools)
+  ChatModel-->>ModelStep: ModelReply
+  GraphRunner->>Router: (dict)
+  Router-->>GraphRunner: "tools"
+  GraphRunner->>ToolStep: (dict)
+  KnowledgeBase->>Embedder: embed(1 str)
+  Embedder-->>KnowledgeBase: 1 list
+  KnowledgeBase->>Retriever: query(16 floats, 5, None)
+  Retriever-->>KnowledgeBase: 1 RetrievedChunk
+  GraphRunner->>ModelStep: (dict)
+  ModelStep->>ChatModel: complete(4 Messages, 5 Tools)
+  ChatModel-->>ModelStep: ModelReply
+  GraphRunner->>Router: (dict)
+  Router-->>GraphRunner: "done"
   Agent-->>User: BM25 damps repeated terms [1].
 ```
