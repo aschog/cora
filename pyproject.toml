@@ -27,6 +27,7 @@ dev = [
     "cora-plugin-fitness",
     "cora-plugin-security",
     "grimp>=3.15",
+    "pylint>=4.0.7",
     "pytest>=9.1.1",
     "pytest-watcher>=0.6.3",
     "ruff>=0.15.22",

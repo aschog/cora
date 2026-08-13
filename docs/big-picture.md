@@ -149,6 +149,10 @@ These arrows are what each package **declares**. What its modules actually **imp
 Reading the two together is how the guard above shows up: the declared arrow from `cora` to `cora-plugin-security` has no
 import behind it, and must not.
 
+A diagram about one package alone lives with that package rather than here: the domain's
+classes are drawn in [`packages/api/diagrams.md`](../packages/api/diagrams.md), by the same
+command.
+
 | If you are writing | You install | You do not get |
 |---|---|---|
 | a plugin, domain or guard | `cora-api` | the engine, the adapters, any framework — the fitness bundle uses four names from it |

@@ -131,13 +131,17 @@ uv run --env-file .env pytest -m llm   # live acceptance: real OpenRouter round-
 uv run ruff format .          # format
 uv run ruff check .           # lint
 uv run ty check               # type check
-make diagram                  # rewrite docs/diagrams.md from the code
+make diagram                  # rewrite the generated diagram pages from the code
 ```
 
-`make diagram` needs nothing but the dev group — `grimp` reads the imports, one scripted turn
-reports its own trace, and both diagrams are Mermaid, so there is no graphviz and no image to
-render. Nothing checks that the committed pages are current: run the target after a change that
-moves an import or a step.
+`make diagram` needs nothing but the dev group — `grimp` reads the imports, `pyreverse` reads the
+domain's classes, one scripted turn reports its own trace, and every diagram is Mermaid, so there
+is no graphviz and no image to render. A picture that spans the workspace lands in
+`docs/diagrams.md`; a picture of one package lands beside that package, written by the
+`diagram.py` next to its manifest — `packages/api/diagram.py` draws
+`packages/api/diagrams.md`, and the command finds it rather than naming it. Nothing checks that
+the committed pages are current: run the target after a change that moves an import, a class or
+a step.
 
 No browser is needed anywhere: the UI is driven headlessly through Streamlit's
 `AppTest`, including the live tier.
