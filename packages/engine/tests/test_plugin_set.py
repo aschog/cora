@@ -40,11 +40,10 @@ def test_coras_rules_run_ahead_of_every_plugins_in_config_order() -> None:
 
     composed = PluginSet(((SECURITY, first), (FITNESS, second)))
 
+    theirs: list[_Refuses] = list(composed.rules[len(CORA_RULES) :])  # ty: ignore[invalid-assignment]
+
     assert composed.rules[: len(CORA_RULES)] == CORA_RULES
-    assert [rule.message for rule in composed.rules[len(CORA_RULES) :]] == [  # ty: ignore[unresolved-attribute]
-        "first",
-        "second",
-    ]
+    assert [rule.message for rule in theirs] == ["first", "second"]
 
 
 def test_two_plugins_offering_one_tool_name_is_a_config_error() -> None:

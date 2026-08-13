@@ -42,12 +42,15 @@ listed: a second plugin ships from a tree of its own, and a walker rooted at the
 one passes by covering none of it."""
 
 
+PACKAGES = pathlib.Path(__file__).resolve().parent.parent / "packages"
+
+
 def _extension_roots() -> tuple[pathlib.Path, ...]:
     return tuple(
         sorted(
-            (path / "src" / "cora" / point).resolve()
+            path / "src" / "cora" / point
             for point in EXTENSION_POINTS
-            for path in pathlib.Path("packages", point).iterdir()
+            for path in (PACKAGES / point).iterdir()
             if (path / "pyproject.toml").is_file()
         )
     )
@@ -83,6 +86,12 @@ OUT_OF_REACH: dict[str, tuple[tuple[str, ...], str]] = {
         "the composition root is what a frontend installs, so naming one would mean a "
         "command-line shell had to install a web UI to reuse the wiring",
     ),
+    "the plugins": (
+        ("cora.engine", "cora.adapters", "cora.app", "cora.frontends"),
+        "a plugin is data over the contract, which is what lets it ship as a wheel "
+        "the engine is absent from: reaching any of these makes it a plugin only this "
+        "deployment can install",
+    ),
     "the frontends": (
         ("cora.adapters", "cora.plugins"),
         "a frontend shows what the app and the use cases hand it; reaching an adapter "
@@ -90,10 +99,12 @@ OUT_OF_REACH: dict[str, tuple[tuple[str, ...], str]] = {
         "domain — both are chosen at assembly, not at the screen",
     ),
 }
+PLUGIN_ROOTS = tuple(root for root in _extension_roots() if root.name == "plugins")
 LAYER_FILES: dict[str, list[pathlib.Path]] = {
     "the contract and the engine": CORE_FILES,
     "the adapters": sorted(_root(cora.adapters).rglob("*.py")),
     "the app": sorted(_root(cora.app).rglob("*.py")),
+    "the plugins": sorted(file for root in PLUGIN_ROOTS for file in root.rglob("*.py")),
     "the frontends": sorted(UI_ROOT.rglob("*.py")),
 }
 REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in files]

@@ -197,7 +197,7 @@ def test_a_run_that_spends_the_whole_round_budget_still_answers() -> None:
     assert len([step for step in result.trace if isinstance(step, ToolUse)]) == 2
 
 
-def test_the_plugins_system_prompt_reaches_the_model() -> None:
+def test_the_plugins_instructions_reach_the_model() -> None:
     model = ScriptedChatModel([ModelReply(text="ok")])
     app = _assemble(
         make_plugin(instructions="You are a fitness coach."), chat_model=model
