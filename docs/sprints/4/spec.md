@@ -35,7 +35,7 @@ it. Story 3 adds `Memory` on the same line: four verbs of intent rather than a k
 store, and the one slot that may be left empty — an app assembled without it is offered no
 `remember` tool at all. Both follow the line the code mostly draws: `ports/` holds
 Protocols whose implementations live *outside* the engine, while collaborator Protocols
-implemented *inside* it (`ContextSource`, `InputValidator`, `ToolExecutor`) sit beside the
+implemented *inside* it (`ContextSource`, `ToolExecutor`) sit beside the
 service that uses them.
 
 The **router stays in core**: a plain function from state to the next step, budget check
@@ -65,6 +65,19 @@ The backlog's *no grounding or scope decision*, found in use.
 ### [10. One core, many frontends, many plugins](done/story-10.md) ✔
 
 Structural refactors: no user-facing change, no bonus.
+
+### [11. The plugins I choose, or none](done/story-11.md) ✔
+
+cora becomes domain-agnostic by default: `CORA_PLUGINS` takes an ordered list, a plugin
+contributes whatever it has, and the prompt-injection guard becomes the one plugin the
+default set ships. The backlog's *stronger injection rules as a plugin* is blocked on it.
+
+## In flight
+
+### [12. It says when it has nothing to answer from](story-12.md)
+
+An in-scope question against an empty store is answered from model knowledge today. After
+story 11 cora words the grounding reminder, and it says it has no documents instead.
 
 ## Not built this sprint
 
@@ -112,8 +125,9 @@ Two medium plus one hard is the maximum-points bar. Cleared:
   the thread, its store owns the facts, and a `remember` tool plus a sidebar panel put both
   in the user's hands.
 - **Medium 8 · Security guard, developer settings out of the user experience** — the
-  validation pipeline refuses prompt injection before the model is called
-  (`engine/validation.py`) and the plugin adds its own medical rule; retrieved document text
+  ordered rules refuse prompt injection before the model is called — the screen is a
+  plugin now, `cora.plugins.security`, in the default set — and the fitness plugin adds
+  its own medical rule; retrieved document text
   reaches the model as an untrusted-data `tool` message, never as system authority (story
   1). The user's screen carries documents, memory, chat and the trace — no model picker,
   prompt box or retrieval knob; those are environment variables only (`app/config.py`).

@@ -103,12 +103,14 @@ class ScriptedChatModel:
         self._replies = list(replies)
         self.last_messages: tuple[Message, ...] | None = None
         self.last_tools: tuple[Tool, ...] | None = None
+        self.completions = 0
 
     def complete(
         self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
     ) -> ModelReply:
         self.last_messages = messages
         self.last_tools = tools
+        self.completions += 1
         return self._replies.pop(0)
 
 

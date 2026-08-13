@@ -1,38 +1,39 @@
 import pytest
 
-from cora.app.assembly import App, assemble
+from app_builder import assembled, indexed
+from cora.app.assembly import App
 from cora.domain.errors import LlmError, RetrievalError, ToolLoopLimitError
 from cora.domain.trace import Reconsidered, SecondLookLost, ToolUse
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ChatModel, Message, ModelReply
 from cora.ports.plugin import Tool, ToolCall
-from fakes import CountingRetriever, FakeEmbedder, FakeRetriever, ScriptedChatModel
+from cora.ports.retrieval import Retriever
+from fakes import CountingRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin
 
 SEED_DOC = ("protein.md", b"aim for 1.6 g of protein per kg")
 OFF_THE_CUFF = "Beginners should train three times a week."
 GROUNDED = "Your notes say 1.6 g per kg [1]."
-REMINDER = "You answered without searching. Search the documents first."
+SCOPE = "training and nutrition"
 FABRICATED = "Protein is 1.6 g per kg [1]."
 THREAD = "t1"
 
 
-def _assemble_with(chat_model: ChatModel, max_tool_rounds: int = 8) -> App:
-    return assemble(
-        chat_model=chat_model,
-        embedder=FakeEmbedder(),
-        retriever=CountingRetriever(),
-        plugin=make_plugin(seed_docs=(SEED_DOC,), grounding=REMINDER),
-        max_tool_rounds=max_tool_rounds,
-    )
-
-
-def _assemble(replies: list[ModelReply], retriever: FakeRetriever) -> App:
-    return assemble(
-        chat_model=ScriptedChatModel(replies),
-        embedder=FakeEmbedder(),
-        retriever=retriever,
-        plugin=make_plugin(seed_docs=(SEED_DOC,), grounding=REMINDER),
+def _app(
+    chat_model: ChatModel,
+    retriever: Retriever | None = None,
+    *,
+    scope: str = SCOPE,
+    max_tool_rounds: int = 8,
+) -> App:
+    return indexed(
+        assembled(
+            chat_model=chat_model,
+            retriever=retriever or CountingRetriever(),
+            plugin=make_plugin(scope=scope),
+            max_tool_rounds=max_tool_rounds,
+        ),
+        SEED_DOC,
     )
 
 
@@ -51,8 +52,9 @@ def test_an_answer_that_skipped_the_documents_is_sent_back_for_them() -> None:
     """One search, and the gate runs it: the model is handed the passages rather
     than asked to fetch them, so the grounded answer costs one round, not three."""
     retriever = CountingRetriever()
-    app = _assemble(
-        [ModelReply(text=OFF_THE_CUFF), ModelReply(text=GROUNDED)], retriever
+    app = _app(
+        ScriptedChatModel([ModelReply(text=OFF_THE_CUFF), ModelReply(text=GROUNDED)]),
+        retriever,
     )
 
     result = app.agent.answer("How much protein should I eat?", THREAD)
@@ -64,9 +66,10 @@ def test_an_answer_that_skipped_the_documents_is_sent_back_for_them() -> None:
 
 @pytest.mark.integration
 def test_the_trace_shows_the_answer_being_sent_back() -> None:
-    app = _assemble(
-        [ModelReply(text=OFF_THE_CUFF), _searching(), ModelReply(text=GROUNDED)],
-        CountingRetriever(),
+    app = _app(
+        ScriptedChatModel(
+            [ModelReply(text=OFF_THE_CUFF), _searching(), ModelReply(text=GROUNDED)]
+        )
     )
 
     result = app.agent.answer("How much protein should I eat?", THREAD)
@@ -82,7 +85,10 @@ def test_small_talk_keeps_its_answer_and_cites_nothing() -> None:
     not do is put a citation on a greeting. Irrelevant evidence leaves the answer as
     it was, so nothing is registered against it."""
     retriever = CountingRetriever()
-    app = _assemble([ModelReply(text="Hello!"), ModelReply(text="Hello!")], retriever)
+    app = _app(
+        ScriptedChatModel([ModelReply(text="Hello!"), ModelReply(text="Hello!")]),
+        retriever,
+    )
 
     result = app.agent.answer("Hi there!", THREAD)
 
@@ -124,7 +130,7 @@ class _DiesAfterSearching:
 
 @pytest.mark.integration
 def test_a_dead_second_look_gives_back_the_answer_it_was_second_guessing() -> None:
-    app = _assemble_with(_DiesAfterTheNudge())
+    app = _app(_DiesAfterTheNudge())
 
     result = app.agent.answer("How much protein should I eat?", THREAD)
 
@@ -136,7 +142,7 @@ def test_a_dead_second_look_gives_back_the_answer_it_was_second_guessing() -> No
 def test_a_failure_after_the_second_look_worked_is_not_forgiven() -> None:
     """Once the gate's round has been and gone, the run is an ordinary run: an
     answer from before the search is not an answer to the search."""
-    app = _assemble_with(_DiesAfterSearching())
+    app = _app(_DiesAfterSearching())
 
     with pytest.raises(LlmError):
         app.agent.answer("How much protein should I eat?", THREAD)
@@ -147,7 +153,7 @@ def test_a_failure_after_the_second_look_worked_is_not_forgiven() -> None:
 def test_the_friendly_give_up_is_never_swallowed_by_the_gate(budget: int) -> None:
     """The apology is a verdict the router already reached; forgiving it would
     show work the run never did."""
-    app = _assemble_with(_SearchesForever(), max_tool_rounds=budget)
+    app = _app(_SearchesForever(), max_tool_rounds=budget)
 
     with pytest.raises(ToolLoopLimitError):
         app.agent.answer("How much protein should I eat?", THREAD)
@@ -161,7 +167,7 @@ def test_a_budget_too_small_for_a_second_look_leaves_the_answer_alone(
     """Sending an answer back with no room to read the evidence would spend the
     budget on a round that cannot finish, and end a good turn in an apology."""
     model = _SearchesForever()
-    app = _assemble_with(model, max_tool_rounds=budget)
+    app = _app(model, max_tool_rounds=budget)
 
     result = app.agent.answer("How much protein should I eat?", THREAD)
 
@@ -183,14 +189,9 @@ class _SearchesForever:
 
 
 @pytest.mark.integration
-def test_a_plugin_that_asks_for_no_grounding_answers_in_one_round() -> None:
+def test_a_plugin_that_declares_no_scope_answers_in_one_round() -> None:
     retriever = CountingRetriever()
-    app = assemble(
-        chat_model=ScriptedChatModel([ModelReply(text=OFF_THE_CUFF)]),
-        embedder=FakeEmbedder(),
-        retriever=retriever,
-        plugin=make_plugin(seed_docs=(SEED_DOC,)),
-    )
+    app = _app(ScriptedChatModel([ModelReply(text=OFF_THE_CUFF)]), retriever, scope="")
 
     result = app.agent.answer("How much protein should I eat?", THREAD)
 
@@ -211,12 +212,7 @@ def test_a_second_look_whose_search_breaks_gives_back_the_answer_in_hand() -> No
     model = ScriptedChatModel(
         [ModelReply(text=OFF_THE_CUFF), ModelReply(text=OFF_THE_CUFF)]
     )
-    app = assemble(
-        chat_model=model,
-        embedder=FakeEmbedder(),
-        retriever=_FailingRetrieverOnSearch(),
-        plugin=make_plugin(seed_docs=(SEED_DOC,), grounding=REMINDER),
-    )
+    app = _app(model, _FailingRetrieverOnSearch())
 
     result = app.agent.answer("How much protein should I eat?", THREAD)
 
@@ -229,7 +225,7 @@ def test_a_second_look_whose_search_breaks_gives_back_the_answer_in_hand() -> No
 @pytest.mark.integration
 def test_a_rescued_turn_says_the_second_look_never_came_back() -> None:
     seen: list[str] = []
-    app = _assemble_with(_DiesAfterTheNudge())
+    app = _app(_DiesAfterTheNudge())
 
     result = app.agent.answer(
         "How much protein should I eat?",
@@ -243,41 +239,31 @@ def test_a_rescued_turn_says_the_second_look_never_came_back() -> None:
 
 
 @pytest.mark.integration
-def test_the_shipped_reminder_is_what_the_model_is_sent_back_with() -> None:
-    from cora.plugins.fitness import GROUNDING, PLUGIN
+def test_the_shipped_scope_is_what_the_reminder_names() -> None:
+    """Cora words the send-back; what the shipped plugin contributes is the phrase
+    naming its documents, and that is what has to reach the model."""
+    from cora.plugins.fitness import PLUGIN, SCOPE
 
     model = ScriptedChatModel([ModelReply(text=OFF_THE_CUFF), ModelReply(text="ok")])
-    app = assemble(
-        chat_model=model,
-        embedder=FakeEmbedder(),
-        retriever=CountingRetriever(),
-        plugin=PLUGIN,
-    )
+    app = assembled(chat_model=model, retriever=CountingRetriever(), plugin=PLUGIN)
 
     app.agent.answer("How much protein should I eat?", THREAD)
 
     assert model.last_messages is not None
-    sent_back = [
-        m for m in model.last_messages if m.content.startswith(GROUNDING.strip())
-    ]
+    sent_back = [m for m in model.last_messages if f"outside {SCOPE}" in m.content]
     assert len(sent_back) == 1
 
 
 @pytest.mark.integration
 def test_the_shipped_plugin_sends_an_ungrounded_answer_back() -> None:
     """Every other test here builds its own plugin, so the one cora actually
-    ships could lose its grounding and no test would notice."""
+    ships could lose its scope and no test would notice."""
     from cora.plugins.fitness import PLUGIN
 
     model = ScriptedChatModel(
         [ModelReply(text=OFF_THE_CUFF), _searching(), ModelReply(text=GROUNDED)]
     )
-    app = assemble(
-        chat_model=model,
-        embedder=FakeEmbedder(),
-        retriever=CountingRetriever(),
-        plugin=PLUGIN,
-    )
+    app = assembled(chat_model=model, retriever=CountingRetriever(), plugin=PLUGIN)
 
     result = app.agent.answer("How much protein should I eat?", THREAD)
 
@@ -292,12 +278,7 @@ def test_the_shipped_prompt_asks_for_the_users_own_documents() -> None:
     from cora.plugins.fitness import PLUGIN
 
     model = ScriptedChatModel([ModelReply(text=OFF_THE_CUFF), ModelReply(text="ok")])
-    app = assemble(
-        chat_model=model,
-        embedder=FakeEmbedder(),
-        retriever=CountingRetriever(),
-        plugin=PLUGIN,
-    )
+    app = assembled(chat_model=model, retriever=CountingRetriever(), plugin=PLUGIN)
 
     app.agent.answer("How much protein should I eat?", THREAD)
 

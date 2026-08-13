@@ -36,12 +36,31 @@ def _root(module: ModuleType) -> pathlib.Path:
 # passes while silently covering none of the others. The contract now ships apart from
 # the engine, so the pure set spans two distributions and three modules.
 PURE_ROOTS = (_root(cora.domain), _root(cora.ports), _root(cora.engine))
+EXTENSION_POINTS = ("plugins", "frontends")
+"""The two directories that expect siblings. Their contents are found rather than
+listed: a second plugin ships from a tree of its own, and a walker rooted at the first
+one passes by covering none of it."""
+
+
+PACKAGES = pathlib.Path(__file__).resolve().parent.parent / "packages"
+
+
+def _extension_roots() -> tuple[pathlib.Path, ...]:
+    return tuple(
+        sorted(
+            path / "src" / "cora" / point
+            for point in EXTENSION_POINTS
+            for path in (PACKAGES / point).iterdir()
+            if (path / "pyproject.toml").is_file()
+        )
+    )
+
+
 LAYER_ROOTS = (
     *PURE_ROOTS,
     _root(cora.adapters),
     _root(cora.app),
-    _root(cora.plugins.fitness).parent,
-    _root(cora.frontends.streamlit).parent,
+    *_extension_roots(),
 )
 CORE_FILES = sorted(file for root in PURE_ROOTS for file in root.rglob("*.py"))
 PACKAGE_FILES = sorted(file for root in LAYER_ROOTS for file in root.rglob("*.py"))
@@ -63,9 +82,17 @@ OUT_OF_REACH: dict[str, tuple[tuple[str, ...], str]] = {
         "version of the use cases, which it can only be if it knows the ports alone",
     ),
     "the app": (
-        ("cora.frontends",),
-        "the composition root is what a frontend installs, so naming one would mean a "
-        "command-line shell had to install a web UI to reuse the wiring",
+        ("cora.frontends", "cora.plugins"),
+        "the composition root is what a frontend installs, so naming a frontend would "
+        "mean a command-line shell had to install a web UI to reuse the wiring; and it "
+        "now installs the guard its default set names, which is exactly why importing "
+        "a plugin rather than naming one in config has to stay impossible",
+    ),
+    "the plugins": (
+        ("cora.engine", "cora.adapters", "cora.app", "cora.frontends"),
+        "a plugin is data over the contract, which is what lets it ship as a wheel "
+        "the engine is absent from: reaching any of these makes it a plugin only this "
+        "deployment can install",
     ),
     "the frontends": (
         ("cora.adapters", "cora.plugins"),
@@ -74,10 +101,12 @@ OUT_OF_REACH: dict[str, tuple[tuple[str, ...], str]] = {
         "domain — both are chosen at assembly, not at the screen",
     ),
 }
+PLUGIN_ROOTS = tuple(root for root in _extension_roots() if root.name == "plugins")
 LAYER_FILES: dict[str, list[pathlib.Path]] = {
     "the contract and the engine": CORE_FILES,
     "the adapters": sorted(_root(cora.adapters).rglob("*.py")),
     "the app": sorted(_root(cora.app).rglob("*.py")),
+    "the plugins": sorted(file for root in PLUGIN_ROOTS for file in root.rglob("*.py")),
     "the frontends": sorted(UI_ROOT.rglob("*.py")),
 }
 REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in files]

@@ -1,13 +1,30 @@
 import pytest
 
 from cora.domain.errors import PluginLoadError
-from cora.engine.plugin_registry import load_plugin
+from cora.engine.plugin_registry import load_plugin, load_plugins
 
 
 def test_resolving_a_name_returns_the_module_level_plugin_bundle() -> None:
     plugin = load_plugin("fixture_plugins.valid")
 
-    assert plugin.system_prompt == "You are a test plugin."
+    assert plugin.instructions == "You are a test plugin."
+    assert [tool.name for tool in plugin.tools] == ["one", "two", "three"]
+
+
+def test_a_bundle_of_rules_alone_loads() -> None:
+    """What makes a guard plugin possible: it offers the model nothing and only
+    turns input down."""
+    plugin = load_plugin("fixture_plugins.rules_only")
+
+    assert plugin.tools == ()
+    assert len(plugin.validation_rules) == 1
+    assert plugin.instructions == ""
+
+
+def test_a_bundle_of_tools_alone_loads() -> None:
+    plugin = load_plugin("fixture_plugins.tools_only")
+
+    assert plugin.instructions == ""
     assert [tool.name for tool in plugin.tools] == ["one", "two", "three"]
 
 
@@ -38,8 +55,7 @@ def test_plugin_module_raising_during_import_surfaces_as_typed_error() -> None:
 BAD_PLUGIN_FIXTURES = [
     ("no_bundle", "defines no PLUGIN"),
     ("wrong_type", "not a Plugin bundle"),
-    ("blank_prompt", "system prompt is blank"),
-    ("no_tools", "provides no tools"),
+    ("blank_name", "name is blank"),
     ("duplicate_names", "share the same name"),
     ("non_callable_run", "no callable run"),
     ("bad_schema", "invalid parameter schema"),
@@ -57,3 +73,17 @@ def test_bad_plugin_bundle_raises_typed_error_naming_the_failure(
 
     assert module_path in excinfo.value.user_message
     assert reason in excinfo.value.user_message
+
+
+def test_one_bad_module_in_a_list_names_that_module_not_the_list() -> None:
+    with pytest.raises(PluginLoadError) as excinfo:
+        load_plugins(
+            [
+                "fixture_plugins.valid",
+                "fixture_plugins.no_such_module",
+                "fixture_plugins.rules_only",
+            ]
+        )
+
+    assert "fixture_plugins.no_such_module" in excinfo.value.user_message
+    assert "fixture_plugins.valid" not in excinfo.value.user_message

@@ -1,48 +1,24 @@
-import pytest
-
-from cora.domain.errors import InputRejectedError
-from cora.engine.plugin_registry import load_plugin
-from cora.engine.validation import (
-    EmptyInputRule,
-    MaxLengthRule,
-    ValidationPipeline,
-)
-from cora.plugins.fitness import PLUGIN, SYSTEM_PROMPT
-from cora.ports.plugin import Plugin
+from cora.plugins.fitness import INSTRUCTIONS, PLUGIN, SCOPE
 
 
-def test_system_prompt_sets_persona_and_load_bearing_instructions() -> None:
-    prompt = SYSTEM_PROMPT.lower()
+def test_the_instructions_state_the_domains_own_business() -> None:
+    """The persona cora carries is cora's; what this section adds is the domain, the
+    tools that must do its arithmetic, and where it stops."""
+    instructions = INSTRUCTIONS.lower()
 
-    assert prompt.strip()
-    assert "coach" in prompt
-    assert "cite" in prompt or "source" in prompt
-    assert "tool" in prompt
-    assert "medical" in prompt
-
-
-def test_load_plugin_returns_the_validated_bundle() -> None:
-    plugin = load_plugin("cora.plugins.fitness")
-
-    assert isinstance(plugin, Plugin)
-    assert len(plugin.tools) == 3
-    assert plugin.validation_rules
-    assert plugin.seed_docs
+    assert "coach" in instructions
+    assert "cite" in instructions
+    assert "tool" in instructions
+    assert "medical" in instructions
 
 
-def _pipeline() -> ValidationPipeline:
-    return ValidationPipeline(
-        core_rules=(EmptyInputRule(), MaxLengthRule(max_chars=1000)),
-        plugin_rules=PLUGIN.validation_rules,
-    )
+def test_the_scope_is_a_phrase_that_can_join_another() -> None:
+    assert SCOPE.strip() == SCOPE
+    assert "." not in SCOPE
+    assert len(SCOPE.splitlines()) == 1
 
 
-def test_plugin_rule_redirects_a_dosage_question_through_the_pipeline() -> None:
-    with pytest.raises(InputRejectedError):
-        _pipeline().validate("What steroid dosage should I take?")
-
-
-def test_pipeline_passes_a_benign_question_unchanged() -> None:
-    question = "How much protein should I eat to build muscle?"
-
-    assert _pipeline().validate(question) == question
+def test_the_bundle_offers_its_calculators_and_its_safety_rule() -> None:
+    assert PLUGIN.name.strip()
+    assert len(PLUGIN.tools) == 3
+    assert PLUGIN.validation_rules

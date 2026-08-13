@@ -13,6 +13,7 @@ cora-api = { workspace = true }
 cora-engine = { workspace = true }
 cora-adapters = { workspace = true }
 cora-plugin-fitness = { workspace = true }
+cora-plugin-security = { workspace = true }
 cora = { workspace = true }
 cora-frontend-streamlit = { workspace = true }
 
@@ -24,6 +25,7 @@ cora-frontend-streamlit = { workspace = true }
 dev = [
     "cora-frontend-streamlit",
     "cora-plugin-fitness",
+    "cora-plugin-security",
     "pytest>=9.1.1",
     "pytest-watcher>=0.6.3",
     "ruff>=0.15.22",
@@ -40,6 +42,7 @@ root = [
     "packages/app/src",
     "packages/frontends/streamlit/src",
     "packages/plugins/fitness/src",
+    "packages/plugins/security/src",
     "tests",
 ]
 
@@ -51,6 +54,7 @@ src = [
     "packages/app/src",
     "packages/frontends/streamlit/src",
     "packages/plugins/fitness/src",
+    "packages/plugins/security/src",
     "tests",
 ]
 

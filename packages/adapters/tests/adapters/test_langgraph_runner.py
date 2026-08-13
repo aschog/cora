@@ -27,7 +27,7 @@ from cora.engine.steps import (
     ToolStep,
 )
 from cora.engine.tool_runtime import ToolRuntime
-from cora.engine.validation import EmptyInputRule, ValidationPipeline
+from cora.engine.validation import EmptyInputRule
 from cora.ports.chat_model import ChatModel, Message, ModelReply, Role
 from cora.ports.plugin import Tool, ToolCall
 from fakes import FailingChatModel, FakeContextSource, add_tool
@@ -228,12 +228,10 @@ def _real_runner(
     model: ChatModel, rounds: int, grounded: bool = False
 ) -> LangGraphRunner:
     return LangGraphRunner(
-        ground=GroundStep(
-            reminder="weigh these", context_source=FakeContextSource(), top_k=3
-        ),
+        ground=GroundStep(scope="protein", context_source=FakeContextSource(), top_k=3),
         prepare=PrepareStep(
-            validation=ValidationPipeline((EmptyInputRule(),), ()),
-            system_prompt="SYS",
+            rules=(EmptyInputRule(),),
+            instructions="SYS",
         ),
         model=ModelStep(chat_model=model, tools=(add_tool(),), max_history_turns=20),
         tools=ToolStep(ToolRuntime(tools=(add_tool(),))),

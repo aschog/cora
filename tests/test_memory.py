@@ -7,8 +7,7 @@ from streamlit.testing.v1 import AppTest
 
 from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.plugin import ToolCall
-from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel
-from fixture_plugins import make_plugin
+from fakes import ScriptedChatModel
 
 FACT = "The user is vegetarian."
 SHARED = "I'm vegetarian — keep that in mind."
@@ -34,15 +33,9 @@ def _memory_at(path: pathlib.Path):
 
 
 def _app(memory, chat_model: ChatModel):
-    from cora.app.assembly import assemble
+    from app_builder import assembled
 
-    return assemble(
-        chat_model=chat_model,
-        embedder=FakeEmbedder(),
-        retriever=FakeRetriever(),
-        plugin=make_plugin(),
-        memory=memory,
-    )
+    return assembled(chat_model=chat_model, memory=memory)
 
 
 def _page(app) -> None:  # AppTest re-executes this without the module's globals

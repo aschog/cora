@@ -4,7 +4,8 @@ from dataclasses import dataclass
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from cora.app.assembly import App, assemble
+from app_builder import assembled, indexed
+from cora.app.assembly import App
 from cora.domain.chunk import Chunk
 from cora.domain.errors import (
     ConfigurationError,
@@ -26,7 +27,6 @@ from cora.ports.retrieval import Retriever
 from fakes import (
     FailingChatModel,
     FailingMemory,
-    FakeEmbedder,
     FakeMemory,
     FakeRetriever,
     ReadOnlyMemory,
@@ -37,12 +37,7 @@ from fixture_plugins import make_plugin
 
 
 def _app(chat_model: ChatModel, plugin: Plugin | None = None) -> App:
-    return assemble(
-        chat_model=chat_model,
-        embedder=FakeEmbedder(),
-        retriever=FakeRetriever(),
-        plugin=plugin or make_plugin(),
-    )
+    return assembled(chat_model=chat_model, plugin=plugin)
 
 
 class _CountingRetriever(FakeRetriever):
@@ -74,11 +69,8 @@ class _FlakyRetriever(FakeRetriever):
 
 
 def _app_on(retriever: Retriever, plugin: Plugin | None = None) -> App:
-    return assemble(
-        chat_model=ScriptedChatModel([]),
-        embedder=FakeEmbedder(),
-        retriever=retriever,
-        plugin=plugin or make_plugin(),
+    return assembled(
+        chat_model=ScriptedChatModel([]), retriever=retriever, plugin=plugin
     )
 
 
@@ -228,8 +220,7 @@ def test_successful_upload_confirms_with_its_chunk_count() -> None:
 
 @pytest.mark.integration
 def test_uploading_content_already_indexed_reports_a_duplicate() -> None:
-    plugin = make_plugin(seed_docs=(("seed.md", b"protein facts"),))
-    at = _run_page(_app(ScriptedChatModel([]), plugin=plugin))
+    at = _run_page(indexed(_app(ScriptedChatModel([])), ("seed.md", b"protein facts")))
 
     at.file_uploader[0].set_value(("copy.md", b"protein facts", "text/markdown"))
     at.run()
@@ -330,8 +321,7 @@ def test_detaching_a_file_restores_its_attempt_budget() -> None:
 @pytest.mark.integration
 def test_upload_error_clears_on_the_next_rerun_without_re_ingesting() -> None:
     retriever = _CountingRetriever()
-    plugin = make_plugin(seed_docs=(("seed.md", b"protein facts"),))
-    at = _run_page(_app_on(retriever, plugin))
+    at = _run_page(indexed(_app_on(retriever), ("seed.md", b"protein facts")))
     retriever.ingest_attempts = 0
 
     at.file_uploader[0].set_value(("empty.txt", b"", "text/plain"))
@@ -563,13 +553,7 @@ def test_upload_then_ask_shows_answer_with_sources() -> None:
 
 
 def _remembering_app(memory) -> App:
-    return assemble(
-        chat_model=ScriptedChatModel([ModelReply(text="ok")]),
-        embedder=FakeEmbedder(),
-        retriever=FakeRetriever(),
-        plugin=make_plugin(),
-        memory=memory,
-    )
+    return assembled(memory=memory)
 
 
 @pytest.mark.integration

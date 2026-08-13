@@ -1,1 +1,1 @@
-PLUGIN = {"system_prompt": "a dict is not a Plugin"}
+PLUGIN = {"instructions": "a dict is not a Plugin"}

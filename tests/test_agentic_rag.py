@@ -1,14 +1,9 @@
-from cora.app.assembly import App, assemble
+from app_builder import assembled, indexed
+from cora.app.assembly import App
 from cora.domain.trace import ToolUse
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import ToolCall
-from fakes import (
-    CountingRetriever,
-    FakeEmbedder,
-    FakeRetriever,
-    ScriptedChatModel,
-    add_tool,
-)
+from fakes import CountingRetriever, FakeRetriever, ScriptedChatModel, add_tool
 from fixture_plugins import make_plugin
 
 SEED_DOC = ("note.md", b"protein builds muscle")
@@ -24,11 +19,13 @@ def _call(name: str, call_id: str, **arguments: object) -> ModelReply:
 
 
 def _assemble(replies: list[ModelReply], retriever: FakeRetriever) -> App:
-    return assemble(
-        chat_model=ScriptedChatModel(replies),
-        embedder=FakeEmbedder(),
-        retriever=retriever,
-        plugin=make_plugin(tools=(add_tool(),), seed_docs=(SEED_DOC,)),
+    return indexed(
+        assembled(
+            chat_model=ScriptedChatModel(replies),
+            retriever=retriever,
+            plugin=make_plugin(tools=(add_tool(),)),
+        ),
+        SEED_DOC,
     )
 
 

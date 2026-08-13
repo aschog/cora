@@ -3,7 +3,8 @@ length, and a budget that does not."""
 
 import pytest
 
-from cora.app.assembly import App, assemble
+from app_builder import assembled, indexed
+from cora.app.assembly import App
 from cora.domain.chunk import Chunk
 from cora.domain.citations import CitableHits, Source
 from cora.domain.errors import ToolLoopLimitError
@@ -12,13 +13,13 @@ from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ChatModel, Message, ModelReply
 from cora.ports.plugin import Tool, ToolCall
 from cora.ports.retrieval import RetrievedChunk
-from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel
+from fakes import ScriptedChatModel
 from fixture_plugins import make_plugin
 
 THREAD = "t1"
 PROTEIN = ("protein.md", b"aim for 1.6 g of protein per kg")
 CREATINE = ("creatine.md", b"5 g of creatine daily is the usual dose")
-REMINDER = "You answered without searching. Search the documents first."
+SCOPE = "training and nutrition"
 
 
 def _searching(call_id: str, query: str = "protein") -> ModelReply:
@@ -61,17 +62,15 @@ def _looking(call_id: str, name: str) -> ModelReply:
     )
 
 
-def _app(chat_model: ChatModel, *, grounding: str = "", rounds: int = 8) -> App:
-    return assemble(
-        chat_model=chat_model,
-        embedder=FakeEmbedder(),
-        retriever=FakeRetriever(),
-        plugin=make_plugin(
-            tools=(_lookup_tool(),),
-            seed_docs=(PROTEIN, CREATINE),
-            grounding=grounding,
+def _app(chat_model: ChatModel, *, scope: str = "", rounds: int = 8) -> App:
+    return indexed(
+        assembled(
+            chat_model=chat_model,
+            plugin=make_plugin(tools=(_lookup_tool(),), scope=scope),
+            max_tool_rounds=rounds,
         ),
-        max_tool_rounds=rounds,
+        PROTEIN,
+        CREATINE,
     )
 
 
@@ -187,7 +186,7 @@ def test_the_grounding_gate_still_looks_on_a_later_turn() -> None:
             ModelReply(text="Your notes do not say."),
         ]
     )
-    app = _app(model, grounding=REMINDER)
+    app = _app(model, scope=SCOPE)
 
     app.agent.answer("How much protein?", THREAD)
     second = app.agent.answer("How often should I train?", THREAD)
@@ -239,7 +238,7 @@ def test_the_gate_fires_again_on_a_later_turn_of_the_same_thread() -> None:
             ModelReply(text="My notes say 5 g."),
         ]
     )
-    app = _app(model, grounding=REMINDER)
+    app = _app(model, scope=SCOPE)
 
     first = app.agent.answer("How much protein?", THREAD)
     second = app.agent.answer("And creatine?", THREAD)

@@ -48,15 +48,25 @@ class ValidationRule(Protocol):
     def apply(self, user_input: str) -> None: ...
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class Plugin:
-    """`grounding` is the domain's answer to "may this be answered without the
-    documents?". Empty means yes, and the model decides alone. Any other value is
-    the reminder sent back to a model that answered without searching — worded by
-    the plugin, because which questions belong to the documents is domain policy."""
+    """Everything but `name` is optional: a plugin contributes whatever it has, and a
+    bundle of rules alone is as legitimate as a bundle of tools. Keyword-only so that
+    declaration order is not API — a fifth kind of contribution is then a field with a
+    default, not a break.
 
-    system_prompt: str
-    tools: tuple[Tool, ...]
-    validation_rules: tuple[ValidationRule, ...]
-    seed_docs: tuple[tuple[str, bytes], ...] = ()
-    grounding: str = ""
+    `name` heads the plugin's section of the brief. `instructions` is that section —
+    cora writes the preamble around it, so a plugin states its own business and no
+    two plugins argue about what cora is.
+
+    `scope` is the domain's answer to "may this be answered without the documents?".
+    Empty means yes, and the model decides alone. Any other value is a phrase naming
+    what this plugin's documents cover — "training and nutrition" — which cora words
+    into the reminder it sends back to a model that answered without searching. A
+    phrase because phrases join: two paragraphs would contradict each other."""
+
+    name: str
+    instructions: str = ""
+    tools: tuple[Tool, ...] = ()
+    validation_rules: tuple[ValidationRule, ...] = ()
+    scope: str = ""

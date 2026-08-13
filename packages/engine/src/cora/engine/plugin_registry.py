@@ -1,9 +1,17 @@
 import importlib
+from collections.abc import Iterable
 
 from jsonschema import Draft202012Validator, SchemaError
 
 from cora.domain.errors import PluginLoadError
+from cora.engine.plugin_set import PluginSet
 from cora.ports.plugin import Plugin
+
+
+def load_plugins(module_paths: Iterable[str]) -> PluginSet:
+    """Each module is named in its own refusal, so one bad entry in a list of three
+    points at itself rather than at the list."""
+    return PluginSet(tuple((path, load_plugin(path)) for path in module_paths))
 
 
 def load_plugin(module_path: str) -> Plugin:
@@ -31,10 +39,8 @@ def load_plugin(module_path: str) -> Plugin:
 
 
 def _validate_bundle(module_path: str, bundle: Plugin) -> None:
-    if not bundle.system_prompt.strip():
-        raise PluginLoadError(module_path, "the system prompt is blank")
-    if not bundle.tools:
-        raise PluginLoadError(module_path, "the bundle provides no tools")
+    if not bundle.name.strip():
+        raise PluginLoadError(module_path, "the plugin name is blank")
     names = [tool.name for tool in bundle.tools]
     if len(set(names)) != len(names):
         raise PluginLoadError(module_path, "two tools share the same name")

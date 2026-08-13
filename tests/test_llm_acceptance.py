@@ -24,25 +24,29 @@ For strength training, aim for 1.6 to 2.2 g of protein per kg of bodyweight per 
 Spread it over three or four meals.
 """
 IN_THE_SUBJECT = "How much protein should I eat per kg of bodyweight?"
+LIVE_PLUGINS = ("cora.plugins.security", "cora.plugins.fitness")
 SMALL_TALK = "Hi there!"
 SOURCES = "Sources"
 
 
 def _live_config(store: Path) -> Config:
     """Both stores are redirected, documents and memory alike: an acceptance run that
-    remembered things would write into whatever the developer is actually using."""
+    remembered things would write into whatever the developer is actually using. The
+    domain is named here rather than taken from the default set, which ships the guard
+    alone — a training question needs a plugin that claims training as its subject."""
     if not os.environ.get("OPENROUTER_API_KEY"):
         pytest.skip("OPENROUTER_API_KEY is not set; the llm tier needs a real key")
     return dataclasses.replace(
         Config.from_env(),
+        plugin_modules=LIVE_PLUGINS,
         db_path=str(store / "chroma"),
         memory_path=str(store / "memory.sqlite"),
     )
 
 
 def _live_app(store: Path) -> App:
-    """The shipped composition root, pointed at stores of its own. Every default is
-    the deployed one — the plugin, the model and the grounding text under test are
+    """The shipped composition root, pointed at stores of its own. Every other default
+    is the deployed one — the model, the preamble and the reminder under test are
     whatever cora actually ships."""
     app = build(_live_config(store))
     app.knowledge_base.add_file(PROTEIN_DOC, "protein.md")

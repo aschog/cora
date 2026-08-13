@@ -17,6 +17,8 @@ from cora.domain.trace import ModelDecision, ToolUse
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.engine.steps import (
+    AGENT_RULES,
+    CORA_PREAMBLE,
     MEMORY_RULE,
     REMEMBERED_HEADING,
     UNTRUSTED_NOTICE,
@@ -27,7 +29,7 @@ from cora.engine.steps import (
     ToolStep,
 )
 from cora.engine.tool_runtime import ToolRuntime
-from cora.engine.validation import EmptyInputRule, ValidationPipeline
+from cora.engine.validation import EmptyInputRule
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.graph import DONE, GROUND, TOOLS
 from cora.ports.memory import Memory
@@ -348,21 +350,20 @@ def test_an_llm_error_from_the_chat_model_propagates_unchanged() -> None:
     assert exc_info.value is error
 
 
-def _prepare(prompt: str = "SYS", memory: Memory | None = None) -> PrepareStep:
+def _prepare(instructions: str = "SYS", memory: Memory | None = None) -> PrepareStep:
     return PrepareStep(
-        validation=ValidationPipeline((EmptyInputRule(),), ()),
-        system_prompt=prompt,
+        rules=(EmptyInputRule(),),
+        instructions=instructions,
         memory=memory or FakeMemory(),
     )
 
 
-class _RecordingValidator:
+class _RecordingRule:
     def __init__(self) -> None:
         self.seen: str | None = None
 
-    def validate(self, user_input: str) -> str:
+    def apply(self, user_input: str) -> None:
         self.seen = user_input
-        return user_input
 
 
 def test_an_invalid_question_is_rejected() -> None:
@@ -372,13 +373,32 @@ def test_an_invalid_question_is_rejected() -> None:
         step({"question": "   "})
 
 
-def test_the_validator_sees_the_question_alone() -> None:
-    validator = _RecordingValidator()
-    step = replace(_prepare(), validation=validator)
+def test_the_first_rule_to_refuse_in_order_is_the_message_the_user_reads() -> None:
+    """Every loaded plugin's rules run in the order the plugins were named, so which
+    refusal a user sees is decided by the set, not by the rules racing."""
+
+    class _Refuses:
+        def __init__(self, message: str) -> None:
+            self.message = message
+
+        def apply(self, user_input: str) -> None:
+            raise InputRejectedError(self.message)
+
+    step = replace(_prepare(), rules=(_Refuses("first"), _Refuses("second")))
+
+    with pytest.raises(InputRejectedError) as excinfo:
+        step({"question": "anything"})
+
+    assert excinfo.value.user_message == "first"
+
+
+def test_every_rule_sees_the_question_alone() -> None:
+    rule = _RecordingRule()
+    step = replace(_prepare(), rules=(rule,))
 
     step({"question": "What about protein?"})
 
-    assert validator.seen == "What about protein?"
+    assert rule.seen == "What about protein?"
 
 
 def test_the_step_appends_the_validated_question_and_nothing_else() -> None:
@@ -401,11 +421,35 @@ def test_the_turn_starts_where_the_transcript_had_reached() -> None:
 
 
 def test_the_brief_carries_the_plugin_prompt_and_the_agents_rules() -> None:
-    partial = _prepare(prompt="You are a fitness coach.")({"question": "q"})
+    partial = _prepare(instructions="You are a fitness coach.")({"question": "q"})
 
     assert "You are a fitness coach." in partial["brief"]
     assert SEARCH_TOOL_NAME in partial["brief"]
     assert "[n]" in partial["brief"]
+
+
+def test_the_brief_runs_cora_then_the_domains_then_the_users_own_notes() -> None:
+    """Rules ahead of the domains, because a domain section is what a plugin author
+    wrote and the rules are what cora will not have overridden; the user's notes come
+    last, being neither."""
+    memory = FakeMemory(("trains on Tuesdays",))
+    brief = _prepare(instructions="## Coaching\nBe a coach.", memory=memory)(
+        {"question": "q"}
+    )["brief"]
+
+    assert (
+        brief.index(CORA_PREAMBLE)
+        < brief.index(AGENT_RULES)
+        < brief.index("Be a coach.")
+        < brief.index("trains on Tuesdays")
+    )
+
+
+def test_a_brief_with_no_plugin_section_is_coras_voice_alone() -> None:
+    brief = _prepare(instructions="", memory=FakeMemory())({"question": "q"})["brief"]
+
+    assert brief.startswith(CORA_PREAMBLE)
+    assert "##" not in brief
 
 
 def test_the_step_opens_the_turn_by_dropping_what_the_last_one_left() -> None:
@@ -422,7 +466,9 @@ def test_the_step_opens_the_turn_by_dropping_what_the_last_one_left() -> None:
 def test_the_brief_carries_every_remembered_fact_beneath_the_plugin_prompt() -> None:
     memory = FakeMemory(("trains on Tuesdays", "is vegetarian"))
 
-    partial = _prepare(prompt="You are a coach.", memory=memory)({"question": "q"})
+    partial = _prepare(instructions="You are a coach.", memory=memory)(
+        {"question": "q"}
+    )
 
     brief = partial["brief"]
     assert brief.index("You are a coach.") < brief.index("trains on Tuesdays")
@@ -627,9 +673,9 @@ def test_a_search_from_an_earlier_turn_is_not_this_turns_tool_use() -> None:
     assert router(this_turn) == GROUND
 
 
-def _gate(*hits: RetrievedChunk, reminder: str = "Weigh these.") -> GroundStep:
+def _gate(*hits: RetrievedChunk, scope: str = "protein") -> GroundStep:
     return GroundStep(
-        reminder=reminder, context_source=FakeContextSource(list(hits)), top_k=3
+        scope=scope, context_source=FakeContextSource(list(hits)), top_k=3
     )
 
 
@@ -638,7 +684,7 @@ def test_the_step_searches_the_question_and_hands_the_passages_to_the_model() ->
     search itself, so a model that ignores being told to look still sees what the
     documents say."""
     source = FakeContextSource([_hit("protein.md")])
-    step = GroundStep(reminder="Weigh these.", context_source=source, top_k=3)
+    step = GroundStep(scope="protein", context_source=source, top_k=3)
 
     partial = step({"question": "how much protein?"})
 
@@ -646,8 +692,19 @@ def test_the_step_searches_the_question_and_hands_the_passages_to_the_model() ->
     assert source.last_k == 3
     [message] = partial["messages"]
     assert message.role == "system"
-    assert message.content.startswith("Weigh these.")
+    assert "anything outside protein" in message.content
     assert "[1] protein.md: protein builds muscle" in message.content
+
+
+def test_a_gate_with_no_scope_words_no_reminder_at_all() -> None:
+    """Unreachable through the router today, which turns the gate off when no plugin
+    declared a scope — but the sentence is this class's to get right, and "anything
+    outside  —" is what the template gives back for a blank one."""
+    partial = _gate(scope="")({"question": "anything?"})
+
+    [message] = partial["messages"]
+    assert "outside" not in message.content
+    assert UNTRUSTED_NOTICE in message.content
 
 
 def test_the_nudge_holds_on_to_the_answer_it_is_second_guessing() -> None:
@@ -706,7 +763,7 @@ def test_a_gate_whose_own_search_fails_keeps_the_answer_and_says_the_look_failed
 ):
     """The search is the gate's own now, so its failure is the gate's: losing a good
     answer to a round nothing asked for is the one thing the gate must never do."""
-    step = GroundStep(reminder="Weigh these.", context_source=_BrokenSource(), top_k=3)
+    step = GroundStep(scope="protein", context_source=_BrokenSource(), top_k=3)
 
     partial = step({"question": "how much protein?", "answer": "Off the cuff."})
 

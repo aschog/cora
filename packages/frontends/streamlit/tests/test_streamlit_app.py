@@ -6,9 +6,9 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 import cora.app.assembly as assembly
+from app_builder import assembled
 from cora.app.config import Config
-from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel
-from fixture_plugins import make_plugin
+from fakes import ScriptedChatModel
 
 WATCHER_LOGGER = "streamlit.watcher.local_sources_watcher"
 
@@ -33,12 +33,7 @@ def test_shell_silences_watcher_import_noise(
     monkeypatch.setattr(
         assembly,
         "build",
-        lambda config: assembly.assemble(
-            chat_model=ScriptedChatModel([]),
-            embedder=FakeEmbedder(),
-            retriever=FakeRetriever(),
-            plugin=make_plugin(),
-        ),
+        lambda config: assembled(chat_model=ScriptedChatModel([])),
     )
     spec = importlib.util.find_spec("cora.frontends.streamlit.streamlit_app")
     assert spec is not None and spec.origin is not None

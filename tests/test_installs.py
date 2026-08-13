@@ -21,6 +21,8 @@ import zipfile
 import pytest
 import tomllib
 
+import workspace
+
 REPO = pathlib.Path(__file__).resolve().parent.parent
 PACKAGES = REPO / "packages"
 
@@ -41,10 +43,28 @@ def test_the_contract_resolves_to_itself_alone() -> None:
     assert _resolved("cora-api") == {"cora-api"}
 
 
-def test_a_plugin_resolves_the_contract_and_stops() -> None:
+@pytest.mark.parametrize(("distribution", "module"), workspace.plugins())
+def test_a_plugin_resolves_the_contract_and_stops(
+    distribution: str, module: str
+) -> None:
     """Transitively, not just in the manifest: an engine reached through cora-api would
     show up here even though nothing declares it."""
-    assert _resolved("cora-plugin-fitness") == {"cora-plugin-fitness", "cora-api"}
+    assert _resolved(distribution) == {distribution, "cora-api"}
+
+
+def test_the_app_resolves_every_plugin_it_defaults_to() -> None:
+    """The default set is what a fresh install runs with. A wheel that names a plugin it
+    does not bring is an app that cannot start: `load_plugins` raises `PluginLoadError`
+    on the module before the first question, and the only way out is `CORA_PLUGINS=`."""
+    from cora.app.config import DEFAULT_PLUGINS
+
+    resolved = _resolved("cora")
+
+    assert DEFAULT_PLUGINS
+    for module in DEFAULT_PLUGINS:
+        assert workspace.carrier_of(module) in resolved, (
+            f"the default set names {module}, which `cora` does not install"
+        )
 
 
 def test_the_app_resolves_without_any_user_interface() -> None:
@@ -149,15 +169,19 @@ def _import_failures(python: pathlib.Path, package: str) -> list[str]:
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize(("distribution", "module"), workspace.plugins())
 def test_a_plugin_installs_the_contract_and_nothing_else(
-    tmp_path: pathlib.Path, wheelhouse: pathlib.Path
+    tmp_path: pathlib.Path,
+    wheelhouse: pathlib.Path,
+    distribution: str,
+    module: str,
 ) -> None:
-    """The story, as an environment: four names is what the fitness bundle uses, so the
-    engine, the adapters and every framework stay out of a plugin author's venv."""
-    python = _install(tmp_path / "plugin", wheelhouse, "cora-plugin-fitness")
+    """The story, as an environment: the contract is all a bundle uses, so the engine,
+    the adapters and every framework stay out of a plugin author's venv."""
+    python = _install(tmp_path / distribution, wheelhouse, distribution)
 
-    assert _imports(python, "cora.plugins.fitness")
-    assert _installed(python) == {"cora-plugin-fitness", "cora-api"}
+    assert _imports(python, module)
+    assert _installed(python) == {distribution, "cora-api"}
 
 
 @pytest.mark.integration

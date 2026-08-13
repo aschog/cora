@@ -1,7 +1,8 @@
+from dataclasses import fields
+
 import pytest
 
-from cora.ports.plugin import ToolResult
-from fixture_plugins import make_plugin
+from cora.ports.plugin import Plugin, ToolResult
 
 
 def test_ok_result_carries_payload_and_no_error() -> None:
@@ -44,11 +45,16 @@ def test_render_serialises_other_payloads_as_json() -> None:
     assert result.render() == '{"tdee": 2500, "unit": "kcal"}'
 
 
-def test_plugin_seed_docs_default_to_empty() -> None:
-    assert make_plugin().seed_docs == ()
+def test_a_plugin_needs_nothing_but_a_name() -> None:
+    plugin = Plugin(name="bare")
+
+    assert plugin.instructions == ""
+    assert plugin.tools == ()
+    assert plugin.validation_rules == ()
+    assert plugin.scope == ""
 
 
-def test_plugin_carries_seed_docs_as_filename_bytes_pairs() -> None:
-    plugin = make_plugin(seed_docs=(("tables.md", b"# Times tables"),))
-
-    assert plugin.seed_docs == (("tables.md", b"# Times tables"),)
+def test_every_plugin_field_is_keyword_only() -> None:
+    """Declaration order is not API: a fifth kind of contribution is a field with a
+    default, and appending one may not break a plugin already written."""
+    assert all(field.kw_only for field in fields(Plugin))

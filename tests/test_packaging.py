@@ -12,6 +12,8 @@ import re
 
 import tomllib
 
+import workspace
+
 PACKAGES = pathlib.Path("packages")
 ROOT = pathlib.Path("pyproject.toml")
 # A member is a directory with a manifest, found rather than listed: the tree nests
@@ -83,6 +85,7 @@ def test_the_workspace_holds_exactly_its_layers() -> None:
         "app": "cora",
         "frontends/streamlit": "cora-frontend-streamlit",
         "plugins/fitness": "cora-plugin-fitness",
+        "plugins/security": "cora-plugin-security",
     }
 
 
@@ -159,10 +162,18 @@ def test_the_app_wires_the_layers_and_owns_no_ui() -> None:
 
     assert {"cora-api", "cora-engine", "cora-adapters"} <= requires
     assert "streamlit" not in requires, "the UI is a frontend, not the app"
-    assert "cora-plugin-fitness" not in requires, (
-        "the shipped app names its default plugin in config, but must not depend on a "
-        "domain: that is what keeps the agent domain-agnostic"
-    )
+
+
+def test_the_app_installs_exactly_the_plugins_its_default_set_names() -> None:
+    """One rule, both ways round: a wheel naming a plugin it does not bring cannot
+    start, and a wheel bringing one its default set does not name has chosen a domain
+    for every deployment. Derived from `DEFAULT_PLUGINS`, so it stays true when the
+    default changes rather than pinning today's answer."""
+    from cora.app.config import DEFAULT_PLUGINS
+
+    declared = {name for name in _requires("app") if name.startswith("cora-plugin-")}
+
+    assert declared == {workspace.carrier_of(module) for module in DEFAULT_PLUGINS}
 
 
 def test_a_frontend_needs_the_app_and_its_own_toolkit() -> None:
