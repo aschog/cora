@@ -173,8 +173,8 @@ had no story since story 6 left the cut.
 
 - [x] **(int)** the app assembles and answers a document question through the composition
       root, exactly as before
-- [ ] **(llm)** the live acceptance answers a training question with a citation, fitness now
-      named explicitly *(moved)* — written and named; unrun, the tier needs a real key
+- [x] **(llm)** the live acceptance answers a training question with a citation, fitness now
+      named explicitly *(moved)*
 - [x] `README.md` and `big-picture.md` name `CORA_PLUGINS`, the default set, the seven
       distributions, and that bare cora screens nothing; `spec.md`'s bonus bar stops
       claiming the injection screen as `engine/validation.py` and says where it went
