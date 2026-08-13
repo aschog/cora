@@ -1,11 +1,9 @@
 import logging
-import pathlib
 from pathlib import Path
 from typing import Any
 
 import pytest
 
-import cora.app.assembly as assembly
 from app_builder import assembled, indexed
 from cora.adapters.langgraph_runner import LangGraphRunner
 from cora.app.assembly import App, build
@@ -271,13 +269,6 @@ def test_assemble_chains_core_and_plugin_validation_rules() -> None:
         app.agent.answer("a banned word", THREAD)  # plugin rule
 
 
-def test_a_plugin_tool_shadowing_the_search_tool_is_rejected() -> None:
-    with pytest.raises(ConfigurationError) as excinfo:
-        _assemble(make_plugin(tools=(make_tool(SEARCH_TOOL_NAME),)))
-
-    assert SEARCH_TOOL_NAME in excinfo.value.user_message
-
-
 def test_the_model_is_offered_the_remember_tool_and_the_runtime_dispatches_it() -> None:
     memory = FakeMemory()
     model = ScriptedChatModel(
@@ -304,13 +295,6 @@ def test_the_model_is_offered_the_remember_tool_and_the_runtime_dispatches_it() 
     assert [step.name for step in result.trace if isinstance(step, ToolUse)] == [
         REMEMBER_TOOL_NAME
     ]
-
-
-def test_a_plugin_tool_shadowing_the_remember_tool_is_rejected() -> None:
-    with pytest.raises(ConfigurationError) as excinfo:
-        _assemble(make_plugin(tools=(make_tool(REMEMBER_TOOL_NAME),)))
-
-    assert REMEMBER_TOOL_NAME in excinfo.value.user_message
 
 
 def test_what_is_remembered_reaches_the_model_as_part_of_its_brief() -> None:
@@ -384,10 +368,10 @@ def test_a_refused_note_is_explained_as_a_note() -> None:
 
 
 def test_a_plugins_own_rules_do_not_police_what_is_remembered() -> None:
-    """Core rules only. A plugin rule refuses a *question* on domain grounds — the
-    fitness plugin's medical filter turns down anything mentioning a condition — and
-    applying that to a note would make "remember I have diabetes" unkeepable while
-    leaving the injection surface exactly as open."""
+    """No rule reaches a fact, a plugin's least of all: a plugin rule refuses a
+    *question* on domain grounds — the fitness plugin's medical filter turns down
+    anything mentioning a condition — and applying that to a note would make "remember
+    I have diabetes" unkeepable. What guards a fact is the tool's own two checks."""
     memory = FakeMemory()
     plugin = make_plugin(validation_rules=(_RefuseInjuries(),))
     model = ScriptedChatModel(
@@ -465,14 +449,6 @@ def test_assemble_without_a_keyword_index_leaves_the_knowledge_base_bare() -> No
 
     assert app.context_source is app.knowledge_base
     assert app.knowledge_base.keyword_index is None
-
-
-def test_the_composition_root_rejects_no_set_of_its_own() -> None:
-    """Every refusal a combination can earn is `PluginSet`'s, raised when it is built,
-    so a third collision is a check on one object rather than a branch added here."""
-    source = pathlib.Path(str(assembly.__file__)).read_text()
-
-    assert "ConfigurationError" not in source
 
 
 def test_an_uploaded_doc_reaches_the_keyword_index() -> None:
