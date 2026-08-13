@@ -1,7 +1,6 @@
 import grimp
 from grimp import ImportGraph
 
-HEADING = "The packages, read off the imports"
 ROOT = "cora"
 EXTENSION_POINTS = ("plugins", "frontends")
 HEADER = (
@@ -55,3 +54,6 @@ def diagram(graph: ImportGraph) -> str:
 
 def render() -> str:
     return diagram(grimp.build_graph(ROOT))
+
+
+SECTIONS = (("The packages, read off the imports", render),)

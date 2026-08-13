@@ -1,13 +1,16 @@
 import importlib.util
 import pathlib
+from collections.abc import Callable
 from types import ModuleType
 
 import package_diagram
 import turn_diagram
 
+Section = tuple[str, Callable[[], str]]
+
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 WORKSPACE = ROOT / "docs" / "diagrams.md"
-SOURCES = (package_diagram, turn_diagram)
+SPANNING = package_diagram.SECTIONS + turn_diagram.SECTIONS
 
 
 def _loaded(path: pathlib.Path) -> ModuleType:
@@ -19,25 +22,24 @@ def _loaded(path: pathlib.Path) -> ModuleType:
     return module
 
 
-def pages() -> dict[pathlib.Path, tuple[ModuleType, ...]]:
+def pages() -> dict[pathlib.Path, tuple[Section, ...]]:
     """A diagram is written where its subject lives: the pictures that span the
     workspace on one page under docs/, and a package's own beside the package,
     contributed by a `diagram.py` there rather than by a list here."""
     own = {
-        path.parent / "diagrams.md": (_loaded(path),)
+        path.parent / "diagrams.md": _loaded(path).SECTIONS
         for path in sorted(ROOT.glob("packages/**/diagram.py"))
     }
-    return {WORKSPACE: SOURCES, **own}
+    return {WORKSPACE: SPANNING, **own}
 
 
-def page(sources: tuple[ModuleType, ...]) -> str:
-    sections = [
-        f"## {source.HEADING}\n\n```mermaid\n{source.render()}\n```"
-        for source in sources
+def page(sections: tuple[Section, ...]) -> str:
+    drawn = [
+        f"## {heading}\n\n```mermaid\n{render()}\n```" for heading, render in sections
     ]
-    return "\n\n".join(["# Diagrams", *sections]) + "\n"
+    return "\n\n".join(["# Diagrams", *drawn]) + "\n"
 
 
 if __name__ == "__main__":
-    for path, sources in pages().items():
-        path.write_text(page(sources))
+    for path, sections in pages().items():
+        path.write_text(page(sections))

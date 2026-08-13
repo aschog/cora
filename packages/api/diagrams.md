@@ -1,52 +1,58 @@
 # Diagrams
 
-## The domain classes, read off the source
+## The classes, read off the source
 
 ```mermaid
 classDiagram
-  class AgentState {
-    answer : str
-    answer_in_hand : str
-    brief : str
-    messages : Annotated[list[Message], operator.add]
-    question : str
-    reconsidered : bool
-    sources : Annotated[list[Source], operator.add]
-    trace : Annotated[list[TraceStep], operator.add]
-    turn_start : int
-  }
-  class Chunk {
-    index : int
-    offset : int
-    source : str
-    text : str
-  }
-  class Citable {
-    summary : str
-    register(known: tuple[Source, ...])* Context
-  }
-  class Context {
-    sources : tuple[Source, ...]
-    text : str
-  }
-  class CoreError {
-    user_message : str
-  }
-  class MetadataFilter {
-    field : str
-    value : str
-  }
-  class QueryPlan {
-    metadata_filter : MetadataFilter | None
-    queries : tuple[str, ...]
-  }
-  class Source {
-    name : str
-    number : int
-  }
-  class TraceStep {
-    detail : str
-    failed : bool
-    summary : str
-  }
+  class AgentState
+  class ChatModel
+  class Chunk
+  class Citable
+  class Context
+  class ContextSource
+  class CoreError
+  class Embedder
+  class Fact
+  class GraphFor
+  class GraphRunner
+  class Loader
+  class Memory
+  class Message
+  class MetadataFilter
+  class ModelReply
+  class Plugin
+  class QueryPlan
+  class RetrievedChunk
+  class Retriever
+  class Source
+  class Step
+  class Tool
+  class ToolCall
+  class ToolRefusal
+  class ToolResult
+  class TraceStep
+  class ValidationRule
+  AgentState --> Message
+  AgentState --> Source
+  AgentState --> TraceStep
+  ChatModel --> Message
+  ChatModel --> ModelReply
+  ChatModel --> Tool
+  Citable --> Context
+  Citable --> Source
+  Context --> Source
+  ContextSource --> RetrievedChunk
+  GraphFor --> GraphRunner
+  GraphRunner --> AgentState
+  Memory --> Fact
+  Message --> ToolCall
+  ModelReply --> ToolCall
+  Plugin --> Tool
+  Plugin --> ValidationRule
+  QueryPlan --> MetadataFilter
+  RetrievedChunk --> Chunk
+  Retriever --> Chunk
+  Retriever --> MetadataFilter
+  Retriever --> RetrievedChunk
+  Step --> AgentState
 ```

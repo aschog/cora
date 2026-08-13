@@ -1,6 +1,5 @@
 from cora.domain.trace import ModelDecision, ToolUse, TraceStep
 
-HEADING = "One turn"
 QUESTION = "How does BM25 handle term saturation?"
 DOCUMENT = ("bm25.txt", b"BM25 saturates term frequency so repeats stop helping.")
 
@@ -51,3 +50,6 @@ def render() -> str:
     )
     result = app.agent.answer(QUESTION, thread_id="turn-diagram")
     return sequence(QUESTION, result.answer, result.trace)
+
+
+SECTIONS = (("One turn", render),)

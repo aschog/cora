@@ -5,19 +5,34 @@ import pathlib
 import re
 import subprocess
 import tempfile
+from collections.abc import Iterable
 
-HEADING = "The domain classes, read off the source"
-PACKAGE = pathlib.Path(__file__).resolve().parent / "src" / "cora" / "domain"
+NAMESPACE = pathlib.Path(__file__).resolve().parent / "src" / "cora"
 GENERATIONS = 0
 INHERITS = re.compile(r"^\s*(\w+) --\|> (\w+)$")
+NAMES = re.compile(r"\w+")
 
 
-def classes(package: pathlib.Path, name: str) -> str:
-    """pyreverse parses the package and writes `classes_<name>.mmd` beside a package
-    diagram we don't want, so it renders into a directory of its own."""
+def classes(packages: Iterable[pathlib.Path], name: str) -> str:
+    """pyreverse parses the packages and writes `classes_<name>.mmd` beside a package
+    diagram we don't want, so it renders into a directory of its own. One run over them
+    all, because a class one package names and another declares is one arrow, and
+    `-f OTHER` so that `__call__` counts: a Protocol that is one signature is the whole
+    port, and the members are stripped from the picture anyway."""
     with tempfile.TemporaryDirectory() as directory:
         subprocess.run(
-            ["pyreverse", "-o", "mmd", "-p", name, "-d", directory, str(package)],
+            [
+                "pyreverse",
+                "-f",
+                "OTHER",
+                "-o",
+                "mmd",
+                "-p",
+                name,
+                "-d",
+                directory,
+                *map(str, packages),
+            ],
             check=True,
             capture_output=True,
         )
@@ -71,5 +86,38 @@ def near(diagram: str, generations: int) -> str:
     return "\n".join(line for block in kept for line in block)
 
 
+def linked(diagram: str) -> str:
+    """pyreverse draws an association from an attribute it sees a body assign, which a
+    frozen dataclass and a Protocol never do — so the arrows are read off the member
+    lines instead: a class points at every other box its fields or signatures name."""
+    blocks = _blocks(diagram)
+    drawn = {_subject(block) for block in blocks} - {""}
+    edges = sorted(
+        {
+            (subject, named)
+            for block in blocks
+            for subject in [_subject(block)]
+            if subject
+            for line in block[1:]
+            for named in NAMES.findall(line)
+            if named in drawn and named != subject
+        }
+    )
+    return "\n".join([diagram, *(f"  {a} --> {b}" for a, b in edges)])
+
+
+def unfilled(diagram: str) -> str:
+    """The boxes empty: the members are what the arrows were computed from, and a name
+    with the lines it is joined by says more here than ninety fields do."""
+    return "\n".join(
+        f"  class {_subject(block)}" if _subject(block) else block[0]
+        for block in _blocks(diagram)
+    )
+
+
 def render() -> str:
-    return near(classes(PACKAGE, "domain"), GENERATIONS)
+    drawn = classes((NAMESPACE / "domain", NAMESPACE / "ports"), "api")
+    return unfilled(linked(near(drawn, GENERATIONS)))
+
+
+SECTIONS = (("The classes, read off the source", render),)
