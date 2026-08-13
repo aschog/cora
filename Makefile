@@ -4,7 +4,7 @@
 
 APP := packages/frontends/streamlit/src/cora/frontends/streamlit/streamlit_app.py
 
-.PHONY: run run-env
+.PHONY: run run-env diagram
 
 # Reads OPENROUTER_API_KEY from the environment.
 run:
@@ -13,3 +13,7 @@ run:
 # Reads it from .env instead, which is how the live tier is run too.
 run-env:
 	uv run --env-file .env streamlit run $(APP)
+
+# Rewrites the mermaid block in docs/diagrams/packages.md from the import graph.
+diagram:
+	uv run python tools/package_diagram.py

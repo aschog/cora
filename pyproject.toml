@@ -26,6 +26,7 @@ dev = [
     "cora-frontend-streamlit",
     "cora-plugin-fitness",
     "cora-plugin-security",
+    "grimp>=3.15",
     "pytest>=9.1.1",
     "pytest-watcher>=0.6.3",
     "ruff>=0.15.22",
@@ -44,6 +45,7 @@ root = [
     "packages/plugins/fitness/src",
     "packages/plugins/security/src",
     "tests",
+    "tools",
 ]
 
 [tool.ruff]
@@ -56,6 +58,7 @@ src = [
     "packages/plugins/fitness/src",
     "packages/plugins/security/src",
     "tests",
+    "tools",
 ]
 
 [tool.ruff.lint]
@@ -77,7 +80,7 @@ select = [
 # module: pythonpath puts it on sys.path, and a directory called cora would join
 # the cora namespace as its first portion.
 testpaths = ["packages", "tests"]
-pythonpath = ["tests"]
+pythonpath = ["tests", "tools"]
 addopts = "--strict-markers --import-mode=importlib -m 'not integration and not llm'"
 markers = [
     "integration: touches real infrastructure (Chroma, embedding model, Streamlit); run in CI",
