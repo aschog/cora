@@ -9,17 +9,14 @@ from cora.adapters.langgraph_runner import LangGraphRunner
 from cora.app.assembly import App, build
 from cora.app.config import DEFAULT_PLUGINS, Config
 from cora.app.log_config import DEBUG_HANDLER_NAME, FILE_HANDLER_NAME
-from cora.domain.chunk import Chunk
 from cora.domain.citations import Source
 from cora.domain.errors import (
-    ConfigurationError,
     InputRejectedError,
     ToolLoopLimitError,
 )
 from cora.domain.metadata_filter import MetadataFilter
 from cora.domain.trace import ToolUse
 from cora.engine.fusion_context_source import FusionContextSource
-from cora.engine.hybrid_context_source import HybridContextSource
 from cora.engine.memory_tool import MAX_FACT_CHARS, REMEMBER_TOOL_NAME
 from cora.engine.plugin_registry import load_plugin, load_plugins
 from cora.engine.plugin_set import PluginSet
@@ -36,17 +33,6 @@ from fixture_plugins import make_plugin, make_tool
 SEED_TEXT = b"protein supports muscle growth"
 THREAD = "t1"
 SECURITY = "cora.plugins.security"
-
-
-class _FakeKeywordStore:
-    def __init__(self) -> None:
-        self.added: list[Chunk] = []
-
-    def add(self, chunks: list[Chunk]) -> None:
-        self.added.extend(chunks)
-
-    def search(self, query: str, k: int) -> list[RetrievedChunk]:
-        return []
 
 
 class _RecordingRetriever(FakeRetriever):
@@ -437,34 +423,10 @@ def test_assemble_advanced_mode_wraps_the_knowledge_base_in_fusion() -> None:
     assert planner.num_queries == 3
 
 
-def test_assemble_hybrid_mode_wraps_dense_and_keyword_in_a_hybrid_source() -> None:
-    keyword = _FakeKeywordStore()
-    app = _assemble(make_plugin(), retrieval="hybrid", keyword_index=keyword)
-
-    source = app.context_source
-    assert isinstance(source, HybridContextSource)
-    assert source.dense is app.knowledge_base
-    assert source.keyword is keyword
-
-
-def test_assemble_hybrid_without_a_keyword_index_is_rejected() -> None:
-    with pytest.raises(ConfigurationError):
-        _assemble(make_plugin(), retrieval="hybrid")
-
-
-def test_assemble_without_a_keyword_index_leaves_the_knowledge_base_bare() -> None:
+def test_assemble_in_plain_mode_searches_the_knowledge_base_itself() -> None:
     app = _assemble(make_plugin())
 
     assert app.context_source is app.knowledge_base
-    assert app.knowledge_base.keyword_index is None
-
-
-def test_an_uploaded_doc_reaches_the_keyword_index() -> None:
-    keyword = _FakeKeywordStore()
-    _indexed(make_plugin(), retrieval="hybrid", keyword_index=keyword)
-
-    assert keyword.added
-    assert all(chunk.source == "note.md" for chunk in keyword.added)
 
 
 def test_assemble_with_debug_logs_every_port_of_a_retrieving_turn(
@@ -525,32 +487,6 @@ def test_build_starts_with_an_empty_store(tmp_path: Path) -> None:
     app = build(config)
 
     assert app.knowledge_base.list_sources() == []
-
-
-@pytest.mark.integration
-def test_build_rehydrates_hybrid_across_a_restart_counting_a_prior_doc_once(
-    tmp_path: Path,
-) -> None:
-    config = Config(
-        api_key="k",
-        model="openai/gpt-4o-mini",
-        base_url="https://openrouter.ai/api/v1",
-        plugin_modules=("fixture_plugins.valid",),
-        top_k=3,
-        max_tool_rounds=4,
-        history_turns=6,
-        db_path=str(tmp_path),
-        retrieval="hybrid",
-    )
-
-    build(config).knowledge_base.add_file(b"protein builds muscle", "note.md")
-    app = build(config)
-    app.knowledge_base.add_file(b"protein builds muscle", "note.md")  # same hash: no-op
-
-    source = app.context_source
-    assert isinstance(source, HybridContextSource)
-    hits = source.keyword.search("protein", k=10)
-    assert [hit.chunk.source for hit in hits] == ["note.md"]
 
 
 @pytest.mark.integration

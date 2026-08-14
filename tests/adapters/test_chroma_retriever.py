@@ -92,21 +92,6 @@ def test_chroma_records_persist_across_a_fresh_client(
     assert hits[0].chunk == chunk
 
 
-def test_all_chunks_round_trips_every_stored_chunk(
-    chroma_retriever: "ChromaRetriever", make_chunk: Callable[..., Chunk]
-) -> None:
-    embedder = FakeEmbedder()
-    chunks = [
-        make_chunk("alpha", source="one.txt", index=0, offset=0),
-        make_chunk("beta", source="two.txt", index=1, offset=6),
-    ]
-    chroma_retriever.add(
-        chunks, embedder.embed([c.text for c in chunks]), file_hash="h"
-    )
-
-    assert set(chroma_retriever.all_chunks()) == set(chunks)
-
-
 def test_chroma_re_adds_with_same_ids_do_not_duplicate(
     chroma_retriever: "ChromaRetriever", make_chunk: Callable[..., Chunk]
 ) -> None:

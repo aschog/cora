@@ -97,12 +97,12 @@ def test_from_env_defaults_to_plain_retrieval() -> None:
     assert config.fusion_queries >= 1
 
 
-def test_from_env_accepts_hybrid_retrieval() -> None:
+def test_from_env_accepts_advanced_retrieval() -> None:
     config = Config.from_env(
-        {"OPENROUTER_API_KEY": "key-123", "CORA_RETRIEVAL": "hybrid"}
+        {"OPENROUTER_API_KEY": "key-123", "CORA_RETRIEVAL": "advanced"}
     )
 
-    assert config.retrieval == "hybrid"
+    assert config.retrieval == "advanced"
 
 
 def test_from_env_rejects_an_unknown_retrieval_mode() -> None:

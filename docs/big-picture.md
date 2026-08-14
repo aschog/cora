@@ -26,7 +26,7 @@ flowchart TB
     rt["ToolRuntime"]
     search["search_documents<br/><i>retrieval as a tool</i>"]
     remember["remember<br/><i>memory as a tool</i>"]
-    retr["Retrieval strategy<br/><i>plain · RAG-Fusion · hybrid</i>"]
+    retr["Retrieval strategy<br/><i>plain · RAG-Fusion</i>"]
     kb["KnowledgeBase"]
   end
 
@@ -45,7 +45,6 @@ flowchart TB
     orc["OpenRouterChatModel<br/><i>LangChain</i>"]
     ste["SentenceTransformerEmbedder<br/><i>all-MiniLM-L6-v2</i>"]
     chroma["ChromaRetriever<br/><i>Chroma</i>"]
-    bm25["Bm25KeywordIndex<br/><i>rank_bm25</i>"]
     load_reg["load_txt · load_pdf<br/><i>pypdf</i>"]
     store["SqliteStoreMemory<br/><i>LangGraph store · SQLite</i>"]
     fit["fitness plugin<br/><i>a domain</i>"]
@@ -74,7 +73,6 @@ flowchart TB
   kb --> emb
   kb --> ret
   kb --> load
-  retr -.->|"hybrid"| bm25
   gr -.-> lg
   cm -.-> orc
   emb -.-> ste
@@ -113,7 +111,6 @@ are three options:
 
 - `plain` — just use KnowledgeBase.
 - `advanced` — use RAG-Fusion. A `QueryPlanner` writes the question in a few different ways, and RRF joins the results. (RRF, Reciprocal Rank Fusion, is a simple way to merge ranked lists.)
-- `hybrid` — run two searches over the same files, one by meaning (dense) and one by keywords (BM25), and join them with the same RRF. This needs no planner and no extra model call.
 
 A **port** is a fixed slot in the engine for one kind of technology. There are exactly seven:
 one for driving the agent, one for chat, one for embedding, one for retrieval, one for reading
@@ -123,10 +120,6 @@ engine or the composition root changing.
 
 Memory is the one optional slot. Leave it out and the agent is offered no `remember` tool and
 told no rule about remembering — an app with no memory cannot quietly forget.
-
-BM25 has no slot like this. Only the `hybrid` search uses it, wired straight into that search.
-So BM25 is a technology with no port. It is kept with the other adapters, and there are still
-just seven ports.
 
 One more file sits in `ports/` without being a slot: `ContextSource` is the engine's own seam
 between a search and the step that uses it, implemented inside the engine — a Protocol, but
@@ -234,7 +227,7 @@ because the map shows them inside another part.
 | **remember** | Keeping a fact about the user as a tool, called when the user asks to be remembered rather than on the model's own judgement. The tool guards its own input — nothing blank, nothing over 300 characters reaches the store — but the question's rules do not run over a fact: screening is a plugin's now, and the engine cannot import one. What stands behind a kept fact is the notice it travels under, which says the notes are data and not instructions. Every save shows up in the trace. | `engine/memory_tool.py` |
 | **KnowledgeBase** | A simple front for ingest, embed, and store. It also does search, lists sources, and skips files already uploaded. | `engine/knowledge_base.py` |
 | **Ingestion** *(folded)* | Turns bytes into clean text, then into overlapping chunks with their origin. Rejects the wrong type, too large, or empty. | `engine/ingestion.py`, `engine/cleaning.py`, `engine/chunker.py` — and the loaders themselves in `adapters/loaders.py`, since which file formats can be read is a technology's business |
-| **Retrieval strategy** | How the search tool gets its chunks: `plain` (KnowledgeBase), `advanced`, or `hybrid`. Both wrappers merge results with RRF. | `engine/fusion_context_source.py`, `engine/hybrid_context_source.py`, `engine/query_planner.py`, `engine/rank_fusion.py` |
+| **Retrieval strategy** | How the search tool gets its chunks: `plain` (KnowledgeBase) or `advanced`, which fans the question out and merges the rankings with RRF. | `engine/fusion_context_source.py`, `engine/query_planner.py`, `engine/rank_fusion.py` |
 | **PluginSet** | The plugins cora was asked for, composed in the order they were named: prompt sections under their names, their tools in the order they were named — cora's own go in front at assembly — cora's rules then every plugin's, and one reminder over every scope. It is also what refuses a bad *combination* — a module named twice, a tool name of cora's own, one name offered by two plugins — so the composition root wires an already-valid set. | `engine/plugin_set.py` |
 | **ToolRuntime** | Finds the tool, checks the arguments against its JSON Schema, runs it, and turns a tool's own failure into a `ToolResult`. An infrastructure failure is not tool output, so it travels on unchanged. | `engine/tool_runtime.py` |
 | **Plugin registry** *(folded)* | Loads plugins by their module paths and checks each one before the app starts: the name is not blank, tool names are unique, schemas are valid. Everything but the name is optional, so a bundle of rules alone is as legitimate as a bundle of tools. | `engine/plugin_registry.py` |

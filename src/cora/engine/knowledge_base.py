@@ -1,8 +1,6 @@
 import hashlib
 from dataclasses import dataclass
-from typing import Protocol
 
-from cora.domain.chunk import Chunk
 from cora.domain.metadata_filter import MetadataFilter
 from cora.engine.ingestion import ingest
 from cora.ports.embedding import Embedder
@@ -10,16 +8,11 @@ from cora.ports.loading import Loaders
 from cora.ports.retrieval import RetrievedChunk, Retriever
 
 
-class KeywordIndex(Protocol):
-    def add(self, chunks: list[Chunk]) -> None: ...
-
-
 @dataclass
 class KnowledgeBase:
     embedder: Embedder
     retriever: Retriever
     loaders: Loaders
-    keyword_index: KeywordIndex | None = None
 
     def add_file(self, data: bytes, filename: str) -> int:
         file_hash = hashlib.sha256(data).hexdigest()
@@ -28,8 +21,6 @@ class KnowledgeBase:
         chunks = ingest(data, filename, self.loaders)
         vectors = self.embedder.embed([chunk.text for chunk in chunks])
         self.retriever.add(chunks, vectors, file_hash)
-        if self.keyword_index is not None:
-            self.keyword_index.add(chunks)
         return len(chunks)
 
     def search(

@@ -27,7 +27,7 @@ The app is the repository root; a `uv` workspace sharing the `cora` namespace. Y
 
 | Package | Ships | Depends on |
 |---|---|---|
-| `cora` | `cora.domain` · `cora.ports` — the contract<br>`cora.engine` — the agent, the knowledge base, a turn's steps<br>`cora.adapters` — Chroma, OpenRouter, LangGraph, BM25, MiniLM<br>`cora.app` — the composition root and its configuration | its technologies, and no user interface |
+| `cora` | `cora.domain` · `cora.ports` — the contract<br>`cora.engine` — the agent, the knowledge base, a turn's steps<br>`cora.adapters` — Chroma, OpenRouter, LangGraph, MiniLM<br>`cora.app` — the composition root and its configuration | its technologies, and no user interface |
 | `cora-plugin-security` | `cora.plugins.security` — the prompt-injection screen | `cora` |
 | `cora-plugin-fitness` | `cora.plugins.fitness` — the reference domain plugin | `cora` |
 | `cora-frontend-streamlit` | `cora.frontends.streamlit` — the app you run below | `cora` |
@@ -90,8 +90,7 @@ Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
 `cora.plugins.security` for the prompt-injection screen and `cora.plugins.fitness` for
 the coaching domain), `CORA_TOP_K` (default `5`),
 `CORA_RETRIEVAL` (`plain` by default; `advanced` turns on query translation and
-self-query filtering — RAG-Fusion — for one extra model call per question;
-`hybrid` fuses dense and BM25 keyword rankings with no extra model call),
+self-query filtering — RAG-Fusion — for one extra model call per question),
 `CORA_FUSION_QUERIES` (default `4`; sub-queries advanced mode fans out per
 question), `CORA_MAX_TOOL_ROUNDS` (default `8`; one round is a model call plus the tools it
 asks for, document search included — and the budget is per question, not per
@@ -102,7 +101,7 @@ is relative to the working directory), `CORA_MEMORY_PATH` (where remembered fact
 persist; the default `.cora/memory.sqlite` sits beside it, and is relative the same
 way), `OPENROUTER_BASE_URL`, `CORA_DEBUG`. The counts are rejected at
 startup if they fall below their lowest useful value — `0` for history turns, `1`
-for the others — and `CORA_RETRIEVAL` must be `plain`, `advanced`, or `hybrid`.
+for the others — and `CORA_RETRIEVAL` must be `plain` or `advanced`.
 
 Set `CORA_DEBUG` to `1` or `true` to trace what crosses the ports — one truncated
 line per embed, retrieval (with sources and scores) and model round trip, printed

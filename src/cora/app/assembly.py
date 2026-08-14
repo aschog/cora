@@ -10,12 +10,7 @@ from cora.app.config import (
     Config,
 )
 from cora.app.log_config import enable_debug_logs
-from cora.app.retrieval import (
-    DEFAULT_RETRIEVAL,
-    KeywordStore,
-    build_context_source,
-    needs_keyword_index,
-)
+from cora.app.retrieval import DEFAULT_RETRIEVAL, build_context_source
 from cora.engine.agent import Agent
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.memory_tool import remember_tool
@@ -66,7 +61,6 @@ def assemble(
     history_turns: int = DEFAULT_HISTORY_TURNS,
     retrieval: str = DEFAULT_RETRIEVAL,
     fusion_queries: int = DEFAULT_FUSION_QUERIES,
-    keyword_index: KeywordStore | None = None,
     graph: GraphFor = langgraph_for,
     debug: bool = False,
 ) -> App:
@@ -75,16 +69,12 @@ def assemble(
         embedder = LoggingEmbedder(embedder)
         retriever = LoggingRetriever(retriever)
     knowledge_base = KnowledgeBase(
-        embedder=embedder,
-        retriever=retriever,
-        loaders=LOADERS,
-        keyword_index=keyword_index,
+        embedder=embedder, retriever=retriever, loaders=LOADERS
     )
     context_source = build_context_source(
         retrieval,
         chat_model=chat_model,
         knowledge_base=knowledge_base,
-        keyword_index=keyword_index,
         fusion_queries=fusion_queries,
     )
     scope = plugins.scope
@@ -124,7 +114,6 @@ def _offered_tools(
 
 
 def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
-    from cora.adapters.bm25_keyword_index import Bm25KeywordIndex
     from cora.adapters.chroma_retriever import ChromaRetriever
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
@@ -132,11 +121,6 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
 
     enable_debug_logs(config.debug)
     retriever = ChromaRetriever(path=config.db_path, collection=collection)
-    keyword_index = (
-        Bm25KeywordIndex.from_chunks(retriever.all_chunks())
-        if needs_keyword_index(config.retrieval)
-        else None
-    )
     return assemble(
         chat_model=OpenRouterChatModel(
             model=config.model, api_key=config.api_key, base_url=config.base_url
@@ -150,6 +134,5 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         history_turns=config.history_turns,
         retrieval=config.retrieval,
         fusion_queries=config.fusion_queries,
-        keyword_index=keyword_index,
         debug=config.debug,
     )
