@@ -72,14 +72,14 @@ cora becomes domain-agnostic by default: `CORA_PLUGINS` takes an ordered list, a
 contributes whatever it has, and the prompt-injection guard becomes a plugin named there
 like any other. The backlog's *stronger injection rules as a plugin* is blocked on it.
 
-## In flight
-
-### [13. One package, and only what I asked it to run](story-13.md)
+### [13. One package, and only what I asked it to run](done/story-13.md) ✔
 
 The five layer distributions become one `cora` package, the layer guards read imports
 instead of manifests to stay true without them, and hybrid retrieval goes so that one
 index answers what ingestion wrote. Story 11's default set goes with it: cora starts with
 no plugin and warns that nothing screens what the user types.
+
+## In flight
 
 ### [12. It says when it has nothing to answer from](story-12.md)
 
