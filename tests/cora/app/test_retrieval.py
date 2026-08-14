@@ -32,7 +32,9 @@ def test_advanced_plans_queries_and_fuses_what_the_same_index_returns() -> None:
 
 
 def test_a_mode_no_builder_answers_to_is_refused_by_name() -> None:
-    with pytest.raises(KeyError):
+    """`hybrid` is the mode this app used to have, and the one a stale environment still
+    names — so the refusal quotes it back rather than failing anonymously."""
+    with pytest.raises(KeyError, match="hybrid"):
         _built("hybrid", _knowledge_base())
 
 

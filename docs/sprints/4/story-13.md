@@ -28,13 +28,14 @@ were the same start. They are separated here: cora ships with no default, and sa
 - [x] nothing on the path is named for a shipped namespace
 - [x] the app carries no plugin and names none
 - [x] a plugin needs the app and nothing else; a frontend needs the app and its toolkit
-- [x] the app resolves without any user interface, and a plugin resolves it and stops **(int)**
+- [x] the app resolves without any user interface, and a plugin resolves it and stops
 
 #### Retrieval reads the index ingestion writes
 
 - [x] `plain` searches the knowledge base the documents were written to
 - [x] `advanced` plans queries and fuses what that same index returns
-- [x] a mode no builder answers to is refused by name, not by `KeyError`
+- [x] a mode no builder answers to — `hybrid`, the one this app used to have — is
+      refused with its name quoted back
 - [x] the allowed modes are exactly the registered builders, so config and dispatch
       cannot drift
 
