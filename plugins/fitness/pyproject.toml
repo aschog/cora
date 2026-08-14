@@ -1,10 +1,10 @@
 [project]
 name = "cora-plugin-fitness"
 version = "0.1.0"
-description = "cora's reference domain plugin: a fitness coach. Needs the contract alone, neither the engine nor the adapter stack"
+description = "cora's reference domain plugin: a fitness coach. Uses the contract alone — `cora.domain` and `cora.ports`, no engine, no adapter"
 requires-python = ">=3.12"
 dependencies = [
-    "cora-api",
+    "cora",
 ]
 
 [build-system]

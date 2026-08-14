@@ -16,23 +16,8 @@ resolution-markers = [
 [manifest]
 members = [
     "cora",
-    "cora-adapters",
-    "cora-api",
-    "cora-engine",
     "cora-frontend-streamlit",
     "cora-plugin-fitness",
-    "cora-plugin-security",
-]
-
-[manifest.dependency-groups]
-dev = [
-    { name = "cora-frontend-streamlit", editable = "packages/frontends/streamlit" },
-    { name = "cora-plugin-fitness", editable = "packages/plugins/fitness" },
-    { name = "cora-plugin-security", editable = "packages/plugins/security" },
-    { name = "pytest", specifier = ">=9.1.1" },
-    { name = "pytest-watcher", specifier = ">=0.6.3" },
-    { name = "ruff", specifier = ">=0.15.22" },
-    { name = "ty", specifier = ">=0.0.60" },
 ]
 
 [[package]]
@@ -447,29 +432,10 @@ wheels = [
 [[package]]
 name = "cora"
 version = "0.1.0"
-source = { editable = "packages/app" }
-dependencies = [
-    { name = "cora-adapters" },
-    { name = "cora-api" },
-    { name = "cora-engine" },
-    { name = "cora-plugin-security" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "cora-adapters", editable = "packages/adapters" },
-    { name = "cora-api", editable = "packages/api" },
-    { name = "cora-engine", editable = "packages/engine" },
-    { name = "cora-plugin-security", editable = "packages/plugins/security" },
-]
-
-[[package]]
-name = "cora-adapters"
-version = "0.1.0"
-source = { editable = "packages/adapters" }
+source = { editable = "." }
 dependencies = [
     { name = "chromadb" },
-    { name = "cora-api" },
+    { name = "jsonschema" },
     { name = "langchain-openai" },
     { name = "langgraph" },
     { name = "langgraph-checkpoint-sqlite" },
@@ -478,10 +444,20 @@ dependencies = [
     { name = "sentence-transformers" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "cora-frontend-streamlit" },
+    { name = "cora-plugin-fitness" },
+    { name = "pytest" },
+    { name = "pytest-watcher" },
+    { name = "ruff" },
+    { name = "ty" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "chromadb", specifier = ">=1.5,<2" },
-    { name = "cora-api", editable = "packages/api" },
+    { name = "jsonschema", specifier = ">=4.26,<5" },
     { name = "langchain-openai", specifier = ">=1.4.1" },
     { name = "langgraph", specifier = ">=1.2.10,<2" },
     { name = "langgraph-checkpoint-sqlite", specifier = ">=3.1.1,<4" },
@@ -490,66 +466,41 @@ requires-dist = [
     { name = "sentence-transformers", specifier = ">=5.3,<6" },
 ]
 
-[[package]]
-name = "cora-api"
-version = "0.1.0"
-source = { editable = "packages/api" }
-
-[[package]]
-name = "cora-engine"
-version = "0.1.0"
-source = { editable = "packages/engine" }
-dependencies = [
-    { name = "cora-api" },
-    { name = "jsonschema" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "cora-api", editable = "packages/api" },
-    { name = "jsonschema", specifier = ">=4.26,<5" },
+[package.metadata.requires-dev]
+dev = [
+    { name = "cora-frontend-streamlit", editable = "frontends/streamlit" },
+    { name = "cora-plugin-fitness", editable = "plugins/fitness" },
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest-watcher", specifier = ">=0.6.3" },
+    { name = "ruff", specifier = ">=0.15.22" },
+    { name = "ty", specifier = ">=0.0.60" },
 ]
 
 [[package]]
 name = "cora-frontend-streamlit"
 version = "0.1.0"
-source = { editable = "packages/frontends/streamlit" }
+source = { editable = "frontends/streamlit" }
 dependencies = [
     { name = "cora" },
-    { name = "cora-api" },
-    { name = "cora-engine" },
     { name = "streamlit" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "cora", editable = "packages/app" },
-    { name = "cora-api", editable = "packages/api" },
-    { name = "cora-engine", editable = "packages/engine" },
+    { name = "cora", editable = "." },
     { name = "streamlit", specifier = "~=1.60.0" },
 ]
 
 [[package]]
 name = "cora-plugin-fitness"
 version = "0.1.0"
-source = { editable = "packages/plugins/fitness" }
+source = { editable = "plugins/fitness" }
 dependencies = [
-    { name = "cora-api" },
+    { name = "cora" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "cora-api", editable = "packages/api" }]
-
-[[package]]
-name = "cora-plugin-security"
-version = "0.1.0"
-source = { editable = "packages/plugins/security" }
-dependencies = [
-    { name = "cora-api" },
-]
-
-[package.metadata]
-requires-dist = [{ name = "cora-api", editable = "packages/api" }]
+requires-dist = [{ name = "cora", editable = "." }]
 
 [[package]]
 name = "cuda-bindings"

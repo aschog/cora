@@ -2,28 +2,26 @@
 
 Here rather than in a plugin's own suite, which asserts what the bundle holds and needs
 no loader to do it. Whether the registry accepts what a plugin declares is its own
-subject, and it is the same question for every plugin — asking it once, over the members
-found in the tree, covers the next plugin as well as these two.
+subject, and it is the same question for every plugin — asking it once, over the bundles
+found in the namespace, covers the next plugin as well as these two.
 """
 
-import pathlib
+import pkgutil
 
 import pytest
-import tomllib
 
+import cora.plugins
 from cora.engine.plugin_registry import load_plugin
 from cora.ports.plugin import Plugin
 
-PACKAGES = pathlib.Path(__file__).resolve().parent.parent / "packages"
-
 
 def _shipped_modules() -> list[str]:
+    """Found through the namespace rather than the manifests: `cora.plugins` spans the
+    guard the app ships and the domain that ships as a wheel of its own, and asking the
+    installed namespace covers both without knowing which is which."""
     return sorted(
-        tomllib.loads((path / "pyproject.toml").read_text())["tool"]["uv"][
-            "build-backend"
-        ]["module-name"]
-        for path in (PACKAGES / "plugins").iterdir()
-        if (path / "pyproject.toml").is_file()
+        f"cora.plugins.{found.name}"
+        for found in pkgutil.iter_modules(cora.plugins.__path__)
     )
 
 

@@ -9,7 +9,7 @@ import cora.app
 import cora.domain
 import cora.engine
 import cora.frontends.streamlit
-import cora.plugins.fitness
+import cora.plugins
 import cora.ports
 
 FORBIDDEN_FRAMEWORKS = frozenset(
@@ -31,27 +31,27 @@ def _root(module: ModuleType) -> pathlib.Path:
     return pathlib.Path(str(module.__file__)).parent
 
 
-# Every shipped layer, each asked of its module rather than of a directory: since the
-# split there is no single tree holding all of cora, and a walker rooted at one package
-# passes while silently covering none of the others. The contract now ships apart from
-# the engine, so the pure set spans two distributions and three modules.
+# Every shipped layer, each asked of its module rather than of a directory: the layers
+# are siblings under one `src/cora/`, and a rule that named the directory would have to
+# be rewritten the day a layer ships from somewhere else — which is what `cora.plugins`
+# already does.
 PURE_ROOTS = (_root(cora.domain), _root(cora.ports), _root(cora.engine))
-EXTENSION_POINTS = ("plugins", "frontends")
-"""The two directories that expect siblings. Their contents are found rather than
-listed: a second plugin ships from a tree of its own, and a walker rooted at the first
-one passes by covering none of it."""
-
-
-PACKAGES = pathlib.Path(__file__).resolve().parent.parent / "packages"
+EXTENSION_POINTS = (cora.plugins, cora.frontends)
+"""The two namespaces that expect contributors. Asked of the namespace rather than of a
+directory: `cora.plugins` is one name over two trees — the guard shipping with the app
+and the reference domain shipping as a wheel of its own — and a walk rooted at either
+tree passes by covering none of the other."""
 
 
 def _extension_roots() -> tuple[pathlib.Path, ...]:
+    """Every portion of an extension point. A namespace package carries one `__path__`
+    entry per distribution contributing to it, so a plugin added later is walked without
+    being listed here."""
     return tuple(
         sorted(
-            path / "src" / "cora" / point
+            pathlib.Path(portion)
             for point in EXTENSION_POINTS
-            for path in (PACKAGES / point).iterdir()
-            if (path / "pyproject.toml").is_file()
+            for portion in point.__path__
         )
     )
 

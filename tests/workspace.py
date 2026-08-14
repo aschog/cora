@@ -2,16 +2,28 @@
 the same two facts; the next distribution should have one place to be found from."""
 
 import pathlib
-
 import tomllib
 
-PACKAGES = pathlib.Path(__file__).resolve().parent.parent / "packages"
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+EXTENSION_POINTS = ("plugins", "frontends")
 
 
 def members() -> list[pathlib.Path]:
-    """A member is a directory with a manifest, found rather than listed: the tree nests
-    where the namespace nests, so `plugins/fitness` is as much a member as `engine`."""
-    return sorted(path.parent for path in PACKAGES.rglob("pyproject.toml"))
+    """The app is the root; a plugin and a frontend are members beside it, found rather
+    than listed so the next one of either is covered too."""
+    return [
+        ROOT,
+        *sorted(
+            found.parent
+            for point in EXTENSION_POINTS
+            for found in (ROOT / point).glob("*/pyproject.toml")
+        ),
+    ]
+
+
+def location(member: pathlib.Path) -> str:
+    """A member as the docs and the failure messages name it: `.` for the app."""
+    return str(member.relative_to(ROOT)) or "."
 
 
 def manifest(member: pathlib.Path) -> dict:
@@ -23,8 +35,8 @@ def distribution(member: pathlib.Path) -> str:
 
 
 def modules(member: pathlib.Path) -> list[str]:
-    """A manifest may name one module or several: `cora-api` carries `cora.domain` and
-    `cora.ports` as two portions of the namespace."""
+    """A manifest may name one module or several: the app carries five layers and the
+    guard its default set loads, as six portions of the namespace."""
     declared = manifest(member)["tool"]["uv"]["build-backend"]["module-name"]
     return [declared] if isinstance(declared, str) else list(declared)
 
@@ -38,11 +50,12 @@ def carrier_of(module: str) -> str:
 
 
 def plugins() -> list[tuple[str, str]]:
-    """Every plugin in the workspace as (distribution, module), so a guard written over
-    them covers the next one too."""
+    """Every plugin in the workspace as (distribution, module), read off `cora.plugins`
+    rather than off the tree: the guard ships from the app and the reference domain from
+    a wheel of its own, and a guard written over them covers the next one either way."""
     return sorted(
         (distribution(member), module)
         for member in members()
-        if member.parent.name == "plugins"
         for module in modules(member)
+        if module.startswith("cora.plugins.")
     )

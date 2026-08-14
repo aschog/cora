@@ -14,13 +14,15 @@ backticked token holding a slash but no source suffix — a model id like
 import pathlib
 import re
 
+import workspace
+
 PAGES = ("README.md", "CLAUDE.md", "docs/big-picture.md", "docs/workflow.md")
 CONFIGS = (".streamlit/config.toml", "Makefile")
 SUFFIXES = (".py", ".md", ".toml", "/")
 
 BACKTICKED = re.compile(r"`([A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+)`")
 BARE = re.compile(r"(?<![`\w])([A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+)")
-NAMESPACES = tuple(sorted(pathlib.Path("packages").glob("**/src/cora")))
+NAMESPACES = tuple(sorted(member / "src" / "cora" for member in workspace.members()))
 
 
 def _claims() -> list[tuple[str, str]]:
@@ -43,15 +45,12 @@ def _resolves(reference: str) -> bool:
     return any(candidate.exists() for candidate in candidates)
 
 
-def test_every_package_contributes_a_namespace_root() -> None:
+def test_every_member_contributes_a_namespace_root() -> None:
     """Counted against the workspace rather than pinned to a number: a location claim is
-    resolved against every package, so a package the glob missed would make a stale path
-    look fine."""
-    packages = pathlib.Path("packages")
-    members = {
-        path.parent.relative_to(packages) for path in packages.rglob("pyproject.toml")
-    }
-    assert {root.parent.parent.relative_to(packages) for root in NAMESPACES} == members
+    resolved against every member, so a member the discovery missed would make a stale
+    path look fine."""
+    assert {root.parent.parent for root in NAMESPACES} == {*workspace.members()}
+    assert all(root.is_dir() for root in NAMESPACES)
 
 
 def test_a_reference_is_resolved_against_the_packages() -> None:

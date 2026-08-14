@@ -1,62 +1,65 @@
+[project]
+name = "cora"
+version = "0.1.0"
+description = "A RAG chatbot grounded in your uploaded documents: the contract, the use cases, the technologies they bind to, and the composition root over all three"
+requires-python = ">=3.12"
+dependencies = [
+    "chromadb>=1.5,<2",
+    "jsonschema>=4.26,<5",
+    "langchain-openai>=1.4.1",
+    "langgraph>=1.2.10,<2",
+    "langgraph-checkpoint-sqlite>=3.1.1,<4",
+    "pypdf>=6.14,<7",
+    "rank-bm25>=0.2.2",
+    "sentence-transformers>=5.3,<6",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.26,<0.12.0"]
+build-backend = "uv_build"
+
+# Named rather than inferred: `cora` is a namespace no distribution owns, so this one
+# claims the portions it ships and leaves the rest free for a plugin or a frontend to
+# contribute. `cora.plugins.security` is among them because the default set loads it —
+# a guard that ships in the box is not an optional install.
+[tool.uv.build-backend]
+module-name = [
+    "cora.domain",
+    "cora.ports",
+    "cora.engine",
+    "cora.adapters",
+    "cora.app",
+    "cora.plugins.security",
+]
+
+# The app is the root. What sits beside it is what you may install *as well*: a domain
+# plugin and a frontend, each a directory named in the plural because it expects
+# siblings. `ls` is the architecture diagram.
 [tool.uv.workspace]
-# Depth carries the meaning. A directory directly under packages/ is a distribution; a
-# directory holding distributions is an extension point, named in the plural because it
-# expects siblings. So the four one-of-a-kind pieces sit flat and the two extensible ones
-# nest, which is also where the namespace nests: packages/frontends/streamlit ships
-# cora.frontends.streamlit. The container directories carry no manifest of their own, so
-# they are excluded rather than matched.
-members = ["packages/*", "packages/frontends/*", "packages/plugins/*"]
-exclude = ["packages/frontends", "packages/plugins"]
+members = ["plugins/*", "frontends/*"]
 
 [tool.uv.sources]
-cora-api = { workspace = true }
-cora-engine = { workspace = true }
-cora-adapters = { workspace = true }
-cora-plugin-fitness = { workspace = true }
-cora-plugin-security = { workspace = true }
 cora = { workspace = true }
+cora-plugin-fitness = { workspace = true }
 cora-frontend-streamlit = { workspace = true }
 
-# A virtual root: it ships nothing. The packages under packages/ are the
-# distributions, one per audience that installs it, and what each may depend on is
-# written in its own manifest — which is what makes "the engine knows no framework" a fact
-# of the install rather than a rule a test polices.
 [dependency-groups]
 dev = [
     "cora-frontend-streamlit",
     "cora-plugin-fitness",
-    "cora-plugin-security",
     "pytest>=9.1.1",
     "pytest-watcher>=0.6.3",
     "ruff>=0.15.22",
     "ty>=0.0.60",
 ]
 
-# Spelled out rather than inferred: with no src/ at the root there is no layout for
-# ty to guess from, and `tests` carries the shared fakes every package's tests import.
+# The members are spelled out because only the root's `src/` is guessable from a layout,
+# and `tests` carries the shared fakes every suite imports.
 [tool.ty.environment]
-root = [
-    "packages/api/src",
-    "packages/engine/src",
-    "packages/adapters/src",
-    "packages/app/src",
-    "packages/frontends/streamlit/src",
-    "packages/plugins/fitness/src",
-    "packages/plugins/security/src",
-    "tests",
-]
+root = ["src", "frontends/streamlit/src", "plugins/fitness/src", "tests"]
 
 [tool.ruff]
-src = [
-    "packages/api/src",
-    "packages/engine/src",
-    "packages/adapters/src",
-    "packages/app/src",
-    "packages/frontends/streamlit/src",
-    "packages/plugins/fitness/src",
-    "packages/plugins/security/src",
-    "tests",
-]
+src = ["src", "frontends/streamlit/src", "plugins/fitness/src", "tests"]
 
 [tool.ruff.lint]
 select = [
@@ -72,11 +75,11 @@ select = [
 ]
 
 [tool.pytest.ini_options]
-# Each package's own tests sit beside it; tests/ keeps the shared fakes and the
-# suites that cross packages. Nothing under tests/ may be named for a shipped
-# module: pythonpath puts it on sys.path, and a directory called cora would join
-# the cora namespace as its first portion.
-testpaths = ["packages", "tests"]
+# The app's tests sit under `tests/`, mirroring `src/cora/`; a plugin and a frontend keep
+# theirs beside their own manifest. Nothing under `tests/` may be named for a shipped
+# module: pythonpath puts it on sys.path, and a directory called cora would join the cora
+# namespace as its first portion.
+testpaths = ["tests", "plugins", "frontends"]
 pythonpath = ["tests"]
 addopts = "--strict-markers --import-mode=importlib -m 'not integration and not llm'"
 markers = [

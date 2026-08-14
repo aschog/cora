@@ -1,6 +1,6 @@
 """What ingestion decides, against loaders of the test's own making. Which formats a
 deployment reads is the adapters' business, so the real registry is exercised where it
-lives — `packages/adapters/tests/adapters/test_loaders.py`, and the PDF path end to end
+lives — `tests/adapters/test_loaders.py`, and the PDF path end to end
 beside it.
 """
 

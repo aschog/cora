@@ -2,7 +2,7 @@
 # here is a thin wrapper over `uv run` — the real definitions are in pyproject.toml, and
 # `tests/test_docs.py` checks that the path below still exists.
 
-APP := packages/frontends/streamlit/src/cora/frontends/streamlit/streamlit_app.py
+APP := frontends/streamlit/src/cora/frontends/streamlit/streamlit_app.py
 
 .PHONY: run run-env
 
