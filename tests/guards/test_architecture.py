@@ -1,7 +1,6 @@
 import ast
-import importlib.util
 import pathlib
-from importlib.metadata import packages_distributions
+import sys
 from types import ModuleType
 
 import pytest
@@ -13,104 +12,25 @@ import cora.engine
 import cora.frontends.streamlit
 import cora.plugins
 import cora.ports
-import workspace
 
 PURE_MAY_USE = frozenset({"jsonschema"})
-"""The one declared dependency the contract and the engine may reach for. Validating a
-tool's schema is a rule about what a plugin declares, not a technology the engine is
-bound to — a deployment cannot swap it for a different one."""
-REACHED_THROUGH = frozenset({"langchain", "langchain_core"})
-"""Frameworks no manifest names but every environment holds: `langchain-openai` brings
-them, and importing either binds a layer exactly as tightly as importing what declared
-them."""
-
-
-def _declared_distributions() -> frozenset[str]:
-    """Every third party any member declares. Read off the manifests rather than listed,
-    so `uv add` cannot leave the guard stale: a dependency added tomorrow is out of the
-    pure layers' reach the same day, and putting it *in* reach means saying so in
-    `PURE_MAY_USE`."""
-    return frozenset(
-        name
-        for member in workspace.members()
-        for name in workspace.requirements(member)
-        if name != "cora" and not name.startswith("cora-")
-    )
-
-
-def _contributed() -> dict[str, set[str]]:
-    """Which top-level modules each installed distribution actually contributes."""
-    contributed: dict[str, set[str]] = {}
-    for module, distributions in packages_distributions().items():
-        for distribution in distributions:
-            contributed.setdefault(distribution, set()).add(module)
-    return contributed
-
-
-def _declared_technologies() -> frozenset[str]:
-    """The declared distributions as the names an import would use, asked of the
-    installed environment rather than guessed from the distribution's name. The two are
-    not the same string: `pyyaml` imports as `yaml` and `langgraph-checkpoint-sqlite` as
-    `langgraph`, so a hyphen-for-underscore swap both invents a name nothing imports and
-    misses the one something does. A distribution may contribute several, and every one
-    of them binds a layer that imports it."""
-    contributed = _contributed()
-    return frozenset(
-        module
-        for distribution in _declared_distributions()
-        for module in contributed.get(distribution, ())
-    )
-
-
-FORBIDDEN_FRAMEWORKS = (_declared_technologies() | REACHED_THROUGH) - PURE_MAY_USE
+"""The one third party the contract and the engine may reach for. Validating a tool's
+schema is a rule about what a plugin declares, not a technology the engine is bound to —
+a deployment cannot swap it for a different one."""
 TEST_ONLY_FRAMEWORKS = frozenset({"pytest"})
 
 
-def test_the_guard_names_technologies_the_way_an_import_does() -> None:
-    """A distribution's name is not the name you import it by: `pyyaml` imports as
-    `yaml`, `beautifulsoup4` as `bs4`, and `langgraph-checkpoint-sqlite` as `langgraph`.
-    Swapping hyphens for underscores invents a name nothing can import and misses the
-    one something does — so every name in the derived set has to resolve."""
-    phantom = sorted(
-        name
-        for name in _declared_technologies()
-        if importlib.util.find_spec(name) is None
-    )
+def _is_technology(module: str) -> bool:
+    """Anything that is neither the standard library nor `cora` itself.
 
-    assert phantom == []
-
-
-def test_every_declared_technology_resolves_to_an_import_name() -> None:
-    """The derivation reads an environment, so a distribution missing from it would
-    contribute nothing and be silently unguarded. Asked of each one rather than of the
-    set, so the failure names what went unmapped."""
-    unresolved = sorted(
-        distribution
-        for distribution in _declared_distributions()
-        if not _contributed().get(distribution)
-    )
-
-    assert unresolved == []
-
-
-def test_a_declared_technology_cannot_be_left_off_the_guard() -> None:
-    """Which formats a deployment reads is the adapters' business, so `pypdf` is out of
-    the engine's reach — and it is there because the manifest names it, not because
-    someone remembered to add it here."""
-    assert "pypdf" in FORBIDDEN_FRAMEWORKS
-
-
-def test_the_guard_covers_every_technology_the_workspace_ships() -> None:
-    """The derivation asserted against, so a walk that discovered nothing cannot pass by
-    forbidding nothing. `jsonschema` is the deliberate exception and stays out."""
-    assert {
-        "chromadb",
-        "langgraph",
-        "sentence_transformers",
-        "streamlit",
-        "pypdf",
-    } <= FORBIDDEN_FRAMEWORKS
-    assert not FORBIDDEN_FRAMEWORKS & PURE_MAY_USE
+    Named by what a layer may use, never by what the manifests declare. A deny-list read
+    off the manifests can only see the ten distributions someone asked for, while the
+    environment holds every transitive one too — chromadb and langchain-openai bring
+    `numpy`, `torch` and `openai` — and importing one of those binds a layer exactly as
+    tightly. The install used to enforce this by absence, with nothing to keep in sync;
+    an allow-list is the only form of the rule that inherits that property."""
+    root = module.split(".")[0]
+    return root != "cora" and root not in sys.stdlib_module_names
 
 
 def _root(module: ModuleType) -> pathlib.Path:
@@ -199,12 +119,12 @@ LAYER_FILES: dict[str, list[pathlib.Path]] = {
 }
 REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in files]
 
-# What each layer may import of the technologies the workspace declares. The adapters
-# are absent because binding one is what an adapter *is*, and the contract and the
-# engine because `test_core_module_is_pure` holds them to something stricter — it bars
-# the outer layers too. What is left is the three meant to be technology free, or
-# nearly: a plugin is data over the contract, the composition root names adapters rather
-# than importing what they wrap, and a frontend draws with one toolkit and no more.
+# Every technology each layer may import, and nothing outside it. The adapters are
+# absent because binding one is what an adapter *is*, and the contract and the engine
+# because `test_core_module_is_pure` holds them to something stricter — it bars the
+# outer layers too. What is left is the three meant to be technology free, or nearly: a
+# plugin is data over the contract, the composition root names adapters rather than
+# importing what they wrap, and a frontend draws with one toolkit and no more.
 TECHNOLOGY_ALLOWED: dict[str, frozenset[str]] = {
     "the app": frozenset(),
     "the plugins": frozenset(),
@@ -273,9 +193,10 @@ def _test_only_imports(path: pathlib.Path) -> list[str]:
 
 
 def _is_forbidden(module: str) -> bool:
-    """A framework, or a layer the contract and the engine may not reach for."""
-    if module.split(".")[0] in FORBIDDEN_FRAMEWORKS:
-        return True
+    """A technology the contract and the engine were not given, or a layer they may not
+    reach for."""
+    if _is_technology(module):
+        return module.split(".")[0] not in PURE_MAY_USE
     return bool(_reaches_any(module, OUT_OF_REACH["the contract and the engine"][0]))
 
 
@@ -376,7 +297,7 @@ def test_a_layer_binds_no_technology_it_was_not_given(
         {
             module
             for module in _imported_modules(tree, _package_parts(path))
-            if module.split(".")[0] in FORBIDDEN_FRAMEWORKS - allowed
+            if _is_technology(module) and module.split(".")[0] not in allowed
         }
     )
     assert not bound, (
@@ -424,6 +345,27 @@ def test_the_walkers_catch_a_planted_violation(tmp_path: pathlib.Path) -> None:
 
     outward, _ = OUT_OF_REACH["the adapters"]
     assert _reaches(tree, ("cora", "adapters"), outward) == ["cora.app.config"]
+
+
+def test_a_technology_no_manifest_declares_is_still_out_of_reach(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The install used to enforce this by absence: a layer could not import what was
+    not installed, and nothing had to be named. One distribution later everything is
+    installed, and a rule listing what the manifests declare sees only those — while
+    `openai`, `torch` and `numpy` are all present, dragged in by chromadb and
+    langchain-openai, and would bind the engine exactly as tightly."""
+    rogue = tmp_path / "rogue.py"
+    rogue.write_text("import openai\nimport torch\nimport numpy as np\n")
+    tree = ast.parse(rogue.read_text())
+
+    bound = {
+        module
+        for module in _imported_modules(tree, ("cora", "engine"))
+        if _is_forbidden(module)
+    }
+
+    assert bound == {"openai", "torch", "numpy"}
 
 
 def test_the_walkers_pass_innocent_code(tmp_path: pathlib.Path) -> None:
