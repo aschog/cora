@@ -65,8 +65,10 @@ class Config:
 
 def _model(env: Mapping[str, str]) -> str:
     """The key and the base URL are named `OPENROUTER_*`, so the model gets guessed that
-    way too; `CORA_MODEL` is the documented name and stays the one that wins."""
-    return env.get("CORA_MODEL") or env.get("OPENROUTER_MODEL") or DEFAULT_MODEL
+    way too; `CORA_MODEL` is the documented name and stays the one that wins whenever it
+    names a model — blanks are not a name, and would otherwise outrank the alias."""
+    named = (env.get("CORA_MODEL", ""), env.get("OPENROUTER_MODEL", ""))
+    return next((model for model in map(str.strip, named) if model), DEFAULT_MODEL)
 
 
 def _plugin_modules(env: Mapping[str, str]) -> tuple[str, ...]:

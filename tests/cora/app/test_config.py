@@ -69,6 +69,28 @@ def test_cora_model_wins_over_the_openrouter_alias() -> None:
     assert config.model == "anthropic/claude"
 
 
+def test_a_model_named_with_only_blanks_is_no_name_at_all() -> None:
+    """A variable left blank in a `.env` reads as unset to the person who blanked it,
+    so it must not outrank the alias it was written above."""
+    config = Config.from_env(
+        {
+            "OPENROUTER_API_KEY": "k",
+            "CORA_MODEL": "   ",
+            "OPENROUTER_MODEL": "openai/gpt-5-mini",
+        }
+    )
+
+    assert config.model == "openai/gpt-5-mini"
+
+
+def test_a_model_is_taken_without_the_spaces_around_it() -> None:
+    config = Config.from_env(
+        {"OPENROUTER_API_KEY": "k", "CORA_MODEL": " anthropic/claude "}
+    )
+
+    assert config.model == "anthropic/claude"
+
+
 def test_several_plugins_are_read_in_the_order_they_were_named() -> None:
     config = Config.from_env(
         {
