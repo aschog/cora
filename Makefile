@@ -1,6 +1,6 @@
 # Shortcuts for the commands whose paths are long enough to get retyped wrong. Everything
 # here is a thin wrapper over `uv run` — the real definitions are in pyproject.toml, and
-# `tests/test_docs.py` checks that the path below still exists.
+# `tests/guards/test_docs.py` checks that the path below still exists.
 
 APP := frontends/streamlit/src/cora/frontends/streamlit/streamlit_app.py
 

@@ -21,17 +21,18 @@ CONFIGS = (".streamlit/config.toml", "Makefile")
 SUFFIXES = (".py", ".md", ".toml", "/")
 
 BACKTICKED = re.compile(r"`([A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+)`")
-BARE = re.compile(r"(?<![`\w])([A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+)")
+BARE = re.compile(r"(?<![`\w/])([A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+)")
 NAMESPACES = tuple(sorted(member / "src" / "cora" for member in workspace.members()))
 
 
 def _claims() -> list[tuple[str, str]]:
-    pages = [(page, BACKTICKED) for page in PAGES]
-    configs = [(config, BARE) for config in CONFIGS]
+    pages = [(page, (BACKTICKED,)) for page in PAGES]
+    configs = [(config, (BACKTICKED, BARE)) for config in CONFIGS]
     return sorted(
         {
             (name, reference)
-            for name, pattern in pages + configs
+            for name, patterns in pages + configs
+            for pattern in patterns
             for reference in pattern.findall(pathlib.Path(name).read_text())
             if reference.endswith(SUFFIXES)
         }
@@ -66,6 +67,16 @@ def test_a_reference_is_resolved_against_the_packages() -> None:
     assert _resolves("domain/chunk.py")
     assert _resolves("frontends/streamlit/")
     assert not _resolves("domain/no_such_module.py")
+
+
+def test_a_config_is_read_for_the_paths_its_comments_write_like_prose() -> None:
+    """A comment in a config names a file the way a page does, in backticks — so reading
+    configs bare let a comment go on pointing at a file the tree no longer has. A path
+    is claimed from its start: what follows a slash is a segment, not a second claim."""
+    claims = _claims()
+
+    assert ("Makefile", "tests/guards/test_docs.py") in claims
+    assert ("Makefile", "guards/test_docs.py") not in claims
 
 
 def test_the_docs_claim_something() -> None:
