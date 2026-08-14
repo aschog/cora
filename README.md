@@ -9,6 +9,8 @@ plugins.
 
 - Architecture (start here): [`docs/big-picture.md`](docs/big-picture.md) — the map, the
   seven ports, and what the tests pin down
+- One session end to end: [`docs/happy-path.md`](docs/happy-path.md) — upload, question,
+  calculation and memory as sequence diagrams, drawn from the live test that walks them
 - Development workflow (TDD): [`docs/workflow.md`](docs/workflow.md)
 - Assignment brief: [`docs/sprints/4/assignment.md`](docs/sprints/4/assignment.md) —
   current sprint; sprint 3's brief, spec and test findings are in `docs/sprints/3/`

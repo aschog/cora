@@ -16,7 +16,13 @@ import re
 
 import workspace
 
-PAGES = ("README.md", "CLAUDE.md", "docs/big-picture.md", "docs/workflow.md")
+PAGES = (
+    "README.md",
+    "CLAUDE.md",
+    "docs/big-picture.md",
+    "docs/happy-path.md",
+    "docs/workflow.md",
+)
 CONFIGS = (".streamlit/config.toml", "Makefile")
 SUFFIXES = (".py", ".md", ".toml", "/")
 
