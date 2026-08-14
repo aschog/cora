@@ -1,0 +1,209 @@
+from pathlib import Path
+
+import pytest
+
+from cora.app.config import DEFAULT_PLUGINS, Config
+from cora.domain.errors import ConfigurationError
+
+
+def test_from_env_reads_every_field() -> None:
+    config = Config.from_env(
+        {
+            "OPENROUTER_API_KEY": "key-123",
+            "CORA_MODEL": "anthropic/claude",
+            "OPENROUTER_BASE_URL": "https://example/api",
+            "CORA_PLUGINS": "cora.plugins.custom",
+            "CORA_TOP_K": "7",
+            "CORA_MAX_TOOL_ROUNDS": "3",
+            "CORA_HISTORY_TURNS": "9",
+            "CORA_DB_PATH": "/tmp/vectors",
+            "CORA_MEMORY_PATH": "/tmp/memory.sqlite",
+        }
+    )
+
+    assert config == Config(
+        api_key="key-123",
+        model="anthropic/claude",
+        base_url="https://example/api",
+        plugin_modules=("cora.plugins.custom",),
+        top_k=7,
+        max_tool_rounds=3,
+        history_turns=9,
+        db_path="/tmp/vectors",
+        memory_path="/tmp/memory.sqlite",
+    )
+
+
+def test_from_env_applies_defaults_for_optional_fields() -> None:
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert config.model
+    assert config.base_url
+    assert config.plugin_modules == DEFAULT_PLUGINS
+    assert config.top_k > 0
+    assert config.max_tool_rounds > 0
+    assert config.history_turns > 0
+    assert config.db_path
+    assert config.memory_path
+
+
+def test_the_model_may_be_named_with_the_prefix_the_key_and_url_already_use() -> None:
+    """`OPENROUTER_API_KEY` and `OPENROUTER_BASE_URL` set the prefix a reader expects
+    the model to share, and a model named that way used to be ignored in silence."""
+    config = Config.from_env(
+        {"OPENROUTER_API_KEY": "k", "OPENROUTER_MODEL": "openai/gpt-5-mini"}
+    )
+
+    assert config.model == "openai/gpt-5-mini"
+
+
+def test_cora_model_wins_over_the_openrouter_alias() -> None:
+    config = Config.from_env(
+        {
+            "OPENROUTER_API_KEY": "k",
+            "CORA_MODEL": "anthropic/claude",
+            "OPENROUTER_MODEL": "openai/gpt-5-mini",
+        }
+    )
+
+    assert config.model == "anthropic/claude"
+
+
+def test_a_model_named_with_only_blanks_is_no_name_at_all() -> None:
+    """A variable left blank in a `.env` reads as unset to the person who blanked it,
+    so it must not outrank the alias it was written above."""
+    config = Config.from_env(
+        {
+            "OPENROUTER_API_KEY": "k",
+            "CORA_MODEL": "   ",
+            "OPENROUTER_MODEL": "openai/gpt-5-mini",
+        }
+    )
+
+    assert config.model == "openai/gpt-5-mini"
+
+
+def test_a_model_is_taken_without_the_spaces_around_it() -> None:
+    config = Config.from_env(
+        {"OPENROUTER_API_KEY": "k", "CORA_MODEL": " anthropic/claude "}
+    )
+
+    assert config.model == "anthropic/claude"
+
+
+def test_several_plugins_are_read_in_the_order_they_were_named() -> None:
+    config = Config.from_env(
+        {
+            "OPENROUTER_API_KEY": "k",
+            "CORA_PLUGINS": "cora.plugins.security, cora.plugins.fitness",
+        }
+    )
+
+    assert config.plugin_modules == ("cora.plugins.security", "cora.plugins.fitness")
+
+
+def test_a_fresh_install_loads_no_plugin_at_all() -> None:
+    """Bare cora is the default, not a thing you have to ask for: a plugin is an
+    extension, so naming one is the only way to get one. Unset and set-empty therefore
+    agree — there is no default set left for them to differ about."""
+    empty = Config.from_env({"OPENROUTER_API_KEY": "k", "CORA_PLUGINS": ""})
+    unset = Config.from_env({"OPENROUTER_API_KEY": "k"})
+
+    assert DEFAULT_PLUGINS == ()
+    assert empty.plugin_modules == ()
+    assert unset.plugin_modules == ()
+
+
+def test_the_memory_default_sits_beside_the_document_store() -> None:
+    """Two files, one directory: whatever fixes the CWD-relative default fixes both."""
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert Path(config.memory_path).parent == Path(config.db_path).parent
+
+
+def test_from_env_reads_retrieval_mode_and_fusion_queries() -> None:
+    config = Config.from_env(
+        {
+            "OPENROUTER_API_KEY": "key-123",
+            "CORA_RETRIEVAL": "advanced",
+            "CORA_FUSION_QUERIES": "6",
+        }
+    )
+
+    assert config.retrieval == "advanced"
+    assert config.fusion_queries == 6
+
+
+def test_from_env_defaults_to_plain_retrieval() -> None:
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert config.retrieval == "plain"
+    assert config.fusion_queries >= 1
+
+
+def test_from_env_accepts_advanced_retrieval() -> None:
+    config = Config.from_env(
+        {"OPENROUTER_API_KEY": "key-123", "CORA_RETRIEVAL": "advanced"}
+    )
+
+    assert config.retrieval == "advanced"
+
+
+def test_from_env_rejects_an_unknown_retrieval_mode() -> None:
+    with pytest.raises(ConfigurationError):
+        Config.from_env({"OPENROUTER_API_KEY": "key-123", "CORA_RETRIEVAL": "bogus"})
+
+
+def test_from_env_leaves_debug_off_when_the_flag_is_unset() -> None:
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert config.debug is False
+
+
+@pytest.mark.parametrize("raw", ["1", "true", "TRUE", "True"])
+def test_from_env_turns_debug_on_for_truthy_flags(raw: str) -> None:
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123", "CORA_DEBUG": raw})
+
+    assert config.debug is True
+
+
+@pytest.mark.parametrize("raw", ["0", "false", "FALSE", ""])
+def test_from_env_keeps_debug_off_for_falsy_flags(raw: str) -> None:
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123", "CORA_DEBUG": raw})
+
+    assert config.debug is False
+
+
+def test_from_env_missing_api_key_raises_configuration_error() -> None:
+    with pytest.raises(ConfigurationError):
+        Config.from_env({})
+
+
+@pytest.mark.parametrize(
+    "var", ["CORA_TOP_K", "CORA_MAX_TOOL_ROUNDS", "CORA_HISTORY_TURNS"]
+)
+def test_from_env_non_integer_value_raises_configuration_error(var: str) -> None:
+    with pytest.raises(ConfigurationError):
+        Config.from_env({"OPENROUTER_API_KEY": "key-123", var: "lots"})
+
+
+@pytest.mark.parametrize(
+    "var", ["CORA_TOP_K", "CORA_MAX_TOOL_ROUNDS", "CORA_HISTORY_TURNS"]
+)
+def test_from_env_negative_value_raises_configuration_error(var: str) -> None:
+    with pytest.raises(ConfigurationError):
+        Config.from_env({"OPENROUTER_API_KEY": "key-123", var: "-1"})
+
+
+@pytest.mark.parametrize("var", ["CORA_TOP_K", "CORA_MAX_TOOL_ROUNDS"])
+def test_from_env_zero_raises_where_one_is_the_lowest_useful_value(var: str) -> None:
+    with pytest.raises(ConfigurationError):
+        Config.from_env({"OPENROUTER_API_KEY": "key-123", var: "0"})
+
+
+def test_from_env_allows_zero_history_turns_to_switch_memory_off() -> None:
+    config = Config.from_env(
+        {"OPENROUTER_API_KEY": "key-123", "CORA_HISTORY_TURNS": "0"}
+    )
+
+    assert config.history_turns == 0

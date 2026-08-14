@@ -1,0 +1,448 @@
+import ast
+import pathlib
+import sys
+from types import ModuleType
+
+import pytest
+
+import cora.adapters
+import cora.app
+import cora.domain
+import cora.engine
+import cora.frontends.streamlit
+import cora.plugins
+import cora.ports
+import workspace
+
+PURE_MAY_USE = frozenset({"jsonschema"})
+"""The one third party the contract and the engine may reach for. Validating a tool's
+schema is a rule about what a plugin declares, not a technology the engine is bound to —
+a deployment cannot swap it for a different one."""
+TEST_ONLY_FRAMEWORKS = frozenset({"pytest"})
+
+
+def _is_technology(module: str) -> bool:
+    """Anything that is neither the standard library nor `cora` itself.
+
+    Named by what a layer may use, never by what the manifests declare. A deny-list read
+    off the manifests can only see the ten distributions someone asked for, while the
+    environment holds every transitive one too — chromadb and langchain-openai bring
+    `numpy`, `torch` and `openai` — and importing one of those binds a layer exactly as
+    tightly. The install used to enforce this by absence, with nothing to keep in sync;
+    an allow-list is the only form of the rule that inherits that property."""
+    root = module.split(".")[0]
+    return root != "cora" and root not in sys.stdlib_module_names
+
+
+def _root(module: ModuleType) -> pathlib.Path:
+    return pathlib.Path(str(module.__file__)).parent
+
+
+# Every shipped layer, each asked of its module rather than of a directory: the layers
+# are siblings under one `src/cora/`, and a rule that named the directory would have to
+# be rewritten the day a layer ships from somewhere else — which is what `cora.plugins`
+# already does.
+PURE_ROOTS = (_root(cora.domain), _root(cora.ports), _root(cora.engine))
+EXTENSION_POINTS = (cora.plugins, cora.frontends)
+"""The two namespaces that expect contributors. Asked of the namespace rather than of a
+directory: `cora.plugins` is one name over as many trees as there are plugins installed,
+and a walk rooted at any one of them passes by covering none of the others."""
+
+
+def _extension_roots() -> tuple[pathlib.Path, ...]:
+    """Every portion of an extension point. A namespace package carries one `__path__`
+    entry per distribution contributing to it, so a plugin added later is walked without
+    being listed here."""
+    return tuple(
+        sorted(
+            pathlib.Path(portion)
+            for point in EXTENSION_POINTS
+            for portion in point.__path__
+        )
+    )
+
+
+LAYER_ROOTS = (
+    *PURE_ROOTS,
+    _root(cora.adapters),
+    _root(cora.app),
+    *_extension_roots(),
+)
+CORE_FILES = sorted(file for root in PURE_ROOTS for file in root.rglob("*.py"))
+PACKAGE_FILES = sorted(file for root in LAYER_ROOTS for file in root.rglob("*.py"))
+UI_ROOT = _root(cora.frontends.streamlit)
+
+# What each layer may not reach for, and the reason it may not. One table rather than a
+# test per layer: a rule added here is enforced over every file of that layer, and the
+# reason travels into the failure message instead of a docstring nobody reads on the way
+# to fixing it.
+OUT_OF_REACH: dict[str, tuple[tuple[str, ...], str]] = {
+    "the contract and the engine": (
+        ("cora.adapters", "cora.plugins", "cora.app", "cora.frontends"),
+        "the use cases and the slots they drive are what every outer layer depends on, "
+        "so they may depend on none of them",
+    ),
+    "the adapters": (
+        ("cora.engine", "cora.app", "cora.frontends"),
+        "an adapter fills a slot and is reusable by every frontend and every "
+        "version of the use cases, which it can only be if it knows the ports alone",
+    ),
+    "the app": (
+        ("cora.frontends", "cora.plugins"),
+        "the composition root is what a frontend installs, so naming a frontend would "
+        "mean a command-line shell had to install a web UI to reuse the wiring; and it "
+        "installs no plugin at all, which is why importing one rather than naming "
+        "it in config has to stay impossible",
+    ),
+    "the plugins": (
+        ("cora.engine", "cora.adapters", "cora.app", "cora.frontends"),
+        "a plugin is data over the contract, which is what lets it ship as a wheel "
+        "the engine is absent from: reaching any of these makes it a plugin only this "
+        "deployment can install",
+    ),
+    "the frontends": (
+        ("cora.adapters", "cora.plugins"),
+        "a frontend shows what the app and the use cases hand it; reaching an adapter "
+        "ties the UI to one technology binding, and naming a plugin ties it to one "
+        "domain — both are chosen at assembly, not at the screen",
+    ),
+}
+# Which shipped modules each rule above speaks for. The extension points are named by
+# their namespace rather than by the plugins installed into it, so the next contributor
+# is claimed by the same entry — and every name here is matched against `module-name` in
+# the manifests, so a layer that ships without a rule is a failure, not a silence.
+LAYER_MODULES: dict[str, tuple[str, ...]] = {
+    "the contract and the engine": ("cora.domain", "cora.ports", "cora.engine"),
+    "the adapters": ("cora.adapters",),
+    "the app": ("cora.app",),
+    "the plugins": ("cora.plugins",),
+    "the frontends": ("cora.frontends",),
+}
+PLUGIN_ROOTS = tuple(root for root in _extension_roots() if root.name == "plugins")
+FRONTEND_ROOTS = tuple(root for root in _extension_roots() if root.name == "frontends")
+LAYER_FILES: dict[str, list[pathlib.Path]] = {
+    "the contract and the engine": CORE_FILES,
+    "the adapters": sorted(_root(cora.adapters).rglob("*.py")),
+    "the app": sorted(_root(cora.app).rglob("*.py")),
+    "the plugins": sorted(file for root in PLUGIN_ROOTS for file in root.rglob("*.py")),
+    "the frontends": sorted(
+        file for root in FRONTEND_ROOTS for file in root.rglob("*.py")
+    ),
+}
+REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in files]
+
+# Every technology each layer may import, and nothing outside it. The adapters are
+# absent because binding one is what an adapter *is*, and the contract and the engine
+# because `test_core_module_is_pure` holds them to something stricter — it bars the
+# outer layers too. What is left is the three meant to be technology free, or nearly: a
+# plugin is data over the contract, the composition root names adapters rather than
+# importing what they wrap, and a frontend draws with one toolkit and no more.
+TECHNOLOGY_ALLOWED: dict[str, frozenset[str]] = {
+    "the app": frozenset(),
+    "the plugins": frozenset(),
+    "the frontends": frozenset({"streamlit"}),
+}
+TECHNOLOGY_CASES = [
+    (layer, path) for layer in TECHNOLOGY_ALLOWED for path in LAYER_FILES[layer]
+]
+
+
+def _shipped_as(path: pathlib.Path) -> pathlib.Path:
+    """The module path a file ships under — `cora/domain/chunk.py` — which is the same
+    whichever distribution carries it."""
+    src = next(parent for parent in path.parents if parent.name == "src")
+    return path.relative_to(src)
+
+
+def _package_parts(path: pathlib.Path) -> tuple[str, ...]:
+    parts = _shipped_as(path).with_suffix("").parts
+    return parts[:-1]  # drop the module name (or '__init__')
+
+
+def _resolve(module: str | None, level: int, package_parts: tuple[str, ...]) -> str:
+    base = package_parts[: len(package_parts) - (level - 1)]
+    return ".".join([*base, module]) if module else ".".join(base)
+
+
+def _imported_modules(tree: ast.Module, package_parts: tuple[str, ...]):
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                yield alias.name
+        elif isinstance(node, ast.ImportFrom):
+            if node.level == 0:
+                if node.module:
+                    yield node.module
+            else:
+                yield _resolve(node.module, node.level, package_parts)
+
+
+def _imports_streamlit(path: pathlib.Path) -> bool:
+    tree = ast.parse(path.read_text())
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import) and any(
+            alias.name.split(".")[0] == "streamlit" for alias in node.names
+        ):
+            return True
+        if (
+            isinstance(node, ast.ImportFrom)
+            and node.module
+            and node.module.split(".")[0] == "streamlit"
+        ):
+            return True
+    return False
+
+
+def _test_only_imports(path: pathlib.Path) -> list[str]:
+    tree = ast.parse(path.read_text())
+    roots: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            roots.update(alias.name.split(".")[0] for alias in node.names)
+        elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
+            roots.add(node.module.split(".")[0])
+    return sorted(roots & TEST_ONLY_FRAMEWORKS)
+
+
+def _is_forbidden(module: str) -> bool:
+    """A technology the contract and the engine were not given, or a layer they may not
+    reach for."""
+    if _is_technology(module):
+        return module.split(".")[0] not in PURE_MAY_USE
+    return bool(_reaches_any(module, OUT_OF_REACH["the contract and the engine"][0]))
+
+
+def _reaches_any(module: str, layers: tuple[str, ...]) -> bool:
+    return any(module == layer or module.startswith(f"{layer}.") for layer in layers)
+
+
+def test_the_pure_modules_are_discovered() -> None:
+    assert len(PURE_ROOTS) == 3, "the contract and the engine span three modules"
+    assert CORE_FILES, "no pure modules discovered — the walker is misconfigured"
+
+
+@pytest.mark.parametrize(
+    "path",
+    [p for p in PACKAGE_FILES if not p.is_relative_to(UI_ROOT)],
+    ids=lambda p: str(_shipped_as(p)),
+)
+def test_streamlit_stays_inside_the_ui_shell(path: pathlib.Path) -> None:
+    assert not _imports_streamlit(path), (
+        f"{_shipped_as(path)} imports streamlit outside cora/frontends/streamlit"
+    )
+
+
+@pytest.mark.parametrize("path", PACKAGE_FILES, ids=lambda p: str(_shipped_as(p)))
+def test_no_test_only_framework_is_shipped(path: pathlib.Path) -> None:
+    leaked = _test_only_imports(path)
+    assert not leaked, f"{_shipped_as(path)} imports test-only frameworks: {leaked}"
+
+
+@pytest.mark.parametrize("path", CORE_FILES, ids=lambda p: str(_shipped_as(p)))
+def test_no_reference_domain_word_reaches_the_contract_or_the_engine(
+    path: pathlib.Path,
+) -> None:
+    """Domain-agnostic is a claim about words as much as imports: the plugin supplies
+    the topic, so the reference domain's name has no business in the layers every other
+    domain reuses. Nothing under `src/` names it at all now that the default plugin set
+    is empty — a deployment says which domain it ships, in `CORA_PLUGINS`."""
+    assert "fitness" not in path.read_text().lower(), (
+        f"{_shipped_as(path)} names the reference domain"
+    )
+
+
+@pytest.mark.parametrize("path", CORE_FILES, ids=lambda p: str(_shipped_as(p)))
+def test_core_module_is_pure(path: pathlib.Path) -> None:
+    tree = ast.parse(path.read_text())
+    modules = _imported_modules(tree, _package_parts(path))
+    forbidden = sorted({m for m in modules if _is_forbidden(m)})
+    assert not forbidden, f"{_shipped_as(path)} imports forbidden modules: {forbidden}"
+
+
+def _reaches(
+    tree: ast.Module, package_parts: tuple[str, ...], layers: tuple[str, ...]
+) -> list[str]:
+    modules = _imported_modules(tree, package_parts)
+    return sorted({module for module in modules if _reaches_any(module, layers)})
+
+
+def test_every_layer_with_a_rule_has_files_to_apply_it_to() -> None:
+    """Four tables keyed on the same layers, so a layer named in one and forgotten in
+    another is the way this goes wrong: a rule with no modules claimed is never matched
+    against a manifest, and modules with no files are never walked."""
+    assert OUT_OF_REACH.keys() == LAYER_FILES.keys() == LAYER_MODULES.keys()
+    assert all(LAYER_FILES[layer] for layer in OUT_OF_REACH)
+
+
+def _shipped_modules() -> list[tuple[pathlib.Path, str]]:
+    """Every module the workspace ships, as (directory, dotted name), read off the
+    manifests and the tree. Deliberately not asked of the installed environment: a
+    member outside the dev group ships modules all the same, and asking what is imported
+    would make it invisible to exactly the tests meant to cover it."""
+    return [
+        (member / "src" / pathlib.Path(*module.split(".")), module)
+        for member in workspace.members()
+        for module in workspace.modules(member)
+    ]
+
+
+def _claiming_layer(module: str) -> str | None:
+    return next(
+        (
+            layer
+            for layer, claimed in LAYER_MODULES.items()
+            for name in claimed
+            if module == name or module.startswith(f"{name}.")
+        ),
+        None,
+    )
+
+
+def test_every_shipped_module_falls_under_a_layer_rule() -> None:
+    """The other direction, and the one that can actually go wrong: the rules above are
+    keyed on layers someone wrote down, so a sixth module added to `module-name` ships
+    with no rule at all and every test here still passes. Asserted against the manifests
+    so that adding a layer forces a decision about what it may reach, rather than
+    granting it silence."""
+    unclaimed = sorted(
+        module for _, module in _shipped_modules() if _claiming_layer(module) is None
+    )
+
+    assert unclaimed == []
+
+
+def test_every_shipped_module_is_reached_by_the_walk() -> None:
+    """Two discoveries compared, not one restated: the rules are applied to files found
+    through the installed namespaces, while `module-name` is a fact of the tree. A
+    workspace member nobody added to the dev group is a module the walk never visits, so
+    its rule is written and never applied — which reads just like a rule that passes."""
+    unwalked = sorted(
+        module
+        for directory, module in _shipped_modules()
+        if not any(directory.is_relative_to(root) for root in LAYER_ROOTS)
+    )
+
+    assert unwalked == []
+
+
+@pytest.mark.parametrize(
+    ("layer", "path"),
+    REACH_CASES,
+    ids=lambda value: (
+        str(_shipped_as(value))
+        if isinstance(value, pathlib.Path)
+        else value.replace(" ", "-")
+    ),
+)
+def test_a_layer_reaches_no_further_than_its_rule(
+    layer: str, path: pathlib.Path
+) -> None:
+    layers, because = OUT_OF_REACH[layer]
+    reached = _reaches(ast.parse(path.read_text()), _package_parts(path), layers)
+    assert not reached, f"{_shipped_as(path)} reaches {reached}: {because}"
+
+
+@pytest.mark.parametrize(
+    ("layer", "path"),
+    TECHNOLOGY_CASES,
+    ids=lambda value: (
+        str(_shipped_as(value))
+        if isinstance(value, pathlib.Path)
+        else value.replace(" ", "-")
+    ),
+)
+def test_a_layer_binds_no_technology_it_was_not_given(
+    layer: str, path: pathlib.Path
+) -> None:
+    """The property the install used to carry: a plugin shipped as a wheel the engine
+    was absent from could not import Chroma, because Chroma was not there. One
+    distribution later it is there, and only this says so."""
+    tree = ast.parse(path.read_text())
+    allowed = TECHNOLOGY_ALLOWED[layer]
+    bound = sorted(
+        {
+            module
+            for module in _imported_modules(tree, _package_parts(path))
+            if _is_technology(module) and module.split(".")[0] not in allowed
+        }
+    )
+    assert not bound, (
+        f"{_shipped_as(path)} imports {bound}: {layer} is wired to a technology by "
+        "the composition root, never by importing one"
+    )
+
+
+def test_every_layer_that_may_bind_nothing_has_files_to_say_it_of() -> None:
+    assert TECHNOLOGY_ALLOWED.keys() <= LAYER_FILES.keys()
+    assert all(LAYER_FILES[layer] for layer in TECHNOLOGY_ALLOWED)
+
+
+def test_the_walkers_catch_a_planted_violation(tmp_path: pathlib.Path) -> None:
+    """One rogue module where eight self-tests of the detectors used to be. What it
+    proves is that the walks above are not vacuous: they pass by finding nothing, and a
+    broken detector is indistinguishable from clean code. Those eight are also what
+    rotted — three passed a `("cora", "core", "services")` package tuple naming a
+    directory gone for two commits, so they could not have failed."""
+    rogue = tmp_path / "rogue.py"
+    rogue.write_text(
+        "import streamlit as st\n"
+        "import pypdf\n"
+        "from langgraph.graph import StateGraph\n"
+        "from pytest import fixture\n"
+        "from cora.app.config import Config\n"
+        "from ..adapters import chroma_retriever\n"
+    )
+    tree = ast.parse(rogue.read_text())
+
+    assert _imports_streamlit(rogue)
+    assert _test_only_imports(rogue) == ["pytest"]
+
+    reached = set(_imported_modules(tree, ("cora", "engine")))
+    assert "cora.adapters" in reached, (
+        "a relative import out of the layer went unresolved"
+    )
+    assert {
+        "streamlit",
+        "pypdf",
+        "langgraph.graph",
+        "cora.app.config",
+        "cora.adapters",
+    } <= {module for module in reached if _is_forbidden(module)}
+
+    outward, _ = OUT_OF_REACH["the adapters"]
+    assert _reaches(tree, ("cora", "adapters"), outward) == ["cora.app.config"]
+
+
+def test_a_technology_no_manifest_declares_is_still_out_of_reach(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The install used to enforce this by absence: a layer could not import what was
+    not installed, and nothing had to be named. One distribution later everything is
+    installed, and a rule listing what the manifests declare sees only those — while
+    `openai`, `torch` and `numpy` are all present, dragged in by chromadb and
+    langchain-openai, and would bind the engine exactly as tightly."""
+    rogue = tmp_path / "rogue.py"
+    rogue.write_text("import openai\nimport torch\nimport numpy as np\n")
+    tree = ast.parse(rogue.read_text())
+
+    bound = {
+        module
+        for module in _imported_modules(tree, ("cora", "engine"))
+        if _is_forbidden(module)
+    }
+
+    assert bound == {"openai", "torch", "numpy"}
+
+
+def test_the_walkers_pass_innocent_code(tmp_path: pathlib.Path) -> None:
+    innocent = tmp_path / "innocent.py"
+    innocent.write_text("import json\n\nfrom cora.domain.chunk import Chunk\n")
+    tree = ast.parse(innocent.read_text())
+
+    assert not _imports_streamlit(innocent)
+    assert _test_only_imports(innocent) == []
+    assert not [
+        module
+        for module in _imported_modules(tree, ("cora", "engine"))
+        if _is_forbidden(module)
+    ]

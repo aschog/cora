@@ -16,23 +16,9 @@ resolution-markers = [
 [manifest]
 members = [
     "cora",
-    "cora-adapters",
-    "cora-api",
-    "cora-engine",
     "cora-frontend-streamlit",
     "cora-plugin-fitness",
     "cora-plugin-security",
-]
-
-[manifest.dependency-groups]
-dev = [
-    { name = "cora-frontend-streamlit", editable = "packages/frontends/streamlit" },
-    { name = "cora-plugin-fitness", editable = "packages/plugins/fitness" },
-    { name = "cora-plugin-security", editable = "packages/plugins/security" },
-    { name = "pytest", specifier = ">=9.1.1" },
-    { name = "pytest-watcher", specifier = ">=0.6.3" },
-    { name = "ruff", specifier = ">=0.15.22" },
-    { name = "ty", specifier = ">=0.0.60" },
 ]
 
 [[package]]
@@ -447,109 +433,86 @@ wheels = [
 [[package]]
 name = "cora"
 version = "0.1.0"
-source = { editable = "packages/app" }
-dependencies = [
-    { name = "cora-adapters" },
-    { name = "cora-api" },
-    { name = "cora-engine" },
-    { name = "cora-plugin-security" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "cora-adapters", editable = "packages/adapters" },
-    { name = "cora-api", editable = "packages/api" },
-    { name = "cora-engine", editable = "packages/engine" },
-    { name = "cora-plugin-security", editable = "packages/plugins/security" },
-]
-
-[[package]]
-name = "cora-adapters"
-version = "0.1.0"
-source = { editable = "packages/adapters" }
+source = { editable = "." }
 dependencies = [
     { name = "chromadb" },
-    { name = "cora-api" },
+    { name = "jsonschema" },
     { name = "langchain-openai" },
     { name = "langgraph" },
     { name = "langgraph-checkpoint-sqlite" },
     { name = "pypdf" },
-    { name = "rank-bm25" },
     { name = "sentence-transformers" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "cora-frontend-streamlit" },
+    { name = "cora-plugin-fitness" },
+    { name = "cora-plugin-security" },
+    { name = "pytest" },
+    { name = "pytest-watcher" },
+    { name = "ruff" },
+    { name = "ty" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "chromadb", specifier = ">=1.5,<2" },
-    { name = "cora-api", editable = "packages/api" },
+    { name = "jsonschema", specifier = ">=4.26,<5" },
     { name = "langchain-openai", specifier = ">=1.4.1" },
     { name = "langgraph", specifier = ">=1.2.10,<2" },
     { name = "langgraph-checkpoint-sqlite", specifier = ">=3.1.1,<4" },
     { name = "pypdf", specifier = ">=6.14,<7" },
-    { name = "rank-bm25", specifier = ">=0.2.2" },
     { name = "sentence-transformers", specifier = ">=5.3,<6" },
 ]
 
-[[package]]
-name = "cora-api"
-version = "0.1.0"
-source = { editable = "packages/api" }
-
-[[package]]
-name = "cora-engine"
-version = "0.1.0"
-source = { editable = "packages/engine" }
-dependencies = [
-    { name = "cora-api" },
-    { name = "jsonschema" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "cora-api", editable = "packages/api" },
-    { name = "jsonschema", specifier = ">=4.26,<5" },
+[package.metadata.requires-dev]
+dev = [
+    { name = "cora-frontend-streamlit", editable = "frontends/streamlit" },
+    { name = "cora-plugin-fitness", editable = "plugins/fitness" },
+    { name = "cora-plugin-security", editable = "plugins/security" },
+    { name = "pytest", specifier = ">=9.1.1" },
+    { name = "pytest-watcher", specifier = ">=0.6.3" },
+    { name = "ruff", specifier = ">=0.15.22" },
+    { name = "ty", specifier = ">=0.0.60" },
 ]
 
 [[package]]
 name = "cora-frontend-streamlit"
 version = "0.1.0"
-source = { editable = "packages/frontends/streamlit" }
+source = { editable = "frontends/streamlit" }
 dependencies = [
     { name = "cora" },
-    { name = "cora-api" },
-    { name = "cora-engine" },
     { name = "streamlit" },
 ]
 
 [package.metadata]
 requires-dist = [
-    { name = "cora", editable = "packages/app" },
-    { name = "cora-api", editable = "packages/api" },
-    { name = "cora-engine", editable = "packages/engine" },
+    { name = "cora", editable = "." },
     { name = "streamlit", specifier = "~=1.60.0" },
 ]
 
 [[package]]
 name = "cora-plugin-fitness"
 version = "0.1.0"
-source = { editable = "packages/plugins/fitness" }
+source = { editable = "plugins/fitness" }
 dependencies = [
-    { name = "cora-api" },
+    { name = "cora" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "cora-api", editable = "packages/api" }]
+requires-dist = [{ name = "cora", editable = "." }]
 
 [[package]]
 name = "cora-plugin-security"
 version = "0.1.0"
-source = { editable = "packages/plugins/security" }
+source = { editable = "plugins/security" }
 dependencies = [
-    { name = "cora-api" },
+    { name = "cora" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "cora-api", editable = "packages/api" }]
+requires-dist = [{ name = "cora", editable = "." }]
 
 [[package]]
 name = "cuda-bindings"
@@ -2688,18 +2651,6 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/da/92/1446574745d74df0c92e6aa4a7b0b3130706a4142b2d1a5869f2eaa423c6/pyyaml-6.0.3-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:16249ee61e95f858e83976573de0f5b2893b3677ba71c9dd36b9cf8be9ac6d65", size = 829923, upload-time = "2025-09-25T21:32:54.537Z" },
     { url = "https://files.pythonhosted.org/packages/f0/7a/1c7270340330e575b92f397352af856a8c06f230aa3e76f86b39d01b416a/pyyaml-6.0.3-cp314-cp314t-win_amd64.whl", hash = "sha256:4ad1906908f2f5ae4e5a8ddfce73c320c2a1429ec52eafd27138b7f1cbe341c9", size = 174062, upload-time = "2025-09-25T21:32:55.767Z" },
     { url = "https://files.pythonhosted.org/packages/f1/12/de94a39c2ef588c7e6455cfbe7343d3b2dc9d6b6b2f40c4c6565744c873d/pyyaml-6.0.3-cp314-cp314t-win_arm64.whl", hash = "sha256:ebc55a14a21cb14062aa4162f906cd962b28e2e9ea38f9b4391244cd8de4ae0b", size = 149341, upload-time = "2025-09-25T21:32:56.828Z" },
-]
-
-[[package]]
-name = "rank-bm25"
-version = "0.2.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "numpy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/fc/0a/f9579384aa017d8b4c15613f86954b92a95a93d641cc849182467cf0bb3b/rank_bm25-0.2.2.tar.gz", hash = "sha256:096ccef76f8188563419aaf384a02f0ea459503fdf77901378d4fd9d87e5e51d", size = 8347, upload-time = "2022-02-16T12:10:52.196Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/2a/21/f691fb2613100a62b3fa91e9988c991e9ca5b89ea31c0d3152a3210344f9/rank_bm25-0.2.2-py3-none-any.whl", hash = "sha256:7bd4a95571adadfc271746fa146a4bcfd89c0cf731e49c3d1ad863290adbe8ae", size = 8584, upload-time = "2022-02-16T12:10:50.626Z" },
 ]
 
 [[package]]

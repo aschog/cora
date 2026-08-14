@@ -21,38 +21,38 @@ quality gates. Runtime dependencies are added feature-by-feature, story by story
 
 ## The packages
 
-A `uv` workspace of seven distributions sharing the `cora` namespace. Which one you install
-is decided by what you are writing, and what each may depend on is written in its own
-manifest — so a plugin that reached for the engine, or a frontend's toolkit that reached
-the app, would not resolve. See [`docs/big-picture.md`](docs/big-picture.md#the-distributions).
+The app is the repository root; a `uv` workspace sharing the `cora` namespace. You install
+`cora` to use it and add a package to extend it — three kinds of package in all. See
+[`docs/big-picture.md`](docs/big-picture.md#the-distributions).
 
 | Package | Ships | Depends on |
 |---|---|---|
-| `cora-api` | `cora.domain` · `cora.ports` — the contract | nothing at all |
-| `cora-engine` | `cora.engine` — the agent, the knowledge base, a turn's steps | `cora-api` |
-| `cora-adapters` | `cora.adapters` — Chroma, OpenRouter, LangGraph, BM25, MiniLM | `cora-api` |
-| `cora` | `cora.app` — the composition root and its configuration | `cora-engine`, `cora-adapters`, `cora-plugin-security` |
-| `cora-plugin-fitness` | `cora.plugins.fitness` — the reference domain plugin | `cora-api` |
-| `cora-plugin-security` | `cora.plugins.security` — the prompt-injection screen, the one plugin the default set loads | `cora-api` |
+| `cora` | `cora.domain` · `cora.ports` — the contract<br>`cora.engine` — the agent, the knowledge base, a turn's steps<br>`cora.adapters` — Chroma, OpenRouter, LangGraph, MiniLM<br>`cora.app` — the composition root and its configuration | its technologies, and no user interface |
+| `cora-plugin-security` | `cora.plugins.security` — the prompt-injection screen | `cora` |
+| `cora-plugin-fitness` | `cora.plugins.fitness` — the reference domain plugin | `cora` |
 | `cora-frontend-streamlit` | `cora.frontends.streamlit` — the app you run below | `cora` |
 
-`cora.plugins.*` and `cora.frontends.*` are the extension points: another domain, another
-guard or a second user interface is a package to add, not a file to edit. A plugin need not
-be a domain — `cora-plugin-security` contributes one validation rule and nothing else.
+`cora.plugins.*` and `cora.frontends.*` are the extension points: another domain or a
+second user interface is a package to add, not a file to edit. A plugin need not be a
+domain — the prompt-injection screen contributes one validation rule and nothing else.
 
-The tree says which is which by its depth:
+cora carries no plugin and loads none: bare cora is a document-grounded assistant with no
+persona and no screen, and `CORA_PLUGINS` is how a deployment adds either.
+
+The tree says which is which by its position:
 
 ```
-packages/api  engine  adapters  app     one of a kind — a distribution each
-packages/frontends/streamlit             one of many  — the directory expects siblings
-packages/plugins/fitness  security
+src/cora/                          domain  ports  engine  adapters  app
+plugins/fitness  plugins/security  one of many — the directory expects siblings
+frontends/streamlit
 ```
 
-A directory directly under `packages/` is a distribution. A directory holding
-distributions is an extension point, named in the plural for that reason — so the flat
-four and the nested three are not an inconsistency, they are the difference between a piece
-there is only one of and a piece you are meant to add another of. `ls packages/` is
-therefore the shortest description of what can be extended.
+`src/` is the app; a directory beside it is an extension point, named in the plural for
+that reason. So `ls` is the shortest description of what can be extended.
+
+The layers inside `src/cora/` are modules, not distributions: nothing in the install stops
+`cora.engine` importing Chroma, so `tests/guards/test_architecture.py` walks the imports and
+fails the build if it does.
 
 ## Setup
 
@@ -65,12 +65,18 @@ git config core.hooksPath .githooks       # enable pre-commit + commit-msg hooks
 
 ```sh
 export OPENROUTER_API_KEY=sk-or-...        # required (https://openrouter.ai/keys)
+export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness
 make run                                   # or: make run-env, to read the key from .env
 ```
 
 `make run` wraps `uv run streamlit run` over the app's module path. The target exists so
 the command survives the next time a package moves — the path itself is one line, in the
 `Makefile`.
+
+cora loads no plugin unless asked, so the second line is what turns this from a bare
+document assistant into the coaching app with a prompt-injection screen. Drop it to see
+what the box does on its own. `make run-env` reads its environment from `.env` instead,
+so put `CORA_PLUGINS` there too rather than exporting it.
 
 Upload a document (txt/md/pdf) in the sidebar, then ask about it — answers cite
 the sources they used. The steps appear as cora takes them and stay with the
@@ -85,13 +91,13 @@ forgets everything. It only remembers when you ask it to, never on its own judge
 and each save appears in the trace like any other tool call. The conversation itself
 lives as long as the browser session; what is remembered outlives it.
 
-Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
-`CORA_PLUGINS` (comma-separated, in composition order; default `cora.plugins.security`
-— add `cora.plugins.fitness` for the coaching domain, and set it empty for a plain
-assistant that carries no persona and screens nothing), `CORA_TOP_K` (default `5`),
+Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`; also
+accepted as `OPENROUTER_MODEL`, the prefix the key and base URL use),
+`CORA_PLUGINS` (comma-separated, in composition order; empty by default — name
+`cora.plugins.security` for the prompt-injection screen and `cora.plugins.fitness` for
+the coaching domain), `CORA_TOP_K` (default `5`),
 `CORA_RETRIEVAL` (`plain` by default; `advanced` turns on query translation and
-self-query filtering — RAG-Fusion — for one extra model call per question;
-`hybrid` fuses dense and BM25 keyword rankings with no extra model call),
+self-query filtering — RAG-Fusion — for one extra model call per question),
 `CORA_FUSION_QUERIES` (default `4`; sub-queries advanced mode fans out per
 question), `CORA_MAX_TOOL_ROUNDS` (default `8`; one round is a model call plus the tools it
 asks for, document search included — and the budget is per question, not per
@@ -102,7 +108,7 @@ is relative to the working directory), `CORA_MEMORY_PATH` (where remembered fact
 persist; the default `.cora/memory.sqlite` sits beside it, and is relative the same
 way), `OPENROUTER_BASE_URL`, `CORA_DEBUG`. The counts are rejected at
 startup if they fall below their lowest useful value — `0` for history turns, `1`
-for the others — and `CORA_RETRIEVAL` must be `plain`, `advanced`, or `hybrid`.
+for the others — and `CORA_RETRIEVAL` must be `plain` or `advanced`.
 
 Set `CORA_DEBUG` to `1` or `true` to trace what crosses the ports — one truncated
 line per embed, retrieval (with sources and scores) and model round trip, printed

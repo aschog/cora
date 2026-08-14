@@ -26,7 +26,7 @@ flowchart TB
     rt["ToolRuntime"]
     search["search_documents<br/><i>retrieval as a tool</i>"]
     remember["remember<br/><i>memory as a tool</i>"]
-    retr["Retrieval strategy<br/><i>plain · RAG-Fusion · hybrid</i>"]
+    retr["Retrieval strategy<br/><i>plain · RAG-Fusion</i>"]
     kb["KnowledgeBase"]
   end
 
@@ -45,7 +45,6 @@ flowchart TB
     orc["OpenRouterChatModel<br/><i>LangChain</i>"]
     ste["SentenceTransformerEmbedder<br/><i>all-MiniLM-L6-v2</i>"]
     chroma["ChromaRetriever<br/><i>Chroma</i>"]
-    bm25["Bm25KeywordIndex<br/><i>rank_bm25</i>"]
     load_reg["load_txt · load_pdf<br/><i>pypdf</i>"]
     store["SqliteStoreMemory<br/><i>LangGraph store · SQLite</i>"]
     fit["fitness plugin<br/><i>a domain</i>"]
@@ -74,7 +73,6 @@ flowchart TB
   kb --> emb
   kb --> ret
   kb --> load
-  retr -.->|"hybrid"| bm25
   gr -.-> lg
   cm -.-> orc
   emb -.-> ste
@@ -113,7 +111,6 @@ are three options:
 
 - `plain` — just use KnowledgeBase.
 - `advanced` — use RAG-Fusion. A `QueryPlanner` writes the question in a few different ways, and RRF joins the results. (RRF, Reciprocal Rank Fusion, is a simple way to merge ranked lists.)
-- `hybrid` — run two searches over the same files, one by meaning (dense) and one by keywords (BM25), and join them with the same RRF. This needs no planner and no extra model call.
 
 A **port** is a fixed slot in the engine for one kind of technology. There are exactly seven:
 one for driving the agent, one for chat, one for embedding, one for retrieval, one for reading
@@ -124,60 +121,54 @@ engine or the composition root changing.
 Memory is the one optional slot. Leave it out and the agent is offered no `remember` tool and
 told no rule about remembering — an app with no memory cannot quietly forget.
 
-BM25 has no slot like this. Only the `hybrid` search uses it, wired straight into that search.
-So BM25 is a technology with no port. It is kept with the other adapters, and there are still
-just seven ports.
-
 One more file sits in `ports/` without being a slot: `ContextSource` is the engine's own seam
 between a search and the step that uses it, implemented inside the engine — a Protocol, but
 not a slot a technology fills.
 
 ## The distributions
 
-Seven packages, one per audience. Which one you install is decided by what you are writing,
-not by which layer you happen to be reading — and what a package may depend on is written
-in its own manifest, so the boundary is a fact of the install rather than a rule a test
-polices.
+Three kinds of package: the app, a plugin, a frontend. The layers above are modules inside
+`cora` — the split that once made each of them a distribution of its own is gone, because
+this is an agent, not a demonstration of packaging. What stayed separate is what a
+deployment *chooses*: cora installs no plugin and loads none.
 
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 40, "rankSpacing": 50, "curve": "basis"}}}%%
 flowchart BT
-  api["cora-api<br/><i>cora.domain · cora.ports</i><br/>stdlib only"]
-  engine["cora-engine<br/><i>cora.engine</i>"]
-  adapters["cora-adapters<br/><i>cora.adapters</i><br/>Chroma · OpenRouter · LangGraph · BM25 · MiniLM"]
-  app["cora<br/><i>cora.app</i>"]
+  app["cora<br/><i>cora.domain · cora.ports</i><br/><i>cora.engine · cora.adapters · cora.app</i>"]
   fitness["cora-plugin-fitness<br/><i>cora.plugins.fitness</i>"]
   security["cora-plugin-security<br/><i>cora.plugins.security</i>"]
   shell["cora-frontend-streamlit<br/><i>cora.frontends.streamlit</i>"]
 
-  engine --> api
-  adapters --> api
-  fitness --> api
-  security --> api
-  app --> api
-  app --> engine
-  app --> adapters
+  fitness --> app
+  security --> app
   shell --> app
 
   classDef contract fill:#8c4b00,stroke:#d98a1f,color:#fff;
   classDef logic fill:#134e6f,stroke:#1f78b4,color:#fff;
-  class api contract;
-  class engine logic;
+  class app logic;
+  class fitness,security contract;
 ```
 
-An arrow means *depends on*, so the contract sits at the top: everything is written against
-it and it is written against nothing.
+An arrow means *depends on*. `cora` itself depends on nothing of cora's — no plugin and
+no way of talking to a user — which is what leaves room for a second frontend and for a
+deployment that wants no persona and no guard.
 
 | If you are writing | You install | You do not get |
 |---|---|---|
-| a plugin, domain or guard | `cora-api` | the engine, the adapters, any framework — the fitness bundle uses four names from it |
+| a plugin, domain or guard | `cora` | it uses four names from `cora.ports` and `cora.domain`; the rest comes along |
+| the app with a domain and a screen | `cora-plugin-fitness` · `cora-plugin-security` | nothing is loaded until `CORA_PLUGINS` names it |
 | a second frontend | `cora` | Streamlit, or any other way of talking to a user |
-| an adapter for a port | `cora-api` | the engine, so the binding outlives any version of the use cases |
-| the app you can run today | `cora-frontend-streamlit` | nothing — it is the whole stack |
+| the app you can run today | `cora-frontend-streamlit` | the plugins — it depends on `cora` and Streamlit, so a domain and a guard are installed and named separately |
+
+The layer boundary is no longer a fact of the install: with one distribution, nothing stops
+`cora.engine` importing Chroma except `tests/guards/test_architecture.py`, which walks every
+shipped file's imports and fails the build. The rule is the same, the enforcement moved
+from the resolver to a test.
 
 `cora` is a namespace, not a package: no distribution owns the name, and each contributes
-a portion of it. `cora.plugins.*` and `cora.frontends.*` are the two extension
-points, and a new one of either is a package to install rather than a file to edit.
+a portion of it. `cora.plugins.*` and `cora.frontends.*` are the two extension points, and
+a new one of either is a package to install rather than a file to edit.
 
 ## Two calls in
 
@@ -185,13 +176,13 @@ A frontend uses the engine through two main methods: `answer()` and `add_file()`
 `list_sources()` to show the file list in the sidebar, and `recall()` / `forget()` to show
 and clear what is remembered).
 
-**`agent.answer(question, thread_id) -> ChatResult`** — `engine/agent.py`
+**`agent.answer(question, thread_id) -> ChatResult`** — `engine/agent.py`, returning `domain/chat_result.py`
 
 The conversation belongs to the thread, not to the caller: a turn is seeded with the
 question alone, and the graph's checkpointer supplies everything said before it. The
 frontend keeps one thread id per browser session.
 
-1. **Prepare** — check the question against one ordered tuple of rules: cora's own first (not empty, at most 4000 characters), then every loaded plugin's, in the order they were named. If a rule says no, raise `InputRejectedError`; the model never sees the question. Screening for prompt injection is one of those plugin rules — `cora-plugin-security`, in the default set — and not the engine's, so an app asked for no plugins screens nothing. Then add the question to the thread's transcript and write this turn's **brief**: cora's preamble, cora's own rules (call `search_documents`, cite `[n]`, call `remember` when the user asks to be remembered), one section per plugin under its `name`, and whatever is already remembered about the user — labelled as notes rather than rules, and stated last, because a fact is kept user input. The brief is rewritten each turn, so a ten-turn thread carries one, and a fact learned mid-conversation is in hand the next turn. Rules see the question only.
+1. **Prepare** — check the question against one ordered tuple of rules: cora's own first (not empty, at most 4000 characters), then every loaded plugin's, in the order they were named. If a rule says no, raise `InputRejectedError`; the model never sees the question. Screening for prompt injection is one of those plugin rules — `cora.plugins.security` — and not the engine's, so cora as installed screens nothing until a deployment names it. Then add the question to the thread's transcript and write this turn's **brief**: cora's preamble, cora's own rules (call `search_documents`, cite `[n]`, call `remember` when the user asks to be remembered), one section per plugin under its `name`, and whatever is already remembered about the user — labelled as notes rather than rules, and stated last, because a fact is kept user input. The brief is rewritten each turn, so a ten-turn thread carries one, and a fact learned mid-conversation is in hand the next turn. Rules see the question only.
 2. **Model** — one round. The model is offered `search_documents` and `remember` beside the plugin's tools. It is sent the brief, then the previous turns' words — the last `CORA_HISTORY_TURNS` of them (default 20; `0` means no history) — then this turn verbatim. Old tool calls and their results stay in the thread but out of the prompt. It either answers or asks for tools.
 3. **Tools** — run what it asked for, in order. A result that can cite itself — a set of search hits — is numbered `[n]` continuing from the numbers the *conversation* has already handed out, so `[1]` means one document for as long as the thread lives, and comes back as a `tool` message marked *untrusted document data*. Any other result is fed back exactly as it renders.
 4. **Round again, or stop** — the router reads the model's last reply. A reply asking for tools goes back to step 2, at most `CORA_MAX_TOOL_ROUNDS` times (default 8), after which `ToolLoopLimitError` apologises. A reply that answers ends the run. Rounds are counted from where this turn began in the transcript, so the budget is the turn's and a long conversation cannot exhaust it.
@@ -226,7 +217,7 @@ because the map shows them inside another part.
 
 | Component | Job | Where |
 |---|---|---|
-| **Agent** | The one main use case. It seeds a turn with the question, names the thread it belongs to, and turns the run's final state into a `ChatResult`. | `engine/agent.py` |
+| **Agent** | The one main use case. It seeds a turn with the question, names the thread it belongs to, and turns the run's final state into a `ChatResult` — the one value object that crosses to a frontend, so it lives in the domain. | `engine/agent.py`, `domain/chat_result.py` |
 | **Steps** | The moves of a turn: *prepare* validates, adds the question to the transcript and writes the brief, *model* takes one round with the chat model, *tools* runs what the model asked for, and *ground* looks in the documents itself and puts what it found to the model when the plugin asks. Each one returns only what it added to the run. | `engine/steps.py` |
 | **Router** | The one decision, read off the model's last reply: asking for tools runs them (a friendly apology at the round budget), answering ends the run — or is sent back once when the plugin wants its subject worked for and no tool was used. | `engine/steps.py` |
 | **Trace** *(folded)* | What the user reads afterwards: one step per model decision and per tool call, each with a one-line summary and the evidence behind it. A new kind of step is a new class, not a new branch. | `domain/trace.py` |
@@ -236,7 +227,7 @@ because the map shows them inside another part.
 | **remember** | Keeping a fact about the user as a tool, called when the user asks to be remembered rather than on the model's own judgement. The tool guards its own input — nothing blank, nothing over 300 characters reaches the store — but the question's rules do not run over a fact: screening is a plugin's now, and the engine cannot import one. What stands behind a kept fact is the notice it travels under, which says the notes are data and not instructions. Every save shows up in the trace. | `engine/memory_tool.py` |
 | **KnowledgeBase** | A simple front for ingest, embed, and store. It also does search, lists sources, and skips files already uploaded. | `engine/knowledge_base.py` |
 | **Ingestion** *(folded)* | Turns bytes into clean text, then into overlapping chunks with their origin. Rejects the wrong type, too large, or empty. | `engine/ingestion.py`, `engine/cleaning.py`, `engine/chunker.py` — and the loaders themselves in `adapters/loaders.py`, since which file formats can be read is a technology's business |
-| **Retrieval strategy** | How the search tool gets its chunks: `plain` (KnowledgeBase), `advanced`, or `hybrid`. Both wrappers merge results with RRF. | `engine/fusion_context_source.py`, `engine/hybrid_context_source.py`, `engine/query_planner.py`, `engine/rank_fusion.py` |
+| **Retrieval strategy** | How the search tool gets its chunks: `plain` (KnowledgeBase) or `advanced`, which fans the question out and merges the rankings with RRF. | `engine/fusion_context_source.py`, `engine/query_planner.py`, `engine/rank_fusion.py` |
 | **PluginSet** | The plugins cora was asked for, composed in the order they were named: prompt sections under their names, their tools in the order they were named — cora's own go in front at assembly — cora's rules then every plugin's, and one reminder over every scope. It is also what refuses a bad *combination* — a module named twice, a tool name of cora's own, one name offered by two plugins — so the composition root wires an already-valid set. | `engine/plugin_set.py` |
 | **ToolRuntime** | Finds the tool, checks the arguments against its JSON Schema, runs it, and turns a tool's own failure into a `ToolResult`. An infrastructure failure is not tool output, so it travels on unchanged. | `engine/tool_runtime.py` |
 | **Plugin registry** *(folded)* | Loads plugins by their module paths and checks each one before the app starts: the name is not blank, tool names are unique, schemas are valid. Everything but the name is optional, so a bundle of rules alone is as legitimate as a bundle of tools. | `engine/plugin_registry.py` |
@@ -258,7 +249,7 @@ is chosen in one place.
 | **Retriever** | `add(chunks, vectors, file_hash)`, `query(query_vector, k, metadata_filter=None)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a saved, built-in database that uses cosine distance. The optional filter limits a search to matching metadata (self-query). |
 | **Loaders** | `Mapping[str, Loader]`, each `Loader` a `(data, filename) -> str` | `cora.adapters.loaders.LOADERS` — `.txt` and `.md` read directly, `.pdf` through pypdf. Which formats a deployment accepts is an entry in the registry, not an edit inside ingestion. |
 | **Memory** | `remember(text)`, `recall() -> tuple[Fact, ...]`, `forget(key)`, `clear()` | `SqliteStoreMemory` — LangGraph's SQLite-backed store (the second adapter to use LangGraph, behind a port of its own), one namespace per user, at `CORA_MEMORY_PATH`. `recall()` hands back the newest 100 facts, oldest first. The only optional slot: with nothing bound, the agent is offered no `remember` tool. |
-| **Plugin** | data only: `name`, and any of `instructions`, `tools`, `validation_rules`, `scope` | `cora.plugins.security` by default — `CORA_PLUGINS` names the set, in order, and takes as many as you like. It is a frozen dataclass, not a class you subclass. |
+| **Plugin** | data only: `name`, and any of `instructions`, `tools`, `validation_rules`, `scope` | none by default — `CORA_PLUGINS` names the set, in order, and takes as many as you like. It is a frozen dataclass, not a class you subclass. |
 
 Set `CORA_DEBUG=1` to wrap the chat, embedding and retrieval ports in a logger
 (`cora.engine.port_logging` — a decorator over ports, so it ships with the engine and imports
