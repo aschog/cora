@@ -1,6 +1,7 @@
 import ast
+import importlib.util
 import pathlib
-import re
+from importlib.metadata import packages_distributions
 from types import ModuleType
 
 import pytest
@@ -24,23 +25,72 @@ them, and importing either binds a layer exactly as tightly as importing what de
 them."""
 
 
-def _declared_technologies() -> frozenset[str]:
-    """Every third party any member declares, as the name an import would use. Read off
-    the manifests rather than listed, so `uv add` cannot leave the guard stale: a
-    dependency added tomorrow is out of the pure layers' reach the same day, and putting
-    it *in* reach means saying so in `PURE_MAY_USE`."""
-    declared = {
-        re.split(r"[<>=!~\[;\s]", requirement)[0]
-        for member in workspace.members()
-        for requirement in workspace.manifest(member)["project"]["dependencies"]
-    }
+def _declared_distributions() -> frozenset[str]:
+    """Every third party any member declares. Read off the manifests rather than listed,
+    so `uv add` cannot leave the guard stale: a dependency added tomorrow is out of the
+    pure layers' reach the same day, and putting it *in* reach means saying so in
+    `PURE_MAY_USE`."""
     return frozenset(
-        name.replace("-", "_") for name in declared if not name.startswith("cora")
+        name
+        for member in workspace.members()
+        for name in workspace.requirements(member)
+        if name != "cora" and not name.startswith("cora-")
+    )
+
+
+def _contributed() -> dict[str, set[str]]:
+    """Which top-level modules each installed distribution actually contributes."""
+    contributed: dict[str, set[str]] = {}
+    for module, distributions in packages_distributions().items():
+        for distribution in distributions:
+            contributed.setdefault(distribution, set()).add(module)
+    return contributed
+
+
+def _declared_technologies() -> frozenset[str]:
+    """The declared distributions as the names an import would use, asked of the
+    installed environment rather than guessed from the distribution's name. The two are
+    not the same string: `pyyaml` imports as `yaml` and `langgraph-checkpoint-sqlite` as
+    `langgraph`, so a hyphen-for-underscore swap both invents a name nothing imports and
+    misses the one something does. A distribution may contribute several, and every one
+    of them binds a layer that imports it."""
+    contributed = _contributed()
+    return frozenset(
+        module
+        for distribution in _declared_distributions()
+        for module in contributed.get(distribution, ())
     )
 
 
 FORBIDDEN_FRAMEWORKS = (_declared_technologies() | REACHED_THROUGH) - PURE_MAY_USE
 TEST_ONLY_FRAMEWORKS = frozenset({"pytest"})
+
+
+def test_the_guard_names_technologies_the_way_an_import_does() -> None:
+    """A distribution's name is not the name you import it by: `pyyaml` imports as
+    `yaml`, `beautifulsoup4` as `bs4`, and `langgraph-checkpoint-sqlite` as `langgraph`.
+    Swapping hyphens for underscores invents a name nothing can import and misses the
+    one something does — so every name in the derived set has to resolve."""
+    phantom = sorted(
+        name
+        for name in _declared_technologies()
+        if importlib.util.find_spec(name) is None
+    )
+
+    assert phantom == []
+
+
+def test_every_declared_technology_resolves_to_an_import_name() -> None:
+    """The derivation reads an environment, so a distribution missing from it would
+    contribute nothing and be silently unguarded. Asked of each one rather than of the
+    set, so the failure names what went unmapped."""
+    unresolved = sorted(
+        distribution
+        for distribution in _declared_distributions()
+        if not _contributed().get(distribution)
+    )
+
+    assert unresolved == []
 
 
 def test_a_declared_technology_cannot_be_left_off_the_guard() -> None:
@@ -148,6 +198,21 @@ LAYER_FILES: dict[str, list[pathlib.Path]] = {
     ),
 }
 REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in files]
+
+# What each layer may import of the technologies the workspace declares. The adapters
+# are absent because binding one is what an adapter *is*, and the contract and the
+# engine because `test_core_module_is_pure` holds them to something stricter — it bars
+# the outer layers too. What is left is the three meant to be technology free, or
+# nearly: a plugin is data over the contract, the composition root names adapters rather
+# than importing what they wrap, and a frontend draws with one toolkit and no more.
+TECHNOLOGY_ALLOWED: dict[str, frozenset[str]] = {
+    "the app": frozenset(),
+    "the plugins": frozenset(),
+    "the frontends": frozenset({"streamlit"}),
+}
+TECHNOLOGY_CASES = [
+    (layer, path) for layer in TECHNOLOGY_ALLOWED for path in LAYER_FILES[layer]
+]
 
 
 def _shipped_as(path: pathlib.Path) -> pathlib.Path:
@@ -288,6 +353,41 @@ def test_a_layer_reaches_no_further_than_its_rule(
     layers, because = OUT_OF_REACH[layer]
     reached = _reaches(ast.parse(path.read_text()), _package_parts(path), layers)
     assert not reached, f"{_shipped_as(path)} reaches {reached}: {because}"
+
+
+@pytest.mark.parametrize(
+    ("layer", "path"),
+    TECHNOLOGY_CASES,
+    ids=lambda value: (
+        str(_shipped_as(value))
+        if isinstance(value, pathlib.Path)
+        else value.replace(" ", "-")
+    ),
+)
+def test_a_layer_binds_no_technology_it_was_not_given(
+    layer: str, path: pathlib.Path
+) -> None:
+    """The property the install used to carry: a plugin shipped as a wheel the engine
+    was absent from could not import Chroma, because Chroma was not there. One
+    distribution later it is there, and only this says so."""
+    tree = ast.parse(path.read_text())
+    allowed = TECHNOLOGY_ALLOWED[layer]
+    bound = sorted(
+        {
+            module
+            for module in _imported_modules(tree, _package_parts(path))
+            if module.split(".")[0] in FORBIDDEN_FRAMEWORKS - allowed
+        }
+    )
+    assert not bound, (
+        f"{_shipped_as(path)} imports {bound}: {layer} is wired to a technology by "
+        "the composition root, never by importing one"
+    )
+
+
+def test_every_layer_that_may_bind_nothing_has_files_to_say_it_of() -> None:
+    assert TECHNOLOGY_ALLOWED.keys() <= LAYER_FILES.keys()
+    assert all(LAYER_FILES[layer] for layer in TECHNOLOGY_ALLOWED)
 
 
 def test_the_walkers_catch_a_planted_violation(tmp_path: pathlib.Path) -> None:

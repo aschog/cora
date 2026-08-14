@@ -75,7 +75,8 @@ the command survives the next time a package moves — the path itself is one li
 
 cora loads no plugin unless asked, so the second line is what turns this from a bare
 document assistant into the coaching app with a prompt-injection screen. Drop it to see
-what the box does on its own.
+what the box does on its own. `make run-env` reads its environment from `.env` instead,
+so put `CORA_PLUGINS` there too rather than exporting it.
 
 Upload a document (txt/md/pdf) in the sidebar, then ask about it — answers cite
 the sources they used. The steps appear as cora takes them and stay with the

@@ -11,7 +11,6 @@ read that separation went with it.
 """
 
 import pathlib
-import re
 
 import pytest
 
@@ -19,13 +18,6 @@ import workspace
 
 MEMBERS = workspace.members()
 IDS = [workspace.location(member) for member in MEMBERS]
-
-
-def _requires(member: pathlib.Path) -> set[str]:
-    """Distribution names only — the version specifier is not the subject here. Cut at
-    the first specifier character, so `~=` yields the name and not `streamlit~`."""
-    declared = workspace.manifest(member)["project"]["dependencies"]
-    return {re.split(r"[<>=!~\[;\s]", requirement)[0] for requirement in declared}
 
 
 def _module_roots(member: pathlib.Path) -> list[pathlib.Path]:
@@ -97,7 +89,7 @@ def test_no_module_sits_outside_what_its_manifest_names(member: pathlib.Path) ->
 def test_the_app_owns_no_user_interface() -> None:
     """What makes a second frontend possible, stated so it can fail: a command-line or
     HTTP shell installs `cora` and gets the wiring without a web toolkit."""
-    assert "streamlit" not in _requires(workspace.ROOT)
+    assert "streamlit" not in workspace.requirements(workspace.ROOT)
 
 
 def test_the_app_carries_no_plugin_and_names_none() -> None:
@@ -109,7 +101,11 @@ def test_the_app_carries_no_plugin_and_names_none() -> None:
     from cora.app.config import DEFAULT_PLUGINS
 
     assert DEFAULT_PLUGINS == ()
-    assert not [name for name in _requires(workspace.ROOT) if name.startswith("cora-")]
+    assert not [
+        name
+        for name in workspace.requirements(workspace.ROOT)
+        if name.startswith("cora-")
+    ]
     assert not [
         module
         for module in workspace.modules(workspace.ROOT)
@@ -127,7 +123,7 @@ def test_a_plugin_needs_the_app_and_nothing_else(plugin: str) -> None:
     light install; that was the price of collapsing the layers."""
     member = next(m for m in MEMBERS if plugin in workspace.modules(m))
 
-    assert _requires(member) == {"cora"}
+    assert workspace.requirements(member) == {"cora"}
 
 
 def test_a_frontend_needs_the_app_and_its_own_toolkit() -> None:
@@ -135,6 +131,6 @@ def test_a_frontend_needs_the_app_and_its_own_toolkit() -> None:
     cross its screen, and the one technology it draws with. The adapters it never names:
     what it shows is decided by the use cases, what technology answers is decided at
     assembly."""
-    requires = _requires(workspace.ROOT / "frontends" / "streamlit")
+    requires = workspace.requirements(workspace.ROOT / "frontends" / "streamlit")
 
     assert requires == {"cora", "streamlit"}

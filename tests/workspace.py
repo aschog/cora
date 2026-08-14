@@ -2,6 +2,7 @@
 the same two facts; the next distribution should have one place to be found from."""
 
 import pathlib
+import re
 import tomllib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
@@ -32,6 +33,14 @@ def manifest(member: pathlib.Path) -> dict:
 
 def distribution(member: pathlib.Path) -> str:
     return manifest(member)["project"]["name"]
+
+
+def requirements(member: pathlib.Path) -> set[str]:
+    """What a member depends on, as distribution names — the version specifier is not
+    the subject anywhere it is asked. A member may declare nothing, which is the normal
+    case for a plugin that is pure data, so the key is read rather than indexed."""
+    declared = manifest(member)["project"].get("dependencies", ())
+    return {re.split(r"[<>=!~\[;\s]", requirement)[0] for requirement in declared}
 
 
 def modules(member: pathlib.Path) -> list[str]:
