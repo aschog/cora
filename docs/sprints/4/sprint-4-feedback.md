@@ -135,3 +135,13 @@ Recorded with a decision, not scheduled — none is in the sprint-4 story cut.
 - [ ] **#10 Default DB path is CWD-relative** — `CORA_DB_PATH` exists, but the default
       `.cora/chroma` still means launching from another directory starts an empty store.
       → own small slice; fix or document loudly before the review.
+
+## Found by the single-cora-package review
+
+- [ ] **A blank `CORA_MEMORY_PATH` throws away everything the user asks to be
+      remembered** — `config.py` reads the variable with `env.get(..., DEFAULT)`, so a
+      variable blanked rather than deleted survives as `""`, and `sqlite3.connect("")`
+      does not raise: SQLite opens a private temporary database that is deleted with the
+      connection. The `remember` tool works, the panel lists the facts, and the next
+      start has none of them — no error anywhere. Pre-dates the sprint; `CORA_MODEL`
+      already reads a blank as unset, and every path variable should.
