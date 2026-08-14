@@ -7,7 +7,9 @@ from cora.domain.errors import ConfigurationError
 
 DEFAULT_MODEL = "openai/gpt-4o-mini"
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
-DEFAULT_PLUGINS = ("cora.plugins.security",)
+DEFAULT_PLUGINS: tuple[str, ...] = ()
+"""A plugin is an extension, so cora starts with none: a domain, a guard or any other
+bundle is named by the deployment that wants it."""
 DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
 DEFAULT_HISTORY_TURNS = 20
@@ -62,8 +64,6 @@ class Config:
 
 
 def _plugin_modules(env: Mapping[str, str]) -> tuple[str, ...]:
-    """Unset takes the default set; set and empty asks for none. Distinguishing the
-    two is what makes bare cora something a deployment can choose."""
     if "CORA_PLUGINS" not in env:
         return DEFAULT_PLUGINS
     named = env["CORA_PLUGINS"].split(",")

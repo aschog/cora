@@ -56,6 +56,7 @@ def test_the_workspace_holds_the_app_and_its_extension_points() -> None:
         ".": "cora",
         "frontends/streamlit": "cora-frontend-streamlit",
         "plugins/fitness": "cora-plugin-fitness",
+        "plugins/security": "cora-plugin-security",
     }
 
 
@@ -99,27 +100,34 @@ def test_the_app_owns_no_user_interface() -> None:
     assert "streamlit" not in _requires(workspace.ROOT)
 
 
-def test_the_app_ships_or_installs_every_plugin_its_default_set_names() -> None:
-    """A wheel naming a plugin it neither carries nor brings cannot start:
-    `load_plugins` raises `PluginLoadError` on the module before the first question,
-    and the only way out is `CORA_PLUGINS=`. Derived from `DEFAULT_PLUGINS`, so it
-    stays true when the default changes rather than pinning today's answer."""
+def test_the_app_carries_no_plugin_and_names_none() -> None:
+    """A plugin is an extension, stated in the one place that can make it false: the
+    app neither ships a bundle nor installs one, and its default set is empty. A wheel
+    naming a plugin it does not bring cannot start — `load_plugins` raises
+    `PluginLoadError` on the module before the first question — so the two halves have
+    to agree."""
     from cora.app.config import DEFAULT_PLUGINS
 
-    available = {"cora", *_requires(workspace.ROOT)}
+    assert DEFAULT_PLUGINS == ()
+    assert not [name for name in _requires(workspace.ROOT) if name.startswith("cora-")]
+    assert not [
+        module
+        for module in workspace.modules(workspace.ROOT)
+        if module.startswith("cora.plugins.")
+    ]
 
-    assert DEFAULT_PLUGINS
-    for module in DEFAULT_PLUGINS:
-        assert workspace.carrier_of(module) in available, (
-            f"the default set names {module}, which `cora` neither ships nor installs"
-        )
 
+@pytest.mark.parametrize(
+    "plugin", [module for _, module in workspace.plugins()], ids=lambda m: m
+)
+def test_a_plugin_needs_the_app_and_nothing_else(plugin: str) -> None:
+    """A plugin is data over the contract: the fitness bundle uses four names —
+    `Plugin`, `Tool`, `ToolRefusal`, `InputRejectedError` — and the screen one, and
+    neither takes a technology of its own. What a plugin author no longer gets is a
+    light install; that was the price of collapsing the layers."""
+    member = next(m for m in MEMBERS if plugin in workspace.modules(m))
 
-def test_a_plugin_needs_the_app_and_nothing_else() -> None:
-    """A plugin is data over the contract: it uses four names — `Plugin`, `Tool`,
-    `ToolRefusal`, `InputRejectedError` — and takes no technology of its own. What it no
-    longer gets is a light install; that was the price of collapsing the layers."""
-    assert _requires(workspace.ROOT / "plugins" / "fitness") == {"cora"}
+    assert _requires(member) == {"cora"}
 
 
 def test_a_frontend_needs_the_app_and_its_own_toolkit() -> None:

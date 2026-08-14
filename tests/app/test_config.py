@@ -58,14 +58,16 @@ def test_several_plugins_are_read_in_the_order_they_were_named() -> None:
     assert config.plugin_modules == ("cora.plugins.security", "cora.plugins.fitness")
 
 
-def test_the_setting_left_empty_asks_for_no_plugins_at_all() -> None:
-    """Unset and set-empty must stay distinguishable, or bare cora cannot be asked
-    for: one takes the default set, the other takes none."""
+def test_a_fresh_install_loads_no_plugin_at_all() -> None:
+    """Bare cora is the default, not a thing you have to ask for: a plugin is an
+    extension, so naming one is the only way to get one. Unset and set-empty therefore
+    agree — there is no default set left for them to differ about."""
     empty = Config.from_env({"OPENROUTER_API_KEY": "k", "CORA_PLUGINS": ""})
     unset = Config.from_env({"OPENROUTER_API_KEY": "k"})
 
+    assert DEFAULT_PLUGINS == ()
     assert empty.plugin_modules == ()
-    assert unset.plugin_modules == DEFAULT_PLUGINS
+    assert unset.plugin_modules == ()
 
 
 def test_the_memory_default_sits_beside_the_document_store() -> None:

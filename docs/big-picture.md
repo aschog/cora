@@ -134,32 +134,37 @@ not a slot a technology fills.
 
 ## The distributions
 
-Three packages: the app, and the two kinds of thing you may add to it. The layers above are
-modules inside `cora` — the split that once made each of them a distribution of its own is
-gone, because this is an agent, not a demonstration of packaging.
+Three kinds of package: the app, a plugin, a frontend. The layers above are modules inside
+`cora` — the split that once made each of them a distribution of its own is gone, because
+this is an agent, not a demonstration of packaging. What stayed separate is what a
+deployment *chooses*: cora installs no plugin and loads none.
 
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 40, "rankSpacing": 50, "curve": "basis"}}}%%
 flowchart BT
-  app["cora<br/><i>cora.domain · cora.ports</i><br/><i>cora.engine · cora.adapters · cora.app</i><br/><i>cora.plugins.security</i>"]
+  app["cora<br/><i>cora.domain · cora.ports</i><br/><i>cora.engine · cora.adapters · cora.app</i>"]
   fitness["cora-plugin-fitness<br/><i>cora.plugins.fitness</i>"]
+  security["cora-plugin-security<br/><i>cora.plugins.security</i>"]
   shell["cora-frontend-streamlit<br/><i>cora.frontends.streamlit</i>"]
 
   fitness --> app
+  security --> app
   shell --> app
 
   classDef contract fill:#8c4b00,stroke:#d98a1f,color:#fff;
   classDef logic fill:#134e6f,stroke:#1f78b4,color:#fff;
   class app logic;
-  class fitness contract;
+  class fitness,security contract;
 ```
 
-An arrow means *depends on*. `cora` itself depends on nothing of cora's, and on no way of
-talking to a user — which is what leaves room for a second frontend.
+An arrow means *depends on*. `cora` itself depends on nothing of cora's — no plugin and
+no way of talking to a user — which is what leaves room for a second frontend and for a
+deployment that wants no persona and no guard.
 
 | If you are writing | You install | You do not get |
 |---|---|---|
 | a plugin, domain or guard | `cora` | it uses four names from `cora.ports` and `cora.domain`; the rest comes along |
+| the app with a domain and a screen | `cora-plugin-fitness` · `cora-plugin-security` | nothing is loaded until `CORA_PLUGINS` names it |
 | a second frontend | `cora` | Streamlit, or any other way of talking to a user |
 | the app you can run today | `cora-frontend-streamlit` | nothing — it is the whole stack |
 
@@ -184,7 +189,7 @@ The conversation belongs to the thread, not to the caller: a turn is seeded with
 question alone, and the graph's checkpointer supplies everything said before it. The
 frontend keeps one thread id per browser session.
 
-1. **Prepare** — check the question against one ordered tuple of rules: cora's own first (not empty, at most 4000 characters), then every loaded plugin's, in the order they were named. If a rule says no, raise `InputRejectedError`; the model never sees the question. Screening for prompt injection is one of those plugin rules — `cora.plugins.security`, in the default set — and not the engine's, so an app asked for no plugins screens nothing. Then add the question to the thread's transcript and write this turn's **brief**: cora's preamble, cora's own rules (call `search_documents`, cite `[n]`, call `remember` when the user asks to be remembered), one section per plugin under its `name`, and whatever is already remembered about the user — labelled as notes rather than rules, and stated last, because a fact is kept user input. The brief is rewritten each turn, so a ten-turn thread carries one, and a fact learned mid-conversation is in hand the next turn. Rules see the question only.
+1. **Prepare** — check the question against one ordered tuple of rules: cora's own first (not empty, at most 4000 characters), then every loaded plugin's, in the order they were named. If a rule says no, raise `InputRejectedError`; the model never sees the question. Screening for prompt injection is one of those plugin rules — `cora.plugins.security` — and not the engine's, so cora as installed screens nothing until a deployment names it. Then add the question to the thread's transcript and write this turn's **brief**: cora's preamble, cora's own rules (call `search_documents`, cite `[n]`, call `remember` when the user asks to be remembered), one section per plugin under its `name`, and whatever is already remembered about the user — labelled as notes rather than rules, and stated last, because a fact is kept user input. The brief is rewritten each turn, so a ten-turn thread carries one, and a fact learned mid-conversation is in hand the next turn. Rules see the question only.
 2. **Model** — one round. The model is offered `search_documents` and `remember` beside the plugin's tools. It is sent the brief, then the previous turns' words — the last `CORA_HISTORY_TURNS` of them (default 20; `0` means no history) — then this turn verbatim. Old tool calls and their results stay in the thread but out of the prompt. It either answers or asks for tools.
 3. **Tools** — run what it asked for, in order. A result that can cite itself — a set of search hits — is numbered `[n]` continuing from the numbers the *conversation* has already handed out, so `[1]` means one document for as long as the thread lives, and comes back as a `tool` message marked *untrusted document data*. Any other result is fed back exactly as it renders.
 4. **Round again, or stop** — the router reads the model's last reply. A reply asking for tools goes back to step 2, at most `CORA_MAX_TOOL_ROUNDS` times (default 8), after which `ToolLoopLimitError` apologises. A reply that answers ends the run. Rounds are counted from where this turn began in the transcript, so the budget is the turn's and a long conversation cannot exhaust it.
@@ -251,7 +256,7 @@ is chosen in one place.
 | **Retriever** | `add(chunks, vectors, file_hash)`, `query(query_vector, k, metadata_filter=None)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a saved, built-in database that uses cosine distance. The optional filter limits a search to matching metadata (self-query). |
 | **Loaders** | `Mapping[str, Loader]`, each `Loader` a `(data, filename) -> str` | `cora.adapters.loaders.LOADERS` — `.txt` and `.md` read directly, `.pdf` through pypdf. Which formats a deployment accepts is an entry in the registry, not an edit inside ingestion. |
 | **Memory** | `remember(text)`, `recall() -> tuple[Fact, ...]`, `forget(key)`, `clear()` | `SqliteStoreMemory` — LangGraph's SQLite-backed store (the second adapter to use LangGraph, behind a port of its own), one namespace per user, at `CORA_MEMORY_PATH`. `recall()` hands back the newest 100 facts, oldest first. The only optional slot: with nothing bound, the agent is offered no `remember` tool. |
-| **Plugin** | data only: `name`, and any of `instructions`, `tools`, `validation_rules`, `scope` | `cora.plugins.security` by default — `CORA_PLUGINS` names the set, in order, and takes as many as you like. It is a frozen dataclass, not a class you subclass. |
+| **Plugin** | data only: `name`, and any of `instructions`, `tools`, `validation_rules`, `scope` | none by default — `CORA_PLUGINS` names the set, in order, and takes as many as you like. It is a frozen dataclass, not a class you subclass. |
 
 Set `CORA_DEBUG=1` to wrap the chat, embedding and retrieval ports in a logger
 (`cora.engine.port_logging` — a decorator over ports, so it ships with the engine and imports

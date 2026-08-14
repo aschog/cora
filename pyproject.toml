@@ -19,9 +19,8 @@ requires = ["uv_build>=0.11.26,<0.12.0"]
 build-backend = "uv_build"
 
 # Named rather than inferred: `cora` is a namespace no distribution owns, so this one
-# claims the portions it ships and leaves the rest free for a plugin or a frontend to
-# contribute. `cora.plugins.security` is among them because the default set loads it —
-# a guard that ships in the box is not an optional install.
+# claims the portions it ships and leaves `cora.plugins` and `cora.frontends` free for
+# an extension to contribute.
 [tool.uv.build-backend]
 module-name = [
     "cora.domain",
@@ -29,7 +28,6 @@ module-name = [
     "cora.engine",
     "cora.adapters",
     "cora.app",
-    "cora.plugins.security",
 ]
 
 # The app is the root. What sits beside it is what you may install *as well*: a domain
@@ -41,12 +39,14 @@ members = ["plugins/*", "frontends/*"]
 [tool.uv.sources]
 cora = { workspace = true }
 cora-plugin-fitness = { workspace = true }
+cora-plugin-security = { workspace = true }
 cora-frontend-streamlit = { workspace = true }
 
 [dependency-groups]
 dev = [
     "cora-frontend-streamlit",
     "cora-plugin-fitness",
+    "cora-plugin-security",
     "pytest>=9.1.1",
     "pytest-watcher>=0.6.3",
     "ruff>=0.15.22",
@@ -56,10 +56,22 @@ dev = [
 # The members are spelled out because only the root's `src/` is guessable from a layout,
 # and `tests` carries the shared fakes every suite imports.
 [tool.ty.environment]
-root = ["src", "frontends/streamlit/src", "plugins/fitness/src", "tests"]
+root = [
+    "src",
+    "frontends/streamlit/src",
+    "plugins/fitness/src",
+    "plugins/security/src",
+    "tests",
+]
 
 [tool.ruff]
-src = ["src", "frontends/streamlit/src", "plugins/fitness/src", "tests"]
+src = [
+    "src",
+    "frontends/streamlit/src",
+    "plugins/fitness/src",
+    "plugins/security/src",
+    "tests",
+]
 
 [tool.ruff.lint]
 select = [

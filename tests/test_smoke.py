@@ -38,9 +38,10 @@ def test_the_layers_share_one_namespace_across_its_distributions() -> None:
 
 
 def test_each_layer_is_carried_by_the_member_that_ships_it() -> None:
-    """Five layers and the guard ship from the app; what sits beside it is what a
-    deployment may add. The mapping is the architecture as an install — it is what a
-    second frontend or a second domain would extend without touching the app."""
+    """The five layers ship from the app; every plugin and every frontend ships from
+    beside it. The mapping is the architecture as an install — nothing under
+    `cora.plugins` or `cora.frontends` comes from the app itself, which is what makes
+    both of them extension points rather than parts."""
     carriers = {
         module.__name__: _carrier(module)
         for module in (
@@ -61,7 +62,7 @@ def test_each_layer_is_carried_by_the_member_that_ships_it() -> None:
         "cora.engine": ".",
         "cora.adapters": ".",
         "cora.app": ".",
-        "cora.plugins.security": ".",
         "cora.plugins.fitness": "plugins/fitness",
+        "cora.plugins.security": "plugins/security",
         "cora.frontends.streamlit": "frontends/streamlit",
     }

@@ -1,0 +1,15 @@
+[project]
+name = "cora-plugin-security"
+version = "0.1.0"
+description = "cora's prompt-injection screen: one validation rule, no persona and no tools — a guard a deployment adds, like any other plugin"
+requires-python = ">=3.12"
+dependencies = [
+    "cora",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.26,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "cora.plugins.security"

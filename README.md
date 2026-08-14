@@ -21,26 +21,29 @@ quality gates. Runtime dependencies are added feature-by-feature, story by story
 
 ## The packages
 
-The app is the repository root; a `uv` workspace of three distributions sharing the `cora`
-namespace. You install `cora` to use it and add a package to extend it. See
+The app is the repository root; a `uv` workspace sharing the `cora` namespace. You install
+`cora` to use it and add a package to extend it — three kinds of package in all. See
 [`docs/big-picture.md`](docs/big-picture.md#the-distributions).
 
 | Package | Ships | Depends on |
 |---|---|---|
-| `cora` | `cora.domain` · `cora.ports` — the contract<br>`cora.engine` — the agent, the knowledge base, a turn's steps<br>`cora.adapters` — Chroma, OpenRouter, LangGraph, BM25, MiniLM<br>`cora.app` — the composition root and its configuration<br>`cora.plugins.security` — the prompt-injection screen the default set loads | its technologies, and no user interface |
+| `cora` | `cora.domain` · `cora.ports` — the contract<br>`cora.engine` — the agent, the knowledge base, a turn's steps<br>`cora.adapters` — Chroma, OpenRouter, LangGraph, BM25, MiniLM<br>`cora.app` — the composition root and its configuration | its technologies, and no user interface |
+| `cora-plugin-security` | `cora.plugins.security` — the prompt-injection screen | `cora` |
 | `cora-plugin-fitness` | `cora.plugins.fitness` — the reference domain plugin | `cora` |
 | `cora-frontend-streamlit` | `cora.frontends.streamlit` — the app you run below | `cora` |
 
 `cora.plugins.*` and `cora.frontends.*` are the extension points: another domain or a
 second user interface is a package to add, not a file to edit. A plugin need not be a
-domain — the prompt-injection screen contributes one validation rule and nothing else, and
-ships inside `cora` because a guard the default set loads is not an optional install.
+domain — the prompt-injection screen contributes one validation rule and nothing else.
+
+cora carries no plugin and loads none: bare cora is a document-grounded assistant with no
+persona and no screen, and `CORA_PLUGINS` is how a deployment adds either.
 
 The tree says which is which by its position:
 
 ```
-src/cora/            domain  ports  engine  adapters  app  plugins/security
-plugins/fitness      one of many — the directory expects siblings
+src/cora/                          domain  ports  engine  adapters  app
+plugins/fitness  plugins/security  one of many — the directory expects siblings
 frontends/streamlit
 ```
 
@@ -83,9 +86,9 @@ and each save appears in the trace like any other tool call. The conversation it
 lives as long as the browser session; what is remembered outlives it.
 
 Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
-`CORA_PLUGINS` (comma-separated, in composition order; default `cora.plugins.security`
-— add `cora.plugins.fitness` for the coaching domain, and set it empty for a plain
-assistant that carries no persona and screens nothing), `CORA_TOP_K` (default `5`),
+`CORA_PLUGINS` (comma-separated, in composition order; empty by default — name
+`cora.plugins.security` for the prompt-injection screen and `cora.plugins.fitness` for
+the coaching domain), `CORA_TOP_K` (default `5`),
 `CORA_RETRIEVAL` (`plain` by default; `advanced` turns on query translation and
 self-query filtering — RAG-Fusion — for one extra model call per question;
 `hybrid` fuses dense and BM25 keyword rankings with no extra model call),
