@@ -53,14 +53,14 @@ dev = [
 ]
 
 # The members are spelled out because only the root's `src/` is guessable from a layout,
-# and `tests` carries the shared fakes every suite imports.
+# and `tests/support` carries the shared fakes every suite imports by name.
 [tool.ty.environment]
 root = [
     "src",
     "frontends/streamlit/src",
     "plugins/fitness/src",
     "plugins/security/src",
-    "tests",
+    "tests/support",
 ]
 
 [tool.ruff]
@@ -69,7 +69,7 @@ src = [
     "frontends/streamlit/src",
     "plugins/fitness/src",
     "plugins/security/src",
-    "tests",
+    "tests/support",
 ]
 
 [tool.ruff.lint]
@@ -86,13 +86,14 @@ select = [
 ]
 
 [tool.pytest.ini_options]
-# A layer's tests mirror `src/cora/`; `acceptance/` holds the outer test per story and
+# `tests/cora/` mirrors `src/cora/`; `acceptance/` holds the outer test per story and
 # `guards/` the ones whose subject is the repository rather than the app. A plugin and a
-# frontend keep theirs beside their own manifest. Nothing under `tests/` may be named for
-# a shipped module: pythonpath puts it on sys.path, and a directory called cora would
-# join the cora namespace as its first portion.
+# frontend keep theirs beside their own manifest. Only `tests/support/` goes on sys.path,
+# and only so the shared helpers import by name — importlib mode needs no test on the
+# path. Nothing in there may be named for a shipped module, or it joins that namespace
+# as its first portion; the mirror is safe precisely because it is not on the path.
 testpaths = ["tests", "plugins", "frontends"]
-pythonpath = ["tests"]
+pythonpath = ["tests/support"]
 addopts = "--strict-markers --import-mode=importlib -m 'not integration and not llm'"
 markers = [
     "integration: touches real infrastructure (Chroma, embedding model, Streamlit); run in CI",
