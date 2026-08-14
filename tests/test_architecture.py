@@ -1,5 +1,6 @@
 import ast
 import pathlib
+import re
 from types import ModuleType
 
 import pytest
@@ -11,20 +12,55 @@ import cora.engine
 import cora.frontends.streamlit
 import cora.plugins
 import cora.ports
+import workspace
 
-FORBIDDEN_FRAMEWORKS = frozenset(
-    {
-        "langchain",
-        "langchain_openai",
-        "langchain_core",
+PURE_MAY_USE = frozenset({"jsonschema"})
+"""The one declared dependency the contract and the engine may reach for. Validating a
+tool's schema is a rule about what a plugin declares, not a technology the engine is
+bound to — a deployment cannot swap it for a different one."""
+REACHED_THROUGH = frozenset({"langchain", "langchain_core"})
+"""Frameworks no manifest names but every environment holds: `langchain-openai` brings
+them, and importing either binds a layer exactly as tightly as importing what declared
+them."""
+
+
+def _declared_technologies() -> frozenset[str]:
+    """Every third party any member declares, as the name an import would use. Read off
+    the manifests rather than listed, so `uv add` cannot leave the guard stale: a
+    dependency added tomorrow is out of the pure layers' reach the same day, and putting
+    it *in* reach means saying so in `PURE_MAY_USE`."""
+    declared = {
+        re.split(r"[<>=!~\[;\s]", requirement)[0]
+        for member in workspace.members()
+        for requirement in workspace.manifest(member)["project"]["dependencies"]
+    }
+    return frozenset(
+        name.replace("-", "_") for name in declared if not name.startswith("cora")
+    )
+
+
+FORBIDDEN_FRAMEWORKS = (_declared_technologies() | REACHED_THROUGH) - PURE_MAY_USE
+TEST_ONLY_FRAMEWORKS = frozenset({"pytest"})
+
+
+def test_a_declared_technology_cannot_be_left_off_the_guard() -> None:
+    """Which formats a deployment reads is the adapters' business, so `pypdf` is out of
+    the engine's reach — and it is there because the manifest names it, not because
+    someone remembered to add it here."""
+    assert "pypdf" in FORBIDDEN_FRAMEWORKS
+
+
+def test_the_guard_covers_every_technology_the_workspace_ships() -> None:
+    """The derivation asserted against, so a walk that discovered nothing cannot pass by
+    forbidding nothing. `jsonschema` is the deliberate exception and stays out."""
+    assert {
         "chromadb",
         "langgraph",
         "sentence_transformers",
         "streamlit",
-        "rank_bm25",
-    }
-)
-TEST_ONLY_FRAMEWORKS = frozenset({"pytest"})
+        "pypdf",
+    } <= FORBIDDEN_FRAMEWORKS
+    assert not FORBIDDEN_FRAMEWORKS & PURE_MAY_USE
 
 
 def _root(module: ModuleType) -> pathlib.Path:
@@ -38,9 +74,8 @@ def _root(module: ModuleType) -> pathlib.Path:
 PURE_ROOTS = (_root(cora.domain), _root(cora.ports), _root(cora.engine))
 EXTENSION_POINTS = (cora.plugins, cora.frontends)
 """The two namespaces that expect contributors. Asked of the namespace rather than of a
-directory: `cora.plugins` is one name over two trees — the guard shipping with the app
-and the reference domain shipping as a wheel of its own — and a walk rooted at either
-tree passes by covering none of the other."""
+directory: `cora.plugins` is one name over as many trees as there are plugins installed,
+and a walk rooted at any one of them passes by covering none of the others."""
 
 
 def _extension_roots() -> tuple[pathlib.Path, ...]:
@@ -85,8 +120,8 @@ OUT_OF_REACH: dict[str, tuple[tuple[str, ...], str]] = {
         ("cora.frontends", "cora.plugins"),
         "the composition root is what a frontend installs, so naming a frontend would "
         "mean a command-line shell had to install a web UI to reuse the wiring; and it "
-        "now installs the guard its default set names, which is exactly why importing "
-        "a plugin rather than naming one in config has to stay impossible",
+        "installs no plugin at all, which is why importing one rather than naming "
+        "it in config has to stay impossible",
     ),
     "the plugins": (
         ("cora.engine", "cora.adapters", "cora.app", "cora.frontends"),
@@ -102,12 +137,15 @@ OUT_OF_REACH: dict[str, tuple[tuple[str, ...], str]] = {
     ),
 }
 PLUGIN_ROOTS = tuple(root for root in _extension_roots() if root.name == "plugins")
+FRONTEND_ROOTS = tuple(root for root in _extension_roots() if root.name == "frontends")
 LAYER_FILES: dict[str, list[pathlib.Path]] = {
     "the contract and the engine": CORE_FILES,
     "the adapters": sorted(_root(cora.adapters).rglob("*.py")),
     "the app": sorted(_root(cora.app).rglob("*.py")),
     "the plugins": sorted(file for root in PLUGIN_ROOTS for file in root.rglob("*.py")),
-    "the frontends": sorted(UI_ROOT.rglob("*.py")),
+    "the frontends": sorted(
+        file for root in FRONTEND_ROOTS for file in root.rglob("*.py")
+    ),
 }
 REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in files]
 
@@ -261,7 +299,7 @@ def test_the_walkers_catch_a_planted_violation(tmp_path: pathlib.Path) -> None:
     rogue = tmp_path / "rogue.py"
     rogue.write_text(
         "import streamlit as st\n"
-        "import rank_bm25\n"
+        "import pypdf\n"
         "from langgraph.graph import StateGraph\n"
         "from pytest import fixture\n"
         "from cora.app.config import Config\n"
@@ -278,7 +316,7 @@ def test_the_walkers_catch_a_planted_violation(tmp_path: pathlib.Path) -> None:
     )
     assert {
         "streamlit",
-        "rank_bm25",
+        "pypdf",
         "langgraph.graph",
         "cora.app.config",
         "cora.adapters",
