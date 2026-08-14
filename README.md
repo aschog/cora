@@ -91,7 +91,8 @@ forgets everything. It only remembers when you ask it to, never on its own judge
 and each save appears in the trace like any other tool call. The conversation itself
 lives as long as the browser session; what is remembered outlives it.
 
-Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`),
+Optional environment overrides: `CORA_MODEL` (default `openai/gpt-4o-mini`; also
+accepted as `OPENROUTER_MODEL`, the prefix the key and base URL use),
 `CORA_PLUGINS` (comma-separated, in composition order; empty by default — name
 `cora.plugins.security` for the prompt-injection screen and `cora.plugins.fitness` for
 the coaching domain), `CORA_TOP_K` (default `5`),

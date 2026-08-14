@@ -47,6 +47,28 @@ def test_from_env_applies_defaults_for_optional_fields() -> None:
     assert config.memory_path
 
 
+def test_the_model_may_be_named_with_the_prefix_the_key_and_url_already_use() -> None:
+    """`OPENROUTER_API_KEY` and `OPENROUTER_BASE_URL` set the prefix a reader expects
+    the model to share, and a model named that way used to be ignored in silence."""
+    config = Config.from_env(
+        {"OPENROUTER_API_KEY": "k", "OPENROUTER_MODEL": "openai/gpt-5-mini"}
+    )
+
+    assert config.model == "openai/gpt-5-mini"
+
+
+def test_cora_model_wins_over_the_openrouter_alias() -> None:
+    config = Config.from_env(
+        {
+            "OPENROUTER_API_KEY": "k",
+            "CORA_MODEL": "anthropic/claude",
+            "OPENROUTER_MODEL": "openai/gpt-5-mini",
+        }
+    )
+
+    assert config.model == "anthropic/claude"
+
+
 def test_several_plugins_are_read_in_the_order_they_were_named() -> None:
     config = Config.from_env(
         {

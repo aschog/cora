@@ -43,7 +43,7 @@ class Config:
             )
         return cls(
             api_key=api_key,
-            model=env.get("CORA_MODEL", DEFAULT_MODEL),
+            model=_model(env),
             base_url=env.get("OPENROUTER_BASE_URL", DEFAULT_BASE_URL),
             plugin_modules=_plugin_modules(env),
             top_k=_int(env, "CORA_TOP_K", DEFAULT_TOP_K, minimum=1),
@@ -61,6 +61,12 @@ class Config:
             ),
             debug=_bool(env, "CORA_DEBUG"),
         )
+
+
+def _model(env: Mapping[str, str]) -> str:
+    """The key and the base URL are named `OPENROUTER_*`, so the model gets guessed that
+    way too; `CORA_MODEL` is the documented name and stays the one that wins."""
+    return env.get("CORA_MODEL") or env.get("OPENROUTER_MODEL") or DEFAULT_MODEL
 
 
 def _plugin_modules(env: Mapping[str, str]) -> tuple[str, ...]:
