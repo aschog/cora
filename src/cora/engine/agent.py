@@ -2,17 +2,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from cora.domain.agent_state import AgentState
-from cora.domain.citations import Source, cited_sources
+from cora.domain.chat_result import ChatResult
+from cora.domain.citations import cited_sources
 from cora.domain.errors import AdapterError, GraphRunError
 from cora.domain.trace import SecondLookLost, TraceStep
 from cora.ports.graph import GraphRunner
-
-
-@dataclass(frozen=True)
-class ChatResult:
-    answer: str
-    sources: tuple[Source, ...] = ()
-    trace: tuple[TraceStep, ...] = ()
 
 
 def _ignore(step: TraceStep) -> None:

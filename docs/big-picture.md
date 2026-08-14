@@ -176,7 +176,7 @@ A frontend uses the engine through two main methods: `answer()` and `add_file()`
 `list_sources()` to show the file list in the sidebar, and `recall()` / `forget()` to show
 and clear what is remembered).
 
-**`agent.answer(question, thread_id) -> ChatResult`** — `engine/agent.py`
+**`agent.answer(question, thread_id) -> ChatResult`** — `engine/agent.py`, returning `domain/chat_result.py`
 
 The conversation belongs to the thread, not to the caller: a turn is seeded with the
 question alone, and the graph's checkpointer supplies everything said before it. The
@@ -217,7 +217,7 @@ because the map shows them inside another part.
 
 | Component | Job | Where |
 |---|---|---|
-| **Agent** | The one main use case. It seeds a turn with the question, names the thread it belongs to, and turns the run's final state into a `ChatResult`. | `engine/agent.py` |
+| **Agent** | The one main use case. It seeds a turn with the question, names the thread it belongs to, and turns the run's final state into a `ChatResult` — the one value object that crosses to a frontend, so it lives in the domain. | `engine/agent.py`, `domain/chat_result.py` |
 | **Steps** | The moves of a turn: *prepare* validates, adds the question to the transcript and writes the brief, *model* takes one round with the chat model, *tools* runs what the model asked for, and *ground* looks in the documents itself and puts what it found to the model when the plugin asks. Each one returns only what it added to the run. | `engine/steps.py` |
 | **Router** | The one decision, read off the model's last reply: asking for tools runs them (a friendly apology at the round budget), answering ends the run — or is sent back once when the plugin wants its subject worked for and no tool was used. | `engine/steps.py` |
 | **Trace** *(folded)* | What the user reads afterwards: one step per model decision and per tool call, each with a one-line summary and the evidence behind it. A new kind of step is a new class, not a new branch. | `domain/trace.py` |

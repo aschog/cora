@@ -4,9 +4,10 @@ from collections.abc import Callable, Sequence
 
 import streamlit as st
 from cora.app.assembly import App
+from cora.domain.chat_result import ChatResult
 from cora.domain.errors import AdapterError, CoreError
 from cora.domain.trace import TraceStep
-from cora.engine.agent import Agent, ChatResult
+from cora.engine.agent import Agent
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.frontends.streamlit.formatting import (
     ingest_message,
