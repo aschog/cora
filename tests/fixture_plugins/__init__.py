@@ -1,4 +1,21 @@
+from cora.domain.errors import InputRejectedError
 from cora.ports.plugin import Plugin, Tool, ValidationRule
+
+REFUSAL = "The test plugin refused that."
+
+
+class RefusesContaining:
+    """A plugin's screen, in the shape every real one has: it reads the question, it
+    refuses or it does not. Written here so a suite can prove the engine runs a plugin's
+    rules without installing a plugin to borrow a rule from."""
+
+    def __init__(self, trigger: str, message: str = REFUSAL) -> None:
+        self.trigger = trigger
+        self.message = message
+
+    def apply(self, user_input: str) -> None:
+        if self.trigger.lower() in user_input.lower():
+            raise InputRejectedError(self.message)
 
 
 def identity(x: int) -> int:
