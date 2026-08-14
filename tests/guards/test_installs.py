@@ -23,15 +23,40 @@ REPO = workspace.ROOT
 
 
 def _uv(*args: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ("uv", *args), cwd=REPO, capture_output=True, text=True, check=True
-    )
+    """Raised on rather than `check=True`, which reports the exit status and throws away
+    the only part anyone needs — what uv said on stderr."""
+    result = subprocess.run(("uv", *args), cwd=REPO, capture_output=True, text=True)
+    if result.returncode:
+        raise AssertionError(f"uv {' '.join(args)} failed:\n{result.stderr}")
+    return result
 
 
 def _resolved(dist: str) -> set[str]:
-    """Every distribution `dist` would bring with it, read off the lockfile."""
-    tree = _uv("tree", "--package", dist, "--no-dev").stdout
-    return set(re.findall(r"([A-Za-z0-9][A-Za-z0-9._-]*) v\d", tree))
+    """Every distribution `dist` would bring with it, read off the lockfile.
+
+    `--frozen --offline` because this runs in the fast tier, which `README.md` promises
+    touches no network. `uv tree` locks before it prints, so without them a manifest
+    edited since the last lock makes `uv run pytest -q` rewrite `uv.lock` on its way
+    past — the one file that is never edited by hand — and go to the index to do it.
+    Reading the lock is the whole point: the resolution is the subject, and the lock is
+    where it already is.
+    """
+    tree = _uv("tree", "--package", dist, "--no-dev", "--frozen", "--offline").stdout
+    resolved = set(re.findall(r"([A-Za-z0-9][A-Za-z0-9._-]*) v\d", tree))
+    assert dist in resolved, (
+        f"uv resolved no {dist} — a name nothing ships prints an empty tree and "
+        "exits 0, so every claim made about it would hold of nothing"
+    )
+    return resolved
+
+
+def test_a_name_the_workspace_does_not_ship_is_an_error() -> None:
+    """`uv tree` prints nothing and exits 0 for a package it has never heard of, so a
+    renamed distribution would leave the two tests below asserting that `streamlit` is
+    absent from an empty set — passing by resolving nothing. The subject has to be found
+    before anything can be said about it."""
+    with pytest.raises(AssertionError, match="cora-plugin-nonesuch"):
+        _resolved("cora-plugin-nonesuch")
 
 
 def test_the_app_resolves_without_any_user_interface() -> None:

@@ -159,7 +159,7 @@ deployment that wants no persona and no guard.
 | a plugin, domain or guard | `cora` | it uses four names from `cora.ports` and `cora.domain`; the rest comes along |
 | the app with a domain and a screen | `cora-plugin-fitness` · `cora-plugin-security` | nothing is loaded until `CORA_PLUGINS` names it |
 | a second frontend | `cora` | Streamlit, or any other way of talking to a user |
-| the app you can run today | `cora-frontend-streamlit` | nothing — it is the whole stack |
+| the app you can run today | `cora-frontend-streamlit` | the plugins — it depends on `cora` and Streamlit, so a domain and a guard are installed and named separately |
 
 The layer boundary is no longer a fact of the install: with one distribution, nothing stops
 `cora.engine` importing Chroma except `tests/guards/test_architecture.py`, which walks every

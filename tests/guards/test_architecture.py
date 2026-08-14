@@ -244,8 +244,8 @@ def test_no_reference_domain_word_reaches_the_contract_or_the_engine(
 ) -> None:
     """Domain-agnostic is a claim about words as much as imports: the plugin supplies
     the topic, so the reference domain's name has no business in the layers every other
-    domain reuses. `cora.app.config` names it as the default plugin and is allowed to —
-    which domain a deployment ships is its choice, not the engine's."""
+    domain reuses. Nothing under `src/` names it at all now that the default plugin set
+    is empty — a deployment says which domain it ships, in `CORA_PLUGINS`."""
     assert "fitness" not in path.read_text().lower(), (
         f"{_shipped_as(path)} names the reference domain"
     )

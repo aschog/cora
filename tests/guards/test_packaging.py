@@ -27,6 +27,34 @@ def _module_roots(member: pathlib.Path) -> list[pathlib.Path]:
     ]
 
 
+def _on_the_path() -> list[pathlib.Path]:
+    """Every directory `pythonpath` puts on `sys.path`, read off the manifest rather
+    than named here, so moving the entry moves what this is asserted of."""
+    options = workspace.manifest(workspace.ROOT)["tool"]["pytest"]["ini_options"]
+    return [workspace.ROOT / entry for entry in options["pythonpath"]]
+
+
+def test_nothing_on_the_path_is_named_for_a_shipped_namespace() -> None:
+    """The rule that matters, and the narrow form of it: `cora` is a namespace no
+    distribution owns, so a directory called `cora` inside a `sys.path` entry joins it
+    as its first portion and `import cora.domain` can resolve into the test tree rather
+    than the install. The mirror under `tests/cora/` is safe for precisely the reason
+    this is not — nothing puts `tests/` itself on the path."""
+    shipped = {
+        module.split(".")[0]
+        for member in MEMBERS
+        for module in workspace.modules(member)
+    }
+    colliding = sorted(
+        str(path.relative_to(workspace.ROOT))
+        for directory in _on_the_path()
+        for path in directory.iterdir()
+        if path.stem in shipped
+    )
+
+    assert colliding == [], f"on sys.path and named for the namespace: {colliding}"
+
+
 def test_the_globs_reach_every_member_beside_the_app() -> None:
     """The members uv itself would resolve, by running the root manifest's globs. uv
     refuses to sync when a glob matches a directory holding no manifest, so that half is
@@ -40,10 +68,7 @@ def test_the_globs_reach_every_member_beside_the_app() -> None:
 
 def test_the_workspace_holds_the_app_and_its_extension_points() -> None:
     """Directories are named for what they hold, distributions for the audience that
-    installs them. Nothing in the tree may be called `cora` outside `src/`: the root
-    goes on `sys.path` for anything run from it, and a directory of that name joins the
-    namespace as its first portion — which is enough to make `import cora.fitness`
-    resolve to an empty phantom."""
+    installs them."""
     assert {workspace.location(m): workspace.distribution(m) for m in MEMBERS} == {
         ".": "cora",
         "frontends/streamlit": "cora-frontend-streamlit",
