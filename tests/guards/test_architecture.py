@@ -12,6 +12,7 @@ import cora.engine
 import cora.frontends.streamlit
 import cora.plugins
 import cora.ports
+import workspace
 
 PURE_MAY_USE = frozenset({"jsonschema"})
 """The one third party the contract and the engine may reach for. Validating a tool's
@@ -105,6 +106,17 @@ OUT_OF_REACH: dict[str, tuple[tuple[str, ...], str]] = {
         "ties the UI to one technology binding, and naming a plugin ties it to one "
         "domain — both are chosen at assembly, not at the screen",
     ),
+}
+# Which shipped modules each rule above speaks for. The extension points are named by
+# their namespace rather than by the plugins installed into it, so the next contributor
+# is claimed by the same entry — and every name here is matched against `module-name` in
+# the manifests, so a layer that ships without a rule is a failure, not a silence.
+LAYER_MODULES: dict[str, tuple[str, ...]] = {
+    "the contract and the engine": ("cora.domain", "cora.ports", "cora.engine"),
+    "the adapters": ("cora.adapters",),
+    "the app": ("cora.app",),
+    "the plugins": ("cora.plugins",),
+    "the frontends": ("cora.frontends",),
 }
 PLUGIN_ROOTS = tuple(root for root in _extension_roots() if root.name == "plugins")
 FRONTEND_ROOTS = tuple(root for root in _extension_roots() if root.name == "frontends")
@@ -255,8 +267,62 @@ def _reaches(
 
 
 def test_every_layer_with_a_rule_has_files_to_apply_it_to() -> None:
-    assert OUT_OF_REACH.keys() == LAYER_FILES.keys()
+    """Four tables keyed on the same layers, so a layer named in one and forgotten in
+    another is the way this goes wrong: a rule with no modules claimed is never matched
+    against a manifest, and modules with no files are never walked."""
+    assert OUT_OF_REACH.keys() == LAYER_FILES.keys() == LAYER_MODULES.keys()
     assert all(LAYER_FILES[layer] for layer in OUT_OF_REACH)
+
+
+def _shipped_modules() -> list[tuple[pathlib.Path, str]]:
+    """Every module the workspace ships, as (directory, dotted name), read off the
+    manifests and the tree. Deliberately not asked of the installed environment: a
+    member outside the dev group ships modules all the same, and asking what is imported
+    would make it invisible to exactly the tests meant to cover it."""
+    return [
+        (member / "src" / pathlib.Path(*module.split(".")), module)
+        for member in workspace.members()
+        for module in workspace.modules(member)
+    ]
+
+
+def _claiming_layer(module: str) -> str | None:
+    return next(
+        (
+            layer
+            for layer, claimed in LAYER_MODULES.items()
+            for name in claimed
+            if module == name or module.startswith(f"{name}.")
+        ),
+        None,
+    )
+
+
+def test_every_shipped_module_falls_under_a_layer_rule() -> None:
+    """The other direction, and the one that can actually go wrong: the rules above are
+    keyed on layers someone wrote down, so a sixth module added to `module-name` ships
+    with no rule at all and every test here still passes. Asserted against the manifests
+    so that adding a layer forces a decision about what it may reach, rather than
+    granting it silence."""
+    unclaimed = sorted(
+        module for _, module in _shipped_modules() if _claiming_layer(module) is None
+    )
+
+    assert unclaimed == []
+
+
+def test_every_shipped_module_is_reached_by_the_walk() -> None:
+    """Two discoveries compared, not one restated: the rules are applied to files found
+    through the installed namespaces, while `module-name` is a fact of the tree. A
+    workspace member nobody added to the dev group is a module the walk never visits, so
+    its rule is written and never applied — which reads just like a rule that passes."""
+    unwalked = sorted(
+        module
+        for directory, module in _shipped_modules()
+        if not any(directory.is_relative_to(root) for root in LAYER_ROOTS)
+    )
+
+    assert unwalked == []
 
 
 @pytest.mark.parametrize(
