@@ -5,6 +5,7 @@ PLUGIN = Plugin(
     name="Prompt safety",
     validation_rules=(PromptInjectionRule(),),
 )
-"""Rules alone: the screen contributes no persona, no tools and no scope, so cora
-carries a guard without carrying a domain. It ships in the default set, which is what
-makes the box safe without making it opinionated — and `CORA_PLUGINS=` opts out."""
+"""Rules alone: the screen contributes no persona, no tools and no scope, so a
+deployment can name it beside a domain plugin and carry a guard without carrying a
+second domain. Like every plugin it is named in `CORA_PLUGINS` or it is not there —
+cora starts with none, and says so."""
