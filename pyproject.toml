@@ -86,10 +86,11 @@ select = [
 ]
 
 [tool.pytest.ini_options]
-# The app's tests sit under `tests/`, mirroring `src/cora/`; a plugin and a frontend keep
-# theirs beside their own manifest. Nothing under `tests/` may be named for a shipped
-# module: pythonpath puts it on sys.path, and a directory called cora would join the cora
-# namespace as its first portion.
+# A layer's tests mirror `src/cora/`; `acceptance/` holds the outer test per story and
+# `guards/` the ones whose subject is the repository rather than the app. A plugin and a
+# frontend keep theirs beside their own manifest. Nothing under `tests/` may be named for
+# a shipped module: pythonpath puts it on sys.path, and a directory called cora would
+# join the cora namespace as its first portion.
 testpaths = ["tests", "plugins", "frontends"]
 pythonpath = ["tests"]
 addopts = "--strict-markers --import-mode=importlib -m 'not integration and not llm'"

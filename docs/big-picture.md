@@ -162,7 +162,7 @@ deployment that wants no persona and no guard.
 | the app you can run today | `cora-frontend-streamlit` | nothing — it is the whole stack |
 
 The layer boundary is no longer a fact of the install: with one distribution, nothing stops
-`cora.engine` importing Chroma except `tests/test_architecture.py`, which walks every
+`cora.engine` importing Chroma except `tests/guards/test_architecture.py`, which walks every
 shipped file's imports and fails the build. The rule is the same, the enforcement moved
 from the resolver to a test.
 

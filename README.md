@@ -51,7 +51,7 @@ frontends/streamlit
 that reason. So `ls` is the shortest description of what can be extended.
 
 The layers inside `src/cora/` are modules, not distributions: nothing in the install stops
-`cora.engine` importing Chroma, so `tests/test_architecture.py` walks the imports and
+`cora.engine` importing Chroma, so `tests/guards/test_architecture.py` walks the imports and
 fails the build if it does.
 
 ## Setup
