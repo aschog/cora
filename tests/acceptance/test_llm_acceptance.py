@@ -1,6 +1,6 @@
-"""The one test that runs the whole shipped stack against a real model: the real
+"""The tests that run the whole shipped stack against a real model: the real
 composition root, the real Chroma store and embedder, OpenRouter over the network,
-and the Streamlit page driven headlessly. It is the only cover for behaviour a stub
+and the Streamlit page driven headlessly. They are the only cover for behaviour a stub
 cannot show — a scripted model answers however the script says, so it can never
 reveal the model ignoring an instruction. That is not hypothetical: the gate used to
 ask the model to skip searching for small talk, and a real one searched anyway.
@@ -8,6 +8,7 @@ ask the model to skip searching for small talk, and a real one searched anyway.
 
 import dataclasses
 import os
+import re
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,9 @@ from streamlit.testing.v1 import AppTest
 
 from cora.app.assembly import App, build
 from cora.app.config import Config
+from cora.engine.memory_tool import REMEMBER_TOOL_NAME
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.plugins.fitness.tools import DAILY_ENERGY_TOOL
 
 pytestmark = pytest.mark.llm
 
@@ -48,7 +52,13 @@ def _live_app(store: Path) -> App:
     """The shipped composition root, pointed at stores of its own. Every other default
     is the deployed one — the model, the preamble and the reminder under test are
     whatever cora actually ships."""
-    app = build(_live_config(store))
+    return build(_live_config(store))
+
+
+def _holding_the_protein_doc(store: Path) -> App:
+    """Indexed behind the page's back, for the tests whose subject starts at the
+    question. The happy path uploads the same document through the widget instead."""
+    app = _live_app(store)
     app.knowledge_base.add_file(PROTEIN_DOC, "protein.md")
     return app
 
@@ -65,6 +75,75 @@ def _panels(at: AppTest) -> list[str]:
     return [panel.label for panel in at.chat_message[-1].expander]
 
 
+def _steps(at: AppTest) -> str:
+    """The newest turn's trace. One status holds one turn's steps, and every earlier
+    turn is redrawn on every rerun, so the last one is this turn's."""
+    return "\n".join(line.value for line in at.status[-1].code)
+
+
+def _sidebar(at: AppTest) -> str:
+    return "\n".join(md.value for md in at.sidebar.markdown)
+
+
+UPLOADED = ("protein.md", PROTEIN_DOC, "text/markdown")
+ONE_CHUNK = "1 chunk"
+CITATION = re.compile(r"\[\d+]")
+NEEDS_THE_CALCULATOR = (
+    "I'm a 34-year-old man, 80 kg at 180 cm, training hard four times a week. "
+    "What is my total daily energy expenditure?"
+)
+KEEP_THIS = "Remember that I'm vegetarian."
+FAILED = "⚠️"
+
+
+def test_a_whole_session_uploads_asks_calculates_and_remembers(tmp_path: Path) -> None:
+    """The demo as one conversation on one thread: the document goes in through the
+    uploader, the answer comes back cited from it, the calculation goes to the
+    plugin's tool instead of the model's arithmetic, and a fact the user asks it to
+    keep reaches the store the sidebar reads. Every assertion is on a widget or on the
+    trace, so what the test walks is the sequence the code takes."""
+    app = _live_app(tmp_path)
+    at = AppTest.from_function(_page, args=(app,)).run()
+
+    at.file_uploader[0].set_value(UPLOADED)
+    at.run(timeout=180)  # the embedder loads on this first use
+
+    assert not at.exception
+    [added] = at.success
+    assert "protein.md" in added.value
+    assert ONE_CHUNK in added.value
+    assert "protein.md" in _sidebar(at)
+
+    at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
+
+    assert not at.exception
+    assert _panels(at) == [SOURCES], "the model answered without reaching the documents"
+    [cited] = at.chat_message[-1].expander
+    assert "protein.md" in "\n".join(line.value for line in cited.markdown)
+    assert CITATION.search(at.chat_message[-1].markdown[0].value), (
+        "the answer rested on a passage it never cited"
+    )
+    assert f"{SEARCH_TOOL_NAME}(" in _steps(at)
+
+    at.chat_input[0].set_value(NEEDS_THE_CALCULATOR).run(timeout=180)
+
+    assert not at.exception
+    calculated = _steps(at)
+    assert f"{DAILY_ENERGY_TOOL.name}(" in calculated, (
+        "the model did the arithmetic itself instead of calling the plugin's tool"
+    )
+    assert FAILED not in calculated
+
+    at.chat_input[0].set_value(KEEP_THIS).run(timeout=180)
+
+    assert not at.exception
+    assert f"{REMEMBER_TOOL_NAME}(" in _steps(at)
+    assert app.memory is not None
+    kept = " ".join(fact.text.lower() for fact in app.memory.recall())
+    assert "vegetarian" in kept
+    assert "vegetarian" in _sidebar(at).lower()
+
+
 def test_a_real_model_answers_from_the_documents_but_greets_without_them(
     tmp_path: Path,
 ) -> None:
@@ -72,7 +151,7 @@ def test_a_real_model_answers_from_the_documents_but_greets_without_them(
     and the model answering a plain domain question from its own knowledge is the bug
     this guards. The greeting rides in the same run, because what must be told apart
     is two turns of one conversation, not two configurations."""
-    at = AppTest.from_function(_page, args=(_live_app(tmp_path),)).run()
+    at = AppTest.from_function(_page, args=(_holding_the_protein_doc(tmp_path),)).run()
 
     at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
 
@@ -100,7 +179,7 @@ def test_a_real_model_keeps_what_it_is_told_and_uses_it_next_session(
     a fact recalled into a later brief actually changes the answer. The second
     session is a new page over the same memory file — a new thread with nothing in
     common but what was kept."""
-    first = _live_app(tmp_path)
+    first = _holding_the_protein_doc(tmp_path)
     at = AppTest.from_function(_page, args=(first,)).run()
 
     at.chat_input[0].set_value(VEGETARIAN).run(timeout=180)
@@ -110,7 +189,9 @@ def test_a_real_model_keeps_what_it_is_told_and_uses_it_next_session(
     kept = " ".join(fact.text.lower() for fact in first.memory.recall())
     assert "vegetarian" in kept, "the model was told something durable and dropped it"
 
-    later = AppTest.from_function(_page, args=(_live_app(tmp_path),)).run()
+    later = AppTest.from_function(
+        _page, args=(_holding_the_protein_doc(tmp_path),)
+    ).run()
     later.chat_input[0].set_value(WHAT_TO_EAT).run(timeout=180)
 
     assert not later.exception
