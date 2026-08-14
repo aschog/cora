@@ -107,12 +107,15 @@ def assemble(
 
 def _announce(plugins: PluginSet) -> None:
     """A screened app and an unscreened one are otherwise indistinguishable once
-    running, so the empty set is a warning: it is the level that reaches the user
-    without `CORA_DEBUG`, where the `cora` logger carries no handler."""
-    if not plugins.entries:
-        log.warning("no plugins loaded: nothing screens what the user types")
-        return
-    log.info("plugins loaded: %s", ", ".join(module for module, _ in plugins.entries))
+    running, so an unscreened one is a warning: it is the level that reaches the user
+    without `CORA_DEBUG`, where the `cora` logger carries no handler. A bundle may
+    contribute only tools, so what is announced is the screen, not the count."""
+    if plugins.entries:
+        log.info(
+            "plugins loaded: %s", ", ".join(module for module, _ in plugins.entries)
+        )
+    if not any(plugin.validation_rules for _, plugin in plugins.entries):
+        log.warning("no plugin screens what the user types")
 
 
 def _offered_tools(

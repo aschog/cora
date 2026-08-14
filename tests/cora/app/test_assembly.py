@@ -451,6 +451,7 @@ def test_assemble_keeps_a_chat_turn_silent_without_debug(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     app = _indexed(make_plugin(), chat_model=_retrieving_model())
+    caplog.clear()
 
     with caplog.at_level(logging.DEBUG, logger="cora"):
         app.agent.answer("How much protein?", THREAD)
@@ -467,11 +468,36 @@ def test_bare_cora_warns_that_nothing_screens_what_the_user_types(
     with caplog.at_level(logging.INFO, logger="cora"):
         assembled(plugins=PluginSet())
 
-    warnings = [
-        record for record in caplog.records if record.levelno == logging.WARNING
-    ]
-    assert [record.getMessage() for record in warnings] == [
-        "no plugins loaded: nothing screens what the user types"
+    assert _warnings(caplog) == ["no plugin screens what the user types"]
+
+
+def test_a_plugin_that_screens_nothing_leaves_the_warning_standing(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A bundle may contribute only tools, so a loaded plugin is no evidence of a
+    screen — and an operator who named one is the reader most likely to assume it is."""
+    with caplog.at_level(logging.INFO, logger="cora"):
+        assembled(plugins=PluginSet((("fixture_plugins.tools", make_plugin()),)))
+
+    assert _warnings(caplog) == ["no plugin screens what the user types"]
+
+
+def test_a_plugin_that_screens_silences_the_warning(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    screening = make_plugin(tools=(), validation_rules=(RefusesContaining("ignore"),))
+
+    with caplog.at_level(logging.INFO, logger="cora"):
+        assembled(plugins=PluginSet((("fixture_plugins.screen", screening),)))
+
+    assert _warnings(caplog) == []
+
+
+def _warnings(caplog: pytest.LogCaptureFixture) -> list[str]:
+    return [
+        record.getMessage()
+        for record in caplog.records
+        if record.levelno == logging.WARNING
     ]
 
 
