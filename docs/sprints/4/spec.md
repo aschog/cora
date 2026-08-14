@@ -69,10 +69,17 @@ Structural refactors: no user-facing change, no bonus.
 ### [11. The plugins I choose, or none](done/story-11.md) ✔
 
 cora becomes domain-agnostic by default: `CORA_PLUGINS` takes an ordered list, a plugin
-contributes whatever it has, and the prompt-injection guard becomes the one plugin the
-default set ships. The backlog's *stronger injection rules as a plugin* is blocked on it.
+contributes whatever it has, and the prompt-injection guard becomes a plugin named there
+like any other. The backlog's *stronger injection rules as a plugin* is blocked on it.
 
 ## In flight
+
+### [13. One package, and only what I asked it to run](story-13.md)
+
+The five layer distributions become one `cora` package, the layer guards read imports
+instead of manifests to stay true without them, and hybrid retrieval goes so that one
+index answers what ingestion wrote. Story 11's default set goes with it: cora starts with
+no plugin and warns that nothing screens what the user types.
 
 ### [12. It says when it has nothing to answer from](story-12.md)
 
