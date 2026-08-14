@@ -1,3 +1,4 @@
+import logging
 from dataclasses import dataclass
 
 from cora.adapters.langgraph_runner import langgraph_for
@@ -40,6 +41,8 @@ from cora.ports.retrieval import Retriever
 
 DEFAULT_COLLECTION = "documents"
 
+log = logging.getLogger(__name__)
+
 
 @dataclass(frozen=True)
 class App:
@@ -64,6 +67,7 @@ def assemble(
     graph: GraphFor = langgraph_for,
     debug: bool = False,
 ) -> App:
+    _announce(plugins)
     if debug:
         chat_model = LoggingChatModel(chat_model)
         embedder = LoggingEmbedder(embedder)
@@ -99,6 +103,16 @@ def assemble(
         context_source=context_source,
         memory=memory,
     )
+
+
+def _announce(plugins: PluginSet) -> None:
+    """A screened app and an unscreened one are otherwise indistinguishable once
+    running, so the empty set is a warning: it is the level that reaches the user
+    without `CORA_DEBUG`, where the `cora` logger carries no handler."""
+    if not plugins.entries:
+        log.warning("no plugins loaded: nothing screens what the user types")
+        return
+    log.info("plugins loaded: %s", ", ".join(module for module, _ in plugins.entries))
 
 
 def _offered_tools(

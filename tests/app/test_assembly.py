@@ -458,6 +458,40 @@ def test_assemble_keeps_a_chat_turn_silent_without_debug(
     assert caplog.records == []
 
 
+def test_bare_cora_warns_that_nothing_screens_what_the_user_types(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Loading no plugin is a supported deployment, but an unscreened app looks exactly
+    like a screened one — so the absence is announced at a level that survives a run
+    without debug logging, where the `cora` logger has no handler of its own."""
+    with caplog.at_level(logging.INFO, logger="cora"):
+        assembled(plugins=PluginSet())
+
+    warnings = [
+        record for record in caplog.records if record.levelno == logging.WARNING
+    ]
+    assert [record.getMessage() for record in warnings] == [
+        "no plugins loaded: nothing screens what the user types"
+    ]
+
+
+def test_assemble_announces_the_plugins_it_was_given_by_module_path(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    screen = make_plugin(tools=())
+    domain = make_plugin()
+
+    with caplog.at_level(logging.INFO, logger="cora"):
+        assembled(
+            plugins=PluginSet(
+                (("fixture_plugins.screen", screen), ("fixture_plugins.domain", domain))
+            )
+        )
+
+    logged = [record.getMessage() for record in caplog.records]
+    assert "plugins loaded: fixture_plugins.screen, fixture_plugins.domain" in logged
+
+
 def _config(db_path: Path, *, debug: bool = False) -> Config:
     return Config(
         api_key="k",
