@@ -36,12 +36,16 @@ def main(app_factory: Callable[[], App]) -> None:
 
 
 def render(app: App) -> None:
-    with st.sidebar:
-        _documents(app.knowledge_base)
-        _memory(app.memory)
+    """The sidebar is drawn after the turn, because the turn can change what it says: a
+    fact the model remembered belongs in the panel the same run it was kept, not the
+    next one the user happens to trigger. Streamlit places it by container, not by
+    order, so the screen is unchanged."""
     _thread()
     if prompt := st.chat_input("Ask about your documents"):
         _answer(app.agent, prompt)
+    with st.sidebar:
+        _documents(app.knowledge_base)
+        _memory(app.memory)
 
 
 def _documents(knowledge_base: KnowledgeBase) -> None:
