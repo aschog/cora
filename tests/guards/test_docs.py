@@ -20,21 +20,30 @@ PAGES = ("README.md", "CLAUDE.md", "docs/big-picture.md", "docs/workflow.md")
 CONFIGS = (".streamlit/config.toml", "Makefile")
 SUFFIXES = (".py", ".md", ".toml", "/")
 
-BACKTICKED = re.compile(r"`([A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+)`")
-BARE = re.compile(r"(?<![`\w/])([A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+)")
+LOCATION = r"(?:\.{1,2}/)*\.?[A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+"
+BACKTICKED = re.compile(rf"`({LOCATION})`")
+BARE = re.compile(rf"(?<![`\w/.])({LOCATION})")
+CONFIG_PATTERNS = (BACKTICKED, BARE)
 NAMESPACES = tuple(sorted(member / "src" / "cora" for member in workspace.members()))
+
+
+def _references(text: str, patterns: tuple[re.Pattern[str], ...]) -> set[str]:
+    return {
+        reference
+        for pattern in patterns
+        for reference in pattern.findall(text)
+        if reference.endswith(SUFFIXES)
+    }
 
 
 def _claims() -> list[tuple[str, str]]:
     pages = [(page, (BACKTICKED,)) for page in PAGES]
-    configs = [(config, (BACKTICKED, BARE)) for config in CONFIGS]
+    configs = [(config, CONFIG_PATTERNS) for config in CONFIGS]
     return sorted(
         {
             (name, reference)
             for name, patterns in pages + configs
-            for pattern in patterns
-            for reference in pattern.findall(pathlib.Path(name).read_text())
-            if reference.endswith(SUFFIXES)
+            for reference in _references(pathlib.Path(name).read_text(), patterns)
         }
     )
 
@@ -77,6 +86,19 @@ def test_a_config_is_read_for_the_paths_its_comments_write_like_prose() -> None:
 
     assert ("Makefile", "tests/guards/test_docs.py") in claims
     assert ("Makefile", "guards/test_docs.py") not in claims
+
+
+def test_a_path_is_claimed_from_its_dot_as_readily_as_from_a_letter() -> None:
+    """A leading dot is part of the name, not punctuation in front of it: `.streamlit/`
+    is a directory and `./docs/` is the same directory as `docs/`. Reading past the dot
+    would claim a fragment the tree does not have, and skipping the token would leave a
+    stale path unchecked — the two ways this guard can be wrong about one character."""
+    assert _references("the cap is in `.streamlit/config.toml`.", CONFIG_PATTERNS) == {
+        ".streamlit/config.toml"
+    }
+    assert _references("see ./docs/big-picture.md", CONFIG_PATTERNS) == {
+        "./docs/big-picture.md"
+    }
 
 
 def test_the_docs_claim_something() -> None:
