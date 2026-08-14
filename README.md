@@ -65,12 +65,17 @@ git config core.hooksPath .githooks       # enable pre-commit + commit-msg hooks
 
 ```sh
 export OPENROUTER_API_KEY=sk-or-...        # required (https://openrouter.ai/keys)
+export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness
 make run                                   # or: make run-env, to read the key from .env
 ```
 
 `make run` wraps `uv run streamlit run` over the app's module path. The target exists so
 the command survives the next time a package moves — the path itself is one line, in the
 `Makefile`.
+
+cora loads no plugin unless asked, so the second line is what turns this from a bare
+document assistant into the coaching app with a prompt-injection screen. Drop it to see
+what the box does on its own.
 
 Upload a document (txt/md/pdf) in the sidebar, then ask about it — answers cite
 the sources they used. The steps appear as cora takes them and stay with the

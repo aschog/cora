@@ -126,8 +126,8 @@ Two medium plus one hard is the maximum-points bar. Cleared:
   in the user's hands.
 - **Medium 8 · Security guard, developer settings out of the user experience** — the
   ordered rules refuse prompt injection before the model is called — the screen is a
-  plugin now, `cora.plugins.security`, in the default set — and the fitness plugin adds
-  its own medical rule; retrieved document text
+  plugin now, `cora.plugins.security`, named in `CORA_PLUGINS` like any other — and the
+  fitness plugin adds its own medical rule; retrieved document text
   reaches the model as an untrusted-data `tool` message, never as system authority (story
   1). The user's screen carries documents, memory, chat and the trace — no model picker,
   prompt box or retrieval knob; those are environment variables only (`app/config.py`).

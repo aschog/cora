@@ -36,8 +36,7 @@ jobs:
       # The wheels are the only artefact `module-name` can be wrong about: the editable
       # install every other gate runs on never reads it, so a module a manifest forgot to
       # name passes all of them and ships as nothing. Building here is what makes the
-      # integration tier's wheel checks reachable, and what makes "the boundary is the
-      # install" a claim CI can refute.
+      # integration tier's wheel checks reachable.
       - name: Build every distribution
         run: uv build --all-packages --out-dir dist
 

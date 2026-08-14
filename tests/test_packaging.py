@@ -41,9 +41,9 @@ def test_the_globs_reach_every_member_beside_the_app() -> None:
     covered; the half nothing covers is a manifest at a depth no glob reaches, which uv
     silently ignores — it is simply never locked, never installed, and never built."""
     globs = workspace.manifest(workspace.ROOT)["tool"]["uv"]["workspace"]["members"]
-    globbed = {path for pattern in globs for path in pathlib.Path().glob(pattern)}
+    globbed = {path for pattern in globs for path in workspace.ROOT.glob(pattern)}
 
-    assert {workspace.ROOT / path for path in globbed} == {*MEMBERS} - {workspace.ROOT}
+    assert globbed == {*MEMBERS} - {workspace.ROOT}
 
 
 def test_the_workspace_holds_the_app_and_its_extension_points() -> None:

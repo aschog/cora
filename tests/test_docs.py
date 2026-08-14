@@ -46,11 +46,18 @@ def _resolves(reference: str) -> bool:
 
 
 def test_every_member_contributes_a_namespace_root() -> None:
-    """Counted against the workspace rather than pinned to a number: a location claim is
-    resolved against every member, so a member the discovery missed would make a stale
-    path look fine."""
-    assert {root.parent.parent for root in NAMESPACES} == {*workspace.members()}
-    assert all(root.is_dir() for root in NAMESPACES)
+    """Two discoveries compared, not one restated: the namespace roots are built off the
+    manifests, and this walks the tree for them instead. A location claim is resolved
+    against every root, so a member either discovery missed would make a stale path look
+    fine."""
+    found = {
+        path
+        for pattern in ("src/cora", "*/*/src/cora")
+        for path in workspace.ROOT.glob(pattern)
+        if path.is_dir()
+    }
+
+    assert found == {*NAMESPACES}
 
 
 def test_a_reference_is_resolved_against_the_packages() -> None:

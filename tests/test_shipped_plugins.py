@@ -16,13 +16,19 @@ from cora.ports.plugin import Plugin
 
 
 def _shipped_modules() -> list[str]:
-    """Found through the namespace rather than the manifests: `cora.plugins` spans the
-    guard the app ships and the domain that ships as a wheel of its own, and asking the
-    installed namespace covers both without knowing which is which."""
+    """Found through the namespace rather than the manifests: `cora.plugins` spans every
+    plugin installed, and asking it covers them all without knowing which distribution
+    each arrived from."""
     return sorted(
         f"cora.plugins.{found.name}"
         for found in pkgutil.iter_modules(cora.plugins.__path__)
     )
+
+
+def test_the_shipped_bundles_are_discovered() -> None:
+    """Parametrising over an empty discovery skips rather than fails, so the walk is
+    asserted on separately: no bundle found is a broken walk, not a clean workspace."""
+    assert _shipped_modules()
 
 
 @pytest.mark.parametrize("module", _shipped_modules())

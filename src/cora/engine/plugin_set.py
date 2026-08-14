@@ -11,7 +11,7 @@ CORA_RULES: tuple[ValidationRule, ...] = (
     MaxLengthRule(MAX_INPUT_CHARS),
 )
 """What cora asks of any input, whatever it was asked to be. Screening for injection is
-not here: it is a plugin, and one the default set loads."""
+not here: it is a plugin, and so something a deployment adds."""
 
 RESERVED_TOOL_NAMES = {
     SEARCH_TOOL_NAME: "document search",

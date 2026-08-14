@@ -96,7 +96,7 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
 Recorded with a decision, not scheduled — none is in the sprint-4 story cut.
 
 - [ ] **RAG evaluation set** (10–20 questions with expected sources, compared across
-      plain / advanced / hybrid) — the most useful of the four, and it would give
+      plain / advanced) — the most useful of the four, and it would give
       story 1's "decide whether to retrieve" a measurable answer. Candidate if the
       stretch story is dropped.
 - [ ] **PostgreSQL + pgvector instead of Chroma** — deferred. It is an adapter swap

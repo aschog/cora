@@ -42,10 +42,14 @@ def test_the_app_resolves_without_any_user_interface() -> None:
 
 
 def test_a_plugin_resolves_the_app_and_stops() -> None:
-    """A plugin takes nothing of its own — no toolkit, no second technology. It does now
-    pull the whole app, which is what the layer split used to buy and no longer does."""
-    assert _resolved("cora-plugin-fitness") >= {"cora-plugin-fitness", "cora"}
-    assert "streamlit" not in _resolved("cora-plugin-fitness")
+    """A plugin takes nothing of its own — no toolkit, no second technology. Equality,
+    not a superset: a plugin that grew a direct dependency of its own is exactly what
+    this is here to catch, and it pulls the whole app either way. That last part is what
+    the layer split used to buy and no longer does."""
+    assert _resolved("cora-plugin-fitness") == {
+        "cora-plugin-fitness",
+        *_resolved("cora"),
+    }
 
 
 @pytest.fixture(scope="session")
@@ -70,7 +74,7 @@ def test_every_wheel_carries_every_module_its_package_holds(
 ) -> None:
     """A module the manifest forgot to name is not an error anywhere else in the
     toolchain — it just is not in here. Now that the app's `module-name` is a list of
-    six, this is the gate a seventh layer would fail."""
+    five, this is the gate a sixth layer would fail."""
     missing = []
     for member in workspace.members():
         src = member / "src"

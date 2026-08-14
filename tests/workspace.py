@@ -35,8 +35,8 @@ def distribution(member: pathlib.Path) -> str:
 
 
 def modules(member: pathlib.Path) -> list[str]:
-    """A manifest may name one module or several: the app carries five layers and the
-    guard its default set loads, as six portions of the namespace."""
+    """A manifest may name one module or several: the app carries its five layers as
+    five portions of one namespace."""
     declared = manifest(member)["tool"]["uv"]["build-backend"]["module-name"]
     return [declared] if isinstance(declared, str) else list(declared)
 
@@ -50,9 +50,9 @@ def carrier_of(module: str) -> str:
 
 
 def plugins() -> list[tuple[str, str]]:
-    """Every plugin in the workspace as (distribution, module), read off `cora.plugins`
-    rather than off the tree: the guard ships from the app and the reference domain from
-    a wheel of its own, and a guard written over them covers the next one either way."""
+    """Every plugin in the workspace as (distribution, module). Recognised by the
+    namespace it contributes to rather than by where its directory sits, so a rule
+    written over these covers the next plugin wherever it ships from."""
     return sorted(
         (distribution(member), module)
         for member in members()
