@@ -86,6 +86,12 @@ no plugin and warns that nothing screens what the user types.
 An in-scope question against an empty store is answered from model knowledge today. After
 story 11 cora words the grounding reminder, and it says it has no documents instead.
 
+### [14. One way to search](story-14.md)
+
+`advanced` mode rewrites the question behind the search tool, which is the job the agent
+now does in the open, one trace step per search. It goes, and the knowledge base is what
+the tool searches.
+
 ## Not built this sprint
 
 Planned, cut once the bonus bar was cleared and the hours ran down. None of them is needed

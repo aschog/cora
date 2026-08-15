@@ -63,6 +63,9 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       story 1 — the planner is reached only by `advanced`, inside `FusionContextSource`
       (`app/retrieval.py:36-45`); story 1 changes *who calls* the context source, not what
       a mode does inside it.
+      → **closes as removed, in story 14**, not fixed: the agent re-searches in the open,
+      so the planner and its hand-parsed JSON go rather than get structured output. The
+      model-adapter item below stands on its own.
 
 - [ ] **Model adapter swallows everything** — every provider exception becomes one generic
       `LlmError` (`adapters/openrouter_chat_model.py:73-77`), with no timeout, no retry
