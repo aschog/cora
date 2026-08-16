@@ -106,7 +106,7 @@ itself.
 
 | The model asks for | Which really runs | The trace line the test reads |
 |---|---|---|
-| `search_documents(query=…)` | `engine/retrieval_tool.py` → the retrieval strategy → `KnowledgeBase.search` | `search_documents(query="…") → n passages from protein.md` |
+| `search_documents(query=…)` | `engine/retrieval_tool.py` → `KnowledgeBase.search` | `search_documents(query="…") → n passages from protein.md` |
 | `calculate_daily_energy(…)` | `plugins/fitness/tools.py` — Mifflin-St Jeor, scaled by an activity factor | `calculate_daily_energy(sex="male", …) → {"bmr": …, "tdee": …}` |
 | `remember(fact=…)` | `engine/memory_tool.py` → the `Memory` port → `adapters/sqlite_store_memory.py` | `remember(fact="is vegetarian") → Remembered: is vegetarian` |
 
@@ -125,17 +125,17 @@ sequenceDiagram
   search_documents->>KnowledgeBase: search(query, top_k)
   KnowledgeBase->>Embedder: embed([query])
   Embedder-->>KnowledgeBase: the query's vector
-  KnowledgeBase->>Chroma: query(vector, k, no metadata filter)
+  KnowledgeBase->>Chroma: query(vector, k)
   Chroma-->>KnowledgeBase: the nearest chunks, with their origin
   KnowledgeBase-->>search_documents: hits
   search_documents-->>ToolStep: CitableHits
   Note over ToolStep,search_documents: ToolStep numbers them [n] against the whole<br/>conversation's registry, then sends the text on as<br/>a tool message labelled untrusted document data
 ```
 
-`KnowledgeBase` stands here because `CORA_RETRIEVAL` is `plain`, its default: in `plain`
-mode the knowledge base *is* the `ContextSource` the tool holds. Set `advanced` and a
-`FusionContextSource` sits in this spot, asking the model for several phrasings of the
-question and merging the rankings — the same arrow, one participant deeper.
+`KnowledgeBase` stands here because it *is* the `ContextSource` the tool holds: there is
+one way to search, and nothing sits between the tool and the index the uploads were
+written to. Asking the question several ways is the agent's job, and it shows as another
+pass through this same diagram — one search, one trace step.
 
 ## What the session does not show
 
