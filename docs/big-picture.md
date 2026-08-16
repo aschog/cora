@@ -170,7 +170,8 @@ a new one of either is a package to install rather than a file to edit.
 
 A frontend uses the engine through two main methods: `answer()` and `add_file()` (plus
 `list_sources()` to show the file list in the sidebar, and `recall()` / `forget()` to show
-and clear what is remembered).
+and clear what is remembered). `docs/happy-path.md` draws both of them as sequence
+diagrams, taken from the live test that walks one whole session.
 
 **`agent.answer(question, thread_id) -> ChatResult`** — `engine/agent.py`, returning `domain/chat_result.py`
 

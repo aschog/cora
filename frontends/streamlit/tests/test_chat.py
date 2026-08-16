@@ -16,6 +16,7 @@ from cora.domain.errors import (
     PluginLoadError,
     RetrievalError,
 )
+from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.streamlit.chat import (
     NOTHING_REMEMBERED,
@@ -565,6 +566,35 @@ def test_the_sidebar_lists_every_remembered_fact() -> None:
     listed = _sidebar_sources(at)
     assert "trains on Tuesdays" in listed
     assert "is vegetarian" in listed
+
+
+@pytest.mark.integration
+def test_a_fact_remembered_this_turn_is_listed_without_a_second_interaction() -> None:
+    """The panel is drawn by the same run that answers, so what the turn remembered has
+    to reach it: a user told "noted" who reads "nothing yet" beside it reads the store
+    as broken, and clicking something else is not an answer."""
+    memory = FakeMemory()
+    remembering = ScriptedChatModel(
+        [
+            ModelReply(
+                tool_calls=(
+                    ToolCall(
+                        name=REMEMBER_TOOL_NAME,
+                        arguments={"fact": "is vegetarian"},
+                        call_id="call-1",
+                    ),
+                )
+            ),
+            ModelReply(text="Noted."),
+        ]
+    )
+    at = _run_page(assembled(chat_model=remembering, memory=memory))
+
+    at.chat_input[0].set_value("Remember that I'm vegetarian.").run()
+
+    assert not at.exception
+    assert [fact.text for fact in memory.recall()] == ["is vegetarian"]
+    assert "is vegetarian" in _sidebar_sources(at)
 
 
 @pytest.mark.integration
