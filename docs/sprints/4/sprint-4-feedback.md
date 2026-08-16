@@ -53,7 +53,7 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       the model once. Scoping stays with the model — the reminder tells it to answer small
       talk as it did — so a greeting still costs no retrieval.
 
-- [ ] **Planner JSON is hand-parsed and fails silently** — `parse_plan` scrapes fences and
+- [x] **Planner JSON is hand-parsed and fails silently** — `parse_plan` scrapes fences and
       braces, and a parse failure falls back to plain search with no signal
       (`core/services/query_planner.py:22-23,56-77`). Use structured output
       (`with_structured_output` / `response_format` with a JSON Schema) at the adapter

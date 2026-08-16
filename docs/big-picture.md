@@ -15,7 +15,7 @@ flowchart TB
   end
 
   subgraph wiring["cora.app"]
-    root["Composition root<br/><i>loads plugins, binds ports, picks strategy</i>"]
+    root["Composition root<br/><i>loads plugins, binds ports</i>"]
   end
 
   subgraph core["cora.engine"]
@@ -26,7 +26,6 @@ flowchart TB
     rt["ToolRuntime"]
     search["search_documents<br/><i>retrieval as a tool</i>"]
     remember["remember<br/><i>memory as a tool</i>"]
-    retr["Retrieval strategy<br/><i>plain · RAG-Fusion</i>"]
     kb["KnowledgeBase"]
   end
 
@@ -68,8 +67,7 @@ flowchart TB
   rt --> remember
   remember --> mem
   steps --> mem
-  search --> retr
-  retr --> kb
+  search --> kb
   kb --> emb
   kb --> ret
   kb --> load
@@ -85,7 +83,7 @@ flowchart TB
   classDef port fill:#8c4b00,stroke:#d98a1f,color:#fff;
   classDef logic fill:#134e6f,stroke:#1f78b4,color:#fff;
   class gr,cm,emb,ret,load,mem,plug port;
-  class agent,steps,router,pset,rt,search,remember,retr,kb logic;
+  class agent,steps,router,pset,rt,search,remember,kb logic;
 ```
 
 Read the map from top to bottom. The frontend (top) calls the engine (middle) through the
@@ -106,11 +104,9 @@ supplies every step it walks.
 To keep the map simple, they are shown inside KnowledgeBase, the composition root, and the
 search tool.
 
-The **retrieval strategy** is the part that changes with the setting `CORA_RETRIEVAL`. There
-are three options:
-
-- `plain` — just use KnowledgeBase.
-- `advanced` — use RAG-Fusion. A `QueryPlanner` writes the question in a few different ways, and RRF joins the results. (RRF, Reciprocal Rank Fusion, is a simple way to merge ranked lists.)
+**Searching** has one path: the tool asks KnowledgeBase, which embeds the question and reads
+the same index the uploads were written to. Asking it several ways is the agent's job, and
+the agent does it in the open — one search, one trace step.
 
 A **port** is a fixed slot in the engine for one kind of technology. There are exactly seven:
 one for driving the agent, one for chat, one for embedding, one for retrieval, one for reading
@@ -227,11 +223,10 @@ because the map shows them inside another part.
 | **remember** | Keeping a fact about the user as a tool, called when the user asks to be remembered rather than on the model's own judgement. The tool guards its own input — nothing blank, nothing over 300 characters reaches the store — but the question's rules do not run over a fact: screening is a plugin's now, and the engine cannot import one. What stands behind a kept fact is the notice it travels under, which says the notes are data and not instructions. Every save shows up in the trace. | `engine/memory_tool.py` |
 | **KnowledgeBase** | A simple front for ingest, embed, and store. It also does search, lists sources, and skips files already uploaded. | `engine/knowledge_base.py` |
 | **Ingestion** *(folded)* | Turns bytes into clean text, then into overlapping chunks with their origin. Rejects the wrong type, too large, or empty. | `engine/ingestion.py`, `engine/cleaning.py`, `engine/chunker.py` — and the loaders themselves in `adapters/loaders.py`, since which file formats can be read is a technology's business |
-| **Retrieval strategy** | How the search tool gets its chunks: `plain` (KnowledgeBase) or `advanced`, which fans the question out and merges the rankings with RRF. | `engine/fusion_context_source.py`, `engine/query_planner.py`, `engine/rank_fusion.py` |
 | **PluginSet** | The plugins cora was asked for, composed in the order they were named: prompt sections under their names, their tools in the order they were named — cora's own go in front at assembly — cora's rules then every plugin's, and one reminder over every scope. It is also what refuses a bad *combination* — a module named twice, a tool name of cora's own, one name offered by two plugins — so the composition root wires an already-valid set. | `engine/plugin_set.py` |
 | **ToolRuntime** | Finds the tool, checks the arguments against its JSON Schema, runs it, and turns a tool's own failure into a `ToolResult`. An infrastructure failure is not tool output, so it travels on unchanged. | `engine/tool_runtime.py` |
 | **Plugin registry** *(folded)* | Loads plugins by their module paths and checks each one before the app starts: the name is not blank, tool names are unique, schemas are valid. Everything but the name is optional, so a bundle of rules alone is as legitimate as a bundle of tools. | `engine/plugin_registry.py` |
-| **Composition root** | The only place that names a real adapter. It reads the settings, loads the plugins it was named, picks the strategy, asks the graph slot for a runner, and returns an `App`. | `app/config.py`, `app/assembly.py`, `app/retrieval.py` |
+| **Composition root** | The only place that names a real adapter. It reads the settings, loads the plugins it was named, asks the graph slot for a runner, and returns an `App`. | `app/config.py`, `app/assembly.py` |
 | **UI shell** | Only widgets: the uploader, the chat, the sources box, the *How I got there* trace — rendered as text, because a step names the tool the model asked for — and error text shown exactly as the error gives it. | `frontends/streamlit/` |
 
 ## The ports

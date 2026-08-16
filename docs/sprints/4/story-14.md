@@ -25,6 +25,7 @@ and `plain` has been the default the whole time.
 | `app/retrieval.py` | a builder registry with one entry left is a switch with ceremony |
 | `CORA_RETRIEVAL` · `CORA_FUSION_QUERIES` | nothing left to choose |
 | `domain/metadata_filter.py`, and the `metadata_filter` argument through `ports/retrieval.py`, `engine/knowledge_base.py`, `adapters/chroma_retriever.py`, `engine/port_logging.py` | the planner was its only caller |
+| `App.context_source` | with one way to search it is `App.knowledge_base` under a second name |
 
 `KnowledgeBase` becomes the `ContextSource` the search tool holds, with no mode to pick,
 and `assembly` stops needing a `ChatModel` to build retrieval at all — the planner was
@@ -41,33 +42,33 @@ This story subtracts, so its outer test is green before the first deletion and h
 stay green through every one — a characterization test, not an `xfail`. It is the bar:
 red at any point means the subtraction took something with it.
 
-- [ ] **(int)** a question against a real index is answered from the uploaded document
+- [x] **(int)** a question against a real index is answered from the uploaded document
       and cites it, with nothing configured about retrieval
 
 #### Searching is the knowledge base, with nothing in front of it
 
-- [ ] the app's search tool returns the knowledge base's own hits — a run that answers
-      one question makes exactly one model call, so no rewriter sits between the tool
-      and the index
-- [ ] the app assembles with no retrieval mode and no chat model reaching retrieval
+- [x] the search tool the model is offered, and the grounding gate behind it, both read
+      the knowledge base itself — nothing stands between the tool and the index
+- [x] the app assembles with no retrieval mode and no chat model reaching retrieval
 
 #### Config forgets the knobs
 
-- [ ] `CORA_RETRIEVAL` in the environment is not read, and no longer refuses a value it
+- [x] `CORA_RETRIEVAL` in the environment is not read, and no longer refuses a value it
       does not know — there is no mode to name
-- [ ] `CORA_FUSION_QUERIES` in the environment is not read
+- [x] `CORA_FUSION_QUERIES` in the environment is not read
 
 #### A query is a query
 
-- [ ] `ChromaRetriever.query` asks for top-k with no `where` clause and returns what it
-      found **(int)**
-- [ ] the retriever's log line names the query and the number of hits, with no filter
-      to describe
+- [x] `ChromaRetriever.query` returns the top-k it found, with no filter to narrow it
+      **(int)**
+- [x] the retriever's log line names `k` and the hits, and no longer says `filter=none`
 
 #### The docs still describe the tree
 
-- [ ] every location the docs claim exists — `big-picture.md`, `happy-path.md` and
-      `README.md` stop naming the planner, the fusion source and the two env vars
+- [x] every location the docs claim exists — `docs/big-picture.md` and `README.md` stop
+      naming the planner, the fusion source and the two env vars. `docs/happy-path.md`
+      says the same thing on the unmerged `feature/llm-happy-path` branch and is not on
+      this one: whichever of the two merges second fixes that paragraph
 
 ## Out of scope
 

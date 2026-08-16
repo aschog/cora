@@ -4,14 +4,12 @@ from dataclasses import dataclass
 from cora.adapters.langgraph_runner import langgraph_for
 from cora.adapters.loaders import LOADERS
 from cora.app.config import (
-    DEFAULT_FUSION_QUERIES,
     DEFAULT_HISTORY_TURNS,
     DEFAULT_MAX_TOOL_ROUNDS,
     DEFAULT_TOP_K,
     Config,
 )
 from cora.app.log_config import enable_debug_logs
-from cora.app.retrieval import DEFAULT_RETRIEVAL, build_context_source
 from cora.engine.agent import Agent
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.memory_tool import remember_tool
@@ -48,7 +46,6 @@ log = logging.getLogger(__name__)
 class App:
     agent: Agent
     knowledge_base: KnowledgeBase
-    context_source: ContextSource
     memory: Memory | None = None
 
 
@@ -62,8 +59,6 @@ def assemble(
     top_k: int = DEFAULT_TOP_K,
     max_tool_rounds: int = DEFAULT_MAX_TOOL_ROUNDS,
     history_turns: int = DEFAULT_HISTORY_TURNS,
-    retrieval: str = DEFAULT_RETRIEVAL,
-    fusion_queries: int = DEFAULT_FUSION_QUERIES,
     graph: GraphFor = langgraph_for,
     debug: bool = False,
 ) -> App:
@@ -75,14 +70,8 @@ def assemble(
     knowledge_base = KnowledgeBase(
         embedder=embedder, retriever=retriever, loaders=LOADERS
     )
-    context_source = build_context_source(
-        retrieval,
-        chat_model=chat_model,
-        knowledge_base=knowledge_base,
-        fusion_queries=fusion_queries,
-    )
     scope = plugins.scope
-    tools = _offered_tools(plugins, context_source, top_k, memory)
+    tools = _offered_tools(plugins, knowledge_base, top_k, memory)
     runner = graph(
         prepare=PrepareStep(
             rules=plugins.rules,
@@ -93,14 +82,13 @@ def assemble(
             chat_model=chat_model, tools=tools, max_history_turns=history_turns
         ),
         tools=ToolStep(tool_runtime=ToolRuntime(tools=tools)),
-        ground=GroundStep(scope=scope, context_source=context_source, top_k=top_k),
+        ground=GroundStep(scope=scope, context_source=knowledge_base, top_k=top_k),
         router=Router(max_tool_rounds=max_tool_rounds, grounded=bool(scope)),
         max_tool_rounds=max_tool_rounds,
     )
     return App(
         agent=Agent(runner=runner),
         knowledge_base=knowledge_base,
-        context_source=context_source,
         memory=memory,
     )
 
@@ -149,7 +137,5 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         top_k=config.top_k,
         max_tool_rounds=config.max_tool_rounds,
         history_turns=config.history_turns,
-        retrieval=config.retrieval,
-        fusion_queries=config.fusion_queries,
         debug=config.debug,
     )

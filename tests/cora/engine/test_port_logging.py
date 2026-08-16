@@ -195,6 +195,7 @@ def test_logging_retriever_delegates_and_logs_the_hits(
     assert "k=3" in retrieval
     assert "guide.pdf" in retrieval
     assert "1.00" in retrieval
+    assert "filter" not in retrieval
     assert {record.levelno for record in caplog.records} == {logging.DEBUG}
 
 
