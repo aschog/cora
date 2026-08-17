@@ -91,9 +91,14 @@ An in-scope question against an empty store was answered from model knowledge. C
 the grounding reminder, so it now tells the two silences apart: nothing uploaded asks for
 documents, documents that don't cover the question say so, and small talk is unaffected.
 
-Two more stories are in flight, planned after the sprint's review:
+Two more stories were planned after the sprint's review:
 
-### [15. The turn is one path](story-15.md)
+### [15. The turn is one path](done/story-15.md) ✔
+
+The grounding gate of story 8 goes, and story 12's two silences with it: a turn runs model
+→ tools → done, no plugin names a domain, and nothing holds an answer back. It reopens the
+backlog's *no grounding or scope decision* on purpose — the instruction to search and cite
+stays, its enforcement was the one branch of the graph that could not be read and defended.
 
 ### [16. Read the passage the answer cites](story-16.md)
 
