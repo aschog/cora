@@ -10,6 +10,7 @@ from streamlit.testing.v1 import AppTest
 
 ANSWER_COMPONENT = "cora_cited_answer"
 PANE_COMPONENT = "cora_document_pane"
+THREAD = "messages"
 _TAG = re.compile(r"<[^>]+>")
 _CLICKABLE = re.compile(r'data-cite="(\d+)"')
 
@@ -27,18 +28,37 @@ def answers(at: AppTest) -> list[str]:
     return [_as_text(html) for html in mounted_html(at, ANSWER_COMPONENT)]
 
 
+def newest_turn_failed(at: AppTest) -> bool:
+    """Whether the newest thing the assistant said was a failure rather than an answer.
+
+    Read off the thread, not off the page: every turn is redrawn on every rerun, so the
+    newest answer *on the page* belongs to the newest turn that answered, which after a
+    failure is not the newest turn."""
+    # SIM401's `.get(...)` is not available here: AppTest's session state is a proxy
+    # that raises `KeyError` from `get` rather than returning the default.
+    thread = at.session_state[THREAD] if THREAD in at.session_state else []  # noqa: SIM401
+    spoken = [entry for entry in thread if entry.get("role") == "assistant"]
+    return bool(spoken) and "error" in spoken[-1]
+
+
 def newest_answer(at: AppTest) -> str:
-    """The last thing the assistant said, whether it answered or failed. A failed turn
-    draws an error instead of an answer component, so reaching for the newest answer
-    finds nothing — and raising there would cost a failing assertion the message that
-    was to explain it."""
+    """The answer the newest turn gave, or a failure saying why there is none.
+
+    It raises rather than substituting the error text, because most of what reads an
+    answer asks whether something is *absent* from it — and an error standing in for an
+    answer satisfies that quietly, leaving a check green over a turn the model never
+    answered. The message carries what the chat reported, so a run this happens in still
+    explains itself."""
     drawn = answers(at)
-    if drawn:
-        return drawn[-1]
-    reported = [error.value for error in at.error]
-    if reported:
-        return reported[-1]
-    return ""
+    if newest_turn_failed(at) or not drawn:
+        raise AssertionError(f"the newest turn gave no answer: {_reported(at)}")
+    return drawn[-1]
+
+
+def _reported(at: AppTest) -> list[str]:
+    """The chat's errors, not the page's: a sidebar that cannot reach the memory store
+    is reporting its own trouble, not this turn's."""
+    return [error.value for error in at.main.error]
 
 
 def clickable_citations(at: AppTest) -> list[int]:
@@ -50,7 +70,7 @@ def clickable_citations(at: AppTest) -> list[int]:
     Newest, because a thread redraws every turn on every rerun: asked of the whole page,
     "this turn cited nothing" is answered by some earlier turn that did."""
     drawn = mounted_html(at, ANSWER_COMPONENT)
-    if not drawn:
+    if newest_turn_failed(at) or not drawn:
         return []
     found = (int(number) for number in _CLICKABLE.findall(drawn[-1]))
     return sorted(dict.fromkeys(found))

@@ -170,3 +170,19 @@ click that opened it read as unrelated.
       than restated beside it — a mutation to the rule fails the renderer's tests too
 - [x] `build` writes its debug log where the deployment says, `CORA_LOG_PATH` naming it
       like every other path
+
+#### Found by the branch review (`ai-code-reviewer`, fourth pass)
+
+Three rounds of patching page-wide readers produced three rounds of findings: a helper
+that takes the last of every answer on the page is guessing at "this turn", and a thread
+redraws every turn on every rerun. The thread itself is what knows where a turn ends.
+
+- [x] a turn that failed after an earlier one answered reports neither that earlier
+      answer nor its citations — the newest *turn*, not the newest element of a kind
+- [x] a check that reads the answer of a turn that gave none fails loudly, naming what
+      the page said instead: an error read as an answer is how `assert X not in answer`
+      passes while the model never answered
+- [x] the error a failed turn reports is the chat's, not any error the page happens to
+      show — a sidebar that cannot reach the memory store is not this turn's answer
+- [x] `build` writes its debug log where the config says: a mutation to the wiring fails,
+      and the test that switches debugging on writes nothing into the working directory

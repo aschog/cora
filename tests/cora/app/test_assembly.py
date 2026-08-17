@@ -517,6 +517,7 @@ def _config(db_path: Path, *, debug: bool = False) -> Config:
         db_path=str(db_path),
         memory_path=str(db_path / "memory.sqlite"),
         documents_path=str(db_path / "documents.sqlite"),
+        log_path=str(db_path / "logs" / "cora.log"),
         debug=debug,
     )
 
@@ -572,6 +573,9 @@ def test_build_wires_the_debug_seam_when_config_asks_for_it(
     assert clean_cora_logger.level == logging.DEBUG
     names = {handler.name for handler in clean_cora_logger.handlers}
     assert names == {DEBUG_HANDLER_NAME, FILE_HANDLER_NAME}
+    assert (tmp_path / "logs" / "cora.log").exists(), (
+        "the trace is written where the config said, not where the module defaults"
+    )
 
 
 @pytest.mark.integration

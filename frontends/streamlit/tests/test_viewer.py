@@ -330,13 +330,58 @@ def test_the_citations_reported_are_the_newest_answers_not_the_whole_threads() -
     assert clickable_citations(at) == [], "the newest turn cited nothing"
 
 
-def test_a_failed_turn_reads_as_the_error_the_page_is_showing() -> None:
-    """A turn that failed draws no answer at all, so a helper reaching for "the newest
-    answer" finds nothing. Raising there costs the manual tier the only thing it has —
-    the sentence saying what went wrong — and does it exactly when a check has failed
-    and the message matters most."""
+def test_the_very_first_turn_failing_is_reported_and_not_read_as_an_answer() -> None:
+    """The same rule where there is no earlier turn to be confused with: the page holds
+    an error and no answer, and asking for the answer says so rather than handing back
+    the error to be searched for words it was never going to contain."""
     at = _asked(_run(_app(FailingChatModel(LlmTimeoutError()))))
 
     assert not at.exception, "the failure is reported, not raised"
     assert _mounted(at, ANSWER_COMPONENT) == [], "no answer was drawn"
-    assert LlmTimeoutError.message in newest_answer(at)
+    with pytest.raises(AssertionError, match="took too long"):
+        newest_answer(at)
+
+
+def _answers_then_fails() -> ChatModel:
+    class AnswersThenFails:
+        calls = 0
+
+        def complete(self, messages: object, tools: object) -> ModelReply:
+            AnswersThenFails.calls += 1
+            if AnswersThenFails.calls == 1:
+                return _searching("c1", "protein")
+            if AnswersThenFails.calls == 2:
+                return ModelReply(text=CITED)
+            raise LlmTimeoutError()
+
+    AnswersThenFails.calls = 0
+    return AnswersThenFails()
+
+
+def test_a_turn_that_failed_reports_neither_the_last_answer_nor_its_citations() -> None:
+    """The trap three rounds of patching walked into: a thread redraws every turn on
+    every rerun, so the newest answer *on the page* belongs to the newest turn that
+    answered — not to the newest turn. After one good turn, a failed one reported the
+    good one's words and its citations as though it had said them."""
+    at = _asked(_run(_app(_answers_then_fails())))
+
+    at.chat_input[0].set_value("Hi there!").run()
+
+    assert not at.exception
+    assert [error.value for error in at.error], "the turn failed and says so"
+    assert clickable_citations(at) == [], (
+        "the earlier turn's citations are not this one's"
+    )
+
+
+def test_reading_the_answer_of_a_turn_that_gave_none_fails_and_says_what_happened() -> (
+    None
+):
+    """Loud, not empty: a helper that hands back the error text lets `assert X not in
+    answer` pass while the model never answered, which is worse than the raise it
+    replaced. The message carries what the chat said, so the failure explains itself."""
+    at = _asked(_run(_app(_answers_then_fails())))
+    at.chat_input[0].set_value("Hi there!").run()
+
+    with pytest.raises(AssertionError, match="took too long"):
+        newest_answer(at)
