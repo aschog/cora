@@ -67,19 +67,43 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       so the planner and its hand-parsed JSON go rather than get structured output. The
       model-adapter item below stands on its own.
 
-- [ ] **Model adapter swallows everything** — every provider exception becomes one generic
+- [x] **Model adapter swallows everything** — every provider exception becomes one generic
       `LlmError` (`adapters/openrouter_chat_model.py:73-77`), with no timeout, no retry
       policy, and `finish_reason`/usage discarded (`to_model_reply`), so a truncated or
       empty completion is treated as a successful answer. Set an explicit timeout and
       retry, preserve error categories, reject empty/truncated finals.
       → own slice, **before story 1** — the agent multiplies model calls per turn.
+      → taken on `fix/submission-blockers`, after story 1 rather than before it: the agent
+      shipped first, which is why a per-turn multiplier now makes the case rather than
+      predicting it. Test list:
+  - [x] the client is built with an explicit timeout and a retry count
+  - [x] a provider timeout is raised as its own error, worded as "took too long"
+  - [x] a rate-limit refusal is raised as its own error, worded as "busy, try shortly"
+  - [x] any other provider exception stays the generic `LlmError`
+  - [x] a final reply the provider cut off at the token limit is an error, not an answer
+  - [x] a final reply with no text and no tool calls is an error, not a blank answer
+  - [x] a reply carrying tool calls and no text is untouched — that is how a round starts
 
-- [ ] **Medical filter is substring matching** — `MedicalSafetyRule`
+- [x] **Medical filter is substring matching** — `MedicalSafetyRule`
       (`plugins/fitness/safety.py:20-25`) refuses any message containing `diabetes`,
       `pregnan`, `blood pressure`…, so "I have diabetes, how should I train?" is blocked
       outright. Distinguish diagnosis/medication requests from training questions that
       can get cautious guidance with a caveat. Also manual finding #7.
       → own slice, inside **story 6** (guard rails).
+      → story 6 was never built, so the slice moves to `fix/submission-blockers` on its
+      own. The rule stays deterministic and stays ahead of the model — it is what makes
+      the refusal cost nothing — but it stops reading a *mention* as a *request*: naming a
+      condition is allowed, asking for a diagnosis, a dose or a medication decision is
+      not, and the caveat is the plugin's instructions to write. Test list:
+  - [x] "I have diabetes, how should I train?" passes the rule
+  - [x] "Do I have diabetes?" is still refused
+  - [x] "What steroid dosage should I take?" is still refused
+  - [x] "Should I stop taking my blood pressure medication?" is refused
+  - [x] "Is my pregnancy affecting my macros?" passes — **this replaces a test that
+        asserts today's refusal**, because the finding says that refusal is the bug
+  - [x] matching stays case-insensitive, asserted on a phrase that still refuses
+  - [x] the plugin's instructions tell the model to answer with a caveat and point at a
+        professional when a condition is named
 
 - [ ] **No streaming** — the port returns a finished reply and the UI blocks on a spinner
       (`core/ports/chat_model.py`, `app/ui/chat.py:93`). Stream through the model
@@ -141,10 +165,63 @@ Recorded with a decision, not scheduled — none is in the sprint-4 story cut.
 
 ## Found by the single-cora-package review
 
-- [ ] **A blank `CORA_MEMORY_PATH` throws away everything the user asks to be
+- [x] **A blank `CORA_MEMORY_PATH` throws away everything the user asks to be
       remembered** — `config.py` reads the variable with `env.get(..., DEFAULT)`, so a
       variable blanked rather than deleted survives as `""`, and `sqlite3.connect("")`
       does not raise: SQLite opens a private temporary database that is deleted with the
       connection. The `remember` tool works, the panel lists the facts, and the next
       start has none of them — no error anywhere. Pre-dates the sprint; `CORA_MODEL`
       already reads a blank as unset, and every path variable should.
+      → taken on `fix/submission-blockers`. `_model` is the shape to copy, and the fix is
+      the whole class of variable rather than the one that was found: a blank string is
+      not a value anywhere in `from_env`. Test list:
+  - [x] a blank `CORA_MEMORY_PATH` reads as unset, so remembered facts survive a restart
+  - [x] a blank `CORA_DB_PATH` reads as unset
+  - [x] a blank `OPENROUTER_BASE_URL` reads as unset — same shape, same silent failure
+  - [x] surrounding whitespace is stripped from a path that *is* named
+  - [x] a named path still wins over the default — already covered by
+        `test_from_env_reads_every_field`, so no new test
+  - [x] a blank `OPENROUTER_API_KEY` stops startup by name rather than becoming a 401
+        the user reads as "temporarily unavailable", and a pasted key keeps neither
+        space — found by the branch review, which called the claim above overclaimed
+  - [x] a blank count reads as unset rather than refusing to start the app
+
+## Found by the `fix/submission-blockers` review
+
+`ai-code-reviewer` on the accumulated branch diff, before the branch merged. It cleared
+the two re-specified tests as honest and found four things inside the scope the branch
+claimed to close — the pattern in three of them is the same: the fix was applied to the
+case that was reported rather than to the class it belongs to.
+
+- [x] **The medication branch still refused a mention** — `about_medication` fired on the
+      word alone, so "I'm on blood pressure medication — what cardio is safe?" was
+      refused: the reported bug, moved one keyword over, and the class docstring claimed
+      behaviour the code did not have. A subject now has to meet a request.
+- [x] **The rule missed whole families of request** — no treatment verb at all ("what
+      should I do about my thyroid"), and no phrasing for "is that diabetes" or "could I
+      be pregnant". Widened, with the two interrogative shapes as regexes so that the
+      condition has to be *what is asked about* — checking the wider list by hand turned
+      up two false positives of its own ("I have diabetes, am I training enough?"), and
+      both are now pinned as allowed.
+- [x] **`OPENROUTER_API_KEY` was the one setting the blank rule skipped**, so a blanked
+      or space-padded key reached OpenRouter and came back a 401 the user reads as
+      "temporarily unavailable". Counts too. Ticked into the blank-setting item above.
+- [x] **A ticked box with no test that can fail** — story 12's small-talk criterion was
+      asserted against a scripted model returning the answer it was scripted to return.
+      The integration test now asserts what it can (the reminder's wording), and the
+      claim that a *model* obeys it moved to the `llm` tier where it can fail.
+- [x] **Context overflow and a rejected key both landed on "please try again"** — no
+      retry fixes either, and the thread is persisted, so an overflow repeats until the
+      user starts a new conversation. Both are categories now; `_CATEGORIES` became an
+      ordered tuple because the provider's classes overlap by inheritance.
+- [x] **The deadline was per request, and the output cap was the provider's** — 60s × 3
+      attempts × 8 rounds is what a user waits behind a spinner with no cancel. The
+      timeout is 20s and `max_tokens` is cora's own, so a truncated answer is a number
+      we chose.
+- [x] **The trace told neither silence apart**, rendering both as "no matching
+      documents" in the panel the user opens to find out why.
+- [x] **Assertions on a fake's constructor kwargs** — replaced with the real client's
+      state, which is what catches a keyword this library stops reading; the subsumed
+      wrapping test is gone and `httpx` is a declared dev dependency.
+- [x] **`found == [] ⇒ nothing uploaded` rested on untested infrastructure** — an
+      integration test now pins that a fresh Chroma collection answers with no hits.

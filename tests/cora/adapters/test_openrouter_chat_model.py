@@ -1,4 +1,7 @@
+import httpx
+import openai
 import pytest
+from langchain_core.exceptions import ContextOverflowError
 from langchain_core.messages import (
     AIMessage,
     HumanMessage,
@@ -7,11 +10,22 @@ from langchain_core.messages import (
 )
 
 from cora.adapters.openrouter_chat_model import (
+    MAX_OUTPUT_TOKENS,
+    MAX_RETRIES,
+    REQUEST_TIMEOUT_SECONDS,
     OpenRouterChatModel,
     to_langchain_message,
     to_model_reply,
 )
-from cora.domain.errors import LlmError
+from cora.domain.errors import (
+    LlmBusyError,
+    LlmConversationTooLongError,
+    LlmEmptyReplyError,
+    LlmError,
+    LlmKeyRejectedError,
+    LlmTimeoutError,
+    LlmTruncatedError,
+)
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.plugin import ToolCall
 from fakes import add_tool
@@ -116,22 +130,106 @@ def test_tool_schemas_are_bound_onto_the_client(
     ]
 
 
-def test_provider_exception_is_wrapped_as_llm_error(
-    monkeypatch: pytest.MonkeyPatch,
+def test_the_client_is_built_with_a_deadline_a_retry_count_and_a_cap() -> None:
+    """The real client, not a fake taking kwargs: a name this library stopped reading
+    would be swallowed into `model_kwargs` and the deadline would quietly not exist.
+    Building one needs no network — nothing is sent until `invoke`.
+
+    An agent makes several model calls per turn, so a request with no deadline is a turn
+    that never ends, one attempt is a turn a single dropped connection ends, and no cap
+    is an answer whose length the provider's default decides."""
+    model = OpenRouterChatModel(model="m", api_key="k", base_url="https://example/api")
+
+    client = model._client
+    assert client.request_timeout == REQUEST_TIMEOUT_SECONDS
+    assert client.max_retries == MAX_RETRIES
+    assert client.max_tokens == MAX_OUTPUT_TOKENS
+
+
+@pytest.mark.parametrize(
+    ("raised", "expected"),
+    [
+        (
+            openai.APITimeoutError(request=httpx.Request("POST", "https://example")),
+            LlmTimeoutError,
+        ),
+        (
+            openai.RateLimitError(
+                "slow down",
+                response=httpx.Response(
+                    429, request=httpx.Request("POST", "https://example")
+                ),
+                body=None,
+            ),
+            LlmBusyError,
+        ),
+        (
+            openai.AuthenticationError(
+                "bad key",
+                response=httpx.Response(
+                    401, request=httpx.Request("POST", "https://example")
+                ),
+                body=None,
+            ),
+            LlmKeyRejectedError,
+        ),
+        (ContextOverflowError("too long"), LlmConversationTooLongError),
+        (RuntimeError("provider down"), LlmError),
+    ],
+)
+def test_a_provider_failure_keeps_the_category_the_user_can_act_on(
+    monkeypatch: pytest.MonkeyPatch, raised: Exception, expected: type[LlmError]
 ) -> None:
+    """Waiting out a rate limit and retrying a timeout are different advice, and one
+    generic message can only give one of them. Two of these no retry ever fixes: a
+    rejected key, and a conversation the model can no longer read — the thread is
+    persisted, so "please try again" overflows identically until a new one starts."""
+
     class _FailingChatOpenAI:
         def __init__(self, **kwargs: object) -> None: ...
 
         def invoke(self, messages: object) -> AIMessage:
-            raise RuntimeError("provider down")
+            raise raised
 
     monkeypatch.setattr(
         "cora.adapters.openrouter_chat_model.ChatOpenAI", _FailingChatOpenAI
     )
     model = OpenRouterChatModel(model="m", api_key="k", base_url="https://example/api")
 
-    with pytest.raises(LlmError):
+    with pytest.raises(expected):
         model.complete((Message(role="user", content="hi"),), ())
+
+
+def test_an_answer_cut_off_at_the_token_limit_is_not_an_answer() -> None:
+    truncated = AIMessage(
+        content="Your daily protein target is",
+        response_metadata={"finish_reason": "length"},
+    )
+
+    with pytest.raises(LlmTruncatedError):
+        to_model_reply(truncated)
+
+
+def test_a_final_reply_with_nothing_in_it_is_not_an_answer() -> None:
+    """No text and no tool call is a turn the user would see as a blank bubble."""
+    with pytest.raises(LlmEmptyReplyError):
+        to_model_reply(AIMessage(content=""))
+
+
+def test_a_tool_round_may_carry_no_text_at_all() -> None:
+    """The empty-reply check is about *finals*: asking for a tool is how a round starts,
+    and it says nothing to the user by design."""
+    reply = to_model_reply(
+        AIMessage(
+            content="",
+            tool_calls=[
+                {"name": "add", "args": {"a": 1}, "id": "c1", "type": "tool_call"}
+            ],
+            response_metadata={"finish_reason": "tool_calls"},
+        )
+    )
+
+    assert reply.is_final is False
 
 
 def test_complete_returns_the_mapped_model_reply(

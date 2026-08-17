@@ -32,7 +32,7 @@ class Config:
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Config":
         env = os.environ if env is None else env
-        api_key = env.get("OPENROUTER_API_KEY")
+        api_key = _named(env, "OPENROUTER_API_KEY", "")
         if not api_key:
             raise ConfigurationError(
                 "OPENROUTER_API_KEY is not set. Add it to your environment."
@@ -40,7 +40,7 @@ class Config:
         return cls(
             api_key=api_key,
             model=_model(env),
-            base_url=env.get("OPENROUTER_BASE_URL", DEFAULT_BASE_URL),
+            base_url=_named(env, "OPENROUTER_BASE_URL", DEFAULT_BASE_URL),
             plugin_modules=_plugin_modules(env),
             top_k=_int(env, "CORA_TOP_K", DEFAULT_TOP_K, minimum=1),
             max_tool_rounds=_int(
@@ -49,8 +49,8 @@ class Config:
             history_turns=_int(
                 env, "CORA_HISTORY_TURNS", DEFAULT_HISTORY_TURNS, minimum=0
             ),
-            db_path=env.get("CORA_DB_PATH", DEFAULT_DB_PATH),
-            memory_path=env.get("CORA_MEMORY_PATH", DEFAULT_MEMORY_PATH),
+            db_path=_named(env, "CORA_DB_PATH", DEFAULT_DB_PATH),
+            memory_path=_named(env, "CORA_MEMORY_PATH", DEFAULT_MEMORY_PATH),
             debug=_bool(env, "CORA_DEBUG"),
         )
 
@@ -59,8 +59,14 @@ def _model(env: Mapping[str, str]) -> str:
     """The key and the base URL are named `OPENROUTER_*`, so the model gets guessed that
     way too; `CORA_MODEL` is the documented name and stays the one that wins whenever it
     names a model — blanks are not a name, and would otherwise outrank the alias."""
-    named = (env.get("CORA_MODEL", ""), env.get("OPENROUTER_MODEL", ""))
-    return next((model for model in map(str.strip, named) if model), DEFAULT_MODEL)
+    return _named(env, "CORA_MODEL", _named(env, "OPENROUTER_MODEL", DEFAULT_MODEL))
+
+
+def _named(env: Mapping[str, str], key: str, default: str) -> str:
+    """A variable blanked rather than deleted reads as unset to whoever blanked it, so a
+    blank is never a value: `sqlite3.connect("")` opens a private database that dies
+    with the connection, and every fact the user asked to keep goes with it."""
+    return env.get(key, "").strip() or default
 
 
 def _plugin_modules(env: Mapping[str, str]) -> tuple[str, ...]:
@@ -76,7 +82,7 @@ def _bool(env: Mapping[str, str], key: str) -> bool:
 
 def _int(env: Mapping[str, str], key: str, default: int, *, minimum: int) -> int:
     """`minimum` is 0 only where the feature reads it as off, as history turns do."""
-    raw = env.get(key, str(default))
+    raw = _named(env, key, str(default))
     try:
         value = int(raw)
     except ValueError as exc:

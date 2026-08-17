@@ -5,6 +5,7 @@ from cora.app.assembly import App
 from cora.domain.errors import LlmError, RetrievalError, ToolLoopLimitError
 from cora.domain.trace import Reconsidered, SecondLookLost, ToolUse
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.engine.steps import NOTHING_UPLOADED
 from cora.ports.chat_model import ChatModel, Message, ModelReply
 from cora.ports.plugin import Tool, ToolCall
 from cora.ports.retrieval import Retriever
@@ -269,6 +270,33 @@ def test_the_shipped_plugin_sends_an_ungrounded_answer_back() -> None:
 
     assert result.answer == GROUNDED
     assert any(isinstance(step, Reconsidered) for step in result.trace)
+
+
+@pytest.mark.integration
+def test_a_question_against_an_empty_store_is_told_to_ask_for_documents() -> None:
+    """The shipped plugin with nothing uploaded: the reminder must tell the model it has
+    nothing and to ask for documents, without withdrawing small talk's permission to be
+    answered. Whether a real model *obeys* that is not knowable against a script — the
+    `llm` tier carries that half."""
+    from cora.plugins.fitness import PLUGIN
+
+    model = ScriptedChatModel(
+        [ModelReply(text=OFF_THE_CUFF), ModelReply(text="I have nothing on this yet.")]
+    )
+    app = assembled(chat_model=model, retriever=CountingRetriever(), plugin=PLUGIN)
+
+    result = app.agent.answer("How much protein should I eat?", THREAD)
+
+    assert model.last_messages is not None
+    sent_back = [m for m in model.last_messages if m.role == "system"][-1].content
+    assert NOTHING_UPLOADED.told in sent_back
+    assert "ask the user to upload" in sent_back
+    assert result.sources == ()
+
+    assert f"outside {SCOPE}" in sent_back, (
+        "the same reminder reaches a greeting, so it has to carve small talk back out"
+    )
+    assert "give the same answer again and cite nothing" in sent_back
 
 
 @pytest.mark.integration

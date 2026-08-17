@@ -83,6 +83,38 @@ class LlmError(AdapterError):
     message = "The assistant is temporarily unavailable. Please try again."
 
 
+class LlmTimeoutError(LlmError):
+    message = "The assistant took too long to answer. Please try again."
+
+
+class LlmBusyError(LlmError):
+    message = "The assistant is busy right now. Please try again in a moment."
+
+
+class LlmKeyRejectedError(LlmError):
+    message = (
+        "The assistant's API key was rejected. Check OPENROUTER_API_KEY and restart."
+    )
+
+
+class LlmConversationTooLongError(LlmError):
+    message = (
+        "This conversation has grown too long for the assistant to read. Please start "
+        "a new one."
+    )
+
+
+class LlmTruncatedError(LlmError):
+    message = (
+        "The answer was cut off before it finished. Please try again, or ask for a "
+        "shorter answer."
+    )
+
+
+class LlmEmptyReplyError(LlmError):
+    message = "The assistant sent an empty answer. Please try again."
+
+
 class MemoryStoreError(AdapterError):
     message = "What I remember about you is temporarily unavailable. Please try again."
 

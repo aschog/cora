@@ -20,6 +20,8 @@ from cora.engine.steps import (
     AGENT_RULES,
     CORA_PREAMBLE,
     MEMORY_RULE,
+    NOTHING_RELEVANT,
+    NOTHING_UPLOADED,
     REMEMBERED_HEADING,
     UNTRUSTED_NOTICE,
     GroundStep,
@@ -445,6 +447,18 @@ def test_the_brief_runs_cora_then_the_domains_then_the_users_own_notes() -> None
     )
 
 
+def test_the_rules_say_what_an_empty_search_means_and_what_to_do_about_it() -> None:
+    """The gate only runs when the model *skipped* searching, and a model told to search
+    for document questions mostly searches — so the empty store is met at the tool, one
+    round earlier, and the instruction has to be somewhere the model reads as authority.
+    Not the tool result: that arrives labelled as data never to be followed."""
+    rules = AGENT_RULES.lower()
+
+    assert "no passages" in rules
+    assert "ask" in rules and "upload" in rules
+    assert "own knowledge" in rules
+
+
 def test_a_brief_with_no_plugin_section_is_coras_voice_alone() -> None:
     brief = _prepare(instructions="", memory=FakeMemory())({"question": "q"})["brief"]
 
@@ -731,11 +745,15 @@ def test_the_sources_it_found_are_numbered_after_the_ones_already_known() -> Non
     assert partial["sources"] == [Source(2, "protein.md")]
 
 
-def test_a_search_that_matches_nothing_says_so_instead_of_implying_evidence() -> None:
-    partial = _gate()({"question": "hi there!"})
+def test_a_store_nothing_was_uploaded_to_says_exactly_that() -> None:
+    """The user can act on this one: there is nothing to search, so the answer is to
+    ask for documents rather than to reach for what the model happens to know."""
+    partial = _gate()({"question": "how much protein?"})
 
     [message] = partial["messages"]
-    assert NO_MATCHES in message.content
+    assert NOTHING_UPLOADED.told in message.content
+    assert "ask the user to upload" in message.content
+    assert UNTRUSTED_NOTICE not in message.content
     assert partial["sources"] == []
 
 
@@ -747,8 +765,29 @@ def test_a_passage_too_far_from_the_question_is_not_evidence() -> None:
     partial = _gate(_hit("protein.md", score=0.02))({"question": "hi there!"})
 
     [message] = partial["messages"]
-    assert NO_MATCHES in message.content
+    assert NOTHING_RELEVANT.told in message.content
     assert partial["sources"] == []
+
+
+def test_the_trace_tells_the_two_silences_apart_as_well() -> None:
+    """*How I got there* is where the user goes to see why an answer says what it says.
+    Rendering both silences as "no matching documents" explains neither."""
+    empty = _gate()({"question": "how much protein?"})
+    unmatched = _gate(_hit("protein.md", score=0.02))({"question": "how much protein?"})
+
+    assert NOTHING_UPLOADED.shown in empty["trace"][0].summary
+    assert NOTHING_RELEVANT.shown in unmatched["trace"][0].summary
+
+
+def test_documents_that_cover_nothing_are_not_a_store_with_nothing_in_it() -> None:
+    """The two silences read the same to the code and differently to the user: one
+    asks for documents, the other says the ones they gave do not go there. They were
+    one sentence until a question in the plugin's own subject got answered anyway."""
+    empty = _gate()({"question": "how much protein?"})
+    unmatched = _gate(_hit("protein.md", score=0.02))({"question": "how much protein?"})
+
+    assert NOTHING_UPLOADED.told not in unmatched["messages"][0].content
+    assert NOTHING_RELEVANT.told not in empty["messages"][0].content
 
 
 def test_a_passage_near_enough_to_the_question_is_weighed() -> None:
@@ -793,11 +832,15 @@ def test_the_trace_names_the_search_the_gate_ran_and_what_came_back() -> None:
     assert step.detail == "[1] protein.md: protein builds muscle"
 
 
-def test_a_gate_that_found_nothing_says_so_in_the_trace() -> None:
-    partial = _gate()({"question": "hi there!"})
+def test_a_gate_whose_search_broke_still_says_so_in_the_trace() -> None:
+    """`NO_MATCHES` is what the trace says when the gate cannot tell what came back —
+    it stopped being the answer for the two silences it *can* tell apart."""
+    step = GroundStep(scope="protein", context_source=_BrokenSource(), top_k=3)
 
-    [step] = partial["trace"]
-    assert step.summary == f"Checked the documents and asked again → {NO_MATCHES}"
+    partial = step({"question": "hi there!"})
+
+    [recorded] = partial["trace"]
+    assert recorded.summary == f"Checked the documents and asked again → {NO_MATCHES}"
 
 
 @dataclass(frozen=True)

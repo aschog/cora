@@ -85,12 +85,11 @@ no plugin and warns that nothing screens what the user types.
 does in the open, one trace step per search. It goes, and the knowledge base is what the
 tool searches. Closes the backlog's *planner JSON is hand-parsed* as removed.
 
-## In flight
+### [12. It says when it has nothing to answer from](done/story-12.md) ✔
 
-### [12. It says when it has nothing to answer from](story-12.md)
-
-An in-scope question against an empty store is answered from model knowledge today. After
-story 11 cora words the grounding reminder, and it says it has no documents instead.
+An in-scope question against an empty store was answered from model knowledge. Cora words
+the grounding reminder, so it now tells the two silences apart: nothing uploaded asks for
+documents, documents that don't cover the question say so, and small talk is unaffected.
 
 ## Not built this sprint
 

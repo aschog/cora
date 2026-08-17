@@ -440,6 +440,7 @@ dependencies = [
     { name = "langchain-openai" },
     { name = "langgraph" },
     { name = "langgraph-checkpoint-sqlite" },
+    { name = "openai" },
     { name = "pypdf" },
     { name = "sentence-transformers" },
 ]
@@ -449,6 +450,7 @@ dev = [
     { name = "cora-frontend-streamlit" },
     { name = "cora-plugin-fitness" },
     { name = "cora-plugin-security" },
+    { name = "httpx" },
     { name = "pytest" },
     { name = "pytest-watcher" },
     { name = "ruff" },
@@ -462,6 +464,7 @@ requires-dist = [
     { name = "langchain-openai", specifier = ">=1.4.1" },
     { name = "langgraph", specifier = ">=1.2.10,<2" },
     { name = "langgraph-checkpoint-sqlite", specifier = ">=3.1.1,<4" },
+    { name = "openai", specifier = ">=2.48.0" },
     { name = "pypdf", specifier = ">=6.14,<7" },
     { name = "sentence-transformers", specifier = ">=5.3,<6" },
 ]
@@ -471,6 +474,7 @@ dev = [
     { name = "cora-frontend-streamlit", editable = "frontends/streamlit" },
     { name = "cora-plugin-fitness", editable = "plugins/fitness" },
     { name = "cora-plugin-security", editable = "plugins/security" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-watcher", specifier = ">=0.6.3" },
     { name = "ruff", specifier = ">=0.15.22" },

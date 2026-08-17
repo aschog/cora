@@ -166,6 +166,50 @@ def test_a_real_model_answers_from_the_documents_but_greets_without_them(
     assert _panels(at) == [], "small talk came back citing a document"
 
 
+ASKS_FOR_DOCUMENTS = ("upload", "no documents", "don't have any documents", "share")
+GREETS = ("hi", "hello", "hey", "nice to meet")
+"""The greeting is checked for *being a greeting*, which is all story 12 claims for it.
+An empty store is a fact about the app, and a real model volunteers it while greeting —
+"nice to meet you; I don't have any documents from you yet, how can I help?" is small
+talk answered as small talk, so an assertion that no upload is ever mentioned would be
+testing a rule nobody wrote."""
+
+
+def test_a_real_model_asks_for_documents_instead_of_answering_without_them(
+    tmp_path: Path,
+) -> None:
+    """Story 12's whole subject is wording, so this is the only tier that can fail for
+    the right reason: a scripted model says whatever the script says, and what is being
+    tested is whether a real one, told it has nothing, declines to answer anyway.
+
+    The greeting gets a page of its own rather than riding along as turn two. Asked
+    after a turn that ended "which would you like?", a greeting is answered by picking
+    that back up — which is the model being coherent, not the rule leaking into small
+    talk, and it makes the assertion unable to tell the two apart."""
+    at = AppTest.from_function(_page, args=(_live_app(tmp_path / "asked"),)).run()
+
+    at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
+
+    assert not at.exception
+    answer = at.chat_message[-1].markdown[0].value.lower()
+    assert any(phrase in answer for phrase in ASKS_FOR_DOCUMENTS), (
+        f"an empty store was answered from model knowledge: {answer!r}"
+    )
+    assert _panels(at) == [], "nothing was uploaded and the answer cited something"
+
+    greeted = AppTest.from_function(
+        _page, args=(_live_app(tmp_path / "greeted"),)
+    ).run()
+    greeted.chat_input[0].set_value(SMALL_TALK).run(timeout=180)
+
+    assert not greeted.exception
+    greeting = greeted.chat_message[-1].markdown[0].value.lower()
+    assert any(word in greeting for word in GREETS), (
+        f"a greeting was not answered as a greeting: {greeting!r}"
+    )
+    assert _panels(greeted) == [], "a greeting cited a document"
+
+
 VEGETARIAN = "I'm vegetarian — keep that in mind."
 WHAT_TO_EAT = "What should I eat after a session?"
 MEAT = ("chicken", "beef", "steak", "salmon", "tuna", "pork", "turkey")
