@@ -4,7 +4,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from app_builder import assembled, indexed
-from apptest import PANE_COMPONENT, mounted_html, page_text
+from apptest import PANE_COMPONENT, mounted_html, open_document, page_text
 from cora.app.assembly import App
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ModelReply
@@ -51,10 +51,10 @@ def _panes(at: AppTest) -> list[str]:
 
 
 @pytest.mark.integration
-def test_a_cited_passage_opens_beside_the_chat_and_closes_again() -> None:
+def test_a_cited_passage_opens_over_the_chat_and_closes_again() -> None:
     """The click that opens it is a component's, out of AppTest's reach, so the state
-    the click writes is what this drives. What the pane does with it is the criterion:
-    the cited document, that passage marked, and the chat whole again after closing."""
+    the click writes is what this drives. What the popup does with it is the criterion:
+    the cited document, that passage marked, and the chat back after closing."""
     at = AppTest.from_function(_page, args=(_app(),)).run()
 
     at.chat_input[0].set_value(QUESTION).run()
@@ -67,7 +67,7 @@ def test_a_cited_passage_opens_beside_the_chat_and_closes_again() -> None:
     at.run()
 
     assert not at.exception
-    assert DOCUMENT in [heading.value for heading in at.header]
+    assert open_document(at) == [DOCUMENT]
     [pane] = _panes(at)
     [marked] = re.findall(r"<mark[^>]*>(.*?)</mark>", pane, re.DOTALL)
     assert PASSAGE in marked, f"the cited passage is not marked in the pane: {pane!r}"
@@ -76,5 +76,5 @@ def test_a_cited_passage_opens_beside_the_chat_and_closes_again() -> None:
 
     assert not at.exception
     assert _panes(at) == []
-    assert DOCUMENT not in [heading.value for heading in at.header]
+    assert open_document(at) == []
     assert at.chat_input

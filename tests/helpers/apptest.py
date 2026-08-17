@@ -4,7 +4,9 @@ the component was mounted with is what a test reads instead."""
 
 import json
 import re
+from collections.abc import Iterator
 from html import unescape
+from typing import Any
 
 from streamlit.testing.v1 import AppTest
 
@@ -23,10 +25,31 @@ def mounted_html(at: AppTest, name: str) -> list[str]:
     only at `at.main` finds an empty page and calls it "no passage opened"."""
     return [
         json.loads(node.proto.json).get("html", "")
-        for node in at._tree
+        for node in _nodes(at)
         if getattr(node, "type", None) == "bidi_component"
         and node.proto.component_name == name
     ]
+
+
+def open_dialogs(at: AppTest) -> list[Any]:
+    """The popups on the page, as the blocks that describe them."""
+    return [
+        node.proto.dialog
+        for node in _nodes(at)
+        if getattr(node, "type", None) == "dialog"
+    ]
+
+
+def open_document(at: AppTest) -> list[str]:
+    """The document each open popup is named after. A cited passage arrives in one over
+    the chat, so what names it is the popup's title, not a heading on the page."""
+    return [dialog.title for dialog in open_dialogs(at)]
+
+
+def _nodes(at: AppTest) -> Iterator[Any]:
+    """Every node of the page. AppTest offers no public walk of the whole tree, and its
+    containers stop short of the one a dialog is drawn in."""
+    return iter(at._tree)
 
 
 def answers(at: AppTest) -> list[str]:

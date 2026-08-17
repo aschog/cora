@@ -5,8 +5,8 @@ passage it rests on, in its own document, without leaving the conversation
 
 > **Given** an answer citing a passage of an indexed document
 > **When** I click that citation
-> **Then** the document opens beside the chat, scrolled to the cited passage with it
-> highlighted — and closing it returns the chat to full width
+> **Then** the document opens over the chat, scrolled to the cited passage with it
+> highlighted — and closing it returns me to the conversation
 
 Adds `markdown-it-py` and an inline `st.components.v2` component. `st.chat_input` stays
 pinned full width. The click itself is out of AppTest's reach — Phase 4 verifies it
@@ -200,9 +200,16 @@ the shared reader is the first item: nothing else can be seen until it looks the
 
 - [x] **(int)** `mounted_html` finds a component drawn inside a dialog, and the pane
       opens in one — the page keeps no column split behind it
-- [ ] **(int)** the dialog is titled with the document's name, the page-wide heading gone
-- [ ] **(int)** dismissing the dialog clears the open citation, so the next rerun does not
-      reopen it
-- [ ] **(int)** a passage never kept and a number belonging to no answer still each say
-      so, inside the dialog
-- [ ] **(int)** the chat keeps its full width and its input while a document is open
+- [x] **(int)** the dialog is titled with the document's name, the page-wide heading gone
+- [x] **(int)** the dialog is dismissible and a dismissal is handled — Streamlit stamps an
+      id only when one is, and a dismissal nothing handled would reopen the popup for
+      ever. AppTest cannot dismiss a dialog, so what the handler *does* rests on the
+      Close button's test, which drives the same `close_citation`
+- [x] **(int)** a passage never kept and a number belonging to no answer are told apart by
+      the popup's title, now the heading that told them apart has gone
+- [x] ~~the chat keeps its full width and its input while a document is open~~ — no test
+      of its own to write: the popup's own test asserts the page keeps no split, and the
+      chat input is asserted where the document opens
+
+The `[1]` in an answer is a component's button, so the click that opens a popup — and the
+Escape that dismisses it — are both out of AppTest's reach. Phase 4 drives them.

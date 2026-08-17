@@ -2,7 +2,13 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from app_builder import assembled, indexed
-from apptest import clickable_citations, mounted_html, newest_answer
+from apptest import (
+    clickable_citations,
+    mounted_html,
+    newest_answer,
+    open_dialogs,
+    open_document,
+)
 from cora.app.assembly import App
 from cora.domain.errors import LlmTimeoutError
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
@@ -12,6 +18,7 @@ from cora.frontends.streamlit.viewer import (
     ANSWER_COMPONENT,
     CITATION_COLOUR,
     CLOSE_KEY,
+    NO_DOCUMENT,
     NOT_KEPT,
     OPEN_CITATION,
     PANE_COMPONENT,
@@ -96,17 +103,17 @@ def test_a_thread_with_nothing_open_shows_no_document() -> None:
 
     assert not at.exception
     assert _panes(at) == []
-    assert "protein.md" not in _headings(at)
+    assert open_document(at) == []
 
 
-def test_opening_a_citation_puts_its_document_beside_the_chat() -> None:
+def test_opening_a_citation_puts_its_document_over_the_chat() -> None:
     at = _asked(_run(_one_citation()))
 
     at.session_state[OPEN_CITATION] = 1
     at.run()
 
     assert not at.exception
-    assert "protein.md" in _headings(at)
+    assert open_document(at) == ["protein.md"]
     [pane] = _panes(at)
     assert "1.6 g of protein" in pane
     assert at.chat_input, "the chat stays usable with a document open"
@@ -134,7 +141,7 @@ def test_the_pane_shows_the_document_the_citation_names() -> None:
     at.run()
 
     assert not at.exception
-    assert "creatine.md" in _headings(at)
+    assert open_document(at) == ["creatine.md"]
     [pane] = _panes(at)
     assert "creatine" in pane
     assert "protein" not in pane
@@ -161,7 +168,7 @@ def test_a_citation_from_an_earlier_answer_still_opens() -> None:
     at.run()
 
     assert not at.exception
-    assert "protein.md" in _headings(at)
+    assert open_document(at) == ["protein.md"]
 
 
 def test_closing_the_pane_takes_the_document_with_it() -> None:
@@ -173,7 +180,7 @@ def test_closing_the_pane_takes_the_document_with_it() -> None:
 
     assert not at.exception
     assert _panes(at) == []
-    assert "protein.md" not in _headings(at)
+    assert open_document(at) == []
     assert at.session_state[OPEN_CITATION] is None
 
 
@@ -190,9 +197,9 @@ def test_a_number_from_no_answer_in_this_thread_opens_nothing() -> None:
     assert UNKNOWN_CITATION in [warning.value for warning in at.warning]
 
 
-def test_a_passage_whose_text_was_never_kept_says_so_under_its_heading() -> None:
+def test_a_passage_whose_text_was_never_kept_says_so_under_its_title() -> None:
     """An index written before documents were kept still answers with citations, so the
-    pane has to account for a passage it can name and cannot read. The heading is what
+    pane has to account for a passage it can name and cannot read. The title is what
     tells this apart from a number belonging to no answer at all."""
     at = _asked(
         _run(
@@ -209,10 +216,26 @@ def test_a_passage_whose_text_was_never_kept_says_so_under_its_heading() -> None
     at.run()
 
     assert not at.exception
-    assert "protein.md" in _headings(at)
+    assert open_document(at) == ["protein.md"]
     assert _panes(at) == []
     assert NOT_KEPT in [warning.value for warning in at.warning]
     assert NOT_KEPT != UNKNOWN_CITATION, "a passage I cannot read is not a stray number"
+
+
+def test_a_number_from_no_answer_is_titled_apart_from_a_passage_never_kept() -> None:
+    """Two failures that look alike inside the popup and are not: one is a passage this
+    conversation cites and cannot read, the other a number no answer ever wrote. The
+    title is what separates them now the heading has gone — a document names the first,
+    and nothing names the second."""
+    at = _asked(_run(_one_citation()))
+
+    at.session_state[OPEN_CITATION] = 9
+    at.run()
+
+    assert not at.exception
+    assert open_document(at) == [NO_DOCUMENT]
+    assert UNKNOWN_CITATION in [warning.value for warning in at.warning]
+    assert NO_DOCUMENT != "protein.md", "a stray number is not a document to open"
 
 
 def test_a_store_that_cannot_be_read_is_reported_and_costs_the_chat_nothing() -> None:
@@ -246,6 +269,41 @@ def test_the_answer_reaches_the_page_only_through_its_own_component() -> None:
     [answer] = _mounted(at, ANSWER_COMPONENT)
     assert 'data-cite="1"' in answer
     assert CITED not in "\n".join(md.value for md in at.markdown)
+
+
+def test_the_popup_is_titled_with_the_document_and_names_it_only_once() -> None:
+    """A filename set as a page heading broke over three lines and pushed the passage
+    below the fold. The popup already carries a title bar, so the name belongs there —
+    and stating it twice costs the passage the rows it was pushed down by."""
+    at = _asked(_run(_one_citation()))
+
+    at.session_state[OPEN_CITATION] = 1
+    at.run()
+
+    assert not at.exception
+    assert open_document(at) == ["protein.md"]
+    assert "protein.md" not in _headings(at), (
+        "the title names it, and nothing else does"
+    )
+
+
+def test_the_popup_can_be_dismissed_and_a_dismissal_is_handled() -> None:
+    """Escape, the corner cross and a click outside all dismiss it, and a dismissal that
+    left the citation open would redraw the popup on the very next rerun — the reader
+    would have no way to be rid of it. Streamlit stamps a dialog with an id only once a
+    dismiss handler is registered, so the id is what says one is there.
+
+    AppTest cannot dismiss a dialog: the handler runs off a widget delta the browser
+    sends. What the handler does is the Close button's test above, which drives the same
+    `close_citation`."""
+    at = _asked(_run(_one_citation()))
+
+    at.session_state[OPEN_CITATION] = 1
+    at.run()
+
+    [popup] = open_dialogs(at)
+    assert popup.dismissible, "escaping a passage is how a reader gets back to the chat"
+    assert popup.id, "a dismissal nothing handles leaves the popup reopening for ever"
 
 
 def test_the_passage_pops_up_over_a_chat_that_keeps_the_whole_page() -> None:

@@ -131,9 +131,8 @@ def _passage(knowledge_base: KnowledgeBase, citation: Citation | None) -> None:
     """What the reader came for: the document, the cited passage marked and scrolled to,
     and a way out. A citation whose text was never kept says so rather than showing an
     empty page, and a store that cannot be read is reported here — the conversation
-    behind it is unaffected either way."""
-    if citation is not None:
-        st.header(citation.document)
+    behind it is unaffected either way. The document is named by the dialog's title, so
+    nothing here repeats it."""
     st.button(CLOSE_LABEL, key=CLOSE_KEY, on_click=close_citation)
     if citation is None:
         st.warning(UNKNOWN_CITATION)
