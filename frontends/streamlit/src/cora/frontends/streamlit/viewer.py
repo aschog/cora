@@ -11,7 +11,8 @@ from cora.frontends.streamlit.formatting import answer_html, document_html
 OPEN_CITATION = "open_citation"
 CLOSE_KEY = "close_citation"
 CLICKED = "clicked"
-NOT_KEPT = "That passage came from a document I no longer have the text of."
+NOT_KEPT = "I no longer have the text of that document, so I cannot show the passage."
+UNKNOWN_CITATION = "That citation does not belong to any answer in this conversation."
 CLOSE_LABEL = ":material/close: Close"
 PANE_RATIO = (3, 2)
 ANSWER_COMPONENT = "cora_cited_answer"
@@ -108,14 +109,14 @@ def document_pane(knowledge_base: KnowledgeBase, citation: Citation | None) -> N
     and a way back to the full-width chat. A citation whose text was never kept says so
     rather than showing an empty page, and a store that cannot be read is reported
     here — the conversation beside it is unaffected either way."""
-    if citation is None:
-        st.warning(NOT_KEPT)
-        st.button(CLOSE_LABEL, key=CLOSE_KEY, on_click=close_citation)
-        return
-    st.header(citation.document)
+    if citation is not None:
+        st.header(citation.document)
     st.button(CLOSE_LABEL, key=CLOSE_KEY, on_click=close_citation)
+    if citation is None:
+        st.warning(UNKNOWN_CITATION)
+        return
     try:
-        text = knowledge_base.text(citation.document)
+        text = knowledge_base.text(citation.upload)
     except AdapterError as error:
         st.error(error.user_message)
         return
@@ -129,8 +130,8 @@ def document_pane(knowledge_base: KnowledgeBase, citation: Citation | None) -> N
 
 
 def _mount(name: str) -> Any:
-    if name not in _mounts:
-        declare_components()
+    """Declared by `declare_components()`, which every run of the page starts with.
+    Falling back to declaring here would hide a run that never did."""
     return _mounts[name]
 
 

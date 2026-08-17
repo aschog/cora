@@ -11,6 +11,11 @@ class RetrievedChunk:
 
 
 class Retriever(Protocol):
+    """The index. A chunk goes in belonging to one upload — `file_hash` — and comes
+    back out stamped with it, because a passage's offsets are only meaningful against
+    the text that upload arrived as, and the store is the only thing that still knows
+    which one that was."""
+
     def add(
         self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
     ) -> None: ...

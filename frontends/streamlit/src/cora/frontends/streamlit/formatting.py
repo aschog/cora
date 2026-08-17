@@ -13,11 +13,14 @@ CITATION_ANCHOR = "citation-{number}"
 _CITE_BUTTON = (
     '<button type="button" class="cite" data-cite="{number}">[{number}]</button>'
 )
-_NUMBER = re.compile(r"(?<![\w\]])\[(\d+)\]")
+_RUN = re.compile(r"(?<![\w\]])(?:\[\d+\])+")
+_NUMBER = re.compile(r"\[(\d+)\]")
 _CODE = re.compile(r"<(pre|code)\b.*?</\1>", re.DOTALL)
-_MARKDOWN = MarkdownIt("commonmark", {"html": False})
-"""Rendering with HTML disabled, because the answer is written by a model reading the
-user's documents: a document that asks for a script gets escaped text instead."""
+_TAG = re.compile(r"<[^>]*>")
+_MARKDOWN = MarkdownIt("commonmark", {"html": False}).disable("image")
+"""Rendering with HTML disabled and images with it, because the answer is written by a
+model reading the user's documents: a document that asks for a script gets escaped text,
+and one that asks for an image gets no outbound fetch from the reader's browser."""
 
 
 def step_text(step: TraceStep) -> str:
@@ -76,13 +79,36 @@ def document_html(text: str, citation: Citation | None) -> str:
 
 
 def _linked(html: str, numbers: set[int]) -> str:
-    def button(found: re.Match[str]) -> str:
+    """Buttons in the text of rendered HTML, never in a tag: `[1]` in an image's alt
+    text is not a citation, and substituting there would break the attribute open."""
+    written: list[str] = []
+    read = 0
+    for tag in _TAG.finditer(html):
+        written.append(_buttons(html[read : tag.start()], numbers))
+        written.append(tag.group(0))
+        read = tag.end()
+    written.append(_buttons(html[read:], numbers))
+    return "".join(written)
+
+
+def _buttons(text: str, numbers: set[int]) -> str:
+    """A run of numbers — `[1][2]` — is as many citations as it has brackets, which is
+    the rule `cited_numbers` reads by. Each number resolves on its own."""
+
+    def run(found: re.Match[str]) -> str:
+        return _NUMBER.sub(_button(numbers), found.group(0))
+
+    return _RUN.sub(run, text)
+
+
+def _button(numbers: set[int]):
+    def one(found: re.Match[str]) -> str:
         number = int(found.group(1))
         if number not in numbers:
             return found.group(0)
         return _CITE_BUTTON.format(number=number)
 
-    return _NUMBER.sub(button, html)
+    return one
 
 
 def ingest_message(filename: str, chunks: int) -> str:

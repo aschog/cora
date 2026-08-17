@@ -544,9 +544,11 @@ def test_build_keeps_a_documents_store_at_the_configured_path(tmp_path: Path) ->
 
     app.knowledge_base.add_file(b"Aim for 1.6 g of protein per kg.", "protein.md")
 
+    [hit] = app.knowledge_base.search("protein", k=1)
+    upload = hit.chunk.upload
     assert (tmp_path / "documents.sqlite").exists()
-    assert app.knowledge_base.text("protein.md") == "Aim for 1.6 g of protein per kg."
-    assert build(_config(tmp_path)).knowledge_base.text("protein.md") is not None
+    assert app.knowledge_base.text(upload) == "Aim for 1.6 g of protein per kg."
+    assert build(_config(tmp_path)).knowledge_base.text(upload) is not None
 
 
 @pytest.mark.integration

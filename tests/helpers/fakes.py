@@ -2,7 +2,7 @@
 
 import hashlib
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import NamedTuple
 
 from cora.domain.chunk import Chunk
@@ -56,8 +56,10 @@ class FakeRetriever:
     def add(
         self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
     ) -> None:
+        """Stamped with the upload on the way in, as the real index does: a hit carries
+        the upload its offsets were measured in."""
         self._records.extend(
-            _Record(vector, chunk, file_hash)
+            _Record(vector, replace(chunk, upload=file_hash), file_hash)
             for chunk, vector in zip(chunks, vectors, strict=True)
         )
 
@@ -114,23 +116,23 @@ class CountingRetriever(FakeRetriever):
 
 
 class FakeDocuments:
-    """The kept text, in a dict. `writes` is what lets a test say a document was kept
-    once, or not at all."""
+    """The kept text, in a dict, keyed by upload as the real store is. `writes` is what
+    lets a test say a document was kept once, or not at all."""
 
     def __init__(self) -> None:
         self._kept: dict[str, str] = {}
         self.writes = 0
 
-    def keep(self, name: str, text: str) -> None:
-        self._kept[name] = text
+    def keep(self, upload: str, text: str) -> None:
+        self._kept[upload] = text
         self.writes += 1
 
-    def read(self, name: str) -> str | None:
-        return self._kept.get(name)
+    def read(self, upload: str) -> str | None:
+        return self._kept.get(upload)
 
 
 class FailingDocuments(FakeDocuments):
-    def read(self, name: str) -> str | None:
+    def read(self, upload: str) -> str | None:
         raise DocumentStoreError
 
 

@@ -1,9 +1,14 @@
 from collections.abc import Callable
+from dataclasses import replace
 
 import pytest
 
 from cora.domain.chunk import Chunk
-from cora.domain.errors import EmptyDocumentError, UnsupportedFileTypeError
+from cora.domain.errors import (
+    DocumentStoreError,
+    EmptyDocumentError,
+    UnsupportedFileTypeError,
+)
 from cora.engine.ingestion import ingest
 from cora.engine.knowledge_base import KnowledgeBase
 from fakes import TEXT_LOADERS, FakeDocuments, FakeEmbedder, FakeRetriever
@@ -41,7 +46,7 @@ def test_search_returns_the_relevant_chunk_first(
     hits = kb.search("beta", k=1)
 
     assert len(hits) == 1
-    assert hits[0].chunk == chunks[1]
+    assert hits[0].chunk == replace(chunks[1], upload="h")
     assert hits[0].chunk.source == "doc.txt"
 
 
@@ -96,12 +101,11 @@ def test_add_file_propagates_ingestion_errors_unchanged(kb: KnowledgeBase) -> No
         kb.add_file(b"   ", "blank.txt")
 
 
-def test_add_file_keeps_the_cleaned_text_under_the_documents_name(
-    kb: KnowledgeBase, documents: FakeDocuments
-) -> None:
+def test_add_file_keeps_the_cleaned_text_of_the_upload(kb: KnowledgeBase) -> None:
     kb.add_file(b"# Protein\n\n\n\nAim for 1.6 g per kg.", "protein.md")
 
-    kept = documents.read("protein.md")
+    [hit] = kb.search("protein", k=1)
+    kept = kb.text(hit.chunk.upload)
     assert kept is not None
     assert "Aim for 1.6 g per kg." in kept
 
@@ -113,12 +117,12 @@ def test_every_chunks_offset_points_at_that_chunks_text(kb: KnowledgeBase) -> No
     data = "\n\n".join(f"Paragraph {n} with several words in it." for n in range(80))
 
     added = kb.add_file(data.encode(), "long.md")
-    text = kb.text("long.md")
 
     assert added > 1
-    assert text is not None
     hits = kb.search("paragraph", k=added)
     assert len(hits) == added
+    text = kb.text(hits[0].chunk.upload)
+    assert text is not None
     for hit in hits:
         chunk = hit.chunk
         assert text[chunk.offset : chunk.offset + len(chunk.text)] == chunk.text
@@ -148,3 +152,50 @@ def test_a_document_that_fails_to_ingest_keeps_nothing(
 
 def test_the_text_of_an_unknown_document_is_nothing(kb: KnowledgeBase) -> None:
     assert kb.text("never-uploaded.md") is None
+
+
+class _KeepFails(FakeDocuments):
+    def keep(self, upload: str, text: str) -> None:
+        raise DocumentStoreError
+
+
+def test_a_document_whose_text_cannot_be_kept_is_never_searchable(
+    embedder: FakeEmbedder, retriever: FakeRetriever
+) -> None:
+    """A passage in the index is a citation waiting to be shown, and a citation whose
+    text was never kept opens onto nothing. The store that keeps the text is written
+    first, so a failure there costs the upload rather than leaving it half done — and
+    the user is told, instead of being told it worked on the retry."""
+    kb = KnowledgeBase(
+        embedder=embedder,
+        retriever=retriever,
+        loaders=TEXT_LOADERS,
+        documents=_KeepFails(),
+    )
+
+    with pytest.raises(DocumentStoreError):
+        kb.add_file(b"Aim for 1.6 g of protein per kg.", "protein.md")
+
+    assert retriever.sources() == []
+    assert kb.search("protein", k=5) == []
+
+
+V1 = b"Version one says: aim for 1.6 g of protein per kg of bodyweight every day."
+V2 = b"PREFACE ADDED LATER. Version two says: aim for 2.0 g of protein per kg."
+
+
+def test_a_passage_reads_back_the_text_it_was_cut_from(kb: KnowledgeBase) -> None:
+    """The promise a citation makes. A file edited and uploaded again under the same
+    name is different content: the passage found in the first upload still slices the
+    first upload's text, because a span is only meaningful against the text it was
+    measured in."""
+    kb.add_file(V1, "report.md")
+    [first] = kb.search("protein", k=1)
+
+    kb.add_file(V2, "report.md")
+
+    text = kb.text(first.chunk.upload)
+    assert text is not None
+    chunk = first.chunk
+    assert text[chunk.offset : chunk.offset + len(chunk.text)] == chunk.text
+    assert "Version one" in text

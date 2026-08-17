@@ -27,6 +27,7 @@ def _to_chunk(document: object, metadata: Mapping[str, object]) -> Chunk:
         source=cast(str, metadata["source"]),
         index=cast(int, metadata["index"]),
         offset=cast(int, metadata["offset"]),
+        upload=str(metadata.get("file_hash", "")),
     )
 
 

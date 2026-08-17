@@ -24,14 +24,18 @@ NOTHING_FOUND = Nothing(told=NO_MATCHES, shown=NO_MATCHES)
 @dataclass(frozen=True)
 class Citation:
     """One passage of one document, numbered. The span is where the passage sits in the
-    document's cleaned text, so `[n]` can be opened and read rather than merely named:
-    two passages of one document are two citations, and a number the user has been shown
-    never moves to another passage."""
+    cleaned text of `upload` — the document as it arrived that time — so `[n]` can be
+    opened and read rather than merely named: two passages of one document are two
+    citations, and a number the user has been shown never moves to another passage, not
+    even when the same filename is uploaded again with other text in it.
+
+    `document` is the name to show; `upload` is what to read."""
 
     number: int
     document: str
     start: int
     end: int
+    upload: str = ""
 
 
 @dataclass(frozen=True)
@@ -67,7 +71,16 @@ def build_context_block(
         if span in number_of:
             continue
         number_of[span] = next_number
-        added.append(Citation(next_number, *span))
+        upload, document, start, end = span
+        added.append(
+            Citation(
+                number=next_number,
+                document=document,
+                start=start,
+                end=end,
+                upload=upload,
+            )
+        )
         next_number += 1
     body = "\n".join(
         f"[{number_of[_hit_span(hit)]}] {hit.chunk.source}: {hit.chunk.text}"
@@ -76,13 +89,16 @@ def build_context_block(
     return Context(text=body, citations=tuple(added))
 
 
-def _span(citation: Citation) -> tuple[str, int, int]:
-    return (citation.document, citation.start, citation.end)
+def _span(citation: Citation) -> tuple[str, str, int, int]:
+    return (citation.upload, citation.document, citation.start, citation.end)
 
 
-def _hit_span(hit: RetrievedChunk) -> tuple[str, int, int]:
+def _hit_span(hit: RetrievedChunk) -> tuple[str, str, int, int]:
+    """What makes two passages the same passage: the upload, because a span means
+    nothing without the text it was measured in, and the name beside it, because an
+    upload whose hash was never recorded would otherwise pool with every other."""
     chunk = hit.chunk
-    return (chunk.source, chunk.offset, chunk.offset + len(chunk.text))
+    return (chunk.upload, chunk.source, chunk.offset, chunk.offset + len(chunk.text))
 
 
 class Citable(ABC):

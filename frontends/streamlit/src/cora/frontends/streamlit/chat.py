@@ -220,7 +220,6 @@ def _assistant_message(result: ChatResult) -> ThreadEntry:
         "role": "assistant",
         "content": result.answer,
         "citations": list(result.citations),
-        "sources": numbered_citations(result.citations),
         "trace": list(result.trace),
     }
 
@@ -240,7 +239,7 @@ def _show(message: ThreadEntry) -> None:
                 message.get("citations", ()),
                 key=f"answer_{_position(message)}",
             )
-            _expander("Sources", message.get("sources", ()))
+            _expander("Sources", numbered_citations(message.get("citations", ())))
         else:
             st.markdown(message["content"])
         _trace(message.get("trace", ()), failed=_went_wrong(message))

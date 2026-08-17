@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import replace
 
 from cora.domain.chunk import Chunk
 from cora.ports.chat_model import Message, ModelReply
@@ -10,12 +11,14 @@ from fakes import (
     add_tool,
 )
 
+DEFAULT_UPLOAD = "h"
+
 
 def _add(
     retriever: FakeRetriever,
     embedder: FakeEmbedder,
     chunks: list[Chunk],
-    file_hash: str = "h",
+    file_hash: str = DEFAULT_UPLOAD,
 ) -> None:
     retriever.add(chunks, embedder.embed([c.text for c in chunks]), file_hash=file_hash)
 
@@ -62,7 +65,7 @@ def test_fake_retriever_ranks_hits_by_cosine_similarity_capped_at_k(
     hits = retriever.query(query_vector, k=2)
 
     assert len(hits) == 2
-    assert hits[0].chunk == chunks[1]
+    assert hits[0].chunk == replace(chunks[1], upload=DEFAULT_UPLOAD)
     assert hits[0].score >= hits[1].score
 
 
@@ -76,7 +79,7 @@ def test_fake_retriever_returns_every_record_when_k_exceeds_store(
     hits = retriever.query(query_vector, k=10)
 
     assert len(hits) == 2
-    assert hits[0].chunk == chunks[0]
+    assert hits[0].chunk == replace(chunks[0], upload=DEFAULT_UPLOAD)
 
 
 def test_fake_retriever_query_returns_hits_from_every_source(

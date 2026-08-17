@@ -161,3 +161,42 @@ def test_a_document_with_no_citation_to_mark_is_still_rendered() -> None:
 
     assert "plain text" in html
     assert "<mark" not in html
+
+
+OMEGA = Citation(number=2, document="note.md", start=40, end=45)
+
+
+def test_every_number_in_a_run_becomes_its_own_button() -> None:
+    """Numbering is per passage now, so citing two passages at once is ordinary. The
+    domain reads every number in a run — `cited_numbers` — and a button the reader can
+    press has to follow it, or the second passage is listed and unopenable."""
+    html = answer_html("Both notes agree [1][2].", (NOTE, OMEGA))
+
+    assert 'data-cite="1"' in html
+    assert 'data-cite="2"' in html
+    assert html.count("<button") == 2
+
+
+def test_a_number_inside_a_tag_is_left_where_it_is() -> None:
+    """Substituting runs over rendered HTML, so it has to know a tag from the text: a
+    number in an attribute is not a citation, and a button written there would break the
+    attribute open."""
+    html = answer_html('[the note](http://host "see [1] here")', (NOTE,))
+
+    assert 'title="see [1] here"' in html
+    assert "<button" not in html
+
+
+def test_an_image_in_the_answer_fetches_nothing() -> None:
+    """Model text shaped by an uploaded document: a markdown image would have the
+    reader's browser fetch whatever URL the document asked for, before any click. A
+    link is left as a link — that costs a click, and prose has always been able to
+    carry one."""
+    html = answer_html("![](http://example.invalid/pixel.png) and text", (NOTE,))
+
+    assert "<img" not in html
+    assert "src=" not in html
+
+
+def test_two_passages_of_one_document_are_two_lines() -> None:
+    assert numbered_citations((NOTE, OMEGA)) == ["[1] note.md", "[2] note.md"]

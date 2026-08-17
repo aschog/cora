@@ -11,11 +11,12 @@ from cora.frontends.streamlit.viewer import (
     NOT_KEPT,
     OPEN_CITATION,
     PANE_COMPONENT,
+    UNKNOWN_CITATION,
 )
 from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.documents import Documents
 from cora.ports.plugin import ToolCall
-from fakes import FailingDocuments, ScriptedChatModel
+from fakes import FailingDocuments, FakeDocuments, ScriptedChatModel
 
 PROTEIN = ("protein.md", b"Aim for 1.6 g of protein per kg of bodyweight.")
 CREATINE = ("creatine.md", b"Five grams of creatine a day is plenty.")
@@ -63,6 +64,14 @@ def _headings(at: AppTest) -> list[str]:
 def _asked(at: AppTest, question: str = "How much protein?") -> AppTest:
     at.chat_input[0].set_value(question).run()
     return at
+
+
+class _KeepsNothing(FakeDocuments):
+    """An index whose documents were never kept: `keep` accepts and forgets, which is
+    what a store written before story 16 looks like from here."""
+
+    def keep(self, upload: str, text: str) -> None:
+        return None
 
 
 def _one_citation() -> App:
@@ -157,9 +166,7 @@ def test_closing_the_pane_takes_the_document_with_it() -> None:
     assert at.session_state[OPEN_CITATION] is None
 
 
-def test_a_document_that_was_never_kept_says_so() -> None:
-    """An index written before documents were kept still answers with citations, so the
-    pane has to account for a passage whose document it cannot read."""
+def test_a_number_from_no_answer_in_this_thread_opens_nothing() -> None:
     at = _asked(_run(_one_citation()))
 
     at.session_state[OPEN_CITATION] = 1
@@ -168,6 +175,30 @@ def test_a_document_that_was_never_kept_says_so() -> None:
     at.run()
 
     assert not at.exception
+    assert _panes(at) == []
+    assert UNKNOWN_CITATION in [warning.value for warning in at.warning]
+
+
+def test_a_passage_whose_text_was_never_kept_says_so_under_its_heading() -> None:
+    """An index written before documents were kept still answers with citations, so the
+    pane has to account for a passage it can name and cannot read. The heading is what
+    tells this apart from a number belonging to no answer at all."""
+    at = _asked(
+        _run(
+            _app(
+                ScriptedChatModel(
+                    [_searching("c1", "protein"), ModelReply(text=CITED)]
+                ),
+                documents=_KeepsNothing(),
+            )
+        )
+    )
+
+    at.session_state[OPEN_CITATION] = 1
+    at.run()
+
+    assert not at.exception
+    assert "protein.md" in _headings(at)
     assert _panes(at) == []
     assert NOT_KEPT in [warning.value for warning in at.warning]
 
@@ -199,3 +230,20 @@ def test_the_answer_reaches_the_page_with_its_citations_clickable() -> None:
 
     [answer] = _mounted(at, ANSWER_COMPONENT)
     assert 'data-cite="1"' in answer
+
+
+def test_the_chat_shares_the_page_only_while_a_document_is_open() -> None:
+    """The criterion's other half: closing the pane gives the conversation its width
+    back, which is the column split going away rather than a pane merely emptying."""
+    at = _asked(_run(_one_citation()))
+
+    assert at.columns == []
+
+    at.session_state[OPEN_CITATION] = 1
+    at.run()
+
+    assert len(at.columns) == 2
+
+    at.button(key=CLOSE_KEY).click().run()
+
+    assert at.columns == []

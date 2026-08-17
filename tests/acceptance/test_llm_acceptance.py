@@ -15,7 +15,7 @@ from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from apptest import ANSWER_COMPONENT, PANE_COMPONENT, mounted_html
+from apptest import ANSWER_COMPONENT, PANE_COMPONENT, answers, mounted_html
 from cora.app.assembly import App, build
 from cora.app.config import Config
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
@@ -124,8 +124,9 @@ def test_a_whole_session_uploads_asks_calculates_and_remembers(tmp_path: Path) -
     assert _panels(at) == [SOURCES], "the model answered without reaching the documents"
     [cited] = at.chat_message[-1].expander
     assert "protein.md" in "\n".join(line.value for line in cited.markdown)
-    assert CITATION.search(at.chat_message[-1].markdown[0].value), (
-        "the answer rested on a passage it never cited"
+    [answered] = answers(at)
+    assert CITATION.search(answered), (
+        f"the answer rested on a passage it never cited: {answered!r}"
     )
     assert f"{SEARCH_TOOL_NAME}(" in _steps(at)
 
