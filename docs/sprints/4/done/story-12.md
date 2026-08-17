@@ -34,27 +34,34 @@ words after story 11 step 4 is the whole change.
 
 #### First, the outer test
 
-- [ ] **(int)** fitness loaded against an empty store: a training question is answered with
+- [x] **(int)** fitness loaded against an empty store: a training question is answered with
       the ask-for-documents message and cites nothing, while a greeting in the same run is
       answered as a greeting — `xfail(strict=True)`
 
 #### The gate tells the two silences apart
 
-- [ ] `GroundStep` appends "nothing uploaded yet" when the search returns no hits at all
-- [ ] it appends "your documents don't cover this" when hits came back and none cleared the
+- [x] `GroundStep` appends "nothing uploaded yet" when the search returns no hits at all
+- [x] it appends "your documents don't cover this" when hits came back and none cleared the
       floor — today both cases render as the same "no matching documents"
-- [ ] hits above the floor are unchanged: the passages, under the untrusted-data label
+- [x] hits above the floor are unchanged: the passages, under the untrusted-data label
 
 #### What cora tells the model to do about it
 
-- [ ] the reminder says to answer that it has nothing on the question when a scope was
+- [x] the reminder says to answer that it has nothing on the question when a scope was
       declared and the passages are empty, and to answer as it did otherwise
-- [ ] a greeting against an empty store keeps its answer and cites nothing — story 8's
+- [x] a greeting against an empty store keeps its answer and cites nothing — story 8's
       behaviour, now under the new wording
 
 #### Nothing else changed
 
-- [ ] `README.md` says cora asks for documents rather than answering without them
+- [x] `README.md` says cora asks for documents rather than answering without them
+
+#### Found while building it
+
+- [x] a search that *broke* claims neither silence: the gate cannot tell an empty store
+      from an unreachable one, and it keeps today's wording and the answer in hand
+- [x] a plugin that declared no scope claims neither either — there is nothing to call a
+      question inside or outside of, so the message stays the passages it always was
 
 ## Out of scope
 

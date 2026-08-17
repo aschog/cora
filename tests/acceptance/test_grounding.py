@@ -272,6 +272,37 @@ def test_the_shipped_plugin_sends_an_ungrounded_answer_back() -> None:
 
 
 @pytest.mark.integration
+def test_a_question_against_an_empty_store_is_told_to_ask_for_documents() -> None:
+    """The shipped plugin with nothing uploaded. A training question must come back as
+    "I have nothing on this, give me something" rather than as an answer the user has no
+    way to check, and the greeting in the same app must still be small talk."""
+    from cora.plugins.fitness import PLUGIN
+
+    model = ScriptedChatModel(
+        [ModelReply(text=OFF_THE_CUFF), ModelReply(text="I have nothing on this yet.")]
+    )
+    app = assembled(chat_model=model, retriever=CountingRetriever(), plugin=PLUGIN)
+
+    result = app.agent.answer("How much protein should I eat?", THREAD)
+
+    assert model.last_messages is not None
+    sent_back = [m for m in model.last_messages if m.role == "system"][-1].content
+    assert "uploaded no documents" in sent_back
+    assert "ask the user to upload" in sent_back
+    assert result.sources == ()
+
+    greeting = ScriptedChatModel([ModelReply(text="Hello!"), ModelReply(text="Hello!")])
+    small_talk = assembled(
+        chat_model=greeting, retriever=CountingRetriever(), plugin=PLUGIN
+    )
+
+    said = small_talk.agent.answer("hi there!", "t2")
+
+    assert said.answer == "Hello!"
+    assert said.sources == ()
+
+
+@pytest.mark.integration
 def test_the_shipped_prompt_asks_for_the_users_own_documents() -> None:
     """The sprint-3 wording assumed the passages were already in the prompt; a
     plugin that still said it would be asking for something that never arrives."""

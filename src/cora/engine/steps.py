@@ -19,6 +19,7 @@ from cora.ports.context_source import ContextSource
 from cora.ports.graph import DONE, GROUND, TOOLS
 from cora.ports.memory import Fact, Memory
 from cora.ports.plugin import Tool, ToolCall, ToolResult, ValidationRule
+from cora.ports.retrieval import RetrievedChunk
 
 
 class ToolExecutor(Protocol):
@@ -44,13 +45,27 @@ _GROUNDING_REMINDER = (
     "do not bear on it — small talk, or anything outside {scope} — give the same "
     "answer again and cite nothing."
 )
+NOTHING_UPLOADED = "They have uploaded no documents at all."
+NOTHING_RELEVANT = "Their documents have nothing on this question."
+_SILENCE_REMINDER = (
+    "You answered without consulting the user's documents. {silence} If the question "
+    "is about {scope}, say you have nothing on it, ask the user to upload documents "
+    "that cover it, and cite nothing — do not answer it from what you happen to know. "
+    "If it is not — small talk, or anything outside {scope} — give the same answer "
+    "again and cite nothing."
+)
 
 
-def grounding_reminder(scope: str) -> str:
+def grounding_reminder(scope: str, silence: str = "") -> str:
     """Cora words the send-back; the plugins name what their documents cover. One
     reminder however many plugins are loaded, and none at all when no scope was
-    declared — a blank scope has no sentence to be part of."""
-    return _GROUNDING_REMINDER.format(scope=scope.strip()) if scope.strip() else ""
+    declared — a blank scope has no sentence to be part of, and nothing to say a
+    question falls inside."""
+    if not scope.strip():
+        return ""
+    if not silence:
+        return _GROUNDING_REMINDER.format(scope=scope.strip())
+    return _SILENCE_REMINDER.format(scope=scope.strip(), silence=silence)
 
 
 UNTRUSTED_NOTICE = (
@@ -203,10 +218,11 @@ class GroundStep:
             found = self.context_source.search(state["question"], self.top_k)
             hits = CitableHits([hit for hit in found if hit.score >= self.floor])
         except AdapterError:
-            hits, broke = CitableHits([]), True
+            found, hits, broke = [], CitableHits([]), True
         else:
             broke = False
         context = hits.register(tuple(state.get("sources", ())))
+        silence = _silence(self.scope, found, hits, broke=broke)
         return {
             "messages": [
                 Message(
@@ -214,9 +230,8 @@ class GroundStep:
                     content="\n\n".join(
                         part
                         for part in (
-                            grounding_reminder(self.scope),
-                            UNTRUSTED_NOTICE,
-                            context.text,
+                            grounding_reminder(self.scope, silence),
+                            *(() if silence else (UNTRUSTED_NOTICE, context.text)),
                         )
                         if part
                     ),
@@ -253,6 +268,18 @@ class Router:
             return False
         room = _rounds(state) + ROUNDS_A_SECOND_LOOK_NEEDS
         return room <= self.max_tool_rounds
+
+
+def _silence(
+    scope: str, found: list[RetrievedChunk], hits: CitableHits, *, broke: bool
+) -> str:
+    """Which nothing came back, in the user's terms. A search that broke gets none of
+    these: the gate cannot tell an empty store from an unreachable one, and saying
+    "you have uploaded nothing" to someone who uploaded plenty is the worse guess. Nor
+    can a blank scope, which has nothing to call a question inside or outside of."""
+    if broke or hits.hits or not scope.strip():
+        return ""
+    return NOTHING_RELEVANT if found else NOTHING_UPLOADED
 
 
 def _remembered(facts: tuple[Fact, ...]) -> tuple[str, ...]:

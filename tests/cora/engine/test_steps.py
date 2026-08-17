@@ -20,6 +20,8 @@ from cora.engine.steps import (
     AGENT_RULES,
     CORA_PREAMBLE,
     MEMORY_RULE,
+    NOTHING_RELEVANT,
+    NOTHING_UPLOADED,
     REMEMBERED_HEADING,
     UNTRUSTED_NOTICE,
     GroundStep,
@@ -731,11 +733,15 @@ def test_the_sources_it_found_are_numbered_after_the_ones_already_known() -> Non
     assert partial["sources"] == [Source(2, "protein.md")]
 
 
-def test_a_search_that_matches_nothing_says_so_instead_of_implying_evidence() -> None:
-    partial = _gate()({"question": "hi there!"})
+def test_a_store_nothing_was_uploaded_to_says_exactly_that() -> None:
+    """The user can act on this one: there is nothing to search, so the answer is to
+    ask for documents rather than to reach for what the model happens to know."""
+    partial = _gate()({"question": "how much protein?"})
 
     [message] = partial["messages"]
-    assert NO_MATCHES in message.content
+    assert NOTHING_UPLOADED in message.content
+    assert "ask the user to upload" in message.content
+    assert UNTRUSTED_NOTICE not in message.content
     assert partial["sources"] == []
 
 
@@ -747,8 +753,19 @@ def test_a_passage_too_far_from_the_question_is_not_evidence() -> None:
     partial = _gate(_hit("protein.md", score=0.02))({"question": "hi there!"})
 
     [message] = partial["messages"]
-    assert NO_MATCHES in message.content
+    assert NOTHING_RELEVANT in message.content
     assert partial["sources"] == []
+
+
+def test_documents_that_cover_nothing_are_not_a_store_with_nothing_in_it() -> None:
+    """The two silences read the same to the code and differently to the user: one
+    asks for documents, the other says the ones they gave do not go there. They were
+    one sentence until a question in the plugin's own subject got answered anyway."""
+    empty = _gate()({"question": "how much protein?"})
+    unmatched = _gate(_hit("protein.md", score=0.02))({"question": "how much protein?"})
+
+    assert NOTHING_UPLOADED not in unmatched["messages"][0].content
+    assert NOTHING_RELEVANT not in empty["messages"][0].content
 
 
 def test_a_passage_near_enough_to_the_question_is_weighed() -> None:

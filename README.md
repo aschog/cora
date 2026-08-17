@@ -86,6 +86,11 @@ answer under *How I got there*: what it decided, which tool it ran with which
 arguments, and what came back. A question that needs no documents is answered
 without searching them.
 
+Ask a question the documents can't answer and cora says so rather than filling the gap
+from what the model happens to know: with nothing uploaded it asks you for documents,
+and with documents that don't cover the question it says that instead. Small talk is
+still answered as small talk.
+
 Ask it to remember something — "remember that I train on Tuesdays and Thursdays",
 "I'm vegetarian, keep that in mind" — and it keeps that between sessions: the
 sidebar's *What I remember* lists every fact it holds, forgets one at a time, or
