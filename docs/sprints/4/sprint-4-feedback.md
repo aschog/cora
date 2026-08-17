@@ -185,3 +185,43 @@ Recorded with a decision, not scheduled — none is in the sprint-4 story cut.
         the user reads as "temporarily unavailable", and a pasted key keeps neither
         space — found by the branch review, which called the claim above overclaimed
   - [x] a blank count reads as unset rather than refusing to start the app
+
+## Found by the `fix/submission-blockers` review
+
+`ai-code-reviewer` on the accumulated branch diff, before the branch merged. It cleared
+the two re-specified tests as honest and found four things inside the scope the branch
+claimed to close — the pattern in three of them is the same: the fix was applied to the
+case that was reported rather than to the class it belongs to.
+
+- [x] **The medication branch still refused a mention** — `about_medication` fired on the
+      word alone, so "I'm on blood pressure medication — what cardio is safe?" was
+      refused: the reported bug, moved one keyword over, and the class docstring claimed
+      behaviour the code did not have. A subject now has to meet a request.
+- [x] **The rule missed whole families of request** — no treatment verb at all ("what
+      should I do about my thyroid"), and no phrasing for "is that diabetes" or "could I
+      be pregnant". Widened, with the two interrogative shapes as regexes so that the
+      condition has to be *what is asked about* — checking the wider list by hand turned
+      up two false positives of its own ("I have diabetes, am I training enough?"), and
+      both are now pinned as allowed.
+- [x] **`OPENROUTER_API_KEY` was the one setting the blank rule skipped**, so a blanked
+      or space-padded key reached OpenRouter and came back a 401 the user reads as
+      "temporarily unavailable". Counts too. Ticked into the blank-setting item above.
+- [x] **A ticked box with no test that can fail** — story 12's small-talk criterion was
+      asserted against a scripted model returning the answer it was scripted to return.
+      The integration test now asserts what it can (the reminder's wording), and the
+      claim that a *model* obeys it moved to the `llm` tier where it can fail.
+- [x] **Context overflow and a rejected key both landed on "please try again"** — no
+      retry fixes either, and the thread is persisted, so an overflow repeats until the
+      user starts a new conversation. Both are categories now; `_CATEGORIES` became an
+      ordered tuple because the provider's classes overlap by inheritance.
+- [x] **The deadline was per request, and the output cap was the provider's** — 60s × 3
+      attempts × 8 rounds is what a user waits behind a spinner with no cancel. The
+      timeout is 20s and `max_tokens` is cora's own, so a truncated answer is a number
+      we chose.
+- [x] **The trace told neither silence apart**, rendering both as "no matching
+      documents" in the panel the user opens to find out why.
+- [x] **Assertions on a fake's constructor kwargs** — replaced with the real client's
+      state, which is what catches a keyword this library stops reading; the subsumed
+      wrapping test is gone and `httpx` is a declared dev dependency.
+- [x] **`found == [] ⇒ nothing uploaded` rested on untested infrastructure** — an
+      integration test now pins that a fresh Chroma collection answers with no hits.

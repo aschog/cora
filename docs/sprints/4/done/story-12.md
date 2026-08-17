@@ -62,6 +62,14 @@ words after story 11 step 4 is the whole change.
       from an unreachable one, and it keeps today's wording and the answer in hand
 - [x] a plugin that declared no scope claims neither either — there is nothing to call a
       question inside or outside of, so the message stays the passages it always was
+- [x] the trace tells the two silences apart too: *How I got there* said "no matching
+      documents" for both, which explains neither
+- [x] **(llm)** the real model, empty store: an in-subject question comes back asking for
+      documents and citing nothing, and a greeting in the same run does not. The
+      integration test can only show the *reminder* is worded right — whether a model
+      obeys it is what a scripted one can never fail on
+- [x] **(int)** a fresh Chroma collection answers a query with no hits at all, which is
+      what "found nothing ⇒ nothing uploaded" rests on
 
 ## Out of scope
 

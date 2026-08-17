@@ -36,6 +36,17 @@ def test_chroma_round_trips_with_our_own_embeddings(
     assert hits[0].score >= hits[1].score
 
 
+def test_a_store_nothing_was_added_to_returns_nothing_at_all(
+    chroma_retriever: "ChromaRetriever",
+) -> None:
+    """The gate reads an empty result as "you have uploaded nothing" and says so to the
+    user (`GroundStep._silence`). That reading is only true if Chroma answers an empty
+    collection with no hits rather than raising or padding to k."""
+    [query_vector] = FakeEmbedder().embed(["anything at all"])
+
+    assert chroma_retriever.query(query_vector, k=5) == []
+
+
 def test_chroma_reads_back_sources_and_contains(
     chroma_retriever: "ChromaRetriever", make_chunk: Callable[..., Chunk]
 ) -> None:

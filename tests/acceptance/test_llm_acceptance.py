@@ -166,6 +166,37 @@ def test_a_real_model_answers_from_the_documents_but_greets_without_them(
     assert _panels(at) == [], "small talk came back citing a document"
 
 
+ASKS_FOR_DOCUMENTS = ("upload", "no documents", "don't have any documents", "share")
+
+
+def test_a_real_model_asks_for_documents_instead_of_answering_without_them(
+    tmp_path: Path,
+) -> None:
+    """Story 12's whole subject is wording, so this is the only tier that can fail for
+    the right reason: a scripted model says whatever the script says, and what is being
+    tested is whether a real one, told it has nothing, declines to answer anyway. The
+    greeting rides in the same run — the same reminder reaches both turns, and it must
+    stop only one of them."""
+    at = AppTest.from_function(_page, args=(_live_app(tmp_path),)).run()
+
+    at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
+
+    assert not at.exception
+    answer = at.chat_message[-1].markdown[0].value.lower()
+    assert any(phrase in answer for phrase in ASKS_FOR_DOCUMENTS), (
+        f"an empty store was answered from model knowledge: {answer!r}"
+    )
+    assert _panels(at) == [], "nothing was uploaded and the answer cited something"
+
+    at.chat_input[0].set_value(SMALL_TALK).run(timeout=180)
+
+    assert not at.exception
+    greeting = at.chat_message[-1].markdown[0].value.lower()
+    assert not any(phrase in greeting for phrase in ASKS_FOR_DOCUMENTS), (
+        f"a greeting was answered by asking for documents: {greeting!r}"
+    )
+
+
 VEGETARIAN = "I'm vegetarian — keep that in mind."
 WHAT_TO_EAT = "What should I eat after a session?"
 MEAT = ("chicken", "beef", "steak", "salmon", "tuna", "pork", "turkey")
