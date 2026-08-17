@@ -5,6 +5,7 @@ from cora.adapters.langgraph_runner import (
     Step,
     _trace_kinds,
     checkpointed_types,
+    langgraph_for,
     recursion_limit_for,
 )
 from cora.domain.agent_state import AgentState
@@ -14,23 +15,15 @@ from cora.domain.errors import InputRejectedError, LlmError, ToolLoopLimitError
 from cora.domain.trace import (
     MemoryUnread,
     ModelDecision,
-    Reconsidered,
-    SecondLookLost,
     ToolUse,
     TraceStep,
 )
-from cora.engine.steps import (
-    GroundStep,
-    ModelStep,
-    PrepareStep,
-    Router,
-    ToolStep,
-)
+from cora.engine.steps import ModelStep, PrepareStep, Router, ToolStep
 from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import EmptyInputRule
 from cora.ports.chat_model import ChatModel, Message, ModelReply, Role
 from cora.ports.plugin import Tool, ToolCall
-from fakes import FailingChatModel, FakeContextSource, add_tool
+from fakes import FailingChatModel, add_tool
 
 ROUNDS = 8
 
@@ -69,8 +62,6 @@ def _prepare(state: AgentState) -> AgentState:
         "messages": _said("user", state["question"]),
         "turn_start": len(state.get("messages", ())),
         "answer": "",
-        "answer_in_hand": "",
-        "reconsidered": False,
     }
 
 
@@ -78,21 +69,11 @@ def _ran(state: AgentState) -> AgentState:
     return {"messages": _said("tool", "ran")}
 
 
-def _nudge(state: AgentState) -> AgentState:
-    return {
-        "messages": _said("system", "search first"),
-        "answer_in_hand": "off",
-        "reconsidered": True,
-    }
-
-
 def _runner(
     *,
     prepare: Step = _prepare,
     model: Step,
     tools: Step = _ran,
-    ground: Step = _nudge,
-    grounded: bool = False,
     rounds: int = ROUNDS,
     recursion_limit: int | None = None,
 ) -> LangGraphRunner:
@@ -100,10 +81,34 @@ def _runner(
         prepare=prepare,
         model=model,
         tools=tools,
-        ground=ground,
-        router=Router(max_tool_rounds=rounds, grounded=grounded),
+        router=Router(max_tool_rounds=rounds),
         recursion_limit=recursion_limit or recursion_limit_for(rounds),
     )
+
+
+def test_the_graph_is_built_from_the_steps_of_a_turn_alone() -> None:
+    """`langgraph_for` is the `GraphFor` slot, so what it accepts is the port itself: a
+    fourth step is not something a composition root can hand it."""
+    assert isinstance(
+        langgraph_for(
+            prepare=_prepare,
+            model=_replies,
+            tools=_ran,
+            router=Router(max_tool_rounds=8),
+            max_tool_rounds=8,
+        ),
+        LangGraphRunner,
+    )
+
+    with pytest.raises(TypeError):
+        langgraph_for(
+            prepare=_prepare,
+            model=_replies,
+            tools=_ran,
+            ground=_ran,  # ty: ignore[unknown-argument]
+            router=Router(max_tool_rounds=8),
+            max_tool_rounds=8,
+        )
 
 
 def test_run_walks_prepare_then_model_then_tools_then_model() -> None:
@@ -151,29 +156,19 @@ def test_the_returned_state_accumulated_every_partial() -> None:
     assert final["sources"] == [Source(1, "note.md")]
 
 
-def test_an_ungrounded_answer_goes_back_through_the_model() -> None:
+def test_an_answer_ends_the_turn_with_no_third_node_to_visit() -> None:
+    """The graph is prepare, model and tools: a final reply is the end of the walk,
+    whatever the answer rested on."""
     visited: list[str] = []
 
     def model(state: AgentState) -> AgentState:
         visited.append("model")
-        if state.get("reconsidered"):
-            return {"messages": _said("assistant", "grounded"), "answer": "grounded"}
         return {"messages": _said("assistant", "off the cuff"), "answer": "off"}
 
-    def ground(state: AgentState) -> AgentState:
-        visited.append("ground")
-        return {
-            "messages": _said("system", "search first"),
-            "answer_in_hand": "off",
-            "reconsidered": True,
-        }
+    final = _final(_runner(model=model), {"question": "q"})
 
-    final = _final(
-        _runner(model=model, ground=ground, grounded=True), {"question": "q"}
-    )
-
-    assert visited == ["model", "ground", "model"]
-    assert final["answer"] == "grounded"
+    assert visited == ["model"]
+    assert final["answer"] == "off"
 
 
 def test_a_step_is_seen_before_the_run_is_over() -> None:
@@ -224,18 +219,15 @@ class _AlwaysCalling:
         )
 
 
-def _real_runner(
-    model: ChatModel, rounds: int, grounded: bool = False
-) -> LangGraphRunner:
+def _real_runner(model: ChatModel, rounds: int) -> LangGraphRunner:
     return LangGraphRunner(
-        ground=GroundStep(scope="protein", context_source=FakeContextSource(), top_k=3),
         prepare=PrepareStep(
             rules=(EmptyInputRule(),),
             instructions="SYS",
         ),
         model=ModelStep(chat_model=model, tools=(add_tool(),), max_history_turns=20),
         tools=ToolStep(ToolRuntime(tools=(add_tool(),))),
-        router=Router(max_tool_rounds=rounds, grounded=grounded),
+        router=Router(max_tool_rounds=rounds),
         recursion_limit=recursion_limit_for(rounds),
     )
 
@@ -250,40 +242,6 @@ def test_the_round_budget_fires_before_the_graphs_own_limit(rounds: int) -> None
         _final(_real_runner(model, rounds=rounds), {"question": "loop forever"})
 
     assert model.completions == rounds
-    assert exc_info.value.__cause__ is None
-
-
-def test_the_round_budget_still_fires_first_when_the_gate_has_added_a_round() -> None:
-    """`run` turns a `GraphRecursionError` into the same `ToolLoopLimitError`, so
-    the count is what tells the two apart: the budget tripping means every round
-    was spent, the graph tripping means it was cut short."""
-
-    class _AnswersThenLoops:
-        def __init__(self) -> None:
-            self.completions = 0
-
-        def complete(
-            self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
-        ) -> ModelReply:
-            self.completions += 1
-            if self.completions == 1:
-                return ModelReply(text="off the cuff")
-            return ModelReply(
-                tool_calls=(
-                    ToolCall(
-                        name="add",
-                        arguments={"a": 1, "b": 2},
-                        call_id=f"c{self.completions}",
-                    ),
-                )
-            )
-
-    model = _AnswersThenLoops()
-
-    with pytest.raises(ToolLoopLimitError) as exc_info:
-        _final(_real_runner(model, rounds=3, grounded=True), {"question": "q"})
-
-    assert model.completions == 3
     assert exc_info.value.__cause__ is None
 
 
@@ -367,8 +325,6 @@ def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
     every_kind: list[TraceStep] = [
         ModelDecision(detail="thinking", tools=("add",)),
         ToolUse(name="add", arguments={"a": 1}, outcome="3"),
-        Reconsidered(outcome="1 passage"),
-        SecondLookLost(),
         MemoryUnread(),
     ]
 
@@ -408,8 +364,6 @@ def test_the_allowlist_covers_every_kind_of_step_a_trace_can_hold() -> None:
         )
     assert {kind.__name__ for kind in _trace_kinds()} >= {
         "ModelDecision",
-        "Reconsidered",
-        "SecondLookLost",
         "MemoryUnread",
         "ToolUse",
     }, "the walk found fewer kinds than the engine ships"

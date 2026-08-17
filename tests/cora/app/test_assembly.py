@@ -20,7 +20,7 @@ from cora.engine.plugin_registry import load_plugin, load_plugins
 from cora.engine.plugin_set import PluginSet
 from cora.engine.port_logging import LoggingEmbedder, LoggingRetriever
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
-from cora.engine.steps import GroundStep, ModelStep, PrepareStep, Router
+from cora.engine.steps import ModelStep, PrepareStep, Router
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import Plugin, ToolCall
 from cora.ports.retrieval import RetrievedChunk
@@ -402,21 +402,18 @@ def test_the_app_exposes_its_memory_so_the_ui_needs_no_adapter() -> None:
     assert app.memory is memory
 
 
-def test_the_search_tool_and_the_gate_read_the_knowledge_base_itself() -> None:
+def test_the_search_tool_reads_the_knowledge_base_itself() -> None:
     """Nothing stands between the tool and the index the uploads were written to: the
-    tool the model is offered finds a document added after assembly, and the gate that
-    searches on the model's behalf holds the same knowledge base."""
+    tool the model is offered finds a document added after assembly."""
     app = _indexed(make_plugin())
     runner = app.agent.runner
     assert isinstance(runner, LangGraphRunner)
     assert isinstance(runner.model, ModelStep)
-    assert isinstance(runner.ground, GroundStep)
     search = next(tool for tool in runner.model.tools if tool.name == SEARCH_TOOL_NAME)
 
     found = search.run(query="protein")
 
     assert [hit.chunk.source for hit in found.hits] == ["note.md"]
-    assert runner.ground.context_source is app.knowledge_base
 
 
 def test_assemble_with_debug_logs_every_port_of_a_retrieving_turn(
@@ -624,3 +621,6 @@ def test_the_graph_is_a_slot_like_every_other_port() -> None:
     assert runner.thread_id == THREAD
     assert asked["max_tool_rounds"] == 8
     assert isinstance(asked["router"], Router)
+    assert set(asked) == {"tools", "router", "max_tool_rounds"}, (
+        "the slot is asked for the steps of a turn and nothing else"
+    )
