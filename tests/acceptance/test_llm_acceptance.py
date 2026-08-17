@@ -15,10 +15,12 @@ from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from apptest import ANSWER_COMPONENT, PANE_COMPONENT, mounted_html
 from cora.app.assembly import App, build
 from cora.app.config import Config
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.frontends.streamlit.viewer import OPEN_CITATION
 from cora.plugins.fitness.tools import DAILY_ENERGY_TOOL
 
 pytestmark = pytest.mark.llm
@@ -46,6 +48,7 @@ def _live_config(store: Path) -> Config:
         plugin_modules=LIVE_PLUGINS,
         db_path=str(store / "chroma"),
         memory_path=str(store / "memory.sqlite"),
+        documents_path=str(store / "documents.sqlite"),
     )
 
 
@@ -244,3 +247,26 @@ def test_a_real_model_keeps_what_it_is_told_and_uses_it_next_session(
     assert not [meat for meat in MEAT if meat in answer], (
         "a remembered constraint was in the brief and the answer ignored it"
     )
+
+
+def test_a_real_model_cites_a_passage_the_reader_can_open(tmp_path: Path) -> None:
+    """Story 16 against the shipped stack: a live answer's citations have to be
+    clickable, and the number has to open the passage it was drawn from. The click is
+    the component's own event, out of AppTest's reach — what this pins is that the
+    button reaches the page and that opening its citation shows the marked passage."""
+    at = AppTest.from_function(_page, args=(_holding_the_protein_doc(tmp_path),)).run()
+
+    at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
+
+    assert not at.exception
+    [answer] = mounted_html(at, ANSWER_COMPONENT)
+    assert 'data-cite="1"' in answer, f"a live answer cited nothing clickable: {answer}"
+
+    at.session_state[OPEN_CITATION] = 1
+    at.run(timeout=60)
+
+    assert not at.exception
+    assert "protein.md" in [heading.value for heading in at.header]
+    [pane] = mounted_html(at, PANE_COMPONENT)
+    [marked] = re.findall(r"<mark[^>]*>(.*?)</mark>", pane, re.DOTALL)
+    assert "1.6" in marked, f"the cited passage is not what the pane marked: {pane}"
