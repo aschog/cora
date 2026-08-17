@@ -26,6 +26,8 @@ headless.
 - [ ] the block still renders `[n] document: text`, one line per hit
 - [ ] `cited(text, citations)` returns only cited passages, ascending
 - [ ] `ChatResult.citations` are the cited passages, resolved against those registered
+- [ ] **(int)** a citation survives a second turn on one thread — the checkpoint allowlist
+      names it where it named `Source`
 
 #### The stored document (`ports/documents.py`, `adapters/sqlite_documents.py`)
 
@@ -34,6 +36,8 @@ headless.
 - [ ] keeping the same name twice leaves the later text
 - [ ] a `sqlite3.Error` surfaces as an `AdapterError`, not a raw driver error
 - [ ] the parent directory is created if missing
+- [ ] `build` wires the store at `CORA_DOCUMENTS_PATH`, and a blank value reads as unset
+      like every other path setting
 
 #### Ingest keeps what the offsets point at (`ingestion.py`, `knowledge_base.py`)
 
@@ -67,6 +71,7 @@ headless.
 - [ ] a citation whose document was never kept says so instead of rendering an empty pane
 - [ ] an `AdapterError` reading the document is reported in the pane and costs the chat
       nothing
+- [ ] the Sources expander lists one line per cited passage, not one per document
 
 #### Outer functional test
 
