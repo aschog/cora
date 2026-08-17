@@ -11,6 +11,7 @@ from streamlit.testing.v1 import AppTest
 ANSWER_COMPONENT = "cora_cited_answer"
 PANE_COMPONENT = "cora_document_pane"
 _TAG = re.compile(r"<[^>]+>")
+_CLICKABLE = re.compile(r'data-cite="(\d+)"')
 
 
 def mounted_html(at: AppTest, name: str) -> list[str]:
@@ -24,6 +25,19 @@ def mounted_html(at: AppTest, name: str) -> list[str]:
 
 def answers(at: AppTest) -> list[str]:
     return [_as_text(html) for html in mounted_html(at, ANSWER_COMPONENT)]
+
+
+def clickable_citations(at: AppTest) -> list[int]:
+    """The numbers an answer offers as buttons. A model writes `[n]` whether or not a
+    passage was registered under it, and a number the domain does not read as a citation
+    at all — glued to a word, or inside a fence — never becomes one, so the text of an
+    answer says nothing about what the reader can open. The button does."""
+    found = (
+        int(number)
+        for html in mounted_html(at, ANSWER_COMPONENT)
+        for number in _CLICKABLE.findall(html)
+    )
+    return sorted(dict.fromkeys(found))
 
 
 def page_text(at: AppTest) -> str:

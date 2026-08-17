@@ -230,7 +230,7 @@ because the map shows them inside another part.
 | **ToolRuntime** | Finds the tool, checks the arguments against its JSON Schema, runs it, and turns a tool's own failure into a `ToolResult`. An infrastructure failure is not tool output, so it travels on unchanged. | `engine/tool_runtime.py` |
 | **Plugin registry** *(folded)* | Loads plugins by their module paths and checks each one before the app starts: the name is not blank, tool names are unique, schemas are valid. Everything but the name is optional, so a bundle of rules alone is as legitimate as a bundle of tools. | `engine/plugin_registry.py` |
 | **Composition root** | The only place that names a real adapter. It reads the settings, loads the plugins it was named, asks the graph slot for a runner, and returns an `App`. | `app/config.py`, `app/assembly.py` |
-| **UI shell** | Only widgets: the uploader, the chat, the sources box, the *How I got there* trace — rendered as text, because a step names the tool the model asked for — and error text shown exactly as the error gives it. An answer is drawn by a custom component so each `[n]` in it is a button: clicking one opens that passage's document beside the chat, marked and scrolled to. | `frontends/streamlit/` |
+| **UI shell** | Only widgets: the uploader, the chat, the *How I got there* trace — rendered as text, because a step names the tool the model asked for — and error text shown exactly as the error gives it. An answer is drawn by a custom component so each `[n]` in it is a button: clicking one opens that passage's document beside the chat, marked and scrolled to. | `frontends/streamlit/` |
 
 ## The ports
 

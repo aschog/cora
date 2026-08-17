@@ -537,6 +537,8 @@ def test_build_starts_with_an_empty_store(tmp_path: Path) -> None:
         request_timeout_seconds=30,
         reasoning_effort="low",
         db_path=str(tmp_path),
+        memory_path=str(tmp_path / "memory.sqlite"),
+        documents_path=str(tmp_path / "documents.sqlite"),
     )
 
     app = build(config)

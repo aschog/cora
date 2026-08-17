@@ -146,3 +146,14 @@ click that opened it read as unrelated.
 - [x] a citation button wears that same colour, so click and highlight match
 - [x] the live tier reads the answer and its trace for proof the documents were reached,
       having lost the panel it read before
+
+#### Found by the branch review (`ai-code-reviewer`, second pass)
+
+- [x] a citation the reader can click is told apart from a bracketed number that resolved
+      to nothing — `[1]` written against no registered passage is not proof of a citation,
+      and the live tier's positive checks read the clickable one
+- [x] `build` opens no store outside the paths it was configured with: the test that
+      proves a fresh install is empty says where all three of its stores live
+- [x] `_expander` goes with the panel it drew, as `numbered_citations` already did
+- [x] the architecture table names what the shell draws today, the sources box having
+      gone

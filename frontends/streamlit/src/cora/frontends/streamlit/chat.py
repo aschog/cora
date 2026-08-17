@@ -271,11 +271,3 @@ def _trace(steps: Sequence[TraceStep], *, failed: bool) -> None:
 
 def _show_step(step: TraceStep) -> None:
     st.code(step_text(step), language="text")
-
-
-def _expander(label: str, lines: Sequence[str]) -> None:
-    if not lines:
-        return
-    with st.expander(label):
-        for line in lines:
-            st.markdown(line)

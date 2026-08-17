@@ -15,7 +15,13 @@ from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from apptest import ANSWER_COMPONENT, PANE_COMPONENT, answers, mounted_html
+from apptest import (
+    ANSWER_COMPONENT,
+    PANE_COMPONENT,
+    answers,
+    clickable_citations,
+    mounted_html,
+)
 from cora.app.assembly import App, build
 from cora.app.config import Config
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
@@ -74,15 +80,21 @@ def _page(app) -> None:  # AppTest re-executes this without the module's globals
 
 def _answer(at: AppTest) -> str:
     """The newest answer, read off the component that drew it: an answer is HTML in a
-    custom element now, so `chat_message[-1].markdown` is the Sources panel at best and
-    empty at worst."""
+    custom element, so `chat_message[-1].markdown` is empty."""
     return answers(at)[-1].lower()
 
 
-def _cited(at: AppTest) -> bool:
-    """A number in the answer is what says the documents were reached. The Sources panel
-    that used to carry this proof is gone — the numbers are the way into a passage now,
-    so the answer is the only place a citation still shows."""
+def _opens_a_passage(at: AppTest) -> bool:
+    """What the Sources panel used to prove, and more: the reader has a citation to
+    click. Read off the button rather than the text, because a number the domain never
+    resolved — glued to a word, or belonging to no registered passage — reaches the page
+    as text and opens nothing."""
+    return clickable_citations(at) != []
+
+
+def _names_a_number(at: AppTest) -> bool:
+    """Loose on purpose, and only ever asserted false: an answer that had no business
+    citing anything is caught by the bracket it wrote, whether or not it resolved."""
     return CITATION.search(_answer(at)) is not None
 
 
@@ -128,8 +140,9 @@ def test_a_whole_session_uploads_asks_calculates_and_remembers(tmp_path: Path) -
     at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
 
     assert not at.exception
-    answered = _answer(at)
-    assert _cited(at), f"the answer rested on a passage it never cited: {answered!r}"
+    assert _opens_a_passage(at), (
+        f"the answer rested on a passage the reader cannot open: {_answer(at)!r}"
+    )
     assert f"{SEARCH_TOOL_NAME}(" in _steps(at)
     assert "protein.md" in _steps(at), "the search never reached the document"
 
@@ -164,13 +177,13 @@ def test_a_real_model_answers_from_the_documents_but_greets_without_them(
     at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
 
     assert not at.exception
-    assert _cited(at), "the model answered without reaching the documents"
+    assert _opens_a_passage(at), "the model answered without reaching the documents"
     assert "protein.md" in _steps(at), "the search never reached the document"
 
     at.chat_input[0].set_value(SMALL_TALK).run(timeout=180)
 
     assert not at.exception
-    assert not _cited(at), "small talk came back citing a document"
+    assert not _names_a_number(at), "small talk came back citing a document"
 
 
 ASKS_FOR_DOCUMENTS = ("upload", "no documents", "don't have any documents", "share")
@@ -202,7 +215,9 @@ def test_a_real_model_asks_for_documents_instead_of_answering_without_them(
     assert any(phrase in answer for phrase in ASKS_FOR_DOCUMENTS), (
         f"an empty store was answered from model knowledge: {answer!r}"
     )
-    assert not _cited(at), "nothing was uploaded and the answer cited something"
+    assert not _names_a_number(at), (
+        "nothing was uploaded and the answer cited something"
+    )
 
     greeted = AppTest.from_function(
         _page, args=(_live_app(tmp_path / "greeted"),)
@@ -214,7 +229,7 @@ def test_a_real_model_asks_for_documents_instead_of_answering_without_them(
     assert any(word in greeting for word in GREETS), (
         f"a greeting was not answered as a greeting: {greeting!r}"
     )
-    assert not _cited(greeted), "a greeting cited a document"
+    assert not _names_a_number(greeted), "a greeting cited a document"
 
 
 VEGETARIAN = "I'm vegetarian — keep that in mind."

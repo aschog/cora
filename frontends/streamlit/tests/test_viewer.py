@@ -2,7 +2,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from app_builder import assembled, indexed
-from apptest import mounted_html
+from apptest import clickable_citations, mounted_html
 from cora.app.assembly import App
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.streamlit.viewer import (
@@ -272,3 +272,26 @@ def test_the_citation_colour_dresses_both_the_button_and_the_passage_it_opens() 
     assert f"color: {CITATION_COLOUR}" in _PANE_CSS
     assert "var(--st-primary-color)" not in _PANE_CSS
     assert "background: var(--st-background-color)" not in _PANE_CSS
+
+
+def test_a_number_that_resolved_to_nothing_is_not_a_citation_the_reader_can_click() -> (
+    None
+):
+    """What the live tier's positive checks rest on. A model writes `[1]` whether or
+    not a passage was registered under it, and glued to a word — `bodyweight[1]` — the
+    domain does not read it as a citation at all, so the answer carries a number and
+    the reader still has nothing to open."""
+    at = _asked(
+        _run(
+            _app(
+                ScriptedChatModel(
+                    [ModelReply(text="Aim for 1.6 g per kg of bodyweight[1].")]
+                )
+            )
+        )
+    )
+
+    assert not at.exception
+    [answer] = _mounted(at, ANSWER_COMPONENT)
+    assert "[1]" in answer, "the number the model wrote reaches the page"
+    assert clickable_citations(at) == [], "but nothing was registered under it"
