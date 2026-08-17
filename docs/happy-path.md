@@ -21,16 +21,18 @@ sequenceDiagram
   participant ingest
   participant Embedder
   participant Chroma
+  participant Documents
 
   You->>UI: pick protein.md in the uploader
   UI->>KnowledgeBase: add_file(data, "protein.md")
   KnowledgeBase->>Chroma: contains(sha256 of the bytes)
   Chroma-->>KnowledgeBase: False
   KnowledgeBase->>ingest: ingest(data, "protein.md", LOADERS)
-  ingest-->>KnowledgeBase: one Chunk
+  ingest-->>KnowledgeBase: the cleaned text and one Chunk
   KnowledgeBase->>Embedder: embed([chunk.text])
   Embedder-->>KnowledgeBase: one vector
   KnowledgeBase->>Chroma: add(chunks, vectors, file_hash)
+  KnowledgeBase->>Documents: keep("protein.md", the cleaned text)
   KnowledgeBase-->>UI: 1
   UI->>You: "Added protein.md — 1 chunk."
   UI->>KnowledgeBase: list_sources()
@@ -88,8 +90,8 @@ sequenceDiagram
   end
 
   LangGraphRunner-->>Agent: the finished state
-  Agent-->>UI: ChatResult(answer, sources, trace)
-  UI->>You: the answer, its Sources, and "How I got there"
+  Agent-->>UI: ChatResult(answer, citations, trace)
+  UI->>You: the answer with each [n] a button, its Sources, and "How I got there"
   UI->>Memory: recall()
   Memory-->>UI: the panel's facts, this turn's included
 ```
