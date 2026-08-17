@@ -84,7 +84,7 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
   - [x] a final reply with no text and no tool calls is an error, not a blank answer
   - [x] a reply carrying tool calls and no text is untouched — that is how a round starts
 
-- [ ] **Medical filter is substring matching** — `MedicalSafetyRule`
+- [x] **Medical filter is substring matching** — `MedicalSafetyRule`
       (`plugins/fitness/safety.py:20-25`) refuses any message containing `diabetes`,
       `pregnan`, `blood pressure`…, so "I have diabetes, how should I train?" is blocked
       outright. Distinguish diagnosis/medication requests from training questions that
@@ -95,14 +95,14 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       the refusal cost nothing — but it stops reading a *mention* as a *request*: naming a
       condition is allowed, asking for a diagnosis, a dose or a medication decision is
       not, and the caveat is the plugin's instructions to write. Test list:
-  - [ ] "I have diabetes, how should I train?" passes the rule
-  - [ ] "Do I have diabetes?" is still refused
-  - [ ] "What steroid dosage should I take?" is still refused
-  - [ ] "Should I stop taking my blood pressure medication?" is refused
-  - [ ] "Is my pregnancy affecting my macros?" passes — **this replaces a test that
+  - [x] "I have diabetes, how should I train?" passes the rule
+  - [x] "Do I have diabetes?" is still refused
+  - [x] "What steroid dosage should I take?" is still refused
+  - [x] "Should I stop taking my blood pressure medication?" is refused
+  - [x] "Is my pregnancy affecting my macros?" passes — **this replaces a test that
         asserts today's refusal**, because the finding says that refusal is the bug
-  - [ ] matching stays case-insensitive, asserted on a phrase that still refuses
-  - [ ] the plugin's instructions tell the model to answer with a caveat and point at a
+  - [x] matching stays case-insensitive, asserted on a phrase that still refuses
+  - [x] the plugin's instructions tell the model to answer with a caveat and point at a
         professional when a condition is named
 
 - [ ] **No streaming** — the port returns a finished reply and the UI blocks on a spinner
