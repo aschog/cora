@@ -186,3 +186,23 @@ redraws every turn on every rerun. The thread itself is what knows where a turn 
       show — a sidebar that cannot reach the memory store is not this turn's answer
 - [x] `build` writes its debug log where the config says: a mutation to the wiring fails,
       and the test that switches debugging on writes nothing into the working directory
+
+#### Found in use: the passage pops up over the chat (`chat.py`, `viewer.py`)
+
+Splitting the page was the wrong shape whichever way the split ran: a third is a document
+read in fragments, two thirds costs the conversation its line, and a filename set as a
+page heading broke over three lines either way. A cited passage is something you open,
+read and dismiss — `@st.dialog` is that, and the chat keeps the whole page while it is
+open. The column split goes, and with it the wide/centered switch it needed.
+
+A dialog's contents land in AppTest's event container rather than `at.main`, which is why
+the shared reader is the first item: nothing else can be seen until it looks there.
+
+- [x] **(int)** `mounted_html` finds a component drawn inside a dialog, and the pane
+      opens in one — the page keeps no column split behind it
+- [ ] **(int)** the dialog is titled with the document's name, the page-wide heading gone
+- [ ] **(int)** dismissing the dialog clears the open citation, so the next rerun does not
+      reopen it
+- [ ] **(int)** a passage never kept and a number belonging to no answer still each say
+      so, inside the dialog
+- [ ] **(int)** the chat keeps its full width and its input while a document is open
