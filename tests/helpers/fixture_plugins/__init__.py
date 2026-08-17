@@ -40,7 +40,6 @@ def make_plugin(
     instructions: str = "You are a test plugin.",
     tools: tuple[Tool, ...] | None = None,
     validation_rules: tuple[ValidationRule, ...] = (),
-    scope: str = "",
 ) -> Plugin:
     """`tools=None` asks for the three default tools; `tools=()` for none."""
     if tools is None:
@@ -50,5 +49,4 @@ def make_plugin(
         instructions=instructions,
         tools=tools,
         validation_rules=validation_rules,
-        scope=scope,
     )

@@ -1,4 +1,4 @@
-from cora.plugins.fitness import INSTRUCTIONS, PLUGIN, SCOPE
+from cora.plugins.fitness import INSTRUCTIONS, PLUGIN
 
 
 def test_the_instructions_state_the_domains_own_business() -> None:
@@ -20,12 +20,6 @@ def test_the_instructions_carry_the_caution_the_rule_stopped_refusing_for() -> N
 
     assert "condition" in instructions
     assert "doctor" in instructions
-
-
-def test_the_scope_is_a_phrase_that_can_join_another() -> None:
-    assert SCOPE.strip() == SCOPE
-    assert "." not in SCOPE
-    assert len(SCOPE.splitlines()) == 1
 
 
 def test_the_bundle_offers_its_calculators_and_its_safety_rule() -> None:

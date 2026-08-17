@@ -10,6 +10,15 @@ FITNESS = "cora.plugins.fitness"
 SECURITY = "cora.plugins.security"
 
 
+def test_a_composed_set_names_no_domain() -> None:
+    coach = make_plugin(name="Coach", tools=())
+    guard = make_plugin(name="Guard", tools=())
+
+    composed = PluginSet(((FITNESS, coach), (SECURITY, guard)))
+
+    assert not hasattr(composed, "scope")
+
+
 class _Refuses:
     def __init__(self, message: str) -> None:
         self.message = message
@@ -95,24 +104,3 @@ def test_a_plugin_with_nothing_to_say_adds_no_section() -> None:
     silent = make_plugin(name="Silent", instructions="", tools=())
 
     assert PluginSet(((SECURITY, silent),)).instructions == ""
-
-
-def test_two_scopes_join_into_one_phrase() -> None:
-    """N phrases join; N paragraphs contradict each other, which is why the plugin
-    supplies the phrase and cora words the reminder around it."""
-    coach = make_plugin(scope="training and nutrition", tools=())
-    safety = make_plugin(scope="workplace safety", tools=())
-
-    assert PluginSet(((FITNESS, coach), (SECURITY, safety))).scope == (
-        "training and nutrition, workplace safety"
-    )
-
-
-def test_a_plugin_without_a_scope_adds_nothing_to_the_phrase() -> None:
-    scoped = make_plugin(scope="training and nutrition", tools=())
-    unscoped = make_plugin(tools=())
-
-    composed = PluginSet(((SECURITY, unscoped), (FITNESS, scoped)))
-
-    assert composed.scope == "training and nutrition"
-    assert PluginSet(((SECURITY, unscoped),)).scope == ""

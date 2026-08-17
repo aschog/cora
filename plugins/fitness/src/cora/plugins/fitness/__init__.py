@@ -17,12 +17,9 @@ clearly, practically, and from the user's own documents.
   plan with their doctor. Do not refuse the question, and do not treat the condition.
 """
 
-SCOPE = "training and nutrition"
-
 PLUGIN = Plugin(
     name="Fitness coaching",
     instructions=INSTRUCTIONS,
-    scope=SCOPE,
     tools=TOOLS,
     validation_rules=(MedicalSafetyRule(),),
 )

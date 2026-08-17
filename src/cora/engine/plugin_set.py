@@ -57,12 +57,6 @@ class PluginSet:
             if plugin.instructions.strip()
         )
 
-    @property
-    def scope(self) -> str:
-        return ", ".join(
-            plugin.scope.strip() for _, plugin in self.entries if plugin.scope.strip()
-        )
-
     def _reject_a_module_named_twice(self) -> None:
         seen: set[str] = set()
         for module, _ in self.entries:
