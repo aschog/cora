@@ -14,12 +14,8 @@ class AgentState(TypedDict, total=False):
 
     `turn_start` is where the current turn begins in the transcript: everything a
     turn needs to know about *itself* rather than the conversation — how many model
-    calls it has spent, whether it has used a tool — is read from there, so no
-    counter has to be reset and none can carry over.
-
-    `reconsidered` says the grounding gate has had its turn; `answer_in_hand` says
-    what it is holding. Two keys, because an answer can be empty and the gate still
-    have run — conflating them would send an empty answer round the gate forever."""
+    calls it has spent — is read from there, so no counter has to be reset and none
+    can carry over."""
 
     question: str
     messages: Annotated[list[Message], operator.add]
@@ -27,6 +23,4 @@ class AgentState(TypedDict, total=False):
     sources: Annotated[list[Source], operator.add]
     turn_start: int
     brief: str
-    reconsidered: bool
-    answer_in_hand: str
     answer: str

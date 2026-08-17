@@ -4,47 +4,13 @@ import pytest
 
 from cora.domain.agent_state import AgentState
 from cora.domain.citations import Source
-from cora.domain.errors import GraphRunError, LlmError, ToolLoopLimitError
-from cora.domain.trace import (
-    ModelDecision,
-    Reconsidered,
-    SecondLookLost,
-    ToolUse,
-    TraceStep,
-)
+from cora.domain.errors import GraphRunError, LlmError
+from cora.domain.trace import ModelDecision, ToolUse, TraceStep
 from cora.engine.agent import Agent
-from cora.ports.chat_model import Message
-from cora.ports.plugin import ToolCall
 
 SEARCHED = ToolUse(name="search_documents", arguments={"query": "protein"})
 ANSWERED = ModelDecision()
-RECONSIDERED = Reconsidered()
-_A_CALL = ToolCall(name="search_documents", arguments={"query": "p"}, call_id="c1")
 THREAD = "t1"
-
-
-def _held(answer: str) -> AgentState:
-    """The state the gate leaves behind: the answer it is holding, the passages it
-    found, and its reminder still the last thing said — nothing has answered it."""
-    return {
-        "answer": answer,
-        "answer_in_hand": answer,
-        "reconsidered": True,
-        "messages": [Message(role="system", content="weigh these")],
-        "sources": [Source(1, "note.md")],
-        "trace": [ANSWERED, RECONSIDERED],
-    }
-
-
-def _answered_the_gate(answer: str) -> AgentState:
-    """The gate's look came back: the model replied after the reminder."""
-    return {
-        **_held(answer),
-        "messages": [
-            Message(role="system", content="weigh these"),
-            Message(role="assistant", content="", tool_calls=(_A_CALL,)),
-        ],
-    }
 
 
 class _StubRunner:
@@ -130,20 +96,6 @@ def test_a_step_already_reported_is_never_reported_twice() -> None:
     assert seen == [SEARCHED, ANSWERED]
 
 
-def test_an_answer_already_in_hand_survives_a_failed_second_look() -> None:
-    """The grounding gate makes a run that already has an answer take one more
-    round. If that round dies, the user still gets the answer it had."""
-    runner = _StubRunner(
-        {"answer": "Hello!", "trace": [ANSWERED]},
-        _held("Hello!"),
-        then=LlmError(),
-    )
-
-    result = Agent(runner).answer("Hi!", THREAD)
-
-    assert result.answer == "Hello!"
-
-
 def test_a_failure_before_any_answer_still_travels_out() -> None:
     runner = _StubRunner({"trace": [SEARCHED]}, then=LlmError())
 
@@ -151,40 +103,13 @@ def test_a_failure_before_any_answer_still_travels_out() -> None:
         Agent(runner).answer("q", THREAD)
 
 
-def test_a_failed_first_round_is_not_rescued_by_an_unnudged_answer() -> None:
-    """Only the gate's extra round is forgiven: any other failure after an answer
-    would be hiding a real one."""
+def test_a_failure_after_an_answer_travels_out_the_same_way() -> None:
+    """An answer in the state is no reason to swallow what came after it: nothing is
+    held back, so every adapter failure is the turn's failure."""
     runner = _StubRunner({"answer": "Hello!", "trace": [ANSWERED]}, then=LlmError())
 
     with pytest.raises(LlmError):
         Agent(runner).answer("Hi!", THREAD)
-
-
-def test_a_failure_once_the_second_look_has_landed_is_an_ordinary_failure() -> None:
-    """What tells the two apart is whether anything answered the gate, not whether a
-    source turned up: the gate registers the passages it found either way."""
-    runner = _StubRunner(_held("Hello!"), _answered_the_gate("Hello!"), then=LlmError())
-
-    with pytest.raises(LlmError):
-        Agent(runner).answer("Hi!", THREAD)
-
-
-def test_the_give_up_apology_is_never_forgiven_even_mid_second_look() -> None:
-    """A verdict the router reached is not a failure to reach the model."""
-    runner = _StubRunner(_held("Hello!"), then=ToolLoopLimitError())
-
-    with pytest.raises(ToolLoopLimitError):
-        Agent(runner).answer("Hi!", THREAD)
-
-
-def test_a_rescue_records_that_the_second_look_never_came_back() -> None:
-    seen: list[TraceStep] = []
-    runner = _StubRunner(_held("Hello!"), then=LlmError())
-
-    result = Agent(runner).answer("Hi!", THREAD, on_step=seen.append)
-
-    assert isinstance(result.trace[-1], SecondLookLost)
-    assert seen[-1] == result.trace[-1]
 
 
 def test_a_runner_that_walks_no_step_at_all_is_a_failure_not_an_empty_answer() -> None:
