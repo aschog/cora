@@ -10,9 +10,7 @@ from langchain_core.messages import (
 )
 
 from cora.adapters.openrouter_chat_model import (
-    MAX_OUTPUT_TOKENS,
     MAX_RETRIES,
-    REQUEST_TIMEOUT_SECONDS,
     OpenRouterChatModel,
     to_langchain_message,
     to_model_reply,
@@ -113,7 +111,14 @@ def test_tool_schemas_are_bound_onto_the_client(
         "cora.adapters.openrouter_chat_model.ChatOpenAI", _FakeChatOpenAI
     )
     tool = add_tool()
-    model = OpenRouterChatModel(model="m", api_key="k", base_url="https://example/api")
+    model = OpenRouterChatModel(
+        model="m",
+        api_key="k",
+        base_url="https://example/api",
+        max_output_tokens=1024,
+        request_timeout_seconds=30,
+        reasoning_effort="low",
+    )
 
     model.complete((Message(role="user", content="hi"),), (tool,))
 
@@ -130,20 +135,43 @@ def test_tool_schemas_are_bound_onto_the_client(
     ]
 
 
-def test_the_client_is_built_with_a_deadline_a_retry_count_and_a_cap() -> None:
+def test_the_client_is_built_with_the_budgets_it_was_handed() -> None:
     """The real client, not a fake taking kwargs: a name this library stopped reading
     would be swallowed into `model_kwargs` and the deadline would quietly not exist.
     Building one needs no network — nothing is sent until `invoke`.
 
-    An agent makes several model calls per turn, so a request with no deadline is a turn
-    that never ends, one attempt is a turn a single dropped connection ends, and no cap
-    is an answer whose length the provider's default decides."""
-    model = OpenRouterChatModel(model="m", api_key="k", base_url="https://example/api")
+    The numbers come from the caller because they belong to the model the deployment
+    named: what a reasoning model needs to think and answer within is not what the
+    adapter can know."""
+    model = OpenRouterChatModel(
+        model="m",
+        api_key="k",
+        base_url="https://example/api",
+        max_output_tokens=1234,
+        request_timeout_seconds=77,
+        reasoning_effort="low",
+    )
 
     client = model._client
-    assert client.request_timeout == REQUEST_TIMEOUT_SECONDS
+    assert client.max_tokens == 1234
+    assert client.request_timeout == 77
     assert client.max_retries == MAX_RETRIES
-    assert client.max_tokens == MAX_OUTPUT_TOKENS
+
+
+def test_the_client_asks_for_the_reasoning_effort_it_was_handed() -> None:
+    """A reasoning model bills its thinking to the same budget it answers from, so how
+    hard it thinks decides what is left to answer with — and the provider's own default
+    is not the one measured to answer fastest here."""
+    model = OpenRouterChatModel(
+        model="m",
+        api_key="k",
+        base_url="https://example/api",
+        max_output_tokens=1234,
+        request_timeout_seconds=77,
+        reasoning_effort="high",
+    )
+
+    assert model._client.extra_body == {"reasoning": {"effort": "high"}}
 
 
 @pytest.mark.parametrize(
@@ -194,7 +222,14 @@ def test_a_provider_failure_keeps_the_category_the_user_can_act_on(
     monkeypatch.setattr(
         "cora.adapters.openrouter_chat_model.ChatOpenAI", _FailingChatOpenAI
     )
-    model = OpenRouterChatModel(model="m", api_key="k", base_url="https://example/api")
+    model = OpenRouterChatModel(
+        model="m",
+        api_key="k",
+        base_url="https://example/api",
+        max_output_tokens=1024,
+        request_timeout_seconds=30,
+        reasoning_effort="low",
+    )
 
     with pytest.raises(expected):
         model.complete((Message(role="user", content="hi"),), ())
@@ -238,7 +273,14 @@ def test_complete_returns_the_mapped_model_reply(
     monkeypatch.setattr(
         "cora.adapters.openrouter_chat_model.ChatOpenAI", _FakeChatOpenAI
     )
-    model = OpenRouterChatModel(model="m", api_key="k", base_url="https://example/api")
+    model = OpenRouterChatModel(
+        model="m",
+        api_key="k",
+        base_url="https://example/api",
+        max_output_tokens=1024,
+        request_timeout_seconds=30,
+        reasoning_effort="low",
+    )
 
     reply = model.complete((Message(role="user", content="hi"),), ())
 

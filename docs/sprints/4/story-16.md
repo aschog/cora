@@ -102,3 +102,32 @@ headless.
       uploads is two citations — the domain half of the keying, pinned by a mutation
 - [x] uploading a file again repairs text an index never had, rather than leaving its
       passages unopenable for good
+
+#### Found in use: a plan-sized answer never finishes (`config.py`, `openrouter_chat_model.py`)
+
+A reasoning model spends its output budget thinking before it writes a word, so the two
+numbers sized for `gpt-4o-mini` — 2048 tokens, 20 seconds — cannot fit a training plan
+under `gpt-5-mini`. The deployment that names the model names its budgets.
+
+- [x] `Config.from_env` reads `CORA_MAX_OUTPUT_TOKENS`, defaulting to room for a
+      reasoning model's thinking *and* a plan-sized answer
+- [x] `Config.from_env` reads `CORA_REQUEST_TIMEOUT`, defaulting to a deadline such an
+      answer arrives within
+- [x] both refuse a non-integer, a blank and a value below their lowest useful one, like
+      every other count
+- [x] `OpenRouterChatModel` builds its client with the budgets it was handed, not with
+      module constants
+- [x] `build` hands the config's budgets to the model, so setting them in the environment
+      reaches the client
+
+#### How hard the model thinks is the deployment's dial too (`config.py`, `openrouter_chat_model.py`)
+
+Measured on the same question: at `medium` — the provider's default — `gpt-5-mini` takes
+32-61s a turn, at `low` 22-25s, and it searches the documents and cites either way. The
+dial belongs beside the budgets it spends.
+
+- [x] `Config.from_env` reads `CORA_REASONING_EFFORT`, defaulting to the setting measured
+      to answer fastest without costing the citations
+- [x] an effort no provider defines is refused at startup rather than sent
+- [x] `OpenRouterChatModel` asks for the effort it was handed in the request body
+- [x] `build` hands the configured effort to the model

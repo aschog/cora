@@ -11,6 +11,22 @@ DEFAULT_PLUGINS: tuple[str, ...] = ()
 bundle is named by the deployment that wants it."""
 DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
+DEFAULT_MAX_OUTPUT_TOKENS = 8192
+"""A reasoning model bills its thinking to the budget it writes the answer from, so the
+cap has to cover both: `gpt-5-mini` spent ~1200 tokens thinking before the first word of
+a training plan, and ~3200 in all. The cap is a ceiling, not a reservation — a short
+answer costs what it costs."""
+DEFAULT_REQUEST_TIMEOUT_SECONDS = 90
+"""Long enough that the cap above is what limits an answer, not the clock: the same
+`gpt-5-mini` plan took 37-56 seconds to arrive, and a deadline inside that range only
+swaps a truncated answer for a timed-out one."""
+REASONING_EFFORTS = ("low", "medium", "high")
+DEFAULT_REASONING_EFFORT = "low"
+"""How much of the budget above the model may spend thinking. Measured on one question,
+`gpt-5-mini` answered in 22-25s at `low` against 32-61s at the provider's own `medium`,
+searching the documents and citing them either way — and at `high` it spent all 8192
+tokens thinking and returned no answer at all. A model that does not reason ignores the
+setting rather than refusing it."""
 DEFAULT_HISTORY_TURNS = 20
 DEFAULT_DB_PATH = ".cora/chroma"
 DEFAULT_MEMORY_PATH = ".cora/memory.sqlite"
@@ -26,6 +42,9 @@ class Config:
     top_k: int
     max_tool_rounds: int
     history_turns: int
+    max_output_tokens: int
+    request_timeout_seconds: int
+    reasoning_effort: str
     db_path: str
     memory_path: str = DEFAULT_MEMORY_PATH
     documents_path: str = DEFAULT_DOCUMENTS_PATH
@@ -51,6 +70,16 @@ class Config:
             history_turns=_int(
                 env, "CORA_HISTORY_TURNS", DEFAULT_HISTORY_TURNS, minimum=0
             ),
+            max_output_tokens=_int(
+                env, "CORA_MAX_OUTPUT_TOKENS", DEFAULT_MAX_OUTPUT_TOKENS, minimum=1
+            ),
+            request_timeout_seconds=_int(
+                env,
+                "CORA_REQUEST_TIMEOUT",
+                DEFAULT_REQUEST_TIMEOUT_SECONDS,
+                minimum=1,
+            ),
+            reasoning_effort=_effort(env),
             db_path=_named(env, "CORA_DB_PATH", DEFAULT_DB_PATH),
             memory_path=_named(env, "CORA_MEMORY_PATH", DEFAULT_MEMORY_PATH),
             documents_path=_named(env, "CORA_DOCUMENTS_PATH", DEFAULT_DOCUMENTS_PATH),
@@ -63,6 +92,16 @@ def _model(env: Mapping[str, str]) -> str:
     way too; `CORA_MODEL` is the documented name and stays the one that wins whenever it
     names a model — blanks are not a name, and would otherwise outrank the alias."""
     return _named(env, "CORA_MODEL", _named(env, "OPENROUTER_MODEL", DEFAULT_MODEL))
+
+
+def _effort(env: Mapping[str, str]) -> str:
+    effort = _named(env, "CORA_REASONING_EFFORT", DEFAULT_REASONING_EFFORT)
+    if effort not in REASONING_EFFORTS:
+        raise ConfigurationError(
+            f"CORA_REASONING_EFFORT must be one of {', '.join(REASONING_EFFORTS)}, "
+            f"but got {effort!r}."
+        )
+    return effort
 
 
 def _named(env: Mapping[str, str], key: str, default: str) -> str:

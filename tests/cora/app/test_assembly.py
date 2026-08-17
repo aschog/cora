@@ -1,4 +1,5 @@
 import logging
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -6,6 +7,7 @@ import pytest
 
 from app_builder import assembled, indexed
 from cora.adapters.langgraph_runner import LangGraphRunner
+from cora.adapters.openrouter_chat_model import OpenRouterChatModel
 from cora.app.assembly import App, build
 from cora.app.config import DEFAULT_PLUGINS, Config
 from cora.app.log_config import DEBUG_HANDLER_NAME, FILE_HANDLER_NAME
@@ -509,6 +511,9 @@ def _config(db_path: Path, *, debug: bool = False) -> Config:
         top_k=3,
         max_tool_rounds=4,
         history_turns=6,
+        max_output_tokens=1024,
+        request_timeout_seconds=30,
+        reasoning_effort="low",
         db_path=str(db_path),
         memory_path=str(db_path / "memory.sqlite"),
         documents_path=str(db_path / "documents.sqlite"),
@@ -528,6 +533,9 @@ def test_build_starts_with_an_empty_store(tmp_path: Path) -> None:
         top_k=3,
         max_tool_rounds=4,
         history_turns=6,
+        max_output_tokens=1024,
+        request_timeout_seconds=30,
+        reasoning_effort="low",
         db_path=str(tmp_path),
     )
 
@@ -599,6 +607,29 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
         "one memory, so what the tool writes is what the brief reads"
     )
     assert any(tmp_path.iterdir()), "the store must land under the configured path"
+
+
+@pytest.mark.integration
+def test_build_hands_the_configured_budgets_to_the_model(tmp_path: Path) -> None:
+    """The environment's whole point is reaching the client: a budget read into `Config`
+    and never passed on leaves the answer capped at whatever the adapter hardcoded."""
+    config = replace(
+        _config(tmp_path),
+        max_output_tokens=4321,
+        request_timeout_seconds=99,
+        reasoning_effort="high",
+    )
+
+    app = build(config)
+
+    runner = app.agent.runner
+    assert isinstance(runner, LangGraphRunner)
+    assert isinstance(runner.model, ModelStep)
+    chat_model = runner.model.chat_model
+    assert isinstance(chat_model, OpenRouterChatModel)
+    assert chat_model._client.max_tokens == 4321
+    assert chat_model._client.request_timeout == 99
+    assert chat_model._client.extra_body == {"reasoning": {"effort": "high"}}
 
 
 def test_the_graph_is_a_slot_like_every_other_port() -> None:

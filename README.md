@@ -117,6 +117,17 @@ way), `CORA_DOCUMENTS_PATH` (where the text behind each citation persists, so cl
 startup if they fall below their lowest useful value — `0` for history turns, `1`
 for the others.
 
+Three more belong to whichever model `CORA_MODEL` names, and are set with it:
+`CORA_MAX_OUTPUT_TOKENS` (default `8192`), `CORA_REQUEST_TIMEOUT` (seconds per model
+request, default `90`) and `CORA_REASONING_EFFORT` (`low`, `medium` or `high`; default
+`low`). A reasoning model such as `openai/gpt-5-mini` bills its thinking to the same
+token budget it writes the answer from and takes correspondingly longer to arrive, so a
+cap sized for a model that does not reason cuts every long answer off — and raising it
+alone only trades that truncation for a timeout. The effort is the dial between them: on
+one question `low` answered in 22-25s against `medium`'s 32-61s, citing the documents
+either way, while `high` spent an entire 8192-token budget thinking and returned no
+answer at all. A model that does not reason ignores the setting rather than refusing it.
+
 Set `CORA_DEBUG` to `1` or `true` to trace what crosses the ports — one truncated
 line per embed, retrieval (with sources and scores) and model round trip, printed
 to the terminal running Streamlit. Any other value leaves it off, so tracing is

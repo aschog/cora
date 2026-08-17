@@ -123,7 +123,12 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
     retriever = ChromaRetriever(path=config.db_path, collection=collection)
     return assemble(
         chat_model=OpenRouterChatModel(
-            model=config.model, api_key=config.api_key, base_url=config.base_url
+            model=config.model,
+            api_key=config.api_key,
+            base_url=config.base_url,
+            max_output_tokens=config.max_output_tokens,
+            request_timeout_seconds=config.request_timeout_seconds,
+            reasoning_effort=config.reasoning_effort,
         ),
         embedder=SentenceTransformerEmbedder(),
         retriever=retriever,

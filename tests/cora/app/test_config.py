@@ -16,6 +16,9 @@ def test_from_env_reads_every_field() -> None:
             "CORA_TOP_K": "7",
             "CORA_MAX_TOOL_ROUNDS": "3",
             "CORA_HISTORY_TURNS": "9",
+            "CORA_MAX_OUTPUT_TOKENS": "500",
+            "CORA_REQUEST_TIMEOUT": "45",
+            "CORA_REASONING_EFFORT": "high",
             "CORA_DB_PATH": "/tmp/vectors",
             "CORA_MEMORY_PATH": "/tmp/memory.sqlite",
             "CORA_DOCUMENTS_PATH": "/tmp/documents.sqlite",
@@ -30,6 +33,9 @@ def test_from_env_reads_every_field() -> None:
         top_k=7,
         max_tool_rounds=3,
         history_turns=9,
+        max_output_tokens=500,
+        request_timeout_seconds=45,
+        reasoning_effort="high",
         db_path="/tmp/vectors",
         memory_path="/tmp/memory.sqlite",
         documents_path="/tmp/documents.sqlite",
@@ -176,7 +182,14 @@ def test_a_key_is_taken_without_the_spaces_around_it() -> None:
 
 
 @pytest.mark.parametrize(
-    "variable", ["CORA_TOP_K", "CORA_MAX_TOOL_ROUNDS", "CORA_HISTORY_TURNS"]
+    "variable",
+    [
+        "CORA_TOP_K",
+        "CORA_MAX_TOOL_ROUNDS",
+        "CORA_HISTORY_TURNS",
+        "CORA_MAX_OUTPUT_TOKENS",
+        "CORA_REQUEST_TIMEOUT",
+    ],
 )
 def test_a_count_of_only_blanks_reads_as_unset_rather_than_as_a_number(
     variable: str,
@@ -230,7 +243,14 @@ def test_from_env_missing_api_key_raises_configuration_error() -> None:
 
 
 @pytest.mark.parametrize(
-    "var", ["CORA_TOP_K", "CORA_MAX_TOOL_ROUNDS", "CORA_HISTORY_TURNS"]
+    "var",
+    [
+        "CORA_TOP_K",
+        "CORA_MAX_TOOL_ROUNDS",
+        "CORA_HISTORY_TURNS",
+        "CORA_MAX_OUTPUT_TOKENS",
+        "CORA_REQUEST_TIMEOUT",
+    ],
 )
 def test_from_env_non_integer_value_raises_configuration_error(var: str) -> None:
     with pytest.raises(ConfigurationError):
@@ -238,14 +258,29 @@ def test_from_env_non_integer_value_raises_configuration_error(var: str) -> None
 
 
 @pytest.mark.parametrize(
-    "var", ["CORA_TOP_K", "CORA_MAX_TOOL_ROUNDS", "CORA_HISTORY_TURNS"]
+    "var",
+    [
+        "CORA_TOP_K",
+        "CORA_MAX_TOOL_ROUNDS",
+        "CORA_HISTORY_TURNS",
+        "CORA_MAX_OUTPUT_TOKENS",
+        "CORA_REQUEST_TIMEOUT",
+    ],
 )
 def test_from_env_negative_value_raises_configuration_error(var: str) -> None:
     with pytest.raises(ConfigurationError):
         Config.from_env({"OPENROUTER_API_KEY": "key-123", var: "-1"})
 
 
-@pytest.mark.parametrize("var", ["CORA_TOP_K", "CORA_MAX_TOOL_ROUNDS"])
+@pytest.mark.parametrize(
+    "var",
+    [
+        "CORA_TOP_K",
+        "CORA_MAX_TOOL_ROUNDS",
+        "CORA_MAX_OUTPUT_TOKENS",
+        "CORA_REQUEST_TIMEOUT",
+    ],
+)
 def test_from_env_zero_raises_where_one_is_the_lowest_useful_value(var: str) -> None:
     with pytest.raises(ConfigurationError):
         Config.from_env({"OPENROUTER_API_KEY": "key-123", var: "0"})
@@ -257,3 +292,50 @@ def test_from_env_allows_zero_history_turns_to_switch_memory_off() -> None:
     )
 
     assert config.history_turns == 0
+
+
+def test_the_default_output_budget_fits_a_reasoning_model_thinking_and_answering() -> (
+    None
+):
+    """Measured against `openai/gpt-5-mini`: a training-plan answer spent about 1200
+    tokens reasoning before its first word and some 3200 in all. A budget that fits only
+    the thinking returns `finish_reason="length"` every time, so no retry can help."""
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert config.max_output_tokens >= 4096
+
+
+def test_the_default_deadline_outlasts_a_reasoning_models_slowest_answer() -> None:
+    """Measured against `openai/gpt-5-mini`: the same training-plan answer took 37-56
+    seconds to arrive. A deadline inside that range trades the truncated answer for a
+    timed-out one, which is the same failed turn wearing another message."""
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert config.request_timeout_seconds >= 90
+
+
+def test_the_default_effort_keeps_the_citations_and_the_least_time() -> None:
+    """Measured against `openai/gpt-5-mini` on one question: `medium`, the provider's
+    own default, spent 32-61s a turn and `low` 22-25s, and both searched and
+    cited them. `high` is the setting to leave alone — it spent an entire 8192-token
+    budget thinking and returned no answer at all."""
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert config.reasoning_effort == "low"
+
+
+@pytest.mark.parametrize("raw", ["lots", "LOW", "none", "0"])
+def test_an_effort_no_provider_defines_is_refused_at_startup(raw: str) -> None:
+    """Sent instead of refused it comes back as a provider error mid-question, by which
+    time the user is the one reading it."""
+    with pytest.raises(ConfigurationError):
+        Config.from_env({"OPENROUTER_API_KEY": "key-123", "CORA_REASONING_EFFORT": raw})
+
+
+@pytest.mark.parametrize("raw", ["low", "medium", "high"])
+def test_every_effort_the_provider_defines_is_accepted(raw: str) -> None:
+    config = Config.from_env(
+        {"OPENROUTER_API_KEY": "key-123", "CORA_REASONING_EFFORT": raw}
+    )
+
+    assert config.reasoning_effort == raw
