@@ -25,12 +25,23 @@ class KnowledgeBase:
         leaves nothing behind."""
         file_hash = hashlib.sha256(data).hexdigest()
         if self.retriever.contains(file_hash):
+            self._repair(data, filename, file_hash)
             return 0
         text, chunks = ingest(data, filename, self.loaders)
         vectors = self.embedder.embed([chunk.text for chunk in chunks])
         self.documents.keep(file_hash, text)
         self.retriever.add(chunks, vectors, file_hash)
         return len(chunks)
+
+    def _repair(self, data: bytes, filename: str, file_hash: str) -> None:
+        """An index that holds passages whose text was never kept — one written before
+        cora kept any — hands out citations that open onto nothing, and `contains` would
+        leave it that way for good. Uploading the same file again is the repair, and it
+        costs the parse rather than the embeddings."""
+        if self.documents.read(file_hash) is not None:
+            return
+        text, _ = ingest(data, filename, self.loaders)
+        self.documents.keep(file_hash, text)
 
     def text(self, upload: str) -> str | None:
         """The text one upload arrived as. A passage carries the upload it was cut

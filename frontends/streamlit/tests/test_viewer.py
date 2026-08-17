@@ -18,6 +18,11 @@ from cora.ports.documents import Documents
 from cora.ports.plugin import ToolCall
 from fakes import FailingDocuments, FakeDocuments, ScriptedChatModel
 
+pytestmark = pytest.mark.integration
+"""Every test here drives a Streamlit page, which is what the marker is for: the unit
+tier is the watch layer, and `test_formatting.py` is where this feature's pure half is
+covered."""
+
 PROTEIN = ("protein.md", b"Aim for 1.6 g of protein per kg of bodyweight.")
 CREATINE = ("creatine.md", b"Five grams of creatine a day is plenty.")
 CITED = "Your notes say 1.6 g per kg [1]."
@@ -201,6 +206,7 @@ def test_a_passage_whose_text_was_never_kept_says_so_under_its_heading() -> None
     assert "protein.md" in _headings(at)
     assert _panes(at) == []
     assert NOT_KEPT in [warning.value for warning in at.warning]
+    assert NOT_KEPT != UNKNOWN_CITATION, "a passage I cannot read is not a stray number"
 
 
 def test_a_store_that_cannot_be_read_is_reported_and_costs_the_chat_nothing() -> None:
@@ -224,7 +230,6 @@ def test_a_store_that_cannot_be_read_is_reported_and_costs_the_chat_nothing() ->
     assert at.session_state[THREAD_KEY], "the conversation is still on screen"
 
 
-@pytest.mark.integration
 def test_the_answer_reaches_the_page_only_through_its_own_component() -> None:
     """Where an answer lives, pinned: it is drawn by the component that makes each `[n]`
     clickable, and nothing prints it as markdown. A test reading answers off

@@ -147,11 +147,18 @@ def test_a_document_that_fails_to_ingest_keeps_nothing(
         kb.add_file(b"   ", "blank.txt")
 
     assert documents.writes == 0
-    assert kb.text("blank.txt") is None
 
 
 def test_the_text_of_an_unknown_document_is_nothing(kb: KnowledgeBase) -> None:
     assert kb.text("never-uploaded.md") is None
+
+
+class _KeepsNothing(FakeDocuments):
+    """A store that accepts and forgets: what an index written before story 16 looks
+    like from here."""
+
+    def keep(self, upload: str, text: str) -> None:
+        return None
 
 
 class _KeepFails(FakeDocuments):
@@ -199,3 +206,34 @@ def test_a_passage_reads_back_the_text_it_was_cut_from(kb: KnowledgeBase) -> Non
     chunk = first.chunk
     assert text[chunk.offset : chunk.offset + len(chunk.text)] == chunk.text
     assert "Version one" in text
+
+
+def test_uploading_a_file_again_repairs_text_the_index_never_had(
+    embedder: FakeEmbedder, retriever: FakeRetriever, documents: FakeDocuments
+) -> None:
+    """An index written before its documents were kept answers with citations that open
+    onto nothing, and `contains` would keep it that way for good. Uploading the same
+    file again is the repair: no second copy in the index, and the passages become
+    readable."""
+    data = b"Aim for 1.6 g of protein per kg."
+    indexed_only = KnowledgeBase(
+        embedder=embedder,
+        retriever=retriever,
+        loaders=TEXT_LOADERS,
+        documents=_KeepsNothing(),
+    )
+    indexed_only.add_file(data, "protein.md")
+    [before] = retriever.query(embedder.embed(["protein"])[0], k=1)
+    assert documents.read(before.chunk.upload) is None
+
+    kb = KnowledgeBase(
+        embedder=embedder,
+        retriever=retriever,
+        loaders=TEXT_LOADERS,
+        documents=documents,
+    )
+    added = kb.add_file(data, "protein.md")
+
+    assert added == 0, "the index already has it, so nothing is indexed twice"
+    assert kb.text(before.chunk.upload) == "Aim for 1.6 g of protein per kg."
+    assert len(retriever.query(embedder.embed(["protein"])[0], k=5)) == 1

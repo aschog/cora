@@ -13,10 +13,17 @@ from cora.frontends.streamlit.formatting import (
 
 
 def test_numbered_citations_renders_each_passage_under_its_own_number() -> None:
+    """One line per passage, not per document: two passages of one file are two lines,
+    which is what tells the reader which number opens which."""
     assert numbered_citations(
-        (Citation(1, "a.pdf", 0, 5), Citation(3, "b.md", 20, 30))
+        (
+            Citation(1, "a.pdf", 0, 5),
+            Citation(2, "a.pdf", 40, 50),
+            Citation(3, "b.md", 20, 30),
+        )
     ) == [
         "[1] a.pdf",
+        "[2] a.pdf",
         "[3] b.md",
     ]
 
@@ -148,8 +155,9 @@ def test_the_cited_span_is_marked_and_nothing_else_is() -> None:
 
 
 def test_a_span_running_past_the_end_marks_to_the_end() -> None:
-    """Offsets come from an earlier ingest of a document that may since have been
-    re-uploaded shorter: the pane shows what it can rather than raising at the user."""
+    """A span is measured in the text the pane reads, so this is the case that should
+    not arise — a truncated row, or a passage from before uploads were recorded. The
+    pane shows what it can rather than raising at the reader."""
     html = document_html("short", Citation(1, "d.md", 2, 500))
 
     assert ">ort<" in html
@@ -196,7 +204,3 @@ def test_an_image_in_the_answer_fetches_nothing() -> None:
 
     assert "<img" not in html
     assert "src=" not in html
-
-
-def test_two_passages_of_one_document_are_two_lines() -> None:
-    assert numbered_citations((NOTE, OMEGA)) == ["[1] note.md", "[2] note.md"]

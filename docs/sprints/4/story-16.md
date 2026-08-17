@@ -98,3 +98,7 @@ headless.
       apart from a number belonging to no answer in the thread
 - [x] closing the pane gives the conversation its full width back — the column split
       goes, not just the pane's contents
+- [x] a citation carries the upload its span was measured in, and one span of two
+      uploads is two citations — the domain half of the keying, pinned by a mutation
+- [x] uploading a file again repairs text an index never had, rather than leaving its
+      passages unopenable for good

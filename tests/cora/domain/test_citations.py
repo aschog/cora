@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 from cora.domain.chunk import Chunk
 from cora.domain.citations import (
     NO_MATCHES,
@@ -155,3 +157,36 @@ def test_a_number_with_no_registered_citation_is_ignored() -> None:
     known = (Citation(1, "a.txt", 0, 5),)
 
     assert cited("per [1] and also [9]", known) == (Citation(1, "a.txt", 0, 5),)
+
+
+def test_a_citation_carries_the_upload_its_passage_was_cut_from() -> None:
+    """What makes `[n]` openable: the span is measured in one upload's text, so the
+    citation has to name that upload and not merely the file it was called."""
+    hit = _hit("a.txt", "alpha", offset=12)
+    hit = RetrievedChunk(chunk=replace(hit.chunk, upload="sha-1"), score=1.0)
+
+    context = build_context_block([hit])
+
+    assert context.citations == (Citation(1, "a.txt", 12, 17, upload="sha-1"),)
+
+
+def test_one_span_of_two_uploads_is_two_citations() -> None:
+    """The same filename uploaded twice, edited in between: the spans coincide but the
+    text does not, so they may not collapse onto one number — that number would open
+    one passage while the answer rested on the other."""
+    first = RetrievedChunk(
+        chunk=Chunk(text="alpha", source="a.txt", index=0, offset=0, upload="sha-1"),
+        score=1.0,
+    )
+    second = RetrievedChunk(
+        chunk=Chunk(text="omega", source="a.txt", index=0, offset=0, upload="sha-2"),
+        score=1.0,
+    )
+
+    context = build_context_block([first, second])
+
+    assert [(c.number, c.upload) for c in context.citations] == [
+        (1, "sha-1"),
+        (2, "sha-2"),
+    ]
+    assert _numbered(context.text, "a.txt") == ["[1]", "[2]"]

@@ -31,8 +31,8 @@ sequenceDiagram
   ingest-->>KnowledgeBase: the cleaned text and one Chunk
   KnowledgeBase->>Embedder: embed([chunk.text])
   Embedder-->>KnowledgeBase: one vector
+  KnowledgeBase->>Documents: keep(file_hash, the cleaned text)
   KnowledgeBase->>Chroma: add(chunks, vectors, file_hash)
-  KnowledgeBase->>Documents: keep("protein.md", the cleaned text)
   KnowledgeBase-->>UI: 1
   UI->>You: "Added protein.md — 1 chunk."
   UI->>KnowledgeBase: list_sources()

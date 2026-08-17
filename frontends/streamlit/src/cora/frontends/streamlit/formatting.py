@@ -48,8 +48,9 @@ def numbered_citations(citations: Sequence[Citation]) -> list[str]:
 def answer_html(answer: str, citations: Sequence[Citation]) -> str:
     """The answer as markdown, with every `[n]` that resolves turned into a button the
     reader can press. A number nothing was registered under stays the text the model
-    wrote, and one inside code stays code — an example of indexing a list is not a
-    citation."""
+    wrote, and one inside a code block stays code — an example of indexing a list is not
+    something to click. It can still be listed in the Sources panel, which reads the
+    answer as text: what a fence hides is the button, not the citation."""
     numbers = {citation.number for citation in citations}
     rendered = _MARKDOWN.render(answer)
     written: list[str] = []
@@ -64,8 +65,9 @@ def answer_html(answer: str, citations: Sequence[Citation]) -> str:
 
 def document_html(text: str, citation: Citation | None) -> str:
     """The document as text, never as markup, with the cited span marked so the pane
-    can scroll to it. A span reaching past the end marks what is there: the offsets
-    were taken at ingest, and the file may have been re-uploaded shorter since."""
+    can scroll to it. A span is measured in the text this reads, so it fits — the clamp
+    is for the text that does not come from there: a row truncated in the store, or a
+    passage indexed before an upload was recorded at all."""
     if citation is None:
         return escape(text)
     start = min(max(citation.start, 0), len(text))
@@ -79,8 +81,8 @@ def document_html(text: str, citation: Citation | None) -> str:
 
 
 def _linked(html: str, numbers: set[int]) -> str:
-    """Buttons in the text of rendered HTML, never in a tag: `[1]` in an image's alt
-    text is not a citation, and substituting there would break the attribute open."""
+    """Buttons in the text of rendered HTML, never in a tag: `[1]` in a link's title is
+    not a citation, and a button written into an attribute would break the tag open."""
     written: list[str] = []
     read = 0
     for tag in _TAG.finditer(html):
@@ -93,22 +95,15 @@ def _linked(html: str, numbers: set[int]) -> str:
 
 def _buttons(text: str, numbers: set[int]) -> str:
     """A run of numbers — `[1][2]` — is as many citations as it has brackets, which is
-    the rule `cited_numbers` reads by. Each number resolves on its own."""
+    the rule `cited_numbers` reads by. Each number in the run resolves on its own."""
 
-    def run(found: re.Match[str]) -> str:
-        return _NUMBER.sub(_button(numbers), found.group(0))
-
-    return _RUN.sub(run, text)
-
-
-def _button(numbers: set[int]):
-    def one(found: re.Match[str]) -> str:
+    def button(found: re.Match[str]) -> str:
         number = int(found.group(1))
         if number not in numbers:
             return found.group(0)
         return _CITE_BUTTON.format(number=number)
 
-    return one
+    return _RUN.sub(lambda run: _NUMBER.sub(button, run.group(0)), text)
 
 
 def ingest_message(filename: str, chunks: int) -> str:
