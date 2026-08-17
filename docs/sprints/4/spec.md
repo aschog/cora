@@ -58,7 +58,8 @@ numbers above kept their references:
 
 ### [8. It answers from my documents](done/story-08.md) ✔
 
-The backlog's *no grounding or scope decision*, found in use.
+The backlog's *no grounding or scope decision*, found in use — and removed again by
+story 15, which reopened it.
 
 ### [9. The layout says what the architecture is](done/story-09.md) ✔
 
@@ -129,7 +130,7 @@ for a task requirement:
 | Requirement | Where |
 |---|---|
 | 1 · Agent purpose | *Purpose* above; restated in `README.md` |
-| 2 · Core functionality | Stories 1, 3, 8 — plan, tools, retrieval as a decision, memory |
+| 2 · Core functionality | Stories 1, 3 — plan, tools, retrieval as a decision, memory |
 | 3 · User interface | Story 2 (trace), story 3 (memory panel), plus upload, sources and chat in `README.md` § *Run the app* |
 | 4 · Technical implementation | *Architecture decision* above, plus the failure criteria carried by every story (below) |
 | 5 · Documentation | `README.md` setup and usage, worked examples of asking, remembering and small talk, decisions recorded here, `big-picture.md` drawn around the agent |
@@ -143,7 +144,8 @@ with the conversation intact and a retry available.
 Two medium plus one hard is the maximum-points bar. Cleared:
 
 - **Hard 1 · Agentic RAG** — story 1. Retrieval is a tool the model decides to call, not a
-  fixed step before the answer; story 8 adds the grounding gate behind it.
+  fixed step before the answer. Story 8 put a grounding gate behind that decision and
+  story 15 took it out again: the decision is the model's, asked for in the brief.
 - **Medium 2 · Long-term and short-term memory** — story 3. LangGraph's checkpointer owns
   the thread, its store owns the facts, and a `remember` tool plus a sidebar panel put both
   in the user's hands.
