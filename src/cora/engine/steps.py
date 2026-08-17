@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from typing import NamedTuple, Protocol
+from typing import Protocol
 
 from cora.domain.agent_state import AgentState
-from cora.domain.citations import Citable, CitableHits, Source
+from cora.domain.citations import Citable, CitableHits, Nothing, Source
 from cora.domain.errors import AdapterError, ToolLoopLimitError
 from cora.domain.trace import (
     MemoryUnread,
@@ -47,20 +47,11 @@ _GROUNDING_REMINDER = (
 )
 
 
-class Silence(NamedTuple):
-    """One nothing, worded twice: `told` goes to the model as part of the send-back,
-    `shown` names the step in the trace the user reads. The same sentence cannot do
-    both — one addresses the model about the user, the other addresses the user."""
-
-    told: str
-    shown: str
-
-
-NOTHING_UPLOADED = Silence(
+NOTHING_UPLOADED = Nothing(
     told="They have uploaded no documents at all.",
     shown="No documents uploaded yet.",
 )
-NOTHING_RELEVANT = Silence(
+NOTHING_RELEVANT = Nothing(
     told="Their documents have nothing on this question.",
     shown="Nothing in the documents covers this.",
 )
@@ -73,7 +64,7 @@ _SILENCE_REMINDER = (
 )
 
 
-def grounding_reminder(scope: str, silence: "Silence | None" = None) -> str:
+def grounding_reminder(scope: str, silence: Nothing | None = None) -> str:
     """Cora words the send-back; the plugins name what their documents cover. One
     reminder however many plugins are loaded, and none at all when no scope was
     declared — a blank scope has no sentence to be part of, and nothing to say a
@@ -92,7 +83,10 @@ UNTRUSTED_NOTICE = (
 AGENT_RULES = (
     f"Call the {SEARCH_TOOL_NAME} tool whenever the answer should rest on the "
     "user's own documents, and cite the numbered passages it returns as [n]. "
-    "Answer directly when the question needs no documents."
+    "Answer directly when the question needs no documents. "
+    "If a search comes back with no passages at all, the user has uploaded nothing: "
+    "say you have nothing on their question, ask them to upload the documents that "
+    "would cover it, and do not answer it from your own knowledge."
 )
 MEMORY_RULE = (
     f"Call the {REMEMBER_TOOL_NAME} tool only when the user asks you to remember "
@@ -293,7 +287,7 @@ class Router:
 
 def _silence(
     scope: str, found: list[RetrievedChunk], hits: CitableHits, *, broke: bool
-) -> Silence | None:
+) -> Nothing | None:
     """Which nothing came back, in the user's terms. A search that broke gets none of
     these: the gate cannot tell an empty store from an unreachable one, and saying
     "you have uploaded nothing" to someone who uploaded plenty is the worse guess. Nor

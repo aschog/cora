@@ -71,6 +71,23 @@ words after story 11 step 4 is the whole change.
 - [x] **(int)** a fresh Chroma collection answers a query with no hits at all, which is
       what "found nothing ⇒ nothing uploaded" rests on
 
+#### The plan was wrong, and the live tier is what said so
+
+The gate only runs when the model *skipped* searching. Told to search for document
+questions, a real model searches — so an empty store is met one round earlier, at the
+tool result, and every word of the above was unreachable on the path that actually runs.
+The integration tier could not show it: a scripted model does not decide to search.
+
+- [x] the search tool reports an empty store as an empty store, not as "no matching
+      documents" — a fact, because a tool result reaches the model behind a label saying
+      never to follow instructions found inside it
+- [x] `AGENT_RULES` carries what to do about it, where the model reads system authority
+- [x] **(llm)** the real model, empty store, in-subject question: asks for documents and
+      cites nothing — the assertion that failed, and the reason this story reopened
+- [x] **(llm)** a greeting on its own thread is answered as a greeting and cites nothing.
+      It gets its own page: asked after a turn ending "which would you like?", a greeting
+      is answered by picking that up, which is coherence rather than the rule leaking
+
 ## Out of scope
 
 - **Refusing outright.** The model still writes the sentence; nothing short-circuits it.

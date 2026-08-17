@@ -1,11 +1,24 @@
 import re
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import NamedTuple
 
 from cora.domain.prose import counted, listed
 from cora.ports.retrieval import RetrievedChunk
 
 NO_MATCHES = "No matching documents."
+
+
+class Nothing(NamedTuple):
+    """What came back when nothing came back, worded twice: `told` is what the model
+    reads, `shown` names the step in the trace the user reads. One sentence cannot do
+    both — the model is being told about the user, the user is being told about cora."""
+
+    told: str
+    shown: str
+
+
+NOTHING_FOUND = Nothing(told=NO_MATCHES, shown=NO_MATCHES)
 
 
 @dataclass(frozen=True)
@@ -33,10 +46,12 @@ def cited_sources(text: str, sources: tuple[Source, ...]) -> tuple[Source, ...]:
 
 
 def build_context_block(
-    hits: list[RetrievedChunk], known: tuple[Source, ...] = ()
+    hits: list[RetrievedChunk],
+    known: tuple[Source, ...] = (),
+    nothing: Nothing = NOTHING_FOUND,
 ) -> Context:
     if not hits:
-        return Context(text=NO_MATCHES, sources=())
+        return Context(text=nothing.told, sources=())
     number_of = {source.name: source.number for source in known}
     fresh = [
         name
@@ -73,13 +88,16 @@ class Citable(ABC):
 @dataclass(frozen=True)
 class CitableHits(Citable):
     hits: list[RetrievedChunk]
+    nothing: Nothing = field(default=NOTHING_FOUND)
+    """What an empty result means *here*: a search of a store nothing was uploaded to
+    says something a search that merely matched nothing does not."""
 
     def register(self, known: tuple[Source, ...]) -> Context:
-        return build_context_block(self.hits, known)
+        return build_context_block(self.hits, known, self.nothing)
 
     @property
     def summary(self) -> str:
         if not self.hits:
-            return NO_MATCHES
+            return self.nothing.shown
         sources = dict.fromkeys(hit.chunk.source for hit in self.hits)
         return f"{counted(len(self.hits), 'passage')} from {listed(list(sources))}"

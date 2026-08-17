@@ -447,6 +447,18 @@ def test_the_brief_runs_cora_then_the_domains_then_the_users_own_notes() -> None
     )
 
 
+def test_the_rules_say_what_an_empty_search_means_and_what_to_do_about_it() -> None:
+    """The gate only runs when the model *skipped* searching, and a model told to search
+    for document questions mostly searches — so the empty store is met at the tool, one
+    round earlier, and the instruction has to be somewhere the model reads as authority.
+    Not the tool result: that arrives labelled as data never to be followed."""
+    rules = AGENT_RULES.lower()
+
+    assert "no passages" in rules
+    assert "ask" in rules and "upload" in rules
+    assert "own knowledge" in rules
+
+
 def test_a_brief_with_no_plugin_section_is_coras_voice_alone() -> None:
     brief = _prepare(instructions="", memory=FakeMemory())({"question": "q"})["brief"]
 
