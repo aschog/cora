@@ -161,7 +161,7 @@ def test_passages_are_labelled_even_when_they_add_no_new_source() -> None:
     assert "[1] note.md" in message.content
 
 
-def test_the_sources_it_registered_land_in_the_partial_state() -> None:
+def test_the_citations_it_registered_land_in_the_partial_state() -> None:
     step = ToolStep(ToolRuntime(tools=(_searcher(_hit("note.md")),)))
 
     partial = step(_asked(_search_call("c1")))

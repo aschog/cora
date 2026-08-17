@@ -11,7 +11,14 @@ from cora.domain.errors import (
 )
 from cora.engine.ingestion import ingest
 from cora.engine.knowledge_base import KnowledgeBase
-from fakes import TEXT_LOADERS, FakeDocuments, FakeEmbedder, FakeRetriever
+from fakes import (
+    TEXT_LOADERS,
+    FailingDocuments,
+    FakeDocuments,
+    FakeEmbedder,
+    FakeRetriever,
+    KeepsNothingDocuments,
+)
 
 
 def test_add_file_embeds_and_stores_one_record_per_chunk(
@@ -153,14 +160,6 @@ def test_the_text_of_an_unknown_document_is_nothing(kb: KnowledgeBase) -> None:
     assert kb.text("never-uploaded.md") is None
 
 
-class _KeepsNothing(FakeDocuments):
-    """A store that accepts and forgets: what an index written before story 16 looks
-    like from here."""
-
-    def keep(self, upload: str, text: str) -> None:
-        return None
-
-
 class _KeepFails(FakeDocuments):
     def keep(self, upload: str, text: str) -> None:
         raise DocumentStoreError
@@ -220,7 +219,7 @@ def test_uploading_a_file_again_repairs_text_the_index_never_had(
         embedder=embedder,
         retriever=retriever,
         loaders=TEXT_LOADERS,
-        documents=_KeepsNothing(),
+        documents=KeepsNothingDocuments(),
     )
     indexed_only.add_file(data, "protein.md")
     [before] = retriever.query(embedder.embed(["protein"])[0], k=1)
@@ -237,3 +236,26 @@ def test_uploading_a_file_again_repairs_text_the_index_never_had(
     assert added == 0, "the index already has it, so nothing is indexed twice"
     assert kb.text(before.chunk.upload) == "Aim for 1.6 g of protein per kg."
     assert len(retriever.query(embedder.embed(["protein"])[0], k=5)) == 1
+
+
+def test_a_repair_that_cannot_read_the_store_says_so_and_writes_nothing(
+    embedder: FakeEmbedder, retriever: FakeRetriever
+) -> None:
+    """Uploading a file the index already holds now asks the document store a question,
+    which is a branch that used to be incapable of failing. It fails like every other
+    adapter: the user is told, and nothing is half written."""
+    data = b"Aim for 1.6 g of protein per kg."
+    documents = FailingDocuments()
+    kb = KnowledgeBase(
+        embedder=embedder,
+        retriever=retriever,
+        loaders=TEXT_LOADERS,
+        documents=documents,
+    )
+    kb.add_file(data, "protein.md")
+    kept = documents.writes
+
+    with pytest.raises(DocumentStoreError):
+        kb.add_file(data, "protein.md")
+
+    assert documents.writes == kept

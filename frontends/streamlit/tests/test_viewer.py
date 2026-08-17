@@ -16,7 +16,7 @@ from cora.frontends.streamlit.viewer import (
 from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.documents import Documents
 from cora.ports.plugin import ToolCall
-from fakes import FailingDocuments, FakeDocuments, ScriptedChatModel
+from fakes import FailingDocuments, KeepsNothingDocuments, ScriptedChatModel
 
 pytestmark = pytest.mark.integration
 """Every test here drives a Streamlit page, which is what the marker is for: the unit
@@ -69,14 +69,6 @@ def _headings(at: AppTest) -> list[str]:
 def _asked(at: AppTest, question: str = "How much protein?") -> AppTest:
     at.chat_input[0].set_value(question).run()
     return at
-
-
-class _KeepsNothing(FakeDocuments):
-    """An index whose documents were never kept: `keep` accepts and forgets, which is
-    what a store written before story 16 looks like from here."""
-
-    def keep(self, upload: str, text: str) -> None:
-        return None
 
 
 def _one_citation() -> App:
@@ -194,7 +186,7 @@ def test_a_passage_whose_text_was_never_kept_says_so_under_its_heading() -> None
                 ScriptedChatModel(
                     [_searching("c1", "protein"), ModelReply(text=CITED)]
                 ),
-                documents=_KeepsNothing(),
+                documents=KeepsNothingDocuments(),
             )
         )
     )

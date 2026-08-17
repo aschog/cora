@@ -131,6 +131,14 @@ class FakeDocuments:
         return self._kept.get(upload)
 
 
+class KeepsNothingDocuments(FakeDocuments):
+    """A store that accepts and forgets: what an index written before cora kept any
+    document text looks like from the outside."""
+
+    def keep(self, upload: str, text: str) -> None:
+        return None
+
+
 class FailingDocuments(FakeDocuments):
     def read(self, upload: str) -> str | None:
         raise DocumentStoreError

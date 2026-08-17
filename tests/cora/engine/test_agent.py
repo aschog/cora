@@ -149,9 +149,9 @@ def test_only_this_turns_steps_are_reported_and_returned() -> None:
     assert result.trace == (SEARCHED, ANSWERED)
 
 
-def test_the_sources_resolve_against_the_whole_conversations_registry() -> None:
+def test_the_citations_resolve_against_the_whole_conversations_registry() -> None:
     """Numbering runs the length of the thread, so an answer citing [3] means the
-    third source the conversation registered — whichever turn found it."""
+    third passage the conversation registered — whichever turn found it."""
     earlier = [_at("a.md", 1), _at("b.md", 2)]
     runner = _StubRunner(
         {"answer": "As [1] and [3] say.", "citations": [*earlier, _at("c.md", 3)]},

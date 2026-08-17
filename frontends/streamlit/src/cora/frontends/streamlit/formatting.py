@@ -66,8 +66,9 @@ def answer_html(answer: str, citations: Sequence[Citation]) -> str:
 def document_html(text: str, citation: Citation | None) -> str:
     """The document as text, never as markup, with the cited span marked so the pane
     can scroll to it. A span is measured in the text this reads, so it fits — the clamp
-    is for the text that does not come from there: a row truncated in the store, or a
-    passage indexed before an upload was recorded at all."""
+    covers the one way the two can come apart: `KnowledgeBase._repair` keeps text parsed
+    later than the offsets were measured, so a change to cleaning between the two shifts
+    them."""
     if citation is None:
         return escape(text)
     start = min(max(citation.start, 0), len(text))

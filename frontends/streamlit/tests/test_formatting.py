@@ -155,9 +155,9 @@ def test_the_cited_span_is_marked_and_nothing_else_is() -> None:
 
 
 def test_a_span_running_past_the_end_marks_to_the_end() -> None:
-    """A span is measured in the text the pane reads, so this is the case that should
-    not arise — a truncated row, or a passage from before uploads were recorded. The
-    pane shows what it can rather than raising at the reader."""
+    """A span is measured in the text the pane reads, so this needs the two to have
+    come apart — text kept by a repair, parsed after the offsets were measured. The pane
+    shows what it can rather than raising at the reader."""
     html = document_html("short", Citation(1, "d.md", 2, 500))
 
     assert ">ort<" in html

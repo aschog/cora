@@ -17,12 +17,11 @@ class KnowledgeBase:
 
     def add_file(self, data: bytes, filename: str) -> int:
         """The text is kept alongside the vectors because a citation is a span of it:
-        a passage in the index is a citation waiting to be shown, so it is kept *before*
-        the index will hand that passage out. A failure there costs the upload, which
-        the user is told about; the other order leaves a document that is searchable,
-        citable and unopenable, and says "already in your knowledge base" on the retry.
-        Ingestion raises before either write, so a document that cannot be read still
-        leaves nothing behind."""
+        a passage in the index is a citation waiting to be shown, so it is kept
+        *before* the index will hand that passage out. A failure there costs the upload,
+        which the user is told about; the other order leaves a document that is
+        searchable, citable and unopenable. Ingestion raises before either write, so a
+        document that cannot be read still leaves nothing behind."""
         file_hash = hashlib.sha256(data).hexdigest()
         if self.retriever.contains(file_hash):
             self._repair(data, filename, file_hash)
