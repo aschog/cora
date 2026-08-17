@@ -35,28 +35,6 @@ class ModelDecision(TraceStep):
 
 
 @dataclass(frozen=True)
-class Reconsidered(TraceStep):
-    outcome: str = ""
-    detail: str = ""
-    failed: bool = False
-
-    @property
-    def summary(self) -> str:
-        return f"Checked the documents and asked again → {self.outcome}"
-
-
-@dataclass(frozen=True)
-class SecondLookLost(TraceStep):
-    @property
-    def summary(self) -> str:
-        return "The second look never came back — keeping the first answer"
-
-    @property
-    def failed(self) -> bool:
-        return True
-
-
-@dataclass(frozen=True)
 class MemoryUnread(TraceStep):
     @property
     def summary(self) -> str:

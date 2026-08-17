@@ -10,7 +10,7 @@ from langgraph.graph import END, START, StateGraph
 from cora.domain.agent_state import AgentState
 from cora.domain.errors import ToolLoopLimitError
 from cora.domain.trace import TraceStep
-from cora.ports.graph import DONE, GROUND, TOOLS, GraphRunner, Route, Step
+from cora.ports.graph import DONE, TOOLS, GraphRunner, Route, Step
 
 PREPARE = "prepare"
 MODEL = "model"
@@ -54,9 +54,7 @@ def _saver() -> InMemorySaver:
 
 def recursion_limit_for(max_tool_rounds: int) -> int:
     """Wide enough that the core's round budget always trips first: preparing
-    costs one superstep, then each round costs a model call and its tools. The
-    grounding gate needs no allowance of its own — its nudge takes the superstep
-    the round it interrupts would have spent on tools."""
+    costs one superstep, then each round costs a model call and its tools."""
     return SUPERSTEPS_PER_ROUND * max_tool_rounds + 2
 
 
@@ -70,7 +68,6 @@ class LangGraphRunner:
     prepare: Step
     model: Step
     tools: Step
-    ground: Step
     router: Route
     recursion_limit: int
     checkpointer: InMemorySaver = field(default_factory=_saver)
@@ -95,14 +92,10 @@ class LangGraphRunner:
         builder.add_node(PREPARE, self.prepare)
         builder.add_node(MODEL, self.model)
         builder.add_node(TOOLS, self.tools)
-        builder.add_node(GROUND, self.ground)
         builder.add_edge(START, PREPARE)
         builder.add_edge(PREPARE, MODEL)
-        builder.add_conditional_edges(
-            MODEL, self.router, {DONE: END, TOOLS: TOOLS, GROUND: GROUND}
-        )
+        builder.add_conditional_edges(MODEL, self.router, {DONE: END, TOOLS: TOOLS})
         builder.add_edge(TOOLS, MODEL)
-        builder.add_edge(GROUND, MODEL)
         return builder.compile(checkpointer=self.checkpointer)
 
 
@@ -111,7 +104,6 @@ def langgraph_for(
     prepare: Step,
     model: Step,
     tools: Step,
-    ground: Step,
     router: Route,
     max_tool_rounds: int,
 ) -> GraphRunner:
@@ -119,7 +111,6 @@ def langgraph_for(
         prepare=prepare,
         model=model,
         tools=tools,
-        ground=ground,
         router=router,
         recursion_limit=recursion_limit_for(max_tool_rounds),
     )

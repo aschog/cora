@@ -21,13 +21,7 @@ from cora.engine.port_logging import (
     LoggingRetriever,
 )
 from cora.engine.retrieval_tool import search_tool
-from cora.engine.steps import (
-    GroundStep,
-    ModelStep,
-    PrepareStep,
-    Router,
-    ToolStep,
-)
+from cora.engine.steps import ModelStep, PrepareStep, Router, ToolStep
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
@@ -70,7 +64,6 @@ def assemble(
     knowledge_base = KnowledgeBase(
         embedder=embedder, retriever=retriever, loaders=LOADERS
     )
-    scope = plugins.scope
     tools = _offered_tools(plugins, knowledge_base, top_k, memory)
     runner = graph(
         prepare=PrepareStep(
@@ -82,8 +75,7 @@ def assemble(
             chat_model=chat_model, tools=tools, max_history_turns=history_turns
         ),
         tools=ToolStep(tool_runtime=ToolRuntime(tools=tools)),
-        ground=GroundStep(scope=scope, context_source=knowledge_base, top_k=top_k),
-        router=Router(max_tool_rounds=max_tool_rounds, grounded=bool(scope)),
+        router=Router(max_tool_rounds=max_tool_rounds),
         max_tool_rounds=max_tool_rounds,
     )
     return App(

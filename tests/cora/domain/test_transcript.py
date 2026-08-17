@@ -49,9 +49,8 @@ def test_a_previous_turn_arrives_as_its_user_and_assistant_words() -> None:
 
 
 def test_a_previous_turns_tool_traffic_stays_in_the_thread() -> None:
-    """Old tool calls, their results and the gate's reminders are the thread's
-    record, not the next turn's prompt — which is what `Turn(role, text)` meant
-    before the thread held anything."""
+    """Old tool calls and their results are the thread's record, not the next turn's
+    prompt — which is what `Turn(role, text)` meant before the thread held anything."""
     call = ToolCall(name="search_documents", arguments={"query": "x"}, call_id="c1")
     transcript = [
         Message(role="user", content="What do my notes say?"),

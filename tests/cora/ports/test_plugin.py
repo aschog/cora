@@ -51,7 +51,17 @@ def test_a_plugin_needs_nothing_but_a_name() -> None:
     assert plugin.instructions == ""
     assert plugin.tools == ()
     assert plugin.validation_rules == ()
-    assert plugin.scope == ""
+
+
+def test_a_plugin_carries_a_prompt_tools_and_rules_and_names_no_domain() -> None:
+    """A plugin no longer declares a subject: nothing in the turn holds an answer
+    against one, so there is nothing for the phrase to be part of."""
+    assert [field.name for field in fields(Plugin)] == [
+        "name",
+        "instructions",
+        "tools",
+        "validation_rules",
+    ]
 
 
 def test_every_plugin_field_is_keyword_only() -> None:

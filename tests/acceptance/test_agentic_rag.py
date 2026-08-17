@@ -1,6 +1,8 @@
+import pytest
+
 from app_builder import assembled, indexed
 from cora.app.assembly import App
-from cora.domain.trace import ToolUse
+from cora.domain.trace import ModelDecision, ToolUse
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import ToolCall
 from fakes import CountingRetriever, FakeRetriever, ScriptedChatModel, add_tool
@@ -10,6 +12,9 @@ SEED_DOC = ("note.md", b"protein builds muscle")
 THREAD = "t1"
 QUESTION = "What do my notes say about protein, and what is 20 + 22?"
 ANSWER = "Protein builds muscle [1], and 20 + 22 = 42."
+OFF_THE_CUFF = "Three times a week is plenty for a beginner."
+CITED = "Your notes say protein builds muscle [1]."
+SENT_BACK = "Your notes say 1.6 g of protein per kg [1]."
 
 
 def _call(name: str, call_id: str, **arguments: object) -> ModelReply:
@@ -60,3 +65,42 @@ def test_a_question_needing_neither_retrieves_nothing_and_calls_no_tool() -> Non
     assert [step for step in result.trace if isinstance(step, ToolUse)] == []
     assert result.sources == ()
     assert retriever.queries == 0
+
+
+def test_an_answer_the_model_gave_without_searching_stands() -> None:
+    """The turn is one path: nothing searches on the model's behalf, so an answer that
+    skipped the documents is the answer the user reads."""
+    retriever = CountingRetriever()
+    app = indexed(
+        assembled(
+            chat_model=ScriptedChatModel(
+                [ModelReply(text=OFF_THE_CUFF), ModelReply(text=SENT_BACK)]
+            ),
+            retriever=retriever,
+        ),
+        SEED_DOC,
+    )
+
+    result = app.agent.answer("How often should a beginner train?", THREAD)
+
+    assert result.answer == OFF_THE_CUFF
+    assert retriever.queries == 0
+    assert [type(step) for step in result.trace] == [ModelDecision]
+
+
+@pytest.mark.integration
+def test_a_document_question_is_answered_the_round_after_the_search_returns() -> None:
+    """Two model calls and one search: the round that asks, and the round that reads
+    what came back."""
+    model = ScriptedChatModel(
+        [_call("search_documents", "call-1", query="protein"), ModelReply(text=CITED)]
+    )
+    retriever = CountingRetriever()
+    app = indexed(assembled(chat_model=model, retriever=retriever), SEED_DOC)
+
+    result = app.agent.answer("What do my notes say about protein?", THREAD)
+
+    assert result.answer == CITED
+    assert model.completions == 2
+    assert retriever.queries == 1
+    assert [source.name for source in result.sources] == ["note.md"]

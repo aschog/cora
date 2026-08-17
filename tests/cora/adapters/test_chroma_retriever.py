@@ -39,8 +39,8 @@ def test_chroma_round_trips_with_our_own_embeddings(
 def test_a_store_nothing_was_added_to_returns_nothing_at_all(
     chroma_retriever: "ChromaRetriever",
 ) -> None:
-    """The gate reads an empty result as "you have uploaded nothing" and says so to the
-    user (`GroundStep._silence`). That reading is only true if Chroma answers an empty
+    """The search tool reads an empty result as "you have uploaded nothing" and tells
+    the model so (`EMPTY_STORE`). That reading is only true if Chroma answers an empty
     collection with no hits rather than raising or padding to k."""
     [query_vector] = FakeEmbedder().embed(["anything at all"])
 

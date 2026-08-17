@@ -5,12 +5,11 @@ import pytest
 
 from cora.domain.agent_state import AgentState
 from cora.domain.chunk import Chunk
-from cora.domain.citations import NO_MATCHES, Source
+from cora.domain.citations import Source
 from cora.domain.errors import (
     InputRejectedError,
     LlmError,
     MemoryStoreError,
-    RetrievalError,
     ToolLoopLimitError,
 )
 from cora.domain.trace import ModelDecision, ToolUse
@@ -20,11 +19,7 @@ from cora.engine.steps import (
     AGENT_RULES,
     CORA_PREAMBLE,
     MEMORY_RULE,
-    NOTHING_RELEVANT,
-    NOTHING_UPLOADED,
     REMEMBERED_HEADING,
-    UNTRUSTED_NOTICE,
-    GroundStep,
     ModelStep,
     PrepareStep,
     Router,
@@ -33,7 +28,7 @@ from cora.engine.steps import (
 from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import EmptyInputRule
 from cora.ports.chat_model import Message, ModelReply
-from cora.ports.graph import DONE, GROUND, TOOLS
+from cora.ports.graph import DONE, TOOLS
 from cora.ports.memory import Memory
 from cora.ports.plugin import Tool, ToolCall
 from cora.ports.retrieval import RetrievedChunk
@@ -448,10 +443,9 @@ def test_the_brief_runs_cora_then_the_domains_then_the_users_own_notes() -> None
 
 
 def test_the_rules_say_what_an_empty_search_means_and_what_to_do_about_it() -> None:
-    """The gate only runs when the model *skipped* searching, and a model told to search
-    for document questions mostly searches — so the empty store is met at the tool, one
-    round earlier, and the instruction has to be somewhere the model reads as authority.
-    Not the tool result: that arrives labelled as data never to be followed."""
+    """The empty store is met at the tool, so what to *do* about it has to be somewhere
+    the model reads as authority. Not the tool result: that arrives labelled as data
+    never to be followed."""
     rules = AGENT_RULES.lower()
 
     assert "no passages" in rules
@@ -467,14 +461,11 @@ def test_a_brief_with_no_plugin_section_is_coras_voice_alone() -> None:
 
 
 def test_the_step_opens_the_turn_by_dropping_what_the_last_one_left() -> None:
-    """An answer and a held answer are one turn's business. Carried over, the gate
-    would think it had already looked and the run would return a stale answer."""
-    partial = _prepare()(
-        {"question": "q", "answer": "last turn's", "answer_in_hand": "last turn's"}
-    )
+    """An answer is one turn's business: carried over, the run would end by returning
+    the answer the turn before it gave."""
+    partial = _prepare()({"question": "q", "answer": "last turn's"})
 
     assert partial["answer"] == ""
-    assert partial["answer_in_hand"] == ""
 
 
 def test_the_brief_carries_every_remembered_fact_beneath_the_plugin_prompt() -> None:
@@ -562,11 +553,6 @@ def _replied(
     }
 
 
-def _after_searching(state: AgentState) -> AgentState:
-    searched = Message(role="assistant", content="", tool_calls=(_search_call("c1"),))
-    return {**state, "messages": [searched, *state["messages"]]}
-
-
 def test_a_final_reply_routes_to_done() -> None:
     assert Router(max_tool_rounds=8)(_replied()) == DONE
 
@@ -588,73 +574,11 @@ def test_an_answer_from_an_earlier_round_can_no_longer_end_the_run() -> None:
     assert Router(max_tool_rounds=8)(asking_again) == TOOLS
 
 
-def test_an_ungrounded_answer_is_sent_back_when_the_plugin_asks_for_it() -> None:
-    router = Router(max_tool_rounds=8, grounded=True)
-
-    assert router(_replied()) == GROUND
-
-
-def test_an_answer_that_followed_a_search_is_grounded_enough() -> None:
-    router = Router(max_tool_rounds=8, grounded=True)
-
-    assert router(_after_searching(_replied())) == DONE
-
-
-def test_an_answer_the_tools_already_worked_for_is_left_alone() -> None:
-    """The gate is for an answer the model made up, not for one a calculator
-    produced: a plugin's own tools are as good a ground as its documents."""
-    router = Router(max_tool_rounds=8, grounded=True)
-    calculated = Message(role="assistant", content="", tool_calls=(_add_call("c1"),))
-    state: AgentState = {
-        "messages": [calculated, *_replied()["messages"]],
-        "turn_start": 0,
-    }
-
-    assert router(state) == DONE
-
-
-def test_the_gate_reads_the_transcript_not_the_trace() -> None:
-    router = Router(max_tool_rounds=8, grounded=True)
-    only_traced: AgentState = {
-        **_replied(),
-        "trace": [ToolUse(name=SEARCH_TOOL_NAME, outcome="1 passage")],
-    }
-
-    assert router(only_traced) == GROUND
-
-
-def test_the_gate_fires_once_so_a_run_can_never_loop_on_it() -> None:
-    router = Router(max_tool_rounds=8, grounded=True)
-
-    assert router({**_replied(rounds=2), "reconsidered": True}) == DONE
-
-
-def test_a_plugin_that_asks_for_no_grounding_goes_straight_to_done() -> None:
-    assert Router(max_tool_rounds=8)(_replied()) == DONE
-
-
-def test_a_second_look_costs_one_round_now_that_the_gate_does_the_searching() -> None:
-    """The gate no longer spends a round on tools, so the room a second look needs
-    is the one model call that reads the evidence."""
-    assert Router(max_tool_rounds=2, grounded=True)(_replied()) == GROUND
-
-
-def test_a_budget_with_no_room_for_the_second_look_still_leaves_it_alone() -> None:
-    assert Router(max_tool_rounds=1, grounded=True)(_replied()) == DONE
-
-
-def test_an_empty_final_answer_does_not_circle_the_gate_forever() -> None:
-    """The gate having looked and the gate holding something are different facts: an
-    answer of no words is still an answer it has already reconsidered."""
-    router = Router(max_tool_rounds=8, grounded=True)
-
-    state: AgentState = {
-        **_replied(text=""),
-        "answer_in_hand": "",
-        "reconsidered": True,
-    }
-
-    assert router(state) == DONE
+def test_a_final_reply_is_done_whatever_the_documents_could_have_said() -> None:
+    """The router reads the reply and the round count, and asks nothing about
+    grounding: a turn that answered without searching is finished."""
+    assert Router(max_tool_rounds=8)({**_replied(), "sources": []}) == DONE
+    assert [field.name for field in dataclasses.fields(Router)] == ["max_tool_rounds"]
 
 
 def test_the_round_budget_belongs_to_the_turn_not_the_conversation() -> None:
@@ -667,180 +591,6 @@ def test_the_round_budget_belongs_to_the_turn_not_the_conversation() -> None:
     }
 
     assert Router(max_tool_rounds=2)(this_turn) == TOOLS
-
-
-def test_a_search_from_an_earlier_turn_is_not_this_turns_tool_use() -> None:
-    """Otherwise the gate would fall silent for the rest of the conversation after
-    the first search it ever made."""
-    router = Router(max_tool_rounds=8, grounded=True)
-    last_turn = [
-        Message(role="user", content="what do my notes say?"),
-        Message(role="assistant", content="", tool_calls=(_search_call("c1"),)),
-        Message(role="tool", content="[1] note.md: protein", tool_call_id="c1"),
-        Message(role="assistant", content="They say protein [1]."),
-    ]
-    this_turn: AgentState = {
-        "messages": [*last_turn, *_replied()["messages"]],
-        "turn_start": len(last_turn),
-    }
-
-    assert router(this_turn) == GROUND
-
-
-def _gate(*hits: RetrievedChunk, scope: str = "protein") -> GroundStep:
-    return GroundStep(
-        scope=scope, context_source=FakeContextSource(list(hits)), top_k=3
-    )
-
-
-def test_the_step_searches_the_question_and_hands_the_passages_to_the_model() -> None:
-    """The second look weighs evidence rather than an instruction: the gate runs the
-    search itself, so a model that ignores being told to look still sees what the
-    documents say."""
-    source = FakeContextSource([_hit("protein.md")])
-    step = GroundStep(scope="protein", context_source=source, top_k=3)
-
-    partial = step({"question": "how much protein?"})
-
-    assert source.last_query == "how much protein?"
-    assert source.last_k == 3
-    [message] = partial["messages"]
-    assert message.role == "system"
-    assert "anything outside protein" in message.content
-    assert "[1] protein.md: protein builds muscle" in message.content
-
-
-def test_a_gate_with_no_scope_words_no_reminder_at_all() -> None:
-    """Unreachable through the router today, which turns the gate off when no plugin
-    declared a scope — but the sentence is this class's to get right, and "anything
-    outside  —" is what the template gives back for a blank one."""
-    partial = _gate(scope="")({"question": "anything?"})
-
-    [message] = partial["messages"]
-    assert "outside" not in message.content
-    assert UNTRUSTED_NOTICE in message.content
-
-
-def test_the_nudge_holds_on_to_the_answer_it_is_second_guessing() -> None:
-    """Holding the answer is what tells a failed second look apart from a failure
-    after one: nothing has to count rounds to know which happened."""
-    held = _gate()({"question": "anything?", "answer": "Off the cuff."})
-
-    assert held["answer_in_hand"] == "Off the cuff."
-
-
-def test_the_passages_reach_the_model_behind_the_untrusted_data_label() -> None:
-    partial = _gate(_hit("protein.md"))({"question": "how much protein?"})
-
-    [message] = partial["messages"]
-    assert UNTRUSTED_NOTICE in message.content
-    assert message.content.index(UNTRUSTED_NOTICE) < message.content.index("[1]")
-
-
-def test_the_sources_it_found_are_numbered_after_the_ones_already_known() -> None:
-    partial = _gate(_hit("protein.md"))(
-        {"question": "how much protein?", "sources": [Source(1, "creatine.md")]}
-    )
-
-    assert partial["sources"] == [Source(2, "protein.md")]
-
-
-def test_a_store_nothing_was_uploaded_to_says_exactly_that() -> None:
-    """The user can act on this one: there is nothing to search, so the answer is to
-    ask for documents rather than to reach for what the model happens to know."""
-    partial = _gate()({"question": "how much protein?"})
-
-    [message] = partial["messages"]
-    assert NOTHING_UPLOADED.told in message.content
-    assert "ask the user to upload" in message.content
-    assert UNTRUSTED_NOTICE not in message.content
-    assert partial["sources"] == []
-
-
-def test_a_passage_too_far_from_the_question_is_not_evidence() -> None:
-    """Top-k always returns something, so a greeting gets the nearest passage however
-    far it is. Measured with the real embedder, a question in the documents' subject
-    scores 0.34 to 0.69 and small talk -0.02 to 0.08; below the floor there is
-    nothing to weigh, and the answer stands."""
-    partial = _gate(_hit("protein.md", score=0.02))({"question": "hi there!"})
-
-    [message] = partial["messages"]
-    assert NOTHING_RELEVANT.told in message.content
-    assert partial["sources"] == []
-
-
-def test_the_trace_tells_the_two_silences_apart_as_well() -> None:
-    """*How I got there* is where the user goes to see why an answer says what it says.
-    Rendering both silences as "no matching documents" explains neither."""
-    empty = _gate()({"question": "how much protein?"})
-    unmatched = _gate(_hit("protein.md", score=0.02))({"question": "how much protein?"})
-
-    assert NOTHING_UPLOADED.shown in empty["trace"][0].summary
-    assert NOTHING_RELEVANT.shown in unmatched["trace"][0].summary
-
-
-def test_documents_that_cover_nothing_are_not_a_store_with_nothing_in_it() -> None:
-    """The two silences read the same to the code and differently to the user: one
-    asks for documents, the other says the ones they gave do not go there. They were
-    one sentence until a question in the plugin's own subject got answered anyway."""
-    empty = _gate()({"question": "how much protein?"})
-    unmatched = _gate(_hit("protein.md", score=0.02))({"question": "how much protein?"})
-
-    assert NOTHING_UPLOADED.told not in unmatched["messages"][0].content
-    assert NOTHING_RELEVANT.told not in empty["messages"][0].content
-
-
-def test_a_passage_near_enough_to_the_question_is_weighed() -> None:
-    partial = _gate(_hit("protein.md", score=0.34))({"question": "how much protein?"})
-
-    [message] = partial["messages"]
-    assert "[1] protein.md" in message.content
-
-
-def test_a_gate_whose_own_search_fails_keeps_the_answer_and_says_the_look_failed() -> (
-    None
-):
-    """The search is the gate's own now, so its failure is the gate's: losing a good
-    answer to a round nothing asked for is the one thing the gate must never do."""
-    step = GroundStep(scope="protein", context_source=_BrokenSource(), top_k=3)
-
-    partial = step({"question": "how much protein?", "answer": "Off the cuff."})
-
-    assert partial["answer_in_hand"] == "Off the cuff."
-    assert partial["sources"] == []
-    [recorded] = partial["trace"]
-    assert recorded.failed
-    [message] = partial["messages"]
-    assert NO_MATCHES in message.content
-
-
-class _BrokenSource:
-    def search(self, query: str, k: int) -> list[RetrievedChunk]:
-        raise RetrievalError
-
-
-def test_the_trace_names_the_search_the_gate_ran_and_what_came_back() -> None:
-    """A citation in the revised answer has to have a visible origin: the gate did
-    the searching, so the step it records is the one that found the passages."""
-    partial = _gate(_hit("protein.md"))({"question": "how much protein?"})
-
-    [step] = partial["trace"]
-    assert (
-        step.summary
-        == "Checked the documents and asked again → 1 passage from protein.md"
-    )
-    assert step.detail == "[1] protein.md: protein builds muscle"
-
-
-def test_a_gate_whose_search_broke_still_says_so_in_the_trace() -> None:
-    """`NO_MATCHES` is what the trace says when the gate cannot tell what came back —
-    it stopped being the answer for the two silences it *can* tell apart."""
-    step = GroundStep(scope="protein", context_source=_BrokenSource(), top_k=3)
-
-    partial = step({"question": "hi there!"})
-
-    [recorded] = partial["trace"]
-    assert recorded.summary == f"Checked the documents and asked again → {NO_MATCHES}"
 
 
 @dataclass(frozen=True)

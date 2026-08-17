@@ -139,12 +139,12 @@ pass through this same diagram — one search, one trace step.
 
 ## What the session does not show
 
-**The grounding gate never fires here.** Every turn of this session calls a tool, and an
-answer a tool worked for stands: `Router` only sends a reply back to be grounded when the
-turn used no tool at all. To watch the gate search on the model's behalf, read
-`test_a_real_model_answers_from_the_documents_but_greets_without_them` in the same file —
-a plain domain question and a greeting through one agent, where only the first comes back
-with sources.
+**A turn that answers without searching.** Every turn of this session calls a tool, and
+nothing searches on the model's behalf: whether the documents are read is the model's
+decision, asked for in the brief and enforced nowhere. To see that decision made both
+ways, read `test_a_real_model_answers_from_the_documents_but_greets_without_them` in the
+same file — a plain domain question and a greeting through one agent, where only the first
+comes back with sources.
 
 **Nothing fails.** Every friendly failure — a provider that is down, a tool that raises, a
 round budget spent, a store that cannot be reached — is covered at the unit and

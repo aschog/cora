@@ -59,8 +59,8 @@ def test_a_guard_plugin_and_a_domain_plugin_are_live_in_one_app() -> None:
 
 @pytest.mark.integration
 def test_the_same_cora_with_no_plugins_is_a_plain_assistant() -> None:
-    """No persona, no refusals, no grounding gate, and no second model call: the
-    plugins are what cora carries, not what cora is."""
+    """No persona and no refusals: the plugins are what cora carries, not what cora
+    is."""
     model = ScriptedChatModel([ModelReply(text=OFF_THE_CUFF)])
     retriever = CountingRetriever()
     app = indexed(

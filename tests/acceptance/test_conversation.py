@@ -8,7 +8,6 @@ from cora.app.assembly import App
 from cora.domain.chunk import Chunk
 from cora.domain.citations import CitableHits, Source
 from cora.domain.errors import ToolLoopLimitError
-from cora.domain.trace import Reconsidered
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ChatModel, Message, ModelReply
 from cora.ports.plugin import Tool, ToolCall
@@ -19,7 +18,6 @@ from fixture_plugins import make_plugin
 THREAD = "t1"
 PROTEIN = ("protein.md", b"aim for 1.6 g of protein per kg")
 CREATINE = ("creatine.md", b"5 g of creatine daily is the usual dose")
-SCOPE = "training and nutrition"
 
 
 def _searching(call_id: str, query: str = "protein") -> ModelReply:
@@ -62,11 +60,11 @@ def _looking(call_id: str, name: str) -> ModelReply:
     )
 
 
-def _app(chat_model: ChatModel, *, scope: str = "", rounds: int = 8) -> App:
+def _app(chat_model: ChatModel, *, rounds: int = 8) -> App:
     return indexed(
         assembled(
             chat_model=chat_model,
-            plugin=make_plugin(tools=(_lookup_tool(),), scope=scope),
+            plugin=make_plugin(tools=(_lookup_tool(),)),
             max_tool_rounds=rounds,
         ),
         PROTEIN,
@@ -175,26 +173,6 @@ def test_a_turn_that_spends_its_budget_does_not_spend_the_next_ones() -> None:
 
 
 @pytest.mark.integration
-def test_the_grounding_gate_still_looks_on_a_later_turn() -> None:
-    """A search made last turn is not this turn's evidence: reading the whole
-    transcript for it would silence the gate for the rest of the conversation."""
-    model = ScriptedChatModel(
-        [
-            _searching("c1"),
-            ModelReply(text="1.6 g per kg [1]."),
-            ModelReply(text="Beginners should train three times a week."),
-            ModelReply(text="Your notes do not say."),
-        ]
-    )
-    app = _app(model, scope=SCOPE)
-
-    app.agent.answer("How much protein?", THREAD)
-    second = app.agent.answer("How often should I train?", THREAD)
-
-    assert any(isinstance(step, Reconsidered) for step in second.trace)
-
-
-@pytest.mark.integration
 def test_the_trace_a_turn_returns_is_that_turns_alone() -> None:
     model = ScriptedChatModel(
         [
@@ -221,30 +199,6 @@ def test_two_conversations_on_one_app_know_nothing_of_each_other() -> None:
 
     assert model.last_messages is not None
     assert [m.content for m in model.last_messages[1:]] == ["And I here."]
-
-
-@pytest.mark.integration
-def test_the_gate_fires_again_on_a_later_turn_of_the_same_thread() -> None:
-    """The gate fires at most once *per turn*, and `reconsidered` is what says it has.
-    Left behind by the turn that set it, it would silence the gate for the life of the
-    thread — every later ungrounded answer going straight out. The first turn here has
-    to reach the gate, which is what makes this different from the turn-2 look above:
-    that one never sets the flag, so it cannot show the flag being cleared."""
-    model = ScriptedChatModel(
-        [
-            ModelReply(text="Beginners train three times a week."),
-            ModelReply(text="My notes say 1.6 g per kg."),
-            ModelReply(text="Creatine is 5 g a day."),
-            ModelReply(text="My notes say 5 g."),
-        ]
-    )
-    app = _app(model, scope=SCOPE)
-
-    first = app.agent.answer("How much protein?", THREAD)
-    second = app.agent.answer("And creatine?", THREAD)
-
-    assert [type(step) for step in first.trace].count(Reconsidered) == 1
-    assert [type(step) for step in second.trace].count(Reconsidered) == 1
 
 
 @pytest.mark.integration
