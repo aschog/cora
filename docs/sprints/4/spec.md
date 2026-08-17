@@ -91,6 +91,12 @@ An in-scope question against an empty store was answered from model knowledge. C
 the grounding reminder, so it now tells the two silences apart: nothing uploaded asks for
 documents, documents that don't cover the question say so, and small talk is unaffected.
 
+Two more stories are in flight, planned after the sprint's review:
+
+### [15. The turn is one path](story-15.md)
+
+### [16. Read the passage the answer cites](story-16.md)
+
 ## Not built this sprint
 
 Planned, cut once the bonus bar was cleared and the hours ran down. None of them is needed
