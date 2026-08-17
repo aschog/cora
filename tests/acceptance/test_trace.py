@@ -2,6 +2,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from app_builder import assembled, indexed
+from apptest import page_text
 from cora.app.assembly import App
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ModelReply
@@ -49,7 +50,7 @@ def test_the_trace_shows_each_step_with_its_tool_arguments_and_result() -> None:
     at.chat_input[0].set_value(QUESTION).run()
 
     assert not at.exception
-    assert ANSWER in "\n".join(md.value for md in at.markdown)
+    assert ANSWER in page_text(at)
 
     [trace] = at.status
     assert trace.label == "How I got there"

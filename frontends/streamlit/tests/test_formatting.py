@@ -1,8 +1,11 @@
 from cora.domain.citations import Citation
 from cora.domain.trace import ModelDecision, ToolUse
 from cora.frontends.streamlit.formatting import (
+    CITATION_ANCHOR,
     DETAIL_CAP,
     SUMMARY_CAP,
+    answer_html,
+    document_html,
     ingest_message,
     numbered_citations,
     step_text,
@@ -81,3 +84,80 @@ def test_a_step_is_one_line_whatever_the_model_supplied() -> None:
 
     assert "\n" not in step_text(forging).partition("\n")[0]
     assert step_text(forging).count("\n") == 0
+
+
+NOTE = Citation(number=1, document="note.md", start=6, end=10)
+
+
+def test_the_answer_is_rendered_as_the_markdown_it_is() -> None:
+    html = answer_html("**Bold** advice:\n\n- first\n- second\n", ())
+
+    assert "<strong>Bold</strong>" in html
+    assert html.count("<li>") == 2
+
+
+def test_a_number_with_a_citation_behind_it_becomes_a_button() -> None:
+    html = answer_html("Your notes say so [1].", (NOTE,))
+
+    assert 'data-cite="1"' in html
+    assert ">[1]<" in html
+
+
+def test_a_number_with_no_citation_behind_it_stays_text() -> None:
+    """A model can write `[9]` with nothing behind it, and a button that opens nothing
+    is worse than the text it replaced."""
+    html = answer_html("As [9] says, and [1].", (NOTE,))
+
+    assert 'data-cite="9"' not in html
+    assert "[9]" in html
+    assert 'data-cite="1"' in html
+
+
+def test_a_bracketed_number_inside_code_is_left_alone() -> None:
+    html = answer_html(
+        "Use it like this:\n\n```\nitems[1]\n```\n\nas [1] says.", (NOTE,)
+    )
+
+    assert html.count('data-cite="1"') == 1
+    assert "items[1]" in html
+
+
+def test_markup_in_the_answer_is_text_and_never_an_element() -> None:
+    """The answer is written by a model reading the user's documents, so a document
+    that asks for a script must not get one."""
+    html = answer_html("<script>alert(1)</script> and <b>raw</b>", ())
+
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
+    assert "<b>" not in html
+
+
+def test_the_document_is_escaped_so_its_markup_reads_as_text() -> None:
+    html = document_html("<script>alert(1)</script> stays", Citation(1, "d.md", 0, 0))
+
+    assert "<script>" not in html
+    assert "&lt;script&gt;" in html
+
+
+def test_the_cited_span_is_marked_and_nothing_else_is() -> None:
+    html = document_html("Every gram of protein counts", NOTE)
+
+    assert html.count("<mark") == 1
+    assert f'id="{CITATION_ANCHOR.format(number=1)}"' in html
+    assert ">gram<" in html
+
+
+def test_a_span_running_past_the_end_marks_to_the_end() -> None:
+    """Offsets come from an earlier ingest of a document that may since have been
+    re-uploaded shorter: the pane shows what it can rather than raising at the user."""
+    html = document_html("short", Citation(1, "d.md", 2, 500))
+
+    assert ">ort<" in html
+    assert html.count("<mark") == 1
+
+
+def test_a_document_with_no_citation_to_mark_is_still_rendered() -> None:
+    html = document_html("plain text", None)
+
+    assert "plain text" in html
+    assert "<mark" not in html

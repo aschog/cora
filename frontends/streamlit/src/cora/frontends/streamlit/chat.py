@@ -1,10 +1,12 @@
 import hashlib
 import uuid
 from collections.abc import Callable, Sequence
+from typing import Any
 
 import streamlit as st
 from cora.app.assembly import App
 from cora.domain.chat_result import ChatResult
+from cora.domain.citations import Citation
 from cora.domain.errors import AdapterError, CoreError
 from cora.domain.trace import TraceStep
 from cora.engine.agent import Agent
@@ -15,6 +17,13 @@ from cora.frontends.streamlit.formatting import (
     step_text,
 )
 from cora.frontends.streamlit.thread import ThreadEntry
+from cora.frontends.streamlit.viewer import (
+    PANE_RATIO,
+    cited_answer,
+    declare_components,
+    document_pane,
+    open_citation,
+)
 from cora.ports.memory import Memory
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
@@ -39,13 +48,44 @@ def render(app: App) -> None:
     """The sidebar is drawn after the turn, because the turn can change what it says: a
     fact the model remembered belongs in the panel the same run it was kept, not the
     next one the user happens to trigger. Streamlit places it by container, not by
-    order, so the screen is unchanged."""
-    _thread()
-    if prompt := st.chat_input("Ask about your documents"):
-        _answer(app.agent, prompt)
+    order, so the screen is unchanged.
+
+    The question is asked at page level whatever is open beside the chat:
+    `st.chat_input` is pinned to the foot of the page there, and inside a column it
+    would ride up into one."""
+    declare_components()
+    prompt = st.chat_input("Ask about your documents")
+    conversation, pane = _split()
+    with conversation:
+        _thread()
+        if prompt:
+            _answer(app.agent, prompt)
+    if pane is not None:
+        with pane:
+            document_pane(app.knowledge_base, _opened())
     with st.sidebar:
         _documents(app.knowledge_base)
         _memory(app.memory)
+
+
+def _split() -> tuple[Any, Any]:
+    """Two columns while a document is open, one full-width container otherwise: a
+    citation nobody clicked costs the chat none of its width."""
+    if open_citation() is None:
+        return st.container(), None
+    conversation, pane = st.columns(PANE_RATIO)
+    return conversation, pane
+
+
+def _opened() -> Citation | None:
+    """The citation the reader clicked, resolved against every answer in the thread: a
+    number from three turns ago still opens what it opened then."""
+    number = open_citation()
+    for message in st.session_state.get("messages", ()):
+        for citation in message.get("citations", ()):
+            if citation.number == number:
+                return citation
+    return None
 
 
 def _documents(knowledge_base: KnowledgeBase) -> None:
@@ -179,6 +219,7 @@ def _assistant_message(result: ChatResult) -> ThreadEntry:
     return {
         "role": "assistant",
         "content": result.answer,
+        "citations": list(result.citations),
         "sources": numbered_citations(result.citations),
         "trace": list(result.trace),
     }
@@ -193,10 +234,26 @@ def _show(message: ThreadEntry) -> None:
     with st.chat_message(message["role"]):
         if "error" in message:
             st.error(message["error"])
+        elif message["role"] == "assistant":
+            cited_answer(
+                message["content"],
+                message.get("citations", ()),
+                key=f"answer_{_position(message)}",
+            )
+            _expander("Sources", message.get("sources", ()))
         else:
             st.markdown(message["content"])
-            _expander("Sources", message.get("sources", ()))
         _trace(message.get("trace", ()), failed=_went_wrong(message))
+
+
+def _position(message: ThreadEntry) -> int:
+    """A component needs a key of its own per answer, and the answer's place in the
+    thread is the one name that survives a rerun redrawing every message."""
+    thread = st.session_state.get("messages", [])
+    for index, entry in enumerate(thread):
+        if entry is message:
+            return index
+    return len(thread)
 
 
 def _went_wrong(message: ThreadEntry) -> bool:

@@ -4,6 +4,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from app_builder import assembled, indexed
+from apptest import PANE_COMPONENT, mounted_html, page_text
 from cora.app.assembly import App
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ModelReply
@@ -46,11 +47,10 @@ def _page(app) -> None:  # AppTest re-executes this without the module's globals
 
 
 def _panes(at: AppTest) -> list[str]:
-    return [element.proto.body for element in at.get("html")]
+    return mounted_html(at, PANE_COMPONENT)
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(strict=True, reason="story 16: there is no citation pane yet")
 def test_a_cited_passage_opens_beside_the_chat_and_closes_again() -> None:
     """The click that opens it is a component's, out of AppTest's reach, so the state
     the click writes is what this drives. What the pane does with it is the criterion:
@@ -60,7 +60,7 @@ def test_a_cited_passage_opens_beside_the_chat_and_closes_again() -> None:
     at.chat_input[0].set_value(QUESTION).run()
 
     assert not at.exception
-    assert ANSWER in "\n".join(md.value for md in at.markdown)
+    assert ANSWER in page_text(at)
     assert _panes(at) == [], "nothing is open until a citation is clicked"
 
     at.session_state["open_citation"] = 1
@@ -69,9 +69,8 @@ def test_a_cited_passage_opens_beside_the_chat_and_closes_again() -> None:
     assert not at.exception
     assert DOCUMENT in [heading.value for heading in at.header]
     [pane] = _panes(at)
-    assert re.search(rf"<mark[^>]*>{re.escape(PASSAGE)}</mark>", pane), (
-        f"the cited passage is not marked in the pane: {pane!r}"
-    )
+    [marked] = re.findall(r"<mark[^>]*>(.*?)</mark>", pane, re.DOTALL)
+    assert PASSAGE in marked, f"the cited passage is not marked in the pane: {pane!r}"
 
     at.button(key="close_citation").click().run()
 

@@ -1,10 +1,23 @@
+import re
 from collections.abc import Sequence
+from html import escape
+
+from markdown_it import MarkdownIt
 
 from cora.domain.citations import Citation
 from cora.domain.trace import TraceStep
 
 DETAIL_CAP = 800
 SUMMARY_CAP = 200
+CITATION_ANCHOR = "citation-{number}"
+_CITE_BUTTON = (
+    '<button type="button" class="cite" data-cite="{number}">[{number}]</button>'
+)
+_NUMBER = re.compile(r"(?<![\w\]])\[(\d+)\]")
+_CODE = re.compile(r"<(pre|code)\b.*?</\1>", re.DOTALL)
+_MARKDOWN = MarkdownIt("commonmark", {"html": False})
+"""Rendering with HTML disabled, because the answer is written by a model reading the
+user's documents: a document that asks for a script gets escaped text instead."""
 
 
 def step_text(step: TraceStep) -> str:
@@ -27,6 +40,49 @@ def numbered_citations(citations: Sequence[Citation]) -> list[str]:
     """One line per cited passage, not per document: two passages of one document are
     two citations, and the panel is what says which number opens which."""
     return [f"[{citation.number}] {citation.document}" for citation in citations]
+
+
+def answer_html(answer: str, citations: Sequence[Citation]) -> str:
+    """The answer as markdown, with every `[n]` that resolves turned into a button the
+    reader can press. A number nothing was registered under stays the text the model
+    wrote, and one inside code stays code — an example of indexing a list is not a
+    citation."""
+    numbers = {citation.number for citation in citations}
+    rendered = _MARKDOWN.render(answer)
+    written: list[str] = []
+    read = 0
+    for code in _CODE.finditer(rendered):
+        written.append(_linked(rendered[read : code.start()], numbers))
+        written.append(code.group(0))
+        read = code.end()
+    written.append(_linked(rendered[read:], numbers))
+    return "".join(written)
+
+
+def document_html(text: str, citation: Citation | None) -> str:
+    """The document as text, never as markup, with the cited span marked so the pane
+    can scroll to it. A span reaching past the end marks what is there: the offsets
+    were taken at ingest, and the file may have been re-uploaded shorter since."""
+    if citation is None:
+        return escape(text)
+    start = min(max(citation.start, 0), len(text))
+    end = min(max(citation.end, start), len(text))
+    anchor = CITATION_ANCHOR.format(number=citation.number)
+    return (
+        f"{escape(text[:start])}"
+        f'<mark id="{anchor}">{escape(text[start:end])}</mark>'
+        f"{escape(text[end:])}"
+    )
+
+
+def _linked(html: str, numbers: set[int]) -> str:
+    def button(found: re.Match[str]) -> str:
+        number = int(found.group(1))
+        if number not in numbers:
+            return found.group(0)
+        return _CITE_BUTTON.format(number=number)
+
+    return _NUMBER.sub(button, html)
 
 
 def ingest_message(filename: str, chunks: int) -> str:

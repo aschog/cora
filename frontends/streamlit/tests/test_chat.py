@@ -5,6 +5,7 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from app_builder import assembled, indexed
+from apptest import page_text
 from cora.app.assembly import App
 from cora.domain.chunk import Chunk
 from cora.domain.errors import (
@@ -100,7 +101,7 @@ def _run_page(app: App) -> AppTest:
 
 
 def _visible_text(at: AppTest) -> str:
-    return "\n".join(md.value for md in at.markdown)
+    return page_text(at)
 
 
 def _sidebar_sources(at: AppTest) -> list[str]:

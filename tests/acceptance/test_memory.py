@@ -5,6 +5,7 @@ import pathlib
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from apptest import page_text
 from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.plugin import ToolCall
 from fakes import ScriptedChatModel
@@ -51,7 +52,7 @@ def _session(app, question: str) -> AppTest:
 
 
 def _visible(at: AppTest) -> str:
-    return "\n".join(md.value for md in at.markdown)
+    return page_text(at)
 
 
 def _sidebar(at: AppTest) -> str:
