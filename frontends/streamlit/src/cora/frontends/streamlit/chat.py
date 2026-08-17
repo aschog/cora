@@ -1,7 +1,6 @@
 import hashlib
 import uuid
 from collections.abc import Callable, Sequence
-from typing import Any
 
 import streamlit as st
 from cora.app.assembly import App
@@ -17,7 +16,6 @@ from cora.frontends.streamlit.formatting import (
 )
 from cora.frontends.streamlit.thread import ThreadEntry
 from cora.frontends.streamlit.viewer import (
-    PANE_RATIO,
     cited_answer,
     declare_components,
     document_pane,
@@ -49,31 +47,21 @@ def render(app: App) -> None:
     next one the user happens to trigger. Streamlit places it by container, not by
     order, so the screen is unchanged.
 
-    The question is asked at page level whatever is open beside the chat:
-    `st.chat_input` is pinned to the foot of the page there, and inside a column it
-    would ride up into one."""
+    The question is asked at page level: `st.chat_input` is pinned to the foot of the
+    page there, and inside any other container it would ride up into one.
+
+    A document opens over the chat rather than beside it, so the conversation is drawn
+    the same way whether or not one is open."""
     declare_components()
     prompt = st.chat_input("Ask about your documents")
-    conversation, pane = _split()
-    with conversation:
-        _thread()
-        if prompt:
-            _answer(app.agent, prompt)
-    if pane is not None:
-        with pane:
-            document_pane(app.knowledge_base, _opened())
+    _thread()
+    if prompt:
+        _answer(app.agent, prompt)
+    if open_citation() is not None:
+        document_pane(app.knowledge_base, _opened())
     with st.sidebar:
         _documents(app.knowledge_base)
         _memory(app.memory)
-
-
-def _split() -> tuple[Any, Any]:
-    """Two columns while a document is open, one full-width container otherwise: a
-    citation nobody clicked costs the chat none of its width."""
-    if open_citation() is None:
-        return st.container(), None
-    conversation, pane = st.columns(PANE_RATIO)
-    return conversation, pane
 
 
 def _opened() -> Citation | None:

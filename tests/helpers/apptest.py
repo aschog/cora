@@ -16,11 +16,16 @@ _CLICKABLE = re.compile(r'data-cite="(\d+)"')
 
 
 def mounted_html(at: AppTest, name: str) -> list[str]:
-    """The HTML each mounted instance of one component was given."""
+    """The HTML each mounted instance of one component was given.
+
+    Read off the whole tree rather than `at.main`, because a dialog's contents are not
+    in the main container: the cited passage is drawn inside one, and a reader looking
+    only at `at.main` finds an empty page and calls it "no passage opened"."""
     return [
-        json.loads(element.proto.json).get("html", "")
-        for element in at.main
-        if element.type == "bidi_component" and element.proto.component_name == name
+        json.loads(node.proto.json).get("html", "")
+        for node in at._tree
+        if getattr(node, "type", None) == "bidi_component"
+        and node.proto.component_name == name
     ]
 
 

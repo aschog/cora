@@ -75,6 +75,11 @@ def _headings(at: AppTest) -> list[str]:
     return [heading.value for heading in at.header]
 
 
+def _split(at: AppTest) -> list[float]:
+    """How the page divides itself, the sidebar's own columns left out of it."""
+    return [column.weight for column in at.main.columns]
+
+
 def _asked(at: AppTest, question: str = "How much protein?") -> AppTest:
     at.chat_input[0].set_value(question).run()
     return at
@@ -243,21 +248,20 @@ def test_the_answer_reaches_the_page_only_through_its_own_component() -> None:
     assert CITED not in "\n".join(md.value for md in at.markdown)
 
 
-def test_the_chat_shares_the_page_only_while_a_document_is_open() -> None:
-    """The criterion's other half: closing the pane gives the conversation its width
-    back, which is the column split going away rather than a pane merely emptying."""
+def test_the_passage_pops_up_over_a_chat_that_keeps_the_whole_page() -> None:
+    """Splitting the page was the wrong shape whichever way it ran: a third reads a
+    document in fragments, two thirds costs the conversation its line. The passage is
+    something to open, read and dismiss, so it arrives over the chat rather than beside
+    it — and the conversation behind it never gives up a column."""
     at = _asked(_run(_one_citation()))
-
-    assert at.columns == []
 
     at.session_state[OPEN_CITATION] = 1
     at.run()
 
-    assert len(at.columns) == 2
-
-    at.button(key=CLOSE_KEY).click().run()
-
-    assert at.columns == []
+    assert not at.exception
+    [pane] = _panes(at)
+    assert "1.6 g of protein" in pane
+    assert _split(at) == [], "the chat keeps the page the dialog is drawn over"
 
 
 def test_an_answer_with_citations_offers_no_sources_panel() -> None:
