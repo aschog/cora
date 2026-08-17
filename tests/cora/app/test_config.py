@@ -19,6 +19,7 @@ def test_from_env_reads_every_field() -> None:
             "CORA_MAX_OUTPUT_TOKENS": "500",
             "CORA_REQUEST_TIMEOUT": "45",
             "CORA_REASONING_EFFORT": "high",
+            "CORA_LOG_PATH": "/tmp/cora.log",
             "CORA_DB_PATH": "/tmp/vectors",
             "CORA_MEMORY_PATH": "/tmp/memory.sqlite",
             "CORA_DOCUMENTS_PATH": "/tmp/documents.sqlite",
@@ -36,6 +37,7 @@ def test_from_env_reads_every_field() -> None:
         max_output_tokens=500,
         request_timeout_seconds=45,
         reasoning_effort="high",
+        log_path="/tmp/cora.log",
         db_path="/tmp/vectors",
         memory_path="/tmp/memory.sqlite",
         documents_path="/tmp/documents.sqlite",
@@ -339,3 +341,14 @@ def test_every_effort_the_provider_defines_is_accepted(raw: str) -> None:
     )
 
     assert config.reasoning_effort == raw
+
+
+def test_the_log_path_is_a_setting_like_every_other_path() -> None:
+    """The last store a deployment could not place: the debug log went where the module
+    said, so a run from anywhere but the working directory wrote its trace somewhere the
+    deployment never chose."""
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert config.log_path
+    blanked = Config.from_env({"OPENROUTER_API_KEY": "key-123", "CORA_LOG_PATH": "  "})
+    assert blanked.log_path == config.log_path, "a blank reads as unset, as paths do"

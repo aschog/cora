@@ -2,6 +2,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from cora.app.log_config import LOG_FILE
 from cora.domain.errors import ConfigurationError
 
 DEFAULT_MODEL = "openai/gpt-4o-mini"
@@ -25,12 +26,15 @@ DEFAULT_REASONING_EFFORT = "low"
 """How much of the budget above the model may spend thinking. Measured on one question,
 `gpt-5-mini` answered in 22-25s at `low` against 32-61s at the provider's own `medium`,
 searching the documents and citing them either way — and at `high` it spent all 8192
-tokens thinking and returned no answer at all. A model that does not reason ignores the
-setting rather than refusing it."""
+tokens thinking and returned no answer at all. Sent on every request, including to a
+model that does not reason: `openai/gpt-4o-mini`, which `DEFAULT_MODEL` still names, was
+asked with `low` set and answered normally, so such a model ignores the key rather than
+refusing it. No test holds that — only the provider can answer it."""
 DEFAULT_HISTORY_TURNS = 20
 DEFAULT_DB_PATH = ".cora/chroma"
 DEFAULT_MEMORY_PATH = ".cora/memory.sqlite"
 DEFAULT_DOCUMENTS_PATH = ".cora/documents.sqlite"
+DEFAULT_LOG_PATH = LOG_FILE
 
 
 @dataclass(frozen=True)
@@ -48,6 +52,7 @@ class Config:
     db_path: str
     memory_path: str = DEFAULT_MEMORY_PATH
     documents_path: str = DEFAULT_DOCUMENTS_PATH
+    log_path: str = DEFAULT_LOG_PATH
     debug: bool = False
 
     @classmethod
@@ -83,6 +88,7 @@ class Config:
             db_path=_named(env, "CORA_DB_PATH", DEFAULT_DB_PATH),
             memory_path=_named(env, "CORA_MEMORY_PATH", DEFAULT_MEMORY_PATH),
             documents_path=_named(env, "CORA_DOCUMENTS_PATH", DEFAULT_DOCUMENTS_PATH),
+            log_path=_named(env, "CORA_LOG_PATH", DEFAULT_LOG_PATH),
             debug=_bool(env, "CORA_DEBUG"),
         )
 

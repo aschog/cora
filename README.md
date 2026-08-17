@@ -113,7 +113,9 @@ is relative to the working directory), `CORA_MEMORY_PATH` (where remembered fact
 persist; the default `.cora/memory.sqlite` sits beside it, and is relative the same
 way), `CORA_DOCUMENTS_PATH` (where the text behind each citation persists, so clicking
 `[1]` can open the passage; the default `.cora/documents.sqlite` sits beside the others),
-`OPENROUTER_BASE_URL`, `CORA_DEBUG`. The counts are rejected at
+`CORA_LOG_PATH` (where the debug trace is written when `CORA_DEBUG` is on; the default
+`.cora/logs/cora.log` is relative like the stores beside it), `OPENROUTER_BASE_URL`,
+`CORA_DEBUG`. The counts are rejected at
 startup if they fall below their lowest useful value — `0` for history turns, `1`
 for the others.
 

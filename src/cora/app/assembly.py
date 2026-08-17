@@ -119,7 +119,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
     from cora.adapters.sqlite_documents import SqliteDocuments
     from cora.adapters.sqlite_store_memory import SqliteStoreMemory
 
-    enable_debug_logs(config.debug)
+    enable_debug_logs(config.debug, config.log_path)
     retriever = ChromaRetriever(path=config.db_path, collection=collection)
     return assemble(
         chat_model=OpenRouterChatModel(

@@ -18,9 +18,9 @@ from streamlit.testing.v1 import AppTest
 from apptest import (
     ANSWER_COMPONENT,
     PANE_COMPONENT,
-    answers,
     clickable_citations,
     mounted_html,
+    newest_answer,
 )
 from cora.app.assembly import App, build
 from cora.app.config import Config
@@ -80,8 +80,10 @@ def _page(app) -> None:  # AppTest re-executes this without the module's globals
 
 def _answer(at: AppTest) -> str:
     """The newest answer, read off the component that drew it: an answer is HTML in a
-    custom element, so `chat_message[-1].markdown` is empty."""
-    return answers(at)[-1].lower()
+    custom element, so `chat_message[-1].markdown` is empty. A turn that failed drew no
+    component at all, and reads as the error the page is showing — this tier is run by
+    hand, so a check that fails has to be able to say why."""
+    return newest_answer(at).lower()
 
 
 def _opens_a_passage(at: AppTest) -> bool:

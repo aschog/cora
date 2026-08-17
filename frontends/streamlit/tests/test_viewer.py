@@ -2,8 +2,9 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from app_builder import assembled, indexed
-from apptest import clickable_citations, mounted_html
+from apptest import clickable_citations, mounted_html, newest_answer
 from cora.app.assembly import App
+from cora.domain.errors import LlmTimeoutError
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.streamlit.viewer import (
     _ANSWER_CSS,
@@ -19,7 +20,12 @@ from cora.frontends.streamlit.viewer import (
 from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.documents import Documents
 from cora.ports.plugin import ToolCall
-from fakes import FailingDocuments, KeepsNothingDocuments, ScriptedChatModel
+from fakes import (
+    FailingChatModel,
+    FailingDocuments,
+    KeepsNothingDocuments,
+    ScriptedChatModel,
+)
 
 pytestmark = pytest.mark.integration
 """Every test here drives a Streamlit page, which is what the marker is for: the unit
@@ -274,18 +280,21 @@ def test_the_citation_colour_dresses_both_the_button_and_the_passage_it_opens() 
     assert "background: var(--st-background-color)" not in _PANE_CSS
 
 
-def test_a_number_that_resolved_to_nothing_is_not_a_citation_the_reader_can_click() -> (
-    None
-):
-    """What the live tier's positive checks rest on. A model writes `[1]` whether or
-    not a passage was registered under it, and glued to a word — `bodyweight[1]` — the
-    domain does not read it as a citation at all, so the answer carries a number and
-    the reader still has nothing to open."""
+def test_a_number_glued_to_a_word_is_not_a_citation_the_reader_can_click() -> None:
+    """What the live tier's positive checks rest on. Both numbers were registered by
+    the same search, so what tells them apart is the domain's rule alone: `[1]` after a
+    space is a citation, `bodyweight[2]` is a bracket the model wrote into a word. The
+    answer carries both, and only one of them opens anything."""
     at = _asked(
         _run(
             _app(
                 ScriptedChatModel(
-                    [ModelReply(text="Aim for 1.6 g per kg of bodyweight[1].")]
+                    [
+                        _searching("c1", "protein"),
+                        ModelReply(
+                            text="Your notes say 1.6 g [1], per kg bodyweight[2]."
+                        ),
+                    ]
                 )
             )
         )
@@ -293,5 +302,41 @@ def test_a_number_that_resolved_to_nothing_is_not_a_citation_the_reader_can_clic
 
     assert not at.exception
     [answer] = _mounted(at, ANSWER_COMPONENT)
-    assert "[1]" in answer, "the number the model wrote reaches the page"
-    assert clickable_citations(at) == [], "but nothing was registered under it"
+    assert "bodyweight[2]" in answer, "the number the model glued on reaches the page"
+    assert clickable_citations(at) == [1], "only the one the domain read as a citation"
+
+
+def test_the_citations_reported_are_the_newest_answers_not_the_whole_threads() -> None:
+    """A thread redraws every answer on every rerun, so a page holds every turn's
+    buttons at once. A check that a turn cited nothing has to be asked of that turn."""
+    at = _asked(
+        _run(
+            _app(
+                ScriptedChatModel(
+                    [
+                        _searching("c1", "protein"),
+                        ModelReply(text=CITED),
+                        ModelReply(text="Hello!"),
+                    ]
+                )
+            )
+        )
+    )
+
+    at.chat_input[0].set_value("hi").run()
+
+    assert not at.exception
+    assert len(_mounted(at, ANSWER_COMPONENT)) == 2, "both turns are on the page"
+    assert clickable_citations(at) == [], "the newest turn cited nothing"
+
+
+def test_a_failed_turn_reads_as_the_error_the_page_is_showing() -> None:
+    """A turn that failed draws no answer at all, so a helper reaching for "the newest
+    answer" finds nothing. Raising there costs the manual tier the only thing it has —
+    the sentence saying what went wrong — and does it exactly when a check has failed
+    and the message matters most."""
+    at = _asked(_run(_app(FailingChatModel(LlmTimeoutError()))))
+
+    assert not at.exception, "the failure is reported, not raised"
+    assert _mounted(at, ANSWER_COMPONENT) == [], "no answer was drawn"
+    assert LlmTimeoutError.message in newest_answer(at)

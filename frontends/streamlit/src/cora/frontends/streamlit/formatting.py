@@ -4,7 +4,7 @@ from html import escape
 
 from markdown_it import MarkdownIt
 
-from cora.domain.citations import Citation
+from cora.domain.citations import CITATION_RUN, Citation
 from cora.domain.trace import TraceStep
 
 DETAIL_CAP = 800
@@ -13,7 +13,6 @@ CITATION_ANCHOR = "citation-{number}"
 _CITE_BUTTON = (
     '<button type="button" class="cite" data-cite="{number}">[{number}]</button>'
 )
-_RUN = re.compile(r"(?<![\w\]])(?:\[\d+\])+")
 _NUMBER = re.compile(r"\[(\d+)\]")
 _CODE = re.compile(r"<(pre|code)\b.*?</\1>", re.DOTALL)
 _TAG = re.compile(r"<[^>]*>")
@@ -97,7 +96,7 @@ def _buttons(text: str, numbers: set[int]) -> str:
             return found.group(0)
         return _CITE_BUTTON.format(number=number)
 
-    return _RUN.sub(lambda run: _NUMBER.sub(button, run.group(0)), text)
+    return CITATION_RUN.sub(lambda run: _NUMBER.sub(button, run.group(0)), text)
 
 
 def ingest_message(filename: str, chunks: int) -> str:

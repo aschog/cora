@@ -157,3 +157,16 @@ click that opened it read as unrelated.
 - [x] `_expander` goes with the panel it drew, as `numbered_citations` already did
 - [x] the architecture table names what the shell draws today, the sources box having
       gone
+
+#### Found by the branch review (`ai-code-reviewer`, third pass)
+
+- [x] the citations a helper reports are the newest answer's, not every answer's on the
+      page — the scoping its predecessor carried, back and pinned
+- [x] a resolved number and one glued to a word sit in the same answer, and only the
+      resolved one is clickable — the distinction the previous test claimed and never drew
+- [x] a turn that failed reports the error the page is showing, rather than raising while
+      it builds the message that would have said so
+- [x] what counts as a citation run is the domain's rule, imported by the renderer rather
+      than restated beside it — a mutation to the rule fails the renderer's tests too
+- [x] `build` writes its debug log where the deployment says, `CORA_LOG_PATH` naming it
+      like every other path

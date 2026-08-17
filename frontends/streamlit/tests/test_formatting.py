@@ -99,6 +99,17 @@ def test_a_number_with_no_citation_behind_it_stays_text() -> None:
     assert 'data-cite="1"' in html
 
 
+def test_a_number_glued_to_a_word_stays_text_though_it_was_registered() -> None:
+    """What counts as a citation is the domain's rule, and the renderer reads that rule
+    rather than restating it: `bodyweight[1]` is a bracket the model wrote into a word,
+    so `cited` never resolves it and a button here would open a passage the answer never
+    claimed to rest on."""
+    html = answer_html("Aim per kg bodyweight[1].", (NOTE,))
+
+    assert "data-cite" not in html
+    assert "bodyweight[1]" in html
+
+
 def test_a_bracketed_number_inside_code_is_left_alone() -> None:
     html = answer_html(
         "Use it like this:\n\n```\nitems[1]\n```\n\nas [1] says.", (NOTE,)

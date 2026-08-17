@@ -7,6 +7,11 @@ from cora.domain.prose import counted, listed
 from cora.ports.retrieval import RetrievedChunk
 
 NO_MATCHES = "No matching documents."
+CITATION_RUN = re.compile(r"(?<![\w\]])(?:\[\d+\])+")
+"""What counts as a citation in written text, for everyone who has to agree: a run of
+brackets that does not continue a word or another bracket. The renderer draws buttons by
+this rule and `cited_numbers` resolves by it, so a citation the reader can click and a
+citation the answer rests on are the same thing by construction."""
 
 
 class Nothing(NamedTuple):
@@ -45,7 +50,7 @@ class Context:
 
 
 def cited_numbers(text: str) -> tuple[int, ...]:
-    runs = re.findall(r"(?<![\w\]])(?:\[\d+\])+", text)
+    runs = CITATION_RUN.findall(text)
     found = (int(number) for run in runs for number in re.findall(r"\d+", run))
     return tuple(dict.fromkeys(found))
 
