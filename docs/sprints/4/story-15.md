@@ -52,10 +52,22 @@ stays in `AGENT_RULES` and in the fitness plugin's prompt, enforcement goes.
 - [ ] **(int)** a document question is answered in one model round after the search tool
       returns
 
+#### The instruction is all that is left
+
+- [ ] **(llm)** `test_llm_acceptance.py:147` still passes with no gate behind it: a real
+      model reaches the documents for a question in their subject, and greets without them
+- [ ] **(llm)** `test_llm_acceptance.py:178` still passes on the tool's path alone — a real
+      model told the store is empty asks for documents instead of answering
+
 #### Deletions (the suite shrinks; no test of their own)
 
 - [ ] `tests/acceptance/test_grounding.py` is gone, with the 30 grounding tests spread
       across `test_steps.py`, `test_agent.py`, `test_langgraph_runner.py`,
       `test_assembly.py`, `test_plugin_composition.py` and `test_conversation.py`
+- [ ] `test_plugin_set.py:100-118`, `test_langgraph_runner.py:231` and
+      `test_conversation.py:22,65,189,241` lose the scope they pass
 - [ ] `test_chroma_retriever.py:43` and `langgraph_runner.py:58` no longer explain
       themselves by naming the gate
+- [ ] `sprint-4-feedback.md:38` goes back to open, saying story 15 removed the enforcement
+      story 8 closed it with; the trace item at `:221` keeps its tick with a note that one
+      silence now reaches the panel, from the search tool
