@@ -2,8 +2,9 @@
 composition root, the real Chroma store and embedder, OpenRouter over the network,
 and the Streamlit page driven headlessly. They are the only cover for behaviour a stub
 cannot show — a scripted model answers however the script says, so it can never
-reveal the model ignoring an instruction. That is not hypothetical: the gate used to
-ask the model to skip searching for small talk, and a real one searched anyway.
+reveal the model ignoring an instruction. Since story 15 removed the grounding gate,
+these are the only tests that can catch a model answering a document question from
+what it happens to know.
 """
 
 import dataclasses
