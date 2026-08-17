@@ -511,6 +511,7 @@ def _config(db_path: Path, *, debug: bool = False) -> Config:
         history_turns=6,
         db_path=str(db_path),
         memory_path=str(db_path / "memory.sqlite"),
+        documents_path=str(db_path / "documents.sqlite"),
         debug=debug,
     )
 
@@ -533,6 +534,19 @@ def test_build_starts_with_an_empty_store(tmp_path: Path) -> None:
     app = build(config)
 
     assert app.knowledge_base.list_sources() == []
+
+
+@pytest.mark.integration
+def test_build_keeps_a_documents_store_at_the_configured_path(tmp_path: Path) -> None:
+    """The pane reads what ingest kept, so the store has to be the one the settings
+    name — and it has to survive the process, which is why it is on disk at all."""
+    app = build(_config(tmp_path))
+
+    app.knowledge_base.add_file(b"Aim for 1.6 g of protein per kg.", "protein.md")
+
+    assert (tmp_path / "documents.sqlite").exists()
+    assert app.knowledge_base.text("protein.md") == "Aim for 1.6 g of protein per kg."
+    assert build(_config(tmp_path)).knowledge_base.text("protein.md") is not None
 
 
 @pytest.mark.integration

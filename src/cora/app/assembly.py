@@ -25,6 +25,7 @@ from cora.engine.steps import ModelStep, PrepareStep, Router, ToolStep
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
+from cora.ports.documents import Documents
 from cora.ports.embedding import Embedder
 from cora.ports.graph import GraphFor
 from cora.ports.memory import Memory
@@ -48,6 +49,7 @@ def assemble(
     chat_model: ChatModel,
     embedder: Embedder,
     retriever: Retriever,
+    documents: Documents,
     plugins: PluginSet,
     memory: Memory | None = None,
     top_k: int = DEFAULT_TOP_K,
@@ -62,7 +64,7 @@ def assemble(
         embedder = LoggingEmbedder(embedder)
         retriever = LoggingRetriever(retriever)
     knowledge_base = KnowledgeBase(
-        embedder=embedder, retriever=retriever, loaders=LOADERS
+        embedder=embedder, retriever=retriever, loaders=LOADERS, documents=documents
     )
     tools = _offered_tools(plugins, knowledge_base, top_k, memory)
     runner = graph(
@@ -114,6 +116,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
     from cora.adapters.chroma_retriever import ChromaRetriever
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
+    from cora.adapters.sqlite_documents import SqliteDocuments
     from cora.adapters.sqlite_store_memory import SqliteStoreMemory
 
     enable_debug_logs(config.debug)
@@ -124,6 +127,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         ),
         embedder=SentenceTransformerEmbedder(),
         retriever=retriever,
+        documents=SqliteDocuments.at(config.documents_path),
         plugins=load_plugins(config.plugin_modules),
         memory=SqliteStoreMemory.at(config.memory_path),
         top_k=config.top_k,

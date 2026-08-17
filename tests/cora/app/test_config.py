@@ -18,6 +18,7 @@ def test_from_env_reads_every_field() -> None:
             "CORA_HISTORY_TURNS": "9",
             "CORA_DB_PATH": "/tmp/vectors",
             "CORA_MEMORY_PATH": "/tmp/memory.sqlite",
+            "CORA_DOCUMENTS_PATH": "/tmp/documents.sqlite",
         }
     )
 
@@ -31,6 +32,7 @@ def test_from_env_reads_every_field() -> None:
         history_turns=9,
         db_path="/tmp/vectors",
         memory_path="/tmp/memory.sqlite",
+        documents_path="/tmp/documents.sqlite",
     )
 
 
@@ -119,6 +121,7 @@ def test_the_memory_default_sits_beside_the_document_store() -> None:
     config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
 
     assert Path(config.memory_path).parent == Path(config.db_path).parent
+    assert Path(config.documents_path).parent == Path(config.db_path).parent
 
 
 def test_a_memory_path_blanked_rather_than_deleted_is_no_path_at_all() -> None:
@@ -133,6 +136,7 @@ def test_a_memory_path_blanked_rather_than_deleted_is_no_path_at_all() -> None:
     ("variable", "field"),
     [
         ("CORA_DB_PATH", "db_path"),
+        ("CORA_DOCUMENTS_PATH", "documents_path"),
         ("OPENROUTER_BASE_URL", "base_url"),
     ],
 )

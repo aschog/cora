@@ -14,6 +14,7 @@ DEFAULT_MAX_TOOL_ROUNDS = 8
 DEFAULT_HISTORY_TURNS = 20
 DEFAULT_DB_PATH = ".cora/chroma"
 DEFAULT_MEMORY_PATH = ".cora/memory.sqlite"
+DEFAULT_DOCUMENTS_PATH = ".cora/documents.sqlite"
 
 
 @dataclass(frozen=True)
@@ -27,6 +28,7 @@ class Config:
     history_turns: int
     db_path: str
     memory_path: str = DEFAULT_MEMORY_PATH
+    documents_path: str = DEFAULT_DOCUMENTS_PATH
     debug: bool = False
 
     @classmethod
@@ -51,6 +53,7 @@ class Config:
             ),
             db_path=_named(env, "CORA_DB_PATH", DEFAULT_DB_PATH),
             memory_path=_named(env, "CORA_MEMORY_PATH", DEFAULT_MEMORY_PATH),
+            documents_path=_named(env, "CORA_DOCUMENTS_PATH", DEFAULT_DOCUMENTS_PATH),
             debug=_bool(env, "CORA_DEBUG"),
         )
 

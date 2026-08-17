@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from typing import NamedTuple
 
 from cora.domain.chunk import Chunk
-from cora.domain.errors import MemoryStoreError
+from cora.domain.errors import DocumentStoreError, MemoryStoreError
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.loading import Loaders
 from cora.ports.memory import Fact
@@ -111,6 +111,27 @@ class CountingRetriever(FakeRetriever):
     def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
         self.queries += 1
         return super().query(query_vector, k)
+
+
+class FakeDocuments:
+    """The kept text, in a dict. `writes` is what lets a test say a document was kept
+    once, or not at all."""
+
+    def __init__(self) -> None:
+        self._kept: dict[str, str] = {}
+        self.writes = 0
+
+    def keep(self, name: str, text: str) -> None:
+        self._kept[name] = text
+        self.writes += 1
+
+    def read(self, name: str) -> str | None:
+        return self._kept.get(name)
+
+
+class FailingDocuments(FakeDocuments):
+    def read(self, name: str) -> str | None:
+        raise DocumentStoreError
 
 
 class FakeMemory:
