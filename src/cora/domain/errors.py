@@ -91,6 +91,19 @@ class LlmBusyError(LlmError):
     message = "The assistant is busy right now. Please try again in a moment."
 
 
+class LlmKeyRejectedError(LlmError):
+    message = (
+        "The assistant's API key was rejected. Check OPENROUTER_API_KEY and restart."
+    )
+
+
+class LlmConversationTooLongError(LlmError):
+    message = (
+        "This conversation has grown too long for the assistant to read. Please start "
+        "a new one."
+    )
+
+
 class LlmTruncatedError(LlmError):
     message = (
         "The answer was cut off before it finished. Please try again, or ask for a "

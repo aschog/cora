@@ -1,6 +1,7 @@
 from typing import Any
 
 import openai
+from langchain_core.exceptions import ContextOverflowError
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
@@ -12,21 +13,33 @@ from langchain_openai import ChatOpenAI
 
 from cora.domain.errors import (
     LlmBusyError,
+    LlmConversationTooLongError,
     LlmEmptyReplyError,
     LlmError,
+    LlmKeyRejectedError,
     LlmTimeoutError,
     LlmTruncatedError,
 )
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.plugin import Tool, ToolCall
 
-REQUEST_TIMEOUT_SECONDS = 60.0
+REQUEST_TIMEOUT_SECONDS = 20.0
+"""Per request, and a turn may spend one per tool round: at 8 rounds and 2 retries the
+worst case is what the user waits behind a spinner with no way to cancel."""
 MAX_RETRIES = 2
+MAX_OUTPUT_TOKENS = 2048
+"""Cora's cap rather than whichever the provider happens to default to, so a cut-off
+answer is a number we chose and can raise."""
 
-_CATEGORIES: dict[type[Exception], type[LlmError]] = {
-    openai.APITimeoutError: LlmTimeoutError,
-    openai.RateLimitError: LlmBusyError,
-}
+_CATEGORIES: tuple[tuple[type[Exception], type[LlmError]], ...] = (
+    (ContextOverflowError, LlmConversationTooLongError),
+    (openai.APITimeoutError, LlmTimeoutError),
+    (openai.RateLimitError, LlmBusyError),
+    (openai.AuthenticationError, LlmKeyRejectedError),
+)
+"""Ordered, not a mapping: the provider's classes overlap by inheritance, and the
+overflow errors are `BadRequestError`/`APIError` subclasses that a broader entry would
+swallow. First match wins, so the most specific category comes first."""
 
 
 def to_model_reply(reply: AIMessage) -> ModelReply:
@@ -89,6 +102,7 @@ class OpenRouterChatModel:
             base_url=base_url,
             timeout=REQUEST_TIMEOUT_SECONDS,
             max_retries=MAX_RETRIES,
+            max_tokens=MAX_OUTPUT_TOKENS,
         )
 
     def complete(
@@ -106,7 +120,7 @@ class OpenRouterChatModel:
 
 
 def _categorise(exc: Exception) -> LlmError:
-    for provider_error, wrapped in _CATEGORIES.items():
+    for provider_error, wrapped in _CATEGORIES:
         if isinstance(exc, provider_error):
             return wrapped()
     return LlmError()

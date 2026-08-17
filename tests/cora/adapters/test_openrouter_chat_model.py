@@ -1,6 +1,7 @@
 import httpx
 import openai
 import pytest
+from langchain_core.exceptions import ContextOverflowError
 from langchain_core.messages import (
     AIMessage,
     HumanMessage,
@@ -9,6 +10,7 @@ from langchain_core.messages import (
 )
 
 from cora.adapters.openrouter_chat_model import (
+    MAX_OUTPUT_TOKENS,
     MAX_RETRIES,
     REQUEST_TIMEOUT_SECONDS,
     OpenRouterChatModel,
@@ -17,8 +19,10 @@ from cora.adapters.openrouter_chat_model import (
 )
 from cora.domain.errors import (
     LlmBusyError,
+    LlmConversationTooLongError,
     LlmEmptyReplyError,
     LlmError,
+    LlmKeyRejectedError,
     LlmTimeoutError,
     LlmTruncatedError,
 )
@@ -126,38 +130,20 @@ def test_tool_schemas_are_bound_onto_the_client(
     ]
 
 
-def test_provider_exception_is_wrapped_as_llm_error(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    class _FailingChatOpenAI:
-        def __init__(self, **kwargs: object) -> None: ...
+def test_the_client_is_built_with_a_deadline_a_retry_count_and_a_cap() -> None:
+    """The real client, not a fake taking kwargs: a name this library stopped reading
+    would be swallowed into `model_kwargs` and the deadline would quietly not exist.
+    Building one needs no network — nothing is sent until `invoke`.
 
-        def invoke(self, messages: object) -> AIMessage:
-            raise RuntimeError("provider down")
-
-    monkeypatch.setattr(
-        "cora.adapters.openrouter_chat_model.ChatOpenAI", _FailingChatOpenAI
-    )
+    An agent makes several model calls per turn, so a request with no deadline is a turn
+    that never ends, one attempt is a turn a single dropped connection ends, and no cap
+    is an answer whose length the provider's default decides."""
     model = OpenRouterChatModel(model="m", api_key="k", base_url="https://example/api")
 
-    with pytest.raises(LlmError):
-        model.complete((Message(role="user", content="hi"),), ())
-
-
-def test_the_client_is_given_a_deadline_and_a_retry_count(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """An agent makes several model calls per turn, so a request with no deadline is a
-    turn that never ends, and one attempt is a turn a single dropped connection ends."""
-    monkeypatch.setattr(
-        "cora.adapters.openrouter_chat_model.ChatOpenAI", _FakeChatOpenAI
-    )
-
-    OpenRouterChatModel(model="m", api_key="k", base_url="https://example/api")
-
-    assert _FakeChatOpenAI.last is not None
-    assert _FakeChatOpenAI.last.init_kwargs["timeout"] == REQUEST_TIMEOUT_SECONDS
-    assert _FakeChatOpenAI.last.init_kwargs["max_retries"] == MAX_RETRIES
+    client = model._client
+    assert client.request_timeout == REQUEST_TIMEOUT_SECONDS
+    assert client.max_retries == MAX_RETRIES
+    assert client.max_tokens == MAX_OUTPUT_TOKENS
 
 
 @pytest.mark.parametrize(
@@ -177,6 +163,17 @@ def test_the_client_is_given_a_deadline_and_a_retry_count(
             ),
             LlmBusyError,
         ),
+        (
+            openai.AuthenticationError(
+                "bad key",
+                response=httpx.Response(
+                    401, request=httpx.Request("POST", "https://example")
+                ),
+                body=None,
+            ),
+            LlmKeyRejectedError,
+        ),
+        (ContextOverflowError("too long"), LlmConversationTooLongError),
         (RuntimeError("provider down"), LlmError),
     ],
 )
@@ -184,7 +181,9 @@ def test_a_provider_failure_keeps_the_category_the_user_can_act_on(
     monkeypatch: pytest.MonkeyPatch, raised: Exception, expected: type[LlmError]
 ) -> None:
     """Waiting out a rate limit and retrying a timeout are different advice, and one
-    generic message can only give one of them."""
+    generic message can only give one of them. Two of these no retry ever fixes: a
+    rejected key, and a conversation the model can no longer read — the thread is
+    persisted, so "please try again" overflows identically until a new one starts."""
 
     class _FailingChatOpenAI:
         def __init__(self, **kwargs: object) -> None: ...
