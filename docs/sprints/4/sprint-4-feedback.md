@@ -73,6 +73,16 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       empty completion is treated as a successful answer. Set an explicit timeout and
       retry, preserve error categories, reject empty/truncated finals.
       → own slice, **before story 1** — the agent multiplies model calls per turn.
+      → taken on `fix/submission-blockers`, after story 1 rather than before it: the agent
+      shipped first, which is why a per-turn multiplier now makes the case rather than
+      predicting it. Test list:
+  - [ ] the client is built with an explicit timeout and a retry count
+  - [ ] a provider timeout is raised as its own error, worded as "took too long"
+  - [ ] a rate-limit refusal is raised as its own error, worded as "busy, try shortly"
+  - [ ] any other provider exception stays the generic `LlmError`
+  - [ ] a final reply the provider cut off at the token limit is an error, not an answer
+  - [ ] a final reply with no text and no tool calls is an error, not a blank answer
+  - [ ] a reply carrying tool calls and no text is untouched — that is how a round starts
 
 - [ ] **Medical filter is substring matching** — `MedicalSafetyRule`
       (`plugins/fitness/safety.py:20-25`) refuses any message containing `diabetes`,
@@ -80,6 +90,20 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       outright. Distinguish diagnosis/medication requests from training questions that
       can get cautious guidance with a caveat. Also manual finding #7.
       → own slice, inside **story 6** (guard rails).
+      → story 6 was never built, so the slice moves to `fix/submission-blockers` on its
+      own. The rule stays deterministic and stays ahead of the model — it is what makes
+      the refusal cost nothing — but it stops reading a *mention* as a *request*: naming a
+      condition is allowed, asking for a diagnosis, a dose or a medication decision is
+      not, and the caveat is the plugin's instructions to write. Test list:
+  - [ ] "I have diabetes, how should I train?" passes the rule
+  - [ ] "Do I have diabetes?" is still refused
+  - [ ] "What steroid dosage should I take?" is still refused
+  - [ ] "Should I stop taking my blood pressure medication?" is refused
+  - [ ] "Is my pregnancy affecting my macros?" passes — **this replaces a test that
+        asserts today's refusal**, because the finding says that refusal is the bug
+  - [ ] matching stays case-insensitive, asserted on a phrase that still refuses
+  - [ ] the plugin's instructions tell the model to answer with a caveat and point at a
+        professional when a condition is named
 
 - [ ] **No streaming** — the port returns a finished reply and the UI blocks on a spinner
       (`core/ports/chat_model.py`, `app/ui/chat.py:93`). Stream through the model
@@ -141,10 +165,19 @@ Recorded with a decision, not scheduled — none is in the sprint-4 story cut.
 
 ## Found by the single-cora-package review
 
-- [ ] **A blank `CORA_MEMORY_PATH` throws away everything the user asks to be
+- [x] **A blank `CORA_MEMORY_PATH` throws away everything the user asks to be
       remembered** — `config.py` reads the variable with `env.get(..., DEFAULT)`, so a
       variable blanked rather than deleted survives as `""`, and `sqlite3.connect("")`
       does not raise: SQLite opens a private temporary database that is deleted with the
       connection. The `remember` tool works, the panel lists the facts, and the next
       start has none of them — no error anywhere. Pre-dates the sprint; `CORA_MODEL`
       already reads a blank as unset, and every path variable should.
+      → taken on `fix/submission-blockers`. `_model` is the shape to copy, and the fix is
+      the whole class of variable rather than the one that was found: a blank string is
+      not a value anywhere in `from_env`. Test list:
+  - [x] a blank `CORA_MEMORY_PATH` reads as unset, so remembered facts survive a restart
+  - [x] a blank `CORA_DB_PATH` reads as unset
+  - [x] a blank `OPENROUTER_BASE_URL` reads as unset — same shape, same silent failure
+  - [x] surrounding whitespace is stripped from a path that *is* named
+  - [x] a named path still wins over the default — already covered by
+        `test_from_env_reads_every_field`, so no new test

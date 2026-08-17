@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from cora.app.config import DEFAULT_PLUGINS, Config
+from cora.app.config import DEFAULT_MEMORY_PATH, DEFAULT_PLUGINS, Config
 from cora.domain.errors import ConfigurationError
 
 
@@ -119,6 +119,39 @@ def test_the_memory_default_sits_beside_the_document_store() -> None:
     config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
 
     assert Path(config.memory_path).parent == Path(config.db_path).parent
+
+
+def test_a_memory_path_blanked_rather_than_deleted_is_no_path_at_all() -> None:
+    """`sqlite3.connect("")` opens a private database that is deleted with the
+    connection, so a blank taken as a value loses every remembered fact in silence."""
+    config = Config.from_env({"OPENROUTER_API_KEY": "k", "CORA_MEMORY_PATH": "   "})
+
+    assert config.memory_path == DEFAULT_MEMORY_PATH
+
+
+@pytest.mark.parametrize(
+    ("variable", "field"),
+    [
+        ("CORA_DB_PATH", "db_path"),
+        ("OPENROUTER_BASE_URL", "base_url"),
+    ],
+)
+def test_no_setting_takes_a_blank_for_an_answer(variable: str, field: str) -> None:
+    """The memory path is where it was found, not where it ends: a blank is not a value
+    anywhere in `from_env`, so a store that opens nowhere and a client that posts
+    nowhere are the same mistake."""
+    blanked = Config.from_env({"OPENROUTER_API_KEY": "k", variable: "   "})
+    unset = Config.from_env({"OPENROUTER_API_KEY": "k"})
+
+    assert getattr(blanked, field) == getattr(unset, field)
+
+
+def test_a_path_is_taken_without_the_spaces_around_it() -> None:
+    config = Config.from_env(
+        {"OPENROUTER_API_KEY": "k", "CORA_DB_PATH": " /tmp/vectors "}
+    )
+
+    assert config.db_path == "/tmp/vectors"
 
 
 def test_from_env_reads_nothing_about_retrieval() -> None:
