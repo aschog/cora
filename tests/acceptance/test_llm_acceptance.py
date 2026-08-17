@@ -33,7 +33,6 @@ Spread it over three or four meals.
 IN_THE_SUBJECT = "How much protein should I eat per kg of bodyweight?"
 LIVE_PLUGINS = ("cora.plugins.security", "cora.plugins.fitness")
 SMALL_TALK = "Hi there!"
-SOURCES = "Sources"
 
 
 def _live_config(store: Path) -> Config:
@@ -80,10 +79,11 @@ def _answer(at: AppTest) -> str:
     return answers(at)[-1].lower()
 
 
-def _panels(at: AppTest) -> list[str]:
-    """Scoped to the newest message: the same panel appears on every answered turn,
-    so counting them across the page would say nothing about this one."""
-    return [panel.label for panel in at.chat_message[-1].expander]
+def _cited(at: AppTest) -> bool:
+    """A number in the answer is what says the documents were reached. The Sources panel
+    that used to carry this proof is gone — the numbers are the way into a passage now,
+    so the answer is the only place a citation still shows."""
+    return CITATION.search(_answer(at)) is not None
 
 
 def _steps(at: AppTest) -> str:
@@ -128,14 +128,10 @@ def test_a_whole_session_uploads_asks_calculates_and_remembers(tmp_path: Path) -
     at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
 
     assert not at.exception
-    assert _panels(at) == [SOURCES], "the model answered without reaching the documents"
-    [cited] = at.chat_message[-1].expander
-    assert "protein.md" in "\n".join(line.value for line in cited.markdown)
     answered = _answer(at)
-    assert CITATION.search(answered), (
-        f"the answer rested on a passage it never cited: {answered!r}"
-    )
+    assert _cited(at), f"the answer rested on a passage it never cited: {answered!r}"
     assert f"{SEARCH_TOOL_NAME}(" in _steps(at)
+    assert "protein.md" in _steps(at), "the search never reached the document"
 
     at.chat_input[0].set_value(NEEDS_THE_CALCULATOR).run(timeout=180)
 
@@ -168,14 +164,13 @@ def test_a_real_model_answers_from_the_documents_but_greets_without_them(
     at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
 
     assert not at.exception
-    assert _panels(at) == [SOURCES], "the model answered without reaching the documents"
-    [cited] = at.chat_message[-1].expander
-    assert "protein.md" in "\n".join(line.value for line in cited.markdown)
+    assert _cited(at), "the model answered without reaching the documents"
+    assert "protein.md" in _steps(at), "the search never reached the document"
 
     at.chat_input[0].set_value(SMALL_TALK).run(timeout=180)
 
     assert not at.exception
-    assert _panels(at) == [], "small talk came back citing a document"
+    assert not _cited(at), "small talk came back citing a document"
 
 
 ASKS_FOR_DOCUMENTS = ("upload", "no documents", "don't have any documents", "share")
@@ -207,7 +202,7 @@ def test_a_real_model_asks_for_documents_instead_of_answering_without_them(
     assert any(phrase in answer for phrase in ASKS_FOR_DOCUMENTS), (
         f"an empty store was answered from model knowledge: {answer!r}"
     )
-    assert _panels(at) == [], "nothing was uploaded and the answer cited something"
+    assert not _cited(at), "nothing was uploaded and the answer cited something"
 
     greeted = AppTest.from_function(
         _page, args=(_live_app(tmp_path / "greeted"),)
@@ -219,7 +214,7 @@ def test_a_real_model_asks_for_documents_instead_of_answering_without_them(
     assert any(word in greeting for word in GREETS), (
         f"a greeting was not answered as a greeting: {greeting!r}"
     )
-    assert _panels(greeted) == [], "a greeting cited a document"
+    assert not _cited(greeted), "a greeting cited a document"
 
 
 VEGETARIAN = "I'm vegetarian — keep that in mind."

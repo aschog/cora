@@ -6,7 +6,10 @@ from apptest import mounted_html
 from cora.app.assembly import App
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.streamlit.viewer import (
+    _ANSWER_CSS,
+    _PANE_CSS,
     ANSWER_COMPONENT,
+    CITATION_COLOUR,
     CLOSE_KEY,
     NOT_KEPT,
     OPEN_CITATION,
@@ -249,3 +252,23 @@ def test_the_chat_shares_the_page_only_while_a_document_is_open() -> None:
     at.button(key=CLOSE_KEY).click().run()
 
     assert at.columns == []
+
+
+def test_an_answer_with_citations_offers_no_sources_panel() -> None:
+    """The numbers in the answer are the way into a document, and the panel listed the
+    same passages a click away under every answer that had any."""
+    at = _asked(_run(_one_citation()))
+
+    assert not at.exception
+    assert [panel.label for panel in at.expander] == []
+
+
+def test_the_citation_colour_dresses_both_the_button_and_the_passage_it_opens() -> None:
+    """One colour for the click and for what the click reveals: on the theme's primary
+    the passage wore whatever the buttons wore by coincidence, and a filled mark took
+    the theme's *background* for its text — white on amber, once the fill stopped being
+    the dark red the default ships."""
+    assert f"color: {CITATION_COLOUR}" in _ANSWER_CSS
+    assert f"color: {CITATION_COLOUR}" in _PANE_CSS
+    assert "var(--st-primary-color)" not in _PANE_CSS
+    assert "background: var(--st-background-color)" not in _PANE_CSS

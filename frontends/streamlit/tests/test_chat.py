@@ -526,7 +526,7 @@ def test_a_failed_run_keeps_the_steps_it_had_taken() -> None:
 
 
 @pytest.mark.integration
-def test_upload_then_ask_shows_answer_with_sources() -> None:
+def test_upload_then_ask_shows_an_answer_that_cites_the_document() -> None:
     answer = "Protein supports muscle growth [1]."
     searching = ModelReply(
         tool_calls=(
@@ -546,8 +546,8 @@ def test_upload_then_ask_shows_answer_with_sources() -> None:
     at.chat_input[0].set_value("What about protein?").run()
     assert not at.exception
     assert answer in _visible_text(at)
-    numbered = [md.value for md in at.markdown if re.match(r"^\[\d+\] ", md.value)]
-    assert numbered == ["[1] note.md"]
+    listed = [md.value for md in at.markdown if re.match(r"^\[\d+\] ", md.value)]
+    assert listed == [], "the number in the answer is the way in, not a panel under it"
     assert "[1] note.md: protein facts" in _traced(at)
     assert "untrusted" not in _visible_text(at).lower(), (
         "the model's framing of the passages must not reach the user"

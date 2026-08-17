@@ -7,29 +7,8 @@ from cora.frontends.streamlit.formatting import (
     answer_html,
     document_html,
     ingest_message,
-    numbered_citations,
     step_text,
 )
-
-
-def test_numbered_citations_renders_each_passage_under_its_own_number() -> None:
-    """One line per passage, not per document: two passages of one file are two lines,
-    which is what tells the reader which number opens which."""
-    assert numbered_citations(
-        (
-            Citation(1, "a.pdf", 0, 5),
-            Citation(2, "a.pdf", 40, 50),
-            Citation(3, "b.md", 20, 30),
-        )
-    ) == [
-        "[1] a.pdf",
-        "[2] a.pdf",
-        "[3] b.md",
-    ]
-
-
-def test_numbered_citations_of_nothing_is_empty() -> None:
-    assert numbered_citations(()) == []
 
 
 def test_ingest_message_counts_a_single_chunk_in_the_singular() -> None:

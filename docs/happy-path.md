@@ -91,7 +91,7 @@ sequenceDiagram
 
   LangGraphRunner-->>Agent: the finished state
   Agent-->>UI: ChatResult(answer, citations, trace)
-  UI->>You: the answer with each [n] a button, its Sources, and "How I got there"
+  UI->>You: the answer with each [n] a button, and "How I got there"
   UI->>Memory: recall()
   Memory-->>UI: the panel's facts, this turn's included
 ```

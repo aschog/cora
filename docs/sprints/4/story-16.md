@@ -71,7 +71,8 @@ headless.
 - [x] a citation whose document was never kept says so instead of rendering an empty pane
 - [x] an `AdapterError` reading the document is reported in the pane and costs the chat
       nothing
-- [x] the Sources expander lists one line per cited passage, not one per document
+- [x] ~~the Sources expander lists one line per cited passage, not one per document~~ —
+      built, then removed; see *the numbers in the answer are the only way in* below
 
 #### Outer functional test
 
@@ -131,3 +132,17 @@ dial belongs beside the budgets it spends.
 - [x] an effort no provider defines is refused at startup rather than sent
 - [x] `OpenRouterChatModel` asks for the effort it was handed in the request body
 - [x] `build` hands the configured effort to the model
+
+#### Found in use: the numbers in the answer are the only way in (`chat.py`, `viewer.py`)
+
+The Sources expander listed what the buttons already open, under every answer, and the
+mark wore the theme's primary — the same colour the buttons wear, so the passage and the
+click that opened it read as unrelated.
+
+- [x] an answer carrying citations renders no Sources expander
+- [x] `numbered_citations` goes with the panel it fed
+- [x] the cited passage is marked in the citation colour rather than filled with the
+      theme's primary on the theme's background
+- [x] a citation button wears that same colour, so click and highlight match
+- [x] the live tier reads the answer and its trace for proof the documents were reached,
+      having lost the panel it read before

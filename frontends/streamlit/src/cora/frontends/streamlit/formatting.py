@@ -39,18 +39,11 @@ def _capped(text: str, cap: int) -> str:
     return text if len(text) <= cap else f"{text[:cap]}…"
 
 
-def numbered_citations(citations: Sequence[Citation]) -> list[str]:
-    """One line per cited passage, not per document: two passages of one document are
-    two citations, and the panel is what says which number opens which."""
-    return [f"[{citation.number}] {citation.document}" for citation in citations]
-
-
 def answer_html(answer: str, citations: Sequence[Citation]) -> str:
     """The answer as markdown, with every `[n]` that resolves turned into a button the
     reader can press. A number nothing was registered under stays the text the model
     wrote, and one inside a code block stays code — an example of indexing a list is not
-    something to click. It can still be listed in the Sources panel, which reads the
-    answer as text: what a fence hides is the button, not the citation."""
+    something to click."""
     numbers = {citation.number for citation in citations}
     rendered = _MARKDOWN.render(answer)
     written: list[str] = []

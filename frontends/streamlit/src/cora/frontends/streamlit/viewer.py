@@ -17,6 +17,15 @@ CLOSE_LABEL = ":material/close: Close"
 PANE_RATIO = (3, 2)
 ANSWER_COMPONENT = "cora_cited_answer"
 PANE_COMPONENT = "cora_document_pane"
+CITATION_COLOUR = "#f0c674"
+"""One colour for a citation wherever it appears: the button that opens a passage and
+the passage it opens. Named here rather than taken from the theme because the theme's
+primary is the colour of everything else clickable, which left the passage looking like
+an accident of the palette."""
+
+_CITE_SLOT = "__CITE__"
+"""Substituted into the stylesheets below rather than interpolated, so what is written
+here stays CSS a browser would accept and a reader can scan."""
 
 _ANSWER_HTML = "<div id='answer'></div>"
 _ANSWER_CSS = """
@@ -28,7 +37,7 @@ button.cite {
   background: none;
   border: none;
   padding: 0 0.1rem;
-  color: var(--st-primary-color);
+  color: __CITE__;
   cursor: pointer;
   font: inherit;
 }
@@ -57,8 +66,8 @@ _PANE_CSS = """
   overflow-y: auto;
 }
 #document mark {
-  background: var(--st-primary-color);
-  color: var(--st-background-color);
+  background: none;
+  color: __CITE__;
 }
 """
 _PANE_JS = """
@@ -70,6 +79,9 @@ export default function (component) {
   document_.querySelector("mark")?.scrollIntoView({block: "center"})
 }
 """
+_ANSWER_CSS = _ANSWER_CSS.replace(_CITE_SLOT, CITATION_COLOUR)
+_PANE_CSS = _PANE_CSS.replace(_CITE_SLOT, CITATION_COLOUR)
+
 _mounts: dict[str, Any] = {}
 
 

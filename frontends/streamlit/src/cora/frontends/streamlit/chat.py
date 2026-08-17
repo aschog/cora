@@ -13,7 +13,6 @@ from cora.engine.agent import Agent
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.frontends.streamlit.formatting import (
     ingest_message,
-    numbered_citations,
     step_text,
 )
 from cora.frontends.streamlit.thread import ThreadEntry
@@ -239,7 +238,6 @@ def _show(message: ThreadEntry) -> None:
                 message.get("citations", ()),
                 key=f"answer_{_position(message)}",
             )
-            _expander("Sources", numbered_citations(message.get("citations", ())))
         else:
             st.markdown(message["content"])
         _trace(message.get("trace", ()), failed=_went_wrong(message))
