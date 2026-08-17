@@ -67,7 +67,7 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       so the planner and its hand-parsed JSON go rather than get structured output. The
       model-adapter item below stands on its own.
 
-- [ ] **Model adapter swallows everything** — every provider exception becomes one generic
+- [x] **Model adapter swallows everything** — every provider exception becomes one generic
       `LlmError` (`adapters/openrouter_chat_model.py:73-77`), with no timeout, no retry
       policy, and `finish_reason`/usage discarded (`to_model_reply`), so a truncated or
       empty completion is treated as a successful answer. Set an explicit timeout and
@@ -76,13 +76,13 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       → taken on `fix/submission-blockers`, after story 1 rather than before it: the agent
       shipped first, which is why a per-turn multiplier now makes the case rather than
       predicting it. Test list:
-  - [ ] the client is built with an explicit timeout and a retry count
-  - [ ] a provider timeout is raised as its own error, worded as "took too long"
-  - [ ] a rate-limit refusal is raised as its own error, worded as "busy, try shortly"
-  - [ ] any other provider exception stays the generic `LlmError`
-  - [ ] a final reply the provider cut off at the token limit is an error, not an answer
-  - [ ] a final reply with no text and no tool calls is an error, not a blank answer
-  - [ ] a reply carrying tool calls and no text is untouched — that is how a round starts
+  - [x] the client is built with an explicit timeout and a retry count
+  - [x] a provider timeout is raised as its own error, worded as "took too long"
+  - [x] a rate-limit refusal is raised as its own error, worded as "busy, try shortly"
+  - [x] any other provider exception stays the generic `LlmError`
+  - [x] a final reply the provider cut off at the token limit is an error, not an answer
+  - [x] a final reply with no text and no tool calls is an error, not a blank answer
+  - [x] a reply carrying tool calls and no text is untouched — that is how a round starts
 
 - [ ] **Medical filter is substring matching** — `MedicalSafetyRule`
       (`plugins/fitness/safety.py:20-25`) refuses any message containing `diabetes`,

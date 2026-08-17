@@ -1,5 +1,6 @@
 from typing import Any
 
+import openai
 from langchain_core.messages import (
     AIMessage,
     BaseMessage,
@@ -9,17 +10,40 @@ from langchain_core.messages import (
 )
 from langchain_openai import ChatOpenAI
 
-from cora.domain.errors import LlmError
+from cora.domain.errors import (
+    LlmBusyError,
+    LlmEmptyReplyError,
+    LlmError,
+    LlmTimeoutError,
+    LlmTruncatedError,
+)
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.plugin import Tool, ToolCall
 
+REQUEST_TIMEOUT_SECONDS = 60.0
+MAX_RETRIES = 2
+
+_CATEGORIES: dict[type[Exception], type[LlmError]] = {
+    openai.APITimeoutError: LlmTimeoutError,
+    openai.RateLimitError: LlmBusyError,
+}
+
 
 def to_model_reply(reply: AIMessage) -> ModelReply:
+    """Raises rather than returns when the provider stopped early: a final with no
+    usable text is a failed turn, and returning it hands the user a blank or half a
+    sentence as though it were the answer."""
     tool_calls = tuple(
         ToolCall(name=call["name"], arguments=call["args"], call_id=call["id"] or "")
         for call in reply.tool_calls
     )
-    return ModelReply(text=str(reply.text), tool_calls=tool_calls)
+    text = str(reply.text)
+    if not tool_calls:
+        if reply.response_metadata.get("finish_reason") == "length":
+            raise LlmTruncatedError
+        if not text.strip():
+            raise LlmEmptyReplyError
+    return ModelReply(text=text, tool_calls=tool_calls)
 
 
 def to_tool_schema(tool: Tool) -> dict[str, Any]:
@@ -59,7 +83,13 @@ class OpenRouterChatModel:
     def __init__(self, model: str, api_key: str, base_url: str) -> None:
         """The endpoint is passed in, never assumed: which host answers is the
         deployment's choice, and `cora.app.config` is where it is written down."""
-        self._client = ChatOpenAI(model=model, api_key=api_key, base_url=base_url)
+        self._client = ChatOpenAI(
+            model=model,
+            api_key=api_key,
+            base_url=base_url,
+            timeout=REQUEST_TIMEOUT_SECONDS,
+            max_retries=MAX_RETRIES,
+        )
 
     def complete(
         self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
@@ -71,5 +101,12 @@ class OpenRouterChatModel:
         try:
             reply = client.invoke(lc_messages)
         except Exception as exc:
-            raise LlmError from exc
+            raise _categorise(exc) from exc
         return to_model_reply(reply)
+
+
+def _categorise(exc: Exception) -> LlmError:
+    for provider_error, wrapped in _CATEGORIES.items():
+        if isinstance(exc, provider_error):
+            return wrapped()
+    return LlmError()
