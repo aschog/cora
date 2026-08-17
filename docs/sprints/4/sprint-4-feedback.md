@@ -181,3 +181,7 @@ Recorded with a decision, not scheduled — none is in the sprint-4 story cut.
   - [x] surrounding whitespace is stripped from a path that *is* named
   - [x] a named path still wins over the default — already covered by
         `test_from_env_reads_every_field`, so no new test
+  - [x] a blank `OPENROUTER_API_KEY` stops startup by name rather than becoming a 401
+        the user reads as "temporarily unavailable", and a pasted key keeps neither
+        space — found by the branch review, which called the claim above overclaimed
+  - [x] a blank count reads as unset rather than refusing to start the app

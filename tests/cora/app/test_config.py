@@ -154,6 +154,37 @@ def test_a_path_is_taken_without_the_spaces_around_it() -> None:
     assert config.db_path == "/tmp/vectors"
 
 
+def test_a_key_of_only_blanks_is_no_key_at_all() -> None:
+    """The one variable with nothing to fall back on, so a blank has to stop startup:
+    sent as-is it comes back a 401, and the user is told the assistant is temporarily
+    unavailable instead of that their key is missing."""
+    with pytest.raises(ConfigurationError) as excinfo:
+        Config.from_env({"OPENROUTER_API_KEY": "   "})
+
+    assert "OPENROUTER_API_KEY" in excinfo.value.user_message
+
+
+def test_a_key_is_taken_without_the_spaces_around_it() -> None:
+    """Pasting from a `.env` line brings the trailing space with it."""
+    config = Config.from_env({"OPENROUTER_API_KEY": " sk-live "})
+
+    assert config.api_key == "sk-live"
+
+
+@pytest.mark.parametrize(
+    "variable", ["CORA_TOP_K", "CORA_MAX_TOOL_ROUNDS", "CORA_HISTORY_TURNS"]
+)
+def test_a_count_of_only_blanks_reads_as_unset_rather_than_as_a_number(
+    variable: str,
+) -> None:
+    """Loud where the paths were silent, but the same mistake: a variable blanked in a
+    `.env` refused to start the app at all."""
+    blanked = Config.from_env({"OPENROUTER_API_KEY": "k", variable: "   "})
+    unset = Config.from_env({"OPENROUTER_API_KEY": "k"})
+
+    assert blanked == unset
+
+
 def test_from_env_reads_nothing_about_retrieval() -> None:
     """There is one way to search, so the environment that used to choose between them
     configures the same app as an environment that never mentioned it — including the

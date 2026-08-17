@@ -32,7 +32,7 @@ class Config:
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Config":
         env = os.environ if env is None else env
-        api_key = env.get("OPENROUTER_API_KEY")
+        api_key = _named(env, "OPENROUTER_API_KEY", "")
         if not api_key:
             raise ConfigurationError(
                 "OPENROUTER_API_KEY is not set. Add it to your environment."
@@ -82,7 +82,7 @@ def _bool(env: Mapping[str, str], key: str) -> bool:
 
 def _int(env: Mapping[str, str], key: str, default: int, *, minimum: int) -> int:
     """`minimum` is 0 only where the feature reads it as off, as history turns do."""
-    raw = env.get(key, str(default))
+    raw = _named(env, key, str(default))
     try:
         value = int(raw)
     except ValueError as exc:
