@@ -47,6 +47,10 @@ def test_a_search_retrieves_the_chunk_matching_the_question(
 def test_the_agent_answers_from_the_uploaded_document_and_cites_it(
     make_chroma: "Callable[[], ChromaRetriever]",
 ) -> None:
+    """`top_k=1` is what makes the retrieval decision observable: the fixture is one
+    document of six chunks, so at the shipped default of five the passage the answer
+    cites comes back whatever was searched for, and the assertion below holds even when
+    the query never reaches the index."""
     app = indexed(
         assembled(
             chat_model=ScriptedChatModel(

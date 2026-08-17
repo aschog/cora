@@ -406,8 +406,7 @@ def test_the_search_tool_and_the_gate_read_the_knowledge_base_itself() -> None:
     """Nothing stands between the tool and the index the uploads were written to: the
     tool the model is offered finds a document added after assembly, and the gate that
     searches on the model's behalf holds the same knowledge base."""
-    app = _assemble(make_plugin())
-    app.knowledge_base.add_file(SEED_TEXT, "note.md")
+    app = _indexed(make_plugin())
     runner = app.agent.runner
     assert isinstance(runner, LangGraphRunner)
     assert isinstance(runner.model, ModelStep)
