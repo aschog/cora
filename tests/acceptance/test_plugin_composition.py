@@ -4,7 +4,6 @@ at once, and the same app carrying neither."""
 import pytest
 
 from app_builder import assembled, indexed
-from cora.domain.citations import Source
 from cora.domain.errors import InputRejectedError
 from cora.engine.plugin_registry import load_plugins
 from cora.engine.plugin_set import PluginSet
@@ -46,7 +45,7 @@ def test_a_guard_plugin_and_a_domain_plugin_are_live_in_one_app() -> None:
     answered = app.agent.answer(TRAINING, THREAD)
 
     assert answered.answer == GROUNDED
-    assert answered.sources == (Source(1, "protein.md"),)
+    assert [(c.number, c.document) for c in answered.citations] == [(1, "protein.md")]
 
     with pytest.raises(InputRejectedError) as diagnosis:
         app.agent.answer(DIAGNOSIS, THREAD)
@@ -70,7 +69,7 @@ def test_the_same_cora_with_no_plugins_is_a_plain_assistant() -> None:
     answered = app.agent.answer(TRAINING, THREAD)
 
     assert answered.answer == OFF_THE_CUFF
-    assert answered.sources == ()
+    assert answered.citations == ()
     assert retriever.queries == 0
     assert model.completions == 1
 

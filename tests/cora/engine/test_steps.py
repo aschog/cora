@@ -5,7 +5,7 @@ import pytest
 
 from cora.domain.agent_state import AgentState
 from cora.domain.chunk import Chunk
-from cora.domain.citations import Source
+from cora.domain.citations import Citation
 from cora.domain.errors import (
     InputRejectedError,
     LlmError,
@@ -50,9 +50,9 @@ def _hit(
     )
 
 
-def _asked(*calls: ToolCall, known: tuple[Source, ...] = ()) -> AgentState:
+def _asked(*calls: ToolCall, known: tuple[Citation, ...] = ()) -> AgentState:
     reply = Message(role="assistant", content="", tool_calls=calls)
-    return {"messages": [reply], "sources": list(known)}
+    return {"messages": [reply], "citations": list(known)}
 
 
 def _search_call(call_id: str, name: str = SEARCH_TOOL_NAME) -> ToolCall:
@@ -62,6 +62,9 @@ def _search_call(call_id: str, name: str = SEARCH_TOOL_NAME) -> ToolCall:
 def _searcher(*hits: RetrievedChunk, name: str = SEARCH_TOOL_NAME):
     tool = search_tool(FakeContextSource(list(hits)), top_k=3)
     return dataclasses.replace(tool, name=name)
+
+
+NOTE = Citation(number=1, document="note.md", start=0, end=len("protein builds muscle"))
 
 
 def _add_call(call_id: str, a: int = 1, b: int = 2) -> ToolCall:
@@ -130,7 +133,7 @@ def test_a_payload_that_registers_nothing_is_fed_back_as_it_renders() -> None:
 
     [message] = partial["messages"]
     assert message.content == "3"
-    assert partial["sources"] == []
+    assert partial["citations"] == []
 
 
 def test_the_model_gets_the_passages_labelled_as_untrusted_data() -> None:
@@ -150,9 +153,9 @@ def test_the_model_gets_the_passages_labelled_as_untrusted_data() -> None:
 def test_passages_are_labelled_even_when_they_add_no_new_source() -> None:
     step = ToolStep(ToolRuntime(tools=(_searcher(_hit("note.md")),)))
 
-    partial = step(_asked(_search_call("c1"), known=(Source(1, "note.md"),)))
+    partial = step(_asked(_search_call("c1"), known=(NOTE,)))
 
-    assert partial["sources"] == []
+    assert partial["citations"] == []
     [message] = partial["messages"]
     assert "untrusted" in message.content.lower()
     assert "[1] note.md" in message.content
@@ -163,15 +166,17 @@ def test_the_sources_it_registered_land_in_the_partial_state() -> None:
 
     partial = step(_asked(_search_call("c1")))
 
-    assert partial["sources"] == [Source(1, "note.md")]
+    assert partial["citations"] == [NOTE]
 
 
 def test_a_later_retrieval_in_the_same_run_continues_the_numbering() -> None:
     step = ToolStep(ToolRuntime(tools=(_searcher(_hit("later.md")),)))
 
-    partial = step(_asked(_search_call("c2"), known=(Source(1, "note.md"),)))
+    partial = step(_asked(_search_call("c2"), known=(NOTE,)))
 
-    assert partial["sources"] == [Source(2, "later.md")]
+    assert partial["citations"] == [
+        Citation(2, "later.md", 0, len("protein builds muscle"))
+    ]
     [used] = partial["trace"]
     assert "[2] later.md" in used.detail
 
@@ -188,7 +193,10 @@ def test_any_tool_returning_a_citable_payload_is_registered_the_same_way() -> No
         _asked(_search_call("c1"), _search_call("c2", name="recall"))
     )
 
-    assert partial["sources"] == [Source(1, "note.md"), Source(2, "diary.md")]
+    assert partial["citations"] == [
+        NOTE,
+        Citation(2, "diary.md", 0, len("protein builds muscle")),
+    ]
     searched, recalled = partial["trace"]
     assert "[1] note.md" in searched.detail
     assert "[2] diary.md" in recalled.detail
@@ -577,7 +585,7 @@ def test_an_answer_from_an_earlier_round_can_no_longer_end_the_run() -> None:
 def test_a_final_reply_is_done_whatever_the_documents_could_have_said() -> None:
     """The router reads the reply and the round count, and asks nothing about
     grounding: a turn that answered without searching is finished."""
-    assert Router(max_tool_rounds=8)({**_replied(), "sources": []}) == DONE
+    assert Router(max_tool_rounds=8)({**_replied(), "citations": []}) == DONE
     assert [field.name for field in dataclasses.fields(Router)] == ["max_tool_rounds"]
 
 
@@ -616,7 +624,7 @@ def test_a_payload_that_only_looks_citable_is_fed_back_untouched() -> None:
 
     partial = step(_asked(ToolCall(name="book", arguments={}, call_id="c1")))
 
-    assert partial["sources"] == []
+    assert partial["citations"] == []
     [message] = partial["messages"]
     assert message.content == "\"_Booking(member='Ada')\""
     [used] = partial["trace"]

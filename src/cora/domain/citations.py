@@ -22,15 +22,22 @@ NOTHING_FOUND = Nothing(told=NO_MATCHES, shown=NO_MATCHES)
 
 
 @dataclass(frozen=True)
-class Source:
+class Citation:
+    """One passage of one document, numbered. The span is where the passage sits in the
+    document's cleaned text, so `[n]` can be opened and read rather than merely named:
+    two passages of one document are two citations, and a number the user has been shown
+    never moves to another passage."""
+
     number: int
-    name: str
+    document: str
+    start: int
+    end: int
 
 
 @dataclass(frozen=True)
 class Context:
     text: str
-    sources: tuple[Source, ...]
+    citations: tuple[Citation, ...]
 
 
 def cited_numbers(text: str) -> tuple[int, ...]:
@@ -39,46 +46,54 @@ def cited_numbers(text: str) -> tuple[int, ...]:
     return tuple(dict.fromkeys(found))
 
 
-def cited_sources(text: str, sources: tuple[Source, ...]) -> tuple[Source, ...]:
-    by_number = {source.number: source for source in sources}
-    cited = (by_number[n] for n in cited_numbers(text) if n in by_number)
-    return tuple(sorted(cited, key=lambda source: source.number))
+def cited(text: str, citations: tuple[Citation, ...]) -> tuple[Citation, ...]:
+    by_number = {citation.number: citation for citation in citations}
+    found = (by_number[n] for n in cited_numbers(text) if n in by_number)
+    return tuple(sorted(found, key=lambda citation: citation.number))
 
 
 def build_context_block(
     hits: list[RetrievedChunk],
-    known: tuple[Source, ...] = (),
+    known: tuple[Citation, ...] = (),
     nothing: Nothing = NOTHING_FOUND,
 ) -> Context:
     if not hits:
-        return Context(text=nothing.told, sources=())
-    number_of = {source.name: source.number for source in known}
-    fresh = [
-        name
-        for name in dict.fromkeys(hit.chunk.source for hit in hits)
-        if name not in number_of
-    ]
-    start = max((source.number for source in known), default=0) + 1
-    added = tuple(
-        Source(number, name) for number, name in enumerate(fresh, start=start)
-    )
-    number_of.update({source.name: source.number for source in added})
+        return Context(text=nothing.told, citations=())
+    number_of = {_span(citation): citation.number for citation in known}
+    next_number = max((citation.number for citation in known), default=0) + 1
+    added: list[Citation] = []
+    for hit in hits:
+        span = _hit_span(hit)
+        if span in number_of:
+            continue
+        number_of[span] = next_number
+        added.append(Citation(next_number, *span))
+        next_number += 1
     body = "\n".join(
-        f"[{number_of[hit.chunk.source]}] {hit.chunk.source}: {hit.chunk.text}"
+        f"[{number_of[_hit_span(hit)]}] {hit.chunk.source}: {hit.chunk.text}"
         for hit in hits
     )
-    return Context(text=body, sources=added)
+    return Context(text=body, citations=tuple(added))
+
+
+def _span(citation: Citation) -> tuple[str, int, int]:
+    return (citation.document, citation.start, citation.end)
+
+
+def _hit_span(hit: RetrievedChunk) -> tuple[str, int, int]:
+    chunk = hit.chunk
+    return (chunk.source, chunk.offset, chunk.offset + len(chunk.text))
 
 
 class Citable(ABC):
-    """A tool payload that cites its own material: it takes the numbers already
+    """A tool payload that cites its own material: it takes the citations already
     handed out, renders itself as a numbered block, and says in one line what it
     found. Declared by inheritance, not by shape — a plugin payload with a
     `register` of its own is not citable.
     """
 
     @abstractmethod
-    def register(self, known: tuple[Source, ...]) -> Context: ...
+    def register(self, known: tuple[Citation, ...]) -> Context: ...
 
     @property
     @abstractmethod
@@ -92,7 +107,7 @@ class CitableHits(Citable):
     """What an empty result means *here*: a search of a store nothing was uploaded to
     says something a search that merely matched nothing does not."""
 
-    def register(self, known: tuple[Source, ...]) -> Context:
+    def register(self, known: tuple[Citation, ...]) -> Context:
         return build_context_block(self.hits, known, self.nothing)
 
     @property

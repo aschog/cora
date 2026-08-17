@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 
-from cora.domain.citations import Source
+from cora.domain.citations import Citation
 from cora.domain.trace import TraceStep
 
 
 @dataclass(frozen=True)
 class ChatResult:
     answer: str
-    sources: tuple[Source, ...] = ()
+    citations: tuple[Citation, ...] = ()
     trace: tuple[TraceStep, ...] = ()

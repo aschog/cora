@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from cora.domain.agent_state import AgentState
-from cora.domain.citations import Citable, Source
+from cora.domain.citations import Citable, Citation
 from cora.domain.errors import AdapterError, ToolLoopLimitError
 from cora.domain.trace import (
     MemoryUnread,
@@ -137,10 +137,10 @@ class ToolStep:
     tool_runtime: ToolExecutor
 
     def __call__(self, state: AgentState) -> AgentState:
-        known = tuple(state.get("sources", ()))
+        known = tuple(state.get("citations", ()))
         messages: list[Message] = []
         trace: list[TraceStep] = []
-        added: list[Source] = []
+        added: list[Citation] = []
         for call in _requested_calls(state):
             result = self.tool_runtime.execute(call)
             citable = result.payload if isinstance(result.payload, Citable) else None
@@ -148,7 +148,7 @@ class ToolStep:
             if citable is not None:
                 context = citable.register(known + tuple(added))
                 result = ToolResult(call_id=result.call_id, payload=context.text)
-                added.extend(context.sources)
+                added.extend(context.citations)
                 outcome = citable.summary
             messages.append(_tool_message(result, cites=citable is not None))
             trace.append(
@@ -160,7 +160,7 @@ class ToolStep:
                     failed=result.error is not None,
                 )
             )
-        return {"messages": messages, "trace": trace, "sources": added}
+        return {"messages": messages, "trace": trace, "citations": added}
 
 
 @dataclass(frozen=True)

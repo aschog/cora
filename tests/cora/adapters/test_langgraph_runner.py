@@ -10,7 +10,7 @@ from cora.adapters.langgraph_runner import (
 )
 from cora.domain.agent_state import AgentState
 from cora.domain.chunk import Chunk
-from cora.domain.citations import Source
+from cora.domain.citations import Citation
 from cora.domain.errors import InputRejectedError, LlmError, ToolLoopLimitError
 from cora.domain.trace import (
     MemoryUnread,
@@ -30,6 +30,7 @@ ROUNDS = 8
 
 THREAD = "t1"
 _A_STEP = ToolUse(name="add", outcome="3")
+NOTE = Citation(number=1, document="note.md", start=0, end=7)
 
 
 def _final(
@@ -146,14 +147,14 @@ def test_the_returned_state_accumulated_every_partial() -> None:
         return {
             "messages": _said("tool", "ran"),
             "trace": [ToolUse(name="search_documents", outcome="1 passage")],
-            "sources": [Source(1, "note.md")],
+            "citations": [NOTE],
         }
 
     final = _final(_runner(model=model, tools=tools), {"question": "q"})
 
     assert [m.content for m in final["messages"]] == ["q", "asking", "ran", "done"]
     assert final["trace"] == [ToolUse(name="search_documents", outcome="1 passage")]
-    assert final["sources"] == [Source(1, "note.md")]
+    assert final["citations"] == [NOTE]
 
 
 def test_an_answer_ends_the_turn_with_no_third_node_to_visit() -> None:
@@ -334,7 +335,7 @@ def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
         return {
             "messages": _asked_for_a_tool("ok"),
             "trace": list(every_kind),
-            "sources": [Source(1, "note.md")],
+            "citations": [NOTE],
         }
 
     runner = _runner(model=tracing)
@@ -344,7 +345,7 @@ def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
 
     assert [m.content for m in final["messages"]][:2] == ["first", "ok"]
     assert final["messages"][1].tool_calls[0].name == "add"
-    assert final["sources"] == [Source(1, "note.md"), Source(1, "note.md")]
+    assert final["citations"] == [NOTE, NOTE]
 
     replayed = final["trace"][: len(every_kind)]
     assert [type(step) for step in replayed] == [type(step) for step in every_kind]

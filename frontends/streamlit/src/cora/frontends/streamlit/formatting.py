@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from cora.domain.citations import Source
+from cora.domain.citations import Citation
 from cora.domain.trace import TraceStep
 
 DETAIL_CAP = 800
@@ -23,8 +23,10 @@ def _capped(text: str, cap: int) -> str:
     return text if len(text) <= cap else f"{text[:cap]}…"
 
 
-def numbered_sources(sources: Sequence[Source]) -> list[str]:
-    return [f"[{source.number}] {source.name}" for source in sources]
+def numbered_citations(citations: Sequence[Citation]) -> list[str]:
+    """One line per cited passage, not per document: two passages of one document are
+    two citations, and the panel is what says which number opens which."""
+    return [f"[{citation.number}] {citation.document}" for citation in citations]
 
 
 def ingest_message(filename: str, chunks: int) -> str:

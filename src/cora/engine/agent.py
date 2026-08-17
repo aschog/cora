@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from cora.domain.agent_state import AgentState
 from cora.domain.chat_result import ChatResult
-from cora.domain.citations import cited_sources
+from cora.domain.citations import cited
 from cora.domain.errors import GraphRunError
 from cora.domain.trace import TraceStep
 from cora.ports.graph import GraphRunner
@@ -46,6 +46,6 @@ class Agent:
         answer = final.get("answer", "")
         return ChatResult(
             answer=answer,
-            sources=cited_sources(answer, tuple(final.get("sources", ()))),
+            citations=cited(answer, tuple(final.get("citations", ()))),
             trace=tuple(final.get("trace", ()))[started:],
         )

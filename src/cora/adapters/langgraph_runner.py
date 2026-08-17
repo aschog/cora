@@ -18,7 +18,7 @@ SUPERSTEPS_PER_ROUND = 2
 CHECKPOINTED_DATA = (
     ("cora.ports.chat_model", "Message"),
     ("cora.ports.plugin", "ToolCall"),
-    ("cora.domain.citations", "Source"),
+    ("cora.domain.citations", "Citation"),
 )
 """What a thread's state is made of besides its trace. Named because the alternative is
 LangGraph's default — deserialise anything and log a warning saying it will be blocked

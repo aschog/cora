@@ -11,7 +11,7 @@ from cora.engine.agent import Agent
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.frontends.streamlit.formatting import (
     ingest_message,
-    numbered_sources,
+    numbered_citations,
     step_text,
 )
 from cora.frontends.streamlit.thread import ThreadEntry
@@ -179,7 +179,7 @@ def _assistant_message(result: ChatResult) -> ThreadEntry:
     return {
         "role": "assistant",
         "content": result.answer,
-        "sources": numbered_sources(result.sources),
+        "sources": numbered_citations(result.citations),
         "trace": list(result.trace),
     }
 

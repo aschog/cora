@@ -3,7 +3,7 @@ from collections.abc import Iterator
 import pytest
 
 from cora.domain.agent_state import AgentState
-from cora.domain.citations import Source
+from cora.domain.citations import Citation
 from cora.domain.errors import GraphRunError, LlmError
 from cora.domain.trace import ModelDecision, ToolUse, TraceStep
 from cora.engine.agent import Agent
@@ -11,6 +11,10 @@ from cora.engine.agent import Agent
 SEARCHED = ToolUse(name="search_documents", arguments={"query": "protein"})
 ANSWERED = ModelDecision()
 THREAD = "t1"
+
+
+def _at(document: str, number: int) -> Citation:
+    return Citation(number=number, document=document, start=0, end=10)
 
 
 class _StubRunner:
@@ -54,13 +58,13 @@ def test_answer_seeds_the_run_with_the_question_and_names_the_thread() -> None:
     assert result.answer == "80 kg."
 
 
-def test_only_the_cited_sources_are_reported_under_their_own_numbers() -> None:
-    registered = [Source(1, "a.md"), Source(2, "b.md"), Source(3, "c.md")]
-    runner = _StubRunner({"answer": "Per [3] and [1].", "sources": registered})
+def test_only_the_cited_passages_are_reported_under_their_own_numbers() -> None:
+    registered = [_at("a.md", 1), _at("b.md", 2), _at("c.md", 3)]
+    runner = _StubRunner({"answer": "Per [3] and [1].", "citations": registered})
 
     result = Agent(runner).answer("q", THREAD)
 
-    assert result.sources == (Source(1, "a.md"), Source(3, "c.md"))
+    assert result.citations == (_at("a.md", 1), _at("c.md", 3))
 
 
 def test_the_runs_steps_come_back_in_order() -> None:
@@ -148,12 +152,12 @@ def test_only_this_turns_steps_are_reported_and_returned() -> None:
 def test_the_sources_resolve_against_the_whole_conversations_registry() -> None:
     """Numbering runs the length of the thread, so an answer citing [3] means the
     third source the conversation registered — whichever turn found it."""
-    earlier = [Source(1, "a.md"), Source(2, "b.md")]
+    earlier = [_at("a.md", 1), _at("b.md", 2)]
     runner = _StubRunner(
-        {"answer": "As [1] and [3] say.", "sources": [*earlier, Source(3, "c.md")]},
-        found={"sources": earlier},
+        {"answer": "As [1] and [3] say.", "citations": [*earlier, _at("c.md", 3)]},
+        found={"citations": earlier},
     )
 
     result = Agent(runner).answer("q", THREAD)
 
-    assert result.sources == (Source(1, "a.md"), Source(3, "c.md"))
+    assert result.citations == (_at("a.md", 1), _at("c.md", 3))

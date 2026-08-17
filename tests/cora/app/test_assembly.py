@@ -9,7 +9,6 @@ from cora.adapters.langgraph_runner import LangGraphRunner
 from cora.app.assembly import App, build
 from cora.app.config import DEFAULT_PLUGINS, Config
 from cora.app.log_config import DEBUG_HANDLER_NAME, FILE_HANDLER_NAME
-from cora.domain.citations import Source
 from cora.domain.errors import (
     InputRejectedError,
     ToolLoopLimitError,
@@ -101,7 +100,7 @@ def test_the_model_is_offered_the_search_tool_beside_the_plugins_own() -> None:
     assert {"one", "two", "three"} <= names
     [lookup] = [step for step in result.trace if isinstance(step, ToolUse)]
     assert SEED_TEXT.decode() in lookup.detail
-    assert result.sources == (Source(1, "note.md"),)
+    assert [(c.number, c.document) for c in result.citations] == [(1, "note.md")]
 
 
 def test_the_offered_tools_are_coras_first_then_each_plugins_in_order() -> None:

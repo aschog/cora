@@ -79,6 +79,4 @@ def test_the_agent_answers_from_the_uploaded_document_and_cites_it(
     assert result.answer == "It stands in Paris [1]."
     [lookup] = [step for step in result.trace if isinstance(step, ToolUse)]
     assert "Eiffel Tower" in lookup.detail
-    assert [(source.number, source.name) for source in result.sources] == [
-        (1, "facts.txt")
-    ]
+    assert [(c.number, c.document) for c in result.citations] == [(1, "facts.txt")]

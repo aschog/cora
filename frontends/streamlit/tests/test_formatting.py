@@ -1,23 +1,25 @@
-from cora.domain.citations import Source
+from cora.domain.citations import Citation
 from cora.domain.trace import ModelDecision, ToolUse
 from cora.frontends.streamlit.formatting import (
     DETAIL_CAP,
     SUMMARY_CAP,
     ingest_message,
-    numbered_sources,
+    numbered_citations,
     step_text,
 )
 
 
-def test_numbered_sources_renders_each_source_under_its_own_number() -> None:
-    assert numbered_sources((Source(1, "a.pdf"), Source(3, "b.md"))) == [
+def test_numbered_citations_renders_each_passage_under_its_own_number() -> None:
+    assert numbered_citations(
+        (Citation(1, "a.pdf", 0, 5), Citation(3, "b.md", 20, 30))
+    ) == [
         "[1] a.pdf",
         "[3] b.md",
     ]
 
 
-def test_numbered_sources_of_nothing_is_empty() -> None:
-    assert numbered_sources(()) == []
+def test_numbered_citations_of_nothing_is_empty() -> None:
+    assert numbered_citations(()) == []
 
 
 def test_ingest_message_counts_a_single_chunk_in_the_singular() -> None:
