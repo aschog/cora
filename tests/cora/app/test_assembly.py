@@ -14,16 +14,13 @@ from cora.domain.errors import (
     InputRejectedError,
     ToolLoopLimitError,
 )
-from cora.domain.metadata_filter import MetadataFilter
 from cora.domain.trace import ToolUse
-from cora.engine.fusion_context_source import FusionContextSource
 from cora.engine.memory_tool import MAX_FACT_CHARS, REMEMBER_TOOL_NAME
 from cora.engine.plugin_registry import load_plugin, load_plugins
 from cora.engine.plugin_set import PluginSet
 from cora.engine.port_logging import LoggingEmbedder, LoggingRetriever
-from cora.engine.query_planner import QueryPlanner
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
-from cora.engine.steps import ModelStep, PrepareStep, Router
+from cora.engine.steps import GroundStep, ModelStep, PrepareStep, Router
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import Plugin, ToolCall
 from cora.ports.retrieval import RetrievedChunk
@@ -39,14 +36,9 @@ class _RecordingRetriever(FakeRetriever):
         super().__init__()
         self.last_k: int | None = None
 
-    def query(
-        self,
-        query_vector: list[float],
-        k: int,
-        metadata_filter: MetadataFilter | None = None,
-    ) -> list[RetrievedChunk]:
+    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
         self.last_k = k
-        return super().query(query_vector, k, metadata_filter)
+        return super().query(query_vector, k)
 
 
 def _assemble(
@@ -410,27 +402,21 @@ def test_the_app_exposes_its_memory_so_the_ui_needs_no_adapter() -> None:
     assert app.memory is memory
 
 
-def test_assemble_plain_mode_uses_the_knowledge_base_as_context_source() -> None:
-    app = _assemble(make_plugin())
+def test_the_search_tool_and_the_gate_read_the_knowledge_base_itself() -> None:
+    """Nothing stands between the tool and the index the uploads were written to: the
+    tool the model is offered finds a document added after assembly, and the gate that
+    searches on the model's behalf holds the same knowledge base."""
+    app = _indexed(make_plugin())
+    runner = app.agent.runner
+    assert isinstance(runner, LangGraphRunner)
+    assert isinstance(runner.model, ModelStep)
+    assert isinstance(runner.ground, GroundStep)
+    search = next(tool for tool in runner.model.tools if tool.name == SEARCH_TOOL_NAME)
 
-    assert app.context_source is app.knowledge_base
+    found = search.run(query="protein")
 
-
-def test_assemble_advanced_mode_wraps_the_knowledge_base_in_fusion() -> None:
-    app = _assemble(make_plugin(), retrieval="advanced", fusion_queries=3)
-
-    source = app.context_source
-    assert isinstance(source, FusionContextSource)
-    assert app.knowledge_base is not source
-    planner = source.planner
-    assert isinstance(planner, QueryPlanner)
-    assert planner.num_queries == 3
-
-
-def test_assemble_in_plain_mode_searches_the_knowledge_base_itself() -> None:
-    app = _assemble(make_plugin())
-
-    assert app.context_source is app.knowledge_base
+    assert [hit.chunk.source for hit in found.hits] == ["note.md"]
+    assert runner.ground.context_source is app.knowledge_base
 
 
 def test_assemble_with_debug_logs_every_port_of_a_retrieving_turn(
@@ -583,7 +569,6 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
 
     plugin = load_plugin("fixture_plugins.valid")
     assert isinstance(app, App)
-    assert app.context_source is app.knowledge_base
     runner = app.agent.runner
     assert isinstance(runner, LangGraphRunner)
     assert isinstance(runner.prepare, PrepareStep)

@@ -7,7 +7,6 @@ from typing import NamedTuple
 
 from cora.domain.chunk import Chunk
 from cora.domain.errors import MemoryStoreError
-from cora.domain.metadata_filter import MetadataFilter
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.loading import Loaders
 from cora.ports.memory import Fact
@@ -62,17 +61,11 @@ class FakeRetriever:
             for chunk, vector in zip(chunks, vectors, strict=True)
         )
 
-    def query(
-        self,
-        query_vector: list[float],
-        k: int,
-        metadata_filter: MetadataFilter | None = None,
-    ) -> list[RetrievedChunk]:
-        records = [r for r in self._records if _matches(r.chunk, metadata_filter)]
+    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
         ranked = sorted(
             (
                 RetrievedChunk(chunk=r.chunk, score=_cosine(query_vector, r.vector))
-                for r in records
+                for r in self._records
             ),
             key=lambda hit: hit.score,
             reverse=True,
@@ -84,12 +77,6 @@ class FakeRetriever:
 
     def contains(self, file_hash: str) -> bool:
         return any(r.file_hash == file_hash for r in self._records)
-
-
-def _matches(chunk: Chunk, metadata_filter: MetadataFilter | None) -> bool:
-    if metadata_filter is None:
-        return True
-    return getattr(chunk, metadata_filter.field) == metadata_filter.value
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -121,14 +108,9 @@ class CountingRetriever(FakeRetriever):
         super().__init__()
         self.queries = 0
 
-    def query(
-        self,
-        query_vector: list[float],
-        k: int,
-        metadata_filter: MetadataFilter | None = None,
-    ) -> list[RetrievedChunk]:
+    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
         self.queries += 1
-        return super().query(query_vector, k, metadata_filter)
+        return super().query(query_vector, k)
 
 
 class FakeMemory:
@@ -208,12 +190,7 @@ class FailingRetriever:
     ) -> None:
         raise self.error
 
-    def query(
-        self,
-        query_vector: list[float],
-        k: int,
-        metadata_filter: MetadataFilter | None = None,
-    ) -> list[RetrievedChunk]:
+    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
         raise self.error
 
     def sources(self) -> list[str]:

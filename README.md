@@ -9,6 +9,8 @@ plugins.
 
 - Architecture (start here): [`docs/big-picture.md`](docs/big-picture.md) — the map, the
   seven ports, and what the tests pin down
+- One session end to end: [`docs/happy-path.md`](docs/happy-path.md) — upload, question,
+  calculation and memory as sequence diagrams, drawn from the live test that walks them
 - Development workflow (TDD): [`docs/workflow.md`](docs/workflow.md)
 - Assignment brief: [`docs/sprints/4/assignment.md`](docs/sprints/4/assignment.md) —
   current sprint; sprint 3's brief, spec and test findings are in `docs/sprints/3/`
@@ -96,10 +98,7 @@ accepted as `OPENROUTER_MODEL`, the prefix the key and base URL use),
 `CORA_PLUGINS` (comma-separated, in composition order; empty by default — name
 `cora.plugins.security` for the prompt-injection screen and `cora.plugins.fitness` for
 the coaching domain), `CORA_TOP_K` (default `5`),
-`CORA_RETRIEVAL` (`plain` by default; `advanced` turns on query translation and
-self-query filtering — RAG-Fusion — for one extra model call per question),
-`CORA_FUSION_QUERIES` (default `4`; sub-queries advanced mode fans out per
-question), `CORA_MAX_TOOL_ROUNDS` (default `8`; one round is a model call plus the tools it
+`CORA_MAX_TOOL_ROUNDS` (default `8`; one round is a model call plus the tools it
 asks for, document search included — and the budget is per question, not per
 conversation), `CORA_HISTORY_TURNS` (past messages of the conversation sent with
 each question — the default `20` is about ten question-and-answer exchanges, and
@@ -108,7 +107,7 @@ is relative to the working directory), `CORA_MEMORY_PATH` (where remembered fact
 persist; the default `.cora/memory.sqlite` sits beside it, and is relative the same
 way), `OPENROUTER_BASE_URL`, `CORA_DEBUG`. The counts are rejected at
 startup if they fall below their lowest useful value — `0` for history turns, `1`
-for the others — and `CORA_RETRIEVAL` must be `plain` or `advanced`.
+for the others.
 
 Set `CORA_DEBUG` to `1` or `true` to trace what crosses the ports — one truncated
 line per embed, retrieval (with sources and scores) and model round trip, printed

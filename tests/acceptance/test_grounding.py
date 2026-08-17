@@ -200,7 +200,7 @@ def test_a_plugin_that_declares_no_scope_answers_in_one_round() -> None:
 
 
 class _FailingRetrieverOnSearch(CountingRetriever):
-    def query(self, query_vector, k, metadata_filter=None):
+    def query(self, query_vector, k):
         raise RetrievalError
 
 

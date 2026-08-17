@@ -2,7 +2,6 @@ import logging
 from dataclasses import dataclass
 
 from cora.domain.chunk import Chunk
-from cora.domain.metadata_filter import MetadataFilter
 from cora.ports.chat_model import ChatModel, Message, ModelReply
 from cora.ports.embedding import Embedder
 from cora.ports.plugin import Tool
@@ -56,17 +55,11 @@ class LoggingRetriever:
         )
         self.inner.add(chunks, vectors, file_hash)
 
-    def query(
-        self,
-        query_vector: list[float],
-        k: int,
-        metadata_filter: MetadataFilter | None = None,
-    ) -> list[RetrievedChunk]:
-        hits = self.inner.query(query_vector, k, metadata_filter)
+    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
+        hits = self.inner.query(query_vector, k)
         log.debug(
-            "retrieval: k=%d, filter=%s, %d hits [%s]",
+            "retrieval: k=%d, %d hits [%s]",
             k,
-            _describe_filter(metadata_filter),
             len(hits),
             truncate(", ".join(_describe(hit) for hit in hits)),
         )
@@ -90,9 +83,3 @@ class LoggingEmbedder:
 
 def _describe(hit: RetrievedChunk) -> str:
     return f"{hit.chunk.source}#{hit.chunk.index} {hit.score:.2f}"
-
-
-def _describe_filter(metadata_filter: MetadataFilter | None) -> str:
-    if metadata_filter is None:
-        return "none"
-    return f"{metadata_filter.field}={metadata_filter.value}"

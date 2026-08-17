@@ -79,6 +79,12 @@ instead of manifests to stay true without them, and hybrid retrieval goes so tha
 index answers what ingestion wrote. Story 11's default set goes with it: cora starts with
 no plugin and warns that nothing screens what the user types.
 
+### [14. One way to search](done/story-14.md) ✔
+
+`advanced` mode rewrote the question behind the search tool, which is the job the agent now
+does in the open, one trace step per search. It goes, and the knowledge base is what the
+tool searches. Closes the backlog's *planner JSON is hand-parsed* as removed.
+
 ## In flight
 
 ### [12. It says when it has nothing to answer from](story-12.md)

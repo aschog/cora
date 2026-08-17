@@ -53,7 +53,7 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       the model once. Scoping stays with the model — the reminder tells it to answer small
       talk as it did — so a greeting still costs no retrieval.
 
-- [ ] **Planner JSON is hand-parsed and fails silently** — `parse_plan` scrapes fences and
+- [x] **Planner JSON is hand-parsed and fails silently** — `parse_plan` scrapes fences and
       braces, and a parse failure falls back to plain search with no signal
       (`core/services/query_planner.py:22-23,56-77`). Use structured output
       (`with_structured_output` / `response_format` with a JSON Schema) at the adapter
@@ -63,6 +63,9 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       story 1 — the planner is reached only by `advanced`, inside `FusionContextSource`
       (`app/retrieval.py:36-45`); story 1 changes *who calls* the context source, not what
       a mode does inside it.
+      → **closes as removed, in story 14**, not fixed: the agent re-searches in the open,
+      so the planner and its hand-parsed JSON go rather than get structured output. The
+      model-adapter item below stands on its own.
 
 - [ ] **Model adapter swallows everything** — every provider exception becomes one generic
       `LlmError` (`adapters/openrouter_chat_model.py:73-77`), with no timeout, no retry
@@ -86,8 +89,8 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
 - [ ] **Contracts at public boundaries are undocumented** — the workflow's rule already
       allows a docstring that states a contract the code can't express; apply it where
       fallback behaviour, security assumptions and error guarantees are invisible from
-      the signature (planner fallback, `ToolResult` invariants, `CoreError.user_message`,
-      validation ordering). Not a policy change — no docstrings elsewhere.
+      the signature (`ToolResult` invariants, `CoreError.user_message`, validation
+      ordering). Not a policy change — no docstrings elsewhere.
       → continuous, checked at each merge. Be ready to say what each public service
       accepts, returns and promises.
 
@@ -95,8 +98,8 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
 
 Recorded with a decision, not scheduled — none is in the sprint-4 story cut.
 
-- [ ] **RAG evaluation set** (10–20 questions with expected sources, compared across
-      plain / advanced) — the most useful of the four, and it would give
+- [ ] **RAG evaluation set** (10–20 questions with expected sources) — the most useful
+      of the four, and it would give
       story 1's "decide whether to retrieve" a measurable answer. Candidate if the
       stretch story is dropped.
 - [ ] **PostgreSQL + pgvector instead of Chroma** — deferred. It is an adapter swap

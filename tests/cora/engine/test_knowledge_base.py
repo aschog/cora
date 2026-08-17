@@ -4,7 +4,6 @@ import pytest
 
 from cora.domain.chunk import Chunk
 from cora.domain.errors import EmptyDocumentError, UnsupportedFileTypeError
-from cora.domain.metadata_filter import MetadataFilter
 from cora.engine.ingestion import ingest
 from cora.engine.knowledge_base import KnowledgeBase
 from fakes import TEXT_LOADERS, FakeEmbedder, FakeRetriever
@@ -44,25 +43,6 @@ def test_search_returns_the_relevant_chunk_first(
     assert len(hits) == 1
     assert hits[0].chunk == chunks[1]
     assert hits[0].chunk.source == "doc.txt"
-
-
-def test_search_narrows_to_the_filtered_source(
-    kb: KnowledgeBase,
-    embedder: FakeEmbedder,
-    retriever: FakeRetriever,
-    make_chunk: Callable[..., Chunk],
-) -> None:
-    chunks = [
-        make_chunk("alpha", source="one.txt", index=0),
-        make_chunk("beta", source="two.txt", index=0),
-    ]
-    retriever.add(chunks, embedder.embed([c.text for c in chunks]), file_hash="h")
-
-    hits = kb.search(
-        "alpha", k=10, metadata_filter=MetadataFilter(field="source", value="two.txt")
-    )
-
-    assert [hit.chunk.source for hit in hits] == ["two.txt"]
 
 
 def test_search_on_empty_knowledge_base_returns_no_hits(kb: KnowledgeBase) -> None:

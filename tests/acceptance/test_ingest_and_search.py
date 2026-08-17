@@ -3,14 +3,27 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from app_builder import assembled, indexed
 from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
+from cora.domain.trace import ToolUse
 from cora.engine.knowledge_base import KnowledgeBase
-from fakes import TEXT_LOADERS
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.ports.chat_model import ModelReply
+from cora.ports.plugin import ToolCall
+from fakes import TEXT_LOADERS, ScriptedChatModel
 
 if TYPE_CHECKING:
     from cora.adapters.chroma_retriever import ChromaRetriever
 
 pytestmark = pytest.mark.integration
+
+FACTS = (
+    ("The Eiffel Tower is a wrought-iron lattice tower in Paris, France. " * 20)
+    + "\n\n"
+    + ("Python is a high-level general-purpose programming language. " * 20)
+    + "\n\n"
+    + ("Photosynthesis lets plants convert sunlight into chemical energy. " * 20)
+).encode()
 
 
 def test_a_search_retrieves_the_chunk_matching_the_question(
@@ -21,12 +34,7 @@ def test_a_search_retrieves_the_chunk_matching_the_question(
         retriever=make_chroma(),
         loaders=TEXT_LOADERS,
     )
-    eiffel = "The Eiffel Tower is a wrought-iron lattice tower in Paris, France. " * 20
-    coding = "Python is a high-level general-purpose programming language. " * 20
-    plants = "Photosynthesis lets plants convert sunlight into chemical energy. " * 20
-    data = f"{eiffel}\n\n{coding}\n\n{plants}".encode()
-
-    added = kb.add_file(data, "facts.txt")
+    added = kb.add_file(FACTS, "facts.txt")
     assert added >= 3
 
     hits = kb.search("Where is the Eiffel Tower located?", k=1)
@@ -34,3 +42,43 @@ def test_a_search_retrieves_the_chunk_matching_the_question(
     assert hits
     assert "Eiffel Tower" in hits[0].chunk.text
     assert hits[0].chunk.source == "facts.txt"
+
+
+def test_the_agent_answers_from_the_uploaded_document_and_cites_it(
+    make_chroma: "Callable[[], ChromaRetriever]",
+) -> None:
+    """`top_k=1` is what makes the retrieval decision observable: the fixture is one
+    document of six chunks, so at the shipped default of five the passage the answer
+    cites comes back whatever was searched for, and the assertion below holds even when
+    the query never reaches the index."""
+    app = indexed(
+        assembled(
+            chat_model=ScriptedChatModel(
+                [
+                    ModelReply(
+                        tool_calls=(
+                            ToolCall(
+                                name=SEARCH_TOOL_NAME,
+                                arguments={"query": "Where is the Eiffel Tower?"},
+                                call_id="call-1",
+                            ),
+                        )
+                    ),
+                    ModelReply(text="It stands in Paris [1]."),
+                ]
+            ),
+            embedder=SentenceTransformerEmbedder(),
+            retriever=make_chroma(),
+            top_k=1,
+        ),
+        ("facts.txt", FACTS),
+    )
+
+    result = app.agent.answer("Where is the Eiffel Tower?", "t1")
+
+    assert result.answer == "It stands in Paris [1]."
+    [lookup] = [step for step in result.trace if isinstance(step, ToolUse)]
+    assert "Eiffel Tower" in lookup.detail
+    assert [(source.number, source.name) for source in result.sources] == [
+        (1, "facts.txt")
+    ]

@@ -121,8 +121,11 @@ def test_the_memory_default_sits_beside_the_document_store() -> None:
     assert Path(config.memory_path).parent == Path(config.db_path).parent
 
 
-def test_from_env_reads_retrieval_mode_and_fusion_queries() -> None:
-    config = Config.from_env(
+def test_from_env_reads_nothing_about_retrieval() -> None:
+    """There is one way to search, so the environment that used to choose between them
+    configures the same app as an environment that never mentioned it — including the
+    mode that no longer exists, which is ignored rather than refused."""
+    stale = Config.from_env(
         {
             "OPENROUTER_API_KEY": "key-123",
             "CORA_RETRIEVAL": "advanced",
@@ -130,28 +133,7 @@ def test_from_env_reads_retrieval_mode_and_fusion_queries() -> None:
         }
     )
 
-    assert config.retrieval == "advanced"
-    assert config.fusion_queries == 6
-
-
-def test_from_env_defaults_to_plain_retrieval() -> None:
-    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
-
-    assert config.retrieval == "plain"
-    assert config.fusion_queries >= 1
-
-
-def test_from_env_accepts_advanced_retrieval() -> None:
-    config = Config.from_env(
-        {"OPENROUTER_API_KEY": "key-123", "CORA_RETRIEVAL": "advanced"}
-    )
-
-    assert config.retrieval == "advanced"
-
-
-def test_from_env_rejects_an_unknown_retrieval_mode() -> None:
-    with pytest.raises(ConfigurationError):
-        Config.from_env({"OPENROUTER_API_KEY": "key-123", "CORA_RETRIEVAL": "bogus"})
+    assert stale == Config.from_env({"OPENROUTER_API_KEY": "key-123"})
 
 
 def test_from_env_leaves_debug_off_when_the_flag_is_unset() -> None:
