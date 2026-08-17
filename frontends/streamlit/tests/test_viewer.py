@@ -225,11 +225,16 @@ def test_a_store_that_cannot_be_read_is_reported_and_costs_the_chat_nothing() ->
 
 
 @pytest.mark.integration
-def test_the_answer_reaches_the_page_with_its_citations_clickable() -> None:
+def test_the_answer_reaches_the_page_only_through_its_own_component() -> None:
+    """Where an answer lives, pinned: it is drawn by the component that makes each `[n]`
+    clickable, and nothing prints it as markdown. A test reading answers off
+    `at.markdown` would pass on an empty page, which is how three live-tier assertions
+    quietly stopped checking anything."""
     at = _asked(_run(_one_citation()))
 
     [answer] = _mounted(at, ANSWER_COMPONENT)
     assert 'data-cite="1"' in answer
+    assert CITED not in "\n".join(md.value for md in at.markdown)
 
 
 def test_the_chat_shares_the_page_only_while_a_document_is_open() -> None:

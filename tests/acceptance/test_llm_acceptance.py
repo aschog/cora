@@ -73,6 +73,13 @@ def _page(app) -> None:  # AppTest re-executes this without the module's globals
     render(app)
 
 
+def _answer(at: AppTest) -> str:
+    """The newest answer, read off the component that drew it: an answer is HTML in a
+    custom element now, so `chat_message[-1].markdown` is the Sources panel at best and
+    empty at worst."""
+    return answers(at)[-1].lower()
+
+
 def _panels(at: AppTest) -> list[str]:
     """Scoped to the newest message: the same panel appears on every answered turn,
     so counting them across the page would say nothing about this one."""
@@ -124,7 +131,7 @@ def test_a_whole_session_uploads_asks_calculates_and_remembers(tmp_path: Path) -
     assert _panels(at) == [SOURCES], "the model answered without reaching the documents"
     [cited] = at.chat_message[-1].expander
     assert "protein.md" in "\n".join(line.value for line in cited.markdown)
-    [answered] = answers(at)
+    answered = _answer(at)
     assert CITATION.search(answered), (
         f"the answer rested on a passage it never cited: {answered!r}"
     )
@@ -196,7 +203,7 @@ def test_a_real_model_asks_for_documents_instead_of_answering_without_them(
     at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
 
     assert not at.exception
-    answer = at.chat_message[-1].markdown[0].value.lower()
+    answer = _answer(at)
     assert any(phrase in answer for phrase in ASKS_FOR_DOCUMENTS), (
         f"an empty store was answered from model knowledge: {answer!r}"
     )
@@ -208,7 +215,7 @@ def test_a_real_model_asks_for_documents_instead_of_answering_without_them(
     greeted.chat_input[0].set_value(SMALL_TALK).run(timeout=180)
 
     assert not greeted.exception
-    greeting = greeted.chat_message[-1].markdown[0].value.lower()
+    greeting = _answer(greeted)
     assert any(word in greeting for word in GREETS), (
         f"a greeting was not answered as a greeting: {greeting!r}"
     )
@@ -244,7 +251,7 @@ def test_a_real_model_keeps_what_it_is_told_and_uses_it_next_session(
     later.chat_input[0].set_value(WHAT_TO_EAT).run(timeout=180)
 
     assert not later.exception
-    answer = later.chat_message[-1].markdown[0].value.lower()
+    answer = _answer(later)
     assert not [meat for meat in MEAT if meat in answer], (
         "a remembered constraint was in the brief and the answer ignored it"
     )
