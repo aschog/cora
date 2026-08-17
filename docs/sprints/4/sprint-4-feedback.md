@@ -35,7 +35,7 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       in depth *behind* story 1's fix, not a substitute: a scanner has false negatives,
       message roles do not.
 
-- [x] **No grounding or scope decision** — the prompt asks the model to ground its answer
+- [ ] **No grounding or scope decision** — the prompt asks the model to ground its answer
       (`plugins/fitness/__init__.py:10`) but nothing enforces or tests it, so an
       out-of-domain question is answered from model knowledge. Add a tested rule that
       declines unsupported answers, evaluated against in-domain, out-of-domain and
@@ -48,10 +48,15 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       Story 1 also makes retrieval a *decision*, so any rule phrased as "no context →
       refuse" would contradict its second criterion (a greeting is answered without
       retrieving); it has to be scoped to questions the documents were asked to answer.
-      **Done in story 8** (`story-08.md`), after it showed up in use: a plugin now carries a
-      `grounding` reminder, and a first answer with no search behind it is sent back through
-      the model once. Scoping stays with the model — the reminder tells it to answer small
-      talk as it did — so a greeting still costs no retrieval.
+      **Closed in story 8** (`story-08.md`) and **reopened by story 15** (`story-15.md`):
+      the gate that enforced it — a first answer with no search behind it sent back through
+      the model once, against a `scope` the plugin named — is gone, because it was the one
+      branch of the graph that could not be read and defended. What is left is the
+      instruction: `AGENT_RULES` and the fitness plugin's prompt still tell the model to
+      search and cite, and the `llm` tier is what can catch a model ignoring them
+      (`test_llm_acceptance.py:147,178`). Enforcement is open again for a later sprint —
+      human-in-the-loop approval on an unsupported answer is the shape to take next, since
+      it asks the user instead of re-prompting the model.
 
 - [x] **Planner JSON is hand-parsed and fails silently** — `parse_plan` scrapes fences and
       braces, and a parse failure falls back to plain search with no signal
@@ -219,7 +224,9 @@ case that was reported rather than to the class it belongs to.
       timeout is 20s and `max_tokens` is cora's own, so a truncated answer is a number
       we chose.
 - [x] **The trace told neither silence apart**, rendering both as "no matching
-      documents" in the panel the user opens to find out why.
+      documents" in the panel the user opens to find out why. Story 15 took the gate that
+      held the two silences; the one that survives is the search tool's own — a store
+      nothing was uploaded to says exactly that.
 - [x] **Assertions on a fake's constructor kwargs** — replaced with the real client's
       state, which is what catches a keyword this library stops reading; the subsumed
       wrapping test is gone and `httpx` is a declared dev dependency.

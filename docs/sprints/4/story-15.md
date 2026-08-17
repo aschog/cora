@@ -21,53 +21,53 @@ stays in `AGENT_RULES` and in the fitness plugin's prompt, enforcement goes.
 
 #### Router loses its branch
 
-- [ ] a final reply routes to `done` even with documents indexed and no tool called
-- [ ] a tool-calling reply still routes to `tools`, and still raises `ToolLoopLimitError`
+- [x] a final reply routes to `done` even with documents indexed and no tool called
+- [x] a tool-calling reply still routes to `tools`, and still raises `ToolLoopLimitError`
       at the budget
-- [ ] `Router` takes `max_tool_rounds` alone — nothing tells it whether the app is grounded
+- [x] `Router` takes `max_tool_rounds` alone — nothing tells it whether the app is grounded
 
 #### The graph is two nodes
 
-- [ ] `langgraph_for` builds from prepare, model, tools and router alone; a `ground` step
+- [x] `langgraph_for` builds from prepare, model, tools and router alone; a `ground` step
       is not a parameter it accepts
-- [ ] over fake steps, `run` walks prepare → model → tools → model → done, visiting no
+- [x] over fake steps, `run` walks prepare → model → tools → model → done, visiting no
       third node
 
 #### `Agent` stops holding an answer back
 
-- [ ] an `AdapterError` from any step propagates out of `answer` — no held answer is
+- [x] an `AdapterError` from any step propagates out of `answer` — no held answer is
       returned in its place
-- [ ] a turn's trace carries no reconsideration step, and `SecondLookLost` no longer exists
+- [x] a turn's trace carries no reconsideration step, and `SecondLookLost` no longer exists
       as a kind
 
 #### Plugins stop declaring a domain
 
-- [ ] `Plugin` has no `scope`, and `PluginSet` exposes none
-- [ ] the shipped fitness plugin still contributes its instructions, tools and safety rule
-- [ ] the shipped security plugin still contributes its rules and nothing else
+- [x] `Plugin` has no `scope`, and `PluginSet` exposes none
+- [x] the shipped fitness plugin still contributes its instructions, tools and safety rule
+- [x] the shipped security plugin still contributes its rules and nothing else
 
 #### `assemble`
 
-- [ ] the assembled app answers a scripted question end-to-end with no ground step wired
-- [ ] **(int)** a document question is answered in one model round after the search tool
+- [x] the assembled app answers a scripted question end-to-end with no ground step wired
+- [x] **(int)** a document question is answered in one model round after the search tool
       returns
 
 #### The instruction is all that is left
 
-- [ ] **(llm)** `test_llm_acceptance.py:147` still passes with no gate behind it: a real
+- [x] **(llm)** `test_llm_acceptance.py:147` still passes with no gate behind it: a real
       model reaches the documents for a question in their subject, and greets without them
-- [ ] **(llm)** `test_llm_acceptance.py:178` still passes on the tool's path alone — a real
+- [x] **(llm)** `test_llm_acceptance.py:178` still passes on the tool's path alone — a real
       model told the store is empty asks for documents instead of answering
 
 #### Deletions (the suite shrinks; no test of their own)
 
-- [ ] `tests/acceptance/test_grounding.py` is gone, with the 30 grounding tests spread
+- [x] `tests/acceptance/test_grounding.py` is gone, with the 30 grounding tests spread
       across `test_steps.py`, `test_agent.py`, `test_langgraph_runner.py`,
       `test_assembly.py`, `test_plugin_composition.py` and `test_conversation.py`
-- [ ] `test_plugin_set.py:100-118`, `test_langgraph_runner.py:231` and
+- [x] `test_plugin_set.py:100-118`, `test_langgraph_runner.py:231` and
       `test_conversation.py:22,65,189,241` lose the scope they pass
-- [ ] `test_chroma_retriever.py:43` and `langgraph_runner.py:58` no longer explain
+- [x] `test_chroma_retriever.py:43` and `langgraph_runner.py:58` no longer explain
       themselves by naming the gate
-- [ ] `sprint-4-feedback.md:38` goes back to open, saying story 15 removed the enforcement
+- [x] `sprint-4-feedback.md:38` goes back to open, saying story 15 removed the enforcement
       story 8 closed it with; the trace item at `:221` keeps its tick with a note that one
       silence now reaches the panel, from the search tool
