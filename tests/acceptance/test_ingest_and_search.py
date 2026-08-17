@@ -5,6 +5,7 @@ import pytest
 
 from app_builder import assembled, indexed
 from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
+from cora.domain.trace import ToolUse
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ModelReply
@@ -64,6 +65,7 @@ def test_the_agent_answers_from_the_uploaded_document_and_cites_it(
             ),
             embedder=SentenceTransformerEmbedder(),
             retriever=make_chroma(),
+            top_k=1,
         ),
         ("facts.txt", FACTS),
     )
@@ -71,6 +73,8 @@ def test_the_agent_answers_from_the_uploaded_document_and_cites_it(
     result = app.agent.answer("Where is the Eiffel Tower?", "t1")
 
     assert result.answer == "It stands in Paris [1]."
+    [lookup] = [step for step in result.trace if isinstance(step, ToolUse)]
+    assert "Eiffel Tower" in lookup.detail
     assert [(source.number, source.name) for source in result.sources] == [
         (1, "facts.txt")
     ]

@@ -89,8 +89,8 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
 - [ ] **Contracts at public boundaries are undocumented** — the workflow's rule already
       allows a docstring that states a contract the code can't express; apply it where
       fallback behaviour, security assumptions and error guarantees are invisible from
-      the signature (planner fallback, `ToolResult` invariants, `CoreError.user_message`,
-      validation ordering). Not a policy change — no docstrings elsewhere.
+      the signature (`ToolResult` invariants, `CoreError.user_message`, validation
+      ordering). Not a policy change — no docstrings elsewhere.
       → continuous, checked at each merge. Be ready to say what each public service
       accepts, returns and promises.
 
@@ -98,8 +98,8 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
 
 Recorded with a decision, not scheduled — none is in the sprint-4 story cut.
 
-- [ ] **RAG evaluation set** (10–20 questions with expected sources, compared across
-      plain / advanced) — the most useful of the four, and it would give
+- [ ] **RAG evaluation set** (10–20 questions with expected sources) — the most useful
+      of the four, and it would give
       story 1's "decide whether to retrieve" a measurable answer. Candidate if the
       stretch story is dropped.
 - [ ] **PostgreSQL + pgvector instead of Chroma** — deferred. It is an adapter swap

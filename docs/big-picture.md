@@ -104,7 +104,7 @@ supplies every step it walks.
 To keep the map simple, they are shown inside KnowledgeBase, the composition root, and the
 search tool.
 
-**Searching** has one path: the tool asks KnowledgeBase, which embeds the question and reads
+**Searching** has one path: the tool — and the grounding gate behind it — asks KnowledgeBase, which embeds the question and reads
 the same index the uploads were written to. Asking it several ways is the agent's job, and
 the agent does it in the open — one search, one trace step.
 
@@ -242,7 +242,7 @@ is chosen in one place.
 | **GraphRunner** | `run(state, thread_id) -> Iterator[AgentState]` | `LangGraphRunner` — it wires the core's steps and router into a state graph, keeps each thread in a checkpointer, and streams one turn of it: the thread as the turn found it, then the state after every step. It names the types a checkpoint may hold, because LangGraph's default is to deserialise anything and log a warning that it will one day refuse. |
 | **ChatModel** | `complete(messages, tools) -> ModelReply` | `OpenRouterChatModel` — the only file that uses LangChain. It talks to OpenRouter, an OpenAI-style endpoint set by `CORA_MODEL`. |
 | **Embedder** | `embed(texts) -> list[list[float]]` | `SentenceTransformerEmbedder` — the all-MiniLM-L6-v2 model. It runs on your machine and loads only when first used. |
-| **Retriever** | `add(chunks, vectors, file_hash)`, `query(query_vector, k, metadata_filter=None)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a saved, built-in database that uses cosine distance. The optional filter limits a search to matching metadata (self-query). |
+| **Retriever** | `add(chunks, vectors, file_hash)`, `query(query_vector, k)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a saved, built-in database that uses cosine distance. A query is a vector and a count: there is nothing to narrow it by, because there is one way to search. |
 | **Loaders** | `Mapping[str, Loader]`, each `Loader` a `(data, filename) -> str` | `cora.adapters.loaders.LOADERS` — `.txt` and `.md` read directly, `.pdf` through pypdf. Which formats a deployment accepts is an entry in the registry, not an edit inside ingestion. |
 | **Memory** | `remember(text)`, `recall() -> tuple[Fact, ...]`, `forget(key)`, `clear()` | `SqliteStoreMemory` — LangGraph's SQLite-backed store (the second adapter to use LangGraph, behind a port of its own), one namespace per user, at `CORA_MEMORY_PATH`. `recall()` hands back the newest 100 facts, oldest first. The only optional slot: with nothing bound, the agent is offered no `remember` tool. |
 | **Plugin** | data only: `name`, and any of `instructions`, `tools`, `validation_rules`, `scope` | none by default — `CORA_PLUGINS` names the set, in order, and takes as many as you like. It is a frozen dataclass, not a class you subclass. |

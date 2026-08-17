@@ -19,7 +19,7 @@ from cora.engine.memory_tool import MAX_FACT_CHARS, REMEMBER_TOOL_NAME
 from cora.engine.plugin_registry import load_plugin, load_plugins
 from cora.engine.plugin_set import PluginSet
 from cora.engine.port_logging import LoggingEmbedder, LoggingRetriever
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, DocumentSearch
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.steps import GroundStep, ModelStep, PrepareStep, Router
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import Plugin, ToolCall
@@ -403,16 +403,20 @@ def test_the_app_exposes_its_memory_so_the_ui_needs_no_adapter() -> None:
 
 
 def test_the_search_tool_and_the_gate_read_the_knowledge_base_itself() -> None:
-    """Nothing stands between the tool and the index the uploads were written to."""
+    """Nothing stands between the tool and the index the uploads were written to: the
+    tool the model is offered finds a document added after assembly, and the gate that
+    searches on the model's behalf holds the same knowledge base."""
     app = _assemble(make_plugin())
-
+    app.knowledge_base.add_file(SEED_TEXT, "note.md")
     runner = app.agent.runner
     assert isinstance(runner, LangGraphRunner)
     assert isinstance(runner.model, ModelStep)
     assert isinstance(runner.ground, GroundStep)
     search = next(tool for tool in runner.model.tools if tool.name == SEARCH_TOOL_NAME)
-    assert isinstance(search.run, DocumentSearch)
-    assert search.run.context_source is app.knowledge_base
+
+    found = search.run(query="protein")
+
+    assert [hit.chunk.source for hit in found.hits] == ["note.md"]
     assert runner.ground.context_source is app.knowledge_base
 
 
