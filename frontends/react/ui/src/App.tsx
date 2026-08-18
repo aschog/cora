@@ -37,11 +37,20 @@ export default function App() {
   const [opened, setOpened] = useState<Citation | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
 
-  const refresh = useCallback(() => {
-    cora.documents().then(setDocuments).catch(reportTo(setTrouble))
-    cora.memory().then(setFacts).catch(reportTo(setTrouble))
-    cora.sessions().then(setSessions).catch(reportTo(setTrouble))
-  }, [])
+  /** What the page shows beside the conversation, reloaded together: one banner for
+   *  the three of them, and a load that goes through clears the last one's. */
+  const refresh = useCallback(
+    () =>
+      Promise.all([cora.documents(), cora.memory(), cora.sessions()])
+        .then(([indexed, kept, before]) => {
+          setDocuments(indexed)
+          setFacts(kept)
+          setSessions(before)
+          setTrouble(null)
+        })
+        .catch(reportTo(setTrouble)),
+    [],
+  )
 
   useEffect(() => {
     cora.plugins().then(setPlugins).catch(reportTo(setTrouble))

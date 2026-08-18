@@ -7,6 +7,7 @@ which is a dev machine running the page on Vite instead.
 
 import os
 import pathlib
+from collections.abc import Mapping
 
 import uvicorn
 
@@ -19,13 +20,15 @@ DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
 
 
+def ui_path(env: Mapping[str, str]) -> pathlib.Path:
+    """Where the built page is. An installed wheel has no `ui/` beside it, so a
+    deployment that serves one names it; a blank is not a name, as everywhere else."""
+    return pathlib.Path(env.get("CORA_UI_PATH", "").strip() or DEFAULT_UI)
+
+
 def serve() -> None:
     config = Config.from_env()
-    served = api(
-        build(config),
-        plugins=config.plugin_modules,
-        ui=pathlib.Path(os.environ.get("CORA_UI_PATH", "").strip() or DEFAULT_UI),
-    )
+    served = api(build(config), plugins=config.plugin_modules, ui=ui_path(os.environ))
     uvicorn.run(
         served,
         host=os.environ.get("CORA_HOST", "").strip() or DEFAULT_HOST,

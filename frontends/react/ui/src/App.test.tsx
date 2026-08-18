@@ -1,5 +1,5 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { beforeEach, expect, test, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import App from './App'
 
 /**
@@ -60,6 +60,8 @@ const served: Record<string, unknown> = {
   '/api/sessions': [],
 }
 
+afterEach(cleanup)
+
 beforeEach(() => {
   vi.stubGlobal(
     'fetch',
@@ -91,4 +93,35 @@ test('the plan fills while the turn runs, then the answer lands with its citatio
   expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Open cited source 1' })).toBeTruthy()
   expect(screen.getByText(TURN.trace[0].summary)).toBeTruthy()
+})
+
+test('a panel that could not be read says so, and stops saying it once it can', async () => {
+  const broken = { error: 'The knowledge base is temporarily unavailable.' }
+  let reachable = false
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/documents' && !reachable)
+        return {
+          ok: false,
+          status: 503,
+          json: async () => broken,
+        } as unknown as Response
+      if (path === '/api/ask') return answering()
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+
+  render(<App />)
+
+  expect(await screen.findByText(broken.error)).toBeTruthy()
+
+  reachable = true
+  fireEvent.change(screen.getByPlaceholderText(/Ask in your own words/), {
+    target: { value: 'anything' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+
+  await screen.findByText(TURN.trace[0].summary)
+  expect(screen.queryByText(broken.error)).toBeNull()
 })
