@@ -8,9 +8,12 @@ passage it rests on, in its own document, without leaving the conversation
 > **Then** the document opens over the chat, scrolled to the cited passage with it
 > highlighted — and closing it returns me to the conversation
 
-Adds `markdown-it-py` and an inline `st.components.v2` component. `st.chat_input` stays
-pinned full width. The click itself is out of AppTest's reach — Phase 4 verifies it
-headless.
+Adds `markdown-it-py` and an inline `st.components.v2` component. The click itself is out
+of AppTest's reach — Phase 4 verifies it headless.
+
+The story grew a second half in use: the page took the shape of `docs/cora_mockup.html`,
+which put the passage in a rail beside the conversation as well as in the popup, and the
+conversations that rail lists have to outlive the process.
 
 ## Test list
 
@@ -226,3 +229,73 @@ pinned where it can be: on `close_citation` itself.
       is the way out
 - [x] **(int)** `close_citation` clears the open citation, and a citation cleared takes
       the popup and its passage with it
+
+#### Found in use: the page is three rails, not one column (`chat.py`, `streamlit_app.py`)
+
+`docs/cora_mockup.html` is the shape being built to: documents down the left, the
+conversation in the middle, and a rail on the right carrying what the answer rests on.
+Native Streamlit throughout — the sidebar is the left rail, `st.columns` splits the
+rest, `st.tabs` is the right one. `st.chat_message` stays: who said what is the one
+thing typography alone would not carry. The page is laid out wide, which AppTest cannot
+see — Phase 4 checks it.
+
+- [ ] the conversation and the rail split the page, the conversation the wider of the two
+- [ ] the question is asked inside the conversation's column rather than pinned across
+      the page
+- [ ] the header names the app and what it is, above both rails
+- [ ] the sidebar holds documents alone, the memory panel having moved to the rail
+- [ ] the rail is drawn before a turn is taken, so the first answer does not reflow the
+      page
+
+#### Found in use: what the answer rests on is a rail (`chat.py`, `viewer.py`)
+
+Four panels: how the answer was reached, the document it cites, the conversations before
+this one, and what cora has been told to remember. The plan is today's "How I got there"
+moved out of the answer it sat under — one rail showing the newest turn, rather than an
+expander per message.
+
+- [ ] the rail carries four panels, named plan, source, sessions and memory
+- [ ] the plan panel holds the newest turn's steps, and no answer in the thread carries
+      an expander of its own
+- [ ] a turn that went wrong says so in the plan panel, the news having nowhere else to go
+- [ ] the steps of a turn in progress arrive in the plan panel rather than beside the
+      answer being written
+- [ ] the source panel shows the document the open citation names, marked at the passage
+- [ ] with no citation open the source panel says so rather than drawing an empty document
+- [ ] the memory panel lists the facts and forgets one, the sidebar's copy gone
+- [ ] a memory store that cannot be read reports inside its own panel and costs the
+      conversation nothing
+
+#### A conversation outlives the process (`ports/conversations.py`, `adapters/sqlite_conversations.py`)
+
+Reopening a conversation makes the runner's docstring false twice over: the turns the
+page redraws have to survive a restart, and so does what the model was told, or a
+follow-up in a resumed session answers without its own history. Two stores because they
+hold different things — the rendered turn, and the messages the model saw — and the
+checkpointer already owns the second.
+
+- [ ] `record` then `turns` returns the turn unchanged, across a reopened database
+- [ ] `turns` of a thread never recorded is empty rather than raising
+- [ ] `sessions` lists the threads newest first, each named by the question that opened it
+- [ ] a recorded turn keeps its citations and its trace, so a reopened conversation is
+      clickable and its plan is readable
+- [ ] a `sqlite3.Error` surfaces as an `AdapterError`, not a raw driver error
+- [ ] the parent directory is created if missing
+- [ ] `Agent.answer` records the turn it took, so a frontend gets history without keeping
+      it itself
+- [ ] `Config.from_env` reads `CORA_CONVERSATIONS_PATH`, and a blank value reads as unset
+      like every other path setting
+- [ ] `build` wires the store at that path, and still opens no store outside the paths it
+      was configured with
+- [ ] **(int)** the runner checkpoints where the config says, so a thread resumed in a
+      second process carries what the model was told
+- [ ] the sessions panel lists the stored sessions, the one in progress marked
+- [ ] opening a session redraws its turns in the conversation
+- [ ] the question asked after opening a session runs on that thread rather than a new one
+
+#### Outer functional test
+
+- [ ] **(int)** `xfail(strict=True)` until the list is done: documents in the sidebar and
+      the conversation beside a four-panel rail, a turn whose plan is in the rail and
+      whose citation still pops up — and that conversation listed and re-openable from a
+      second process
