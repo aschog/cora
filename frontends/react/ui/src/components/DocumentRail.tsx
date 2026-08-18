@@ -1,9 +1,13 @@
-import type { Doc } from '../data'
+import { useRef } from 'react'
 
-type Props = { docs: Doc[]; onPick: (key: string) => void; onUpload: (names: string[]) => void }
+type Props = {
+  documents: string[]
+  cited: Set<string>
+  onUpload: (file: File) => void
+}
 
-export default function DocumentRail({ docs, onPick, onUpload }: Props) {
-  const cited = (doc: Doc) => doc.body.some((p) => p.cited)
+export default function DocumentRail({ documents, cited, onUpload }: Props) {
+  const picker = useRef<HTMLInputElement>(null)
 
   return (
     <aside className="rail-docs">
@@ -13,26 +17,27 @@ export default function DocumentRail({ docs, onPick, onUpload }: Props) {
         <span>＋</span>
         <span>Add a document</span>
         <input
+          ref={picker}
           type="file"
-          multiple
+          accept=".txt,.md,.pdf"
           onChange={(e) => {
-            const names = Array.from(e.target.files ?? []).map((f) => f.name)
-            if (names.length) onUpload(names)
+            const [file] = Array.from(e.target.files ?? [])
+            if (file) onUpload(file)
             e.target.value = ''
           }}
         />
       </label>
 
+      {documents.length === 0 && (
+        <div className="rail-empty">Nothing indexed yet.</div>
+      )}
+
       <div className="doc-list">
-        {docs.map((doc) => (
-          <button
-            key={doc.key}
-            className={cited(doc) ? 'doc-row cited' : 'doc-row'}
-            onClick={() => onPick(doc.key)}
-          >
+        {documents.map((name) => (
+          <div key={name} className={cited.has(name) ? 'doc-row cited' : 'doc-row'}>
             <span className="doc-bar" />
-            <span className="doc-name">{doc.name}</span>
-          </button>
+            <span className="doc-name">{name}</span>
+          </div>
         ))}
       </div>
     </aside>

@@ -1,10 +1,12 @@
 import { useEffect } from 'react'
-import type { Doc } from '../data'
-import DocumentBody from './DocumentBody'
+import type { Citation } from '../api'
+import DocumentBody, { usePassage } from './DocumentBody'
 
-type Props = { doc: Doc; onClose: () => void }
+type Props = { citation: Citation; onClose: () => void }
 
-export default function CitationModal({ doc, onClose }: Props) {
+export default function CitationModal({ citation, onClose }: Props) {
+  const { text, trouble } = usePassage(citation)
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -15,19 +17,26 @@ export default function CitationModal({ doc, onClose }: Props) {
 
   return (
     <div className="overlay" onClick={onClose}>
-      <div className="modal" role="dialog" aria-modal="true" aria-label={doc.title} onClick={(e) => e.stopPropagation()}>
+      <div
+        className="modal"
+        role="dialog"
+        aria-modal="true"
+        aria-label={citation.document}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="modal-head">
           <div>
             <div className="micro">CITED SOURCE</div>
-            <div className="modal-title">{doc.title}</div>
-            <div className="source-meta">{doc.meta}</div>
+            <div className="modal-title">{citation.document}</div>
           </div>
           <button className="modal-close" onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
-        <DocumentBody doc={doc} scrollToCited />
-        <div className="doc-note">{doc.note}</div>
+        {trouble && <div className="trouble">{trouble}</div>}
+        {text !== null && (
+          <DocumentBody citation={citation} text={text} scrollToPassage />
+        )}
       </div>
     </div>
   )

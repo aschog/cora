@@ -1,45 +1,48 @@
-import { useEffect, useRef } from 'react'
-import type { Doc } from '../data'
+import { useEffect, useRef, useState } from 'react'
+import * as cora from '../api'
+import type { Citation } from '../api'
 
-type Props = { doc: Doc; scrollToCited?: boolean }
-
-function scrollableAncestor(el: HTMLElement): HTMLElement | null {
-  for (let node = el.parentElement; node; node = node.parentElement) {
-    const overflow = getComputedStyle(node).overflowY
-    if ((overflow === 'auto' || overflow === 'scroll') && node.scrollHeight > node.clientHeight) return node
-  }
-  return null
-}
-
-export default function DocumentBody({ doc, scrollToCited = false }: Props) {
-  const firstCited = useRef<HTMLParagraphElement>(null)
+/** The kept text of the document a citation was measured in, or why it cannot be read. */
+export function usePassage(citation: Citation | null) {
+  const [text, setText] = useState<string | null>(null)
+  const [trouble, setTrouble] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!scrollToCited) return
-    const target = firstCited.current
-    if (!target) return
-    const container = scrollableAncestor(target)
-    if (!container) return
-    const offset = target.getBoundingClientRect().top - container.getBoundingClientRect().top
-    container.scrollTop += offset - container.clientHeight / 2 + target.offsetHeight / 2
-  }, [scrollToCited, doc.key])
+    setText(null)
+    setTrouble(null)
+    if (!citation) return
+    let current = true
+    cora
+      .passage(citation.upload)
+      .then((kept) => current && setText(kept))
+      .catch((failed) => current && setTrouble(String(failed.message ?? failed)))
+    return () => {
+      current = false
+    }
+  }, [citation?.upload])
 
-  let seenCited = false
+  return { text, trouble }
+}
+
+type Props = { citation: Citation; text: string; scrollToPassage?: boolean }
+
+export default function DocumentBody({ citation, text, scrollToPassage }: Props) {
+  const marked = useRef<HTMLElement>(null)
+
+  useEffect(() => {
+    if (scrollToPassage) marked.current?.scrollIntoView({ block: 'center' })
+  }, [scrollToPassage, citation.upload, citation.start])
+
+  const start = Math.max(0, Math.min(citation.start, text.length))
+  const end = Math.max(start, Math.min(citation.end, text.length))
+
   return (
     <div className="doc-panel">
-      {doc.body.map((para, i) => {
-        const isFirstCited = Boolean(para.cited) && !seenCited
-        if (para.cited) seenCited = true
-        return (
-          <p
-            key={i}
-            className={para.cited ? 'doc-para cited' : 'doc-para'}
-            ref={isFirstCited ? firstCited : undefined}
-          >
-            {para.text}
-          </p>
-        )
-      })}
+      <span className="doc-para">{text.slice(0, start)}</span>
+      <mark className="doc-passage" ref={marked}>
+        {text.slice(start, end)}
+      </mark>
+      <span className="doc-para">{text.slice(end)}</span>
     </div>
   )
 }

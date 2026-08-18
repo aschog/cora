@@ -1,27 +1,38 @@
-import { PLAN_FOOTER, PLAN_STEPS } from '../data'
+import { useState } from 'react'
+import type { Step } from '../api'
 
-type Props = { open: Set<number>; onToggle: (n: number) => void }
+const NOTHING = 'The steps cora takes will appear here.'
+const FOOTER =
+  'cora chose these steps. Nothing here is a fixed pipeline — the tools come from the loaded plugin.'
 
-export default function PlanPanel({ open, onToggle }: Props) {
+export default function PlanPanel({ steps }: { steps: Step[] }) {
+  const [open, setOpen] = useState<number | null>(null)
+
+  if (steps.length === 0) return <div className="panel-intro">{NOTHING}</div>
+
   return (
     <div className="plan">
-      {PLAN_STEPS.map((step) => (
-        <div key={step.n}>
-          <button className="plan-step" aria-expanded={open.has(step.n)} onClick={() => onToggle(step.n)}>
-            <span className="plan-step-n">{step.n}</span>
-            <span className="plan-step-label">{step.label}</span>
-            <span className="plan-step-mark">✓</span>
+      {steps.map((step, n) => (
+        <div key={n}>
+          <button
+            className="plan-step"
+            aria-expanded={open === n}
+            onClick={() => setOpen(open === n ? null : n)}
+          >
+            <span className="plan-step-n">{n + 1}</span>
+            <span className="plan-step-label">{step.summary}</span>
+            <span className={step.failed ? 'plan-step-mark failed' : 'plan-step-mark'}>
+              {step.failed ? '✕' : '✓'}
+            </span>
           </button>
-          {open.has(step.n) && (
+          {open === n && step.detail && (
             <div className="plan-detail">
-              <div className="plan-call">{step.call}</div>
-              <div className="plan-result">{step.result}</div>
-              <div className="micro plan-origin">{step.origin}</div>
+              <div className="plan-result">{step.detail}</div>
             </div>
           )}
         </div>
       ))}
-      <div className="plan-footer">{PLAN_FOOTER}</div>
+      <div className="plan-footer">{FOOTER}</div>
     </div>
   )
 }

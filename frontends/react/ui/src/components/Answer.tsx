@@ -1,66 +1,91 @@
-import { BLOCK_TABLE, QUESTION } from '../data'
+import { useState } from 'react'
+import type { Citation } from '../api'
+import type { Entry } from '../App'
 
-type Props = { onCite: (key: string) => void }
+const CITATION_RUN = /(?<![\w\]])(?:\[\d+\])+/g
+/** What counts as a citation: the same rule the answer was written under — a run of
+ *  brackets that continues neither a word nor another bracket. */
 
-export default function Answer({ onCite }: Props) {
-  const cite = (n: string, key: string) => (
-    <button className="cite" onClick={() => onCite(key)} aria-label={'Open cited source ' + n}>
-      {n}
-    </button>
-  )
+const WORKING = 'Working…'
+
+type Props = {
+  entries: Entry[]
+  asking: boolean
+  onAsk: (question: string) => void
+  onCite: (citation: Citation) => void
+}
+
+export default function Answer({ entries, asking, onAsk, onCite }: Props) {
+  const [question, setQuestion] = useState('')
+
+  const send = () => {
+    const asked = question.trim()
+    if (!asked || asking) return
+    setQuestion('')
+    onAsk(asked)
+  }
 
   return (
     <main className="answer">
-      <div>
-        <div className="micro">YOU ASKED</div>
-        <p className="question">{QUESTION}</p>
-      </div>
+      {entries.map((entry, n) => (
+        <div key={n} className="turn">
+          <div className="micro">YOU ASKED</div>
+          <p className="question">{entry.question}</p>
+          {entry.error ? (
+            <p className="trouble">{entry.error}</p>
+          ) : (
+            <div className="answer-body">{written(entry, onCite)}</div>
+          )}
+        </div>
+      ))}
 
-      <div className="answer-body">
-        <p>
-          Your squat isn’t stalling from programming volume — it’s stalling from recovery. Mean sleep over the last 21
-          days is 5h 48m against your 7h 15m baseline{cite('1', 'sleep')}, and every one of the three missed top sets
-          landed on a day following under six hours{cite('2', 'log')}. Your March ferritin came back at 31
-          ng/mL, low-normal and consistent with the flatness you’re describing{cite('3', 'blood')}.
-        </p>
-
-        <p>
-          So the next four weeks hold intensity and cut density. Four sessions, as you prefer, with the heavy squat
-          moved off Monday.
-        </p>
-
-        <table className="block-table">
-          <thead>
-            <tr>
-              <th>Week</th>
-              <th>Squat</th>
-              <th>Volume</th>
-              <th>Intent</th>
-            </tr>
-          </thead>
-          <tbody>
-            {BLOCK_TABLE.map((row) => (
-              <tr key={row.week}>
-                <td>{row.week}</td>
-                <td>{row.squat}</td>
-                <td>{row.volume}</td>
-                <td>{row.intent}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
-        <p className="answer-coda">
-          Retest in four weeks. If sleep is still under six hours by week two, I’ll hold week 3 rather than progress it —
-          flag me and I’ll rewrite.
-        </p>
-      </div>
+      {asking && <p className="working">{WORKING}</p>}
 
       <div className="composer">
         <span className="composer-glyph">›</span>
-        <input placeholder="Ask in your own words…" aria-label="Ask in your own words" />
-        <button className="composer-ask">Ask</button>
+        <input
+          value={question}
+          placeholder="Ask in your own words…"
+          aria-label="Ask in your own words"
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && send()}
+        />
+        <button className="composer-ask" onClick={send} disabled={asking}>
+          Ask
+        </button>
       </div>
     </main>
+  )
+}
+
+/** The answer as text and the citations in it as buttons; a number that resolves to no
+ *  citation stays the text it was written as. */
+function written(entry: Entry, onCite: (citation: Citation) => void) {
+  const by = new Map(entry.citations.map((citation) => [citation.number, citation]))
+  const pieces: (string | Citation)[] = []
+  let read = 0
+  for (const run of (entry.answer ?? '').matchAll(CITATION_RUN)) {
+    pieces.push((entry.answer ?? '').slice(read, run.index))
+    for (const number of run[0].matchAll(/\d+/g)) {
+      const citation = by.get(Number(number[0]))
+      pieces.push(citation ?? `[${number[0]}]`)
+    }
+    read = run.index + run[0].length
+  }
+  pieces.push((entry.answer ?? '').slice(read))
+
+  return pieces.map((piece, n) =>
+    typeof piece === 'string' ? (
+      <span key={n}>{piece}</span>
+    ) : (
+      <button
+        key={n}
+        className="cite"
+        aria-label={`Open cited source ${piece.number}`}
+        onClick={() => onCite(piece)}
+      >
+        {piece.number}
+      </button>
+    ),
   )
 }

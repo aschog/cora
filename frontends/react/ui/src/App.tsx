@@ -1,58 +1,106 @@
-import { useMemo, useState } from 'react'
-import { DOCS, INFERENCES, PLUGINS, SAVED_LINES, uploadedDoc } from './data'
-import type { Doc } from './data'
-import Header from './components/Header'
-import DocumentRail from './components/DocumentRail'
+import { useCallback, useEffect, useState } from 'react'
+import * as cora from './api'
+import type { Citation, Fact, Session, Step } from './api'
 import Answer from './components/Answer'
-import PlanPanel from './components/PlanPanel'
-import SourcePanel from './components/SourcePanel'
-import SessionsPanel from './components/SessionsPanel'
-import MemoryPanel from './components/MemoryPanel'
 import CitationModal from './components/CitationModal'
+import DocumentRail from './components/DocumentRail'
+import Header from './components/Header'
+import MemoryPanel from './components/MemoryPanel'
+import PlanPanel from './components/PlanPanel'
+import SessionsPanel from './components/SessionsPanel'
+import SourcePanel from './components/SourcePanel'
 
 const TABS = ['PLAN', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
 type Tab = (typeof TABS)[number]
 
+export type Entry = {
+  question: string
+  answer?: string
+  error?: string
+  citations: Citation[]
+  trace: Step[]
+}
+
+const newThread = () =>
+  globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2)
+
 export default function App() {
   const [tab, setTab] = useState<Tab>('PLAN')
-  const [uploads, setUploads] = useState<Doc[]>([])
-  const [sourceKey, setSourceKey] = useState('sleep')
-  const [citedKey, setCitedKey] = useState<string | null>(null)
-  const [openSteps, setOpenSteps] = useState(new Set([3]))
-  const [plugin, setPlugin] = useState(PLUGINS[0].name)
-  const [forgotten, setForgotten] = useState(new Set<string>())
-  const [deleted, setDeleted] = useState(new Set<string>())
+  const [thread, setThread] = useState<string>(newThread)
+  const [entries, setEntries] = useState<Entry[]>([])
+  const [documents, setDocuments] = useState<string[]>([])
+  const [plugins, setPlugins] = useState<string[]>([])
+  const [facts, setFacts] = useState<Fact[]>([])
+  const [sessions, setSessions] = useState<Session[]>([])
+  const [live, setLive] = useState<Step[] | null>(null)
+  const [read, setRead] = useState<Citation | null>(null)
+  const [opened, setOpened] = useState<Citation | null>(null)
+  const [trouble, setTrouble] = useState<string | null>(null)
 
-  const docs = useMemo(() => [...DOCS, ...uploads], [uploads])
-  const byKey = (key: string) => docs.find((doc) => doc.key === key) ?? docs[0]
+  const refresh = useCallback(() => {
+    cora.documents().then(setDocuments).catch(reportTo(setTrouble))
+    cora.memory().then(setFacts).catch(reportTo(setTrouble))
+    cora.sessions().then(setSessions).catch(reportTo(setTrouble))
+  }, [])
 
-  const pickDoc = (key: string) => {
-    setSourceKey(key)
-    setTab('SOURCE')
-    setCitedKey(null)
+  useEffect(() => {
+    cora.plugins().then(setPlugins).catch(reportTo(setTrouble))
+    refresh()
+  }, [refresh])
+
+  const cited = citedDocuments(entries)
+
+  const ask = async (question: string) => {
+    const taken: Step[] = []
+    setLive(taken)
+    setTab('PLAN')
+    try {
+      const result = await cora.ask(question, thread, (step) => {
+        taken.push(step)
+        setLive([...taken])
+      })
+      setEntries((said) => [...said, { question, ...result }])
+      setRead(result.citations[0] ?? null)
+    } catch (failed) {
+      setEntries((said) => [
+        ...said,
+        { question, error: message(failed), citations: [], trace: taken },
+      ])
+    } finally {
+      setLive(null)
+      refresh()
+    }
   }
 
-  const toggleStep = (n: number) =>
-    setOpenSteps((open) => {
-      const next = new Set(open)
-      if (!next.delete(n)) next.add(n)
-      return next
-    })
-
-  const addToSet = <T,>(set: Set<T>, value: T) => new Set(set).add(value)
+  const open = (session: Session) => {
+    cora
+      .turns(session.thread_id)
+      .then((kept) => {
+        setThread(session.thread_id)
+        setEntries(
+          kept.map((turn) => ({ question: turn.question, ...turn.result })),
+        )
+        setRead(null)
+      })
+      .catch(reportTo(setTrouble))
+  }
 
   return (
     <div className="app">
-      <Header plugin={plugin} onPickPlugin={setPlugin} />
+      <Header plugins={plugins} />
+
+      {trouble && <div className="trouble">{trouble}</div>}
 
       <div className="columns">
         <DocumentRail
-          docs={docs}
-          onPick={pickDoc}
-          onUpload={(names) => setUploads((current) => [...current, ...names.map(uploadedDoc)])}
+          documents={documents}
+          cited={cited}
+          onUpload={(file) =>
+            cora.upload(file).then(refresh).catch(reportTo(setTrouble))
+          }
         />
 
-        <Answer onCite={setCitedKey} />
+        <Answer entries={entries} asking={live !== null} onAsk={ask} onCite={setOpened} />
 
         <aside className="rail-panels">
           <div className="tabs" role="tablist">
@@ -69,24 +117,43 @@ export default function App() {
             ))}
           </div>
 
-          {tab === 'PLAN' && <PlanPanel open={openSteps} onToggle={toggleStep} />}
-          {tab === 'SOURCE' && <SourcePanel doc={byKey(sourceKey)} />}
+          {tab === 'PLAN' && <PlanPanel steps={live ?? lastTrace(entries)} />}
+          {tab === 'SOURCE' && <SourcePanel citation={read} />}
           {tab === 'SESSIONS' && (
-            <SessionsPanel
-              inferences={INFERENCES.filter((m) => !forgotten.has(m.id))}
-              onForget={(id) => setForgotten((set) => addToSet(set, id))}
-            />
+            <SessionsPanel sessions={sessions} here={thread} onOpen={open} />
           )}
           {tab === 'MEMORY' && (
             <MemoryPanel
-              saved={SAVED_LINES.filter((line) => !deleted.has(line.id))}
-              onDelete={(id) => setDeleted((set) => addToSet(set, id))}
+              facts={facts}
+              onForget={(key) =>
+                cora.forget(key).then(refresh).catch(reportTo(setTrouble))
+              }
+              onForgetEverything={() =>
+                cora.forgetEverything().then(refresh).catch(reportTo(setTrouble))
+              }
             />
           )}
         </aside>
       </div>
 
-      {citedKey && <CitationModal doc={byKey(citedKey)} onClose={() => setCitedKey(null)} />}
+      {opened && <CitationModal citation={opened} onClose={() => setOpened(null)} />}
     </div>
   )
 }
+
+/** The documents this conversation has actually rested on, by name. */
+function citedDocuments(entries: Entry[]): Set<string> {
+  return new Set(
+    entries.flatMap((entry) => entry.citations.map((citation) => citation.document)),
+  )
+}
+
+function lastTrace(entries: Entry[]): Step[] {
+  return entries.length ? entries[entries.length - 1].trace : []
+}
+
+const reportTo = (say: (said: string) => void) => (failed: unknown) =>
+  say(message(failed))
+
+const message = (failed: unknown) =>
+  failed instanceof Error ? failed.message : String(failed)

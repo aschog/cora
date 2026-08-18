@@ -1,20 +1,20 @@
-import type { Doc } from '../data'
-import DocumentBody from './DocumentBody'
+import type { Citation } from '../api'
+import DocumentBody, { usePassage } from './DocumentBody'
 
-const countLine = (doc: Doc) => {
-  const n = doc.body.filter((p) => p.cited).length
-  if (n === 0) return 'not cited in this answer'
-  return n + (n === 1 ? ' cited passage' : ' cited passages') + ' · highlighted'
-}
+const NOTHING = 'The passage an answer cites will be shown here.'
 
-export default function SourcePanel({ doc }: { doc: Doc }) {
+export default function SourcePanel({ citation }: { citation: Citation | null }) {
+  const { text, trouble } = usePassage(citation)
+
+  if (!citation) return <div className="panel-intro">{NOTHING}</div>
   return (
     <div>
-      <div className="source-title">{doc.title}</div>
-      <div className="source-meta">{doc.meta}</div>
-      <div className="source-count">{countLine(doc)}</div>
-      <DocumentBody doc={doc} />
-      <div className="doc-note">{doc.note}</div>
+      <div className="source-title">{citation.document}</div>
+      <div className="source-meta">
+        cited as [{citation.number}] · characters {citation.start}–{citation.end}
+      </div>
+      {trouble && <div className="trouble">{trouble}</div>}
+      {text !== null && <DocumentBody citation={citation} text={text} />}
     </div>
   )
 }

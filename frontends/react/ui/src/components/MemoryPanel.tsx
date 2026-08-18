@@ -1,26 +1,35 @@
-import type { SavedLine } from '../data'
+import type { Fact } from '../api'
 
-type Props = { saved: SavedLine[]; onDelete: (id: string) => void }
+const NOTHING = 'Nothing yet — tell cora something about yourself.'
+const INTRO = 'What cora carries between sessions. Remove a line and it stops assuming it.'
 
-export default function MemoryPanel({ saved, onDelete }: Props) {
+type Props = {
+  facts: Fact[]
+  onForget: (key: string) => void
+  onForgetEverything: () => void
+}
+
+export default function MemoryPanel({ facts, onForget, onForgetEverything }: Props) {
   return (
     <div>
-      <div className="panel-intro">
-        Only what you told cora to save. It never writes here on its own — say <em>remember that</em> and the line
-        appears.
-      </div>
+      <div className="panel-intro">{facts.length === 0 ? NOTHING : INTRO}</div>
       <div className="saved-list">
-        {saved.map((line) => (
-          <div key={line.id} className="saved-card">
+        {facts.map((fact) => (
+          <div key={fact.key} className="saved-card">
             <div className="saved-head">
-              <span className="saved-text">{line.text}</span>
-              <button className="destructive" onClick={() => onDelete(line.id)}>
-                delete
+              <span className="saved-text">{fact.text}</span>
+              <button className="destructive" onClick={() => onForget(fact.key)}>
+                forget
               </button>
             </div>
           </div>
         ))}
       </div>
+      {facts.length > 0 && (
+        <button className="destructive forget-all" onClick={onForgetEverything}>
+          forget everything
+        </button>
+      )}
     </div>
   )
 }

@@ -1,22 +1,28 @@
-import { SESSIONS_INTRO } from '../data'
-import type { Inference } from '../data'
+import type { Session } from '../api'
 
-type Props = { inferences: Inference[]; onForget: (id: string) => void }
+const NOTHING = 'Conversations you have had will be listed here.'
 
-export default function SessionsPanel({ inferences, onForget }: Props) {
+type Props = {
+  sessions: Session[]
+  here: string
+  onOpen: (session: Session) => void
+}
+
+export default function SessionsPanel({ sessions, here, onOpen }: Props) {
+  if (sessions.length === 0) return <div className="panel-intro">{NOTHING}</div>
+
   return (
-    <div>
-      <div className="panel-intro">{SESSIONS_INTRO}</div>
-      <div className="inference-list">
-        {inferences.map((m) => (
-          <div key={m.id} className="inference">
-            <span className="inference-text">{m.text}</span>
-            <button className="destructive" onClick={() => onForget(m.id)}>
-              forget
-            </button>
-          </div>
-        ))}
-      </div>
+    <div className="session-list">
+      {sessions.map((session) => (
+        <button
+          key={session.thread_id}
+          className="session"
+          disabled={session.thread_id === here}
+          onClick={() => onOpen(session)}
+        >
+          {session.opened_with}
+        </button>
+      ))}
     </div>
   )
 }
