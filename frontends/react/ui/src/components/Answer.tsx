@@ -37,6 +37,10 @@ export default function Answer({ entries, asking, onAsk, onCite }: Props) {
     <main className="answer">
       <div className="scroller" ref={scroller}>
         <div className="turn-column">
+          {/* Keyed by the turn's own id. Ids repeat across conversations — every
+              reopened thread numbers its turns from -1 — so React reconciles one
+              conversation's second turn onto another's. Nothing rides on that while a
+              turn holds no state of its own and `Written` memoises on the answer. */}
           {entries.map((entry) => (
             <div key={entry.id} className="turn">
               <p className="said">{entry.question}</p>

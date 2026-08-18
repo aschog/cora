@@ -139,8 +139,10 @@ Its HTTP surface bounds what it will read, because the cap on a document is appl
 once the whole of it is in memory. `POST /api/documents` answers `413` for an upload past
 that cap and `411` for a multipart body that declares no length at all — a ceiling a
 client can step around by chunking is not a ceiling. `POST /api/ask` bounds its own body
-on the reading instead, so it needs no declared length. Every refusal the shell makes
-arrives as `{"error": "<one sentence>"}`, whoever raised it.
+on the reading instead, so it needs no declared length. Every refusal the shell models
+arrives as `{"error": "<one sentence>"}` under the code and headers it was raised with —
+cora's own, the form parser's and Starlette's alike. A failure nobody modelled is still
+the server's plain-text 500.
 
 Three more belong to whichever model `CORA_MODEL` names, and are set with it:
 `CORA_MAX_OUTPUT_TOKENS` (default `8192`), `CORA_REQUEST_TIMEOUT` (seconds per model
