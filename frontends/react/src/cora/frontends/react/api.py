@@ -5,20 +5,24 @@ this module adds is the two things HTTP asks for and a screen does not: a status
 for a failure, and a stream for an answer that takes a minute to arrive.
 """
 
+import json
 import pathlib
-from collections.abc import Callable
+import queue
+import threading
+from collections.abc import AsyncIterator, Callable
 from typing import Any
 
 from starlette.applications import Starlette
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from cora.app.assembly import App
 from cora.domain.errors import AdapterError, CoreError
+from cora.domain.trace import TraceStep
 from cora.frontends.react import payloads
 
 UNAVAILABLE = 503
@@ -40,6 +44,7 @@ def api(
     routes: list[Route | Mount] = [
         Route("/api/documents", _documents(app), methods=["GET"]),
         Route("/api/documents", _ingest(app), methods=["POST"]),
+        Route("/api/ask", _ask(app), methods=["POST"]),
         Route("/api/uploads/{upload}", _upload(app), methods=["GET"]),
         Route("/api/sessions", _sessions(app), methods=["GET"]),
         Route("/api/sessions/{thread_id}", _turns(app), methods=["GET"]),
@@ -83,6 +88,55 @@ def _ingest(app: App) -> Callable[[Request], Any]:
 
 
 NO_FILE = "No file was uploaded."
+
+STREAM = "text/event-stream"
+DONE = None
+"""What the worker puts on the queue when there is nothing further to send. A stream
+that is not closed is a page still spinning under an answer that already failed."""
+
+
+def _ask(app: App) -> Callable[[Request], Any]:
+    """A turn takes as long as it takes, so it is a stream: the steps as the agent takes
+    them, then the answer, and either way an end. `Agent.answer` blocks and reports its
+    steps from the thread it runs on, so the turn runs on a thread of its own and the
+    queue between them is what the response reads."""
+
+    async def taken(request: Request) -> StreamingResponse:
+        asked = await request.json()
+        events: queue.Queue[str | None] = queue.Queue()
+        turn = threading.Thread(
+            target=_run,
+            args=(app, asked.get("question", ""), asked.get("thread_id", ""), events),
+            daemon=True,
+        )
+
+        async def body() -> AsyncIterator[str]:
+            turn.start()
+            while (event := await run_in_threadpool(events.get)) is not DONE:
+                yield event
+
+        return StreamingResponse(body(), media_type=STREAM)
+
+    return taken
+
+
+def _run(
+    app: App, question: str, thread_id: str, events: "queue.Queue[str | None]"
+) -> None:
+    def report(step: TraceStep) -> None:
+        events.put(_event("step", payloads.step(step)))
+
+    try:
+        result = app.agent.answer(question, thread_id, report)
+        events.put(_event("turn", payloads.result(result)))
+    except CoreError as refused:
+        events.put(_event("error", {"error": refused.user_message}))
+    finally:
+        events.put(DONE)
+
+
+def _event(name: str, data: dict[str, Any]) -> str:
+    return f"event: {name}\ndata: {json.dumps(data)}\n\n"
 
 
 def _upload(app: App) -> Callable[[Request], Any]:
