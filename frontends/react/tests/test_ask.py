@@ -11,6 +11,7 @@ from app_builder import assembled, indexed
 from cora.app.assembly import App
 from cora.domain.errors import LlmError
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.engine.validation import MAX_INPUT_CHARS
 from cora.frontends.react.api import (
     MAX_ASK_BYTES,
     NOT_A_QUESTION,
@@ -355,3 +356,24 @@ def test_the_question_ceiling_does_not_rest_on_a_declared_length() -> None:
 
     assert refused.status_code == 413
     assert refused.json()["error"] == TOO_LONG_TO_ASK
+
+
+def test_the_ceiling_never_refuses_a_question_the_engine_would_allow() -> None:
+    """`MAX_INPUT_CHARS` is what a question may run to; the ceiling only decides how
+    much is read to find that out. The other two tests build their body *from* the
+    ceiling, so they hold for any value of it — including one that refuses every
+    question of the length the engine allows. This one is written from the engine's
+    limit instead, at the most a character can cost on the wire: `json.dumps` escapes an
+    astral character as two `\\uXXXX` sequences, twelve bytes, which is what any client
+    that escapes non-ASCII sends."""
+    longest = json.dumps(
+        {"question": "\U0001f954" * MAX_INPUT_CHARS, "thread_id": "t1"}
+    )
+
+    with TestClient(api(assembled())) as reader:
+        streamed = reader.post(
+            "/api/ask", content=longest, headers={"Content-Type": "application/json"}
+        )
+
+    assert streamed.status_code == 200
+    assert [name for name, _ in frames(streamed.text)][-1] == "turn"

@@ -159,11 +159,15 @@ UNBUFFERED = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 """A proxy that buffers the response undoes the endpoint: the steps would arrive
 together at the end, which is the shape this exists not to have."""
 NOT_A_QUESTION = "Ask with a question and the thread it belongs to."
-MAX_ASK_BYTES = MAX_INPUT_CHARS * 4 + 1024
-"""What a question may weigh: `MAX_INPUT_CHARS` of it at four bytes a character, as wide
-as UTF-8 goes, and a kilobyte for the thread id and the JSON around the two. Whether the
-question is too long is the engine's rule — this is only how much cora reads to find
-out."""
+ESCAPED_CHARACTER_BYTES = 12
+"""The most one character of a question can cost on the wire. The page sends raw UTF-8,
+where the widest character is four bytes; a client that escapes non-ASCII writes that
+same character as two `\\uXXXX` sequences. A ceiling sized for the page alone refuses
+questions cora would answer, and the difference is kilobytes."""
+MAX_ASK_BYTES = MAX_INPUT_CHARS * ESCAPED_CHARACTER_BYTES + 1024
+"""What a question may weigh, with a kilobyte over it for the thread id and the JSON
+around the two. Whether the question is too long is the engine's rule — this is only how
+much cora reads to find out."""
 TOO_LONG_TO_ASK = "That question is longer than cora reads."
 WENT_WRONG = "Something went wrong answering that. Please try again."
 """What an unmodelled failure says. A `CoreError` was written to be read by whoever
