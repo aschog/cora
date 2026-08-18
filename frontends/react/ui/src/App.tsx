@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as cora from './api'
-import type { Citation, Fact, Session, Step } from './api'
+import type { Citation, Fact, Session, Step, Turn } from './api'
 import Answer from './components/Answer'
 import CitationModal from './components/CitationModal'
 import DocumentRail from './components/DocumentRail'
@@ -48,6 +48,9 @@ export default function App() {
   const [trouble, setTrouble] = useState<string | null>(null)
   const [leftOpen, setLeftOpen] = useState(true)
   const asked = useRef(0)
+  /* How many times the reader has opened a conversation, which is what tells a turn
+     whether the entry it belongs to is still there to land on. */
+  const reopens = useRef(0)
   /* Which conversation the reader is in, written where it changes rather than during a
      render: `setThread` schedules a render, so a ref assigned while rendering still
      names the old thread for anything that runs before that render lands — which is any
@@ -113,11 +116,23 @@ export default function App() {
     setTab('SOURCE')
   }
 
+  /** A conversation as the store has it. Its turns are numbered apart from the ones
+   *  this page asked, so a reply still in flight can never match one of them. */
+  const shown = (kept: Turn[]) =>
+    setEntries(
+      kept.map((turn, n) => ({
+        id: -(n + 1),
+        question: turn.question,
+        ...turn.result,
+      })),
+    )
+
   /** The question joins the thread the moment it is asked, so it is on the page while
    *  the answer is being written; what comes back replaces it rather than following
    *  it. */
   const ask = async (question: string) => {
     const on = thread
+    const from = reopens.current
     const taken: Step[] = []
     setAsking(true)
     setLive(taken)
@@ -135,24 +150,28 @@ export default function App() {
         // way — cora answers one question at a time.
         if (here.current === on) setLive([...taken])
       })
-      setEntries(answered({ id, question, ...result }))
-      // The panels the answer steers are steered only if the reader is still in the
-      // conversation it was asked in. An answer that cites nothing then leaves the
-      // panel on the document last read, which says it is not cited in this answer —
-      // rather than emptying the panel and saying nothing at all.
+      // Nothing lands on a conversation the reader left — that turn is another
+      // conversation's work now. Coming *back* to it is not leaving it: the reopen
+      // renumbered the entries, so `id` names none of them and the store is what knows
+      // this turn. The panels follow for the same reason; an answer that cites nothing
+      // leaves the panel on the document last read, which says it is not cited in this
+      // answer — rather than emptying it and saying nothing at all.
       if (here.current === on) {
+        if (reopens.current === from) setEntries(answered({ id, question, ...result }))
+        else await recall(on)
         setRead((current) => result.citations[0]?.document ?? current)
       }
     } catch (failed) {
-      setEntries(
-        answered({
-          id,
-          question,
-          error: message(failed),
-          citations: [],
-          trace: taken,
-        }),
-      )
+      const failure = { id, question, error: message(failed), citations: [], trace: taken }
+      // A failure is recorded nowhere, so coming back to the conversation it was asked
+      // in is the one case where it is appended rather than replaced.
+      if (here.current === on) {
+        setEntries(
+          reopens.current === from
+            ? answered(failure)
+            : (said) => [...said, failure],
+        )
+      }
     } finally {
       setAsking(false)
       if (here.current === on) setLive(null)
@@ -160,22 +179,20 @@ export default function App() {
     }
   }
 
+  const recall = (thread_id: string) =>
+    cora.turns(thread_id).then(shown).catch(reportTo(setTrouble))
+
   const reopen = (session: Session) => {
     cora
       .turns(session.thread_id)
       .then((kept) => {
+        reopens.current += 1
         here.current = session.thread_id
         setThread(session.thread_id)
         // Whatever a turn still in flight has drawn belongs to the conversation being
         // left, not to this one, which has its own last turn to show.
         setLive(null)
-        setEntries(
-          kept.map((turn, n) => ({
-            id: -(n + 1),
-            question: turn.question,
-            ...turn.result,
-          })),
-        )
+        shown(kept)
         setRead(null)
       })
       .catch(reportTo(setTrouble))

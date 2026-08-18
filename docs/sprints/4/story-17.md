@@ -392,7 +392,7 @@ private helper the port borrowed gets a name of its own.
 - [x] **(ui)** a turn that *failed* does not un-cite the answer still on screen — the
       failure branch carries no `pending` flag, so half the criterion the seventh pass
       ticked was still open
-- [ ] **(ui)** an answer returning to a conversation the reader left and came back to is
+- [x] **(ui)** an answer returning to a conversation the reader left and came back to is
       not dropped: the thread guard passes while the entry it belongs to was renumbered
       by the reopen, so the turn lands nowhere
 - [ ] a mistyped setting reaches the operator as the sentence it was raised with, not as

@@ -617,3 +617,60 @@ test('a turn that failed does not un-cite the answer still on screen', async () 
   expect(screen.getByText('1 cited passage · highlighted')).toBeTruthy()
   expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
 })
+
+test('an answer returning to the conversation it was asked in is not dropped', async () => {
+  /* Leaving a conversation mid-turn drops the reply — that turn is another
+     conversation's now. Coming *back* to it is not leaving it: the thread guard passes,
+     but the reopen renumbered the entries, so the turn matched nothing and landed
+     nowhere. The reader had to open the conversation a third time to find it. */
+  vi.stubGlobal('crypto', { randomUUID: () => 'here' })
+  let recorded = false
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions')
+        return {
+          ok: true,
+          json: async () => [
+            { thread_id: 'old', opened_with: OLDER.question },
+            { thread_id: 'here', opened_with: 'Why am I stalling?' },
+          ],
+        } as unknown as Response
+      // The store has the turn once the turn is over, and not before.
+      if (path === '/api/sessions/here')
+        return {
+          ok: true,
+          json: async () =>
+            recorded ? [{ question: 'Why am I stalling?', result: TURN }] : [],
+        } as unknown as Response
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(LIVE[0].summary)
+
+  // Away, and straight back — both while the turn is still running.
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  fireEvent.click(await screen.findByRole('button', { name: 'Why am I stalling?' }))
+  await new Promise((settle) => setTimeout(settle, 0))
+
+  recorded = true
+  turn.release()
+
+  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
+  // Once in the conversation — the other one on the page is the session it names.
+  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+    ['Why am I stalling?'],
+  )
+})
