@@ -15,12 +15,15 @@ type Props = {
 
 export default function Answer({ entries, asking, onAsk, onCite }: Props) {
   const [question, setQuestion] = useState('')
-  const end = useRef<HTMLDivElement>(null)
+  const scroller = useRef<HTMLDivElement>(null)
 
   /* A turn asked, and a turn answered, both belong at the bottom of the scroller — the
-     conversation follows what just happened rather than leaving it below the fold. */
+     conversation follows what just happened rather than leaving it below the fold. All
+     the way to the bottom, so the room the column leaves is what the last line clears
+     the composer by. */
   useEffect(() => {
-    end.current?.scrollIntoView({ block: 'end' })
+    const shown = scroller.current
+    if (shown) shown.scrollTop = shown.scrollHeight
   }, [entries.length, entries[entries.length - 1]?.answer])
 
   const send = () => {
@@ -32,50 +35,55 @@ export default function Answer({ entries, asking, onAsk, onCite }: Props) {
 
   return (
     <main className="answer">
-      <div className="turn-column">
+      <div className="scroller" ref={scroller}>
+        <div className="turn-column">
           {entries.map((entry, n) => (
-          <div key={n} className="turn">
-            <p className="said">{entry.question}</p>
-            <div className="from-cora">
-              <span className="avatar" aria-hidden="true">
-                c
-              </span>
-              <span className="who">cora</span>
+            <div key={n} className="turn">
+              <p className="said">{entry.question}</p>
+              <div className="from-cora">
+                <span className="avatar" aria-hidden="true">
+                  c
+                </span>
+                <span className="who">cora</span>
+              </div>
+              {entry.pending ? (
+                <p className="working">{WORKING}</p>
+              ) : entry.error ? (
+                <p className="trouble">{entry.error}</p>
+              ) : (
+                <div
+                  className="answer-body"
+                  onClick={(e) => opened(e, entry.citations, onCite)}
+                  dangerouslySetInnerHTML={{
+                    __html: answerHtml(entry.answer ?? '', entry.citations),
+                  }}
+                />
+              )}
             </div>
-            {entry.pending ? (
-              <p className="working">{WORKING}</p>
-            ) : entry.error ? (
-              <p className="trouble">{entry.error}</p>
-            ) : (
-              <div
-                className="answer-body"
-                onClick={(e) => opened(e, entry.citations, onCite)}
-                dangerouslySetInnerHTML={{
-                  __html: answerHtml(entry.answer ?? '', entry.citations),
-                }}
-              />
-            )}
-          </div>
-        ))}
-        <div ref={end} />
+          ))}
+        </div>
       </div>
 
-      <div className="composer">
-        <input
-          value={question}
-          placeholder="Ask a question…"
-          aria-label="Ask a question"
-          onChange={(e) => setQuestion(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && send()}
-        />
-        <button
-          className="composer-ask"
-          aria-label="Ask"
-          onClick={send}
-          disabled={asking}
-        >
-          →
-        </button>
+      {/* Outside the scroller, so it is always there to type in; the conversation
+          passes behind it. */}
+      <div className="composer-dock">
+        <div className="composer">
+          <input
+            value={question}
+            placeholder="Ask a question…"
+            aria-label="Ask a question"
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && send()}
+          />
+          <button
+            className="composer-ask"
+            aria-label="Ask"
+            onClick={send}
+            disabled={asking}
+          >
+            →
+          </button>
+        </div>
       </div>
     </main>
   )

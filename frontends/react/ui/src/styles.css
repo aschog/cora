@@ -34,6 +34,7 @@
   --sunken: rgba(0, 0, 0, 0.28);
   --pill: 999px;
   --panel-radius: 18px;
+  --composer-space: 70px;
 }
 
 *,
@@ -246,14 +247,39 @@ button {
 
 /* ── center ── */
 .answer {
+  position: relative;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--s5);
   flex: 1 1 420px;
   min-width: 0;
-  padding: var(--s2) var(--s5) var(--s6);
+  min-height: 0;
+}
+
+/* A block, not a flex row: a flex item is stretched to its container's height, so the
+   column's box would stop at the fold with its content overflowing past it — and the
+   room it leaves below its last line would sit above that overflow rather than after
+   it, which is the whole point of leaving it. */
+.scroller {
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  padding: var(--s2) var(--s5) 0;
+}
+
+/* The composer lives outside the scroller, so nothing that scrolls can carry it out of
+   reach, and is pulled back over it so the conversation passes behind. What keeps that
+   readable is the room the column leaves below its last line — `--composer-space` is
+   the one number both sides read, so the overlap can never grow past the clearance. */
+.composer-dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--s5) var(--s3);
+  pointer-events: none;
 }
 
 /* A turn reads as a conversation: what you said is a bubble on your side, what cora
@@ -412,15 +438,12 @@ button {
 /* The composer floats over the conversation rather than sitting after it: it is always
    reachable, and what has been said scrolls behind it. */
 .composer {
-  position: sticky;
-  bottom: var(--s3);
-  z-index: 5;
+  pointer-events: auto;
   display: flex;
   align-items: center;
   gap: var(--s2);
   width: 100%;
   max-width: 72ch;
-  margin-top: auto;
   padding: 6px 6px 6px var(--s4);
   background: rgba(10, 12, 17, 0.82);
   backdrop-filter: blur(14px);
@@ -783,14 +806,12 @@ button {
 /* ── the conversation is a column inside its own scroller ── */
 .turn-column {
   width: 100%;
-  min-height: 100%;
   max-width: 72ch;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   gap: var(--s5);
-  /* Room for the composer to float over: without it the tail of an answer is read
-     through the input sitting on top of it. */
-  padding-bottom: 78px;
+  padding-bottom: calc(var(--composer-space) + var(--s4));
 }
 
 /* ── the rails fold away ── */
