@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { PLUGINS, SESSION_LINE } from '../data'
+import { PLUGINS } from '../data'
 
-type Props = { plugin: string; onPickPlugin: (name: string) => void; onOpenMemory: () => void }
+type Props = { plugin: string; onPickPlugin: (name: string) => void }
 
-export default function Header({ plugin, onPickPlugin, onOpenMemory }: Props) {
+export default function Header({ plugin, onPickPlugin }: Props) {
   const [menuOpen, setMenuOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
 
@@ -54,13 +54,6 @@ export default function Header({ plugin, onPickPlugin, onOpenMemory }: Props) {
             ))}
           </div>
         )}
-      </div>
-
-      <div className="session-line">
-        <span>{SESSION_LINE}</span>
-        <button className="memory-link" onClick={onOpenMemory}>
-          memory
-        </button>
       </div>
     </header>
   )

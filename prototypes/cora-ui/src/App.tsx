@@ -43,7 +43,7 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header plugin={plugin} onPickPlugin={setPlugin} onOpenMemory={() => setTab('MEMORY')} />
+      <Header plugin={plugin} onPickPlugin={setPlugin} />
 
       <div className="columns">
         <DocumentRail

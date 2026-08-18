@@ -20,13 +20,13 @@ export default function Answer({ onCite }: Props) {
         <p>
           Your squat isn’t stalling from programming volume — it’s stalling from recovery. Mean sleep over the last 21
           days is 5h 48m against your 7h 15m baseline{cite('1', 'sleep')}, and every one of the three missed top sets
-          landed on a day following a night under six hours{cite('2', 'log')}. Your March ferritin came back at 31
+          landed on a day following under six hours{cite('2', 'log')}. Your March ferritin came back at 31
           ng/mL, low-normal and consistent with the flatness you’re describing{cite('3', 'blood')}.
         </p>
 
         <p>
           So the next four weeks hold intensity and cut density. Four sessions, as you prefer, with the heavy squat
-          moved off Monday — the day after your worst sleep, every week in the log.
+          moved off Monday.
         </p>
 
         <table className="block-table">

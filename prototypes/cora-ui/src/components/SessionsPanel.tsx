@@ -11,7 +11,6 @@ export default function SessionsPanel({ inferences, onForget }: Props) {
         {inferences.map((m) => (
           <div key={m.id} className="inference">
             <span className="inference-text">{m.text}</span>
-            <span className="stamp">{m.session}</span>
             <button className="destructive" onClick={() => onForget(m.id)}>
               forget
             </button>

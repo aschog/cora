@@ -1,4 +1,3 @@
-import { MEMORY_FOOTER } from '../data'
 import type { SavedLine } from '../data'
 
 type Props = { saved: SavedLine[]; onDelete: (id: string) => void }
@@ -19,11 +18,9 @@ export default function MemoryPanel({ saved, onDelete }: Props) {
                 delete
               </button>
             </div>
-            <div className="micro saved-stamp">{line.stamp}</div>
           </div>
         ))}
       </div>
-      <div className="panel-footer">{MEMORY_FOOTER}</div>
     </div>
   )
 }

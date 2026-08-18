@@ -99,7 +99,7 @@ export const DOCS: Doc[] = [
     meta: '4 entries · your document',
     note: 'Read during indexing, not used in this answer — nothing here bore on the stall.',
     body: [
-      { text: 'Coach notes — Feb.md. Indexed 2026-03-01, four entries, free text.' },
+      { text: 'Coach notes — Feb.md' },
       { text: 'Feb 3 — moved heavy squat to Tuesday for two weeks; complained about Monday sessions after travel.' },
       { text: 'Feb 11 — knee cue landing well: “knees over mid-foot, spread the floor.” Keep using it.' },
       { text: 'Feb 19 — asked for fewer accessories. Cut arms to one slot.' },
@@ -113,7 +113,7 @@ export const DOCS: Doc[] = [
     meta: '1 page · your document',
     note: 'Available to cora, not cited here. It informs the knee cue, not the block.',
     body: [
-      { text: 'Physio discharge letter.pdf — 2022-11-14. One page, signed.' },
+      { text: 'Physio discharge letter.pdf — 2022-11-14.' },
       { text: 'Left meniscus, posterior horn, managed non-surgically. Full range of motion restored.' },
       { text: 'Cleared for loaded bilateral squatting without depth restriction. Advise single-leg work twice weekly.' },
       { text: 'No follow-up scheduled. Return if joint line pain recurs under load.' },
@@ -185,35 +185,27 @@ export const PLUGINS: Plugin[] = [
   { name: 'legal-discovery v0.1', tools: '5 tools', blurb: 'docket, precedent, redact, privilege_log' },
 ]
 
-export type Inference = { id: string; text: string; session: string }
+export type Inference = { id: string; text: string }
 
 export const INFERENCES: Inference[] = [
-  { id: 'sessions', text: 'Four sessions a week — never proposes five', session: 'session 1' },
-  { id: 'knee', text: 'Left knee tracks in under load; cue it every squat block', session: 'session 1' },
-  { id: 'burpees', text: 'Won’t do burpees. Stop offering conditioning circuits', session: 'session 3' },
-  { id: 'tables', text: 'Prefers plans as tables, reasoning underneath', session: 'session 6' },
-  { id: 'ferritin', text: 'Ferritin low-normal since March — recheck due September', session: 'session 11' },
+  { id: 'sessions', text: 'Four sessions a week — never proposes five' },
+  { id: 'knee', text: 'Left knee tracks in under load; cue it every squat block' },
+  { id: 'burpees', text: 'Won’t do burpees. Stop offering conditioning circuits' },
+  { id: 'tables', text: 'Prefers plans as tables, reasoning underneath' },
+  { id: 'ferritin', text: 'Ferritin low-normal since March — recheck due September' },
 ]
 
 export const SESSIONS_INTRO =
-  'What cora inferred on its own, session by session. Editable — forget a line and it stops assuming it.'
+  'What cora carries between sessions. Editable — remove a line and it stops assuming it.'
 
-export type SavedLine = { id: string; text: string; stamp: string }
+export type SavedLine = { id: string; text: string }
 
 export const SAVED_LINES: SavedLine[] = [
-  { id: 'four', text: 'Four sessions a week, max. Never propose five.', stamp: 'saved by you · 12 Mar · session 1' },
-  { id: 'burpees', text: 'No burpees, no conditioning circuits. Ever.', stamp: 'saved by you · 2 Apr · session 3' },
-  {
-    id: 'table',
-    text: 'Give me the plan as a table first, reasoning underneath.',
-    stamp: 'saved by you · 19 May · session 6',
-  },
-  { id: 'ferritin', text: 'Recheck ferritin in September — remind me.', stamp: 'saved by you · 4 Aug · session 11' },
+  { id: 'four', text: 'Four sessions a week, max. Never propose five.' },
+  { id: 'burpees', text: 'No burpees, no conditioning circuits. Ever.' },
+  { id: 'table', text: 'Give me the plan as a table first, reasoning underneath.' },
+  { id: 'ferritin', text: 'Recheck ferritin in September — remind me.' },
 ]
-
-export const MEMORY_FOOTER = '4 saved · used in 2 of this answer’s steps.'
-
-export const SESSION_LINE = 'session 14 · continued from Tue'
 
 export const uploadedDoc = (name: string): Doc => ({
   key: 'upload:' + name,
