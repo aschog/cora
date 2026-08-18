@@ -254,11 +254,11 @@ export default function App() {
   )
 }
 
-/** The turn the panels speak for: the newest one that has been answered. A question in
- *  flight is on the page before it carries any citations, and reading that as "this
- *  answer" takes the marks off the answer the reader is still reading. */
+/** The turn the panels speak for: the newest one that actually answered. A question in
+ *  flight carries no citations yet and a turn that failed never will, so reading either
+ *  as "this answer" takes the marks off the answer the reader is still reading. */
 const answering = (entries: Entry[]): Entry | undefined =>
-  entries.filter((entry) => !entry.pending).at(-1)
+  entries.filter((entry) => !entry.pending && !entry.error).at(-1)
 
 /** The turn that was waiting, now that it is not — and nothing at all if the
  *  conversation it was asked in has since been left. */

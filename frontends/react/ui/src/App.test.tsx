@@ -576,3 +576,44 @@ test('a question in flight does not un-cite the answer still on screen', async (
   expect(screen.getByText('1 cited passage · highlighted')).toBeTruthy()
   expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
 })
+
+test('a turn that failed does not un-cite the answer still on screen', async () => {
+  /* The other half of the same criterion: a failure lands where the answer would have
+     been and carries no citations, and it carries no `pending` flag either. Reading it as
+     "this answer" tells the reader that the answer above it — the one with the marks —
+     rests on nothing, about a turn that produced no answer at all. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(await screen.findByText('1 cited passage · highlighted')).toBeTruthy()
+
+  turn = held()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return failing()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'And next?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText('cora is away.')
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(screen.getByText('1 cited passage · highlighted')).toBeTruthy()
+  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
+})

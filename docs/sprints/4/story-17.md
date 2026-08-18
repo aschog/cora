@@ -389,7 +389,7 @@ private helper the port borrowed gets a name of its own.
       fails the test if it is ever called, so the guard cannot move after the parse
 - [x] `/api/ask` bounds its body like the endpoint next door, under one rule rather than
       one and a half
-- [ ] **(ui)** a turn that *failed* does not un-cite the answer still on screen — the
+- [x] **(ui)** a turn that *failed* does not un-cite the answer still on screen — the
       failure branch carries no `pending` flag, so half the criterion the seventh pass
       ticked was still open
 - [ ] **(ui)** an answer returning to a conversation the reader left and came back to is
