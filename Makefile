@@ -5,7 +5,7 @@
 APP := frontends/streamlit/src/cora/frontends/streamlit/streamlit_app.py
 REACT := cora.frontends.react.server
 
-.PHONY: run run-env run-react run-react-env ui ui-test
+.PHONY: run run-env run-react run-env-react ui ui-test
 
 # Reads OPENROUTER_API_KEY from the environment.
 run:
@@ -20,7 +20,7 @@ run-env:
 run-react:
 	uv run python -m $(REACT)
 
-run-react-env:
+run-env-react:
 	uv run --env-file .env python -m $(REACT)
 
 ui:
