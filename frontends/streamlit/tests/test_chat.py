@@ -7,9 +7,12 @@ from streamlit.testing.v1 import AppTest
 from app_builder import assembled, indexed
 from apptest import page_text
 from cora.app.assembly import App
+from cora.domain.chat_result import ChatResult
 from cora.domain.chunk import Chunk
+from cora.domain.conversation import Turn
 from cora.domain.errors import (
     ConfigurationError,
+    ConversationStoreError,
     EmptyDocumentError,
     InputRejectedError,
     LlmError,
@@ -21,6 +24,7 @@ from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.streamlit.chat import (
     APP_NAME,
+    NO_SESSIONS,
     NOTHING_REMEMBERED,
     RAIL_PANELS,
     REMEMBER_HEADING,
@@ -31,11 +35,14 @@ from cora.ports.plugin import Plugin, ToolCall
 from cora.ports.retrieval import Retriever
 from fakes import (
     FailingChatModel,
+    FailingConversations,
     FailingMemory,
+    FakeConversations,
     FakeMemory,
     FakeRetriever,
     ReadOnlyMemory,
     ScriptedChatModel,
+    UnopenableSessions,
     add_tool,
 )
 from fixture_plugins import make_plugin
@@ -825,3 +832,136 @@ def test_the_rail_does_not_wait_for_an_answer_to_appear() -> None:
 
     assert unanswered == list(RAIL_PANELS)
     assert [panel.label for panel in at.tabs] == unanswered
+
+
+def _sessions_panel(at: AppTest):
+    _plan, _source, sessions, _memory = at.tabs
+    return sessions
+
+
+def _conversation_with(*recorded: tuple[str, str, str]) -> FakeConversations:
+    conversations = FakeConversations()
+    for thread, question, answer in recorded:
+        conversations.record(
+            thread, Turn(question=question, result=ChatResult(answer=answer))
+        )
+    return conversations
+
+
+@pytest.mark.integration
+def test_the_sessions_panel_lists_the_stored_conversations_newest_first() -> None:
+    """A conversation is picked out of the list by what it was about; the thread id it
+    is filed under says nothing to a reader."""
+    conversations = _conversation_with(
+        ("older", "How much protein?", "1.6 g per kg"),
+        ("newer", "And creatine?", "Five grams."),
+    )
+
+    at = _run_page(
+        assembled(chat_model=ScriptedChatModel([]), conversations=conversations)
+    )
+
+    assert [button.label for button in _sessions_panel(at).button] == [
+        "And creatine?",
+        "How much protein?",
+    ]
+
+
+@pytest.mark.integration
+def test_the_conversation_in_progress_is_not_one_to_open() -> None:
+    """You are already in it: offering to open it is an invitation to nothing, so the
+    entry marks where the reader is instead."""
+    conversations = _conversation_with(("older", "How much protein?", "1.6 g per kg"))
+    at = _run_page(
+        assembled(chat_model=ScriptedChatModel([]), conversations=conversations)
+    )
+
+    at.session_state.thread_id = "older"
+    at.run()
+
+    [entry] = _sessions_panel(at).button
+    assert entry.disabled, "the conversation on screen is the one you cannot open"
+
+
+@pytest.mark.integration
+def test_opening_a_session_redraws_the_turns_it_holds() -> None:
+    conversations = _conversation_with(("older", "How much protein?", "1.6 g per kg"))
+    at = _run_page(
+        assembled(chat_model=ScriptedChatModel([]), conversations=conversations)
+    )
+
+    _sessions_panel(at).button[0].click().run()
+
+    assert not at.exception
+    assert "1.6 g per kg" in _visible_text(at)
+
+
+@pytest.mark.integration
+def test_a_question_asked_after_opening_a_session_runs_on_that_thread() -> None:
+    """Redrawing an old conversation and then answering into a new one is the failure
+    this guards: the thread the agent is told about has to be the one on screen."""
+    conversations = _conversation_with(("older", "How much protein?", "1.6 g per kg"))
+    at = _run_page(
+        assembled(
+            chat_model=ScriptedChatModel([ModelReply(text="Five grams.")]),
+            conversations=conversations,
+        )
+    )
+
+    _sessions_panel(at).button[0].click().run()
+    at.chat_input[0].set_value("And creatine?").run()
+
+    assert not at.exception
+    assert [turn.question for turn in conversations.turns("older")] == [
+        "How much protein?",
+        "And creatine?",
+    ]
+
+
+@pytest.mark.integration
+def test_the_sessions_panel_says_what_will_fill_it_when_nothing_has() -> None:
+    at = _run_page(
+        assembled(chat_model=ScriptedChatModel([]), conversations=FakeConversations())
+    )
+
+    assert NO_SESSIONS in [line.value for line in _sessions_panel(at).caption]
+
+
+@pytest.mark.integration
+def test_a_conversation_store_that_cannot_be_read_costs_the_chat_nothing() -> None:
+    """The panel is a panel, not the app: a store that went away takes the list of
+    conversations with it and leaves the one on screen answering."""
+    at = _run_page(
+        assembled(
+            chat_model=ScriptedChatModel([ModelReply(text="Five grams.")]),
+            conversations=FailingConversations(),
+        )
+    )
+
+    at.chat_input[0].set_value("And creatine?").run()
+
+    assert not at.exception
+    assert "Five grams." in _visible_text(at)
+    assert [error.value for error in _sessions_panel(at).error] == [
+        ConversationStoreError().user_message
+    ]
+
+
+@pytest.mark.integration
+def test_a_session_that_cannot_be_opened_says_so_where_it_was_clicked() -> None:
+    """Listing works and reading one fails: the failure belongs in the panel the click
+    was in, and a rerun has to carry it there — a callback's error is gone otherwise."""
+    conversations = _conversation_with(("older", "How much protein?", "1.6 g per kg"))
+    at = _run_page(
+        assembled(
+            chat_model=ScriptedChatModel([]),
+            conversations=UnopenableSessions(conversations),
+        )
+    )
+
+    _sessions_panel(at).button[0].click().run()
+
+    assert not at.exception
+    assert [error.value for error in _sessions_panel(at).error] == [
+        ConversationStoreError().user_message
+    ]

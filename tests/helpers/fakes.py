@@ -3,7 +3,7 @@
 import hashlib
 import math
 from dataclasses import dataclass, field, replace
-from typing import NamedTuple
+from typing import Any, NamedTuple
 
 from cora.domain.chunk import Chunk
 from cora.domain.conversation import Session, Turn
@@ -304,3 +304,21 @@ class FailingConversations:
 
     def sessions(self) -> tuple[Session, ...]:
         raise self.error
+
+
+@dataclass
+class UnopenableSessions:
+    """Lists its conversations and refuses to read one: the store that went away between
+    the page being drawn and a session on it being clicked."""
+
+    listing: Any
+    error: Exception = field(default_factory=ConversationStoreError)
+
+    def record(self, thread_id: str, turn: Turn) -> None:
+        self.listing.record(thread_id, turn)
+
+    def turns(self, thread_id: str) -> tuple[Turn, ...]:
+        raise self.error
+
+    def sessions(self) -> tuple[Session, ...]:
+        return self.listing.sessions()

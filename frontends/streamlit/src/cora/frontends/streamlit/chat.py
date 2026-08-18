@@ -6,6 +6,7 @@ import streamlit as st
 from cora.app.assembly import App
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
+from cora.domain.conversation import Session, Turn
 from cora.domain.errors import AdapterError, CoreError
 from cora.domain.trace import TraceStep
 from cora.engine.agent import Agent
@@ -23,6 +24,7 @@ from cora.frontends.streamlit.viewer import (
     open_citation,
     source_panel,
 )
+from cora.ports.conversations import Conversations
 from cora.ports.memory import Memory
 from streamlit.delta_generator import DeltaGenerator
 from streamlit.runtime.uploaded_file_manager import UploadedFile
@@ -32,6 +34,7 @@ WORKING = "Working…"
 TRACE_LABEL = "How I got there"
 REMEMBER_HEADING = "What I remember"
 NOTHING_REMEMBERED = "Nothing yet — tell me something about yourself."
+NO_SESSIONS = "Conversations you have had will be listed here."
 FORGET_LABEL = "✕"
 CONVERSATION_SHARE = 2
 RAIL_SHARE = 1
@@ -72,7 +75,7 @@ def render(app: App) -> None:
     st.caption(TAGLINE)
     conversation, rail = st.columns([CONVERSATION_SHARE, RAIL_SHARE])
     with rail:
-        plan, source, _sessions_panel, remembered = st.tabs(RAIL_PANELS)
+        plan, source, sessions, remembered = st.tabs(RAIL_PANELS)
     with conversation:
         said = st.container()
         prompt = st.chat_input("Ask about your documents")
@@ -86,6 +89,8 @@ def render(app: App) -> None:
         document_pane(app.knowledge_base, _opened())
     with st.sidebar:
         _documents(app.knowledge_base)
+    with sessions:
+        _sessions(app.conversations)
     with remembered:
         _memory(app.memory)
 
@@ -102,6 +107,70 @@ def _resolved(number: int | None) -> Citation | None:
             if citation.number == number:
                 return citation
     return None
+
+
+def _sessions(conversations: Conversations | None) -> None:
+    """The conversations before this one, newest first. Opening one is a callback, so
+    the rerun that follows draws the thread that was opened rather than the one that was
+    on screen when it was clicked. The conversation already on screen is listed but not
+    offered — it is where the reader already is.
+
+    A callback's failure has to survive into that rerun to be shown at all, which is
+    what `sessions_error` carries, as the memory panel's own does."""
+    if conversations is None:
+        return
+    if failed := st.session_state.pop("sessions_error", None):
+        st.error(failed)
+    try:
+        stored = conversations.sessions()
+    except AdapterError as error:
+        st.error(error.user_message)
+        return
+    if not stored:
+        st.caption(NO_SESSIONS)
+        return
+    for session in stored:
+        here = session.thread_id == st.session_state.get("thread_id")
+        st.button(
+            session.opened_with,
+            key=f"open_{session.thread_id}",
+            width="stretch",
+            disabled=here,
+            on_click=_opening_session(conversations, session),
+        )
+
+
+def _opening_session(
+    conversations: Conversations, session: Session
+) -> Callable[[], None]:
+    def open_it() -> None:
+        try:
+            kept = conversations.turns(session.thread_id)
+        except AdapterError as error:
+            st.session_state.sessions_error = error.user_message
+            return
+        st.session_state.thread_id = session.thread_id
+        st.session_state.messages = _redrawn(kept)
+
+    return open_it
+
+
+def _redrawn(turns: Sequence[Turn]) -> list[ThreadEntry]:
+    """A stored turn is one question and one answer; the thread the page redraws is a
+    message each."""
+    return [
+        entry
+        for turn in turns
+        for entry in (
+            {"role": "user", "content": turn.question},
+            {
+                "role": "assistant",
+                "content": turn.result.answer,
+                "citations": list(turn.result.citations),
+                "trace": list(turn.result.trace),
+            },
+        )
+    ]
 
 
 def _documents(knowledge_base: KnowledgeBase) -> None:

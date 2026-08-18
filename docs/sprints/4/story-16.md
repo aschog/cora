@@ -305,9 +305,12 @@ checkpointer already owns the second.
 - [x] a runner told no path keeps its thread in memory, as every test of it relies on
 - [x] **(int)** `build` checkpoints into the conversations file, so one file holds both
       halves of a conversation
-- [ ] the sessions panel lists the stored sessions, the one in progress marked
-- [ ] opening a session redraws its turns in the conversation
-- [ ] the question asked after opening a session runs on that thread rather than a new one
+- [x] the sessions panel lists the stored sessions, the one in progress marked
+- [x] with nothing recorded the sessions panel says what will fill it
+- [x] a store that cannot be read reports inside the sessions panel and costs the
+      conversation nothing — listing them and opening one both
+- [x] opening a session redraws its turns in the conversation
+- [x] the question asked after opening a session runs on that thread rather than a new one
 
 #### Outer functional test
 
