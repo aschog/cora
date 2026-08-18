@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import App from './App'
 
@@ -188,6 +188,9 @@ test('a document the answer cited opens in the source panel, marked at the passa
   expect(await screen.findByText('notes.md')).toBeTruthy()
   const inTheRail = screen.getByRole('button', { name: 'notes.md' })
   expect(inTheRail.hasAttribute('disabled')).toBe(true)
+  /* A disabled button is out of the accessibility tree and its tooltip is unreliable,
+     so the reason is on the page rather than on the control it explains. */
+  expect(screen.getByText(/not cited in this conversation/)).toBeTruthy()
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why?' },
@@ -291,6 +294,15 @@ test('an answer never lands on a conversation that was replaced while it ran', a
   expect(screen.getByText(OLDER.result.answer)).toBeTruthy()
   expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
   expect(screen.queryByText('Why am I stalling?')).toBeNull()
+
+  /* And the panels the answer would have steered are left alone too: a document the
+     abandoned turn cited is not this conversation's to show, and showing it says
+     something false about it — that its text was never kept, when the truth is that
+     nothing here cites it. */
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  const rail = within(document.querySelector('.rail-panels') as HTMLElement)
+  expect(rail.queryByText('notes.md')).toBeNull()
+  expect(rail.getByText(/passage an answer cites/)).toBeTruthy()
 })
 
 test('the conversation follows what just happened, answered or failed', async () => {
@@ -368,7 +380,7 @@ test('a citation wrapped in a link the model wrote opens the passage, not the li
      link the reader never chose. Letting the anchor fire navigates the tab away on a
      click the page itself invited. */
   const linked = {
-    answer: 'See [the log [1]](https://elsewhere.test/x).',
+    answer: 'See [the log [1]](#elsewhere).',
     citations: TURN.citations,
     trace: TURN.trace,
   }
@@ -389,6 +401,8 @@ test('a citation wrapped in a link the model wrote opens the passage, not the li
   })
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
 
+  /* A fragment rather than a URL: the click's default action is what this is about,
+     and a unit test has no business dialling a host to find that out. */
   const cite = await screen.findByRole('button', { name: 'Open cited source 1' })
   const click = new MouseEvent('click', { bubbles: true, cancelable: true })
   cite.dispatchEvent(click)

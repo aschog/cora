@@ -2,7 +2,6 @@ import type { Citation } from '../api'
 import DocumentBody, { usePassage } from './DocumentBody'
 
 const NOTHING = 'A document you open, or the passage an answer cites, is shown here.'
-const UNREADABLE = 'This document was indexed before cora kept its text, so it cannot be opened.'
 
 type Props = {
   document: string | null
@@ -22,7 +21,6 @@ export default function SourcePanel({ document, upload, citations }: Props) {
       <div className="source-title">{document}</div>
       <div className="micro source-count">{counted(citations.length)}</div>
       {trouble && <div className="trouble">{trouble}</div>}
-      {!upload && <div className="panel-intro">{UNREADABLE}</div>}
       {text !== null && <DocumentBody text={text} spans={citations} />}
     </div>
   )

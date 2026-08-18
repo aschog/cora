@@ -44,6 +44,8 @@ export default function App() {
   const [trouble, setTrouble] = useState<string | null>(null)
   const [leftOpen, setLeftOpen] = useState(true)
   const asked = useRef(0)
+  const here = useRef(thread)
+  here.current = thread
   const [rightOpen, setRightOpen] = useState(true)
 
   /** What the page shows around the conversation, loaded together: one banner for all
@@ -99,6 +101,7 @@ export default function App() {
    *  the answer is being written; what comes back replaces it rather than following
    *  it. */
   const ask = async (question: string) => {
+    const on = thread
     const taken: Step[] = []
     setLive(taken)
     setTab('PLAN')
@@ -113,10 +116,13 @@ export default function App() {
         setLive([...taken])
       })
       setEntries(answered({ id, question, ...result }))
-      // An answer that cites nothing leaves the panel on the document last read, which
-      // then says it is not cited in this answer — rather than emptying the panel and
-      // saying nothing at all.
-      setRead((current) => result.citations[0]?.document ?? current)
+      // The panels the answer steers are steered only if the reader is still in the
+      // conversation it was asked in. An answer that cites nothing then leaves the
+      // panel on the document last read, which says it is not cited in this answer —
+      // rather than emptying the panel and saying nothing at all.
+      if (here.current === on) {
+        setRead((current) => result.citations[0]?.document ?? current)
+      }
     } catch (failed) {
       setEntries(
         answered({

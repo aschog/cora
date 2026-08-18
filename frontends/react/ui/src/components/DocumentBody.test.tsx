@@ -20,6 +20,17 @@ test('the document is rendered exactly once, whatever the passages do', () => {
   expect(shown([{ start: 4, end: 9 }, { start: 0, end: 6 }]).textContent).toBe(TEXT)
 })
 
+test('passages arrive in citation order, not in document order', () => {
+  /* Citations are numbered as the model used them, so `[1]` can sit later in the file
+     than `[2]`. Merging without ordering first drops every passage that precedes the
+     one it happens to see first — the panel then counts two and marks one. */
+  const marks = shown([{ start: 6, end: 8 }, { start: 0, end: 2 }]).querySelectorAll(
+    '.doc-passage',
+  )
+
+  expect([...marks].map((mark) => mark.textContent)).toEqual(['AB', 'GH'])
+})
+
 test('overlapping passages read as the one passage they cover', () => {
   const marks = shown([{ start: 0, end: 6 }, { start: 4, end: 9 }]).querySelectorAll(
     '.doc-passage',

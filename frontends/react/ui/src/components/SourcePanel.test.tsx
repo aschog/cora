@@ -32,9 +32,9 @@ test('a passage whose text was never kept says so rather than drawing an empty p
   /* A citation carries the upload its span was measured in, and an index written before
      cora kept any text hands out citations that name none. The reader is told; the
      panel does not sit blank. */
-  render(
-    <SourcePanel document="notes.md" upload={null} citations={[cited('')]} />,
-  )
+  /* `uploadOf` hands the panel what the citation names, and a citation from such an
+     index names the empty string — not nothing. */
+  render(<SourcePanel document="notes.md" upload="" citations={[cited('')]} />)
 
   expect(screen.getByText(/indexed before cora kept its text/)).toBeTruthy()
   expect(screen.queryByText(/The rest of the document follows/)).toBeNull()

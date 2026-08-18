@@ -776,6 +776,13 @@ button {
   color: var(--n600);
 }
 
+.rail-note {
+  margin-top: var(--s3);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--n600);
+}
+
 /* ── the conversations before this one ── */
 .session-list {
   display: flex;

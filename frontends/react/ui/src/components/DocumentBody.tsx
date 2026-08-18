@@ -1,7 +1,15 @@
 import { useEffect, useRef, useState } from 'react'
 import * as cora from '../api'
 
-/** The kept text of an upload, or why it cannot be read. */
+export const UNKEPT =
+  'This document was indexed before cora kept its text, so it cannot be opened.'
+
+/**
+ * The kept text of an upload, or why it cannot be read. Both answers live here so that
+ * every way of opening a passage gives the same one: a citation from an index written
+ * before cora kept any text names no upload, and a reader who clicked `[1]` deserves
+ * that sentence as much as a reader who opened the document in the rail.
+ */
 export function usePassage(upload: string | null) {
   const [text, setText] = useState<string | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
@@ -9,6 +17,10 @@ export function usePassage(upload: string | null) {
   useEffect(() => {
     setText(null)
     setTrouble(null)
+    if (upload === '') {
+      setTrouble(UNKEPT)
+      return
+    }
     if (!upload) return
     let current = true
     cora

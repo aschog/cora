@@ -281,3 +281,29 @@ An answer is parsed once per turn rather than once per keystroke, and the stale
       page — a citation carries the upload its span was measured in, and an index
       written before cora kept any text names none
 - [x] **(ui)** with nothing opened the source panel says what it is for
+
+#### Found by the branch review (`ai-code-reviewer`, fourth pass)
+
+Six of the seven previous fixes killed their mutants. The seventh, and two defects this
+round introduced, are below — and one finding is not about this story at all: a change
+to the application's default model reached `main`'s neighbour by riding in on a blanket
+`git add`, contradicting the README and the module's own docstring.
+
+- [x] the default model is the one the README names, and a test says so — the constant
+      reaches anyone who runs cora without naming a model, so it is a documented fact
+      rather than a value to drift
+- [x] **(ui)** the panels an answer steers are steered only for the conversation the
+      reader is still in: the reopen guard had been applied to the thread and not to the
+      document beside it, so an abandoned turn put its document in the source panel and
+      had it report that its text was never kept
+- [x] **(ui)** a passage whose text was never kept says so wherever it is opened — the
+      reason moved next to `usePassage`, so the popup that `[1]` opens no longer draws a
+      title over an empty page while the rail's panel explains itself
+- [x] **(ui)** passages arrive in citation order, not document order: `[1]` can sit
+      later in the file than `[2]`, and merging without ordering first drops every
+      passage that precedes the one seen first — the panel counted two and marked one
+- [x] **(ui)** a document that cannot be opened says why on the page rather than in a
+      `title` on a disabled control, which is out of the accessibility tree
+
+The page's own tier performs no navigation and dials no host: the click whose default
+action this suite asserts about is one it must never carry out.

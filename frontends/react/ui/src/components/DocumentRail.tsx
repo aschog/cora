@@ -8,7 +8,7 @@ type Props = {
 }
 
 const UNCITED =
-  'Indexed, and not cited in this conversation — ask something it can answer and it opens here.'
+  'Greyed documents are indexed but not cited in this conversation — ask something they can answer and they open here.'
 
 
 export default function DocumentRail({ documents, cited, onOpen, onUpload }: Props) {
@@ -43,7 +43,6 @@ export default function DocumentRail({ documents, cited, onOpen, onUpload }: Pro
             key={name}
             className={cited.has(name) ? 'doc-row cited' : 'doc-row'}
             disabled={!cited.has(name)}
-            title={cited.has(name) ? undefined : UNCITED}
             onClick={() => onOpen(name)}
           >
             <span className="doc-bar" />
@@ -51,6 +50,10 @@ export default function DocumentRail({ documents, cited, onOpen, onUpload }: Pro
           </button>
         ))}
       </div>
+
+      {documents.some((name) => !cited.has(name)) && (
+        <div className="rail-note">{UNCITED}</div>
+      )}
     </aside>
   )
 }

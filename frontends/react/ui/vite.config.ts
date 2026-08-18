@@ -7,5 +7,13 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: { proxy: { '/api': 'http://127.0.0.1:8000' } },
-  test: { environment: 'happy-dom', include: ['src/**/*.test.ts', 'src/**/*.test.tsx'] },
+  test: {
+    environment: 'happy-dom',
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    // A click whose default action is a navigation is a click this suite asserts about,
+    // never one it should perform: left on, happy-dom dials the href.
+    environmentOptions: {
+      happyDOM: { settings: { navigation: { disableMainFrameNavigation: true } } },
+    },
+  },
 })
