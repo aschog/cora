@@ -5,10 +5,11 @@ this module adds is the two things HTTP asks for and a screen does not: a status
 for a failure, and a stream for an answer that takes a minute to arrive.
 """
 
+import asyncio
+import contextlib
 import json
 import logging
 import pathlib
-import queue
 import threading
 from collections.abc import AsyncIterator, Callable
 from typing import Any
@@ -93,6 +94,9 @@ def _ingest(app: App) -> Callable[[Request], Any]:
 NO_FILE = "No file was uploaded."
 
 STREAM = "text/event-stream"
+UNBUFFERED = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
+"""A proxy that buffers the response undoes the endpoint: the steps would arrive
+together at the end, which is the shape this exists not to have."""
 NOT_A_QUESTION = "Ask with a question and the thread it belongs to."
 WENT_WRONG = "Something went wrong answering that. Please try again."
 """What an unmodelled failure says. A `CoreError` was written to be read by whoever
@@ -105,9 +109,15 @@ that is not closed is a page still spinning under an answer that already failed.
 
 def _ask(app: App) -> Callable[[Request], Any]:
     """A turn takes as long as it takes, so it is a stream: the steps as the agent takes
-    them, then the answer, and either way an end. `Agent.answer` blocks and reports its
-    steps from the thread it runs on, so the turn runs on a thread of its own and the
-    queue between them is what the response reads."""
+    them, then the answer, and either way an end.
+
+    `Agent.answer` blocks and reports its steps from the thread it runs on, so the turn
+    runs on a thread of its own and hands each event to the event loop. The loop waits
+    on an `asyncio.Queue` rather than on a worker thread parked in `Queue.get`: a thread
+    parked there holds one of the pool's slots for the whole turn — the same pool every
+    other endpoint on this page is served from — and cannot be cancelled, so a reader
+    who closes the tab keeps the slot until the model is done with a turn nobody is
+    waiting for."""
 
     async def taken(request: Request) -> Response:
         try:
@@ -116,39 +126,50 @@ def _ask(app: App) -> Callable[[Request], Any]:
             return JSONResponse({"error": NOT_A_QUESTION}, status_code=REFUSED)
         if not isinstance(asked, dict):
             return JSONResponse({"error": NOT_A_QUESTION}, status_code=REFUSED)
-        events: queue.Queue[str | None] = queue.Queue()
+        events: asyncio.Queue[str | None] = asyncio.Queue()
+        loop = asyncio.get_running_loop()
+
+        def deliver(event: str | None) -> None:
+            """The worker's only reach into the loop. A page closed mid-turn takes the
+            loop with it in tests and at shutdown; the turn is then simply unheard."""
+            with contextlib.suppress(RuntimeError):
+                loop.call_soon_threadsafe(events.put_nowait, event)
+
         turn = threading.Thread(
             target=_run,
-            args=(app, asked.get("question", ""), asked.get("thread_id", ""), events),
+            args=(app, asked.get("question", ""), asked.get("thread_id", ""), deliver),
             daemon=True,
         )
 
         async def body() -> AsyncIterator[str]:
             turn.start()
-            while (event := await run_in_threadpool(events.get)) is not DONE:
+            while (event := await events.get()) is not DONE:
                 yield event
 
-        return StreamingResponse(body(), media_type=STREAM)
+        return StreamingResponse(body(), media_type=STREAM, headers=UNBUFFERED)
 
     return taken
 
 
 def _run(
-    app: App, question: str, thread_id: str, events: "queue.Queue[str | None]"
+    app: App,
+    question: str,
+    thread_id: str,
+    deliver: Callable[[str | None], None],
 ) -> None:
     def report(step: TraceStep) -> None:
-        events.put(_event("step", payloads.step(step)))
+        deliver(_event("step", payloads.step(step)))
 
     try:
         result = app.agent.answer(question, thread_id, report)
-        events.put(_event("turn", payloads.result(result)))
+        deliver(_event("turn", payloads.result(result)))
     except CoreError as refused:
-        events.put(_event("error", {"error": refused.user_message}))
+        deliver(_event("error", {"error": refused.user_message}))
     except Exception:
         log.exception("the turn failed in a way nobody modelled")
-        events.put(_event("error", {"error": WENT_WRONG}))
+        deliver(_event("error", {"error": WENT_WRONG}))
     finally:
-        events.put(DONE)
+        deliver(DONE)
 
 
 def _event(name: str, data: dict[str, Any]) -> str:
