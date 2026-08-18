@@ -1,5 +1,3 @@
-import { useRef } from 'react'
-
 type Props = {
   documents: string[]
   cited: Set<string>
@@ -12,8 +10,6 @@ const UNCITED =
 
 
 export default function DocumentRail({ documents, cited, onOpen, onUpload }: Props) {
-  const picker = useRef<HTMLInputElement>(null)
-
   return (
     <aside className="rail-docs">
       <div className="micro rail-heading">YOUR DOCUMENTS</div>
@@ -22,7 +18,6 @@ export default function DocumentRail({ documents, cited, onOpen, onUpload }: Pro
         <span>＋</span>
         <span>Add a document</span>
         <input
-          ref={picker}
           type="file"
           accept=".txt,.md,.pdf"
           onChange={(e) => {

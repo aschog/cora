@@ -37,8 +37,8 @@ export default function Answer({ entries, asking, onAsk, onCite }: Props) {
     <main className="answer">
       <div className="scroller" ref={scroller}>
         <div className="turn-column">
-          {entries.map((entry, n) => (
-            <div key={n} className="turn">
+          {entries.map((entry) => (
+            <div key={entry.id} className="turn">
               <p className="said">{entry.question}</p>
               <div className="from-cora">
                 <span className="avatar" aria-hidden="true">
