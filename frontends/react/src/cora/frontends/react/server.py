@@ -12,7 +12,7 @@ from collections.abc import Mapping
 import uvicorn
 
 from cora.app.assembly import build
-from cora.app.config import Config, _int
+from cora.app.config import Config, int_setting
 from cora.frontends.react.api import api
 
 DEFAULT_UI = pathlib.Path(__file__).resolve().parents[4] / "ui" / "dist"
@@ -30,10 +30,8 @@ def ui_path(env: Mapping[str, str]) -> pathlib.Path:
 def port(env: Mapping[str, str]) -> int:
     """Which port to serve on, read through the same contract as every other number the
     app takes from the environment: a mistyped one is a sentence naming the variable,
-    not a `ValueError` out of uvicorn's arguments. Borrowed rather than restated —
-    duplicating the wording is how two settings start disagreeing about what a number
-    is; `_int` wants a public name of its own, which is a change in `config`."""
-    return _int(env, "CORA_PORT", DEFAULT_PORT, minimum=LOWEST_PORT)
+    not a `ValueError` out of uvicorn's arguments."""
+    return int_setting(env, "CORA_PORT", DEFAULT_PORT, minimum=LOWEST_PORT)
 
 
 def serve() -> None:
