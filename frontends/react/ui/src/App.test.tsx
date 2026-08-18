@@ -490,3 +490,57 @@ test('a conversation shows its own plan, not the plan of a turn left behind', as
   // The request is still in flight, so cora is still answering one question.
   expect(screen.getByRole('button', { name: 'Ask' }).hasAttribute('disabled')).toBe(true)
 })
+
+const FIRST = 'Older, and nobody is reading this copy now.'
+const SECOND = 'Newer, and this is the copy the answer cited.'
+
+test('a filename uploaded twice is read at the upload this answer cited', async () => {
+  /* A span means nothing without the text it was measured in, and one filename can name
+     two uploads — the rail lists names, the store keeps text per upload. Taking the
+     upload from one citation and the offsets from another marks passages that were
+     never cited, in a copy of the document nobody asked about. */
+  const copies = [
+    {
+      answer: 'From the first copy [1].',
+      citations: [{ number: 1, document: 'notes.md', start: 0, end: 5, upload: 'u1' }],
+      trace: [],
+    },
+    {
+      answer: 'From the second copy [1].',
+      citations: [{ number: 1, document: 'notes.md', start: 0, end: 5, upload: 'u2' }],
+      trace: [],
+    },
+  ]
+  let asked = 0
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return oneTurn(copies[asked++] ?? copies[1])
+      if (path === '/api/uploads/u1')
+        return { ok: true, json: async () => ({ text: FIRST }) } as unknown as Response
+      if (path === '/api/uploads/u2')
+        return { ok: true, json: async () => ({ text: SECOND }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  const { container } = render(<App />)
+  await screen.findByText('notes.md')
+
+  const ask = async (question: string) => {
+    fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+      target: { value: question },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  }
+
+  await ask('Which copy?')
+  await screen.findByText(/From the first copy/)
+  await ask('And now?')
+  await screen.findByText(/From the second copy/)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+
+  expect(await screen.findByText(/the copy the answer cited/)).toBeTruthy()
+  expect(screen.queryByText(/nobody is reading this copy/)).toBeNull()
+  expect(container.querySelector('.doc-passage')?.textContent).toBe(SECOND.slice(0, 5))
+})

@@ -350,3 +350,27 @@ server accepts and never answers keeps the composer disabled until the page is
 reloaded. Cancelling on a reopen would also decide what leaving a conversation *means*
 for the turn still running in it — a decision worth taking on its own, not inside a
 review fix.
+
+#### Found by the branch review (`ai-code-reviewer`, seventh pass)
+
+Scoped to the source, and to this frontend: the same overclaim the page's citation rule
+makes is made by the core docstring it mirrors, and that wording is left where it is.
+
+- [x] **(ui)** the text a passage is measured in and the passage marked in it come from
+      one citation set — two uploads can carry one filename, so the panel opened the
+      first upload the conversation ever cited and drew the newest turn's offsets in it
+- [ ] **(ui)** a question in flight does not un-cite the answer still on screen: the
+      pending entry carries no citations, so the highlights went and the count line read
+      "not cited in this answer" about an answer that cites two passages
+- [ ] an upload past the ingestion cap is refused before it is read, not spooled whole
+      and materialised in memory and measured after
+- [ ] a question with no text is refused with the sentence the endpoint already carries,
+      rather than answered — a blank question spends a turn and checkpoints it under a
+      blank thread
+- [ ] `CORA_PORT` that is not a number says so the way every other numeric setting does,
+      and a port below 1 is refused rather than handed to the server
+- [ ] a built-in tool's origin does not call a memory write "core retrieval" — the
+      reserved list holds two names and only one of them searches
+- [ ] the page's citation rule claims only what it keeps: a number written inside code is
+      resolved by the server and drawn as text, so the clickable-and-load-bearing claim
+      is narrowed to the rule the two sides actually share (wording, no test)

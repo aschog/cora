@@ -84,20 +84,29 @@ export default function App() {
 
   const cited = citedDocuments(entries)
 
-  /** Two different questions about one document, and answering both with the newest
-   *  turn's citations was wrong. What is *marked* is what this answer rested on, or a
-   *  document cited three turns ago accumulates marks until most of it is highlighted.
-   *  What makes it *openable* is the upload its text is kept under, which any citation
-   *  the conversation has ever carried for it names — a filename names nothing. */
-  const passagesIn = (document: string) =>
-    (entries[entries.length - 1]?.citations ?? []).filter(
-      (citation) => citation.document === document,
-    )
-
-  const uploadOf = (document: string) =>
+  /** The document as this conversation last had it. A filename names nothing on its
+   *  own — one name can cover two uploads, and the store keeps a text per upload — so
+   *  the newest citation for the name is what says which text to read. */
+  const latestFor = (document: string) =>
     entries
+      .slice()
+      .reverse()
       .flatMap((entry) => entry.citations)
-      .find((citation) => citation.document === document)?.upload ?? null
+      .find((citation) => citation.document === document)
+
+  const uploadOf = (document: string) => latestFor(document)?.upload ?? null
+
+  /** Two different questions about one document. What is *marked* is what this answer
+   *  rested on, or a document cited three turns ago accumulates marks until most of it
+   *  is highlighted; what is *openable* is any upload the conversation still names. Both
+   *  come from one citation set, because a span measured in one upload's text points at
+   *  arbitrary words in another's. */
+  const passagesIn = (document: string) => {
+    const upload = latestFor(document)?.upload
+    return (entries[entries.length - 1]?.citations ?? []).filter(
+      (citation) => citation.document === document && citation.upload === upload,
+    )
+  }
 
   const open = (document: string) => {
     setRead(document)
