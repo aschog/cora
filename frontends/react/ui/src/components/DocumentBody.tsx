@@ -31,13 +31,13 @@ type Props = { text: string; spans: Span[]; scrollToFirst?: boolean }
 export default function DocumentBody({ text, spans, scrollToFirst }: Props) {
   const first = useRef<HTMLElement>(null)
 
+  const where = spans.map((span) => `${span.start}-${span.end}`).join()
+
   useEffect(() => {
     if (scrollToFirst) first.current?.scrollIntoView({ block: 'center' })
-  }, [scrollToFirst, text, spans])
+  }, [scrollToFirst, text, where])
 
-  const marked = [...spans]
-    .map((span) => clamped(span, text.length))
-    .sort((a, b) => a.start - b.start)
+  const marked = merged(spans, text.length)
 
   const pieces: React.ReactNode[] = []
   let read = 0
@@ -53,6 +53,28 @@ export default function DocumentBody({ text, spans, scrollToFirst }: Props) {
   pieces.push(<span key="tail">{text.slice(read)}</span>)
 
   return <div className="doc-panel doc-para">{pieces}</div>
+}
+
+/**
+ * The passages as disjoint spans, in order. Chunks overlap by design, so two adjacent
+ * cited chunks share their edges — slicing each independently would emit the shared
+ * characters twice, and a nested one out of order, showing the reader a document that
+ * is not theirs. Overlapping citations are one mark over what they jointly cover.
+ */
+function merged(spans: Span[], length: number): Span[] {
+  const ordered = spans
+    .map((span) => clamped(span, length))
+    .sort((a, b) => a.start - b.start)
+  const disjoint: Span[] = []
+  for (const span of ordered) {
+    const running = disjoint[disjoint.length - 1]
+    if (running && span.start <= running.end) {
+      running.end = Math.max(running.end, span.end)
+      continue
+    }
+    disjoint.push({ ...span })
+  }
+  return disjoint
 }
 
 /** A span running past the end marks to the end rather than throwing. */

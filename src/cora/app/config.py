@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from cora.app.log_config import LOG_FILE
 from cora.domain.errors import ConfigurationError
 
-DEFAULT_MODEL = "openai/gpt-4o-mini"
+DEFAULT_MODEL = "deepseek/deepseek-v4-flash"
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_PLUGINS: tuple[str, ...] = ()
 """A plugin is an extension, so cora starts with none: a domain, a guard or any other

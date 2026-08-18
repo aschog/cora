@@ -16,6 +16,14 @@ const markdown = new MarkdownIt({ html: false, linkify: false, breaks: false })
    document's say-so. It renders as its own text instead. */
 markdown.disable('image')
 
+/* A link in an answer was written over documents cora read, so it leaves this page
+   rather than replacing it, and carries nothing back to the opener. */
+markdown.renderer.rules.link_open = (tokens, idx, options, _env, self) => {
+  tokens[idx].attrSet('target', '_blank')
+  tokens[idx].attrSet('rel', 'noopener noreferrer')
+  return self.renderToken(tokens, idx, options)
+}
+
 /**
  * An answer as the HTML the page draws: markdown rendered, and every `[n]` that names a
  * citation replaced by a button carrying it. A number citing nothing stays the text it

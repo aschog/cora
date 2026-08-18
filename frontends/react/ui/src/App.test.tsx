@@ -59,11 +59,17 @@ function answering(): Response {
   return { ok: true, body: { getReader: () => reader } } as unknown as Response
 }
 
+const OLDER = {
+  question: 'An older question',
+  result: { answer: 'An older answer.', citations: [], trace: [] },
+}
+
 const served: Record<string, unknown> = {
   '/api/documents': ['notes.md'],
   '/api/plugins': ['cora.plugins.fitness'],
   '/api/memory': [{ key: 'f1', text: 'No burpees.' }],
-  '/api/sessions': [],
+  '/api/sessions': [{ thread_id: 'old', opened_with: OLDER.question }],
+  '/api/sessions/old': [OLDER],
 }
 
 afterEach(() => {
@@ -114,6 +120,10 @@ test('the plan fills while the turn runs, then the answer lands with its citatio
   expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Open cited source 1' })).toBeTruthy()
   expect(screen.getByText(TURN.trace[0].summary)).toBeTruthy()
+
+  // The answer replaced the turn that was waiting rather than following it.
+  expect(screen.queryByText(/Working/)).toBeNull()
+  expect(screen.queryAllByText('Why am I stalling?')).toHaveLength(1)
 })
 
 test('a panel that could not be read says so, and stops saying it once it can', async () => {
@@ -251,6 +261,151 @@ function uncited(): Response {
       sent
         ? { done: true, value: undefined }
         : ((sent = true), { done: false, value: encoder.encode(body) }),
+  }
+  return { ok: true, body: { getReader: () => reader } } as unknown as Response
+}
+
+
+test('an answer never lands on a conversation that was replaced while it ran', async () => {
+  /* A turn takes tens of seconds and only the Ask button is disabled while it does, so
+     opening an earlier conversation mid-turn is ordinary use. Replacing "the last
+     entry" would then delete that conversation's last turn and show, inside it, an
+     answer computed on a thread the reader has left. */
+  turn = held()
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
+
+  turn.release()
+  await new Promise((settle) => setTimeout(settle, 0))
+
+  expect(screen.getByText(OLDER.result.answer)).toBeTruthy()
+  expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
+  expect(screen.queryByText('Why am I stalling?')).toBeNull()
+})
+
+test('the conversation follows what just happened, answered or failed', async () => {
+  /* happy-dom lays nothing out, so what is observable is the scroll the effect asks
+     for — enough to catch the newest turn being left below the fold. */
+  const { container } = render(<App />)
+  await screen.findByText('notes.md')
+  const scroller = container.querySelector('.scroller') as HTMLElement
+  Object.defineProperty(scroller, 'scrollHeight', { value: 5000, configurable: true })
+  scroller.scrollTop = 0
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
+  expect(scroller.scrollTop).toBe(5000)
+
+  scroller.scrollTop = 0
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  expect(scroller.scrollTop).toBe(5000)
+})
+
+/** A turn that takes a step and then fails, the failure held back until released. */
+function failing(): Response {
+  const encoder = new TextEncoder()
+  const parts = [
+    frame('step', LIVE[0]),
+    frame('error', { error: 'cora is away.' }),
+  ]
+  let next = 0
+  const reader = {
+    read: async () => {
+      if (next === parts.length) return { done: true, value: undefined }
+      if (next === parts.length - 1) await turn.until
+      return { done: false, value: encoder.encode(parts[next++]) }
+    },
+  }
+  return { ok: true, body: { getReader: () => reader } } as unknown as Response
+}
+
+test('a turn that fails says so where the answer would have been, and is scrolled to', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return failing()
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  const { container } = render(<App />)
+  await screen.findByText('notes.md')
+  const scroller = container.querySelector('.scroller') as HTMLElement
+  Object.defineProperty(scroller, 'scrollHeight', { value: 5000, configurable: true })
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
+
+  /* The turn it replaces was already scrolled to; a failure that lands in its place
+     changes neither the count of turns nor any answer, so nothing follows it down. */
+  scroller.scrollTop = 0
+  turn.release()
+
+  expect(await screen.findByText('cora is away.')).toBeTruthy()
+  expect(screen.queryByText(/Working/)).toBeNull()
+  expect(screen.queryAllByText('Why am I stalling?')).toHaveLength(1)
+  expect(scroller.scrollTop).toBe(5000)
+})
+
+test('a citation wrapped in a link the model wrote opens the passage, not the link', async () => {
+  /* The answer is written over documents cora read, so a link around a citation is a
+     link the reader never chose. Letting the anchor fire navigates the tab away on a
+     click the page itself invited. */
+  const linked = {
+    answer: 'See [the log [1]](https://elsewhere.test/x).',
+    citations: TURN.citations,
+    trace: TURN.trace,
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return oneTurn(linked)
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+
+  const cite = await screen.findByRole('button', { name: 'Open cited source 1' })
+  const click = new MouseEvent('click', { bubbles: true, cancelable: true })
+  cite.dispatchEvent(click)
+
+  expect(click.defaultPrevented).toBe(true)
+  expect(await screen.findByRole('dialog')).toBeTruthy()
+})
+
+/** A stream carrying one finished turn and nothing held back. */
+function oneTurn(result: unknown): Response {
+  const encoder = new TextEncoder()
+  let sent = false
+  const reader = {
+    read: async () =>
+      sent
+        ? { done: true, value: undefined }
+        : ((sent = true), { done: false, value: encoder.encode(frame('turn', result)) }),
   }
   return { ok: true, body: { getReader: () => reader } } as unknown as Response
 }

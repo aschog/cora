@@ -39,9 +39,21 @@ test('a number citing nothing stays the text it was written as', () => {
 })
 
 test('a bracketed number inside code is left alone', () => {
-  const html = answerHtml('Read `rows[1]` and:\n\n```\nrows[1]\n```', [cite(1)])
+  /* `rows[1]` would be left alone by the citation rule anyway — the bracket continues a
+     word — so what this has to show is a run the rule *would* take: one standing on its
+     own inside a fence, and inline code that is nothing else. */
+  const fenced = answerHtml('Sample:\n\n```\n[1] the first entry\n```', [cite(1)])
+  const inline = answerHtml('Write `[1]` to mean the first.', [cite(1)])
 
-  expect(html).not.toContain('data-cite')
+  expect(fenced).not.toContain('data-cite')
+  expect(fenced).toContain('[1] the first entry')
+  expect(inline).not.toContain('data-cite')
+})
+
+test('a citation outside code is still a button when code is nearby', () => {
+  const html = answerHtml('As [1] says:\n\n```\n[1] not this one\n```', [cite(1)])
+
+  expect(html.match(/data-cite=/g)).toHaveLength(1)
 })
 
 test('a document cannot smuggle markup into the page', () => {
@@ -63,4 +75,11 @@ test('a bracketed number inside an attribute is not a citation', () => {
 
   expect(html.match(/data-cite=/g)).toHaveLength(1)
   expect(html).toContain('href="https://example.test/a"')
+})
+
+test('a link in an answer opens away from the page and carries nothing back', () => {
+  const html = answerHtml('See [the log](https://elsewhere.test/x).', [])
+
+  expect(html).toContain('target="_blank"')
+  expect(html).toContain('rel="noopener noreferrer"')
 })

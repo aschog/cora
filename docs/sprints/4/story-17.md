@@ -247,3 +247,32 @@ was measured in, and a filename carries nothing that reads text back.
 - [x] **(ui)** a document cited in an earlier turn still opens — what makes it readable
       is the upload any citation in the conversation names, which is a different
       question from what this answer marked in it
+
+#### Found by the branch review (`ai-code-reviewer`, third pass)
+
+The markdown surface resisted every injection the reviewer could construct, and the
+streaming test held under load. What it found instead was a defect in the newest work
+and three more ticks resting on nothing.
+
+- [x] **(ui)** the document is rendered exactly once whatever its passages do: chunks
+      overlap by `DEFAULT_OVERLAP`, so two adjacent cited chunks shared their edges and
+      the panel drew a corrupted copy of the reader's own document — overlapping
+      citations are one mark over what they jointly cover
+- [x] **(ui)** an answer lands on the turn that asked it and on no other: a conversation
+      reopened mid-turn replaces the thread wholesale, and "the last entry" was then
+      somebody else's — the reopened conversation lost its last turn to an answer
+      computed on a thread the reader had left
+- [x] **(ui)** a run standing on its own inside a fence, and inline code that is nothing
+      else, are left alone — the previous test used `rows[1]`, which the citation rule
+      excludes anyway, so it passed without the code-skipping it claimed to cover
+- [x] **(ui)** the answer replaces the turn that was waiting rather than following it
+- [x] **(ui)** the conversation follows what just happened, answered *or* failed — a
+      failure lands in place, changing neither the count of turns nor any answer, so
+      nothing followed it down and it read as nothing having happened
+- [x] **(ui)** a citation wrapped in a link the model wrote opens the passage and not
+      the link; a link in an answer opens away from the page and carries nothing back
+- [x] the page resolves a citation by the domain's own rule — the two are written in
+      two languages, and nothing but this could say when they stopped agreeing
+
+An answer is parsed once per turn rather than once per keystroke, and the stale
+`@types/markdown-it` is gone.

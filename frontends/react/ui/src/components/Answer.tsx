@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { answerHtml } from '../answer'
 import type { Citation } from '../api'
@@ -24,7 +24,7 @@ export default function Answer({ entries, asking, onAsk, onCite }: Props) {
   useEffect(() => {
     const shown = scroller.current
     if (shown) shown.scrollTop = shown.scrollHeight
-  }, [entries.length, entries[entries.length - 1]?.answer])
+  }, [entries.length, outcome(entries[entries.length - 1])])
 
   const send = () => {
     const asked = question.trim()
@@ -51,13 +51,7 @@ export default function Answer({ entries, asking, onAsk, onCite }: Props) {
               ) : entry.error ? (
                 <p className="trouble">{entry.error}</p>
               ) : (
-                <div
-                  className="answer-body"
-                  onClick={(e) => opened(e, entry.citations, onCite)}
-                  dangerouslySetInnerHTML={{
-                    __html: answerHtml(entry.answer ?? '', entry.citations),
-                  }}
-                />
+                <Written entry={entry} onCite={onCite} />
               )}
             </div>
           ))}
@@ -89,6 +83,33 @@ export default function Answer({ entries, asking, onAsk, onCite }: Props) {
   )
 }
 
+/** One answer's rendered markdown, parsed when that answer changes and not when the
+ *  composer's next keystroke re-renders the list around it. */
+const Written = memo(function Written({
+  entry,
+  onCite,
+}: {
+  entry: Entry
+  onCite: (citation: Citation) => void
+}) {
+  const html = useMemo(
+    () => answerHtml(entry.answer ?? '', entry.citations),
+    [entry.answer, entry.citations],
+  )
+  return (
+    <div
+      className="answer-body"
+      onClick={(e) => opened(e, entry.citations, onCite)}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
+})
+
+/** What a turn has become, so that a turn *replaced* in place — a failure landing where
+ *  the answer would have been — is a change the scroller notices. Keying on the answer
+ *  alone leaves a failure below the fold, reading as nothing having happened. */
+const outcome = (entry?: Entry) => entry && (entry.answer ?? entry.error ?? '…')
+
 /** The answer is rendered markdown, so its citations are buttons in that HTML rather
  *  than elements React placed — which makes the click one listener on the block. */
 function opened(
@@ -98,6 +119,10 @@ function opened(
 ): void {
   const clicked = (event.target as HTMLElement).closest('[data-cite]')
   if (!clicked) return
+  /* An answer is written by the model over documents it read, so a link around a
+     citation is a link the reader never chose. Opening the passage is the whole of what
+     the click does. */
+  event.preventDefault()
   const number = Number(clicked.getAttribute('data-cite'))
   const citation = citations.find((each) => each.number === number)
   if (citation) onCite(citation)

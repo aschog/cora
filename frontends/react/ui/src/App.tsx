@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import * as cora from './api'
 import type { Citation, Fact, Session, Step } from './api'
 import Answer from './components/Answer'
@@ -14,6 +14,10 @@ const TABS = ['PLAN', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
 type Tab = (typeof TABS)[number]
 
 export type Entry = {
+  /** Which turn this is, so an answer lands on the question that was asked and on no
+   *  other. A conversation reopened mid-turn replaces the thread wholesale, and "the
+   *  last entry" is then somebody else's. */
+  id: number
   question: string
   answer?: string
   error?: string
@@ -39,6 +43,7 @@ export default function App() {
   const [opened, setOpened] = useState<Citation | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
   const [leftOpen, setLeftOpen] = useState(true)
+  const asked = useRef(0)
   const [rightOpen, setRightOpen] = useState(true)
 
   /** What the page shows around the conversation, loaded together: one banner for all
@@ -97,16 +102,17 @@ export default function App() {
     const taken: Step[] = []
     setLive(taken)
     setTab('PLAN')
+    const id = ++asked.current
     setEntries((said) => [
       ...said,
-      { question, citations: [], trace: [], pending: true },
+      { id, question, citations: [], trace: [], pending: true },
     ])
     try {
       const result = await cora.ask(question, thread, (step) => {
         taken.push(step)
         setLive([...taken])
       })
-      setEntries(answered({ question, ...result }))
+      setEntries(answered({ id, question, ...result }))
       // An answer that cites nothing leaves the panel on the document last read, which
       // then says it is not cited in this answer — rather than emptying the panel and
       // saying nothing at all.
@@ -114,6 +120,7 @@ export default function App() {
     } catch (failed) {
       setEntries(
         answered({
+          id,
           question,
           error: message(failed),
           citations: [],
@@ -132,7 +139,11 @@ export default function App() {
       .then((kept) => {
         setThread(session.thread_id)
         setEntries(
-          kept.map((turn) => ({ question: turn.question, ...turn.result })),
+          kept.map((turn, n) => ({
+            id: -(n + 1),
+            question: turn.question,
+            ...turn.result,
+          })),
         )
         setRead(null)
       })
@@ -212,8 +223,10 @@ export default function App() {
   )
 }
 
-/** The turn that was waiting, now that it is not. */
-const answered = (entry: Entry) => (said: Entry[]) => [...said.slice(0, -1), entry]
+/** The turn that was waiting, now that it is not — and nothing at all if the
+ *  conversation it was asked in has since been left. */
+const answered = (entry: Entry) => (said: Entry[]) =>
+  said.map((each) => (each.id === entry.id ? entry : each))
 
 /** The documents this conversation has actually rested on, by name. */
 function citedDocuments(entries: Entry[]): Set<string> {
