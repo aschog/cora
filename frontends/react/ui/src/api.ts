@@ -6,7 +6,13 @@ export type Citation = {
   upload: string
 }
 
-export type Step = { summary: string; detail: string; failed: boolean }
+export type Step = {
+  summary: string
+  detail: string
+  failed: boolean
+  /** 'core retrieval' or 'plugin tool'; empty when the step called none. */
+  origin: string
+}
 
 export type Result = { answer: string; citations: Citation[]; trace: Step[] }
 

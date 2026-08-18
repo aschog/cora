@@ -25,9 +25,10 @@ export default function PlanPanel({ steps }: { steps: Step[] }) {
               {step.failed ? '✕' : '✓'}
             </span>
           </button>
-          {open === n && step.detail && (
+          {open === n && (step.detail || step.origin) && (
             <div className="plan-detail">
-              <div className="plan-result">{step.detail}</div>
+              {step.detail && <div className="plan-result">{step.detail}</div>}
+              {step.origin && <div className="micro plan-origin">{step.origin}</div>}
             </div>
           )}
         </div>

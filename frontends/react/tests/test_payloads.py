@@ -2,6 +2,8 @@ from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
 from cora.domain.trace import ModelDecision, ToolUse
+from cora.engine.memory_tool import REMEMBER_TOOL_NAME
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.react import payloads
 from cora.ports.memory import Fact
 
@@ -22,6 +24,24 @@ def test_a_citation_carries_the_upload_its_span_was_measured_in() -> None:
     }
 
 
+def test_a_step_says_where_the_work_came_from() -> None:
+    """The panel's origin line. A tool cora ships is the agent reaching for its own
+    retrieval; anything else on offer came from the loaded plugin, which is the whole
+    claim the plugin architecture makes — so the panel can say which it was."""
+    core = ToolUse(name=SEARCH_TOOL_NAME, outcome="2 passages")
+    remembering = ToolUse(name=REMEMBER_TOOL_NAME, outcome="kept")
+    domain = ToolUse(name="training_log", outcome="3 misses")
+
+    assert payloads.step(core)["origin"] == "core retrieval"
+    assert payloads.step(remembering)["origin"] == "core retrieval"
+    assert payloads.step(domain)["origin"] == "plugin tool"
+
+
+def test_a_step_that_called_no_tool_claims_no_origin() -> None:
+    """A decision is cora's own, so the line has nothing to say and is not drawn."""
+    assert payloads.step(ModelDecision(tools=("search",)))["origin"] == ""
+
+
 def test_a_tool_step_renders_summary_detail_and_failure() -> None:
     step = ToolUse(
         name="search_documents",
@@ -35,6 +55,7 @@ def test_a_tool_step_renders_summary_detail_and_failure() -> None:
         "summary": 'search_documents(query="squats") → 2 passages',
         "detail": "…",
         "failed": False,
+        "origin": "core retrieval",
     }
 
 
@@ -47,6 +68,7 @@ def test_every_kind_of_step_renders_the_same_three_keys() -> None:
         "summary": "Decided to call search",
         "detail": "thinking",
         "failed": False,
+        "origin": "",
     }
 
 
@@ -68,7 +90,14 @@ def test_a_result_is_the_answer_its_citations_and_its_trace() -> None:
                 "upload": "h",
             }
         ],
-        "trace": [{"summary": "Decided to call search", "detail": "", "failed": False}],
+        "trace": [
+            {
+                "summary": "Decided to call search",
+                "detail": "",
+                "failed": False,
+                "origin": "",
+            }
+        ],
     }
 
 

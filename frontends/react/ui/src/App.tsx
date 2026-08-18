@@ -36,6 +36,8 @@ export default function App() {
   const [read, setRead] = useState<Citation | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
+  const [leftOpen, setLeftOpen] = useState(true)
+  const [rightOpen, setRightOpen] = useState(true)
 
   /** What the page shows beside the conversation, reloaded together: one banner for
    *  the three of them, and a load that goes through clears the last one's. */
@@ -96,21 +98,30 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header plugins={plugins} />
+      <Header
+        plugins={plugins}
+        leftOpen={leftOpen}
+        rightOpen={rightOpen}
+        onToggleLeft={() => setLeftOpen((shown) => !shown)}
+        onToggleRight={() => setRightOpen((shown) => !shown)}
+      />
 
       {trouble && <div className="trouble">{trouble}</div>}
 
       <div className="columns">
-        <DocumentRail
-          documents={documents}
-          cited={cited}
-          onUpload={(file) =>
-            cora.upload(file).then(refresh).catch(reportTo(setTrouble))
-          }
-        />
+        {leftOpen && (
+          <DocumentRail
+            documents={documents}
+            cited={cited}
+            onUpload={(file) =>
+              cora.upload(file).then(refresh).catch(reportTo(setTrouble))
+            }
+          />
+        )}
 
         <Answer entries={entries} asking={live !== null} onAsk={ask} onCite={setOpened} />
 
+        {rightOpen && (
         <aside className="rail-panels">
           <div className="tabs" role="tablist">
             {TABS.map((name) => (
@@ -143,6 +154,7 @@ export default function App() {
             />
           )}
         </aside>
+        )}
       </div>
 
       {opened && <CitationModal citation={opened} onClose={() => setOpened(null)} />}

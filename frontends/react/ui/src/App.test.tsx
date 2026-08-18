@@ -8,13 +8,18 @@ import App from './App'
  * trace, with nothing streamed and nothing observed.
  */
 const LIVE = [
-  { summary: 'Reading your documents', detail: '', failed: false },
-  { summary: 'Weighing the last 21 days', detail: 'training_log', failed: false },
+  { summary: 'Reading your documents', detail: '', failed: false, origin: '' },
+  {
+    summary: 'Weighing the last 21 days',
+    detail: 'training_log',
+    failed: false,
+    origin: 'plugin tool',
+  },
 ]
 const TURN = {
   answer: 'Sleep, not volume [1].',
   citations: [{ number: 1, document: 'notes.md', start: 0, end: 6, upload: 'u1' }],
-  trace: [{ summary: 'Wrote the answer', detail: '', failed: false }],
+  trace: [{ summary: 'Wrote the answer', detail: '', failed: false, origin: '' }],
 }
 
 const frame = (event: string, data: unknown) =>
@@ -26,7 +31,8 @@ const held = () => {
   return { until, release: () => release() }
 }
 
-const turn = held()
+/** Renewed per test: a spec that fails before releasing must not hang the next one. */
+let turn = held()
 
 /**
  * The answer stream, read in three parts. The second step is split across two reads, so
@@ -60,9 +66,13 @@ const served: Record<string, unknown> = {
   '/api/sessions': [],
 }
 
-afterEach(cleanup)
+afterEach(() => {
+  turn.release()
+  cleanup()
+})
 
 beforeEach(() => {
+  turn = held()
   vi.stubGlobal(
     'fetch',
     vi.fn(async (path: string) => {
@@ -76,9 +86,13 @@ test('the plan fills while the turn runs, then the answer lands with its citatio
   render(<App />)
 
   expect(await screen.findByText('notes.md')).toBeTruthy()
-  expect(screen.getByText('cora.plugins.fitness')).toBeTruthy()
 
-  fireEvent.change(screen.getByPlaceholderText(/Ask in your own words/), {
+  // The badge names the shell's plugin; the menu names the module it was loaded from.
+  fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
+  expect(screen.getByText('cora.plugins.fitness')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
   })
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
@@ -117,10 +131,11 @@ test('a panel that could not be read says so, and stops saying it once it can', 
   expect(await screen.findByText(broken.error)).toBeTruthy()
 
   reachable = true
-  fireEvent.change(screen.getByPlaceholderText(/Ask in your own words/), {
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'anything' },
   })
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
 
   await screen.findByText(TURN.trace[0].summary)
   expect(screen.queryByText(broken.error)).toBeNull()

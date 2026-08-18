@@ -27,32 +27,38 @@ export default function Answer({ entries, asking, onAsk, onCite }: Props) {
 
   return (
     <main className="answer">
-      {entries.map((entry, n) => (
-        <div key={n} className="turn">
-          <div className="micro">YOU ASKED</div>
-          <p className="question">{entry.question}</p>
-          {entry.error ? (
-            <p className="trouble">{entry.error}</p>
-          ) : (
-            <div className="answer-body">{written(entry, onCite)}</div>
-          )}
+      <div className="turn-column">
+          {entries.map((entry, n) => (
+          <div key={n} className="turn">
+            <div className="micro">YOU ASKED</div>
+            <p className="question">{entry.question}</p>
+            {entry.error ? (
+              <p className="trouble">{entry.error}</p>
+            ) : (
+              <div className="answer-body">{written(entry, onCite)}</div>
+            )}
+          </div>
+        ))}
+
+        {asking && <p className="working">{WORKING}</p>}
+
+        <div className="composer">
+          <input
+            value={question}
+            placeholder="Ask a question…"
+            aria-label="Ask a question"
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && send()}
+          />
+          <button
+            className="composer-ask"
+            aria-label="Ask"
+            onClick={send}
+            disabled={asking}
+          >
+            →
+          </button>
         </div>
-      ))}
-
-      {asking && <p className="working">{WORKING}</p>}
-
-      <div className="composer">
-        <span className="composer-glyph">›</span>
-        <input
-          value={question}
-          placeholder="Ask in your own words…"
-          aria-label="Ask in your own words"
-          onChange={(e) => setQuestion(e.target.value)}
-          onKeyDown={(e) => e.key === 'Enter' && send()}
-        />
-        <button className="composer-ask" onClick={send} disabled={asking}>
-          Ask
-        </button>
       </div>
     </main>
   )
