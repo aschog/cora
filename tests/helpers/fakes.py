@@ -6,7 +6,12 @@ from dataclasses import dataclass, field, replace
 from typing import NamedTuple
 
 from cora.domain.chunk import Chunk
-from cora.domain.errors import DocumentStoreError, MemoryStoreError
+from cora.domain.conversation import Session, Turn
+from cora.domain.errors import (
+    ConversationStoreError,
+    DocumentStoreError,
+    MemoryStoreError,
+)
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.loading import Loaders
 from cora.ports.memory import Fact
@@ -259,3 +264,43 @@ def _decode(data: bytes, filename: str) -> str:
 
 TEXT_LOADERS: Loaders = {".txt": _decode, ".md": _decode}
 """What most tests need: no PDF, so no reason to reach for the real registry."""
+
+
+class FakeConversations:
+    """Turns per thread, in the order they were recorded. `sessions` is newest first by
+    the thread that last spoke, which is the order the real store promises."""
+
+    def __init__(self) -> None:
+        self._recorded: dict[str, list[Turn]] = {}
+        self._spoke: list[str] = []
+
+    def record(self, thread_id: str, turn: Turn) -> None:
+        self._recorded.setdefault(thread_id, []).append(turn)
+        if thread_id in self._spoke:
+            self._spoke.remove(thread_id)
+        self._spoke.append(thread_id)
+
+    def turns(self, thread_id: str) -> tuple[Turn, ...]:
+        return tuple(self._recorded.get(thread_id, ()))
+
+    def sessions(self) -> tuple[Session, ...]:
+        return tuple(
+            Session(thread_id=thread, opened_with=self._recorded[thread][0].question)
+            for thread in reversed(self._spoke)
+        )
+
+
+@dataclass
+class FailingConversations:
+    """A store that went away mid-session: every write refuses."""
+
+    error: Exception = field(default_factory=ConversationStoreError)
+
+    def record(self, thread_id: str, turn: Turn) -> None:
+        raise self.error
+
+    def turns(self, thread_id: str) -> tuple[Turn, ...]:
+        raise self.error
+
+    def sessions(self) -> tuple[Session, ...]:
+        raise self.error

@@ -4,9 +4,11 @@ import pytest
 
 from cora.domain.agent_state import AgentState
 from cora.domain.citations import Citation
+from cora.domain.conversation import Turn
 from cora.domain.errors import GraphRunError, LlmError
 from cora.domain.trace import ModelDecision, ToolUse, TraceStep
 from cora.engine.agent import Agent
+from fakes import FailingConversations, FakeConversations
 
 SEARCHED = ToolUse(name="search_documents", arguments={"query": "protein"})
 ANSWERED = ModelDecision()
@@ -161,3 +163,47 @@ def test_the_citations_resolve_against_the_whole_conversations_registry() -> Non
     result = Agent(runner).answer("q", THREAD)
 
     assert result.citations == (_at("a.md", 1), _at("c.md", 3))
+
+
+def test_the_turn_it_took_is_recorded() -> None:
+    """A conversation the reader can come back to is written where the agent is, not
+    where it is drawn: every frontend gets history without keeping its own."""
+    conversations = FakeConversations()
+    agent = Agent(
+        runner=_StubRunner({"answer": "1.6 g per kg"}), conversations=conversations
+    )
+
+    result = agent.answer("How much protein?", THREAD)
+
+    assert conversations.turns(THREAD) == (
+        Turn(question="How much protein?", result=result),
+    )
+
+
+def test_a_turn_that_failed_records_nothing() -> None:
+    """A conversation is reopened to read what was answered; a turn that raised has no
+    answer to come back to, and a list of sessions naming one is a dead end."""
+    conversations = FakeConversations()
+    agent = Agent(runner=_StubRunner(then=LlmError()), conversations=conversations)
+
+    with pytest.raises(LlmError):
+        agent.answer("How much protein?", THREAD)
+
+    assert conversations.turns(THREAD) == ()
+
+
+def test_an_agent_wired_to_no_store_still_answers() -> None:
+    agent = Agent(runner=_StubRunner({"answer": "1.6 g per kg"}))
+
+    assert agent.answer("How much protein?", THREAD).answer == "1.6 g per kg"
+
+
+def test_a_store_that_cannot_be_written_costs_the_turn_nothing() -> None:
+    """The answer is what the user asked for; keeping a record of it is bookkeeping.
+    A store that went away loses the conversation, never the reply."""
+    agent = Agent(
+        runner=_StubRunner({"answer": "1.6 g per kg"}),
+        conversations=FailingConversations(),
+    )
+
+    assert agent.answer("How much protein?", THREAD).answer == "1.6 g per kg"

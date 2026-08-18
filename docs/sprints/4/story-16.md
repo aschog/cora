@@ -288,8 +288,14 @@ checkpointer already owns the second.
       clickable and its plan is readable
 - [x] a `sqlite3.Error` surfaces as an `AdapterError`, not a raw driver error
 - [x] the parent directory is created if missing
-- [ ] `Agent.answer` records the turn it took, so a frontend gets history without keeping
+- [x] `Agent.answer` records the turn it took, so a frontend gets history without keeping
       it itself
+- [x] a turn that failed records nothing — a conversation is reopened to read what was
+      answered, and there is no answer to come back to
+- [x] an agent wired to no store answers as it always did
+- [x] a store that cannot be written costs the turn nothing — the answer arrives and
+      the conversation is simply not kept, as failing to file a note never costs an
+      answer either
 - [ ] `Config.from_env` reads `CORA_CONVERSATIONS_PATH`, and a blank value reads as unset
       like every other path setting
 - [ ] `build` wires the store at that path, and still opens no store outside the paths it
