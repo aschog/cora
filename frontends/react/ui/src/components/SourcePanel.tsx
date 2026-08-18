@@ -1,20 +1,29 @@
 import type { Citation } from '../api'
 import DocumentBody, { usePassage } from './DocumentBody'
 
-const NOTHING = 'The passage an answer cites will be shown here.'
+const NOTHING = 'A document you open, or the passage an answer cites, is shown here.'
+const UNREADABLE = 'This document was indexed before cora kept its text, so it cannot be opened.'
 
-export default function SourcePanel({ citation }: { citation: Citation | null }) {
-  const { text, trouble } = usePassage(citation)
+type Props = { document: string | null; citations: Citation[] }
 
-  if (!citation) return <div className="panel-intro">{NOTHING}</div>
+export default function SourcePanel({ document, citations }: Props) {
+  const upload = citations[0]?.upload ?? null
+  const { text, trouble } = usePassage(upload)
+
+  if (!document) return <div className="panel-intro">{NOTHING}</div>
+
   return (
     <div>
-      <div className="source-title">{citation.document}</div>
-      <div className="source-meta">
-        cited as [{citation.number}] · characters {citation.start}–{citation.end}
-      </div>
+      <div className="source-title">{document}</div>
+      <div className="micro source-count">{counted(citations.length)}</div>
       {trouble && <div className="trouble">{trouble}</div>}
-      {text !== null && <DocumentBody citation={citation} text={text} />}
+      {!upload && <div className="panel-intro">{UNREADABLE}</div>}
+      {text !== null && <DocumentBody text={text} spans={citations} />}
     </div>
   )
 }
+
+const counted = (n: number) =>
+  n === 0
+    ? 'not cited in this answer'
+    : `${n} cited ${n === 1 ? 'passage' : 'passages'} · highlighted`

@@ -35,7 +35,7 @@ export default function App() {
   const [facts, setFacts] = useState<Fact[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   const [live, setLive] = useState<Step[] | null>(null)
-  const [read, setRead] = useState<Citation | null>(null)
+  const [read, setRead] = useState<string | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
   const [leftOpen, setLeftOpen] = useState(true)
@@ -70,6 +70,18 @@ export default function App() {
 
   const cited = citedDocuments(entries)
 
+  /** A document is opened by the passages the conversation has cited in it: they carry
+   *  the upload its text is kept under, which a filename alone does not. */
+  const passagesIn = (document: string) =>
+    entries.flatMap((entry) =>
+      entry.citations.filter((citation) => citation.document === document),
+    )
+
+  const open = (document: string) => {
+    setRead(document)
+    setTab('SOURCE')
+  }
+
   /** The question joins the thread the moment it is asked, so it is on the page while
    *  the answer is being written; what comes back replaces it rather than following
    *  it. */
@@ -87,7 +99,7 @@ export default function App() {
         setLive([...taken])
       })
       setEntries(answered({ question, ...result }))
-      setRead(result.citations[0] ?? null)
+      setRead(result.citations[0]?.document ?? null)
     } catch (failed) {
       setEntries(
         answered({
@@ -103,7 +115,7 @@ export default function App() {
     }
   }
 
-  const open = (session: Session) => {
+  const reopen = (session: Session) => {
     cora
       .turns(session.thread_id)
       .then((kept) => {
@@ -133,6 +145,7 @@ export default function App() {
           <DocumentRail
             documents={documents}
             cited={cited}
+            onOpen={open}
             onUpload={(file) =>
               cora.upload(file).then(refresh).catch(reportTo(setTrouble))
             }
@@ -158,9 +171,11 @@ export default function App() {
           </div>
 
           {tab === 'PLAN' && <PlanPanel steps={live ?? lastTrace(entries)} />}
-          {tab === 'SOURCE' && <SourcePanel citation={read} />}
+          {tab === 'SOURCE' && (
+            <SourcePanel document={read} citations={read ? passagesIn(read) : []} />
+          )}
           {tab === 'SESSIONS' && (
-            <SessionsPanel sessions={sessions} here={thread} onOpen={open} />
+            <SessionsPanel sessions={sessions} here={thread} onOpen={reopen} />
           )}
           {tab === 'MEMORY' && (
             <MemoryPanel

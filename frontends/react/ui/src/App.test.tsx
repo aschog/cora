@@ -77,10 +77,15 @@ beforeEach(() => {
     'fetch',
     vi.fn(async (path: string) => {
       if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
 })
+
+const KEPT = 'Sleep, not volume. The rest of the document follows.'
+
 
 test('the plan fills while the turn runs, then the answer lands with its citation', async () => {
   render(<App />)
@@ -164,4 +169,33 @@ test('each rail folds away and comes back, and its toggle says which it is', asy
   fireEvent.click(rail)
   expect(screen.getByText('notes.md')).toBeTruthy()
   expect(screen.getByRole('tab', { name: 'PLAN' })).toBeTruthy()
+})
+
+
+test('a document the answer cited opens in the source panel, marked at the passage', async () => {
+  const { container } = render(<App />)
+
+  expect(await screen.findByText('notes.md')).toBeTruthy()
+  const inTheRail = screen.getByRole('button', { name: 'notes.md' })
+  expect(inTheRail.hasAttribute('disabled')).toBe(true)
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  // Cited now, so the rail opens it — into SOURCE, marked where the citation falls.
+  expect(inTheRail.hasAttribute('disabled')).toBe(false)
+  fireEvent.click(inTheRail)
+
+  expect(screen.getByRole('tab', { name: 'SOURCE' }).getAttribute('aria-selected')).toBe(
+    'true',
+  )
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(screen.getByText('1 cited passage · highlighted')).toBeTruthy()
+  expect(container.querySelector('.doc-passage')?.textContent).toBe(
+    KEPT.slice(0, 6),
+  )
 })

@@ -5,7 +5,7 @@ import DocumentBody, { usePassage } from './DocumentBody'
 type Props = { citation: Citation; onClose: () => void }
 
 export default function CitationModal({ citation, onClose }: Props) {
-  const { text, trouble } = usePassage(citation)
+  const { text, trouble } = usePassage(citation.upload)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -35,7 +35,7 @@ export default function CitationModal({ citation, onClose }: Props) {
         </div>
         {trouble && <div className="trouble">{trouble}</div>}
         {text !== null && (
-          <DocumentBody citation={citation} text={text} scrollToPassage />
+          <DocumentBody text={text} spans={[citation]} scrollToFirst />
         )}
       </div>
     </div>

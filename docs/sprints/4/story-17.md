@@ -227,3 +227,17 @@ The answer itself still arrives whole. Streaming it token by token means a strea
 path through `ChatModel`, the OpenRouter adapter, `ModelStep` and `Agent.answer` — the
 contract and the engine, which this story does not touch. Left as it is: the plan
 streams, so the page is never silent while the answer is written.
+
+#### Found in use: a document in the rail opens where the mockup opens it
+
+The mockup's `pick()` puts a document in the SOURCE panel; the rail was inert. What the
+page can open is what the conversation has cited: a citation carries the upload its span
+was measured in, and a filename carries nothing that reads text back.
+
+- [x] **(ui)** a document the answer cited opens in the source panel when it is clicked
+      in the rail, the panel selected and the passage marked
+- [x] **(ui)** a document nothing has cited is listed and inert, saying why rather than
+      offering a click that could not be answered
+- [x] the source panel takes a document and every passage cited in it, so two citations
+      in one file are two marks in one view — the citation popup shares the renderer
+      with a span of its own

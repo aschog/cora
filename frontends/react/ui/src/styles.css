@@ -222,8 +222,12 @@ button {
   color: var(--n600);
 }
 
-.doc-row:hover {
+.doc-row:hover:not(:disabled) {
   background: var(--n300);
+}
+
+.doc-row:disabled {
+  cursor: default;
 }
 
 .doc-row.cited {

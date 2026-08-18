@@ -3,10 +3,15 @@ import { useRef } from 'react'
 type Props = {
   documents: string[]
   cited: Set<string>
+  onOpen: (document: string) => void
   onUpload: (file: File) => void
 }
 
-export default function DocumentRail({ documents, cited, onUpload }: Props) {
+const UNCITED =
+  'Indexed, and not cited in this conversation — ask something it can answer and it opens here.'
+
+
+export default function DocumentRail({ documents, cited, onOpen, onUpload }: Props) {
   const picker = useRef<HTMLInputElement>(null)
 
   return (
@@ -34,10 +39,16 @@ export default function DocumentRail({ documents, cited, onUpload }: Props) {
 
       <div className="doc-list">
         {documents.map((name) => (
-          <div key={name} className={cited.has(name) ? 'doc-row cited' : 'doc-row'}>
+          <button
+            key={name}
+            className={cited.has(name) ? 'doc-row cited' : 'doc-row'}
+            disabled={!cited.has(name)}
+            title={cited.has(name) ? undefined : UNCITED}
+            onClick={() => onOpen(name)}
+          >
             <span className="doc-bar" />
             <span className="doc-name">{name}</span>
-          </div>
+          </button>
         ))}
       </div>
     </aside>
