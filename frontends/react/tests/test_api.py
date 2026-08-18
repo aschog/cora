@@ -1,6 +1,8 @@
 import hashlib
 import pathlib
+from collections.abc import Iterator
 
+import httpx
 import pytest
 from starlette.testclient import TestClient
 
@@ -9,7 +11,13 @@ from cora.app.assembly import App
 from cora.domain.chat_result import ChatResult
 from cora.domain.conversation import Turn
 from cora.domain.errors import ConversationStoreError, MemoryStoreError
-from cora.frontends.react.api import api
+from cora.engine.ingestion import DEFAULT_MAX_BYTES
+from cora.frontends.react.api import (
+    MAX_REQUEST_BYTES,
+    NO_LENGTH,
+    OVER_CEILING,
+    api,
+)
 from fakes import FailingConversations, FailingMemory, FakeConversations, FakeMemory
 
 NOTES = b"Squats stall on sleep, not on volume. The block holds intensity."
@@ -211,3 +219,57 @@ def test_with_no_build_present_the_api_still_answers(tmp_path: pathlib.Path) -> 
     with client(assembled(), ui=tmp_path / "never-built") as reader:
         assert reader.get("/api/documents").status_code == 200
         assert reader.get("/").status_code == 404
+
+
+def test_an_upload_over_the_ceiling_is_refused_before_the_body_is_parsed() -> None:
+    """The multipart parser spools a file part to a temporary file with no ceiling of
+    its own, and `ingest` measures the document only once the whole part has been read
+    into memory — so a 2 GB part fills the temp dir and then RAM before anything says
+    no. The body here is not multipart at all: only a guard that fires before the parse
+    can answer it."""
+    app = assembled()
+
+    refused = client(app).post(
+        "/api/documents",
+        content=b"x" * (MAX_REQUEST_BYTES + 1),
+        headers={"content-type": "multipart/form-data; boundary=nope"},
+    )
+
+    assert refused.status_code == 413
+    assert refused.json()["error"] == OVER_CEILING
+    assert app.knowledge_base.list_sources() == []
+
+
+def test_the_ceiling_never_refuses_a_document_the_core_would_accept() -> None:
+    """The cap is on the document and the ceiling is on the request carrying it, so the
+    ceiling has to clear the cap by more than multipart costs — otherwise a file cora
+    accepts is refused before it is read. What multipart costs is measured rather than
+    assumed."""
+    framing = int(
+        httpx.Request(
+            "POST",
+            "http://cora/api/documents",
+            files={"file": ("notes.md", NOTES, "text/markdown")},
+        ).headers["content-length"]
+    ) - len(NOTES)
+
+    assert DEFAULT_MAX_BYTES + framing <= MAX_REQUEST_BYTES
+
+
+def test_an_upload_that_does_not_say_how_large_it_is_is_refused() -> None:
+    """A body of undeclared length cannot be bounded before it is read, and a ceiling
+    any client can step around by chunking its upload is not a ceiling."""
+    app = assembled()
+
+    def chunked() -> Iterator[bytes]:
+        yield b"x"
+
+    refused = client(app).post(
+        "/api/documents",
+        content=chunked(),
+        headers={"content-type": "multipart/form-data; boundary=nope"},
+    )
+
+    assert refused.status_code == 411
+    assert refused.json()["error"] == NO_LENGTH
+    assert app.knowledge_base.list_sources() == []

@@ -25,6 +25,7 @@ from starlette.staticfiles import StaticFiles
 from cora.app.assembly import App
 from cora.domain.errors import AdapterError, CoreError
 from cora.domain.trace import TraceStep
+from cora.engine.ingestion import DEFAULT_MAX_BYTES
 from cora.frontends.react import payloads
 
 log = logging.getLogger(__name__)
@@ -35,6 +36,17 @@ infrastructure behind it was not there, which is a different thing from a file c
 cannot read."""
 REFUSED = 400
 NO_CONTENT = 204
+TOO_LARGE = 413
+NO_LENGTH_GIVEN = 411
+
+MULTIPART_FRAMING = 64 * 1024
+"""What a multipart body costs on top of the file inside it: two boundaries, the part's
+headers, a filename. Generous, because refusing a document cora would accept is the one
+thing the ceiling below must never do."""
+MAX_REQUEST_BYTES = DEFAULT_MAX_BYTES + MULTIPART_FRAMING
+"""The largest upload cora will read. The cap on a *document* is `ingest`'s, and it is
+applied to a part the parser has already spooled to disk and read whole — so the request
+carrying it is bounded here instead, before any of it is read."""
 
 
 def api(
@@ -79,6 +91,9 @@ def _documents(app: App) -> Callable[[Request], Any]:
 
 def _ingest(app: App) -> Callable[[Request], Any]:
     async def add(request: Request) -> JSONResponse:
+        refused = _over_ceiling(request)
+        if refused is not None:
+            return refused
         async with request.form() as form:
             uploaded = form.get("file")
             if not isinstance(uploaded, UploadFile):
@@ -92,6 +107,24 @@ def _ingest(app: App) -> Callable[[Request], Any]:
 
 
 NO_FILE = "No file was uploaded."
+MEGABYTE = 1024 * 1024
+OVER_CEILING = (
+    f"That upload is larger than the {DEFAULT_MAX_BYTES // MEGABYTE} MB cora reads."
+)
+NO_LENGTH = "An upload has to say how large it is."
+
+
+def _over_ceiling(request: Request) -> JSONResponse | None:
+    """What the request declares, settled before a byte of it is read: a length cora
+    will not read past, and a body that declares none at all — a ceiling any client can
+    step around by chunking its upload is not a ceiling."""
+    declared = request.headers.get("content-length", "")
+    if not declared.isdigit():
+        return JSONResponse({"error": NO_LENGTH}, status_code=NO_LENGTH_GIVEN)
+    if int(declared) > MAX_REQUEST_BYTES:
+        return JSONResponse({"error": OVER_CEILING}, status_code=TOO_LARGE)
+    return None
+
 
 STREAM = "text/event-stream"
 UNBUFFERED = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}

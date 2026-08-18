@@ -362,7 +362,7 @@ makes is made by the core docstring it mirrors, and that wording is left where i
 - [x] **(ui)** a question in flight does not un-cite the answer still on screen: the
       pending entry carries no citations, so the highlights went and the count line read
       "not cited in this answer" about an answer that cites two passages
-- [ ] an upload past the ingestion cap is refused before it is read, not spooled whole
+- [x] an upload past the ingestion cap is refused before it is read, not spooled whole
       and materialised in memory and measured after
 - [ ] a question with no text is refused with the sentence the endpoint already carries,
       rather than answered — a blank question spends a turn and checkpoints it under a
