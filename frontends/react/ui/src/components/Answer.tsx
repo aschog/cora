@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { answerHtml } from '../answer'
 import type { Citation } from '../api'
@@ -15,6 +15,13 @@ type Props = {
 
 export default function Answer({ entries, asking, onAsk, onCite }: Props) {
   const [question, setQuestion] = useState('')
+  const end = useRef<HTMLDivElement>(null)
+
+  /* A turn asked, and a turn answered, both belong at the bottom of the scroller — the
+     conversation follows what just happened rather than leaving it below the fold. */
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: 'end' })
+  }, [entries.length, entries[entries.length - 1]?.answer])
 
   const send = () => {
     const asked = question.trim()
@@ -50,24 +57,25 @@ export default function Answer({ entries, asking, onAsk, onCite }: Props) {
             )}
           </div>
         ))}
+        <div ref={end} />
+      </div>
 
-        <div className="composer">
-          <input
-            value={question}
-            placeholder="Ask a question…"
-            aria-label="Ask a question"
-            onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && send()}
-          />
-          <button
-            className="composer-ask"
-            aria-label="Ask"
-            onClick={send}
-            disabled={asking}
-          >
-            →
-          </button>
-        </div>
+      <div className="composer">
+        <input
+          value={question}
+          placeholder="Ask a question…"
+          aria-label="Ask a question"
+          onChange={(e) => setQuestion(e.target.value)}
+          onKeyDown={(e) => e.key === 'Enter' && send()}
+        />
+        <button
+          className="composer-ask"
+          aria-label="Ask"
+          onClick={send}
+          disabled={asking}
+        >
+          →
+        </button>
       </div>
     </main>
   )

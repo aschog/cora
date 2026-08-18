@@ -418,6 +418,8 @@ button {
   display: flex;
   align-items: center;
   gap: var(--s2);
+  width: 100%;
+  max-width: 72ch;
   margin-top: auto;
   padding: 6px 6px 6px var(--s4);
   background: rgba(10, 12, 17, 0.82);
@@ -786,6 +788,9 @@ button {
   display: flex;
   flex-direction: column;
   gap: var(--s5);
+  /* Room for the composer to float over: without it the tail of an answer is read
+     through the input sitting on top of it. */
+  padding-bottom: 78px;
 }
 
 /* ── the rails fold away ── */

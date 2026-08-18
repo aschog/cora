@@ -214,3 +214,16 @@ full column.
       whether it has got there yet, and the run's deadline sits inside the model's own
       patience — a batched turn has to fail on that deadline rather than be rescued by
       the model giving up and finishing anyway
+
+#### Found in use: the tail of an answer was read through the composer
+
+The composer floats, so the conversation has to leave it room and follow what just
+happened; otherwise the last lines of a long answer sit under the input.
+
+- [x] **(ui)** the column reserves the composer's height, and the newest turn scrolls
+      itself into view when it is asked and again when it is answered
+
+The answer itself still arrives whole. Streaming it token by token means a streaming
+path through `ChatModel`, the OpenRouter adapter, `ModelStep` and `Agent.answer` — the
+contract and the engine, which this story does not touch. Left as it is: the plan
+streams, so the page is never silent while the answer is written.
