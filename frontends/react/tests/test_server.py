@@ -76,3 +76,22 @@ def test_a_setting_the_process_cannot_use_reaches_the_operator_as_a_sentence(
     said = capsys.readouterr().err
     assert "CORA_PORT" in said and "8O00" in said
     assert "Traceback" not in said
+
+
+def test_nothing_is_built_before_the_settings_are_read(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A mistyped port is a typo, and assembling the app for it is an embedding model
+    the operator waits through before being told. The sentence, the exit code and the
+    absent traceback all hold whichever order it happens in, so the order is what is
+    asserted here: a `build` that fails the test if it is reached at all."""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "not-used-because-the-port-fails-first")
+    monkeypatch.setenv("CORA_PORT", "8O00")
+    monkeypatch.setattr(
+        server,
+        "build",
+        lambda config: pytest.fail("the app was assembled for a port cora cannot read"),
+    )
+
+    with pytest.raises(SystemExit):
+        server.serve()

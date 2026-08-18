@@ -418,10 +418,10 @@ what they pin.
 - [x] **(ui)** the turn in flight belongs to the conversation it was asked in, not to the
       list of turns the store has: leaving that conversation and returning showed a
       thread where nothing was asked, no plan, and a composer that could not be typed in
-- [ ] a question of the length the engine allows is not refused by the shell that carries
+- [x] a question of the length the engine allows is not refused by the shell that carries
       it: both ceiling tests were built *from* the constant, so they held for any value
       of it — including one that refuses every full-length question
-- [ ] nothing is built before the settings are read: the sentence, the exit code and the
+- [x] nothing is built before the settings are read: the sentence, the exit code and the
       absent traceback all hold whichever order it happens in, so the order is asserted
       by a `build` that fails the test if it is called
 - [ ] a refusal keeps the headers it was raised with — a 405 without `Allow` is one the
