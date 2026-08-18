@@ -367,7 +367,7 @@ makes is made by the core docstring it mirrors, and that wording is left where i
 - [x] a question with no text is refused with the sentence the endpoint already carries,
       rather than answered — a blank question spends a turn and checkpoints it under a
       blank thread
-- [ ] `CORA_PORT` that is not a number says so the way every other numeric setting does,
+- [x] `CORA_PORT` that is not a number says so the way every other numeric setting does,
       and a port below 1 is refused rather than handed to the server
 - [ ] a built-in tool's origin does not call a memory write "core retrieval" — the
       reserved list holds two names and only one of them searches

@@ -12,12 +12,13 @@ from collections.abc import Mapping
 import uvicorn
 
 from cora.app.assembly import build
-from cora.app.config import Config
+from cora.app.config import Config, _int
 from cora.frontends.react.api import api
 
 DEFAULT_UI = pathlib.Path(__file__).resolve().parents[4] / "ui" / "dist"
 DEFAULT_HOST = "127.0.0.1"
 DEFAULT_PORT = 8000
+LOWEST_PORT = 1
 
 
 def ui_path(env: Mapping[str, str]) -> pathlib.Path:
@@ -26,13 +27,22 @@ def ui_path(env: Mapping[str, str]) -> pathlib.Path:
     return pathlib.Path(env.get("CORA_UI_PATH", "").strip() or DEFAULT_UI)
 
 
+def port(env: Mapping[str, str]) -> int:
+    """Which port to serve on, read through the same contract as every other number the
+    app takes from the environment: a mistyped one is a sentence naming the variable,
+    not a `ValueError` out of uvicorn's arguments. Borrowed rather than restated —
+    duplicating the wording is how two settings start disagreeing about what a number
+    is; `_int` wants a public name of its own, which is a change in `config`."""
+    return _int(env, "CORA_PORT", DEFAULT_PORT, minimum=LOWEST_PORT)
+
+
 def serve() -> None:
     config = Config.from_env()
     served = api(build(config), plugins=config.plugin_modules, ui=ui_path(os.environ))
     uvicorn.run(
         served,
         host=os.environ.get("CORA_HOST", "").strip() or DEFAULT_HOST,
-        port=int(os.environ.get("CORA_PORT", "").strip() or DEFAULT_PORT),
+        port=port(os.environ),
     )
 
 
