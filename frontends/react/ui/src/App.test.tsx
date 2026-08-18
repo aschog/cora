@@ -199,3 +199,58 @@ test('a document the answer cited opens in the source panel, marked at the passa
     KEPT.slice(0, 6),
   )
 })
+
+test('a document cited in an earlier turn is not marked for this one', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const ask = async () => {
+    turn = held()
+    fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+      target: { value: 'Why?' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+    turn.release()
+  }
+
+  await ask()
+  await screen.findByText(/Sleep, not volume/)
+
+  // A second turn that rests on nothing: the panel speaks for the answer being read.
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return uncited()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  await ask()
+  await screen.findByText(/Nothing in your documents/)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(screen.getByText('not cited in this answer')).toBeTruthy()
+
+  // Still openable: the text is there to read, with nothing marked in it.
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(document.querySelector('.doc-passage')).toBeNull()
+})
+
+/** A turn that cites nothing. */
+function uncited(): Response {
+  const encoder = new TextEncoder()
+  const body = frame('turn', {
+    answer: 'Nothing in your documents covers that.',
+    citations: [],
+    trace: [],
+  })
+  let sent = false
+  const reader = {
+    read: async () =>
+      sent
+        ? { done: true, value: undefined }
+        : ((sent = true), { done: false, value: encoder.encode(body) }),
+  }
+  return { ok: true, body: { getReader: () => reader } } as unknown as Response
+}

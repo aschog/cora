@@ -4,10 +4,15 @@ import DocumentBody, { usePassage } from './DocumentBody'
 const NOTHING = 'A document you open, or the passage an answer cites, is shown here.'
 const UNREADABLE = 'This document was indexed before cora kept its text, so it cannot be opened.'
 
-type Props = { document: string | null; citations: Citation[] }
+type Props = {
+  document: string | null
+  /** Where the text is kept: any citation the conversation carries for this document
+   *  names it, whether or not the newest answer rested on it. */
+  upload: string | null
+  citations: Citation[]
+}
 
-export default function SourcePanel({ document, citations }: Props) {
-  const upload = citations[0]?.upload ?? null
+export default function SourcePanel({ document, upload, citations }: Props) {
   const { text, trouble } = usePassage(upload)
 
   if (!document) return <div className="panel-intro">{NOTHING}</div>

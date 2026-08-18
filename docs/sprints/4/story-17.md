@@ -241,3 +241,9 @@ was measured in, and a filename carries nothing that reads text back.
 - [x] the source panel takes a document and every passage cited in it, so two citations
       in one file are two marks in one view — the citation popup shares the renderer
       with a span of its own
+- [x] **(ui)** what is marked is what *this* answer rested on: a document cited three
+      turns ago does not accumulate marks until most of it is highlighted, and an answer
+      that cites nothing leaves the panel on the document last read, saying so
+- [x] **(ui)** a document cited in an earlier turn still opens — what makes it readable
+      is the upload any citation in the conversation names, which is a different
+      question from what this answer marked in it

@@ -70,12 +70,20 @@ export default function App() {
 
   const cited = citedDocuments(entries)
 
-  /** A document is opened by the passages the conversation has cited in it: they carry
-   *  the upload its text is kept under, which a filename alone does not. */
+  /** Two different questions about one document, and answering both with the newest
+   *  turn's citations was wrong. What is *marked* is what this answer rested on, or a
+   *  document cited three turns ago accumulates marks until most of it is highlighted.
+   *  What makes it *openable* is the upload its text is kept under, which any citation
+   *  the conversation has ever carried for it names — a filename names nothing. */
   const passagesIn = (document: string) =>
-    entries.flatMap((entry) =>
-      entry.citations.filter((citation) => citation.document === document),
+    (entries[entries.length - 1]?.citations ?? []).filter(
+      (citation) => citation.document === document,
     )
+
+  const uploadOf = (document: string) =>
+    entries
+      .flatMap((entry) => entry.citations)
+      .find((citation) => citation.document === document)?.upload ?? null
 
   const open = (document: string) => {
     setRead(document)
@@ -99,7 +107,10 @@ export default function App() {
         setLive([...taken])
       })
       setEntries(answered({ question, ...result }))
-      setRead(result.citations[0]?.document ?? null)
+      // An answer that cites nothing leaves the panel on the document last read, which
+      // then says it is not cited in this answer — rather than emptying the panel and
+      // saying nothing at all.
+      setRead((current) => result.citations[0]?.document ?? current)
     } catch (failed) {
       setEntries(
         answered({
@@ -172,7 +183,11 @@ export default function App() {
 
           {tab === 'PLAN' && <PlanPanel steps={live ?? lastTrace(entries)} />}
           {tab === 'SOURCE' && (
-            <SourcePanel document={read} citations={read ? passagesIn(read) : []} />
+            <SourcePanel
+              document={read}
+              upload={read ? uploadOf(read) : null}
+              citations={read ? passagesIn(read) : []}
+            />
           )}
           {tab === 'SESSIONS' && (
             <SessionsPanel sessions={sessions} here={thread} onOpen={reopen} />
