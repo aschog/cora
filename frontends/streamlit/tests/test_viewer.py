@@ -1,4 +1,5 @@
 import pytest
+from streamlit.proto.Block_pb2 import Block
 from streamlit.testing.v1 import AppTest
 
 from app_builder import assembled, indexed
@@ -17,7 +18,6 @@ from cora.frontends.streamlit.viewer import (
     _PANE_CSS,
     ANSWER_COMPONENT,
     CITATION_COLOUR,
-    CLOSE_KEY,
     NO_DOCUMENT,
     NOT_KEPT,
     OPEN_CITATION,
@@ -171,17 +171,51 @@ def test_a_citation_from_an_earlier_answer_still_opens() -> None:
     assert open_document(at) == ["protein.md"]
 
 
-def test_closing_the_pane_takes_the_document_with_it() -> None:
+def test_the_popup_offers_no_second_way_out_of_its_own() -> None:
+    """The title bar carries a cross already; a Close button under the title repeated it
+    and cost the passage the rows it sat in."""
+    at = _asked(_run(_one_citation()))
+
+    at.session_state[OPEN_CITATION] = 1
+    at.run()
+
+    assert not at.exception
+    [popup] = open_dialogs(at)
+    assert list(popup.button) == [], "the cross in the title bar is the only way out"
+
+
+def _closing_page() -> None:  # AppTest re-executes this without the module's globals
+    import streamlit as st
+
+    from cora.frontends.streamlit.viewer import close_citation, open_citation
+
+    close_citation()
+    st.text(repr(open_citation()))
+
+
+def test_closing_a_citation_clears_it() -> None:
+    """What the Close button used to drive, pinned where it still can be. Dismissing a
+    dialog runs off a widget delta the browser sends, so this is the last headless hold
+    on the handler the popup is wired to."""
+    at = AppTest.from_function(_closing_page)
+    at.session_state[OPEN_CITATION] = 1
+    at.run()
+
+    assert not at.exception
+    assert [line.value for line in at.text] == ["None"]
+
+
+def test_a_citation_cleared_takes_the_document_with_it() -> None:
     at = _asked(_run(_one_citation()))
     at.session_state[OPEN_CITATION] = 1
     at.run()
 
-    at.button(key=CLOSE_KEY).click().run()
+    at.session_state[OPEN_CITATION] = None
+    at.run()
 
     assert not at.exception
     assert _panes(at) == []
     assert open_document(at) == []
-    assert at.session_state[OPEN_CITATION] is None
 
 
 def test_a_number_from_no_answer_in_this_thread_opens_nothing() -> None:
@@ -287,6 +321,18 @@ def test_the_popup_is_titled_with_the_document_and_names_it_only_once() -> None:
     )
 
 
+def test_the_popup_is_no_wider_than_the_document_needs() -> None:
+    """Large was most of the screen for a passage in a document, and it buried the chat
+    it was opened from rather than sitting over it."""
+    at = _asked(_run(_one_citation()))
+
+    at.session_state[OPEN_CITATION] = 1
+    at.run()
+
+    [popup] = open_dialogs(at)
+    assert popup.proto.dialog.width == Block.Dialog.DialogWidth.SMALL
+
+
 def test_the_popup_can_be_dismissed_and_a_dismissal_is_handled() -> None:
     """Escape, the corner cross and a click outside all dismiss it, and a dismissal that
     left the citation open would redraw the popup on the very next rerun — the reader
@@ -302,8 +348,8 @@ def test_the_popup_can_be_dismissed_and_a_dismissal_is_handled() -> None:
     at.run()
 
     [popup] = open_dialogs(at)
-    assert popup.dismissible, "escaping a passage is how a reader gets back to the chat"
-    assert popup.id, "a dismissal nothing handles leaves the popup reopening for ever"
+    assert popup.proto.dialog.dismissible, "escaping it is how a reader gets back"
+    assert popup.proto.dialog.id, "a dismissal nothing handles reopens for ever"
 
 
 def test_the_passage_pops_up_over_a_chat_that_keeps_the_whole_page() -> None:

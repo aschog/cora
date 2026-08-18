@@ -32,18 +32,15 @@ def mounted_html(at: AppTest, name: str) -> list[str]:
 
 
 def open_dialogs(at: AppTest) -> list[Any]:
-    """The popups on the page, as the blocks that describe them."""
-    return [
-        node.proto.dialog
-        for node in _nodes(at)
-        if getattr(node, "type", None) == "dialog"
-    ]
+    """The popups on the page, as blocks: what they are titled and sized is on
+    `.proto.dialog`, and what they contain is read off them like any other container."""
+    return [node for node in _nodes(at) if getattr(node, "type", None) == "dialog"]
 
 
 def open_document(at: AppTest) -> list[str]:
     """The document each open popup is named after. A cited passage arrives in one over
     the chat, so what names it is the popup's title, not a heading on the page."""
-    return [dialog.title for dialog in open_dialogs(at)]
+    return [popup.proto.dialog.title for popup in open_dialogs(at)]
 
 
 def _nodes(at: AppTest) -> Iterator[Any]:

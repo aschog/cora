@@ -213,3 +213,16 @@ the shared reader is the first item: nothing else can be seen until it looks the
 
 The `[1]` in an answer is a component's button, so the click that opens a popup — and the
 Escape that dismisses it — are both out of AppTest's reach. Phase 4 drives them.
+
+#### Found in use: the popup's own chrome is enough (`viewer.py`)
+
+A large dialog is most of the screen for a document that does not need it, and a Close
+button under the title repeats the cross the title bar already carries. Losing that button
+costs the tests the one way they had to close a popup headlessly, so what it drove is
+pinned where it can be: on `close_citation` itself.
+
+- [x] **(int)** the popup is small, not large
+- [x] **(int)** nothing inside the popup offers a second way out — the title bar's cross
+      is the way out
+- [x] **(int)** `close_citation` clears the open citation, and a citation cleared takes
+      the popup and its passage with it

@@ -9,13 +9,11 @@ from cora.engine.knowledge_base import KnowledgeBase
 from cora.frontends.streamlit.formatting import answer_html, document_html
 
 OPEN_CITATION = "open_citation"
-CLOSE_KEY = "close_citation"
 CLICKED = "clicked"
 NOT_KEPT = "I no longer have the text of that document, so I cannot show the passage."
 UNKNOWN_CITATION = "That citation does not belong to any answer in this conversation."
 NO_DOCUMENT = "Citation"
-CLOSE_LABEL = ":material/close: Close"
-PANE_WIDTH = "large"
+PANE_WIDTH = "small"
 ANSWER_COMPONENT = "cora_cited_answer"
 PANE_COMPONENT = "cora_document_pane"
 CITATION_COLOUR = "#f0c674"
@@ -131,9 +129,8 @@ def _passage(knowledge_base: KnowledgeBase, citation: Citation | None) -> None:
     """What the reader came for: the document, the cited passage marked and scrolled to,
     and a way out. A citation whose text was never kept says so rather than showing an
     empty page, and a store that cannot be read is reported here — the conversation
-    behind it is unaffected either way. The document is named by the dialog's title, so
-    nothing here repeats it."""
-    st.button(CLOSE_LABEL, key=CLOSE_KEY, on_click=close_citation)
+    behind it is unaffected either way. The document is named by the dialog's title and
+    left by the cross beside it, so nothing here repeats either."""
     if citation is None:
         st.warning(UNKNOWN_CITATION)
         return

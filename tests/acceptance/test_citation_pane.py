@@ -53,8 +53,9 @@ def _panes(at: AppTest) -> list[str]:
 @pytest.mark.integration
 def test_a_cited_passage_opens_over_the_chat_and_closes_again() -> None:
     """The click that opens it is a component's, out of AppTest's reach, so the state
-    the click writes is what this drives. What the popup does with it is the criterion:
-    the cited document, that passage marked, and the chat back after closing."""
+    the click writes is what this drives. The cross that dismisses it is out of reach
+    the same way, so closing runs through that state too. What the popup does with it is
+    the criterion: the cited document, that passage marked, and the chat back."""
     at = AppTest.from_function(_page, args=(_app(),)).run()
 
     at.chat_input[0].set_value(QUESTION).run()
@@ -72,7 +73,8 @@ def test_a_cited_passage_opens_over_the_chat_and_closes_again() -> None:
     [marked] = re.findall(r"<mark[^>]*>(.*?)</mark>", pane, re.DOTALL)
     assert PASSAGE in marked, f"the cited passage is not marked in the pane: {pane!r}"
 
-    at.button(key="close_citation").click().run()
+    at.session_state["open_citation"] = None
+    at.run()
 
     assert not at.exception
     assert _panes(at) == []
