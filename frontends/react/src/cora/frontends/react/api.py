@@ -14,14 +14,14 @@ import threading
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
-from python_multipart.exceptions import MultipartParseError
+from python_multipart.exceptions import FormParserError
 from starlette.applications import Starlette
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
-from starlette.routing import Mount, Route
+from starlette.routing import Match, Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from cora.app.assembly import App
@@ -74,14 +74,7 @@ def api(
     ]
     if ui is not None and ui.is_dir():
         routes.append(Mount("/", StaticFiles(directory=ui, html=True)))
-    return Starlette(
-        routes=routes,
-        exception_handlers={
-            CoreError: _refused,
-            MultipartParseError: _unreadable,
-            HTTPException: _as_sentence,
-        },
-    )
+    return Starlette(routes=routes, exception_handlers=REFUSALS)
 
 
 async def _refused(request: Request, error: Exception) -> JSONResponse:
@@ -93,20 +86,60 @@ async def _refused(request: Request, error: Exception) -> JSONResponse:
 
 
 async def _unreadable(request: Request, error: Exception) -> JSONResponse:
-    """A body that is not the multipart it says it is. The parser's exception is its own
-    rather than a `CoreError`, so it walked past `_refused` and left the page a
-    plain-text 500 — which `api.ts` reads as cora being unreachable, the one thing that
-    is false when cora answered."""
+    """A body the form parser could not read, however it could not read it. The parser's
+    exceptions are its own rather than `CoreError`s, so they walked past `_refused` and
+    left the page a plain-text 500 — which `api.ts` reads as cora being unreachable, the
+    one thing that is false when cora answered. Registered on the family's base class:
+    the leaf that was reported has siblings, and they leave `Request.form()` alike."""
     return JSONResponse({"error": UNREADABLE_UPLOAD}, status_code=REFUSED)
 
 
-async def _as_sentence(request: Request, error: Exception) -> JSONResponse:
+async def _as_sentence(request: Request, error: Exception) -> Response:
     """Starlette's own refusals — a path with no route, a method a route does not take,
     a form field past the parser's part size — answer in plain text. The page reads
-    every failure as JSON, so they leave here as JSON too, under the code they arrived
-    with."""
+    every failure as JSON, so they leave here as JSON too, under the code and the
+    headers they were raised with: the `Allow` on a 405 is the only part of it the
+    client can act on. A status that forbids a body is given none, whatever there was to
+    say."""
     assert isinstance(error, HTTPException)
-    return JSONResponse({"error": error.detail}, status_code=error.status_code)
+    headers = dict(error.headers or {}) | _allowed(request, error.status_code)
+    if error.status_code in BODILESS:
+        return Response(status_code=error.status_code, headers=headers)
+    return JSONResponse(
+        {"error": error.detail}, status_code=error.status_code, headers=headers
+    )
+
+
+def _allowed(request: Request, status: int) -> dict[str, str]:
+    """Every method the app answers on this path. Starlette raises the 405 from the one
+    route that did not match, which can only name its own methods — and two routes over
+    one path is how a GET and a POST sharing a URL are written here, so that header
+    tells the client the other one is not allowed."""
+    if status != NOT_THAT_WAY:
+        return {}
+    served = {
+        method
+        for route in request.app.routes
+        if isinstance(route, Route)
+        and route.matches(request.scope)[0] is not Match.NONE
+        for method in route.methods or ()
+    }
+    return {"Allow": ", ".join(sorted(served))} if served else {}
+
+
+NOT_THAT_WAY = 405
+BODILESS = frozenset({204, 304})
+"""Statuses a response may not carry a body under. A client that reads one anyway is
+reading the next response on the connection."""
+
+REFUSALS: dict[Any, Any] = {
+    CoreError: _refused,
+    FormParserError: _unreadable,
+    HTTPException: _as_sentence,
+}
+"""Every failure this app answers, and the shape it answers in. Named rather than built
+inside `api` so a handler can be driven by a test over a route that fails on demand —
+no real route can be made to fail these ways."""
 
 
 def _documents(app: App) -> Callable[[Request], Any]:

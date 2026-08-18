@@ -6,6 +6,16 @@ from typing import Any
 import anyio
 import httpx
 import pytest
+from python_multipart.exceptions import (
+    DecodeError,
+    MultipartParseError,
+    QuerystringParseError,
+)
+from starlette.applications import Starlette
+from starlette.exceptions import HTTPException
+from starlette.requests import Request
+from starlette.responses import Response
+from starlette.routing import Route
 from starlette.testclient import TestClient
 
 from app_builder import assembled, indexed
@@ -18,6 +28,7 @@ from cora.frontends.react.api import (
     MAX_REQUEST_BYTES,
     NO_LENGTH,
     OVER_CEILING,
+    REFUSALS,
     UNREADABLE_UPLOAD,
     api,
 )
@@ -357,3 +368,60 @@ def test_nothing_is_read_from_a_request_over_the_ceiling() -> None:
 
     [start] = [each for each in sent if each["type"] == "http.response.start"]
     assert start["status"] == 413
+
+
+def test_a_method_a_route_does_not_take_says_which_ones_it_does() -> None:
+    """Starlette raises the 405 with the `Allow` header RFC 9110 requires on it, and a
+    handler that answers in cora's own shape has to carry what it was raised with — a
+    refusal the client cannot act on is worse than the plain text it replaced."""
+    refused = client(assembled()).put("/api/documents")
+
+    assert refused.status_code == 405
+    # Both, though it is two routes that share the path — one of them raised this.
+    assert {"GET", "POST"} <= set(refused.headers["allow"].split(", "))
+    assert refused.json()["error"]
+
+
+def _raising(error: Exception) -> Route:
+    async def thrown(request: Request) -> Response:
+        raise error
+
+    return Route("/thrown", thrown, methods=["POST"])
+
+
+def _refused_by(error: Exception) -> httpx.Response:
+    """The app's own refusals, over a route that raises. The handlers are what is under
+    test, and no real route can be made to fail in these ways on demand."""
+    served = Starlette(routes=[_raising(error)], exception_handlers=REFUSALS)
+    return TestClient(served).post("/thrown")
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        MultipartParseError("expected a boundary"),
+        DecodeError("undecodable part"),
+        QuerystringParseError("malformed querystring"),
+    ],
+    ids=lambda error: type(error).__name__,
+)
+def test_however_the_form_parser_fails_the_page_reads_a_sentence(
+    failure: Exception,
+) -> None:
+    """`MultipartParseError` is one leaf of the parser's tree. Its siblings leave
+    `Request.form()` the same way, and were still arriving as a plain-text 500 that the
+    page reads as cora being unreachable."""
+    refused = _refused_by(failure)
+
+    assert refused.status_code == 400
+    assert refused.json()["error"] == UNREADABLE_UPLOAD
+
+
+@pytest.mark.parametrize("status", [204, 304])
+def test_a_refusal_at_a_status_that_forbids_a_body_is_given_none(status: int) -> None:
+    """The handler this one replaced omitted the body for these two, because a 204 or a
+    304 carrying one is a response some clients will not read past."""
+    answered = _refused_by(HTTPException(status_code=status))
+
+    assert answered.status_code == status
+    assert answered.content == b""

@@ -424,7 +424,7 @@ what they pin.
 - [x] nothing is built before the settings are read: the sentence, the exit code and the
       absent traceback all hold whichever order it happens in, so the order is asserted
       by a `build` that fails the test if it is called
-- [ ] a refusal keeps the headers it was raised with — a 405 without `Allow` is one the
+- [x] a refusal keeps the headers it was raised with — a 405 without `Allow` is one the
       client cannot act on — and a status that forbids a body is given none
-- [ ] a body the form parser cannot read is refused as a sentence whichever way it failed:
+- [x] a body the form parser cannot read is refused as a sentence whichever way it failed:
       `MultipartParseError` has siblings, and they were still leaving a plain-text 500
