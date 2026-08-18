@@ -6,6 +6,7 @@ from app_builder import assembled, indexed
 from apptest import (
     clickable_citations,
     mounted_html,
+    mounted_html_in,
     newest_answer,
     open_dialogs,
     open_document,
@@ -18,8 +19,10 @@ from cora.frontends.streamlit.viewer import (
     _PANE_CSS,
     ANSWER_COMPONENT,
     CITATION_COLOUR,
+    LAST_CITATION,
     NO_DOCUMENT,
     NOT_KEPT,
+    NOTHING_CITED,
     OPEN_CITATION,
     PANE_COMPONENT,
     UNKNOWN_CITATION,
@@ -498,3 +501,72 @@ def test_reading_the_answer_of_a_turn_that_gave_none_fails_and_says_what_happene
 
     with pytest.raises(AssertionError, match="took too long"):
         newest_answer(at)
+
+
+def _source_panel(at: AppTest):
+    _plan, source, _sessions, _memory = at.tabs
+    return source
+
+
+def test_the_source_panel_says_what_it_is_for_before_anything_is_cited() -> None:
+    at = _asked(_run(_one_citation()))
+
+    assert not at.exception
+    assert NOTHING_CITED in [line.value for line in _source_panel(at).caption]
+
+
+def test_the_source_panel_shows_the_passage_last_read() -> None:
+    """The same passage the popup marks, in the rail beside the conversation."""
+    at = _asked(_run(_one_citation()))
+
+    at.session_state[LAST_CITATION] = 1
+    at.run()
+
+    assert not at.exception
+    [passage] = mounted_html_in(_source_panel(at), PANE_COMPONENT)
+    assert "1.6 g of protein" in passage
+    assert "<mark" in passage, (
+        "the cited span is marked in the rail as it is in the popup"
+    )
+
+
+def test_the_source_panel_keeps_the_passage_after_the_popup_is_dismissed() -> None:
+    """Dismissing clears the citation that is *open*; what was last read stays, or the
+    panel is empty except while the popup covers it."""
+    at = _asked(_run(_one_citation()))
+    at.session_state[LAST_CITATION] = 1
+    at.session_state[OPEN_CITATION] = 1
+    at.run()
+
+    at.session_state[OPEN_CITATION] = None
+    at.run()
+
+    assert not at.exception
+    assert open_document(at) == [], "the popup is gone"
+    assert mounted_html_in(_source_panel(at), PANE_COMPONENT), "the passage is not"
+
+
+def _dismissing_page() -> None:  # AppTest re-executes this without the module's globals
+    import streamlit as st
+
+    from cora.frontends.streamlit.viewer import (
+        close_citation,
+        last_citation,
+        open_citation,
+    )
+
+    close_citation()
+    st.text(repr((open_citation(), last_citation())))
+
+
+def test_dismissing_a_citation_keeps_the_passage_it_showed() -> None:
+    """Dismissal clears what is *open*, not what was last read. Driven through the
+    handler because the cross that runs it is out of AppTest's reach — and asserted on
+    the handler because a page-level test can set the state it claims to be testing."""
+    at = AppTest.from_function(_dismissing_page)
+    at.session_state[OPEN_CITATION] = 1
+    at.session_state[LAST_CITATION] = 1
+    at.run()
+
+    assert not at.exception
+    assert [line.value for line in at.text] == ["(None, 1)"]

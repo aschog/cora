@@ -262,8 +262,11 @@ expander per message.
 - [x] a turn that went wrong says so in the plan panel, the news having nowhere else to go
 - [x] the steps of a turn in progress arrive in the plan panel rather than beside the
       answer being written
-- [ ] the source panel shows the document the open citation names, marked at the passage
-- [ ] with no citation open the source panel says so rather than drawing an empty document
+- [x] the source panel shows the document the open citation names, marked at the passage
+- [x] with nothing yet cited the source panel says what it is for, rather than drawing
+      an empty document
+- [x] the source panel keeps the passage last read after its popup is dismissed —
+      cleared with the popup it would be empty except while the popup covers it
 - [ ] the memory panel lists the facts and forgets one, the sidebar's copy gone
 - [ ] the four panels are drawn before a turn is taken, so the first answer does not
       reflow the page

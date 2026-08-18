@@ -19,7 +19,9 @@ from cora.frontends.streamlit.viewer import (
     cited_answer,
     declare_components,
     document_pane,
+    last_citation,
     open_citation,
+    source_panel,
 )
 from cora.ports.memory import Memory
 from streamlit.delta_generator import DeltaGenerator
@@ -70,7 +72,7 @@ def render(app: App) -> None:
     st.caption(TAGLINE)
     conversation, rail = st.columns([CONVERSATION_SHARE, RAIL_SHARE])
     with rail:
-        plan, _source_panel, _sessions_panel, _memory_panel = st.tabs(RAIL_PANELS)
+        plan, source, _sessions_panel, _memory_panel = st.tabs(RAIL_PANELS)
     with conversation:
         said = st.container()
         prompt = st.chat_input("Ask about your documents")
@@ -78,6 +80,8 @@ def render(app: App) -> None:
             _thread(plan)
             if prompt:
                 _answer(app.agent, prompt, plan)
+    with source:
+        source_panel(app.knowledge_base, _resolved(last_citation()))
     if open_citation() is not None:
         document_pane(app.knowledge_base, _opened())
     with st.sidebar:
@@ -86,9 +90,12 @@ def render(app: App) -> None:
 
 
 def _opened() -> Citation | None:
-    """The citation the reader clicked, resolved against every answer in the thread: a
-    number from three turns ago still opens what it opened then."""
-    number = open_citation()
+    return _resolved(open_citation())
+
+
+def _resolved(number: int | None) -> Citation | None:
+    """A number, against every answer in the thread: one from three turns ago still
+    names the passage it named then."""
     for message in st.session_state.get("messages", ()):
         for citation in message.get("citations", ()):
             if citation.number == number:

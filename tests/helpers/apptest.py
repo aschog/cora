@@ -31,6 +31,28 @@ def mounted_html(at: AppTest, name: str) -> list[str]:
     ]
 
 
+def mounted_html_in(container: Any, name: str) -> list[str]:
+    """As `mounted_html`, but for one part of the page: the same passage is drawn in the
+    popup and in the rail, so which of them a test is reading has to be sayable."""
+    return [
+        json.loads(node.proto.json).get("html", "")
+        for node in _below(container)
+        if getattr(node, "type", None) == "bidi_component"
+        and node.proto.component_name == name
+    ]
+
+
+def _below(container: Any) -> Iterator[Any]:
+    pending = [container]
+    while pending:
+        node = pending.pop()
+        yield node
+        children = getattr(node, "children", None)
+        pending.extend(
+            children.values() if isinstance(children, dict) else children or []
+        )
+
+
 def open_dialogs(at: AppTest) -> list[Any]:
     """The popups on the page, as blocks: what they are titled and sized is on
     `.proto.dialog`, and what they contain is read off them like any other container."""

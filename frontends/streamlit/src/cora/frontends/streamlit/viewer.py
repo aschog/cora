@@ -9,13 +9,22 @@ from cora.engine.knowledge_base import KnowledgeBase
 from cora.frontends.streamlit.formatting import answer_html, document_html
 
 OPEN_CITATION = "open_citation"
+LAST_CITATION = "last_citation"
+"""The passage the reader last opened, which the rail keeps showing after the popup
+over it has been dismissed. Cleared with the popup, the panel would hold something
+only while the popup was covering it."""
 CLICKED = "clicked"
 NOT_KEPT = "I no longer have the text of that document, so I cannot show the passage."
 UNKNOWN_CITATION = "That citation does not belong to any answer in this conversation."
+NOTHING_CITED = "Click a number in an answer to read the passage it rests on."
 NO_DOCUMENT = "Citation"
 PANE_WIDTH = "small"
 ANSWER_COMPONENT = "cora_cited_answer"
 PANE_COMPONENT = "cora_document_pane"
+POPUP = "popup"
+RAIL = "rail"
+"""One passage is drawn in both at once, and a mounted component is named by its
+key: without the place in it, the two would collide."""
 CITATION_COLOUR = "#f0c674"
 """One colour for a citation wherever it appears: the button that opens a passage and
 the passage it opens. Named here rather than taken from the theme because the theme's
@@ -111,6 +120,10 @@ def open_citation() -> int | None:
     return st.session_state.get(OPEN_CITATION)
 
 
+def last_citation() -> int | None:
+    return st.session_state.get(LAST_CITATION)
+
+
 def close_citation() -> None:
     st.session_state[OPEN_CITATION] = None
 
@@ -122,10 +135,24 @@ def document_pane(knowledge_base: KnowledgeBase, citation: Citation | None) -> N
     what the reader just closed."""
     titled = citation.document if citation is not None else NO_DOCUMENT
     opening = st.dialog(titled, width=PANE_WIDTH, on_dismiss=close_citation)
-    opening(_passage)(knowledge_base, citation)
+    opening(_passage)(knowledge_base, citation, POPUP)
 
 
-def _passage(knowledge_base: KnowledgeBase, citation: Citation | None) -> None:
+def source_panel(knowledge_base: KnowledgeBase, citation: Citation | None) -> None:
+    """The passage in the rail: the same document the popup marks, kept there after the
+    popup is dismissed. Nothing read yet is the panel's ordinary state, so it says what
+    would fill it rather than standing empty. Nothing names the document here the way a
+    dialog's title does, so the panel says it itself."""
+    if citation is None:
+        st.caption(NOTHING_CITED)
+        return
+    st.subheader(citation.document)
+    _passage(knowledge_base, citation, RAIL)
+
+
+def _passage(
+    knowledge_base: KnowledgeBase, citation: Citation | None, where: str
+) -> None:
     """What the reader came for: the document, the cited passage marked and scrolled to,
     and a way out. A citation whose text was never kept says so rather than showing an
     empty page, and a store that cannot be read is reported here — the conversation
@@ -143,7 +170,7 @@ def _passage(knowledge_base: KnowledgeBase, citation: Citation | None) -> None:
         st.warning(NOT_KEPT)
         return
     _mount(PANE_COMPONENT)(
-        key=f"pane_{citation.number}",
+        key=f"pane_{where}_{citation.number}",
         data={"html": document_html(text, citation)},
     )
 
@@ -160,5 +187,6 @@ def _opening(key: str) -> Any:
         number = getattr(state, CLICKED, None)
         if number is not None:
             st.session_state[OPEN_CITATION] = int(number)
+            st.session_state[LAST_CITATION] = int(number)
 
     return clicked
