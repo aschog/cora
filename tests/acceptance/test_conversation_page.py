@@ -22,10 +22,7 @@ PANELS = ["Plan", "Source", "Sessions", "Memory"]
 
 
 def _app(conversations_path) -> App:
-    # The store is being built; the marker goes when the adapter lands.
-    from cora.adapters.sqlite_conversations import (  # ty: ignore[unresolved-import]
-        SqliteConversations,
-    )
+    from cora.adapters.sqlite_conversations import SqliteConversations
 
     return indexed(
         assembled(
@@ -43,7 +40,7 @@ def _app(conversations_path) -> App:
                     ModelReply(text=ANSWER),
                 ]
             ),
-            conversations=SqliteConversations(str(conversations_path)),
+            conversations=SqliteConversations.at(str(conversations_path)),
         ),
         SEED_DOC,
     )

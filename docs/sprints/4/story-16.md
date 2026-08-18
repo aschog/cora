@@ -281,7 +281,7 @@ follow-up in a resumed session answers without its own history. Two stores becau
 hold different things — the rendered turn, and the messages the model saw — and the
 checkpointer already owns the second.
 
-- [ ] `record` then `turns` returns the turn unchanged, across a reopened database
+- [x] `record` then `turns` returns the turn unchanged, across a reopened database
 - [ ] `turns` of a thread never recorded is empty rather than raising
 - [ ] `sessions` lists the threads newest first, each named by the question that opened it
 - [ ] a recorded turn keeps its citations and its trace, so a reopened conversation is

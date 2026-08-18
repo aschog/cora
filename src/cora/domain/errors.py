@@ -123,6 +123,10 @@ class DocumentStoreError(AdapterError):
     message = "That document is temporarily unavailable. Please try again."
 
 
+class ConversationStoreError(AdapterError):
+    message = "I could not reach your earlier conversations. Please try again."
+
+
 class GraphRunError(AdapterError):
     """A runner that walked no step at all: the run cannot be reported on, and a
     blank answer would read like a successful turn."""
