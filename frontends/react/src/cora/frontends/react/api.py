@@ -159,6 +159,9 @@ def _ask(app: App) -> Callable[[Request], Any]:
             return JSONResponse({"error": NOT_A_QUESTION}, status_code=REFUSED)
         if not isinstance(asked, dict):
             return JSONResponse({"error": NOT_A_QUESTION}, status_code=REFUSED)
+        question, thread_id = asked.get("question"), asked.get("thread_id")
+        if not _said(question) or not _said(thread_id):
+            return JSONResponse({"error": NOT_A_QUESTION}, status_code=REFUSED)
         events: asyncio.Queue[str | None] = asyncio.Queue()
         loop = asyncio.get_running_loop()
 
@@ -170,7 +173,7 @@ def _ask(app: App) -> Callable[[Request], Any]:
 
         turn = threading.Thread(
             target=_run,
-            args=(app, asked.get("question", ""), asked.get("thread_id", ""), deliver),
+            args=(app, question, thread_id, deliver),
             daemon=True,
         )
 
@@ -182,6 +185,13 @@ def _ask(app: App) -> Callable[[Request], Any]:
         return StreamingResponse(body(), media_type=STREAM, headers=UNBUFFERED)
 
     return taken
+
+
+def _said(half: Any) -> bool:
+    """What the endpoint's own refusal promises: a question, and the thread it belongs
+    to. Blank is neither — a turn asked with no question costs a worker thread and a
+    graph run, and one asked with no thread is recorded where nobody can reopen it."""
+    return isinstance(half, str) and bool(half.strip())
 
 
 def _run(

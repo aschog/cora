@@ -10,10 +10,10 @@ from app_builder import assembled, indexed
 from cora.app.assembly import App
 from cora.domain.errors import LlmError
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
-from cora.frontends.react.api import api
+from cora.frontends.react.api import NOT_A_QUESTION, api
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.plugin import Tool, ToolCall
-from fakes import FailingChatModel, ScriptedChatModel
+from fakes import FailingChatModel, FakeConversations, ScriptedChatModel
 from sse import frames
 
 NOTES = b"Squats stall on sleep, not on volume. The block holds intensity."
@@ -285,3 +285,31 @@ backstop so a test that never releases cannot hang the suite."""
 async def _within(seconds: float, work, *args):
     with anyio.fail_after(seconds):
         return await work(*args)
+
+
+@pytest.mark.parametrize(
+    "asked",
+    [
+        {"question": "  ", "thread_id": "t1"},
+        {"thread_id": "t1"},
+        {"question": "Why?"},
+        {"question": "Why?", "thread_id": " "},
+        {"question": 7, "thread_id": "t1"},
+    ],
+)
+def test_a_body_missing_either_half_is_refused_rather_than_answered(
+    asked: dict[str, object],
+) -> None:
+    """`NOT_A_QUESTION` names both halves — a question, and the thread it belongs to —
+    and was only ever returned for a body that would not parse at all. A blank of either
+    was answered instead: a worker thread, a graph run, and a turn recorded under a
+    blank thread id for a question nobody asked."""
+    conversations = FakeConversations()
+    app = assembled(conversations=conversations)
+
+    with TestClient(api(app)) as reader:
+        refused = reader.post("/api/ask", json=asked)
+
+    assert refused.status_code == 400
+    assert refused.json()["error"] == NOT_A_QUESTION
+    assert conversations.sessions() == ()
