@@ -726,3 +726,22 @@ def test_the_plan_of_a_turn_is_in_the_rail_not_under_its_answer() -> None:
     assert "add(a=17, b=25) → 42" in _said_in(plan)
     conversation, _rail = at.columns[:2]
     assert not conversation.status, "the plan left the answer it sat under"
+
+
+@pytest.mark.integration
+def test_a_turn_that_went_wrong_says_so_in_the_rail() -> None:
+    """A failed step sits inside a collapsed panel, and that panel now lives in the
+    rail: if the news of a bad run did not travel with it, nothing on the page would
+    carry it."""
+    call = ToolCall(name="add", arguments={"a": "one"}, call_id="c1")
+    scripted = ScriptedChatModel(
+        [ModelReply(tool_calls=(call,)), ModelReply(text="I could not add those.")]
+    )
+    at = _run_page(_app(scripted, plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("one + 25?").run()
+
+    plan, _source, _sessions, _memory = at.tabs
+    [trace] = plan.status
+
+    assert trace.state == "error"

@@ -259,7 +259,7 @@ expander per message.
 - [x] the plan panel holds each turn's steps in thread order, and no answer carries a
       panel of its own — every turn's, not the newest: a trace surviving the next
       question is already pinned, and one rail showing only the last would drop it
-- [ ] a turn that went wrong says so in the plan panel, the news having nowhere else to go
+- [x] a turn that went wrong says so in the plan panel, the news having nowhere else to go
 - [ ] the steps of a turn in progress arrive in the plan panel rather than beside the
       answer being written
 - [ ] the source panel shows the document the open citation names, marked at the passage
