@@ -276,3 +276,8 @@ and three more ticks resting on nothing.
 
 An answer is parsed once per turn rather than once per keystroke, and the stale
 `@types/markdown-it` is gone.
+
+- [x] **(ui)** a passage whose text was never kept says so rather than drawing an empty
+      page — a citation carries the upload its span was measured in, and an index
+      written before cora kept any text names none
+- [x] **(ui)** with nothing opened the source panel says what it is for
