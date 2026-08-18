@@ -73,7 +73,7 @@ def test_image_only_pdf_raises_empty_document_error() -> None:
 def test_ingest_pdf_end_to_end_with_provenance() -> None:
     data = make_pdf_bytes("First page content.", "Second page content.")
 
-    chunks = ingest(data, "doc.pdf", LOADERS)
+    chunks = ingest(data, "doc.pdf", LOADERS).chunks
 
     assert chunks
     assert all(chunk.source == "doc.pdf" for chunk in chunks)

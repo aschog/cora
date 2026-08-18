@@ -153,9 +153,10 @@ def test_a_plugin_needs_the_app_and_nothing_else(plugin: str) -> None:
 
 def test_a_frontend_needs_the_app_and_its_own_toolkit() -> None:
     """One of several possible shells: it takes `cora` for the wiring and the types that
-    cross its screen, and the one technology it draws with. The adapters it never names:
-    what it shows is decided by the use cases, what technology answers is decided at
-    assembly."""
+    cross its screen, and the technologies it draws with — the toolkit, and the markdown
+    renderer that turns an answer into the HTML a citation can be clicked in. The
+    adapters it never names: what it shows is decided by the use cases, what technology
+    answers is decided at assembly."""
     requires = workspace.requirements(workspace.ROOT / "frontends" / "streamlit")
 
-    assert requires == {"cora", "streamlit"}
+    assert requires == {"cora", "streamlit", "markdown-it-py"}

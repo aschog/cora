@@ -140,7 +140,7 @@ REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in
 TECHNOLOGY_ALLOWED: dict[str, frozenset[str]] = {
     "the app": frozenset(),
     "the plugins": frozenset(),
-    "the frontends": frozenset({"streamlit"}),
+    "the frontends": frozenset({"streamlit", "markdown_it"}),
 }
 TECHNOLOGY_CASES = [
     (layer, path) for layer in TECHNOLOGY_ALLOWED for path in LAYER_FILES[layer]

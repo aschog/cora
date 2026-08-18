@@ -5,17 +5,28 @@ from collections.abc import Callable, Sequence
 import streamlit as st
 from cora.app.assembly import App
 from cora.domain.chat_result import ChatResult
+from cora.domain.citations import Citation
+from cora.domain.conversation import Session, Turn
 from cora.domain.errors import AdapterError, CoreError
 from cora.domain.trace import TraceStep
 from cora.engine.agent import Agent
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.frontends.streamlit.formatting import (
     ingest_message,
-    numbered_sources,
     step_text,
 )
 from cora.frontends.streamlit.thread import ThreadEntry
+from cora.frontends.streamlit.viewer import (
+    cited_answer,
+    declare_components,
+    document_pane,
+    last_citation,
+    open_citation,
+    source_panel,
+)
+from cora.ports.conversations import Conversations
 from cora.ports.memory import Memory
+from streamlit.delta_generator import DeltaGenerator
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 MAX_INGEST_ATTEMPTS = 2
@@ -23,7 +34,17 @@ WORKING = "Working…"
 TRACE_LABEL = "How I got there"
 REMEMBER_HEADING = "What I remember"
 NOTHING_REMEMBERED = "Nothing yet — tell me something about yourself."
+NO_SESSIONS = "Conversations you have had will be listed here."
 FORGET_LABEL = "✕"
+CONVERSATION_SHARE = 2
+RAIL_SHARE = 1
+APP_NAME = "cora"
+TAGLINE = "Document agent"
+PLAN_PANEL = "Plan"
+SOURCE_PANEL = "Source"
+SESSIONS_PANEL = "Sessions"
+MEMORY_PANEL = "Memory"
+RAIL_PANELS = (PLAN_PANEL, SOURCE_PANEL, SESSIONS_PANEL, MEMORY_PANEL)
 
 
 def main(app_factory: Callable[[], App]) -> None:
@@ -36,16 +57,120 @@ def main(app_factory: Callable[[], App]) -> None:
 
 
 def render(app: App) -> None:
-    """The sidebar is drawn after the turn, because the turn can change what it says: a
-    fact the model remembered belongs in the panel the same run it was kept, not the
-    next one the user happens to trigger. Streamlit places it by container, not by
-    order, so the screen is unchanged."""
-    _thread()
-    if prompt := st.chat_input("Ask about your documents"):
-        _answer(app.agent, prompt)
+    """The documents and what is remembered are drawn after the turn, because the turn
+    can change what they say: a fact the model remembered belongs in the panel the same
+    run it was kept, not the next one the user happens to trigger. Streamlit places both
+    by container, not by order, so the screen is unchanged.
+
+    A document opens over the chat rather than beside it, so the conversation is drawn
+    the same way whether or not one is open.
+
+    The page splits into the conversation and the rail that annotates it, the
+    conversation the wider of the two. The question is asked inside the conversation:
+    pinned at page level it spanned the rail too. The thread is reserved before the
+    input is drawn, so the input sits under the conversation while the answer to it
+    still lands above."""
+    declare_components()
+    st.title(APP_NAME)
+    st.caption(TAGLINE)
+    conversation, rail = st.columns([CONVERSATION_SHARE, RAIL_SHARE])
+    with rail:
+        plan, source, sessions, remembered = st.tabs(RAIL_PANELS)
+    with conversation:
+        said = st.container()
+        prompt = st.chat_input("Ask about your documents")
+        with said:
+            _thread(plan)
+            if prompt:
+                _answer(app.agent, prompt, plan)
+    with source:
+        source_panel(app.knowledge_base, _resolved(last_citation()))
+    if open_citation() is not None:
+        document_pane(app.knowledge_base, _opened())
     with st.sidebar:
         _documents(app.knowledge_base)
+    with sessions:
+        _sessions(app.conversations)
+    with remembered:
         _memory(app.memory)
+
+
+def _opened() -> Citation | None:
+    return _resolved(open_citation())
+
+
+def _resolved(number: int | None) -> Citation | None:
+    """A number, against every answer in the thread: one from three turns ago still
+    names the passage it named then."""
+    for message in st.session_state.get("messages", ()):
+        for citation in message.get("citations", ()):
+            if citation.number == number:
+                return citation
+    return None
+
+
+def _sessions(conversations: Conversations | None) -> None:
+    """The conversations before this one, newest first. Opening one is a callback, so
+    the rerun that follows draws the thread that was opened rather than the one that was
+    on screen when it was clicked. The conversation already on screen is listed but not
+    offered — it is where the reader already is.
+
+    A callback's failure has to survive into that rerun to be shown at all, which is
+    what `sessions_error` carries, as the memory panel's own does."""
+    if conversations is None:
+        return
+    if failed := st.session_state.pop("sessions_error", None):
+        st.error(failed)
+    try:
+        stored = conversations.sessions()
+    except AdapterError as error:
+        st.error(error.user_message)
+        return
+    if not stored:
+        st.caption(NO_SESSIONS)
+        return
+    for session in stored:
+        here = session.thread_id == st.session_state.get("thread_id")
+        st.button(
+            session.opened_with,
+            key=f"open_{session.thread_id}",
+            width="stretch",
+            disabled=here,
+            on_click=_opening_session(conversations, session),
+        )
+
+
+def _opening_session(
+    conversations: Conversations, session: Session
+) -> Callable[[], None]:
+    def open_it() -> None:
+        try:
+            kept = conversations.turns(session.thread_id)
+        except AdapterError as error:
+            st.session_state.sessions_error = error.user_message
+            return
+        st.session_state.thread_id = session.thread_id
+        st.session_state.messages = _redrawn(kept)
+
+    return open_it
+
+
+def _redrawn(turns: Sequence[Turn]) -> list[ThreadEntry]:
+    """A stored turn is one question and one answer; the thread the page redraws is a
+    message each."""
+    return [
+        entry
+        for turn in turns
+        for entry in (
+            {"role": "user", "content": turn.question},
+            {
+                "role": "assistant",
+                "content": turn.result.answer,
+                "citations": list(turn.result.citations),
+                "trace": list(turn.result.trace),
+            },
+        )
+    ]
 
 
 def _documents(knowledge_base: KnowledgeBase) -> None:
@@ -140,31 +265,31 @@ def _ingest(knowledge_base: KnowledgeBase, data: bytes, filename: str) -> bool:
     return True
 
 
-def _thread() -> None:
+def _thread(plan: DeltaGenerator) -> None:
     """The session's thread id names the conversation the agent keeps; what is stored
     here is only what the screen has to redraw."""
     if "messages" not in st.session_state:
         st.session_state.messages = []
         st.session_state.thread_id = str(uuid.uuid4())
     for message in st.session_state.messages:
-        _show(message)
+        _show(message, plan)
 
 
-def _answer(agent: Agent, prompt: str) -> None:
-    _append_and_show({"role": "user", "content": prompt})
+def _answer(agent: Agent, prompt: str, plan: DeltaGenerator) -> None:
+    _append_and_show({"role": "user", "content": prompt}, plan)
     taken: list[TraceStep] = []
-    live = st.empty()
+    live = plan.empty()
     try:
         with live.container(), st.status(WORKING, expanded=True):
             result = agent.answer(prompt, st.session_state.thread_id, _watch(taken))
     except CoreError as error:
         live.empty()
         _append_and_show(
-            {"role": "assistant", "error": error.user_message, "trace": taken}
+            {"role": "assistant", "error": error.user_message, "trace": taken}, plan
         )
         return
     live.empty()
-    _append_and_show(_assistant_message(result))
+    _append_and_show(_assistant_message(result), plan)
 
 
 def _watch(taken: list[TraceStep]) -> Callable[[TraceStep], None]:
@@ -179,24 +304,42 @@ def _assistant_message(result: ChatResult) -> ThreadEntry:
     return {
         "role": "assistant",
         "content": result.answer,
-        "sources": numbered_sources(result.sources),
+        "citations": list(result.citations),
         "trace": list(result.trace),
     }
 
 
-def _append_and_show(message: ThreadEntry) -> None:
+def _append_and_show(message: ThreadEntry, plan: DeltaGenerator) -> None:
     st.session_state.messages.append(message)
-    _show(message)
+    _show(message, plan)
 
 
-def _show(message: ThreadEntry) -> None:
+def _show(message: ThreadEntry, plan: DeltaGenerator) -> None:
+    """The turn is drawn where the conversation is; how it was reached is drawn in the
+    rail, which is a container rather than a place in the script."""
     with st.chat_message(message["role"]):
         if "error" in message:
             st.error(message["error"])
+        elif message["role"] == "assistant":
+            cited_answer(
+                message["content"],
+                message.get("citations", ()),
+                key=f"answer_{_position(message)}",
+            )
         else:
             st.markdown(message["content"])
-            _expander("Sources", message.get("sources", ()))
+    with plan:
         _trace(message.get("trace", ()), failed=_went_wrong(message))
+
+
+def _position(message: ThreadEntry) -> int:
+    """A component needs a key of its own per answer, and the answer's place in the
+    thread is the one name that survives a rerun redrawing every message."""
+    thread = st.session_state.get("messages", [])
+    for index, entry in enumerate(thread):
+        if entry is message:
+            return index
+    return len(thread)
 
 
 def _went_wrong(message: ThreadEntry) -> bool:
@@ -217,11 +360,3 @@ def _trace(steps: Sequence[TraceStep], *, failed: bool) -> None:
 
 def _show_step(step: TraceStep) -> None:
     st.code(step_text(step), language="text")
-
-
-def _expander(label: str, lines: Sequence[str]) -> None:
-    if not lines:
-        return
-    with st.expander(label):
-        for line in lines:
-            st.markdown(line)

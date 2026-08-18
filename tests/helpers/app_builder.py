@@ -6,10 +6,11 @@ from typing import Any
 from cora.app.assembly import App, assemble
 from cora.engine.plugin_set import PluginSet
 from cora.ports.chat_model import ChatModel, ModelReply
+from cora.ports.documents import Documents
 from cora.ports.embedding import Embedder
 from cora.ports.plugin import Plugin
 from cora.ports.retrieval import Retriever
-from fakes import FakeEmbedder, FakeRetriever, ScriptedChatModel
+from fakes import FakeDocuments, FakeEmbedder, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin
 
 FIXTURE_MODULE = "fixture_plugins.valid"
@@ -20,6 +21,7 @@ def assembled(
     chat_model: ChatModel | None = None,
     embedder: Embedder | None = None,
     retriever: Retriever | None = None,
+    documents: Documents | None = None,
     plugin: Plugin | None = None,
     plugins: PluginSet | None = None,
     **overrides: Any,
@@ -32,6 +34,7 @@ def assembled(
         chat_model=chat_model or ScriptedChatModel([ModelReply(text="ok")]),
         embedder=embedder or FakeEmbedder(),
         retriever=retriever or FakeRetriever(),
+        documents=documents or FakeDocuments(),
         plugins=plugins,
         **overrides,
     )

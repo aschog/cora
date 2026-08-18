@@ -23,13 +23,7 @@ from cora.domain.errors import (
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.plugin import Tool, ToolCall
 
-REQUEST_TIMEOUT_SECONDS = 20.0
-"""Per request, and a turn may spend one per tool round: at 8 rounds and 2 retries the
-worst case is what the user waits behind a spinner with no way to cancel."""
 MAX_RETRIES = 2
-MAX_OUTPUT_TOKENS = 2048
-"""Cora's cap rather than whichever the provider happens to default to, so a cut-off
-answer is a number we chose and can raise."""
 
 _CATEGORIES: tuple[tuple[type[Exception], type[LlmError]], ...] = (
     (ContextOverflowError, LlmConversationTooLongError),
@@ -93,16 +87,27 @@ def to_langchain_message(message: Message) -> BaseMessage:
 
 
 class OpenRouterChatModel:
-    def __init__(self, model: str, api_key: str, base_url: str) -> None:
-        """The endpoint is passed in, never assumed: which host answers is the
-        deployment's choice, and `cora.app.config` is where it is written down."""
+    def __init__(
+        self,
+        model: str,
+        api_key: str,
+        base_url: str,
+        max_output_tokens: int,
+        request_timeout_seconds: int,
+        reasoning_effort: str,
+    ) -> None:
+        """The endpoint and the budgets are passed in, never assumed: which host
+        answers, how long an answer may run and how much of it the model may spend
+        thinking are the deployment's choice, made alongside the model they belong to,
+        and `cora.app.config` is where they are written down."""
         self._client = ChatOpenAI(
             model=model,
             api_key=api_key,
             base_url=base_url,
-            timeout=REQUEST_TIMEOUT_SECONDS,
+            timeout=request_timeout_seconds,
             max_retries=MAX_RETRIES,
-            max_tokens=MAX_OUTPUT_TOKENS,
+            max_tokens=max_output_tokens,
+            extra_body={"reasoning": {"effort": reasoning_effort}},
         )
 
     def complete(

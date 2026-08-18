@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -31,7 +32,9 @@ def test_chroma_round_trips_with_our_own_embeddings(
     hits = chroma_retriever.query(query_vector, k=2)
 
     assert len(hits) == 2
-    assert hits[0].chunk == chunks[1]
+    assert hits[0].chunk == replace(chunks[1], upload="h"), (
+        "a hit carries the upload it was added under"
+    )
     assert hits[0].chunk.source == "doc.txt"
     assert hits[0].score >= hits[1].score
 
@@ -75,7 +78,7 @@ def test_chroma_records_persist_across_a_fresh_client(
     hits = reopened.query(embedder.embed(["persisted"])[0], k=1)
 
     assert len(hits) == 1
-    assert hits[0].chunk == chunk
+    assert hits[0].chunk == replace(chunk, upload="h")
 
 
 def test_chroma_re_adds_with_same_ids_do_not_duplicate(

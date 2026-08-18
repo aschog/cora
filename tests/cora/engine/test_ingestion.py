@@ -11,6 +11,7 @@ from cora.domain.errors import (
     FileTooLargeError,
     UnsupportedFileTypeError,
 )
+from cora.engine.cleaning import clean_text
 from cora.engine.ingestion import ingest
 from cora.ports.loading import Loaders
 
@@ -37,13 +38,13 @@ def test_the_formats_offered_are_the_ones_it_was_given() -> None:
     with pytest.raises(UnsupportedFileTypeError):
         ingest(b"# Title", "notes.md", {".txt": _text})
 
-    chunks = ingest(b"body", "page.rst", {".rst": _text})
+    chunks = ingest(b"body", "page.rst", {".rst": _text}).chunks
 
     assert [chunk.text for chunk in chunks] == ["body"]
 
 
 def test_extension_matching_is_case_insensitive() -> None:
-    chunks = ingest(b"Some content.", "NOTES.TXT", LOADERS)
+    chunks = ingest(b"Some content.", "NOTES.TXT", LOADERS).chunks
 
     assert [chunk.text for chunk in chunks] == ["Some content."]
 
@@ -72,8 +73,19 @@ def test_whitespace_only_document_raises_empty_document_error() -> None:
 def test_ingest_yields_ordered_chunks_named_by_filename() -> None:
     text = "\n\n".join(f"Paragraph {n} with several words." for n in range(80))
 
-    chunks = ingest(text.encode(), "notes.txt", LOADERS)
+    chunks = ingest(text.encode(), "notes.txt", LOADERS).chunks
 
     assert len(chunks) > 1
     assert all(chunk.source == "notes.txt" for chunk in chunks)
     assert [chunk.index for chunk in chunks] == list(range(len(chunks)))
+
+
+def test_ingest_hands_back_the_cleaned_text_the_chunks_came_from() -> None:
+    """The text is what a citation's offsets point into, so it has to be the cleaned
+    text — the bytes that arrived are not what was chunked."""
+    ingested = ingest(b"  Spaced   out\n\n\n\nparagraph.  ", "notes.txt", LOADERS)
+
+    assert ingested.text == clean_text(
+        LOADERS[".txt"](b"  Spaced   out\n\n\n\nparagraph.  ", "notes.txt")
+    )
+    assert ingested.chunks[0].text in ingested.text

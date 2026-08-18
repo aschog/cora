@@ -5,10 +5,14 @@ import pytest
 from streamlit.testing.v1 import AppTest
 
 from app_builder import assembled, indexed
+from apptest import page_text
 from cora.app.assembly import App
+from cora.domain.chat_result import ChatResult
 from cora.domain.chunk import Chunk
+from cora.domain.conversation import Turn
 from cora.domain.errors import (
     ConfigurationError,
+    ConversationStoreError,
     EmptyDocumentError,
     InputRejectedError,
     LlmError,
@@ -19,19 +23,26 @@ from cora.domain.errors import (
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.streamlit.chat import (
+    APP_NAME,
+    NO_SESSIONS,
     NOTHING_REMEMBERED,
+    RAIL_PANELS,
     REMEMBER_HEADING,
+    TAGLINE,
 )
 from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.plugin import Plugin, ToolCall
 from cora.ports.retrieval import Retriever
 from fakes import (
     FailingChatModel,
+    FailingConversations,
     FailingMemory,
+    FakeConversations,
     FakeMemory,
     FakeRetriever,
     ReadOnlyMemory,
     ScriptedChatModel,
+    UnopenableSessions,
     add_tool,
 )
 from fixture_plugins import make_plugin
@@ -100,11 +111,21 @@ def _run_page(app: App) -> AppTest:
 
 
 def _visible_text(at: AppTest) -> str:
-    return "\n".join(md.value for md in at.markdown)
+    return page_text(at)
 
 
 def _sidebar_sources(at: AppTest) -> list[str]:
     return [md.value for md in at.sidebar.markdown]
+
+
+def _memory_panel(at: AppTest):
+    """The rail's fourth panel, where what cora remembers is listed and forgotten."""
+    _plan, _source, _sessions, remembered = at.tabs
+    return remembered
+
+
+def _remembered(at: AppTest) -> list[str]:
+    return [md.value for md in _memory_panel(at).markdown]
 
 
 @pytest.mark.integration
@@ -525,7 +546,7 @@ def test_a_failed_run_keeps_the_steps_it_had_taken() -> None:
 
 
 @pytest.mark.integration
-def test_upload_then_ask_shows_answer_with_sources() -> None:
+def test_upload_then_ask_shows_an_answer_that_cites_the_document() -> None:
     answer = "Protein supports muscle growth [1]."
     searching = ModelReply(
         tool_calls=(
@@ -545,8 +566,8 @@ def test_upload_then_ask_shows_answer_with_sources() -> None:
     at.chat_input[0].set_value("What about protein?").run()
     assert not at.exception
     assert answer in _visible_text(at)
-    numbered = [md.value for md in at.markdown if re.match(r"^\[\d+\] ", md.value)]
-    assert numbered == ["[1] note.md"]
+    listed = [md.value for md in at.markdown if re.match(r"^\[\d+\] ", md.value)]
+    assert listed == [], "the number in the answer is the way in, not a panel under it"
     assert "[1] note.md: protein facts" in _traced(at)
     assert "untrusted" not in _visible_text(at).lower(), (
         "the model's framing of the passages must not reach the user"
@@ -563,7 +584,7 @@ def test_the_sidebar_lists_every_remembered_fact() -> None:
 
     at = _run_page(_remembering_app(memory))
 
-    listed = _sidebar_sources(at)
+    listed = _remembered(at)
     assert "trains on Tuesdays" in listed
     assert "is vegetarian" in listed
 
@@ -594,7 +615,7 @@ def test_a_fact_remembered_this_turn_is_listed_without_a_second_interaction() ->
 
     assert not at.exception
     assert [fact.text for fact in memory.recall()] == ["is vegetarian"]
-    assert "is vegetarian" in _sidebar_sources(at)
+    assert "is vegetarian" in _remembered(at)
 
 
 @pytest.mark.integration
@@ -603,10 +624,10 @@ def test_a_facts_own_button_forgets_just_that_fact() -> None:
     doomed = memory.recall()[0]
     at = _run_page(_remembering_app(memory))
 
-    at.sidebar.button(key=f"forget_{doomed.key}").click().run()
+    _memory_panel(at).button(key=f"forget_{doomed.key}").click().run()
 
     assert [fact.text for fact in memory.recall()] == ["is vegetarian"]
-    assert "trains on Tuesdays" not in _sidebar_sources(at)
+    assert "trains on Tuesdays" not in _remembered(at)
 
 
 @pytest.mark.integration
@@ -614,10 +635,10 @@ def test_clearing_empties_the_panel_and_a_rerun_keeps_it_empty() -> None:
     memory = FakeMemory(("trains on Tuesdays", "is vegetarian"))
     at = _run_page(_remembering_app(memory))
 
-    at.sidebar.button(key="clear_memory").click().run()
+    _memory_panel(at).button(key="clear_memory").click().run()
 
     assert memory.recall() == ()
-    assert NOTHING_REMEMBERED in _sidebar_sources(at) + [c.value for c in at.caption]
+    assert NOTHING_REMEMBERED in _remembered(at) + [c.value for c in at.caption]
 
     at.run()
 
@@ -626,12 +647,14 @@ def test_clearing_empties_the_panel_and_a_rerun_keeps_it_empty() -> None:
 
 @pytest.mark.integration
 def test_a_memory_that_cannot_be_reached_says_so_and_leaves_the_chat_alone() -> None:
-    """The panel is a sidebar, not the app: a broken store must not take the chat
-    down with it."""
+    """The panel is a panel, not the app: a broken store must not take the chat down
+    with it, and what it has to say belongs where it would have listed the facts."""
     at = _run_page(_remembering_app(FailingMemory(MemoryStoreError())))
 
     assert not at.exception
-    assert MemoryStoreError().user_message in [e.value for e in at.error]
+    assert [error.value for error in _memory_panel(at).error] == [
+        MemoryStoreError().user_message
+    ]
     assert at.chat_input
 
 
@@ -639,7 +662,7 @@ def test_a_memory_that_cannot_be_reached_says_so_and_leaves_the_chat_alone() -> 
 def test_an_app_without_a_memory_shows_no_panel() -> None:
     at = _run_page(_app(ScriptedChatModel([])))
 
-    assert REMEMBER_HEADING not in _sidebar_sources(at)
+    assert REMEMBER_HEADING not in _remembered(at)
 
 
 @pytest.mark.integration
@@ -653,9 +676,294 @@ def test_a_write_that_cannot_reach_the_store_says_so_and_keeps_the_chat(
     at = _run_page(_remembering_app(memory))
     key = button if button == "clear_memory" else f"forget_{memory.recall()[0].key}"
 
-    at.sidebar.button(key=key).click().run()
+    _memory_panel(at).button(key=key).click().run()
 
     assert not at.exception
     assert MemoryStoreError().user_message in [e.value for e in at.error]
     assert at.chat_input
-    assert "trains on Tuesdays" in _sidebar_sources(at)
+    assert "trains on Tuesdays" in _remembered(at)
+
+
+@pytest.mark.integration
+def test_the_page_splits_into_a_conversation_and_a_rail() -> None:
+    """The mockup's middle and right: what was said, and what it rests on. The
+    conversation is the wider of the two — the rail annotates it, not the other way
+    round."""
+    at = _run_page(_app(ScriptedChatModel([])))
+
+    conversation, rail = at.columns[:2]
+
+    assert conversation.proto.weight > rail.proto.weight
+
+
+@pytest.mark.integration
+def test_the_question_is_asked_inside_the_conversation() -> None:
+    """Pinned across the foot of the page, the input spanned the rail as well as the
+    conversation it belongs to."""
+    at = _run_page(_app(ScriptedChatModel([])))
+
+    conversation, _rail = at.columns[:2]
+
+    assert conversation.chat_input, "the question belongs to the conversation's column"
+
+
+@pytest.mark.integration
+def test_the_page_is_headed_by_the_app_and_what_it_is() -> None:
+    at = _run_page(_app(ScriptedChatModel([])))
+
+    assert [heading.value for heading in at.title] == [APP_NAME]
+    assert TAGLINE in [caption.value for caption in at.caption]
+
+
+def _said_in(panel) -> str:
+    """Everything one panel of the rail says, whichever element says it."""
+    return "\n".join(
+        [
+            *(element.value for element in panel.markdown),
+            *(element.value for element in panel.code),
+        ]
+    )
+
+
+@pytest.mark.integration
+def test_the_rail_carries_four_panels() -> None:
+    at = _run_page(_app(ScriptedChatModel([])))
+
+    assert [panel.label for panel in at.tabs] == list(RAIL_PANELS)
+
+
+@pytest.mark.integration
+def test_the_plan_of_a_turn_is_in_the_rail_not_under_its_answer() -> None:
+    """How the answer was reached is what the rail is for. Under the answer it was a
+    panel per message, pushing the next question further down every turn."""
+    at = _run_page(_app(_calculating(), plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("17 + 25?").run()
+
+    assert not at.exception
+    plan, _source, _sessions, _memory = at.tabs
+    assert "add(a=17, b=25) → 42" in _said_in(plan)
+    conversation, _rail = at.columns[:2]
+    assert not conversation.status, "the plan left the answer it sat under"
+
+
+@pytest.mark.integration
+def test_a_turn_that_went_wrong_says_so_in_the_rail() -> None:
+    """A failed step sits inside a collapsed panel, and that panel now lives in the
+    rail: if the news of a bad run did not travel with it, nothing on the page would
+    carry it."""
+    call = ToolCall(name="add", arguments={"a": "one"}, call_id="c1")
+    scripted = ScriptedChatModel(
+        [ModelReply(tool_calls=(call,)), ModelReply(text="I could not add those.")]
+    )
+    at = _run_page(_app(scripted, plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("one + 25?").run()
+
+    plan, _source, _sessions, _memory = at.tabs
+    [trace] = plan.status
+
+    assert trace.state == "error"
+
+
+def _holds(container, kind: str) -> bool:
+    """Whether one part of the page holds a node of a given kind, at any depth. Read off
+    the tree because the slot a turn streams into is cleared before the run ends: what
+    survives is where it was drawn, not what it said."""
+    pending = [container]
+    while pending:
+        node = pending.pop()
+        if getattr(node, "type", None) == kind:
+            return True
+        children = getattr(node, "children", None)
+        pending.extend(
+            children.values() if isinstance(children, dict) else children or []
+        )
+    return False
+
+
+@pytest.mark.integration
+def test_the_steps_of_a_turn_in_progress_are_drawn_in_the_rail() -> None:
+    """A turn streams its steps into a slot that is cleared once the answer lands, so
+    the work in progress reads where the settled plan will: in the rail. Drawn in the
+    conversation it pushed the answer down the page as the turn ran."""
+    at = _run_page(_app(_calculating(), plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("17 + 25?").run()
+
+    plan, _source, _sessions, _memory = at.tabs
+    conversation, _rail = at.columns[:2]
+
+    assert _holds(plan, "empty"), "the working slot belongs to the plan"
+    assert not _holds(conversation, "empty"), "and not to the conversation"
+
+
+@pytest.mark.integration
+def test_the_memory_panel_is_in_the_rail_not_the_sidebar() -> None:
+    """What cora has been told to remember is one of the four things the rail carries.
+    The sidebar is left holding documents alone."""
+    memory = FakeMemory(("trains on Tuesdays", "is vegetarian"))
+
+    at = _run_page(_remembering_app(memory))
+
+    _plan, _source, _sessions, remembered = at.tabs
+    assert "trains on Tuesdays" in _said_in(remembered)
+    assert REMEMBER_HEADING not in _sidebar_sources(at)
+
+
+@pytest.mark.integration
+def test_a_fact_is_forgotten_from_the_panel_it_is_listed_in() -> None:
+    memory = FakeMemory(("trains on Tuesdays", "is vegetarian"))
+    doomed = memory.recall()[0]
+    at = _run_page(_remembering_app(memory))
+
+    _plan, _source, _sessions, remembered = at.tabs
+    remembered.button(key=f"forget_{doomed.key}").click().run()
+
+    assert [fact.text for fact in memory.recall()] == ["is vegetarian"]
+
+
+@pytest.mark.integration
+def test_the_rail_does_not_wait_for_an_answer_to_appear() -> None:
+    """Drawn only once there was something to put in it, the rail would arrive with the
+    first answer and shove the conversation sideways as the reader read it."""
+    at = _run_page(_app(ScriptedChatModel([ModelReply(text="Hello!")])))
+    unanswered = [panel.label for panel in at.tabs]
+
+    at.chat_input[0].set_value("Hi!").run()
+
+    assert unanswered == list(RAIL_PANELS)
+    assert [panel.label for panel in at.tabs] == unanswered
+
+
+def _sessions_panel(at: AppTest):
+    _plan, _source, sessions, _memory = at.tabs
+    return sessions
+
+
+def _conversation_with(*recorded: tuple[str, str, str]) -> FakeConversations:
+    conversations = FakeConversations()
+    for thread, question, answer in recorded:
+        conversations.record(
+            thread, Turn(question=question, result=ChatResult(answer=answer))
+        )
+    return conversations
+
+
+@pytest.mark.integration
+def test_the_sessions_panel_lists_the_stored_conversations_newest_first() -> None:
+    """A conversation is picked out of the list by what it was about; the thread id it
+    is filed under says nothing to a reader."""
+    conversations = _conversation_with(
+        ("older", "How much protein?", "1.6 g per kg"),
+        ("newer", "And creatine?", "Five grams."),
+    )
+
+    at = _run_page(
+        assembled(chat_model=ScriptedChatModel([]), conversations=conversations)
+    )
+
+    assert [button.label for button in _sessions_panel(at).button] == [
+        "And creatine?",
+        "How much protein?",
+    ]
+
+
+@pytest.mark.integration
+def test_the_conversation_in_progress_is_not_one_to_open() -> None:
+    """You are already in it: offering to open it is an invitation to nothing, so the
+    entry marks where the reader is instead."""
+    conversations = _conversation_with(("older", "How much protein?", "1.6 g per kg"))
+    at = _run_page(
+        assembled(chat_model=ScriptedChatModel([]), conversations=conversations)
+    )
+
+    at.session_state.thread_id = "older"
+    at.run()
+
+    [entry] = _sessions_panel(at).button
+    assert entry.disabled, "the conversation on screen is the one you cannot open"
+
+
+@pytest.mark.integration
+def test_opening_a_session_redraws_the_turns_it_holds() -> None:
+    conversations = _conversation_with(("older", "How much protein?", "1.6 g per kg"))
+    at = _run_page(
+        assembled(chat_model=ScriptedChatModel([]), conversations=conversations)
+    )
+
+    _sessions_panel(at).button[0].click().run()
+
+    assert not at.exception
+    assert "1.6 g per kg" in _visible_text(at)
+
+
+@pytest.mark.integration
+def test_a_question_asked_after_opening_a_session_runs_on_that_thread() -> None:
+    """Redrawing an old conversation and then answering into a new one is the failure
+    this guards: the thread the agent is told about has to be the one on screen."""
+    conversations = _conversation_with(("older", "How much protein?", "1.6 g per kg"))
+    at = _run_page(
+        assembled(
+            chat_model=ScriptedChatModel([ModelReply(text="Five grams.")]),
+            conversations=conversations,
+        )
+    )
+
+    _sessions_panel(at).button[0].click().run()
+    at.chat_input[0].set_value("And creatine?").run()
+
+    assert not at.exception
+    assert [turn.question for turn in conversations.turns("older")] == [
+        "How much protein?",
+        "And creatine?",
+    ]
+
+
+@pytest.mark.integration
+def test_the_sessions_panel_says_what_will_fill_it_when_nothing_has() -> None:
+    at = _run_page(
+        assembled(chat_model=ScriptedChatModel([]), conversations=FakeConversations())
+    )
+
+    assert NO_SESSIONS in [line.value for line in _sessions_panel(at).caption]
+
+
+@pytest.mark.integration
+def test_a_conversation_store_that_cannot_be_read_costs_the_chat_nothing() -> None:
+    """The panel is a panel, not the app: a store that went away takes the list of
+    conversations with it and leaves the one on screen answering."""
+    at = _run_page(
+        assembled(
+            chat_model=ScriptedChatModel([ModelReply(text="Five grams.")]),
+            conversations=FailingConversations(),
+        )
+    )
+
+    at.chat_input[0].set_value("And creatine?").run()
+
+    assert not at.exception
+    assert "Five grams." in _visible_text(at)
+    assert [error.value for error in _sessions_panel(at).error] == [
+        ConversationStoreError().user_message
+    ]
+
+
+@pytest.mark.integration
+def test_a_session_that_cannot_be_opened_says_so_where_it_was_clicked() -> None:
+    """Listing works and reading one fails: the failure belongs in the panel the click
+    was in, and a rerun has to carry it there — a callback's error is gone otherwise."""
+    conversations = _conversation_with(("older", "How much protein?", "1.6 g per kg"))
+    at = _run_page(
+        assembled(
+            chat_model=ScriptedChatModel([]),
+            conversations=UnopenableSessions(conversations),
+        )
+    )
+
+    _sessions_panel(at).button[0].click().run()
+
+    assert not at.exception
+    assert [error.value for error in _sessions_panel(at).error] == [
+        ConversationStoreError().user_message
+    ]

@@ -47,9 +47,7 @@ def test_a_question_needing_a_lookup_and_a_calculation_uses_both() -> None:
     result = app.agent.answer(QUESTION, THREAD)
 
     assert result.answer == ANSWER
-    assert [(source.number, source.name) for source in result.sources] == [
-        (1, "note.md")
-    ]
+    assert [(c.number, c.document) for c in result.citations] == [(1, "note.md")]
     lookup, calculation = [step for step in result.trace if isinstance(step, ToolUse)]
     assert "protein builds muscle" in lookup.detail
     assert calculation.outcome == "42"
@@ -63,7 +61,7 @@ def test_a_question_needing_neither_retrieves_nothing_and_calls_no_tool() -> Non
 
     assert result.answer == "Hello! How can I help?"
     assert [step for step in result.trace if isinstance(step, ToolUse)] == []
-    assert result.sources == ()
+    assert result.citations == ()
     assert retriever.queries == 0
 
 
@@ -103,4 +101,4 @@ def test_a_document_question_is_answered_the_round_after_the_search_returns() ->
     assert result.answer == CITED
     assert model.completions == 2
     assert retriever.queries == 1
-    assert [source.name for source in result.sources] == ["note.md"]
+    assert [c.document for c in result.citations] == ["note.md"]

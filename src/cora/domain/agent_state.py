@@ -1,14 +1,14 @@
 import operator
 from typing import Annotated, TypedDict
 
-from cora.domain.citations import Source
+from cora.domain.citations import Citation
 from cora.domain.trace import TraceStep
 from cora.ports.chat_model import Message
 
 
 class AgentState(TypedDict, total=False):
     """One conversation's state. Annotated keys accumulate — `messages` is the
-    thread's append-only transcript and `sources` its citation registry, both
+    thread's append-only transcript and `citations` its citation registry, both
     spanning every turn — while the rest are set once per turn. A step returns only
     the keys it contributes.
 
@@ -20,7 +20,7 @@ class AgentState(TypedDict, total=False):
     question: str
     messages: Annotated[list[Message], operator.add]
     trace: Annotated[list[TraceStep], operator.add]
-    sources: Annotated[list[Source], operator.add]
+    citations: Annotated[list[Citation], operator.add]
     turn_start: int
     brief: str
     answer: str

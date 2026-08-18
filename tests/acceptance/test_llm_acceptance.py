@@ -15,10 +15,18 @@ from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from apptest import (
+    ANSWER_COMPONENT,
+    PANE_COMPONENT,
+    clickable_citations,
+    mounted_html,
+    newest_answer,
+)
 from cora.app.assembly import App, build
 from cora.app.config import Config
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.frontends.streamlit.viewer import OPEN_CITATION
 from cora.plugins.fitness.tools import DAILY_ENERGY_TOOL
 
 pytestmark = pytest.mark.llm
@@ -31,7 +39,6 @@ Spread it over three or four meals.
 IN_THE_SUBJECT = "How much protein should I eat per kg of bodyweight?"
 LIVE_PLUGINS = ("cora.plugins.security", "cora.plugins.fitness")
 SMALL_TALK = "Hi there!"
-SOURCES = "Sources"
 
 
 def _live_config(store: Path) -> Config:
@@ -46,6 +53,7 @@ def _live_config(store: Path) -> Config:
         plugin_modules=LIVE_PLUGINS,
         db_path=str(store / "chroma"),
         memory_path=str(store / "memory.sqlite"),
+        documents_path=str(store / "documents.sqlite"),
     )
 
 
@@ -70,10 +78,26 @@ def _page(app) -> None:  # AppTest re-executes this without the module's globals
     render(app)
 
 
-def _panels(at: AppTest) -> list[str]:
-    """Scoped to the newest message: the same panel appears on every answered turn,
-    so counting them across the page would say nothing about this one."""
-    return [panel.label for panel in at.chat_message[-1].expander]
+def _answer(at: AppTest) -> str:
+    """The newest answer, read off the component that drew it: an answer is HTML in a
+    custom element, so `chat_message[-1].markdown` is empty. A turn that failed drew no
+    component at all, and reads as the error the page is showing — this tier is run by
+    hand, so a check that fails has to be able to say why."""
+    return newest_answer(at).lower()
+
+
+def _opens_a_passage(at: AppTest) -> bool:
+    """What the Sources panel used to prove, and more: the reader has a citation to
+    click. Read off the button rather than the text, because a number the domain never
+    resolved — glued to a word, or belonging to no registered passage — reaches the page
+    as text and opens nothing."""
+    return clickable_citations(at) != []
+
+
+def _names_a_number(at: AppTest) -> bool:
+    """Loose on purpose, and only ever asserted false: an answer that had no business
+    citing anything is caught by the bracket it wrote, whether or not it resolved."""
+    return CITATION.search(_answer(at)) is not None
 
 
 def _steps(at: AppTest) -> str:
@@ -118,13 +142,11 @@ def test_a_whole_session_uploads_asks_calculates_and_remembers(tmp_path: Path) -
     at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
 
     assert not at.exception
-    assert _panels(at) == [SOURCES], "the model answered without reaching the documents"
-    [cited] = at.chat_message[-1].expander
-    assert "protein.md" in "\n".join(line.value for line in cited.markdown)
-    assert CITATION.search(at.chat_message[-1].markdown[0].value), (
-        "the answer rested on a passage it never cited"
+    assert _opens_a_passage(at), (
+        f"the answer rested on a passage the reader cannot open: {_answer(at)!r}"
     )
     assert f"{SEARCH_TOOL_NAME}(" in _steps(at)
+    assert "protein.md" in _steps(at), "the search never reached the document"
 
     at.chat_input[0].set_value(NEEDS_THE_CALCULATOR).run(timeout=180)
 
@@ -157,14 +179,13 @@ def test_a_real_model_answers_from_the_documents_but_greets_without_them(
     at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
 
     assert not at.exception
-    assert _panels(at) == [SOURCES], "the model answered without reaching the documents"
-    [cited] = at.chat_message[-1].expander
-    assert "protein.md" in "\n".join(line.value for line in cited.markdown)
+    assert _opens_a_passage(at), "the model answered without reaching the documents"
+    assert "protein.md" in _steps(at), "the search never reached the document"
 
     at.chat_input[0].set_value(SMALL_TALK).run(timeout=180)
 
     assert not at.exception
-    assert _panels(at) == [], "small talk came back citing a document"
+    assert not _names_a_number(at), "small talk came back citing a document"
 
 
 ASKS_FOR_DOCUMENTS = ("upload", "no documents", "don't have any documents", "share")
@@ -192,11 +213,13 @@ def test_a_real_model_asks_for_documents_instead_of_answering_without_them(
     at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
 
     assert not at.exception
-    answer = at.chat_message[-1].markdown[0].value.lower()
+    answer = _answer(at)
     assert any(phrase in answer for phrase in ASKS_FOR_DOCUMENTS), (
         f"an empty store was answered from model knowledge: {answer!r}"
     )
-    assert _panels(at) == [], "nothing was uploaded and the answer cited something"
+    assert not _names_a_number(at), (
+        "nothing was uploaded and the answer cited something"
+    )
 
     greeted = AppTest.from_function(
         _page, args=(_live_app(tmp_path / "greeted"),)
@@ -204,11 +227,11 @@ def test_a_real_model_asks_for_documents_instead_of_answering_without_them(
     greeted.chat_input[0].set_value(SMALL_TALK).run(timeout=180)
 
     assert not greeted.exception
-    greeting = greeted.chat_message[-1].markdown[0].value.lower()
+    greeting = _answer(greeted)
     assert any(word in greeting for word in GREETS), (
         f"a greeting was not answered as a greeting: {greeting!r}"
     )
-    assert _panels(greeted) == [], "a greeting cited a document"
+    assert not _names_a_number(greeted), "a greeting cited a document"
 
 
 VEGETARIAN = "I'm vegetarian — keep that in mind."
@@ -240,7 +263,30 @@ def test_a_real_model_keeps_what_it_is_told_and_uses_it_next_session(
     later.chat_input[0].set_value(WHAT_TO_EAT).run(timeout=180)
 
     assert not later.exception
-    answer = later.chat_message[-1].markdown[0].value.lower()
+    answer = _answer(later)
     assert not [meat for meat in MEAT if meat in answer], (
         "a remembered constraint was in the brief and the answer ignored it"
     )
+
+
+def test_a_real_model_cites_a_passage_the_reader_can_open(tmp_path: Path) -> None:
+    """Story 16 against the shipped stack: a live answer's citations have to be
+    clickable, and the number has to open the passage it was drawn from. The click is
+    the component's own event, out of AppTest's reach — what this pins is that the
+    button reaches the page and that opening its citation shows the marked passage."""
+    at = AppTest.from_function(_page, args=(_holding_the_protein_doc(tmp_path),)).run()
+
+    at.chat_input[0].set_value(IN_THE_SUBJECT).run(timeout=180)
+
+    assert not at.exception
+    [answer] = mounted_html(at, ANSWER_COMPONENT)
+    assert 'data-cite="1"' in answer, f"a live answer cited nothing clickable: {answer}"
+
+    at.session_state[OPEN_CITATION] = 1
+    at.run(timeout=60)
+
+    assert not at.exception
+    assert "protein.md" in [heading.value for heading in at.header]
+    [pane] = mounted_html(at, PANE_COMPONENT)
+    [marked] = re.findall(r"<mark[^>]*>(.*?)</mark>", pane, re.DOTALL)
+    assert "1.6" in marked, f"the cited passage is not what the pane marked: {pane}"

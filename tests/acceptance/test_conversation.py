@@ -6,7 +6,7 @@ import pytest
 from app_builder import assembled, indexed
 from cora.app.assembly import App
 from cora.domain.chunk import Chunk
-from cora.domain.citations import CitableHits, Source
+from cora.domain.citations import CitableHits
 from cora.domain.errors import ToolLoopLimitError
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ChatModel, Message, ModelReply
@@ -89,8 +89,8 @@ def test_a_later_turn_continues_the_conversations_numbering() -> None:
     first = app.agent.answer("How much protein?", THREAD)
     second = app.agent.answer("And creatine?", THREAD)
 
-    assert first.sources == (Source(1, "protein.md"),)
-    assert second.sources == (Source(2, "creatine.md"),)
+    assert [(c.number, c.document) for c in first.citations] == [(1, "protein.md")]
+    assert [(c.number, c.document) for c in second.citations] == [(2, "creatine.md")]
 
 
 @pytest.mark.integration
@@ -108,7 +108,7 @@ def test_a_source_found_again_keeps_the_number_it_was_given() -> None:
     app.agent.answer("How much protein?", THREAD)
     again = app.agent.answer("Say that again?", THREAD)
 
-    assert again.sources == (Source(1, "protein.md"),)
+    assert [(c.number, c.document) for c in again.citations] == [(1, "protein.md")]
 
 
 @pytest.mark.integration
@@ -127,7 +127,7 @@ def test_an_answer_echoing_an_earlier_number_resolves_to_that_source() -> None:
     app.agent.answer("How much protein?", THREAD)
     echoed = app.agent.answer("Remind me?", THREAD)
 
-    assert echoed.sources == (Source(1, "protein.md"),)
+    assert [(c.number, c.document) for c in echoed.citations] == [(1, "protein.md")]
 
 
 @pytest.mark.integration

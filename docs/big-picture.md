@@ -1,6 +1,6 @@
 # Big picture
 
-Read this page first. It shows cora's engine, its seven ports, and the technology behind
+Read this page first. It shows cora's engine, its eight ports, and the technology behind
 each port. The design is called *hexagonal* (also known as *ports and adapters*).
 The tests show how the code really works. The story files in `docs/sprints/` show how
 the code was built, not how it works today.
@@ -36,6 +36,7 @@ flowchart TB
     ret{{"Retriever"}}
     load{{"Loaders"}}
     mem{{"Memory"}}
+    docs{{"Documents"}}
     plug{{"Plugin"}}
   end
 
@@ -46,6 +47,7 @@ flowchart TB
     chroma["ChromaRetriever<br/><i>Chroma</i>"]
     load_reg["load_txt · load_pdf<br/><i>pypdf</i>"]
     store["SqliteStoreMemory<br/><i>LangGraph store · SQLite</i>"]
+    sqldocs["SqliteDocuments<br/><i>SQLite</i>"]
     fit["fitness plugin<br/><i>a domain</i>"]
     sec["security plugin<br/><i>a guard</i>"]
   end
@@ -71,23 +73,25 @@ flowchart TB
   kb --> emb
   kb --> ret
   kb --> load
+  kb --> docs
   gr -.-> lg
   cm -.-> orc
   emb -.-> ste
   ret -.-> chroma
   load -.-> load_reg
   mem -.-> store
+  docs -.-> sqldocs
   plug -.-> fit
   plug -.-> sec
 
   classDef port fill:#8c4b00,stroke:#d98a1f,color:#fff;
   classDef logic fill:#134e6f,stroke:#1f78b4,color:#fff;
-  class gr,cm,emb,ret,load,mem,plug port;
+  class gr,cm,emb,ret,load,mem,docs,plug port;
   class agent,steps,router,pset,rt,search,remember,kb logic;
 ```
 
 Read the map from top to bottom. The frontend (top) calls the engine (middle) through the
-app that wired it. The engine has seven ports. When the app starts, each port is connected to
+app that wired it. The engine has eight ports. When the app starts, each port is connected to
 one adapter (bottom); the engine does not know which. The one arrow pointing back up is
 `LangGraphRunner` driving the engine's steps: the adapter supplies the graph, the engine
 supplies every step it walks.
@@ -95,7 +99,7 @@ supplies every step it walks.
 | Mark | Means |
 |---|---|
 | blue box | A part of the engine. It is plain Python, so a test can build it with fakes. |
-| amber hexagon | A port — a slot for one kind of technology. The seven ports are the only way in and out of the engine. |
+| amber hexagon | A port — a slot for one kind of technology. The eight ports are the only way in and out of the engine. |
 | thin arrow | A call made while answering a request. |
 | thick arrow | Built by the composition root when the app starts. |
 | dotted arrow | The adapter behind a port. Every one is an argument to `assemble`, so a different technology is a different argument. |
@@ -108,9 +112,10 @@ search tool.
 the same index the uploads were written to. Asking it several ways is the agent's job, and
 the agent does it in the open — one search, one trace step.
 
-A **port** is a fixed slot in the engine for one kind of technology. There are exactly seven:
+A **port** is a fixed slot in the engine for one kind of technology. There are exactly eight:
 one for driving the agent, one for chat, one for embedding, one for retrieval, one for reading
-a file format, one for what the agent keeps about the user, and one for the plugin. Every one
+a file format, one for what the agent keeps about the user, one for the text of a document, and
+one for the plugin. Every one
 of them is an argument to `assemble`, so a different technology goes in a slot without the
 engine or the composition root changing.
 
@@ -183,7 +188,7 @@ frontend keeps one thread id per browser session.
 2. **Model** — one round. The model is offered `search_documents` and `remember` beside the plugin's tools. It is sent the brief, then the previous turns' words — the last `CORA_HISTORY_TURNS` of them (default 20; `0` means no history) — then this turn verbatim. Old tool calls and their results stay in the thread but out of the prompt. It either answers or asks for tools.
 3. **Tools** — run what it asked for, in order. A result that can cite itself — a set of search hits — is numbered `[n]` continuing from the numbers the *conversation* has already handed out, so `[1]` means one document for as long as the thread lives, and comes back as a `tool` message marked *untrusted document data*. Any other result is fed back exactly as it renders.
 4. **Round again, or stop** — the router reads the model's last reply. A reply asking for tools goes back to step 2, at most `CORA_MAX_TOOL_ROUNDS` times (default 8), after which `ToolLoopLimitError` apologises. A reply that answers ends the run. Rounds are counted from where this turn began in the transcript, so the budget is the turn's and a long conversation cannot exhaust it.
-5. **Return** — the answer, the sources it really used (only the `[n]` numbers that appear in the reply, with duplicates removed, resolved against every source the conversation has registered), and this turn's trace — the thread arrives carrying every step of every earlier turn, and replaying those would show work this turn never did.
+5. **Return** — the answer, the passages it really cited (only the `[n]` numbers that appear in the reply, with duplicates removed, resolved against every source the conversation has registered), and this turn's trace — the thread arrives carrying every step of every earlier turn, and replaying those would show work this turn never did.
 
 **The run reports itself as it goes.** Each step records what it did — the model's decision and
 the tools it asked for, then every call with its arguments and what came back. `answer()` takes
@@ -215,22 +220,22 @@ because the map shows them inside another part.
 | **Steps** | The moves of a turn: *prepare* validates, adds the question to the transcript and writes the brief, *model* takes one round with the chat model, and *tools* runs what the model asked for. Each one returns only what it added to the run. | `engine/steps.py` |
 | **Router** | The one decision, read off the model's last reply: asking for tools runs them (a friendly apology at the round budget), answering ends the run. | `engine/steps.py` |
 | **Trace** *(folded)* | What the user reads afterwards: one step per model decision and per tool call, each with a one-line summary and the evidence behind it. A new kind of step is a new class, not a new branch. | `domain/trace.py` |
-| **Citations** *(folded)* | Numbers a retrieval's passages `[n]`, continues that numbering for the life of the conversation, and works out which sources an answer really cited. | `domain/citations.py` |
+| **Citations** *(folded)* | Numbers a retrieval's passages `[n]` — one number per passage, so two passages of one document are `[1]` and `[2]` — continues that numbering for the life of the conversation, and works out which passages an answer really cited. A `Citation` carries the document and the span it occupies, which is what makes a number openable. | `domain/citations.py` |
 | **Transcript** *(folded)* | Projects the thread into one turn's prompt: the brief, the previous turns' words within the cap, then this turn as it stands. The thread keeps everything; the prompt is a view of it. | `domain/transcript.py` |
 | **search_documents** | Document search as a tool, so whether to use the documents is the model's decision. Its hits arrive able to number themselves. | `engine/retrieval_tool.py` |
 | **remember** | Keeping a fact about the user as a tool, called when the user asks to be remembered rather than on the model's own judgement. The tool guards its own input — nothing blank, nothing over 300 characters reaches the store — but the question's rules do not run over a fact: screening is a plugin's now, and the engine cannot import one. What stands behind a kept fact is the notice it travels under, which says the notes are data and not instructions. Every save shows up in the trace. | `engine/memory_tool.py` |
-| **KnowledgeBase** | A simple front for ingest, embed, and store. It also does search, lists sources, and skips files already uploaded. | `engine/knowledge_base.py` |
+| **KnowledgeBase** | A simple front for ingest, embed, and store. It also does search, lists sources, keeps each document's cleaned text for the citation pane to read back, and skips files already uploaded. | `engine/knowledge_base.py` |
 | **Ingestion** *(folded)* | Turns bytes into clean text, then into overlapping chunks with their origin. Rejects the wrong type, too large, or empty. | `engine/ingestion.py`, `engine/cleaning.py`, `engine/chunker.py` — and the loaders themselves in `adapters/loaders.py`, since which file formats can be read is a technology's business |
 | **PluginSet** | The plugins cora was asked for, composed in the order they were named: prompt sections under their names, their tools in the order they were named — cora's own go in front at assembly — and cora's rules then every plugin's. It is also what refuses a bad *combination* — a module named twice, a tool name of cora's own, one name offered by two plugins — so the composition root wires an already-valid set. | `engine/plugin_set.py` |
 | **ToolRuntime** | Finds the tool, checks the arguments against its JSON Schema, runs it, and turns a tool's own failure into a `ToolResult`. An infrastructure failure is not tool output, so it travels on unchanged. | `engine/tool_runtime.py` |
 | **Plugin registry** *(folded)* | Loads plugins by their module paths and checks each one before the app starts: the name is not blank, tool names are unique, schemas are valid. Everything but the name is optional, so a bundle of rules alone is as legitimate as a bundle of tools. | `engine/plugin_registry.py` |
 | **Composition root** | The only place that names a real adapter. It reads the settings, loads the plugins it was named, asks the graph slot for a runner, and returns an `App`. | `app/config.py`, `app/assembly.py` |
-| **UI shell** | Only widgets: the uploader, the chat, the sources box, the *How I got there* trace — rendered as text, because a step names the tool the model asked for — and error text shown exactly as the error gives it. | `frontends/streamlit/` |
+| **UI shell** | Only widgets: the uploader, the chat, the *How I got there* trace — rendered as text, because a step names the tool the model asked for — and error text shown exactly as the error gives it. An answer is drawn by a custom component so each `[n]` in it is a button: clicking one opens that passage's document beside the chat, marked and scrolled to. | `frontends/streamlit/` |
 
 ## The ports
 
-The seven ports are the only outward surface of the engine. Six of them describe technology —
-five Protocols and one registry of them. The seventh, **Plugin**, is a frozen **dataclass** (the
+The eight ports are the only outward surface of the engine. Seven of them describe technology —
+six Protocols and one registry of them. The eighth, **Plugin**, is a frozen **dataclass** (the
 domain — the topic the app is about). So an adapter and a plugin work the same way: each one
 is chosen in one place.
 
@@ -242,6 +247,7 @@ is chosen in one place.
 | **Retriever** | `add(chunks, vectors, file_hash)`, `query(query_vector, k)`, `sources()`, `contains(file_hash)` | `ChromaRetriever` — a saved, built-in database that uses cosine distance. A query is a vector and a count: there is nothing to narrow it by, because there is one way to search. |
 | **Loaders** | `Mapping[str, Loader]`, each `Loader` a `(data, filename) -> str` | `cora.adapters.loaders.LOADERS` — `.txt` and `.md` read directly, `.pdf` through pypdf. Which formats a deployment accepts is an entry in the registry, not an edit inside ingestion. |
 | **Memory** | `remember(text)`, `recall() -> tuple[Fact, ...]`, `forget(key)`, `clear()` | `SqliteStoreMemory` — LangGraph's SQLite-backed store (the second adapter to use LangGraph, behind a port of its own), one namespace per user, at `CORA_MEMORY_PATH`. `recall()` hands back the newest 100 facts, oldest first. The only optional slot: with nothing bound, the agent is offered no `remember` tool. |
+| **Documents** | `keep(upload, text)`, `read(upload) -> str \| None` | `SqliteDocuments` — one row per upload at `CORA_DOCUMENTS_PATH`, keyed by the hash of the bytes it arrived as, holding the *cleaned* text ingestion chunked. Keyed by the upload rather than the filename because a filename is not a promise: the same name uploaded twice is two documents, and a span measured in the first would read the second. A citation is a span of that text, so the pane can open `[n]` and show the passage in place; without it a number would name a document nobody could read. |
 | **Plugin** | data only: `name`, and any of `instructions`, `tools`, `validation_rules` | none by default — `CORA_PLUGINS` names the set, in order, and takes as many as you like. It is a frozen dataclass, not a class you subclass. |
 
 Set `CORA_DEBUG=1` to wrap the chat, embedding and retrieval ports in a logger

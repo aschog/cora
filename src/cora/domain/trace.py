@@ -22,6 +22,20 @@ class TraceStep(ABC):
         return False
 
 
+def step_kinds() -> tuple[type[TraceStep], ...]:
+    """Every kind of step the engine can put in a trace, found rather than listed: a
+    kind added next sprint travels through a checkpoint and into the conversation store
+    without anyone having to remember either file."""
+    found: list[type[TraceStep]] = []
+    pending = [TraceStep]
+    while pending:
+        for kind in pending.pop().__subclasses__():
+            if kind not in found:
+                found.append(kind)
+                pending.append(kind)
+    return tuple(found)
+
+
 @dataclass(frozen=True)
 class ModelDecision(TraceStep):
     detail: str = ""

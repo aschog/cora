@@ -1,4 +1,6 @@
 import logging
+import sqlite3
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -6,10 +8,13 @@ import pytest
 
 from app_builder import assembled, indexed
 from cora.adapters.langgraph_runner import LangGraphRunner
+from cora.adapters.openrouter_chat_model import OpenRouterChatModel
+from cora.adapters.sqlite_conversations import SqliteConversations
 from cora.app.assembly import App, build
 from cora.app.config import DEFAULT_PLUGINS, Config
 from cora.app.log_config import DEBUG_HANDLER_NAME, FILE_HANDLER_NAME
-from cora.domain.citations import Source
+from cora.domain.chat_result import ChatResult
+from cora.domain.conversation import Turn
 from cora.domain.errors import (
     InputRejectedError,
     ToolLoopLimitError,
@@ -101,7 +106,7 @@ def test_the_model_is_offered_the_search_tool_beside_the_plugins_own() -> None:
     assert {"one", "two", "three"} <= names
     [lookup] = [step for step in result.trace if isinstance(step, ToolUse)]
     assert SEED_TEXT.decode() in lookup.detail
-    assert result.sources == (Source(1, "note.md"),)
+    assert [(c.number, c.document) for c in result.citations] == [(1, "note.md")]
 
 
 def test_the_offered_tools_are_coras_first_then_each_plugins_in_order() -> None:
@@ -510,8 +515,14 @@ def _config(db_path: Path, *, debug: bool = False) -> Config:
         top_k=3,
         max_tool_rounds=4,
         history_turns=6,
+        max_output_tokens=1024,
+        request_timeout_seconds=30,
+        reasoning_effort="low",
         db_path=str(db_path),
         memory_path=str(db_path / "memory.sqlite"),
+        documents_path=str(db_path / "documents.sqlite"),
+        conversations_path=str(db_path / "conversations.sqlite"),
+        log_path=str(db_path / "logs" / "cora.log"),
         debug=debug,
     )
 
@@ -528,12 +539,33 @@ def test_build_starts_with_an_empty_store(tmp_path: Path) -> None:
         top_k=3,
         max_tool_rounds=4,
         history_turns=6,
+        max_output_tokens=1024,
+        request_timeout_seconds=30,
+        reasoning_effort="low",
         db_path=str(tmp_path),
+        memory_path=str(tmp_path / "memory.sqlite"),
+        documents_path=str(tmp_path / "documents.sqlite"),
+        conversations_path=str(tmp_path / "conversations.sqlite"),
     )
 
     app = build(config)
 
     assert app.knowledge_base.list_sources() == []
+
+
+@pytest.mark.integration
+def test_build_keeps_a_documents_store_at_the_configured_path(tmp_path: Path) -> None:
+    """The pane reads what ingest kept, so the store has to be the one the settings
+    name — and it has to survive the process, which is why it is on disk at all."""
+    app = build(_config(tmp_path))
+
+    app.knowledge_base.add_file(b"Aim for 1.6 g of protein per kg.", "protein.md")
+
+    [hit] = app.knowledge_base.search("protein", k=1)
+    upload = hit.chunk.upload
+    assert (tmp_path / "documents.sqlite").exists()
+    assert app.knowledge_base.text(upload) == "Aim for 1.6 g of protein per kg."
+    assert build(_config(tmp_path)).knowledge_base.text(upload) is not None
 
 
 @pytest.mark.integration
@@ -547,6 +579,9 @@ def test_build_wires_the_debug_seam_when_config_asks_for_it(
     assert clean_cora_logger.level == logging.DEBUG
     names = {handler.name for handler in clean_cora_logger.handlers}
     assert names == {DEBUG_HANDLER_NAME, FILE_HANDLER_NAME}
+    assert (tmp_path / "logs" / "cora.log").exists(), (
+        "the trace is written where the config said, not where the module defaults"
+    )
 
 
 @pytest.mark.integration
@@ -584,6 +619,29 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
         "one memory, so what the tool writes is what the brief reads"
     )
     assert any(tmp_path.iterdir()), "the store must land under the configured path"
+
+
+@pytest.mark.integration
+def test_build_hands_the_configured_budgets_to_the_model(tmp_path: Path) -> None:
+    """The environment's whole point is reaching the client: a budget read into `Config`
+    and never passed on leaves the answer capped at whatever the adapter hardcoded."""
+    config = replace(
+        _config(tmp_path),
+        max_output_tokens=4321,
+        request_timeout_seconds=99,
+        reasoning_effort="high",
+    )
+
+    app = build(config)
+
+    runner = app.agent.runner
+    assert isinstance(runner, LangGraphRunner)
+    assert isinstance(runner.model, ModelStep)
+    chat_model = runner.model.chat_model
+    assert isinstance(chat_model, OpenRouterChatModel)
+    assert chat_model._client.max_tokens == 4321
+    assert chat_model._client.request_timeout == 99
+    assert chat_model._client.extra_body == {"reasoning": {"effort": "high"}}
 
 
 def test_the_graph_is_a_slot_like_every_other_port() -> None:
@@ -624,3 +682,38 @@ def test_the_graph_is_a_slot_like_every_other_port() -> None:
     assert set(asked) == {"tools", "router", "max_tool_rounds"}, (
         "the slot is asked for the steps of a turn and nothing else"
     )
+
+
+@pytest.mark.integration
+def test_build_keeps_a_conversations_store_at_the_configured_path(
+    tmp_path: Path,
+) -> None:
+    """The sessions panel lists what an earlier run recorded, so the store has to be the
+    one the settings name and it has to be on disk."""
+    app = build(_config(tmp_path))
+
+    assert app.conversations is not None
+    app.conversations.record(
+        "t1", Turn(question="How much protein?", result=ChatResult(answer="1.6 g"))
+    )
+
+    reopened = SqliteConversations.at(str(tmp_path / "conversations.sqlite"))
+    assert [turn.question for turn in reopened.turns("t1")] == ["How much protein?"]
+
+
+@pytest.mark.integration
+def test_build_checkpoints_threads_in_the_conversations_file(tmp_path: Path) -> None:
+    """What the model was told lives beside what the reader comes back to: one file, so
+    a deployment that clears its conversations clears both halves of them."""
+    build(_config(tmp_path))
+
+    with sqlite3.connect(str(tmp_path / "conversations.sqlite")) as connection:
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "select name from sqlite_master where type = 'table'"
+            )
+        }
+
+    assert "turns" in tables, "the turns the page redraws"
+    assert "checkpoints" in tables, "and the thread the model is given"

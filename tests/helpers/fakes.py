@@ -2,11 +2,16 @@
 
 import hashlib
 import math
-from dataclasses import dataclass, field
-from typing import NamedTuple
+from dataclasses import dataclass, field, replace
+from typing import Any, NamedTuple
 
 from cora.domain.chunk import Chunk
-from cora.domain.errors import MemoryStoreError
+from cora.domain.conversation import Session, Turn
+from cora.domain.errors import (
+    ConversationStoreError,
+    DocumentStoreError,
+    MemoryStoreError,
+)
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.loading import Loaders
 from cora.ports.memory import Fact
@@ -56,8 +61,10 @@ class FakeRetriever:
     def add(
         self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
     ) -> None:
+        """Stamped with the upload on the way in, as the real index does: a hit carries
+        the upload its offsets were measured in."""
         self._records.extend(
-            _Record(vector, chunk, file_hash)
+            _Record(vector, replace(chunk, upload=file_hash), file_hash)
             for chunk, vector in zip(chunks, vectors, strict=True)
         )
 
@@ -111,6 +118,35 @@ class CountingRetriever(FakeRetriever):
     def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
         self.queries += 1
         return super().query(query_vector, k)
+
+
+class FakeDocuments:
+    """The kept text, in a dict, keyed by upload as the real store is. `writes` is what
+    lets a test say a document was kept once, or not at all."""
+
+    def __init__(self) -> None:
+        self._kept: dict[str, str] = {}
+        self.writes = 0
+
+    def keep(self, upload: str, text: str) -> None:
+        self._kept[upload] = text
+        self.writes += 1
+
+    def read(self, upload: str) -> str | None:
+        return self._kept.get(upload)
+
+
+class KeepsNothingDocuments(FakeDocuments):
+    """A store that accepts and forgets: what an index written before cora kept any
+    document text looks like from the outside."""
+
+    def keep(self, upload: str, text: str) -> None:
+        return None
+
+
+class FailingDocuments(FakeDocuments):
+    def read(self, upload: str) -> str | None:
+        raise DocumentStoreError
 
 
 class FakeMemory:
@@ -228,3 +264,61 @@ def _decode(data: bytes, filename: str) -> str:
 
 TEXT_LOADERS: Loaders = {".txt": _decode, ".md": _decode}
 """What most tests need: no PDF, so no reason to reach for the real registry."""
+
+
+class FakeConversations:
+    """Turns per thread, in the order they were recorded. `sessions` is newest first by
+    the thread that last spoke, which is the order the real store promises."""
+
+    def __init__(self) -> None:
+        self._recorded: dict[str, list[Turn]] = {}
+        self._spoke: list[str] = []
+
+    def record(self, thread_id: str, turn: Turn) -> None:
+        self._recorded.setdefault(thread_id, []).append(turn)
+        if thread_id in self._spoke:
+            self._spoke.remove(thread_id)
+        self._spoke.append(thread_id)
+
+    def turns(self, thread_id: str) -> tuple[Turn, ...]:
+        return tuple(self._recorded.get(thread_id, ()))
+
+    def sessions(self) -> tuple[Session, ...]:
+        return tuple(
+            Session(thread_id=thread, opened_with=self._recorded[thread][0].question)
+            for thread in reversed(self._spoke)
+        )
+
+
+@dataclass
+class FailingConversations:
+    """A store that went away mid-session: every write refuses."""
+
+    error: Exception = field(default_factory=ConversationStoreError)
+
+    def record(self, thread_id: str, turn: Turn) -> None:
+        raise self.error
+
+    def turns(self, thread_id: str) -> tuple[Turn, ...]:
+        raise self.error
+
+    def sessions(self) -> tuple[Session, ...]:
+        raise self.error
+
+
+@dataclass
+class UnopenableSessions:
+    """Lists its conversations and refuses to read one: the store that went away between
+    the page being drawn and a session on it being clicked."""
+
+    listing: Any
+    error: Exception = field(default_factory=ConversationStoreError)
+
+    def record(self, thread_id: str, turn: Turn) -> None:
+        self.listing.record(thread_id, turn)
+
+    def turns(self, thread_id: str) -> tuple[Turn, ...]:
+        raise self.error
+
+    def sessions(self) -> tuple[Session, ...]:
+        return self.listing.sessions()

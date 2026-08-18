@@ -1,22 +1,25 @@
+from pathlib import Path
+
 import pytest
+from langgraph.checkpoint.memory import InMemorySaver
 
 from cora.adapters.langgraph_runner import (
     LangGraphRunner,
     Step,
-    _trace_kinds,
     checkpointed_types,
     langgraph_for,
     recursion_limit_for,
 )
 from cora.domain.agent_state import AgentState
 from cora.domain.chunk import Chunk
-from cora.domain.citations import Source
+from cora.domain.citations import Citation
 from cora.domain.errors import InputRejectedError, LlmError, ToolLoopLimitError
 from cora.domain.trace import (
     MemoryUnread,
     ModelDecision,
     ToolUse,
     TraceStep,
+    step_kinds,
 )
 from cora.engine.steps import ModelStep, PrepareStep, Router, ToolStep
 from cora.engine.tool_runtime import ToolRuntime
@@ -30,6 +33,7 @@ ROUNDS = 8
 
 THREAD = "t1"
 _A_STEP = ToolUse(name="add", outcome="3")
+NOTE = Citation(number=1, document="note.md", start=0, end=7)
 
 
 def _final(
@@ -146,14 +150,14 @@ def test_the_returned_state_accumulated_every_partial() -> None:
         return {
             "messages": _said("tool", "ran"),
             "trace": [ToolUse(name="search_documents", outcome="1 passage")],
-            "sources": [Source(1, "note.md")],
+            "citations": [NOTE],
         }
 
     final = _final(_runner(model=model, tools=tools), {"question": "q"})
 
     assert [m.content for m in final["messages"]] == ["q", "asking", "ran", "done"]
     assert final["trace"] == [ToolUse(name="search_documents", outcome="1 passage")]
-    assert final["sources"] == [Source(1, "note.md")]
+    assert final["citations"] == [NOTE]
 
 
 def test_an_answer_ends_the_turn_with_no_third_node_to_visit() -> None:
@@ -334,7 +338,7 @@ def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
         return {
             "messages": _asked_for_a_tool("ok"),
             "trace": list(every_kind),
-            "sources": [Source(1, "note.md")],
+            "citations": [NOTE],
         }
 
     runner = _runner(model=tracing)
@@ -344,7 +348,7 @@ def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
 
     assert [m.content for m in final["messages"]][:2] == ["first", "ok"]
     assert final["messages"][1].tool_calls[0].name == "add"
-    assert final["sources"] == [Source(1, "note.md"), Source(1, "note.md")]
+    assert final["citations"] == [NOTE, NOTE]
 
     replayed = final["trace"][: len(every_kind)]
     assert [type(step) for step in replayed] == [type(step) for step in every_kind]
@@ -358,11 +362,11 @@ def test_the_allowlist_covers_every_kind_of_step_a_trace_can_hold() -> None:
     LangGraph makes good on blocking unregistered types."""
     listed = set(checkpointed_types())
 
-    for kind in _trace_kinds():
+    for kind in step_kinds():
         assert (kind.__module__, kind.__name__) in listed, (
             f"{kind.__name__} can be in a trace but not in a checkpoint"
         )
-    assert {kind.__name__ for kind in _trace_kinds()} >= {
+    assert {kind.__name__ for kind in step_kinds()} >= {
         "ModelDecision",
         "MemoryUnread",
         "ToolUse",
@@ -384,3 +388,57 @@ def test_an_unlisted_type_does_not_come_back_as_itself() -> None:
     assert isinstance(declared, Message)
     assert (declared.role, declared.content) == ("user", "hi")
     assert not isinstance(undeclared, Chunk)
+
+
+@pytest.mark.integration
+def test_a_thread_resumed_in_a_second_runner_carries_what_the_model_was_told(
+    tmp_path: Path,
+) -> None:
+    """Reopening a conversation is not just redrawing it: the follow-up question is
+    asked of a model that has to remember the exchange before it. In memory that ends
+    with the process, so the checkpoint goes where the deployment says."""
+    path = str(tmp_path / "conversations.sqlite")
+    seen: list[list[str]] = []
+
+    def remembering(state: AgentState) -> AgentState:
+        seen.append([message.content for message in state.get("messages", ())])
+        return {"messages": _said("assistant", "answered"), "answer": "answered"}
+
+    first = langgraph_for(
+        prepare=_prepare,
+        model=remembering,
+        tools=_ran,
+        router=Router(max_tool_rounds=ROUNDS),
+        max_tool_rounds=ROUNDS,
+        checkpoints_at=path,
+    )
+    list(first.run({"question": "How much protein?"}, THREAD))
+
+    second = langgraph_for(
+        prepare=_prepare,
+        model=remembering,
+        tools=_ran,
+        router=Router(max_tool_rounds=ROUNDS),
+        max_tool_rounds=ROUNDS,
+        checkpoints_at=path,
+    )
+    list(second.run({"question": "And creatine?"}, THREAD))
+
+    assert "How much protein?" in seen[-1], (
+        f"the resumed thread forgot the exchange before it: {seen[-1]}"
+    )
+
+
+def test_a_runner_told_no_path_keeps_its_thread_in_memory() -> None:
+    """The default is unchanged: a deployment that names no file gets a thread that
+    lives as long as the process, as every test here relies on."""
+    runner = langgraph_for(
+        prepare=_prepare,
+        model=_replies,
+        tools=_ran,
+        router=Router(max_tool_rounds=ROUNDS),
+        max_tool_rounds=ROUNDS,
+    )
+
+    assert isinstance(runner, LangGraphRunner)
+    assert isinstance(runner.checkpointer, InMemorySaver)

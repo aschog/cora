@@ -10,7 +10,7 @@ from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import ToolCall
-from fakes import TEXT_LOADERS, ScriptedChatModel
+from fakes import TEXT_LOADERS, FakeDocuments, ScriptedChatModel
 
 if TYPE_CHECKING:
     from cora.adapters.chroma_retriever import ChromaRetriever
@@ -33,6 +33,7 @@ def test_a_search_retrieves_the_chunk_matching_the_question(
         embedder=SentenceTransformerEmbedder(),
         retriever=make_chroma(),
         loaders=TEXT_LOADERS,
+        documents=FakeDocuments(),
     )
     added = kb.add_file(FACTS, "facts.txt")
     assert added >= 3
@@ -79,6 +80,4 @@ def test_the_agent_answers_from_the_uploaded_document_and_cites_it(
     assert result.answer == "It stands in Paris [1]."
     [lookup] = [step for step in result.trace if isinstance(step, ToolUse)]
     assert "Eiffel Tower" in lookup.detail
-    assert [(source.number, source.name) for source in result.sources] == [
-        (1, "facts.txt")
-    ]
+    assert [(c.number, c.document) for c in result.citations] == [(1, "facts.txt")]

@@ -1,4 +1,5 @@
 import logging
+from dataclasses import replace
 
 import pytest
 
@@ -190,7 +191,7 @@ def test_logging_retriever_delegates_and_logs_the_hits(
     with caplog.at_level(logging.DEBUG, logger="cora"):
         hits = LoggingRetriever(inner).query(query_vector, k=3)
 
-    assert [hit.chunk for hit in hits] == [chunk]
+    assert [hit.chunk for hit in hits] == [replace(chunk, upload="hash-1")]
     retrieval = line_about(caplog, "retrieval")
     assert "k=3" in retrieval
     assert "guide.pdf" in retrieval

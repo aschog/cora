@@ -81,10 +81,11 @@ what the box does on its own. `make run-env` reads its environment from `.env` i
 so put `CORA_PLUGINS` there too rather than exporting it.
 
 Upload a document (txt/md/pdf) in the sidebar, then ask about it — answers cite
-the sources they used. The steps appear as cora takes them and stay with the
-answer under *How I got there*: what it decided, which tool it ran with which
-arguments, and what came back. A question that needs no documents is answered
-without searching them.
+the passages they used. Click a `[1]` in an answer and that document opens beside the
+chat with the cited passage highlighted; closing it gives the chat its full width back.
+The steps appear as cora takes them and stay with the answer under *How I got there*:
+what it decided, which tool it ran with which arguments, and what came back. A question
+that needs no documents is answered without searching them.
 
 Ask a question the documents can't answer and cora says so rather than filling the gap
 from what the model happens to know: with nothing uploaded it asks you for documents,
@@ -110,9 +111,24 @@ each question — the default `20` is about ten question-and-answer exchanges, a
 `0` sends none), `CORA_DB_PATH` (where Chroma persists; the default `.cora/chroma`
 is relative to the working directory), `CORA_MEMORY_PATH` (where remembered facts
 persist; the default `.cora/memory.sqlite` sits beside it, and is relative the same
-way), `OPENROUTER_BASE_URL`, `CORA_DEBUG`. The counts are rejected at
+way), `CORA_DOCUMENTS_PATH` (where the text behind each citation persists, so clicking
+`[1]` can open the passage; the default `.cora/documents.sqlite` sits beside the others),
+`CORA_LOG_PATH` (where the debug trace is written when `CORA_DEBUG` is on; the default
+`.cora/logs/cora.log` is relative like the stores beside it), `OPENROUTER_BASE_URL`,
+`CORA_DEBUG`. The counts are rejected at
 startup if they fall below their lowest useful value — `0` for history turns, `1`
 for the others.
+
+Three more belong to whichever model `CORA_MODEL` names, and are set with it:
+`CORA_MAX_OUTPUT_TOKENS` (default `8192`), `CORA_REQUEST_TIMEOUT` (seconds per model
+request, default `90`) and `CORA_REASONING_EFFORT` (`low`, `medium` or `high`; default
+`low`). A reasoning model such as `openai/gpt-5-mini` bills its thinking to the same
+token budget it writes the answer from and takes correspondingly longer to arrive, so a
+cap sized for a model that does not reason cuts every long answer off — and raising it
+alone only trades that truncation for a timeout. The effort is the dial between them: on
+one question `low` answered in 22-25s against `medium`'s 32-61s, citing the documents
+either way, while `high` spent an entire 8192-token budget thinking and returned no
+answer at all. A model that does not reason ignores the setting rather than refusing it.
 
 Set `CORA_DEBUG` to `1` or `true` to trace what crosses the ports — one truncated
 line per embed, retrieval (with sources and scores) and model round trip, printed
