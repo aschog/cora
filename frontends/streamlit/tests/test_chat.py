@@ -647,12 +647,14 @@ def test_clearing_empties_the_panel_and_a_rerun_keeps_it_empty() -> None:
 
 @pytest.mark.integration
 def test_a_memory_that_cannot_be_reached_says_so_and_leaves_the_chat_alone() -> None:
-    """The panel is a sidebar, not the app: a broken store must not take the chat
-    down with it."""
+    """The panel is a panel, not the app: a broken store must not take the chat down
+    with it, and what it has to say belongs where it would have listed the facts."""
     at = _run_page(_remembering_app(FailingMemory(MemoryStoreError())))
 
     assert not at.exception
-    assert MemoryStoreError().user_message in [e.value for e in at.error]
+    assert [error.value for error in _memory_panel(at).error] == [
+        MemoryStoreError().user_message
+    ]
     assert at.chat_input
 
 

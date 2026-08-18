@@ -64,9 +64,6 @@ def _said_in(container) -> str:
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(
-    strict=True, reason="the rail and the stored conversation are in progress"
-)
 def test_the_page_is_three_rails_over_a_conversation_that_persists(tmp_path) -> None:
     """One criterion, read left to right: the documents rail, the conversation and its
     rail of four panels, the plan of the turn just taken, the passage it cites — and
@@ -101,4 +98,6 @@ def test_the_page_is_three_rails_over_a_conversation_that_persists(tmp_path) -> 
 
     assert not returning.exception
     _plan, _src, sessions, _mem = returning.tabs
-    assert QUESTION in _said_in(sessions), "the conversation outlived the process"
+    assert QUESTION in [entry.label for entry in sessions.button], (
+        "the conversation outlived the process, and is there to be opened again"
+    )

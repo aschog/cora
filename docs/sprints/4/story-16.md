@@ -270,7 +270,7 @@ expander per message.
 - [x] the memory panel lists the facts and forgets one, the sidebar's copy gone
 - [x] the four panels are drawn before a turn is taken, so the first answer does not
       reflow the page
-- [ ] a memory store that cannot be read reports inside its own panel and costs the
+- [x] a memory store that cannot be read reports inside its own panel and costs the
       conversation nothing
 
 #### A conversation outlives the process (`ports/conversations.py`, `adapters/sqlite_conversations.py`)
@@ -314,7 +314,7 @@ checkpointer already owns the second.
 
 #### Outer functional test
 
-- [ ] **(int)** `xfail(strict=True)` until the list is done: documents in the sidebar and
+- [x] **(int)** `xfail(strict=True)` until the list is done: documents in the sidebar and
       the conversation beside a four-panel rail, a turn whose plan is in the rail and
       whose citation still pops up — and that conversation listed and re-openable from a
       second process
