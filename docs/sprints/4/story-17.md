@@ -401,3 +401,6 @@ private helper the port borrowed gets a name of its own.
       `config`'s private helper breaks on an ordinary rename, and no gate can see it
 - [x] a built-in that is not the search tool is what proves the label, on its own: the
       new test could not fail unless the one above it already had
+- [x] the toolkit a frontend is allowed is the one its manifest buys: the allow-list is
+      written by hand, so adding a name to it was the cheapest way past the rule it
+      enforces — now it costs a declared dependency, which ships in the metadata

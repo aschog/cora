@@ -62,12 +62,17 @@ def modules(member: pathlib.Path) -> list[str]:
     return [declared] if isinstance(declared, str) else list(declared)
 
 
-def carrier_of(module: str) -> str:
-    """The distribution a module ships from."""
+def member_of(module: str) -> pathlib.Path:
+    """The member a module ships from — which is what to ask for its requirements."""
     for member in members():
         if module in modules(member):
-            return distribution(member)
+            return member
     raise AssertionError(f"no workspace member ships {module}")
+
+
+def carrier_of(module: str) -> str:
+    """The distribution a module ships from."""
+    return distribution(member_of(module))
 
 
 def plugins() -> list[tuple[str, str]]:

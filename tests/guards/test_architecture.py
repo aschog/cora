@@ -1,6 +1,7 @@
 import ast
 import pathlib
 import sys
+from importlib.metadata import packages_distributions
 from types import ModuleType
 
 import pytest
@@ -493,3 +494,31 @@ def test_the_walkers_pass_innocent_code(tmp_path: pathlib.Path) -> None:
         for module in _imported_modules(tree, ("cora", "engine"))
         if _is_forbidden(module)
     ]
+
+
+def _bought_by(frontend: str) -> set[str]:
+    """The import names a frontend's own manifest pays for: every module the
+    distributions it declares contribute, and none a transitive one happens to bring."""
+    declared = workspace.requirements(workspace.member_of(f"cora.frontends.{frontend}"))
+    return {
+        module
+        for module, distributions in packages_distributions().items()
+        if not set(distributions).isdisjoint(declared)
+    }
+
+
+@pytest.mark.parametrize("frontend", sorted(FRONTEND_TOOLKITS))
+def test_a_frontend_is_allowed_only_the_toolkit_its_manifest_buys(
+    frontend: str,
+) -> None:
+    """`FRONTEND_TOOLKITS` is written by hand, so the cheapest way past the rule it
+    enforces is to add a name to it. This is what that has to cost: the distribution
+    declared in the frontend's own manifest, which ships in the wheel's metadata and is
+    installed with it — rather than a word in a test that buys nothing."""
+    unbought = FRONTEND_TOOLKITS[frontend] - _bought_by(frontend)
+
+    assert not unbought, (
+        f"the {frontend} shell is allowed {sorted(unbought)}, which "
+        f"{workspace.location(workspace.member_of(f'cora.frontends.{frontend}'))}"
+        "/pyproject.toml does not declare"
+    )
