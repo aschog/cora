@@ -1,9 +1,10 @@
+import pytest
+
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
 from cora.domain.trace import ModelDecision, ToolUse
-from cora.engine.memory_tool import REMEMBER_TOOL_NAME
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.engine.plugin_set import RESERVED_TOOL_NAMES
 from cora.frontends.react import payloads
 from cora.ports.memory import Fact
 
@@ -27,14 +28,31 @@ def test_a_citation_carries_the_upload_its_span_was_measured_in() -> None:
 def test_a_step_says_where_the_work_came_from() -> None:
     """The panel's origin line. A tool cora ships is the agent reaching for its own
     retrieval; anything else on offer came from the loaded plugin, which is the whole
-    claim the plugin architecture makes — so the panel can say which it was."""
-    core = ToolUse(name=SEARCH_TOOL_NAME, outcome="2 passages")
-    remembering = ToolUse(name=REMEMBER_TOOL_NAME, outcome="kept")
-    domain = ToolUse(name="training_log", outcome="3 misses")
+    claim the plugin architecture makes — so the panel can say which it was.
 
-    assert payloads.step(core)["origin"] == "core retrieval"
-    assert payloads.step(remembering)["origin"] == "core retrieval"
+    Driven off the engine's own list rather than a copy of it: a built-in added there
+    is the one place a built-in gets added, and a page that had to be told separately
+    would go on calling it a plugin's."""
+    for name in RESERVED_TOOL_NAMES:
+        assert payloads.step(ToolUse(name=name))["origin"] == "core retrieval"
+
+    domain = ToolUse(name="training_log", outcome="3 misses")
+    assert domain.name not in RESERVED_TOOL_NAMES
     assert payloads.step(domain)["origin"] == "plugin tool"
+
+
+def test_a_built_in_the_engine_gains_is_not_reported_as_a_plugin_s(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The reason it reads the engine's list instead of holding its own: a third
+    built-in gets registered where collisions are already checked, and a copy here
+    would go on labelling it `plugin tool` — the page lying about the one thing the
+    plugin architecture exists to show."""
+    monkeypatch.setitem(RESERVED_TOOL_NAMES, "summarise_document", "summaries")
+
+    shipped = ToolUse(name="summarise_document", outcome="one paragraph")
+
+    assert payloads.step(shipped)["origin"] == "core retrieval"
 
 
 def test_a_step_that_called_no_tool_claims_no_origin() -> None:

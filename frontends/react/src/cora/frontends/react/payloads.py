@@ -11,8 +11,7 @@ from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
 from cora.domain.trace import ToolUse, TraceStep
-from cora.engine.memory_tool import REMEMBER_TOOL_NAME
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.engine.plugin_set import RESERVED_TOOL_NAMES
 from cora.ports.memory import Fact
 
 
@@ -24,11 +23,6 @@ def citation(citation: Citation) -> dict[str, Any]:
         "end": citation.end,
         "upload": citation.upload,
     }
-
-
-CORE_TOOLS = frozenset({SEARCH_TOOL_NAME, REMEMBER_TOOL_NAME})
-"""What cora offers before a plugin is loaded. Everything else the model can call came
-from the bundle the deployment named, which is what the panel's origin line says."""
 
 
 def step(step: TraceStep) -> dict[str, Any]:
@@ -44,9 +38,12 @@ def step(step: TraceStep) -> dict[str, Any]:
 
 
 def _origin(step: TraceStep) -> str:
+    """What cora offers before a plugin is loaded is the engine's own list — the one a
+    plugin's tool names are refused against — so a built-in added there is a built-in
+    here too, rather than a name this module also had to be told."""
     if not isinstance(step, ToolUse):
         return ""
-    return "core retrieval" if step.name in CORE_TOOLS else "plugin tool"
+    return "core retrieval" if step.name in RESERVED_TOOL_NAMES else "plugin tool"
 
 
 def result(result: ChatResult) -> dict[str, Any]:

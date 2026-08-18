@@ -140,3 +140,26 @@ test('a panel that could not be read says so, and stops saying it once it can', 
   await screen.findByText(TURN.trace[0].summary)
   expect(screen.queryByText(broken.error)).toBeNull()
 })
+
+test('each rail folds away and comes back, and its toggle says which it is', async () => {
+  render(<App />)
+  expect(await screen.findByText('notes.md')).toBeTruthy()
+
+  const documents = screen.getByRole('button', { name: 'Documents' })
+  const rail = screen.getByRole('button', { name: 'Plan & memory' })
+  expect(documents.getAttribute('aria-pressed')).toBe('true')
+
+  fireEvent.click(documents)
+  expect(screen.queryByText('notes.md')).toBeNull()
+  expect(screen.getByRole('tab', { name: 'PLAN' })).toBeTruthy()
+  expect(documents.getAttribute('aria-pressed')).toBe('false')
+
+  fireEvent.click(rail)
+  expect(screen.queryByRole('tab', { name: 'PLAN' })).toBeNull()
+  expect(rail.getAttribute('aria-pressed')).toBe('false')
+
+  fireEvent.click(documents)
+  fireEvent.click(rail)
+  expect(screen.getByText('notes.md')).toBeTruthy()
+  expect(screen.getByRole('tab', { name: 'PLAN' })).toBeTruthy()
+})

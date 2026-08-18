@@ -174,6 +174,18 @@ def test_a_panel_with_no_store_behind_it_is_empty_rather_than_broken(path: str) 
     assert answered.json() == []
 
 
+@pytest.mark.parametrize("path", ["/api/memory", "/api/memory/f1"])
+def test_forgetting_where_nothing_is_kept_is_done_rather_than_missing(
+    path: str,
+) -> None:
+    """The same contract the panels read by: a deployment with no memory slot has
+    nothing to forget, which is a request already satisfied — not a page that is not
+    there."""
+    forgotten = client(assembled()).delete(path)
+
+    assert forgotten.status_code == 204
+
+
 def test_the_plugins_endpoint_names_what_the_deployment_configured() -> None:
     named = client(assembled(), plugins=("cora.plugins.fitness",)).get("/api/plugins")
 

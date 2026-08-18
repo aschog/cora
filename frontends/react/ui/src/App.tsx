@@ -39,15 +39,23 @@ export default function App() {
   const [leftOpen, setLeftOpen] = useState(true)
   const [rightOpen, setRightOpen] = useState(true)
 
-  /** What the page shows beside the conversation, reloaded together: one banner for
-   *  the three of them, and a load that goes through clears the last one's. */
+  /** What the page shows around the conversation, loaded together: one banner for all
+   *  of it, and a load that goes through clears the last one's. Loading the badge on
+   *  its own raced that banner — a page that could not find out which plugin is loaded
+   *  would say `bare cora` and then clear the only warning that it was guessing. */
   const refresh = useCallback(
     () =>
-      Promise.all([cora.documents(), cora.memory(), cora.sessions()])
-        .then(([indexed, kept, before]) => {
+      Promise.all([
+        cora.documents(),
+        cora.memory(),
+        cora.sessions(),
+        cora.plugins(),
+      ])
+        .then(([indexed, kept, before, loaded]) => {
           setDocuments(indexed)
           setFacts(kept)
           setSessions(before)
+          setPlugins(loaded)
           setTrouble(null)
         })
         .catch(reportTo(setTrouble)),
@@ -55,7 +63,6 @@ export default function App() {
   )
 
   useEffect(() => {
-    cora.plugins().then(setPlugins).catch(reportTo(setTrouble))
     refresh()
   }, [refresh])
 

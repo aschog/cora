@@ -220,10 +220,13 @@ def _memory(app: App) -> Callable[[Request], Any]:
 
 
 def _forget(app: App) -> Callable[[Request], Any]:
+    """A deployment with no memory slot has nothing to forget, so forgetting is
+    already done — the same reading as the panels, where no store is empty rather
+    than broken."""
+
     def one(request: Request) -> Response:
-        if app.memory is None:
-            return JSONResponse({"error": NO_MEMORY}, status_code=404)
-        app.memory.forget(request.path_params["key"])
+        if app.memory is not None:
+            app.memory.forget(request.path_params["key"])
         return Response(status_code=NO_CONTENT)
 
     return one
@@ -231,15 +234,11 @@ def _forget(app: App) -> Callable[[Request], Any]:
 
 def _clear(app: App) -> Callable[[Request], Any]:
     def everything(request: Request) -> Response:
-        if app.memory is None:
-            return JSONResponse({"error": NO_MEMORY}, status_code=404)
-        app.memory.clear()
+        if app.memory is not None:
+            app.memory.clear()
         return Response(status_code=NO_CONTENT)
 
     return everything
-
-
-NO_MEMORY = "This deployment keeps nothing between sessions."
 
 
 def _plugins(plugins: tuple[str, ...]) -> Callable[[Request], Any]:

@@ -35,7 +35,7 @@ export default function Answer({ entries, asking, onAsk, onCite }: Props) {
             {entry.error ? (
               <p className="trouble">{entry.error}</p>
             ) : (
-              <div className="answer-body">{written(entry, onCite)}</div>
+              <div className="answer-body">{drawn(entry, onCite)}</div>
             )}
           </div>
         ))}
@@ -66,19 +66,20 @@ export default function Answer({ entries, asking, onAsk, onCite }: Props) {
 
 /** The answer as text and the citations in it as buttons; a number that resolves to no
  *  citation stays the text it was written as. */
-function written(entry: Entry, onCite: (citation: Citation) => void) {
+function drawn(entry: Entry, onCite: (citation: Citation) => void) {
+  const written = entry.answer ?? ''
   const by = new Map(entry.citations.map((citation) => [citation.number, citation]))
   const pieces: (string | Citation)[] = []
   let read = 0
-  for (const run of (entry.answer ?? '').matchAll(CITATION_RUN)) {
-    pieces.push((entry.answer ?? '').slice(read, run.index))
+  for (const run of written.matchAll(CITATION_RUN)) {
+    pieces.push(written.slice(read, run.index))
     for (const number of run[0].matchAll(/\d+/g)) {
       const citation = by.get(Number(number[0]))
       pieces.push(citation ?? `[${number[0]}]`)
     }
     read = run.index + run[0].length
   }
-  pieces.push((entry.answer ?? '').slice(read))
+  pieces.push(written.slice(read))
 
   return pieces.map((piece, n) =>
     typeof piece === 'string' ? (

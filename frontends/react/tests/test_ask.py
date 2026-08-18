@@ -1,4 +1,5 @@
 import json
+import logging
 import threading
 
 import anyio
@@ -50,6 +51,12 @@ def asking(
             "/api/ask", json={"question": question, "thread_id": thread}
         )
     assert streamed.status_code == 200
+    assert streamed.headers["content-type"].startswith("text/event-stream")
+    assert streamed.headers["cache-control"] == "no-cache"
+    assert streamed.headers["x-accel-buffering"] == "no", (
+        "a proxy that buffers the response delivers every step at the end, which is "
+        "the shape this endpoint exists not to have"
+    )
     return frames(streamed.text)
 
 
@@ -118,6 +125,20 @@ class BreaksInAWayNobodyModelled:
         self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
     ) -> ModelReply:
         raise KeyError("range")
+
+
+def test_what_the_reader_is_spared_is_written_to_the_log(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """The screen gets a sentence and the operator gets the stack. Keeping the
+    exception off the page is only defensible while the log still has it — otherwise
+    the failure exists nowhere."""
+    with caplog.at_level(logging.ERROR, logger="cora.frontends.react.api"):
+        asking(assembled(chat_model=BreaksInAWayNobodyModelled()))
+
+    [logged] = caplog.records
+    assert logged.exc_info is not None
+    assert "KeyError" in caplog.text
 
 
 def test_a_failure_nobody_modelled_still_says_the_turn_went_wrong() -> None:

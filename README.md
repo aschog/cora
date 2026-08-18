@@ -18,8 +18,8 @@ plugins.
 ## Stack
 
 Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangGraph · LangChain over
-OpenRouter · Chroma · sentence-transformers · Streamlit · React over Starlette — with
-ruff, ty and pytest as quality gates. Runtime dependencies are added feature-by-feature, story by story.
+OpenRouter · Chroma · sentence-transformers · Streamlit · React over Starlette —
+with ruff, ty and pytest as quality gates. Runtime dependencies are added feature-by-feature, story by story.
 
 ## The packages
 
@@ -126,6 +126,13 @@ way), `CORA_DOCUMENTS_PATH` (where the text behind each citation persists, so cl
 startup if they fall below their lowest useful value — `0` for history turns, `1`
 for the others.
 
+Three belong to the React shell alone: `CORA_UI_PATH` (the built page to serve; the
+default sits beside the package at `frontends/react/ui/dist`, which a wheel install has
+no copy of, so a deployment that serves a build names it here), `CORA_HOST` and
+`CORA_PORT` (default `127.0.0.1` and `8000`). With no build at the path it names, the
+API still answers and `/` is simply not served — which is a dev machine running the page
+on Vite.
+
 Three more belong to whichever model `CORA_MODEL` names, and are set with it:
 `CORA_MAX_OUTPUT_TOKENS` (default `8192`), `CORA_REQUEST_TIMEOUT` (seconds per model
 request, default `90`) and `CORA_REASONING_EFFORT` (`low`, `medium` or `high`; default
@@ -164,10 +171,12 @@ uv run --env-file .env pytest -m llm   # live acceptance: real OpenRouter round-
 uv run ruff format .          # format
 uv run ruff check .           # lint
 uv run ty check               # type check
+make ui-test                  # the React page's own tier (vitest over happy-dom)
 ```
 
-No browser is needed anywhere: the UI is driven headlessly through Streamlit's
-`AppTest`, including the live tier.
+No browser is needed anywhere: the Streamlit UI is driven headlessly through its
+`AppTest`, including the live tier, and the React page through `happy-dom`. The React
+tier is the one gate that needs node, which is why the pre-commit hook does not run it.
 
 The `llm` tier is the only one that spends money. It runs the whole shipped stack —
 the composition root, a real Chroma store and embedder, and OpenRouter over the
@@ -179,4 +188,5 @@ stays out of CI.
 
 The pre-commit hook runs format check, lint, type check and unit tests;
 commit messages must follow [Conventional Commits](https://www.conventionalcommits.org).
-CI (GitHub Actions) mirrors the same gates on every push.
+CI (GitHub Actions) runs those same gates on every push, plus two tiers the hook leaves
+out: the integration tests, and the React page's own.

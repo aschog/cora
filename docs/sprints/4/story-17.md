@@ -162,3 +162,27 @@ header do.
 
 The page serves its own copy of Source Serif 4: an app whose pitch is *your* documents
 should not call a third party to draw them.
+
+#### Found by the branch review (`ai-code-reviewer`, second pass)
+
+Every finding of the first pass was confirmed closed by re-running its mutations. Two
+survived new ones, and one duplication was found that no test could have caught.
+
+- [x] the traceback of an unmodelled failure is in the log — the screen is spared it, so
+      the log is the only place it exists, and deleting the line failed nothing
+- [x] the stream says `Cache-Control: no-cache` and `X-Accel-Buffering: no` — a proxy
+      that buffers delivers every step at the end, which is the shape the endpoint
+      exists not to have, and no test read the headers
+- [x] a built-in the engine gains is not reported as a plugin's: the origin line reads
+      `RESERVED_TOOL_NAMES`, the list a plugin's tool names are already refused against,
+      rather than a copy of the two names it holds today
+- [x] **(ui)** each rail folds away and comes back, and its toggle says which it is —
+      the collapse shipped with no cover at all
+- [x] forgetting where nothing is kept is done rather than missing, so the two `DELETE`s
+      read like every other panel with no store behind it
+- [x] **(ui)** the badge is loaded with the panels rather than beside them — on its own
+      it raced the banner, and a page that could not find out which plugin is loaded
+      would say `bare cora` and then clear the only warning that it was guessing
+
+`CORA_UI_PATH`, `CORA_HOST` and `CORA_PORT` are in the README, which the previous pass
+claimed and did not do; so is the React tier, which the gates section had never named.

@@ -124,12 +124,6 @@ button {
   padding: var(--s3) var(--s4);
 }
 
-.brand {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s2);
-}
-
 .brand-name {
   font-size: 22px;
   font-weight: 600;
