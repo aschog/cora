@@ -239,7 +239,7 @@ rest, `st.tabs` is the right one. `st.chat_message` stays: who said what is the 
 thing typography alone would not carry. The page is laid out wide, which AppTest cannot
 see — Phase 4 checks it.
 
-- [ ] the conversation and the rail split the page, the conversation the wider of the two
+- [x] the conversation and the rail split the page, the conversation the wider of the two
 - [ ] the question is asked inside the conversation's column rather than pinned across
       the page
 - [ ] the header names the app and what it is, above both rails

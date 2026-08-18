@@ -353,11 +353,16 @@ def test_the_popup_can_be_dismissed_and_a_dismissal_is_handled() -> None:
 
 
 def test_the_passage_pops_up_over_a_chat_that_keeps_the_whole_page() -> None:
-    """Splitting the page was the wrong shape whichever way it ran: a third reads a
-    document in fragments, two thirds costs the conversation its line. The passage is
-    something to open, read and dismiss, so it arrives over the chat rather than beside
-    it — and the conversation behind it never gives up a column."""
+    """Splitting the page for the document was the wrong shape whichever way it ran: a
+    third reads a document in fragments, two thirds costs the conversation its line. The
+    passage is something to open, read and dismiss, so it arrives over the chat rather
+    than beside it — and the conversation behind it gives up none of the width it had.
+
+    Read as "unchanged" rather than "none", because the page carries a split of its own
+    now: the conversation and the rail beside it. What this holds is that opening a
+    passage is not what moves it."""
     at = _asked(_run(_one_citation()))
+    unopened = _split(at)
 
     at.session_state[OPEN_CITATION] = 1
     at.run()
@@ -365,7 +370,7 @@ def test_the_passage_pops_up_over_a_chat_that_keeps_the_whole_page() -> None:
     assert not at.exception
     [pane] = _panes(at)
     assert "1.6 g of protein" in pane
-    assert _split(at) == [], "the chat keeps the page the dialog is drawn over"
+    assert _split(at) == unopened, "the chat keeps the page the dialog is drawn over"
 
 
 def test_an_answer_with_citations_offers_no_sources_panel() -> None:

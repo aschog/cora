@@ -660,3 +660,15 @@ def test_a_write_that_cannot_reach_the_store_says_so_and_keeps_the_chat(
     assert MemoryStoreError().user_message in [e.value for e in at.error]
     assert at.chat_input
     assert "trains on Tuesdays" in _sidebar_sources(at)
+
+
+@pytest.mark.integration
+def test_the_page_splits_into_a_conversation_and_a_rail() -> None:
+    """The mockup's middle and right: what was said, and what it rests on. The
+    conversation is the wider of the two — the rail annotates it, not the other way
+    round."""
+    at = _run_page(_app(ScriptedChatModel([])))
+
+    conversation, rail = at.columns[:2]
+
+    assert conversation.proto.weight > rail.proto.weight
