@@ -141,7 +141,15 @@ REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in
 TECHNOLOGY_ALLOWED: dict[str, frozenset[str]] = {
     "the app": frozenset(),
     "the plugins": frozenset(),
-    "the frontends": frozenset({"streamlit", "markdown_it", "starlette", "uvicorn"}),
+    "the frontends": frozenset(),
+}
+# The frontends are the one layer with more than one answer, so theirs is keyed by the
+# portion a file ships in rather than by the layer. One set across both would read as
+# "a frontend may import whatever any frontend imports" — which is how a widget shell
+# quietly grows an HTTP server, declared in no manifest and caught by no gate.
+FRONTEND_TOOLKITS: dict[str, frozenset[str]] = {
+    "streamlit": frozenset({"streamlit", "markdown_it"}),
+    "react": frozenset({"starlette", "uvicorn"}),
 }
 TECHNOLOGY_CASES = [
     (layer, path) for layer in TECHNOLOGY_ALLOWED for path in LAYER_FILES[layer]
@@ -203,6 +211,23 @@ def _test_only_imports(path: pathlib.Path) -> list[str]:
         elif isinstance(node, ast.ImportFrom) and node.level == 0 and node.module:
             roots.add(node.module.split(".")[0])
     return sorted(roots & TEST_ONLY_FRAMEWORKS)
+
+
+def _technologies_bound(layer: str, path: pathlib.Path, tree: ast.Module) -> list[str]:
+    """What a file imports that its own layer — and, for a frontend, its own shell —
+    was never given."""
+    allowed = (
+        FRONTEND_TOOLKITS[_shipped_as(path).parts[2]]
+        if layer == "the frontends"
+        else TECHNOLOGY_ALLOWED[layer]
+    )
+    return sorted(
+        {
+            module
+            for module in _imported_modules(tree, _package_parts(path))
+            if _is_technology(module) and module.split(".")[0] not in allowed
+        }
+    )
 
 
 def _is_forbidden(module: str) -> bool:
@@ -358,15 +383,7 @@ def test_a_layer_binds_no_technology_it_was_not_given(
     """The property the install used to carry: a plugin shipped as a wheel the engine
     was absent from could not import Chroma, because Chroma was not there. One
     distribution later it is there, and only this says so."""
-    tree = ast.parse(path.read_text())
-    allowed = TECHNOLOGY_ALLOWED[layer]
-    bound = sorted(
-        {
-            module
-            for module in _imported_modules(tree, _package_parts(path))
-            if _is_technology(module) and module.split(".")[0] not in allowed
-        }
-    )
+    bound = _technologies_bound(layer, path, ast.parse(path.read_text()))
     assert not bound, (
         f"{_shipped_as(path)} imports {bound}: {layer} is wired to a technology by "
         "the composition root, never by importing one"
@@ -376,6 +393,35 @@ def test_a_layer_binds_no_technology_it_was_not_given(
 def test_every_layer_that_may_bind_nothing_has_files_to_say_it_of() -> None:
     assert TECHNOLOGY_ALLOWED.keys() <= LAYER_FILES.keys()
     assert all(LAYER_FILES[layer] for layer in TECHNOLOGY_ALLOWED)
+
+
+def test_every_frontend_declares_the_toolkit_it_draws_or_serves_with() -> None:
+    """A shell added without an entry inherits nothing — it would be allowed no
+    technology at all and fail loudly, rather than inheriting the other shells'."""
+    shipped = {_shipped_as(path).parts[2] for path in LAYER_FILES["the frontends"]}
+
+    assert shipped == FRONTEND_TOOLKITS.keys()
+
+
+def test_a_frontend_may_not_reach_for_another_frontends_toolkit(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The rule the map states, made false-able: the widget shell importing the HTTP
+    server is exactly as wrong as the engine importing either."""
+    served = ast.parse("import starlette.applications\n")
+    widgets = _planted(tmp_path, "streamlit", "shell.py")
+    http = _planted(tmp_path, "react", "api.py")
+
+    assert _technologies_bound("the frontends", widgets, served) == [
+        "starlette.applications"
+    ]
+    assert _technologies_bound("the frontends", http, served) == []
+
+
+def _planted(root: pathlib.Path, frontend: str, name: str) -> pathlib.Path:
+    where = root / "src" / "cora" / "frontends" / frontend
+    where.mkdir(parents=True, exist_ok=True)
+    return where / name
 
 
 def test_the_walkers_catch_a_planted_violation(tmp_path: pathlib.Path) -> None:
