@@ -1,6 +1,7 @@
 import json
 import logging
 import threading
+from collections.abc import Iterator
 
 import anyio
 import pytest
@@ -10,7 +11,12 @@ from app_builder import assembled, indexed
 from cora.app.assembly import App
 from cora.domain.errors import LlmError
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
-from cora.frontends.react.api import NOT_A_QUESTION, api
+from cora.frontends.react.api import (
+    MAX_ASK_BYTES,
+    NOT_A_QUESTION,
+    TOO_LONG_TO_ASK,
+    api,
+)
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.plugin import Tool, ToolCall
 from fakes import FailingChatModel, FakeConversations, ScriptedChatModel
@@ -313,3 +319,39 @@ def test_a_body_missing_either_half_is_refused_rather_than_answered(
     assert refused.status_code == 400
     assert refused.json()["error"] == NOT_A_QUESTION
     assert conversations.sessions() == ()
+
+
+def test_a_question_past_what_cora_reads_is_refused() -> None:
+    """`request.json()` buffers whatever arrives, next door to the endpoint that just
+    grew a ceiling. What a question may run to is the engine's rule; this is how much
+    cora reads to find out."""
+    body = json.dumps({"question": "x" * MAX_ASK_BYTES, "thread_id": "t1"})
+
+    with TestClient(api(assembled())) as reader:
+        refused = reader.post(
+            "/api/ask", content=body, headers={"Content-Type": "application/json"}
+        )
+
+    assert refused.status_code == 413
+    assert refused.json()["error"] == TOO_LONG_TO_ASK
+
+
+def test_the_question_ceiling_does_not_rest_on_a_declared_length() -> None:
+    """A body that declares no length is the shape a ceiling has to hold for — the
+    upload route's trick, refusing on `Content-Length`, is no use to a route that must
+    read a chunked body too. So the bound is on the reading."""
+
+    def chunked() -> Iterator[bytes]:
+        yield b'{"question": "'
+        yield b"x" * (MAX_ASK_BYTES + 1)
+        yield b'", "thread_id": "t1"}'
+
+    with TestClient(api(assembled())) as reader:
+        refused = reader.post(
+            "/api/ask",
+            content=chunked(),
+            headers={"Content-Type": "application/json"},
+        )
+
+    assert refused.status_code == 413
+    assert refused.json()["error"] == TOO_LONG_TO_ASK

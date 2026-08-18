@@ -28,6 +28,7 @@ from cora.app.assembly import App
 from cora.domain.errors import AdapterError, CoreError
 from cora.domain.trace import TraceStep
 from cora.engine.ingestion import DEFAULT_MAX_BYTES
+from cora.engine.validation import MAX_INPUT_CHARS
 from cora.frontends.react import payloads
 
 log = logging.getLogger(__name__)
@@ -158,6 +159,12 @@ UNBUFFERED = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 """A proxy that buffers the response undoes the endpoint: the steps would arrive
 together at the end, which is the shape this exists not to have."""
 NOT_A_QUESTION = "Ask with a question and the thread it belongs to."
+MAX_ASK_BYTES = MAX_INPUT_CHARS * 4 + 1024
+"""What a question may weigh: `MAX_INPUT_CHARS` of it at four bytes a character, as wide
+as UTF-8 goes, and a kilobyte for the thread id and the JSON around the two. Whether the
+question is too long is the engine's rule — this is only how much cora reads to find
+out."""
+TOO_LONG_TO_ASK = "That question is longer than cora reads."
 WENT_WRONG = "Something went wrong answering that. Please try again."
 """What an unmodelled failure says. A `CoreError` was written to be read by whoever
 asked; anything else was not, so its text goes to the log and the reader gets a sentence
@@ -180,8 +187,11 @@ def _ask(app: App) -> Callable[[Request], Any]:
     waiting for."""
 
     async def taken(request: Request) -> Response:
+        body = await _read_within(request, MAX_ASK_BYTES)
+        if body is None:
+            return JSONResponse({"error": TOO_LONG_TO_ASK}, status_code=TOO_LARGE)
         try:
-            asked = await request.json()
+            asked = json.loads(body)
         except ValueError:
             return JSONResponse({"error": NOT_A_QUESTION}, status_code=REFUSED)
         if not isinstance(asked, dict):
@@ -212,6 +222,19 @@ def _ask(app: App) -> Callable[[Request], Any]:
         return StreamingResponse(body(), media_type=STREAM, headers=UNBUFFERED)
 
     return taken
+
+
+async def _read_within(request: Request, ceiling: int) -> bytes | None:
+    """The body, read with a stop on it. The upload route's trick — refusing on the
+    length the request declares — is no use to a route that must also read a body which
+    declares none, and `json()` buffers whatever arrives. So the bound is on the reading
+    itself, and what comes back is `None` when there was more of it than that."""
+    read = bytearray()
+    async for chunk in request.stream():
+        read.extend(chunk)
+        if len(read) > ceiling:
+            return None
+    return bytes(read)
 
 
 def _said(half: Any) -> bool:
