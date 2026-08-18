@@ -328,3 +328,25 @@ the ordinary case and open for the one it was written for.
 The page's build runs in CI: a broken asset import type-checks and unit-tests clean, and
 the build's output is what the server serves. The default-model test reads the README
 from the repository root rather than the working directory.
+
+#### Found by the branch review (`ai-code-reviewer`, sixth pass)
+
+The guard on the live plan was ticked on a test that could not reach it — both steps
+were already on the wire before the reopen — and stopping the growth was only half the
+criterion: what the abandoned turn had already drawn stayed on the panel whose footer
+says these are the steps for what is on screen.
+
+- [x] **(ui)** a conversation shows its own plan, not the plan of a turn left behind:
+      the second step is held so the reopen falls between two steps, and neither the
+      step that follows it nor the step that preceded it belongs to the panel afterwards
+- [x] what is drawn and what is in flight are two values: one said both, so clearing the
+      panel on a reopen would have re-enabled a composer whose request is still running
+- [x] **(ui)** the answer stream's body is released once the turn has arrived — the turn
+      is the last thing on the wire, so the reader returns at it holding a body nobody
+      will read again
+
+Left as follow-up, deliberately: a turn carries no `AbortSignal`, so a request the
+server accepts and never answers keeps the composer disabled until the page is
+reloaded. Cancelling on a reopen would also decide what leaving a conversation *means*
+for the turn still running in it — a decision worth taking on its own, not inside a
+review fix.

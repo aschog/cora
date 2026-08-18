@@ -33,6 +33,7 @@ const held = () => {
 
 /** Renewed per test: a spec that fails before releasing must not hang the next one. */
 let turn = held()
+let step = held()
 
 /**
  * The answer stream, read in three parts. The second step is split across two reads, so
@@ -50,6 +51,7 @@ function answering(): Response {
   ]
   let next = 0
   const reader = {
+    cancel: async () => {},
     read: async () => {
       if (next === parts.length) return { done: true, value: undefined }
       if (next === parts.length - 1) await turn.until
@@ -74,11 +76,13 @@ const served: Record<string, unknown> = {
 
 afterEach(() => {
   turn.release()
+  step.release()
   cleanup()
 })
 
 beforeEach(() => {
   turn = held()
+  step = held()
   vi.stubGlobal(
     'fetch',
     vi.fn(async (path: string) => {
@@ -261,6 +265,7 @@ function uncited(): Response {
   })
   let sent = false
   const reader = {
+    cancel: async () => {},
     read: async () =>
       sent
         ? { done: true, value: undefined }
@@ -339,6 +344,7 @@ function failing(): Response {
   ]
   let next = 0
   const reader = {
+    cancel: async () => {},
     read: async () => {
       if (next === parts.length) return { done: true, value: undefined }
       if (next === parts.length - 1) await turn.until
@@ -419,6 +425,7 @@ function oneTurn(result: unknown): Response {
   const encoder = new TextEncoder()
   let sent = false
   const reader = {
+    cancel: async () => {},
     read: async () =>
       sent
         ? { done: true, value: undefined }
@@ -426,3 +433,60 @@ function oneTurn(result: unknown): Response {
   }
   return { ok: true, body: { getReader: () => reader } } as unknown as Response
 }
+
+
+/** A turn whose second step is held back, so a reopen can happen between the two. */
+function steppingSlowly(): Response {
+  const encoder = new TextEncoder()
+  const parts = [
+    frame('step', { ...LIVE[0], summary: 'Before the reopen' }),
+    frame('step', { ...LIVE[1], summary: 'After the reopen' }),
+    frame('turn', TURN),
+  ]
+  let next = 0
+  const reader = {
+    cancel: async () => {},
+    read: async () => {
+      if (next === parts.length) return { done: true, value: undefined }
+      if (next === 1) await step.until
+      if (next === 2) await turn.until
+      return { done: false, value: encoder.encode(parts[next++]) }
+    },
+  }
+  return { ok: true, body: { getReader: () => reader } } as unknown as Response
+}
+
+test('a conversation shows its own plan, not the plan of a turn left behind', async () => {
+  /* The panel's own footer says cora chose these steps — for what is on screen. A turn
+     the reader walked away from is another conversation's work: it must neither go on
+     filling this panel nor leave behind what it had already filled. */
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return steppingSlowly()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  expect(await screen.findByText('Before the reopen')).toBeTruthy()
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  step.release()
+  await new Promise((settle) => setTimeout(settle, 0))
+
+  fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
+  expect(screen.queryByText('After the reopen')).toBeNull()
+  expect(screen.queryByText('Before the reopen')).toBeNull()
+  // The request is still in flight, so cora is still answering one question.
+  expect(screen.getByRole('button', { name: 'Ask' }).hasAttribute('disabled')).toBe(true)
+})

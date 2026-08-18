@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from 'vitest'
-import { forget, forgetEverything } from './api'
+import { ask, forget, forgetEverything } from './api'
 
 const answering = (status: number, body?: unknown) =>
   vi.fn(
@@ -33,4 +33,40 @@ test('a store that cannot be written says so rather than reporting success', asy
 
   await expect(forget('f1')).rejects.toThrow(/temporarily unavailable/)
   await expect(forgetEverything()).rejects.toThrow(/temporarily unavailable/)
+})
+
+
+test('the body is released once the answer has arrived', async () => {
+  /* The turn is the last thing on the wire, so the reader returns at it — and a reader
+     that returns without cancelling holds a response body nobody will read again. */
+  let released = false
+  const encoder = new TextEncoder()
+  const frames = [
+    'event: step\ndata: {"summary":"a","detail":"","failed":false,"origin":""}\n\n',
+    'event: turn\ndata: {"answer":"done","citations":[],"trace":[]}\n\n',
+    'event: step\ndata: {"summary":"never read","detail":"","failed":false,"origin":""}\n\n',
+  ]
+  let next = 0
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({
+      ok: true,
+      body: {
+        getReader: () => ({
+          cancel: async () => {
+            released = true
+          },
+          read: async () =>
+            next === frames.length
+              ? { done: true, value: undefined }
+              : { done: false, value: encoder.encode(frames[next++]) },
+        }),
+      },
+    }) as unknown as Response),
+  )
+
+  const result = await ask('why?', 't1', () => {})
+
+  expect(result.answer).toBe('done')
+  expect(released).toBe(true)
 })

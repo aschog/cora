@@ -89,20 +89,26 @@ export async function ask(
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffered = ''
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffered += decoder.decode(value, { stream: true })
-    let end: number
-    while ((end = buffered.indexOf('\n\n')) >= 0) {
-      const [event, data] = parsed(buffered.slice(0, end))
-      buffered = buffered.slice(end + 2)
-      if (event === 'step') onStep(data as Step)
-      if (event === 'turn') return data as Result
-      if (event === 'error') throw new Error((data as { error: string }).error)
+  try {
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffered += decoder.decode(value, { stream: true })
+      let end: number
+      while ((end = buffered.indexOf('\n\n')) >= 0) {
+        const [event, data] = parsed(buffered.slice(0, end))
+        buffered = buffered.slice(end + 2)
+        if (event === 'step') onStep(data as Step)
+        if (event === 'turn') return data as Result
+        if (event === 'error') throw new Error((data as { error: string }).error)
+      }
     }
+    throw new Error('The answer ended before it arrived.')
+  } finally {
+    /* The turn is the last thing on the wire, so returning at it leaves the reader
+       holding a body nobody will read again. */
+    await reader.cancel().catch(() => undefined)
   }
-  throw new Error('The answer ended before it arrived.')
 }
 
 function parsed(frame: string): [string, unknown] {

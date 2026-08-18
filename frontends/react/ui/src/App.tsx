@@ -39,6 +39,10 @@ export default function App() {
   const [facts, setFacts] = useState<Fact[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   const [live, setLive] = useState<Step[] | null>(null)
+  /* Separate from `live`, which is a panel's contents: a conversation left behind drops
+     the steps it was showing, while the request it left behind is still the one request
+     cora is answering. One value cannot say both. */
+  const [asking, setAsking] = useState(false)
   const [read, setRead] = useState<string | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
@@ -106,6 +110,7 @@ export default function App() {
   const ask = async (question: string) => {
     const on = thread
     const taken: Step[] = []
+    setAsking(true)
     setLive(taken)
     setTab('PLAN')
     const id = ++asked.current
@@ -140,7 +145,8 @@ export default function App() {
         }),
       )
     } finally {
-      setLive(null)
+      setAsking(false)
+      if (here.current === on) setLive(null)
       refresh()
     }
   }
@@ -151,6 +157,9 @@ export default function App() {
       .then((kept) => {
         here.current = session.thread_id
         setThread(session.thread_id)
+        // Whatever a turn still in flight has drawn belongs to the conversation being
+        // left, not to this one, which has its own last turn to show.
+        setLive(null)
         setEntries(
           kept.map((turn, n) => ({
             id: -(n + 1),
@@ -187,7 +196,7 @@ export default function App() {
           />
         )}
 
-        <Answer entries={entries} asking={live !== null} onAsk={ask} onCite={setOpened} />
+        <Answer entries={entries} asking={asking} onAsk={ask} onCite={setOpened} />
 
         {rightOpen && (
         <aside className="rail-panels">
