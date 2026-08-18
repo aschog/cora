@@ -55,8 +55,15 @@ def _visible(at: AppTest) -> str:
     return page_text(at)
 
 
-def _sidebar(at: AppTest) -> str:
-    return "\n".join(md.value for md in at.sidebar.markdown)
+def _memory_panel(at: AppTest):
+    """The rail's memory panel. What cora remembers moved out of the sidebar when the
+    page took the mockup's shape; the sidebar is documents now."""
+    _plan, _source, _sessions, panel = at.tabs
+    return panel
+
+
+def _remembered(at: AppTest) -> str:
+    return "\n".join(md.value for md in _memory_panel(at).markdown)
 
 
 @pytest.mark.integration
@@ -77,7 +84,7 @@ def test_a_fact_shared_last_session_briefs_the_model_the_next(
     assert ADVICE in _visible(at)
     assert asked.last_messages is not None
     assert FACT in asked.last_messages[0].content
-    assert FACT in _sidebar(at)
+    assert FACT in _remembered(at)
 
 
 @pytest.mark.integration
@@ -93,9 +100,9 @@ def test_clearing_the_panel_empties_the_store_and_the_next_brief(
     assert asked.last_messages is not None
     assert FACT in asked.last_messages[0].content
 
-    at.sidebar.button(key="clear_memory").click().run()
+    _memory_panel(at).button(key="clear_memory").click().run()
     at.chat_input[0].set_value(LATER).run()
 
     assert not at.exception
-    assert FACT not in _sidebar(at)
+    assert FACT not in _remembered(at)
     assert FACT not in asked.last_messages[0].content

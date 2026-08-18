@@ -243,7 +243,7 @@ see — Phase 4 checks it.
 - [x] the question is asked inside the conversation's column rather than pinned across
       the page
 - [x] the header names the app and what it is, above both rails
-- [ ] ~~the sidebar holds documents alone, the memory panel having moved to the rail~~ —
+- [x] ~~the sidebar holds documents alone, the memory panel having moved to the rail~~ —
       the same increment as the rail's memory panel below, and pinned there
 - [ ] ~~the rail is drawn before a turn is taken, so the first answer does not reflow
       the page~~ — nothing to see until the rail has panels; pinned below
@@ -267,7 +267,7 @@ expander per message.
       an empty document
 - [x] the source panel keeps the passage last read after its popup is dismissed —
       cleared with the popup it would be empty except while the popup covers it
-- [ ] the memory panel lists the facts and forgets one, the sidebar's copy gone
+- [x] the memory panel lists the facts and forgets one, the sidebar's copy gone
 - [ ] the four panels are drawn before a turn is taken, so the first answer does not
       reflow the page
 - [ ] a memory store that cannot be read reports inside its own panel and costs the

@@ -54,10 +54,10 @@ def main(app_factory: Callable[[], App]) -> None:
 
 
 def render(app: App) -> None:
-    """The sidebar is drawn after the turn, because the turn can change what it says: a
-    fact the model remembered belongs in the panel the same run it was kept, not the
-    next one the user happens to trigger. Streamlit places it by container, not by
-    order, so the screen is unchanged.
+    """The documents and what is remembered are drawn after the turn, because the turn
+    can change what they say: a fact the model remembered belongs in the panel the same
+    run it was kept, not the next one the user happens to trigger. Streamlit places both
+    by container, not by order, so the screen is unchanged.
 
     A document opens over the chat rather than beside it, so the conversation is drawn
     the same way whether or not one is open.
@@ -72,7 +72,7 @@ def render(app: App) -> None:
     st.caption(TAGLINE)
     conversation, rail = st.columns([CONVERSATION_SHARE, RAIL_SHARE])
     with rail:
-        plan, source, _sessions_panel, _memory_panel = st.tabs(RAIL_PANELS)
+        plan, source, _sessions_panel, remembered = st.tabs(RAIL_PANELS)
     with conversation:
         said = st.container()
         prompt = st.chat_input("Ask about your documents")
@@ -86,6 +86,7 @@ def render(app: App) -> None:
         document_pane(app.knowledge_base, _opened())
     with st.sidebar:
         _documents(app.knowledge_base)
+    with remembered:
         _memory(app.memory)
 
 

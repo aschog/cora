@@ -111,6 +111,16 @@ def _sidebar_sources(at: AppTest) -> list[str]:
     return [md.value for md in at.sidebar.markdown]
 
 
+def _memory_panel(at: AppTest):
+    """The rail's fourth panel, where what cora remembers is listed and forgotten."""
+    _plan, _source, _sessions, remembered = at.tabs
+    return remembered
+
+
+def _remembered(at: AppTest) -> list[str]:
+    return [md.value for md in _memory_panel(at).markdown]
+
+
 @pytest.mark.integration
 def test_failed_turn_keeps_its_reason_across_a_rerun() -> None:
     at = _run_page(_app(FailingChatModel(LlmError())))
@@ -567,7 +577,7 @@ def test_the_sidebar_lists_every_remembered_fact() -> None:
 
     at = _run_page(_remembering_app(memory))
 
-    listed = _sidebar_sources(at)
+    listed = _remembered(at)
     assert "trains on Tuesdays" in listed
     assert "is vegetarian" in listed
 
@@ -598,7 +608,7 @@ def test_a_fact_remembered_this_turn_is_listed_without_a_second_interaction() ->
 
     assert not at.exception
     assert [fact.text for fact in memory.recall()] == ["is vegetarian"]
-    assert "is vegetarian" in _sidebar_sources(at)
+    assert "is vegetarian" in _remembered(at)
 
 
 @pytest.mark.integration
@@ -607,10 +617,10 @@ def test_a_facts_own_button_forgets_just_that_fact() -> None:
     doomed = memory.recall()[0]
     at = _run_page(_remembering_app(memory))
 
-    at.sidebar.button(key=f"forget_{doomed.key}").click().run()
+    _memory_panel(at).button(key=f"forget_{doomed.key}").click().run()
 
     assert [fact.text for fact in memory.recall()] == ["is vegetarian"]
-    assert "trains on Tuesdays" not in _sidebar_sources(at)
+    assert "trains on Tuesdays" not in _remembered(at)
 
 
 @pytest.mark.integration
@@ -618,10 +628,10 @@ def test_clearing_empties_the_panel_and_a_rerun_keeps_it_empty() -> None:
     memory = FakeMemory(("trains on Tuesdays", "is vegetarian"))
     at = _run_page(_remembering_app(memory))
 
-    at.sidebar.button(key="clear_memory").click().run()
+    _memory_panel(at).button(key="clear_memory").click().run()
 
     assert memory.recall() == ()
-    assert NOTHING_REMEMBERED in _sidebar_sources(at) + [c.value for c in at.caption]
+    assert NOTHING_REMEMBERED in _remembered(at) + [c.value for c in at.caption]
 
     at.run()
 
@@ -643,7 +653,7 @@ def test_a_memory_that_cannot_be_reached_says_so_and_leaves_the_chat_alone() -> 
 def test_an_app_without_a_memory_shows_no_panel() -> None:
     at = _run_page(_app(ScriptedChatModel([])))
 
-    assert REMEMBER_HEADING not in _sidebar_sources(at)
+    assert REMEMBER_HEADING not in _remembered(at)
 
 
 @pytest.mark.integration
@@ -657,12 +667,12 @@ def test_a_write_that_cannot_reach_the_store_says_so_and_keeps_the_chat(
     at = _run_page(_remembering_app(memory))
     key = button if button == "clear_memory" else f"forget_{memory.recall()[0].key}"
 
-    at.sidebar.button(key=key).click().run()
+    _memory_panel(at).button(key=key).click().run()
 
     assert not at.exception
     assert MemoryStoreError().user_message in [e.value for e in at.error]
     assert at.chat_input
-    assert "trains on Tuesdays" in _sidebar_sources(at)
+    assert "trains on Tuesdays" in _remembered(at)
 
 
 @pytest.mark.integration
@@ -777,3 +787,28 @@ def test_the_steps_of_a_turn_in_progress_are_drawn_in_the_rail() -> None:
 
     assert _holds(plan, "empty"), "the working slot belongs to the plan"
     assert not _holds(conversation, "empty"), "and not to the conversation"
+
+
+@pytest.mark.integration
+def test_the_memory_panel_is_in_the_rail_not_the_sidebar() -> None:
+    """What cora has been told to remember is one of the four things the rail carries.
+    The sidebar is left holding documents alone."""
+    memory = FakeMemory(("trains on Tuesdays", "is vegetarian"))
+
+    at = _run_page(_remembering_app(memory))
+
+    _plan, _source, _sessions, remembered = at.tabs
+    assert "trains on Tuesdays" in _said_in(remembered)
+    assert REMEMBER_HEADING not in _sidebar_sources(at)
+
+
+@pytest.mark.integration
+def test_a_fact_is_forgotten_from_the_panel_it_is_listed_in() -> None:
+    memory = FakeMemory(("trains on Tuesdays", "is vegetarian"))
+    doomed = memory.recall()[0]
+    at = _run_page(_remembering_app(memory))
+
+    _plan, _source, _sessions, remembered = at.tabs
+    remembered.button(key=f"forget_{doomed.key}").click().run()
+
+    assert [fact.text for fact in memory.recall()] == ["is vegetarian"]
