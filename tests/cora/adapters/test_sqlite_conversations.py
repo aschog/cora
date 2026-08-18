@@ -1,8 +1,11 @@
 from pathlib import Path
 
+import pytest
+
 from cora.adapters.sqlite_conversations import SqliteConversations
 from cora.domain.chat_result import ChatResult
-from cora.domain.conversation import Turn
+from cora.domain.conversation import Session, Turn
+from cora.domain.errors import ConversationStoreError
 
 THREAD = "9f1c0f7a-0d5e-4a3a-9d0f-1b2c3d4e5f60"
 ASKED = "How much protein should I eat?"
@@ -41,3 +44,67 @@ def test_the_turns_of_a_conversation_read_back_in_the_order_they_were_taken(
     store.record(THREAD, later)
 
     assert store.turns(THREAD) == (TURN, later)
+
+
+def test_a_thread_never_recorded_has_no_turns(tmp_path: Path) -> None:
+    """A session id the store has never seen is the ordinary case on a first run, not a
+    fault: the page asks before anything has been said."""
+    assert _store(tmp_path).turns(THREAD) == ()
+
+
+def test_sessions_are_listed_newest_first_named_by_what_opened_them(
+    tmp_path: Path,
+) -> None:
+    """A reader picks a conversation out of a list by what it was about, and the thread
+    id says nothing. Newest first, because that is the end a list is read from."""
+    store = _store(tmp_path)
+    store.record("older", TURN)
+    store.record(
+        "newer", Turn(question="And creatine?", result=ChatResult(answer="5 g"))
+    )
+
+    assert store.sessions() == (
+        Session(thread_id="newer", opened_with="And creatine?"),
+        Session(thread_id="older", opened_with=ASKED),
+    )
+
+
+def test_a_session_is_named_by_its_first_question_not_its_latest(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    store.record(THREAD, TURN)
+    store.record(
+        THREAD, Turn(question="And creatine?", result=ChatResult(answer="5 g"))
+    )
+
+    assert [session.opened_with for session in store.sessions()] == [ASKED]
+
+
+def test_a_conversation_that_spoke_last_is_the_newest(tmp_path: Path) -> None:
+    """Ordered by the newest turn each thread holds, not by when it was opened: the
+    conversation you were just in belongs at the top when you come back to it."""
+    store = _store(tmp_path)
+    store.record("older", TURN)
+    store.record(
+        "newer", Turn(question="And creatine?", result=ChatResult(answer="5 g"))
+    )
+    store.record("older", Turn(question="Still?", result=ChatResult(answer="Yes")))
+
+    assert [session.thread_id for session in store.sessions()] == ["older", "newer"]
+
+
+def test_a_driver_failure_surfaces_as_an_adapter_error(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    store.close()
+
+    with pytest.raises(ConversationStoreError):
+        store.record(THREAD, TURN)
+
+
+def test_the_parent_directory_is_created_if_missing(tmp_path: Path) -> None:
+    store = SqliteConversations.at(str(tmp_path / "nested" / "conversations.sqlite"))
+
+    store.record(THREAD, TURN)
+
+    assert store.turns(THREAD) == (TURN,)

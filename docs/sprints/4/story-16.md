@@ -282,12 +282,12 @@ hold different things — the rendered turn, and the messages the model saw — 
 checkpointer already owns the second.
 
 - [x] `record` then `turns` returns the turn unchanged, across a reopened database
-- [ ] `turns` of a thread never recorded is empty rather than raising
-- [ ] `sessions` lists the threads newest first, each named by the question that opened it
+- [x] `turns` of a thread never recorded is empty rather than raising
+- [x] `sessions` lists the threads newest first, each named by the question that opened it
 - [ ] a recorded turn keeps its citations and its trace, so a reopened conversation is
       clickable and its plan is readable
-- [ ] a `sqlite3.Error` surfaces as an `AdapterError`, not a raw driver error
-- [ ] the parent directory is created if missing
+- [x] a `sqlite3.Error` surfaces as an `AdapterError`, not a raw driver error
+- [x] the parent directory is created if missing
 - [ ] `Agent.answer` records the turn it took, so a frontend gets history without keeping
       it itself
 - [ ] `Config.from_env` reads `CORA_CONVERSATIONS_PATH`, and a blank value reads as unset
