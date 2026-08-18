@@ -240,12 +240,13 @@ thing typography alone would not carry. The page is laid out wide, which AppTest
 see — Phase 4 checks it.
 
 - [x] the conversation and the rail split the page, the conversation the wider of the two
-- [ ] the question is asked inside the conversation's column rather than pinned across
+- [x] the question is asked inside the conversation's column rather than pinned across
       the page
-- [ ] the header names the app and what it is, above both rails
-- [ ] the sidebar holds documents alone, the memory panel having moved to the rail
-- [ ] the rail is drawn before a turn is taken, so the first answer does not reflow the
-      page
+- [x] the header names the app and what it is, above both rails
+- [ ] ~~the sidebar holds documents alone, the memory panel having moved to the rail~~ —
+      the same increment as the rail's memory panel below, and pinned there
+- [ ] ~~the rail is drawn before a turn is taken, so the first answer does not reflow
+      the page~~ — nothing to see until the rail has panels; pinned below
 
 #### Found in use: what the answer rests on is a rail (`chat.py`, `viewer.py`)
 
@@ -263,6 +264,8 @@ expander per message.
 - [ ] the source panel shows the document the open citation names, marked at the passage
 - [ ] with no citation open the source panel says so rather than drawing an empty document
 - [ ] the memory panel lists the facts and forgets one, the sidebar's copy gone
+- [ ] the four panels are drawn before a turn is taken, so the first answer does not
+      reflow the page
 - [ ] a memory store that cannot be read reports inside its own panel and costs the
       conversation nothing
 

@@ -32,6 +32,8 @@ NOTHING_REMEMBERED = "Nothing yet — tell me something about yourself."
 FORGET_LABEL = "✕"
 CONVERSATION_SHARE = 2
 RAIL_SHARE = 1
+APP_NAME = "cora"
+TAGLINE = "Document agent"
 
 
 def main(app_factory: Callable[[], App]) -> None:
@@ -49,21 +51,25 @@ def render(app: App) -> None:
     next one the user happens to trigger. Streamlit places it by container, not by
     order, so the screen is unchanged.
 
-    The question is asked at page level: `st.chat_input` is pinned to the foot of the
-    page there, and inside any other container it would ride up into one.
-
     A document opens over the chat rather than beside it, so the conversation is drawn
     the same way whether or not one is open.
 
     The page splits into the conversation and the rail that annotates it, the
-    conversation the wider of the two."""
+    conversation the wider of the two. The question is asked inside the conversation:
+    pinned at page level it spanned the rail too. The thread is reserved before the
+    input is drawn, so the input sits under the conversation while the answer to it
+    still lands above."""
     declare_components()
-    prompt = st.chat_input("Ask about your documents")
+    st.title(APP_NAME)
+    st.caption(TAGLINE)
     conversation, _rail = st.columns([CONVERSATION_SHARE, RAIL_SHARE])
     with conversation:
-        _thread()
-        if prompt:
-            _answer(app.agent, prompt)
+        said = st.container()
+        prompt = st.chat_input("Ask about your documents")
+        with said:
+            _thread()
+            if prompt:
+                _answer(app.agent, prompt)
     if open_citation() is not None:
         document_pane(app.knowledge_base, _opened())
     with st.sidebar:

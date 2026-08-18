@@ -20,8 +20,10 @@ from cora.domain.errors import (
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.streamlit.chat import (
+    APP_NAME,
     NOTHING_REMEMBERED,
     REMEMBER_HEADING,
+    TAGLINE,
 )
 from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.plugin import Plugin, ToolCall
@@ -672,3 +674,22 @@ def test_the_page_splits_into_a_conversation_and_a_rail() -> None:
     conversation, rail = at.columns[:2]
 
     assert conversation.proto.weight > rail.proto.weight
+
+
+@pytest.mark.integration
+def test_the_question_is_asked_inside_the_conversation() -> None:
+    """Pinned across the foot of the page, the input spanned the rail as well as the
+    conversation it belongs to."""
+    at = _run_page(_app(ScriptedChatModel([])))
+
+    conversation, _rail = at.columns[:2]
+
+    assert conversation.chat_input, "the question belongs to the conversation's column"
+
+
+@pytest.mark.integration
+def test_the_page_is_headed_by_the_app_and_what_it_is() -> None:
+    at = _run_page(_app(ScriptedChatModel([])))
+
+    assert [heading.value for heading in at.title] == [APP_NAME]
+    assert TAGLINE in [caption.value for caption in at.caption]
