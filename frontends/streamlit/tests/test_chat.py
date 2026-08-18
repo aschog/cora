@@ -812,3 +812,16 @@ def test_a_fact_is_forgotten_from_the_panel_it_is_listed_in() -> None:
     remembered.button(key=f"forget_{doomed.key}").click().run()
 
     assert [fact.text for fact in memory.recall()] == ["is vegetarian"]
+
+
+@pytest.mark.integration
+def test_the_rail_does_not_wait_for_an_answer_to_appear() -> None:
+    """Drawn only once there was something to put in it, the rail would arrive with the
+    first answer and shove the conversation sideways as the reader read it."""
+    at = _run_page(_app(ScriptedChatModel([ModelReply(text="Hello!")])))
+    unanswered = [panel.label for panel in at.tabs]
+
+    at.chat_input[0].set_value("Hi!").run()
+
+    assert unanswered == list(RAIL_PANELS)
+    assert [panel.label for panel in at.tabs] == unanswered

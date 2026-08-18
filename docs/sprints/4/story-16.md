@@ -245,7 +245,7 @@ see — Phase 4 checks it.
 - [x] the header names the app and what it is, above both rails
 - [x] ~~the sidebar holds documents alone, the memory panel having moved to the rail~~ —
       the same increment as the rail's memory panel below, and pinned there
-- [ ] ~~the rail is drawn before a turn is taken, so the first answer does not reflow
+- [x] ~~the rail is drawn before a turn is taken, so the first answer does not reflow
       the page~~ — nothing to see until the rail has panels; pinned below
 
 #### Found in use: what the answer rests on is a rail (`chat.py`, `viewer.py`)
@@ -268,7 +268,7 @@ expander per message.
 - [x] the source panel keeps the passage last read after its popup is dismissed —
       cleared with the popup it would be empty except while the popup covers it
 - [x] the memory panel lists the facts and forgets one, the sidebar's copy gone
-- [ ] the four panels are drawn before a turn is taken, so the first answer does not
+- [x] the four panels are drawn before a turn is taken, so the first answer does not
       reflow the page
 - [ ] a memory store that cannot be read reports inside its own panel and costs the
       conversation nothing
