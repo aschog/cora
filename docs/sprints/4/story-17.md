@@ -404,3 +404,27 @@ private helper the port borrowed gets a name of its own.
 - [x] the toolkit a frontend is allowed is the one its manifest buys: the allow-list is
       written by hand, so adding a name to it was the cheapest way past the rule it
       enforces — now it costs a declared dependency, which ships in the metadata
+
+#### Found by the branch review (`ai-code-reviewer`, ninth pass)
+
+The eighth pass's own two fixes, again half-closed: the loader it added carried none of
+the guard the one beside it had, and the turn it made *land* was still wiped off the page
+while it ran. Two of its checklist items were ticked on tests that hold for any value of
+what they pin.
+
+- [x] **(ui)** a conversation that loads late does not overwrite the one the reader is in
+      — and the one that arrives is the one they asked for last, not the one the server
+      was slower about
+- [ ] **(ui)** the turn in flight belongs to the conversation it was asked in, not to the
+      list of turns the store has: leaving that conversation and returning showed a
+      thread where nothing was asked, no plan, and a composer that could not be typed in
+- [ ] a question of the length the engine allows is not refused by the shell that carries
+      it: both ceiling tests were built *from* the constant, so they held for any value
+      of it — including one that refuses every full-length question
+- [ ] nothing is built before the settings are read: the sentence, the exit code and the
+      absent traceback all hold whichever order it happens in, so the order is asserted
+      by a `build` that fails the test if it is called
+- [ ] a refusal keeps the headers it was raised with — a 405 without `Allow` is one the
+      client cannot act on — and a status that forbids a body is given none
+- [ ] a body the form parser cannot read is refused as a sentence whichever way it failed:
+      `MultipartParseError` has siblings, and they were still leaving a plain-text 500

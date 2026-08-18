@@ -674,3 +674,69 @@ test('an answer returning to the conversation it was asked in is not dropped', a
     ['Why am I stalling?'],
   )
 })
+
+test('a conversation that loads late does not overwrite the one the reader is in', async () => {
+  /* Every load of a conversation is a race with the reader: they can open another one
+     while it is in flight, or the same one again, and the response that arrives last is
+     not the conversation they asked for last. Putting one thread's turns under another
+     thread's name is what the whole guard around a reply exists to prevent. */
+  vi.stubGlobal('crypto', { randomUUID: () => 'here' })
+  const slow = held()
+  let recorded = false
+  const body = (data: unknown) =>
+    ({ ok: true, json: async () => data }) as unknown as Response
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions')
+        return body([
+          { thread_id: 'old', opened_with: OLDER.question },
+          { thread_id: 'here', opened_with: 'Why am I stalling?' },
+        ])
+      if (path === '/api/sessions/here') {
+        // The re-read that follows the answer is the one held open.
+        if (recorded) await slow.until
+        return body(recorded ? [{ question: 'Why am I stalling?', result: TURN }] : [])
+      }
+      if (path === '/api/sessions/old') return body([OLDER])
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[path] ?? [])
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(LIVE[0].summary)
+
+  const sessions = () => {
+    fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+    return screen
+  }
+  fireEvent.click(await sessions().findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  fireEvent.click(await screen.findByRole('button', { name: 'Why am I stalling?' }))
+  await new Promise((settle) => setTimeout(settle, 0))
+
+  // The answer lands, so the thread is re-read from the store — and while that is in
+  // flight the reader opens the other conversation.
+  recorded = true
+  turn.release()
+  await new Promise((settle) => setTimeout(settle, 0))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+
+  slow.release()
+  await new Promise((settle) => setTimeout(settle, 0))
+
+  expect(screen.getByText(OLDER.result.answer)).toBeTruthy()
+  expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
+  // And it is the conversation the reader is in: the panel disables the current one.
+  expect(
+    screen.getByRole('button', { name: OLDER.question }).hasAttribute('disabled'),
+  ).toBe(true)
+})

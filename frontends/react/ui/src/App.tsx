@@ -48,9 +48,10 @@ export default function App() {
   const [trouble, setTrouble] = useState<string | null>(null)
   const [leftOpen, setLeftOpen] = useState(true)
   const asked = useRef(0)
-  /* How many times the reader has opened a conversation, which is what tells a turn
-     whether the entry it belongs to is still there to land on. */
-  const reopens = useRef(0)
+  /* How many conversations the page has set about loading. It names the one the reader
+     is waiting for, and it tells a turn whether the entry it belongs to is still there
+     to land on. */
+  const loads = useRef(0)
   /* Which conversation the reader is in, written where it changes rather than during a
      render: `setThread` schedules a render, so a ref assigned while rendering still
      names the old thread for anything that runs before that render lands — which is any
@@ -116,23 +117,35 @@ export default function App() {
     setTab('SOURCE')
   }
 
-  /** A conversation as the store has it. Its turns are numbered apart from the ones
-   *  this page asked, so a reply still in flight can never match one of them. */
-  const shown = (kept: Turn[]) =>
-    setEntries(
-      kept.map((turn, n) => ({
-        id: -(n + 1),
-        question: turn.question,
-        ...turn.result,
-      })),
-    )
+  /** A conversation's recorded turns. Numbered apart from the ones this page asked, so
+   *  a reply still in flight can never match one of them. */
+  const recorded = (kept: Turn[]): Entry[] =>
+    kept.map((turn, n) => ({
+      id: -(n + 1),
+      question: turn.question,
+      ...turn.result,
+    }))
+
+  /** A conversation read from the store, applied only while it is still the one the
+   *  reader is waiting for. Every load is a race with them: they can open another
+   *  conversation while this one is in flight, or the same one again — and the response
+   *  that arrives last is not the conversation they asked for last. */
+  const loaded = (thread_id: string, apply: (kept: Turn[]) => void) => {
+    const wanted = ++loads.current
+    return cora
+      .turns(thread_id)
+      .then((kept) => {
+        if (loads.current === wanted) apply(kept)
+      })
+      .catch(reportTo(setTrouble))
+  }
 
   /** The question joins the thread the moment it is asked, so it is on the page while
    *  the answer is being written; what comes back replaces it rather than following
    *  it. */
   const ask = async (question: string) => {
     const on = thread
-    const from = reopens.current
+    const from = loads.current
     const taken: Step[] = []
     setAsking(true)
     setLive(taken)
@@ -157,7 +170,7 @@ export default function App() {
       // leaves the panel on the document last read, which says it is not cited in this
       // answer — rather than emptying it and saying nothing at all.
       if (here.current === on) {
-        if (reopens.current === from) setEntries(answered({ id, question, ...result }))
+        if (loads.current === from) setEntries(answered({ id, question, ...result }))
         else await recall(on)
         setRead((current) => result.citations[0]?.document ?? current)
       }
@@ -167,7 +180,7 @@ export default function App() {
       // in is the one case where it is appended rather than replaced.
       if (here.current === on) {
         setEntries(
-          reopens.current === from
+          loads.current === from
             ? answered(failure)
             : (said) => [...said, failure],
         )
@@ -180,23 +193,18 @@ export default function App() {
   }
 
   const recall = (thread_id: string) =>
-    cora.turns(thread_id).then(shown).catch(reportTo(setTrouble))
+    loaded(thread_id, (kept) => setEntries(recorded(kept)))
 
-  const reopen = (session: Session) => {
-    cora
-      .turns(session.thread_id)
-      .then((kept) => {
-        reopens.current += 1
-        here.current = session.thread_id
-        setThread(session.thread_id)
-        // Whatever a turn still in flight has drawn belongs to the conversation being
-        // left, not to this one, which has its own last turn to show.
-        setLive(null)
-        shown(kept)
-        setRead(null)
-      })
-      .catch(reportTo(setTrouble))
-  }
+  const reopen = (session: Session) =>
+    loaded(session.thread_id, (kept) => {
+      here.current = session.thread_id
+      setThread(session.thread_id)
+      // Whatever a turn still in flight has drawn belongs to the conversation being
+      // left, not to this one, which has its own last turn to show.
+      setLive(null)
+      setEntries(recorded(kept))
+      setRead(null)
+    })
 
   return (
     <div className="app">
