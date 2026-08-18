@@ -22,6 +22,7 @@ from cora.frontends.streamlit.viewer import (
     open_citation,
 )
 from cora.ports.memory import Memory
+from streamlit.delta_generator import DeltaGenerator
 from streamlit.runtime.uploaded_file_manager import UploadedFile
 
 MAX_INGEST_ATTEMPTS = 2
@@ -69,14 +70,14 @@ def render(app: App) -> None:
     st.caption(TAGLINE)
     conversation, rail = st.columns([CONVERSATION_SHARE, RAIL_SHARE])
     with rail:
-        st.tabs(RAIL_PANELS)
+        plan, _source_panel, _sessions_panel, _memory_panel = st.tabs(RAIL_PANELS)
     with conversation:
         said = st.container()
         prompt = st.chat_input("Ask about your documents")
         with said:
-            _thread()
+            _thread(plan)
             if prompt:
-                _answer(app.agent, prompt)
+                _answer(app.agent, prompt, plan)
     if open_citation() is not None:
         document_pane(app.knowledge_base, _opened())
     with st.sidebar:
@@ -187,18 +188,18 @@ def _ingest(knowledge_base: KnowledgeBase, data: bytes, filename: str) -> bool:
     return True
 
 
-def _thread() -> None:
+def _thread(plan: DeltaGenerator) -> None:
     """The session's thread id names the conversation the agent keeps; what is stored
     here is only what the screen has to redraw."""
     if "messages" not in st.session_state:
         st.session_state.messages = []
         st.session_state.thread_id = str(uuid.uuid4())
     for message in st.session_state.messages:
-        _show(message)
+        _show(message, plan)
 
 
-def _answer(agent: Agent, prompt: str) -> None:
-    _append_and_show({"role": "user", "content": prompt})
+def _answer(agent: Agent, prompt: str, plan: DeltaGenerator) -> None:
+    _append_and_show({"role": "user", "content": prompt}, plan)
     taken: list[TraceStep] = []
     live = st.empty()
     try:
@@ -207,11 +208,11 @@ def _answer(agent: Agent, prompt: str) -> None:
     except CoreError as error:
         live.empty()
         _append_and_show(
-            {"role": "assistant", "error": error.user_message, "trace": taken}
+            {"role": "assistant", "error": error.user_message, "trace": taken}, plan
         )
         return
     live.empty()
-    _append_and_show(_assistant_message(result))
+    _append_and_show(_assistant_message(result), plan)
 
 
 def _watch(taken: list[TraceStep]) -> Callable[[TraceStep], None]:
@@ -231,12 +232,14 @@ def _assistant_message(result: ChatResult) -> ThreadEntry:
     }
 
 
-def _append_and_show(message: ThreadEntry) -> None:
+def _append_and_show(message: ThreadEntry, plan: DeltaGenerator) -> None:
     st.session_state.messages.append(message)
-    _show(message)
+    _show(message, plan)
 
 
-def _show(message: ThreadEntry) -> None:
+def _show(message: ThreadEntry, plan: DeltaGenerator) -> None:
+    """The turn is drawn where the conversation is; how it was reached is drawn in the
+    rail, which is a container rather than a place in the script."""
     with st.chat_message(message["role"]):
         if "error" in message:
             st.error(message["error"])
@@ -248,6 +251,7 @@ def _show(message: ThreadEntry) -> None:
             )
         else:
             st.markdown(message["content"])
+    with plan:
         _trace(message.get("trace", ()), failed=_went_wrong(message))
 
 

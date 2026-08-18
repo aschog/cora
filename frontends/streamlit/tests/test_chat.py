@@ -711,3 +711,18 @@ def test_the_rail_carries_four_panels() -> None:
     at = _run_page(_app(ScriptedChatModel([])))
 
     assert [panel.label for panel in at.tabs] == list(RAIL_PANELS)
+
+
+@pytest.mark.integration
+def test_the_plan_of_a_turn_is_in_the_rail_not_under_its_answer() -> None:
+    """How the answer was reached is what the rail is for. Under the answer it was a
+    panel per message, pushing the next question further down every turn."""
+    at = _run_page(_app(_calculating(), plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("17 + 25?").run()
+
+    assert not at.exception
+    plan, _source, _sessions, _memory = at.tabs
+    assert "add(a=17, b=25) → 42" in _said_in(plan)
+    conversation, _rail = at.columns[:2]
+    assert not conversation.status, "the plan left the answer it sat under"

@@ -256,7 +256,7 @@ moved out of the answer it sat under — one rail showing the newest turn, rathe
 expander per message.
 
 - [x] the rail carries four panels, named plan, source, sessions and memory
-- [ ] the plan panel holds each turn's steps in thread order, and no answer carries a
+- [x] the plan panel holds each turn's steps in thread order, and no answer carries a
       panel of its own — every turn's, not the newest: a trace surviving the next
       question is already pinned, and one rail showing only the last would drop it
 - [ ] a turn that went wrong says so in the plan panel, the news having nowhere else to go
