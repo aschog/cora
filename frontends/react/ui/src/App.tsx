@@ -103,7 +103,7 @@ export default function App() {
    *  arbitrary words in another's. */
   const passagesIn = (document: string) => {
     const upload = latestFor(document)?.upload
-    return (entries[entries.length - 1]?.citations ?? []).filter(
+    return (answering(entries)?.citations ?? []).filter(
       (citation) => citation.document === document && citation.upload === upload,
     )
   }
@@ -253,6 +253,12 @@ export default function App() {
     </div>
   )
 }
+
+/** The turn the panels speak for: the newest one that has been answered. A question in
+ *  flight is on the page before it carries any citations, and reading that as "this
+ *  answer" takes the marks off the answer the reader is still reading. */
+const answering = (entries: Entry[]): Entry | undefined =>
+  entries.filter((entry) => !entry.pending).at(-1)
 
 /** The turn that was waiting, now that it is not — and nothing at all if the
  *  conversation it was asked in has since been left. */

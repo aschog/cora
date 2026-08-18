@@ -544,3 +544,35 @@ test('a filename uploaded twice is read at the upload this answer cited', async 
   expect(screen.queryByText(/nobody is reading this copy/)).toBeNull()
   expect(container.querySelector('.doc-passage')?.textContent).toBe(SECOND.slice(0, 5))
 })
+
+test('a question in flight does not un-cite the answer still on screen', async () => {
+  /* A turn takes tens of seconds, and the answer being read is still the answer being
+     read. The question joins the thread the moment it is asked and carries no citations
+     yet — reading that as "this answer" strips the marks off the one on the page and
+     says it rests on nothing. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(await screen.findByText('1 cited passage · highlighted')).toBeTruthy()
+
+  turn = held()
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'And next?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText('And next?')
+
+  // Back to the passage while cora works: the answer above it has not changed.
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(screen.getByText('1 cited passage · highlighted')).toBeTruthy()
+  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
+})

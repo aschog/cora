@@ -359,7 +359,7 @@ makes is made by the core docstring it mirrors, and that wording is left where i
 - [x] **(ui)** the text a passage is measured in and the passage marked in it come from
       one citation set — two uploads can carry one filename, so the panel opened the
       first upload the conversation ever cited and drew the newest turn's offsets in it
-- [ ] **(ui)** a question in flight does not un-cite the answer still on screen: the
+- [x] **(ui)** a question in flight does not un-cite the answer still on screen: the
       pending entry carries no citations, so the highlights went and the count line read
       "not cited in this answer" about an answer that cites two passages
 - [ ] an upload past the ingestion cap is refused before it is read, not spooled whole
