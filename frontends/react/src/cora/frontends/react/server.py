@@ -7,12 +7,14 @@ which is a dev machine running the page on Vite instead.
 
 import os
 import pathlib
+import sys
 from collections.abc import Mapping
 
 import uvicorn
 
 from cora.app.assembly import build
 from cora.app.config import Config, int_setting
+from cora.domain.errors import CoreError
 from cora.frontends.react.api import api
 
 DEFAULT_UI = pathlib.Path(__file__).resolve().parents[4] / "ui" / "dist"
@@ -35,12 +37,25 @@ def port(env: Mapping[str, str]) -> int:
 
 
 def serve() -> None:
-    config = Config.from_env()
-    served = api(build(config), plugins=config.plugin_modules, ui=ui_path(os.environ))
+    """Everything that can be refused is refused before anything is built: a mistyped
+    port costs the operator a sentence rather than the wait for a model to load. What
+    the app raises was written to be read by whoever ran it, so that is what reaches
+    them — the traceback it arrived under buries the one line they can act on."""
+    try:
+        config = Config.from_env()
+        chosen = port(os.environ)
+        served = api(
+            build(config), plugins=config.plugin_modules, ui=ui_path(os.environ)
+        )
+    except CoreError as refused:
+        # Written here rather than left to `SystemExit` to carry: an exit whose argument
+        # is a string is only printed if nothing catches it on the way out.
+        print(f"cora cannot start: {refused.user_message}", file=sys.stderr)
+        raise SystemExit(1) from None
     uvicorn.run(
         served,
         host=os.environ.get("CORA_HOST", "").strip() or DEFAULT_HOST,
-        port=port(os.environ),
+        port=chosen,
     )
 
 

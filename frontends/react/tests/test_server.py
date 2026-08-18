@@ -58,3 +58,21 @@ def test_a_port_that_is_not_a_number_says_so_rather_than_raising_a_traceback(
 def test_a_port_no_server_can_bind_is_refused_rather_than_handed_on(given: str) -> None:
     with pytest.raises(ConfigurationError):
         server.port({"CORA_PORT": given})
+
+
+def test_a_setting_the_process_cannot_use_reaches_the_operator_as_a_sentence(
+    capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`ConfigurationError` carries a message written for whoever ran cora, and the
+    whole app promises no failure arrives as a stack. `make run-react` with a mistyped
+    port printed the traceback that message happened to be the last line of."""
+    monkeypatch.setenv("OPENROUTER_API_KEY", "not-used-because-the-port-fails-first")
+    monkeypatch.setenv("CORA_PORT", "8O00")
+
+    with pytest.raises(SystemExit) as stopped:
+        server.serve()
+
+    assert stopped.value.code != 0
+    said = capsys.readouterr().err
+    assert "CORA_PORT" in said and "8O00" in said
+    assert "Traceback" not in said

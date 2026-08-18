@@ -395,7 +395,7 @@ private helper the port borrowed gets a name of its own.
 - [x] **(ui)** an answer returning to a conversation the reader left and came back to is
       not dropped: the thread guard passes while the entry it belongs to was renumbered
       by the reopen, so the turn lands nowhere
-- [ ] a mistyped setting reaches the operator as the sentence it was raised with, not as
+- [x] a mistyped setting reaches the operator as the sentence it was raised with, not as
       a traceback whose last line happens to be that sentence
 - [x] the number every setting is parsed through has a public name: a frontend borrowing
       `config`'s private helper breaks on an ordinary rename, and no gate can see it
