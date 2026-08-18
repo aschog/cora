@@ -740,3 +740,80 @@ test('a conversation that loads late does not overwrite the one the reader is in
     screen.getByRole('button', { name: OLDER.question }).hasAttribute('disabled'),
   ).toBe(true)
 })
+
+const EARLIER = {
+  question: 'An earlier question in this thread',
+  result: { answer: 'An earlier answer.', citations: [], trace: [] },
+}
+
+test('the question in flight stays with the conversation it was asked in', async () => {
+  /* A turn is not one of the turns the store has — it is a question being asked in a
+     thread. Leaving that conversation and coming back re-read the store, which does not
+     know about it yet: the reader found a thread where they had asked nothing, no plan,
+     and a composer they could not type in, for as long as the model took. */
+  vi.stubGlobal('crypto', { randomUUID: () => 'here' })
+  let recorded = false
+  const body = (data: unknown) =>
+    ({ ok: true, json: async () => data }) as unknown as Response
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions')
+        return body([
+          { thread_id: 'old', opened_with: OLDER.question },
+          { thread_id: 'here', opened_with: EARLIER.question },
+        ])
+      // The store has the turn once the turn is over, and not before.
+      if (path === '/api/sessions/here')
+        return body(
+          recorded
+            ? [EARLIER, { question: 'Why am I stalling?', result: TURN }]
+            : [EARLIER],
+        )
+      if (path === '/api/sessions/old') return body([OLDER])
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[path] ?? [])
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(LIVE[0].summary)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+
+  // In the other conversation the running turn is not on the page at all: it is not
+  // this conversation's question, and it is not being asked here.
+  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+    [OLDER.question],
+  )
+  expect(screen.queryByText(/Working/)).toBeNull()
+
+  fireEvent.click(await screen.findByRole('button', { name: EARLIER.question }))
+  await screen.findByText(EARLIER.result.answer)
+
+  // Back in the conversation the turn is running in: its question, its plan, and a
+  // composer whose disabling the plan explains.
+  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+    [EARLIER.question, 'Why am I stalling?'],
+  )
+  expect(screen.getByText(/Working/)).toBeTruthy()
+  fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
+  expect(screen.getByText(LIVE[0].summary)).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Ask' }).hasAttribute('disabled')).toBe(true)
+
+  recorded = true
+  turn.release()
+
+  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
+  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+    [EARLIER.question, 'Why am I stalling?'],
+  )
+})

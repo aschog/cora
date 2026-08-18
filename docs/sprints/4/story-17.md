@@ -415,7 +415,7 @@ what they pin.
 - [x] **(ui)** a conversation that loads late does not overwrite the one the reader is in
       — and the one that arrives is the one they asked for last, not the one the server
       was slower about
-- [ ] **(ui)** the turn in flight belongs to the conversation it was asked in, not to the
+- [x] **(ui)** the turn in flight belongs to the conversation it was asked in, not to the
       list of turns the store has: leaving that conversation and returning showed a
       thread where nothing was asked, no plan, and a composer that could not be typed in
 - [ ] a question of the length the engine allows is not refused by the shell that carries

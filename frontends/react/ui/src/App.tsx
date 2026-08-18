@@ -34,14 +34,22 @@ export default function App() {
   const [tab, setTab] = useState<Tab>('PLAN')
   const [thread, setThread] = useState<string>(newThread)
   const [entries, setEntries] = useState<Entry[]>([])
+  /* The turn being asked, and the conversation it is being asked in. Not one of
+     `entries`: those are the turns the store has, and a reopen replaces them wholesale —
+     which used to take the question the reader had just asked with it. */
+  const [flight, setFlight] = useState<{ thread: string; entry: Entry } | null>(null)
   const [documents, setDocuments] = useState<string[]>([])
   const [plugins, setPlugins] = useState<string[]>([])
   const [facts, setFacts] = useState<Fact[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
-  const [live, setLive] = useState<Step[] | null>(null)
-  /* Separate from `live`, which is a panel's contents: a conversation left behind drops
-     the steps it was showing, while the request it left behind is still the one request
-     cora is answering. One value cannot say both. */
+  /* The steps of the turn being taken, and the conversation they are being taken in: a
+     plan belongs to the conversation whose question it answers, so a reader who has moved
+     on is simply not shown it — rather than the panel being cleared, which loses it for
+     the reader who comes back while it is still running. */
+  const [live, setLive] = useState<{ thread: string; steps: Step[] } | null>(null)
+  /* Separate from `live`, which is a panel's contents: a conversation left behind is not
+     shown the steps of the turn it left, while that request is still the one request cora
+     is answering. One value cannot say both. */
   const [asking, setAsking] = useState(false)
   const [read, setRead] = useState<string | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
@@ -87,6 +95,10 @@ export default function App() {
   }, [refresh])
 
   const cited = citedDocuments(entries)
+  /** What the conversation column shows: its recorded turns, and the one being asked in
+   *  it. A turn in flight elsewhere is that conversation's, and is not drawn here. */
+  const conversation =
+    flight?.thread === thread ? [...entries, flight.entry] : entries
 
   /** The document as this conversation last had it. A filename names nothing on its
    *  own — one name can cover two uploads, and the store keeps a text per upload — so
@@ -141,53 +153,53 @@ export default function App() {
   }
 
   /** The question joins the thread the moment it is asked, so it is on the page while
-   *  the answer is being written; what comes back replaces it rather than following
+   *  the answer is being written; what comes back takes its place rather than following
    *  it. */
   const ask = async (question: string) => {
     const on = thread
     const from = loads.current
     const taken: Step[] = []
     setAsking(true)
-    setLive(taken)
+    setLive({ thread: on, steps: taken })
     setTab('PLAN')
     const id = ++asked.current
-    setEntries((said) => [
-      ...said,
-      { id, question, citations: [], trace: [], pending: true },
-    ])
+    setFlight({
+      thread: on,
+      entry: { id, question, citations: [], trace: [], pending: true },
+    })
     try {
       const result = await cora.ask(question, thread, (step) => {
         taken.push(step)
-        // The plan is this conversation's; a reader who has moved on is not shown the
-        // steps of a turn they left. The composer stays disabled until it ends either
-        // way — cora answers one question at a time.
-        if (here.current === on) setLive([...taken])
+        setLive({ thread: on, steps: [...taken] })
       })
       // Nothing lands on a conversation the reader left — that turn is another
-      // conversation's work now. Coming *back* to it is not leaving it: the reopen
-      // renumbered the entries, so `id` names none of them and the store is what knows
-      // this turn. The panels follow for the same reason; an answer that cites nothing
-      // leaves the panel on the document last read, which says it is not cited in this
-      // answer — rather than emptying it and saying nothing at all.
+      // conversation's work now. Where they are still in it, the store has this turn as
+      // of now: appending it is right unless the conversation was reloaded under them
+      // while it ran, in which case the store's own list is already on the page and
+      // appending to it would show the turn twice. The panels follow for the same
+      // reason; an answer that cites nothing leaves the panel on the document last read,
+      // which says it is not cited in this answer — rather than emptying it and saying
+      // nothing at all.
       if (here.current === on) {
-        if (loads.current === from) setEntries(answered({ id, question, ...result }))
-        else await recall(on)
+        if (loads.current === from) {
+          setEntries((said) => [...said, { id, question, ...result }])
+        } else {
+          await recall(on)
+        }
         setRead((current) => result.citations[0]?.document ?? current)
       }
     } catch (failed) {
-      const failure = { id, question, error: message(failed), citations: [], trace: taken }
-      // A failure is recorded nowhere, so coming back to the conversation it was asked
-      // in is the one case where it is appended rather than replaced.
+      // A failure is recorded nowhere, so it exists only on the page it was asked from.
       if (here.current === on) {
-        setEntries(
-          loads.current === from
-            ? answered(failure)
-            : (said) => [...said, failure],
-        )
+        setEntries((said) => [
+          ...said,
+          { id, question, error: message(failed), citations: [], trace: taken },
+        ])
       }
     } finally {
+      setFlight((running) => (running?.entry.id === id ? null : running))
       setAsking(false)
-      if (here.current === on) setLive(null)
+      setLive(null)
       refresh()
     }
   }
@@ -199,9 +211,6 @@ export default function App() {
     loaded(session.thread_id, (kept) => {
       here.current = session.thread_id
       setThread(session.thread_id)
-      // Whatever a turn still in flight has drawn belongs to the conversation being
-      // left, not to this one, which has its own last turn to show.
-      setLive(null)
       setEntries(recorded(kept))
       setRead(null)
     })
@@ -230,7 +239,12 @@ export default function App() {
           />
         )}
 
-        <Answer entries={entries} asking={asking} onAsk={ask} onCite={setOpened} />
+        <Answer
+          entries={conversation}
+          asking={asking}
+          onAsk={ask}
+          onCite={setOpened}
+        />
 
         {rightOpen && (
         <aside className="rail-panels">
@@ -248,7 +262,11 @@ export default function App() {
             ))}
           </div>
 
-          {tab === 'PLAN' && <PlanPanel steps={live ?? lastTrace(entries)} />}
+          {tab === 'PLAN' && (
+            <PlanPanel
+              steps={live?.thread === thread ? live.steps : lastTrace(entries)}
+            />
+          )}
           {tab === 'SOURCE' && (
             <SourcePanel
               document={read}
@@ -279,16 +297,11 @@ export default function App() {
   )
 }
 
-/** The turn the panels speak for: the newest one that actually answered. A question in
- *  flight carries no citations yet and a turn that failed never will, so reading either
- *  as "this answer" takes the marks off the answer the reader is still reading. */
+/** The turn the panels speak for: the newest one that actually answered. A turn that
+ *  failed carries no citations and never will, so reading it as "this answer" takes the
+ *  marks off the answer the reader is still reading. */
 const answering = (entries: Entry[]): Entry | undefined =>
-  entries.filter((entry) => !entry.pending && !entry.error).at(-1)
-
-/** The turn that was waiting, now that it is not — and nothing at all if the
- *  conversation it was asked in has since been left. */
-const answered = (entry: Entry) => (said: Entry[]) =>
-  said.map((each) => (each.id === entry.id ? entry : each))
+  entries.filter((entry) => !entry.error).at(-1)
 
 /** The documents this conversation has actually rested on, by name. */
 function citedDocuments(entries: Entry[]): Set<string> {
