@@ -25,6 +25,7 @@ from cora.engine.steps import ModelStep, PrepareStep, Router, ToolStep
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
+from cora.ports.conversations import Conversations
 from cora.ports.documents import Documents
 from cora.ports.embedding import Embedder
 from cora.ports.graph import GraphFor
@@ -42,6 +43,7 @@ class App:
     agent: Agent
     knowledge_base: KnowledgeBase
     memory: Memory | None = None
+    conversations: Conversations | None = None
 
 
 def assemble(
@@ -52,6 +54,7 @@ def assemble(
     documents: Documents,
     plugins: PluginSet,
     memory: Memory | None = None,
+    conversations: Conversations | None = None,
     top_k: int = DEFAULT_TOP_K,
     max_tool_rounds: int = DEFAULT_MAX_TOOL_ROUNDS,
     history_turns: int = DEFAULT_HISTORY_TURNS,
@@ -81,9 +84,10 @@ def assemble(
         max_tool_rounds=max_tool_rounds,
     )
     return App(
-        agent=Agent(runner=runner),
+        agent=Agent(runner=runner, conversations=conversations),
         knowledge_base=knowledge_base,
         memory=memory,
+        conversations=conversations,
     )
 
 
@@ -116,6 +120,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
     from cora.adapters.chroma_retriever import ChromaRetriever
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
+    from cora.adapters.sqlite_conversations import SqliteConversations
     from cora.adapters.sqlite_documents import SqliteDocuments
     from cora.adapters.sqlite_store_memory import SqliteStoreMemory
 
@@ -135,6 +140,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         documents=SqliteDocuments.at(config.documents_path),
         plugins=load_plugins(config.plugin_modules),
         memory=SqliteStoreMemory.at(config.memory_path),
+        conversations=SqliteConversations.at(config.conversations_path),
         top_k=config.top_k,
         max_tool_rounds=config.max_tool_rounds,
         history_turns=config.history_turns,

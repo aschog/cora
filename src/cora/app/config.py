@@ -34,6 +34,7 @@ DEFAULT_HISTORY_TURNS = 20
 DEFAULT_DB_PATH = ".cora/chroma"
 DEFAULT_MEMORY_PATH = ".cora/memory.sqlite"
 DEFAULT_DOCUMENTS_PATH = ".cora/documents.sqlite"
+DEFAULT_CONVERSATIONS_PATH = ".cora/conversations.sqlite"
 DEFAULT_LOG_PATH = LOG_FILE
 
 
@@ -52,6 +53,7 @@ class Config:
     db_path: str
     memory_path: str = DEFAULT_MEMORY_PATH
     documents_path: str = DEFAULT_DOCUMENTS_PATH
+    conversations_path: str = DEFAULT_CONVERSATIONS_PATH
     log_path: str = DEFAULT_LOG_PATH
     debug: bool = False
 
@@ -88,6 +90,9 @@ class Config:
             db_path=_named(env, "CORA_DB_PATH", DEFAULT_DB_PATH),
             memory_path=_named(env, "CORA_MEMORY_PATH", DEFAULT_MEMORY_PATH),
             documents_path=_named(env, "CORA_DOCUMENTS_PATH", DEFAULT_DOCUMENTS_PATH),
+            conversations_path=_named(
+                env, "CORA_CONVERSATIONS_PATH", DEFAULT_CONVERSATIONS_PATH
+            ),
             log_path=_named(env, "CORA_LOG_PATH", DEFAULT_LOG_PATH),
             debug=_bool(env, "CORA_DEBUG"),
         )

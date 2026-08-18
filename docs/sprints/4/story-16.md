@@ -296,9 +296,9 @@ checkpointer already owns the second.
 - [x] a store that cannot be written costs the turn nothing — the answer arrives and
       the conversation is simply not kept, as failing to file a note never costs an
       answer either
-- [ ] `Config.from_env` reads `CORA_CONVERSATIONS_PATH`, and a blank value reads as unset
+- [x] `Config.from_env` reads `CORA_CONVERSATIONS_PATH`, and a blank value reads as unset
       like every other path setting
-- [ ] `build` wires the store at that path, and still opens no store outside the paths it
+- [x] `build` wires the store at that path, and still opens no store outside the paths it
       was configured with
 - [ ] **(int)** the runner checkpoints where the config says, so a thread resumed in a
       second process carries what the model was told

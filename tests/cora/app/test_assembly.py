@@ -8,9 +8,12 @@ import pytest
 from app_builder import assembled, indexed
 from cora.adapters.langgraph_runner import LangGraphRunner
 from cora.adapters.openrouter_chat_model import OpenRouterChatModel
+from cora.adapters.sqlite_conversations import SqliteConversations
 from cora.app.assembly import App, build
 from cora.app.config import DEFAULT_PLUGINS, Config
 from cora.app.log_config import DEBUG_HANDLER_NAME, FILE_HANDLER_NAME
+from cora.domain.chat_result import ChatResult
+from cora.domain.conversation import Turn
 from cora.domain.errors import (
     InputRejectedError,
     ToolLoopLimitError,
@@ -517,6 +520,7 @@ def _config(db_path: Path, *, debug: bool = False) -> Config:
         db_path=str(db_path),
         memory_path=str(db_path / "memory.sqlite"),
         documents_path=str(db_path / "documents.sqlite"),
+        conversations_path=str(db_path / "conversations.sqlite"),
         log_path=str(db_path / "logs" / "cora.log"),
         debug=debug,
     )
@@ -540,6 +544,7 @@ def test_build_starts_with_an_empty_store(tmp_path: Path) -> None:
         db_path=str(tmp_path),
         memory_path=str(tmp_path / "memory.sqlite"),
         documents_path=str(tmp_path / "documents.sqlite"),
+        conversations_path=str(tmp_path / "conversations.sqlite"),
     )
 
     app = build(config)
@@ -676,3 +681,20 @@ def test_the_graph_is_a_slot_like_every_other_port() -> None:
     assert set(asked) == {"tools", "router", "max_tool_rounds"}, (
         "the slot is asked for the steps of a turn and nothing else"
     )
+
+
+@pytest.mark.integration
+def test_build_keeps_a_conversations_store_at_the_configured_path(
+    tmp_path: Path,
+) -> None:
+    """The sessions panel lists what an earlier run recorded, so the store has to be the
+    one the settings name and it has to be on disk."""
+    app = build(_config(tmp_path))
+
+    assert app.conversations is not None
+    app.conversations.record(
+        "t1", Turn(question="How much protein?", result=ChatResult(answer="1.6 g"))
+    )
+
+    reopened = SqliteConversations.at(str(tmp_path / "conversations.sqlite"))
+    assert [turn.question for turn in reopened.turns("t1")] == ["How much protein?"]
