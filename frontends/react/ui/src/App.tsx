@@ -44,8 +44,11 @@ export default function App() {
   const [trouble, setTrouble] = useState<string | null>(null)
   const [leftOpen, setLeftOpen] = useState(true)
   const asked = useRef(0)
+  /* Which conversation the reader is in, written where it changes rather than during a
+     render: `setThread` schedules a render, so a ref assigned while rendering still
+     names the old thread for anything that runs before that render lands — which is any
+     reply arriving in the same task batch as the reopen. */
   const here = useRef(thread)
-  here.current = thread
   const [rightOpen, setRightOpen] = useState(true)
 
   /** What the page shows around the conversation, loaded together: one banner for all
@@ -113,7 +116,10 @@ export default function App() {
     try {
       const result = await cora.ask(question, thread, (step) => {
         taken.push(step)
-        setLive([...taken])
+        // The plan is this conversation's; a reader who has moved on is not shown the
+        // steps of a turn they left. The composer stays disabled until it ends either
+        // way — cora answers one question at a time.
+        if (here.current === on) setLive([...taken])
       })
       setEntries(answered({ id, question, ...result }))
       // The panels the answer steers are steered only if the reader is still in the
@@ -143,6 +149,7 @@ export default function App() {
     cora
       .turns(session.thread_id)
       .then((kept) => {
+        here.current = session.thread_id
         setThread(session.thread_id)
         setEntries(
           kept.map((turn, n) => ({

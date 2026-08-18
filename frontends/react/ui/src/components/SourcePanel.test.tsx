@@ -32,9 +32,14 @@ test('a passage whose text was never kept says so rather than drawing an empty p
   /* A citation carries the upload its span was measured in, and an index written before
      cora kept any text hands out citations that name none. The reader is told; the
      panel does not sit blank. */
-  /* `uploadOf` hands the panel what the citation names, and a citation from such an
-     index names the empty string — not nothing. */
+  /* `uploadOf` hands the panel what the citation names — the empty string for such an
+     index — and `null` when the conversation cites the document nowhere at all. A
+     document that cannot be read is a document that cannot be read. */
   render(<SourcePanel document="notes.md" upload="" citations={[cited('')]} />)
+
+  expect(screen.getByText(/indexed before cora kept its text/)).toBeTruthy()
+  cleanup()
+  render(<SourcePanel document="notes.md" upload={null} citations={[]} />)
 
   expect(screen.getByText(/indexed before cora kept its text/)).toBeTruthy()
   expect(screen.queryByText(/The rest of the document follows/)).toBeNull()

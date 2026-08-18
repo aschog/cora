@@ -307,3 +307,24 @@ to the application's default model reached `main`'s neighbour by riding in on a 
 
 The page's own tier performs no navigation and dials no host: the click whose default
 action this suite asserts about is one it must never carry out.
+
+#### Found by the branch review (`ai-code-reviewer`, fifth pass)
+
+Every fourth-pass fix killed its mutant. What was left was the guard itself: closed for
+the ordinary case and open for the one it was written for.
+
+- [x] **(ui)** the reply is dropped when the reader has moved on *in the same task batch
+      as the reopen* — `setThread` schedules a render, so a ref assigned while rendering
+      still names the old thread to anything that runs before that render lands, and two
+      responses arriving in one batch is ordinary. The ref is written where the thread
+      changes
+- [x] **(ui)** a document that names no upload at all says why, as one naming an empty
+      string already did — the panel drew a title over an empty body
+- [x] **(ui)** the note explaining the greyed documents goes when there are none
+- [x] **(ui)** the live plan belongs to the conversation its steps were taken in; the
+      composer stays disabled until the turn ends either way, because cora answers one
+      question at a time
+
+The page's build runs in CI: a broken asset import type-checks and unit-tests clean, and
+the build's output is what the server serves. The default-model test reads the README
+from the repository root rather than the working directory.

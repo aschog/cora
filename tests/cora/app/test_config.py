@@ -2,7 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from cora.app.config import DEFAULT_MEMORY_PATH, DEFAULT_PLUGINS, Config
+import workspace
+from cora.app.config import (
+    DEFAULT_MEMORY_PATH,
+    DEFAULT_MODEL,
+    DEFAULT_PLUGINS,
+    Config,
+)
 from cora.domain.errors import ConfigurationError
 
 
@@ -363,9 +369,5 @@ def test_the_default_model_is_the_one_the_readme_names() -> None:
     documented fact rather than a constant: a change to it that leaves the README and
     the reasoning-effort note behind is a deployment answering from a model, at a cost
     and a latency, that neither page promised."""
-    from pathlib import Path
-
-    from cora.app.config import DEFAULT_MODEL
-
     assert DEFAULT_MODEL == "openai/gpt-4o-mini"
-    assert f"`{DEFAULT_MODEL}`" in Path("README.md").read_text()
+    assert f"`{DEFAULT_MODEL}`" in (workspace.ROOT / "README.md").read_text()

@@ -17,11 +17,10 @@ export function usePassage(upload: string | null) {
   useEffect(() => {
     setText(null)
     setTrouble(null)
-    if (upload === '') {
+    if (!upload) {
       setTrouble(UNKEPT)
       return
     }
-    if (!upload) return
     let current = true
     cora
       .passage(upload)

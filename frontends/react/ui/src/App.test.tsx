@@ -201,6 +201,7 @@ test('a document the answer cited opens in the source panel, marked at the passa
 
   // Cited now, so the rail opens it — into SOURCE, marked where the citation falls.
   expect(inTheRail.hasAttribute('disabled')).toBe(false)
+  expect(screen.queryByText(/not cited in this conversation/)).toBeNull()
   fireEvent.click(inTheRail)
 
   expect(screen.getByRole('tab', { name: 'SOURCE' }).getAttribute('aria-selected')).toBe(
@@ -286,9 +287,11 @@ test('an answer never lands on a conversation that was replaced while it ran', a
 
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
   fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
-  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
-
+  /* Released in the same tick as the reopen, because two responses landing in one task
+     batch is ordinary — and a guard that reads a thread React has not committed yet
+     would let the abandoned answer through exactly then. */
   turn.release()
+  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
   await new Promise((settle) => setTimeout(settle, 0))
 
   expect(screen.getByText(OLDER.result.answer)).toBeTruthy()

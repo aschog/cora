@@ -89,3 +89,8 @@ jobs:
 
       - name: UI test
         run: npm test
+
+      # The page the server serves is this build's output, and a broken asset import
+      # type-checks and unit-tests clean — nothing else looks at it.
+      - name: Build the page
+        run: npm run build

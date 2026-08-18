@@ -19,7 +19,8 @@ plugins.
 
 Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangGraph · LangChain over
 OpenRouter · Chroma · sentence-transformers · Streamlit · React over Starlette —
-with ruff, ty and pytest as quality gates. Runtime dependencies are added feature-by-feature, story by story.
+with ruff, ty and pytest as quality gates. Runtime dependencies are added
+feature-by-feature, story by story.
 
 ## The packages
 
