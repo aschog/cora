@@ -1,3 +1,4 @@
+import pytest
 from starlette.testclient import TestClient
 
 from app_builder import assembled, indexed
@@ -103,3 +104,40 @@ def test_a_turn_that_fails_before_any_step_still_closes_the_stream() -> None:
     streamed = asking(app)
 
     assert [name for name, _ in streamed] == ["error"]
+
+
+class BreaksInAWayNobodyModelled:
+    """A tool or an adapter raising something that is not a `CoreError` — a plugin
+    handed a payload it did not expect, say."""
+
+    def complete(
+        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+    ) -> ModelReply:
+        raise KeyError("range")
+
+
+def test_a_failure_nobody_modelled_still_says_the_turn_went_wrong() -> None:
+    """Ending the stream without an `error` reads to the page as a cut connection, so a
+    reader retries a question that will fail the same way. The message is generic: an
+    exception's text is for the log, not for the screen."""
+    streamed = asking(assembled(chat_model=BreaksInAWayNobodyModelled()))
+
+    assert [name for name, _ in streamed] == ["error"]
+    said = streamed[0][1]["error"]
+    assert "range" not in said and "KeyError" not in said
+    assert said
+
+
+@pytest.mark.parametrize("body", ["not json at all", "[]", '"just a string"'])
+def test_a_body_that_is_not_a_question_is_refused_rather_than_a_crash(
+    body: str,
+) -> None:
+    """The error contract holds at the door too: `_ingest` already answers a missing
+    file with a message and a 400, and asking is no different."""
+    with TestClient(api(assembled())) as reader:
+        refused = reader.post(
+            "/api/ask", content=body, headers={"Content-Type": "application/json"}
+        )
+
+    assert refused.status_code == 400
+    assert refused.json()["error"]

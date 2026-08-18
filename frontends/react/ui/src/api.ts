@@ -17,6 +17,7 @@ export type Fact = { key: string; text: string }
 export type Session = { thread_id: string; opened_with: string }
 
 const UNREADABLE = 'cora could not be reached.'
+const NO_CONTENT = 204
 
 async function read<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, init)
@@ -42,14 +43,20 @@ export const turns = (thread: string) => read<Turn[]>(`/api/sessions/${thread}`)
 export const passage = (upload: string) =>
   read<{ text: string }>(`/api/uploads/${upload}`).then((kept) => kept.text)
 
-export const forget = (key: string) =>
-  read<never>(`/api/memory/${key}`, { method: 'DELETE' }).catch(ignoreEmpty)
+export const forget = (key: string) => discard(`/api/memory/${key}`)
 
-export const forgetEverything = () =>
-  read<never>('/api/memory', { method: 'DELETE' }).catch(ignoreEmpty)
+export const forgetEverything = () => discard('/api/memory')
 
-/** A 204 carries no body, so the only thing left to fail on is the parse. */
-const ignoreEmpty = () => undefined
+/**
+ * A write whose success carries no body. The empty 204 is not parsed — reading it as
+ * JSON would throw, and a blanket catch around that would swallow the 503 that says the
+ * store went away, leaving the page to report the write as done.
+ */
+async function discard(path: string): Promise<void> {
+  const response = await fetch(path, { method: 'DELETE' })
+  if (response.status === NO_CONTENT) return
+  if (!response.ok) throw new Error(await failure(response))
+}
 
 export async function upload(file: File): Promise<{ document: string; chunks: number }> {
   const carried = new FormData()

@@ -6,6 +6,7 @@ for a failure, and a stream for an answer that takes a minute to arrive.
 """
 
 import json
+import logging
 import pathlib
 import queue
 import threading
@@ -24,6 +25,8 @@ from cora.app.assembly import App
 from cora.domain.errors import AdapterError, CoreError
 from cora.domain.trace import TraceStep
 from cora.frontends.react import payloads
+
+log = logging.getLogger(__name__)
 
 UNAVAILABLE = 503
 """What a store that went away answers with: the request was well formed and the
@@ -90,6 +93,11 @@ def _ingest(app: App) -> Callable[[Request], Any]:
 NO_FILE = "No file was uploaded."
 
 STREAM = "text/event-stream"
+NOT_A_QUESTION = "Ask with a question and the thread it belongs to."
+WENT_WRONG = "Something went wrong answering that. Please try again."
+"""What an unmodelled failure says. A `CoreError` was written to be read by whoever
+asked; anything else was not, so its text goes to the log and the reader gets a sentence
+that is true without quoting a stack."""
 DONE = None
 """What the worker puts on the queue when there is nothing further to send. A stream
 that is not closed is a page still spinning under an answer that already failed."""
@@ -101,8 +109,13 @@ def _ask(app: App) -> Callable[[Request], Any]:
     steps from the thread it runs on, so the turn runs on a thread of its own and the
     queue between them is what the response reads."""
 
-    async def taken(request: Request) -> StreamingResponse:
-        asked = await request.json()
+    async def taken(request: Request) -> Response:
+        try:
+            asked = await request.json()
+        except ValueError:
+            return JSONResponse({"error": NOT_A_QUESTION}, status_code=REFUSED)
+        if not isinstance(asked, dict):
+            return JSONResponse({"error": NOT_A_QUESTION}, status_code=REFUSED)
         events: queue.Queue[str | None] = queue.Queue()
         turn = threading.Thread(
             target=_run,
@@ -131,6 +144,9 @@ def _run(
         events.put(_event("turn", payloads.result(result)))
     except CoreError as refused:
         events.put(_event("error", {"error": refused.user_message}))
+    except Exception:
+        log.exception("the turn failed in a way nobody modelled")
+        events.put(_event("error", {"error": WENT_WRONG}))
     finally:
         events.put(DONE)
 
