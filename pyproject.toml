@@ -41,9 +41,11 @@ cora = { workspace = true }
 cora-plugin-fitness = { workspace = true }
 cora-plugin-security = { workspace = true }
 cora-frontend-streamlit = { workspace = true }
+cora-frontend-react = { workspace = true }
 
 [dependency-groups]
 dev = [
+    "cora-frontend-react",
     "cora-frontend-streamlit",
     "cora-plugin-fitness",
     "cora-plugin-security",
@@ -59,6 +61,7 @@ dev = [
 [tool.ty.environment]
 root = [
     "src",
+    "frontends/react/src",
     "frontends/streamlit/src",
     "plugins/fitness/src",
     "plugins/security/src",
@@ -68,6 +71,7 @@ root = [
 [tool.ruff]
 src = [
     "src",
+    "frontends/react/src",
     "frontends/streamlit/src",
     "plugins/fitness/src",
     "plugins/security/src",
