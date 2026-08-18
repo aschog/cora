@@ -22,6 +22,7 @@ from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.streamlit.chat import (
     APP_NAME,
     NOTHING_REMEMBERED,
+    RAIL_PANELS,
     REMEMBER_HEADING,
     TAGLINE,
 )
@@ -693,3 +694,20 @@ def test_the_page_is_headed_by_the_app_and_what_it_is() -> None:
 
     assert [heading.value for heading in at.title] == [APP_NAME]
     assert TAGLINE in [caption.value for caption in at.caption]
+
+
+def _said_in(panel) -> str:
+    """Everything one panel of the rail says, whichever element says it."""
+    return "\n".join(
+        [
+            *(element.value for element in panel.markdown),
+            *(element.value for element in panel.code),
+        ]
+    )
+
+
+@pytest.mark.integration
+def test_the_rail_carries_four_panels() -> None:
+    at = _run_page(_app(ScriptedChatModel([])))
+
+    assert [panel.label for panel in at.tabs] == list(RAIL_PANELS)

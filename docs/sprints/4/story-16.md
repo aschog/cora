@@ -255,9 +255,10 @@ this one, and what cora has been told to remember. The plan is today's "How I go
 moved out of the answer it sat under — one rail showing the newest turn, rather than an
 expander per message.
 
-- [ ] the rail carries four panels, named plan, source, sessions and memory
-- [ ] the plan panel holds the newest turn's steps, and no answer in the thread carries
-      an expander of its own
+- [x] the rail carries four panels, named plan, source, sessions and memory
+- [ ] the plan panel holds each turn's steps in thread order, and no answer carries a
+      panel of its own — every turn's, not the newest: a trace surviving the next
+      question is already pinned, and one rail showing only the last would drop it
 - [ ] a turn that went wrong says so in the plan panel, the news having nowhere else to go
 - [ ] the steps of a turn in progress arrive in the plan panel rather than beside the
       answer being written

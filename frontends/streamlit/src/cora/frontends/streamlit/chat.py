@@ -34,6 +34,11 @@ CONVERSATION_SHARE = 2
 RAIL_SHARE = 1
 APP_NAME = "cora"
 TAGLINE = "Document agent"
+PLAN_PANEL = "Plan"
+SOURCE_PANEL = "Source"
+SESSIONS_PANEL = "Sessions"
+MEMORY_PANEL = "Memory"
+RAIL_PANELS = (PLAN_PANEL, SOURCE_PANEL, SESSIONS_PANEL, MEMORY_PANEL)
 
 
 def main(app_factory: Callable[[], App]) -> None:
@@ -62,7 +67,9 @@ def render(app: App) -> None:
     declare_components()
     st.title(APP_NAME)
     st.caption(TAGLINE)
-    conversation, _rail = st.columns([CONVERSATION_SHARE, RAIL_SHARE])
+    conversation, rail = st.columns([CONVERSATION_SHARE, RAIL_SHARE])
+    with rail:
+        st.tabs(RAIL_PANELS)
     with conversation:
         said = st.container()
         prompt = st.chat_input("Ask about your documents")
