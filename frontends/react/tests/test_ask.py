@@ -1,5 +1,3 @@
-import json
-
 from starlette.testclient import TestClient
 
 from app_builder import assembled, indexed
@@ -10,6 +8,7 @@ from cora.frontends.react.api import api
 from cora.ports.chat_model import Message, ModelReply
 from cora.ports.plugin import Tool, ToolCall
 from fakes import FailingChatModel, ScriptedChatModel
+from sse import frames
 
 NOTES = b"Squats stall on sleep, not on volume. The block holds intensity."
 SEARCH = ToolCall(name=SEARCH_TOOL_NAME, arguments={"query": "squats"}, call_id="c1")
@@ -37,25 +36,16 @@ class BreaksAfterSearching:
         raise LlmError()
 
 
-def asking(app: App, question: str = "Why?", thread: str = "t1") -> list[tuple]:
+def asking(
+    app: App, question: str = "Why?", thread: str = "t1"
+) -> list[tuple[str, dict]]:
     """The stream, read as the (event, data) pairs it carried."""
     with TestClient(api(app)) as reader:
         streamed = reader.post(
             "/api/ask", json={"question": question, "thread_id": thread}
         )
     assert streamed.status_code == 200
-    return [_parsed(frame) for frame in streamed.text.split("\n\n") if frame.strip()]
-
-
-def _parsed(frame: str) -> tuple[str, dict]:
-    name = data = ""
-    for line in frame.splitlines():
-        field, _, value = line.partition(": ")
-        if field == "event":
-            name = value
-        elif field == "data":
-            data = value
-    return name, json.loads(data)
+    return frames(streamed.text)
 
 
 def test_the_steps_arrive_as_they_are_taken_and_the_answer_last() -> None:

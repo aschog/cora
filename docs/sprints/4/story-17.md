@@ -38,76 +38,76 @@ in `frontends/react/ui`.
 
 #### The package (`frontends/react/pyproject.toml`)
 
-- [ ] `cora-frontend-react` resolves in the workspace and imports `cora`, and the
+- [x] `cora-frontend-react` resolves in the workspace and imports `cora`, and the
       existing purity guard still finds no core module importing a frontend
 
 #### Payloads (`payloads.py`, pure)
 
-- [ ] a `Citation` renders as its number, document, span and upload — the upload is what
+- [x] a `Citation` renders as its number, document, span and upload — the upload is what
       the page reads a passage back with
-- [ ] a `ToolUse` step renders its summary, detail and failed flag; a `ModelDecision`
+- [x] a `ToolUse` step renders its summary, detail and failed flag; a `ModelDecision`
       renders the same three keys, so the page draws one kind of step
-- [ ] a `ChatResult` renders as answer, citations and trace
-- [ ] a `Turn` renders as its question and that result, so a reopened conversation
+- [x] a `ChatResult` renders as answer, citations and trace
+- [x] a `Turn` renders as its question and that result, so a reopened conversation
       redraws from the same shape a fresh answer arrives in
-- [ ] a `Fact` renders as key and text; a `Session` as thread id and opening question
+- [x] a `Fact` renders as key and text; a `Session` as thread id and opening question
 
 #### Documents (`api.py`)
 
-- [ ] `GET /api/documents` lists what the knowledge base has indexed
-- [ ] `POST /api/documents` ingests the upload and reports the chunks it cut
-- [ ] a file already indexed reports no chunks rather than failing
-- [ ] a `CoreError` on ingest answers with its `user_message` and a 4xx, never a
+- [x] `GET /api/documents` lists what the knowledge base has indexed
+- [x] `POST /api/documents` ingests the upload and reports the chunks it cut
+- [x] a file already indexed reports no chunks rather than failing
+- [x] a `CoreError` on ingest answers with its `user_message` and a 4xx, never a
       traceback, and leaves nothing indexed
-- [ ] `GET /api/uploads/{upload}` returns the text that upload was kept as
-- [ ] an upload never kept answers 404, so a passage that cannot be opened says so
+- [x] `GET /api/uploads/{upload}` returns the text that upload was kept as
+- [x] an upload never kept answers 404, so a passage that cannot be opened says so
 
 #### Asking, as it happens (`api.py`)
 
-- [ ] `POST /api/ask` streams `step` events in the order the agent took them, then one
+- [x] `POST /api/ask` streams `step` events in the order the agent took them, then one
       `turn` event carrying the answer, its citations and its trace
-- [ ] the stream's `turn` event is the last thing on the wire — a client that stops
+- [x] the stream's `turn` event is the last thing on the wire — a client that stops
       reading at it has the whole answer
-- [ ] the thread id the client sends is the thread the agent answers on, so a follow-up
+- [x] the thread id the client sends is the thread the agent answers on, so a follow-up
       continues the conversation rather than opening one
-- [ ] a `CoreError` mid-turn arrives as an `error` event carrying `user_message`, after
+- [x] a `CoreError` mid-turn arrives as an `error` event carrying `user_message`, after
       the steps already taken, and the stream closes
-- [ ] a turn that fails before any step still closes the stream with that error, rather
+- [x] a turn that fails before any step still closes the stream with that error, rather
       than hanging the page on an open connection
 
 #### Conversations and memory (`api.py`)
 
-- [ ] `GET /api/sessions` lists the stored sessions newest first
-- [ ] `GET /api/sessions/{thread_id}` returns that thread's turns, oldest first
-- [ ] a thread never recorded answers with an empty list rather than 404 — an unopened
+- [x] `GET /api/sessions` lists the stored sessions newest first
+- [x] `GET /api/sessions/{thread_id}` returns that thread's turns, oldest first
+- [x] a thread never recorded answers with an empty list rather than 404 — an unopened
       conversation is empty, not missing
-- [ ] `GET /api/memory` lists the facts oldest first
-- [ ] `DELETE /api/memory/{key}` forgets one; `DELETE /api/memory` clears every one
-- [ ] a memory store that cannot be read answers with its `user_message` and costs the
+- [x] `GET /api/memory` lists the facts oldest first
+- [x] `DELETE /api/memory/{key}` forgets one; `DELETE /api/memory` clears every one
+- [x] a memory store that cannot be read answers with its `user_message` and costs the
       rest of the page nothing
-- [ ] an app assembled without memory or conversations answers both as empty rather than
+- [x] an app assembled without memory or conversations answers both as empty rather than
       failing — the panels are absent, not broken
 
 #### What is loaded (`api.py`)
 
-- [ ] `GET /api/plugins` names the plugin modules the deployment configured
-- [ ] with no plugins configured it answers empty, and the page says bare cora
+- [x] `GET /api/plugins` names the plugin modules the deployment configured
+- [x] with no plugins configured it answers empty, and the page says bare cora
 
 #### Serving the page (`api.py`)
 
-- [ ] a built `ui/dist` is served at `/`, so one process is the whole app
-- [ ] with no build present the API still answers — a missing UI is a dev machine, not a
+- [x] a built `ui/dist` is served at `/`, so one process is the whole app
+- [x] with no build present the API still answers — a missing UI is a dev machine, not a
       broken deployment
 
 #### The page, once (`ui/src/App.test.tsx`)
 
-- [ ] **(ui)** the happy path: against a stubbed `fetch` serving one document, one
+- [x] **(ui)** the happy path: against a stubbed `fetch` serving one document, one
       plugin and an answer stream of two steps and a turn, asking a question fills the
       plan with those steps, renders the answer, and draws its `[1]` as a button
 
 #### Outer functional test
 
-- [ ] **(int)** `xfail(strict=True)` until the list is done: over an assembled app, a
+- [x] **(int)** `xfail(strict=True)` until the list is done: over an assembled app, a
       document is uploaded, a question asked, its steps stream, the answer cites that
       document, the cited passage reads back from its upload, and the conversation is
       listed and reopens with that turn in it

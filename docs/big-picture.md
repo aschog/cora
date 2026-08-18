@@ -140,27 +140,31 @@ flowchart BT
   fitness["cora-plugin-fitness<br/><i>cora.plugins.fitness</i>"]
   security["cora-plugin-security<br/><i>cora.plugins.security</i>"]
   shell["cora-frontend-streamlit<br/><i>cora.frontends.streamlit</i>"]
+  page["cora-frontend-react<br/><i>cora.frontends.react</i>"]
 
   fitness --> app
   security --> app
   shell --> app
+  page --> app
 
   classDef contract fill:#8c4b00,stroke:#d98a1f,color:#fff;
   classDef logic fill:#134e6f,stroke:#1f78b4,color:#fff;
   class app logic;
   class fitness,security contract;
+  class shell,page contract;
 ```
 
 An arrow means *depends on*. `cora` itself depends on nothing of cora's — no plugin and
-no way of talking to a user — which is what leaves room for a second frontend and for a
-deployment that wants no persona and no guard.
+no way of talking to a user — which is what leaves room for a second frontend — there
+are two — and for a deployment that wants no persona and no guard.
 
 | If you are writing | You install | You do not get |
 |---|---|---|
 | a plugin, domain or guard | `cora` | it uses four names from `cora.ports` and `cora.domain`; the rest comes along |
 | the app with a domain and a screen | `cora-plugin-fitness` · `cora-plugin-security` | nothing is loaded until `CORA_PLUGINS` names it |
-| a second frontend | `cora` | Streamlit, or any other way of talking to a user |
+| a third frontend | `cora` | Streamlit, Starlette, or any other way of talking to a user |
 | the app you can run today | `cora-frontend-streamlit` | the plugins — it depends on `cora` and Streamlit, so a domain and a guard are installed and named separately |
+| the same app in a browser page | `cora-frontend-react` | the widgets — it serves the engine over HTTP and a React build draws it |
 
 The layer boundary is no longer a fact of the install: with one distribution, nothing stops
 `cora.engine` importing Chroma except `tests/guards/test_architecture.py`, which walks every
@@ -231,6 +235,7 @@ because the map shows them inside another part.
 | **Plugin registry** *(folded)* | Loads plugins by their module paths and checks each one before the app starts: the name is not blank, tool names are unique, schemas are valid. Everything but the name is optional, so a bundle of rules alone is as legitimate as a bundle of tools. | `engine/plugin_registry.py` |
 | **Composition root** | The only place that names a real adapter. It reads the settings, loads the plugins it was named, asks the graph slot for a runner, and returns an `App`. | `app/config.py`, `app/assembly.py` |
 | **UI shell** | Only widgets: the uploader, the chat, the *How I got there* trace — rendered as text, because a step names the tool the model asked for — and error text shown exactly as the error gives it. An answer is drawn by a custom component so each `[n]` in it is a button: clicking one opens that passage's document beside the chat, marked and scrolled to. | `frontends/streamlit/` |
+| **HTTP shell** | The same screen for a browser: one route per thing the page shows, domain objects rendered as JSON, and a turn streamed as it happens — the steps as the agent takes them, then the answer. A failure crosses as its own message under a status code, never a traceback. | `frontends/react/` |
 
 ## The ports
 
@@ -263,7 +268,7 @@ the plugins, and the UI do not notice any change.
   holds exactly two packages, and the engine is not one of them. Every manifest read and
   every import walked runs where all seven packages are present, so this is the only check
   that can tell a declaration from a fact.
-- **Streamlit is used in one folder only.** No file outside `frontends/streamlit/` may import it. This is why you can really replace the user interface.
+- **A toolkit is used in one folder only.** No file outside `frontends/streamlit/` may import Streamlit, and none outside `frontends/react/` may import Starlette. This is why you can really replace the user interface — and why there are two.
 - **The steps do not depend on any real helper.** They are plain callables over small Protocols (`ContextSource`, `ValidationRule`, `ToolExecutor`), so a test walks a whole turn with fakes and no graph at all.
 - **One thing the engine shares with the graph on purpose.** `domain/agent_state.py` marks the keys that accumulate across a conversation (`Annotated[list[Message], operator.add]`). No engine code reads those marks — they are the convention LangGraph uses to merge each step's partial state, so this one file is written to be understood by a graph engine, without importing one. The steps and the router stay framework-free; the state's *shape* is the shared word.
 - **Document text can never act as an instruction.** A test drives a turn that retrieves and checks that the document's words appear only in a `tool` message — never in the system prompt, where cora's own rules live.

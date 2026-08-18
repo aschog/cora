@@ -1,5 +1,7 @@
 # quality-gates mirrors .githooks/pre-commit: format check, lint, type check,
 # unit tests — plus a wheel build, which the hook does not do and nothing else covers.
+# ui-tier is the React page's own toolchain: it needs node, which is why it runs here
+# rather than in the hook every commit pays for.
 # integration-tier runs the tests the hook skips — they need real Chroma, a downloaded
 # embedding model and Streamlit, so they are too slow for every commit but are the only
 # cover for the UI-to-engine wiring and for what the built wheels actually contain.
@@ -64,3 +66,26 @@ jobs:
       # what selects the tier the default run excludes.
       - name: Integration tests
         run: uv run pytest -m integration -q
+
+  ui-tier:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontends/react/ui
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontends/react/ui/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npx tsc -b --noEmit
+
+      - name: UI test
+        run: npm test

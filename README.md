@@ -18,8 +18,8 @@ plugins.
 ## Stack
 
 Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangGraph · LangChain over
-OpenRouter · Chroma · sentence-transformers · Streamlit — with ruff, ty and pytest as
-quality gates. Runtime dependencies are added feature-by-feature, story by story.
+OpenRouter · Chroma · sentence-transformers · Streamlit · React over Starlette — with
+ruff, ty and pytest as quality gates. Runtime dependencies are added feature-by-feature, story by story.
 
 ## The packages
 
@@ -33,6 +33,7 @@ The app is the repository root; a `uv` workspace sharing the `cora` namespace. Y
 | `cora-plugin-security` | `cora.plugins.security` — the prompt-injection screen | `cora` |
 | `cora-plugin-fitness` | `cora.plugins.fitness` — the reference domain plugin | `cora` |
 | `cora-frontend-streamlit` | `cora.frontends.streamlit` — the app you run below | `cora` |
+| `cora-frontend-react` | `cora.frontends.react` — the same app over HTTP, drawn by a React page | `cora` |
 
 `cora.plugins.*` and `cora.frontends.*` are the extension points: another domain or a
 second user interface is a package to add, not a file to edit. A plugin need not be a
@@ -46,7 +47,7 @@ The tree says which is which by its position:
 ```
 src/cora/                          domain  ports  engine  adapters  app
 plugins/fitness  plugins/security  one of many — the directory expects siblings
-frontends/streamlit
+frontends/streamlit  frontends/react
 ```
 
 `src/` is the app; a directory beside it is an extension point, named in the plural for
@@ -74,6 +75,12 @@ make run                                   # or: make run-env, to read the key f
 `make run` wraps `uv run streamlit run` over the app's module path. The target exists so
 the command survives the next time a package moves — the path itself is one line, in the
 `Makefile`.
+
+The React shell is the same app behind an HTTP surface. `make run-react` serves both the
+API and the built page from one process on `127.0.0.1:8000`; in development run
+`make run-react` and `make ui` side by side, and Vite serves the page on `5173`, proxying
+`/api` to the first. The page is built with `npm run build` in `frontends/react/ui/`,
+after which the server picks its output up on its own.
 
 cora loads no plugin unless asked, so the second line is what turns this from a bare
 document assistant into the coaching app with a prompt-injection screen. Drop it to see
