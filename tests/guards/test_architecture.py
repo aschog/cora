@@ -136,11 +136,12 @@ REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in
 # because `test_core_module_is_pure` holds them to something stricter — it bars the
 # outer layers too. What is left is the three meant to be technology free, or nearly: a
 # plugin is data over the contract, the composition root names adapters rather than
-# importing what they wrap, and a frontend draws with one toolkit and no more.
+# importing what they wrap, and a frontend reaches for what it draws or serves with
+# and no more.
 TECHNOLOGY_ALLOWED: dict[str, frozenset[str]] = {
     "the app": frozenset(),
     "the plugins": frozenset(),
-    "the frontends": frozenset({"streamlit", "markdown_it"}),
+    "the frontends": frozenset({"streamlit", "markdown_it", "starlette", "uvicorn"}),
 }
 TECHNOLOGY_CASES = [
     (layer, path) for layer in TECHNOLOGY_ALLOWED for path in LAYER_FILES[layer]
