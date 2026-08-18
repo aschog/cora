@@ -9,7 +9,7 @@ from langgraph.graph import END, START, StateGraph
 
 from cora.domain.agent_state import AgentState
 from cora.domain.errors import ToolLoopLimitError
-from cora.domain.trace import TraceStep
+from cora.domain.trace import step_kinds
 from cora.ports.graph import DONE, TOOLS, GraphRunner, Route, Step
 
 PREPARE = "prepare"
@@ -26,23 +26,10 @@ one day — which would make a lock bump the thing that breaks conversations, si
 logged warning is invisible to a test suite."""
 
 
-def _trace_kinds() -> tuple[type[TraceStep], ...]:
-    """Every kind of step the engine can put in a trace, found rather than listed: a
-    kind added next sprint is checkpointable without anyone remembering this file."""
-    found: list[type[TraceStep]] = []
-    pending = [TraceStep]
-    while pending:
-        for kind in pending.pop().__subclasses__():
-            if kind not in found:
-                found.append(kind)
-                pending.append(kind)
-    return tuple(found)
-
-
 def checkpointed_types() -> tuple[tuple[str, str], ...]:
     return (
         *CHECKPOINTED_DATA,
-        *((kind.__module__, kind.__name__) for kind in _trace_kinds()),
+        *((kind.__module__, kind.__name__) for kind in step_kinds()),
     )
 
 

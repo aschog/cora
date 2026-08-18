@@ -284,7 +284,7 @@ checkpointer already owns the second.
 - [x] `record` then `turns` returns the turn unchanged, across a reopened database
 - [x] `turns` of a thread never recorded is empty rather than raising
 - [x] `sessions` lists the threads newest first, each named by the question that opened it
-- [ ] a recorded turn keeps its citations and its trace, so a reopened conversation is
+- [x] a recorded turn keeps its citations and its trace, so a reopened conversation is
       clickable and its plan is readable
 - [x] a `sqlite3.Error` surfaces as an `AdapterError`, not a raw driver error
 - [x] the parent directory is created if missing

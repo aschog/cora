@@ -4,8 +4,10 @@ import pytest
 
 from cora.adapters.sqlite_conversations import SqliteConversations
 from cora.domain.chat_result import ChatResult
+from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
 from cora.domain.errors import ConversationStoreError
+from cora.domain.trace import MemoryUnread, ModelDecision, ToolUse
 
 THREAD = "9f1c0f7a-0d5e-4a3a-9d0f-1b2c3d4e5f60"
 ASKED = "How much protein should I eat?"
@@ -108,3 +110,50 @@ def test_the_parent_directory_is_created_if_missing(tmp_path: Path) -> None:
     store.record(THREAD, TURN)
 
     assert store.turns(THREAD) == (TURN,)
+
+
+CITATION = Citation(
+    number=1, document="protein.md", start=10, end=40, upload="3f786850e3"
+)
+TRACED = Turn(
+    question=ASKED,
+    result=ChatResult(
+        answer="Your notes say 1.6 g per kg [1].",
+        citations=(CITATION,),
+        trace=(
+            ModelDecision(tools=("search_documents",)),
+            ToolUse(
+                name="search_documents",
+                arguments={"query": "protein"},
+                outcome="1 passage",
+                detail="[1] protein.md: aim for 1.6 g",
+            ),
+        ),
+    ),
+)
+
+
+def test_a_turn_keeps_its_citations_and_its_trace(tmp_path: Path) -> None:
+    """A conversation reopened is one whose numbers can still be clicked and whose plan
+    can still be read, so what a turn rested on travels with it — not just its prose."""
+    store = _store(tmp_path)
+
+    store.record(THREAD, TRACED)
+
+    assert store.turns(THREAD) == (TRACED,)
+
+
+def test_a_kind_of_step_the_store_never_heard_of_still_round_trips(
+    tmp_path: Path,
+) -> None:
+    """Steps are found rather than listed, as the checkpoint's allowlist already is: a
+    kind added next sprint is storable without anyone remembering this file."""
+    store = _store(tmp_path)
+    turn = Turn(
+        question=ASKED,
+        result=ChatResult(answer="none", trace=(MemoryUnread(),)),
+    )
+
+    store.record(THREAD, turn)
+
+    assert store.turns(THREAD) == (turn,)

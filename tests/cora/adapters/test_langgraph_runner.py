@@ -3,7 +3,6 @@ import pytest
 from cora.adapters.langgraph_runner import (
     LangGraphRunner,
     Step,
-    _trace_kinds,
     checkpointed_types,
     langgraph_for,
     recursion_limit_for,
@@ -17,6 +16,7 @@ from cora.domain.trace import (
     ModelDecision,
     ToolUse,
     TraceStep,
+    step_kinds,
 )
 from cora.engine.steps import ModelStep, PrepareStep, Router, ToolStep
 from cora.engine.tool_runtime import ToolRuntime
@@ -359,11 +359,11 @@ def test_the_allowlist_covers_every_kind_of_step_a_trace_can_hold() -> None:
     LangGraph makes good on blocking unregistered types."""
     listed = set(checkpointed_types())
 
-    for kind in _trace_kinds():
+    for kind in step_kinds():
         assert (kind.__module__, kind.__name__) in listed, (
             f"{kind.__name__} can be in a trace but not in a checkpoint"
         )
-    assert {kind.__name__ for kind in _trace_kinds()} >= {
+    assert {kind.__name__ for kind in step_kinds()} >= {
         "ModelDecision",
         "MemoryUnread",
         "ToolUse",

@@ -2,11 +2,15 @@ import json
 import pathlib
 import sqlite3
 from collections.abc import Callable
+from dataclasses import asdict
 from functools import wraps
+from typing import Any, get_origin, get_type_hints
 
 from cora.domain.chat_result import ChatResult
+from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
 from cora.domain.errors import ConversationStoreError
+from cora.domain.trace import TraceStep, step_kinds
 
 SCHEMA = (
     "create table if not exists turns ("
@@ -74,12 +78,41 @@ class SqliteConversations:
         self._connection.close()
 
 
-def _as_data(turn: Turn) -> dict[str, object]:
-    return {"question": turn.question, "answer": turn.result.answer}
+def _as_data(turn: Turn) -> dict[str, Any]:
+    return {
+        "question": turn.question,
+        "answer": turn.result.answer,
+        "citations": [asdict(citation) for citation in turn.result.citations],
+        "trace": [
+            # Every kind of step is a frozen dataclass; `TraceStep` itself is the ABC
+            # they share, which ty cannot read as a dataclass instance.
+            {"kind": type(step).__name__, "fields": asdict(step)}  # ty: ignore[invalid-argument-type]
+            for step in turn.result.trace
+        ],
+    }
 
 
-def _from_data(data: dict[str, object]) -> Turn:
+def _from_data(data: dict[str, Any]) -> Turn:
     return Turn(
         question=str(data["question"]),
-        result=ChatResult(answer=str(data["answer"])),
+        result=ChatResult(
+            answer=str(data["answer"]),
+            citations=tuple(Citation(**found) for found in data["citations"]),
+            trace=tuple(_step(step) for step in data["trace"]),
+        ),
+    )
+
+
+def _step(data: dict[str, Any]) -> TraceStep:
+    """JSON has one sequence and a dataclass may want a tuple, so what a field is
+    restored as is read off the kind's own declaration rather than guessed."""
+    kind = {step.__name__: step for step in step_kinds()}[data["kind"]]
+    declared = get_type_hints(kind)
+    return kind(
+        **{
+            name: tuple(value)
+            if isinstance(value, list) and get_origin(declared.get(name)) is tuple
+            else value
+            for name, value in data["fields"].items()
+        }
     )
