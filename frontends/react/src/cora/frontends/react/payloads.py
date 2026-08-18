@@ -38,12 +38,15 @@ def step(step: TraceStep) -> dict[str, Any]:
 
 
 def _origin(step: TraceStep) -> str:
-    """What cora offers before a plugin is loaded is the engine's own list — the one a
-    plugin's tool names are refused against — so a built-in added there is a built-in
-    here too, rather than a name this module also had to be told."""
+    """Whose tool the step reached for, which is the whole claim the plugin architecture
+    makes. What cora offers before a plugin is loaded is the engine's own list — the one
+    a plugin's tool names are refused against — so a built-in added there is a built-in
+    here too, rather than a name this module also had to be told. What the tool *did* is
+    the step's own summary: the list holds a memory write as well as a search, and one
+    label over both can only be the thing they have in common."""
     if not isinstance(step, ToolUse):
         return ""
-    return "core retrieval" if step.name in RESERVED_TOOL_NAMES else "plugin tool"
+    return "core tool" if step.name in RESERVED_TOOL_NAMES else "plugin tool"
 
 
 def result(result: ChatResult) -> dict[str, Any]:

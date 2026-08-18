@@ -4,6 +4,7 @@ from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
 from cora.domain.trace import ModelDecision, ToolUse
+from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.plugin_set import RESERVED_TOOL_NAMES
 from cora.frontends.react import payloads
 from cora.ports.memory import Fact
@@ -26,15 +27,15 @@ def test_a_citation_carries_the_upload_its_span_was_measured_in() -> None:
 
 
 def test_a_step_says_where_the_work_came_from() -> None:
-    """The panel's origin line. A tool cora ships is the agent reaching for its own
-    retrieval; anything else on offer came from the loaded plugin, which is the whole
-    claim the plugin architecture makes — so the panel can say which it was.
+    """The panel's origin line. A tool cora ships is the agent reaching for one of its
+    own; anything else on offer came from the loaded plugin, which is the whole claim
+    the plugin architecture makes — so the panel can say which it was.
 
     Driven off the engine's own list rather than a copy of it: a built-in added there
     is the one place a built-in gets added, and a page that had to be told separately
     would go on calling it a plugin's."""
     for name in RESERVED_TOOL_NAMES:
-        assert payloads.step(ToolUse(name=name))["origin"] == "core retrieval"
+        assert payloads.step(ToolUse(name=name))["origin"] == "core tool"
 
     domain = ToolUse(name="training_log", outcome="3 misses")
     assert domain.name not in RESERVED_TOOL_NAMES
@@ -52,7 +53,7 @@ def test_a_built_in_the_engine_gains_is_not_reported_as_a_plugin_s(
 
     shipped = ToolUse(name="summarise_document", outcome="one paragraph")
 
-    assert payloads.step(shipped)["origin"] == "core retrieval"
+    assert payloads.step(shipped)["origin"] == "core tool"
 
 
 def test_a_step_that_called_no_tool_claims_no_origin() -> None:
@@ -73,7 +74,7 @@ def test_a_tool_step_renders_summary_detail_and_failure() -> None:
         "summary": 'search_documents(query="squats") → 2 passages',
         "detail": "…",
         "failed": False,
-        "origin": "core retrieval",
+        "origin": "core tool",
     }
 
 
@@ -139,3 +140,14 @@ def test_a_fact_and_a_session_carry_what_it_takes_to_act_on_them() -> None:
         "thread_id": "t1",
         "opened_with": "Why?",
     }
+
+
+def test_a_built_in_that_does_not_search_is_not_called_retrieval() -> None:
+    """The reserved list holds two names and only one of them searches — the other is
+    what the agent keeps about the user. The line says whose tool the step reached for,
+    cora's or the plugin's; calling every built-in retrieval tells the reader that a
+    memory write went through their documents."""
+    kept = ToolUse(name=REMEMBER_TOOL_NAME, outcome="noted")
+
+    assert kept.name in RESERVED_TOOL_NAMES
+    assert payloads.step(kept)["origin"] == "core tool"

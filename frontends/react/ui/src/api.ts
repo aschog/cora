@@ -10,7 +10,7 @@ export type Step = {
   summary: string
   detail: string
   failed: boolean
-  /** 'core retrieval' or 'plugin tool'; empty when the step called none. */
+  /** 'core tool' or 'plugin tool'; empty when the step called none. */
   origin: string
 }
 

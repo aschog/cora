@@ -369,7 +369,7 @@ makes is made by the core docstring it mirrors, and that wording is left where i
       blank thread
 - [x] `CORA_PORT` that is not a number says so the way every other numeric setting does,
       and a port below 1 is refused rather than handed to the server
-- [ ] a built-in tool's origin does not call a memory write "core retrieval" — the
+- [x] a built-in tool's origin does not call a memory write "core retrieval" — the
       reserved list holds two names and only one of them searches
 - [ ] the page's citation rule claims only what it keeps: a number written inside code is
       resolved by the server and drawn as text, so the clickable-and-load-bearing claim
