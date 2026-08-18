@@ -19,6 +19,8 @@ export type Entry = {
   error?: string
   citations: Citation[]
   trace: Step[]
+  /** Asked, not yet answered: the question is on the page while cora works on it. */
+  pending?: boolean
 }
 
 const newThread = () =>
@@ -68,22 +70,33 @@ export default function App() {
 
   const cited = citedDocuments(entries)
 
+  /** The question joins the thread the moment it is asked, so it is on the page while
+   *  the answer is being written; what comes back replaces it rather than following
+   *  it. */
   const ask = async (question: string) => {
     const taken: Step[] = []
     setLive(taken)
     setTab('PLAN')
+    setEntries((said) => [
+      ...said,
+      { question, citations: [], trace: [], pending: true },
+    ])
     try {
       const result = await cora.ask(question, thread, (step) => {
         taken.push(step)
         setLive([...taken])
       })
-      setEntries((said) => [...said, { question, ...result }])
+      setEntries(answered({ question, ...result }))
       setRead(result.citations[0] ?? null)
     } catch (failed) {
-      setEntries((said) => [
-        ...said,
-        { question, error: message(failed), citations: [], trace: taken },
-      ])
+      setEntries(
+        answered({
+          question,
+          error: message(failed),
+          citations: [],
+          trace: taken,
+        }),
+      )
     } finally {
       setLive(null)
       refresh()
@@ -168,6 +181,9 @@ export default function App() {
     </div>
   )
 }
+
+/** The turn that was waiting, now that it is not. */
+const answered = (entry: Entry) => (said: Entry[]) => [...said.slice(0, -1), entry]
 
 /** The documents this conversation has actually rested on, by name. */
 function citedDocuments(entries: Entry[]): Set<string> {

@@ -186,3 +186,31 @@ survived new ones, and one duplication was found that no test could have caught.
 
 `CORA_UI_PATH`, `CORA_HOST` and `CORA_PORT` are in the README, which the previous pass
 claimed and did not do; so is the React tier, which the gates section had never named.
+
+#### Found in use: the answer is markdown, and the page was drawing it as prose
+
+A model writes headings, lists and tables. Rendered as one paragraph they run together
+into a wall nobody reads, so the page renders markdown as the other shell does —
+`markdown-it` beside its `markdown-it-py` — and substitutes the citations into it.
+
+- [x] **(ui)** a list stays a list and `**bold**` stays bold
+- [x] **(ui)** each `[n]` that names a citation becomes a button carrying it, every
+      number in a run its own
+- [x] **(ui)** a number citing nothing stays the text it was written as
+- [x] **(ui)** a bracketed number inside code — inline or fenced — is left alone, and so
+      is one inside a tag's attributes
+- [x] **(ui)** a document cannot smuggle markup into the page: raw HTML is escaped
+- [x] **(ui)** an answer fetches nothing — images are disabled, so a document cannot make
+      the reader's browser call out
+
+The conversation reads as a chat: what you asked is a bubble on your side, what cora
+answered is the page's own text under its name, so a table or a cited passage keeps the
+full column.
+
+- [x] **(ui)** the question is on the page while the answer is still being written, with
+      *Working…* under cora's name where the answer will be — asked and unanswered is a
+      turn in the thread, not a question that vanished into the composer
+- [x] the streaming test waits for the model to be inside `complete` rather than asking
+      whether it has got there yet, and the run's deadline sits inside the model's own
+      patience — a batched turn has to fail on that deadline rather than be rescued by
+      the model giving up and finishing anyway

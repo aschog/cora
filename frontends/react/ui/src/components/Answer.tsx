@@ -1,10 +1,8 @@
 import { useState } from 'react'
+import type { MouseEvent } from 'react'
+import { answerHtml } from '../answer'
 import type { Citation } from '../api'
 import type { Entry } from '../App'
-
-const CITATION_RUN = /(?<![\w\]])(?:\[\d+\])+/g
-/** What counts as a citation: the same rule the answer was written under — a run of
- *  brackets that continues neither a word nor another bracket. */
 
 const WORKING = 'Working…'
 
@@ -30,17 +28,28 @@ export default function Answer({ entries, asking, onAsk, onCite }: Props) {
       <div className="turn-column">
           {entries.map((entry, n) => (
           <div key={n} className="turn">
-            <div className="micro">YOU ASKED</div>
-            <p className="question">{entry.question}</p>
-            {entry.error ? (
+            <p className="said">{entry.question}</p>
+            <div className="from-cora">
+              <span className="avatar" aria-hidden="true">
+                c
+              </span>
+              <span className="who">cora</span>
+            </div>
+            {entry.pending ? (
+              <p className="working">{WORKING}</p>
+            ) : entry.error ? (
               <p className="trouble">{entry.error}</p>
             ) : (
-              <div className="answer-body">{drawn(entry, onCite)}</div>
+              <div
+                className="answer-body"
+                onClick={(e) => opened(e, entry.citations, onCite)}
+                dangerouslySetInnerHTML={{
+                  __html: answerHtml(entry.answer ?? '', entry.citations),
+                }}
+              />
             )}
           </div>
         ))}
-
-        {asking && <p className="working">{WORKING}</p>}
 
         <div className="composer">
           <input
@@ -64,35 +73,16 @@ export default function Answer({ entries, asking, onAsk, onCite }: Props) {
   )
 }
 
-/** The answer as text and the citations in it as buttons; a number that resolves to no
- *  citation stays the text it was written as. */
-function drawn(entry: Entry, onCite: (citation: Citation) => void) {
-  const written = entry.answer ?? ''
-  const by = new Map(entry.citations.map((citation) => [citation.number, citation]))
-  const pieces: (string | Citation)[] = []
-  let read = 0
-  for (const run of written.matchAll(CITATION_RUN)) {
-    pieces.push(written.slice(read, run.index))
-    for (const number of run[0].matchAll(/\d+/g)) {
-      const citation = by.get(Number(number[0]))
-      pieces.push(citation ?? `[${number[0]}]`)
-    }
-    read = run.index + run[0].length
-  }
-  pieces.push(written.slice(read))
-
-  return pieces.map((piece, n) =>
-    typeof piece === 'string' ? (
-      <span key={n}>{piece}</span>
-    ) : (
-      <button
-        key={n}
-        className="cite"
-        aria-label={`Open cited source ${piece.number}`}
-        onClick={() => onCite(piece)}
-      >
-        {piece.number}
-      </button>
-    ),
-  )
+/** The answer is rendered markdown, so its citations are buttons in that HTML rather
+ *  than elements React placed — which makes the click one listener on the block. */
+function opened(
+  event: MouseEvent<HTMLDivElement>,
+  citations: Citation[],
+  onCite: (citation: Citation) => void,
+): void {
+  const clicked = (event.target as HTMLElement).closest('[data-cite]')
+  if (!clicked) return
+  const number = Number(clicked.getAttribute('data-cite'))
+  const citation = citations.find((each) => each.number === number)
+  if (citation) onCite(citation)
 }

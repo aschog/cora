@@ -97,7 +97,9 @@ test('the plan fills while the turn runs, then the answer lands with its citatio
   })
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
 
-  // Both steps are on the page before the answer exists at all.
+  // The question and both steps are on the page before the answer exists at all.
+  expect(await screen.findByText('Why am I stalling?')).toBeTruthy()
+  expect(await screen.findByText(/Working/)).toBeTruthy()
   expect(await screen.findByText(LIVE[0].summary)).toBeTruthy()
   expect(await screen.findByText(LIVE[1].summary)).toBeTruthy()
   expect(screen.queryByText(/Sleep, not volume/)).toBeNull()

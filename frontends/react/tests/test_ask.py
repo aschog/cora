@@ -185,7 +185,7 @@ class WaitsToAnswer:
         if self.completions == 1:
             return ModelReply(tool_calls=(SEARCH,))
         self.entered.set()
-        self.released.wait(timeout=5)
+        self.released.wait(timeout=WAITS_FOREVER)
         return ModelReply(text="Sleep, not volume [1].")
 
 
@@ -218,9 +218,15 @@ async def _asked_mid_turn(
         if message["type"] != "http.response.body" or not message.get("body"):
             return
         chunks.append(message["body"].decode())
-        if mid_turn is None:
-            mid_turn = entered.is_set() and not released.is_set()
-            released.set()
+        if mid_turn is not None:
+            return
+        # Wait for the model to be inside `complete` rather than asking whether it has
+        # got there yet: a chunk can reach the loop before the worker is scheduled that
+        # far, and `is_set()` here would read that ordering as a failure. Waiting makes
+        # the claim exact — this chunk was on the wire while the turn was unfinished,
+        # because the only thing that ends the turn is the release below.
+        mid_turn = entered.wait(HOLDS_THE_TURN)
+        released.set()
 
     await served(SCOPE, receive, send)  # ty: ignore[call-non-callable]
     return chunks, mid_turn
@@ -267,8 +273,13 @@ def test_a_step_reaches_the_page_while_the_turn_is_still_running() -> None:
 
 
 HOLDS_THE_TURN = 3
-"""Long enough that a slow machine still streams, short enough that a batched response
-fails here rather than waiting out the model's own patience."""
+"""How long the run is given. Long enough that a slow machine still streams, and well
+inside the model's own patience below — a turn that batches its events must fail on
+*this* deadline, not be rescued by the model giving up and finishing anyway."""
+
+WAITS_FOREVER = 60
+"""The model waits to be released rather than to be timed out; the number is only a
+backstop so a test that never releases cannot hang the suite."""
 
 
 async def _within(seconds: float, work, *args):
