@@ -399,5 +399,5 @@ private helper the port borrowed gets a name of its own.
       a traceback whose last line happens to be that sentence
 - [x] the number every setting is parsed through has a public name: a frontend borrowing
       `config`'s private helper breaks on an ordinary rename, and no gate can see it
-- [ ] a built-in that is not the search tool is what proves the label, on its own: the
+- [x] a built-in that is not the search tool is what proves the label, on its own: the
       new test could not fail unless the one above it already had

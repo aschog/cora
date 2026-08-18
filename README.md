@@ -132,7 +132,15 @@ default sits beside the package at `frontends/react/ui/dist`, which a wheel inst
 no copy of, so a deployment that serves a build names it here), `CORA_HOST` and
 `CORA_PORT` (default `127.0.0.1` and `8000`). With no build at the path it names, the
 API still answers and `/` is simply not served — which is a dev machine running the page
-on Vite.
+on Vite. A setting the shell cannot use is refused before anything is built, as one line
+on stderr and a non-zero exit.
+
+Its HTTP surface bounds what it will read, because the cap on a document is applied only
+once the whole of it is in memory. `POST /api/documents` answers `413` for an upload past
+that cap and `411` for a multipart body that declares no length at all — a ceiling a
+client can step around by chunking is not a ceiling. `POST /api/ask` bounds its own body
+on the reading instead, so it needs no declared length. Every refusal the shell makes
+arrives as `{"error": "<one sentence>"}`, whoever raised it.
 
 Three more belong to whichever model `CORA_MODEL` names, and are set with it:
 `CORA_MAX_OUTPUT_TOKENS` (default `8192`), `CORA_REQUEST_TIMEOUT` (seconds per model

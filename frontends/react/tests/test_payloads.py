@@ -6,6 +6,7 @@ from cora.domain.conversation import Session, Turn
 from cora.domain.trace import ModelDecision, ToolUse
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.plugin_set import RESERVED_TOOL_NAMES
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.react import payloads
 from cora.ports.memory import Fact
 
@@ -142,12 +143,14 @@ def test_a_fact_and_a_session_carry_what_it_takes_to_act_on_them() -> None:
     }
 
 
-def test_a_built_in_that_does_not_search_is_not_called_retrieval() -> None:
-    """The reserved list holds two names and only one of them searches — the other is
-    what the agent keeps about the user. The line says whose tool the step reached for,
-    cora's or the plugin's; calling every built-in retrieval tells the reader that a
-    memory write went through their documents."""
-    kept = ToolUse(name=REMEMBER_TOOL_NAME, outcome="noted")
+def test_the_origin_of_a_built_in_names_no_act_only_one_of_them_performs() -> None:
+    """The list holds two built-ins and they do different things: one searches the
+    documents, the other writes down what cora keeps about the user. One label over
+    both can only be what they have in common — naming the search tells the reader that
+    a memory write went through their documents. What the tool *did* is the step's own
+    summary, which says so in its own words."""
+    searched = payloads.step(ToolUse(name=SEARCH_TOOL_NAME))["origin"]
+    kept = payloads.step(ToolUse(name=REMEMBER_TOOL_NAME, outcome="noted"))["origin"]
 
-    assert kept.name in RESERVED_TOOL_NAMES
-    assert payloads.step(kept)["origin"] == "core tool"
+    assert searched == kept
+    assert "retrieval" not in kept and "search" not in kept
