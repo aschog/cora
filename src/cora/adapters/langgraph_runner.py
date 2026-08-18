@@ -1,9 +1,13 @@
+import pathlib
+import sqlite3
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any
 
+from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 
@@ -33,10 +37,23 @@ def checkpointed_types() -> tuple[tuple[str, str], ...]:
     )
 
 
+def _serde() -> JsonPlusSerializer:
+    return JsonPlusSerializer(allowed_msgpack_modules=checkpointed_types())
+
+
 def _saver() -> InMemorySaver:
-    return InMemorySaver(
-        serde=JsonPlusSerializer(allowed_msgpack_modules=checkpointed_types())
-    )
+    return InMemorySaver(serde=_serde())
+
+
+def _saver_at(path: str) -> SqliteSaver:
+    """Beside the turns the reader comes back to, in the same file: what the model was
+    told and what the page redraws are two halves of one conversation, and a deployment
+    that deletes the file should lose both or neither."""
+    pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
+    saver = SqliteSaver(connection, serde=_serde())
+    saver.setup()
+    return saver
 
 
 def recursion_limit_for(max_tool_rounds: int) -> int:
@@ -48,16 +65,17 @@ def recursion_limit_for(max_tool_rounds: int) -> int:
 @dataclass(frozen=True)
 class LangGraphRunner:
     """The checkpointer is the runner's own: which technology remembers a thread is a
-    binding, not something the core asks for. It is in memory because a thread is one
-    sitting at the app — what has to outlive the process is what the agent was told
-    about the user, and that lives behind the memory port."""
+    binding, not something the core asks for. In memory it holds a thread for as long as
+    the process runs, which is all a conversation needed while none could be reopened;
+    a deployment that names a file gets one that outlives the process, so a question
+    asked on a resumed thread is asked of a model that saw the exchange before it."""
 
     prepare: Step
     model: Step
     tools: Step
     router: Route
     recursion_limit: int
-    checkpointer: InMemorySaver = field(default_factory=_saver)
+    checkpointer: BaseCheckpointSaver = field(default_factory=_saver)
 
     def run(self, state: AgentState, thread_id: str) -> Iterator[AgentState]:
         try:
@@ -93,11 +111,16 @@ def langgraph_for(
     tools: Step,
     router: Route,
     max_tool_rounds: int,
+    checkpoints_at: str | None = None,
 ) -> GraphRunner:
+    """`checkpoints_at` is this binding's own, not the `GraphFor` port's: where a thread
+    is kept is a fact about LangGraph and sqlite, and a composition root binds it here
+    rather than the port learning that threads live in files."""
     return LangGraphRunner(
         prepare=prepare,
         model=model,
         tools=tools,
         router=router,
         recursion_limit=recursion_limit_for(max_tool_rounds),
+        checkpointer=_saver() if checkpoints_at is None else _saver_at(checkpoints_at),
     )

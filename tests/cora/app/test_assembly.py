@@ -1,4 +1,5 @@
 import logging
+import sqlite3
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -698,3 +699,21 @@ def test_build_keeps_a_conversations_store_at_the_configured_path(
 
     reopened = SqliteConversations.at(str(tmp_path / "conversations.sqlite"))
     assert [turn.question for turn in reopened.turns("t1")] == ["How much protein?"]
+
+
+@pytest.mark.integration
+def test_build_checkpoints_threads_in_the_conversations_file(tmp_path: Path) -> None:
+    """What the model was told lives beside what the reader comes back to: one file, so
+    a deployment that clears its conversations clears both halves of them."""
+    build(_config(tmp_path))
+
+    with sqlite3.connect(str(tmp_path / "conversations.sqlite")) as connection:
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "select name from sqlite_master where type = 'table'"
+            )
+        }
+
+    assert "turns" in tables, "the turns the page redraws"
+    assert "checkpoints" in tables, "and the thread the model is given"

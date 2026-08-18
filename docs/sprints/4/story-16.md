@@ -300,8 +300,11 @@ checkpointer already owns the second.
       like every other path setting
 - [x] `build` wires the store at that path, and still opens no store outside the paths it
       was configured with
-- [ ] **(int)** the runner checkpoints where the config says, so a thread resumed in a
+- [x] **(int)** the runner checkpoints where the config says, so a thread resumed in a
       second process carries what the model was told
+- [x] a runner told no path keeps its thread in memory, as every test of it relies on
+- [x] **(int)** `build` checkpoints into the conversations file, so one file holds both
+      halves of a conversation
 - [ ] the sessions panel lists the stored sessions, the one in progress marked
 - [ ] opening a session redraws its turns in the conversation
 - [ ] the question asked after opening a session runs on that thread rather than a new one

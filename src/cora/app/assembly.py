@@ -117,6 +117,8 @@ def _offered_tools(
 
 
 def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
+    from functools import partial
+
     from cora.adapters.chroma_retriever import ChromaRetriever
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
@@ -141,6 +143,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         plugins=load_plugins(config.plugin_modules),
         memory=SqliteStoreMemory.at(config.memory_path),
         conversations=SqliteConversations.at(config.conversations_path),
+        graph=partial(langgraph_for, checkpoints_at=config.conversations_path),
         top_k=config.top_k,
         max_tool_rounds=config.max_tool_rounds,
         history_turns=config.history_turns,

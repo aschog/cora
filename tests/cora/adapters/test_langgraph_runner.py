@@ -1,4 +1,7 @@
+from pathlib import Path
+
 import pytest
+from langgraph.checkpoint.memory import InMemorySaver
 
 from cora.adapters.langgraph_runner import (
     LangGraphRunner,
@@ -385,3 +388,57 @@ def test_an_unlisted_type_does_not_come_back_as_itself() -> None:
     assert isinstance(declared, Message)
     assert (declared.role, declared.content) == ("user", "hi")
     assert not isinstance(undeclared, Chunk)
+
+
+@pytest.mark.integration
+def test_a_thread_resumed_in_a_second_runner_carries_what_the_model_was_told(
+    tmp_path: Path,
+) -> None:
+    """Reopening a conversation is not just redrawing it: the follow-up question is
+    asked of a model that has to remember the exchange before it. In memory that ends
+    with the process, so the checkpoint goes where the deployment says."""
+    path = str(tmp_path / "conversations.sqlite")
+    seen: list[list[str]] = []
+
+    def remembering(state: AgentState) -> AgentState:
+        seen.append([message.content for message in state.get("messages", ())])
+        return {"messages": _said("assistant", "answered"), "answer": "answered"}
+
+    first = langgraph_for(
+        prepare=_prepare,
+        model=remembering,
+        tools=_ran,
+        router=Router(max_tool_rounds=ROUNDS),
+        max_tool_rounds=ROUNDS,
+        checkpoints_at=path,
+    )
+    list(first.run({"question": "How much protein?"}, THREAD))
+
+    second = langgraph_for(
+        prepare=_prepare,
+        model=remembering,
+        tools=_ran,
+        router=Router(max_tool_rounds=ROUNDS),
+        max_tool_rounds=ROUNDS,
+        checkpoints_at=path,
+    )
+    list(second.run({"question": "And creatine?"}, THREAD))
+
+    assert "How much protein?" in seen[-1], (
+        f"the resumed thread forgot the exchange before it: {seen[-1]}"
+    )
+
+
+def test_a_runner_told_no_path_keeps_its_thread_in_memory() -> None:
+    """The default is unchanged: a deployment that names no file gets a thread that
+    lives as long as the process, as every test here relies on."""
+    runner = langgraph_for(
+        prepare=_prepare,
+        model=_replies,
+        tools=_ran,
+        router=Router(max_tool_rounds=ROUNDS),
+        max_tool_rounds=ROUNDS,
+    )
+
+    assert isinstance(runner, LangGraphRunner)
+    assert isinstance(runner.checkpointer, InMemorySaver)
