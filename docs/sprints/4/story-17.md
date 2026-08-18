@@ -371,6 +371,6 @@ makes is made by the core docstring it mirrors, and that wording is left where i
       and a port below 1 is refused rather than handed to the server
 - [x] a built-in tool's origin does not call a memory write "core retrieval" — the
       reserved list holds two names and only one of them searches
-- [ ] the page's citation rule claims only what it keeps: a number written inside code is
+- [x] the page's citation rule claims only what it keeps: a number written inside code is
       resolved by the server and drawn as text, so the clickable-and-load-bearing claim
       is narrowed to the rule the two sides actually share (wording, no test)

@@ -4,8 +4,10 @@ import type { Citation } from './api'
 /**
  * What counts as a citation, and it is the rule the answer was written under: a run of
  * brackets continuing neither a word nor another bracket. Shared with nothing — the
- * server resolves by the same rule, and the two agreeing is what makes a number the
- * reader can click and a number the answer rests on the same thing.
+ * server resolves by the same rule, so the two never disagree about which numbers in an
+ * answer are citations at all. Which of them the reader can *click* is narrower: a
+ * number written inside code is one the answer rests on and is drawn here as the text it
+ * was written as, because a button in a code block would misquote the code.
  */
 const CITATION_RUN = /(?<![\w\]])(?:\[\d+\])+/g
 const TAGS = /(<[^>]*>)/
