@@ -149,7 +149,7 @@ TECHNOLOGY_ALLOWED: dict[str, frozenset[str]] = {
 # quietly grows an HTTP server, declared in no manifest and caught by no gate.
 FRONTEND_TOOLKITS: dict[str, frozenset[str]] = {
     "streamlit": frozenset({"streamlit", "markdown_it"}),
-    "react": frozenset({"starlette", "uvicorn"}),
+    "react": frozenset({"starlette", "uvicorn", "python_multipart"}),
 }
 TECHNOLOGY_CASES = [
     (layer, path) for layer in TECHNOLOGY_ALLOWED for path in LAYER_FILES[layer]

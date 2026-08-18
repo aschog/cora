@@ -14,9 +14,11 @@ import threading
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 
+from python_multipart.exceptions import MultipartParseError
 from starlette.applications import Starlette
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Mount, Route
@@ -71,7 +73,14 @@ def api(
     ]
     if ui is not None and ui.is_dir():
         routes.append(Mount("/", StaticFiles(directory=ui, html=True)))
-    return Starlette(routes=routes, exception_handlers={CoreError: _refused})
+    return Starlette(
+        routes=routes,
+        exception_handlers={
+            CoreError: _refused,
+            MultipartParseError: _unreadable,
+            HTTPException: _as_sentence,
+        },
+    )
 
 
 async def _refused(request: Request, error: Exception) -> JSONResponse:
@@ -80,6 +89,23 @@ async def _refused(request: Request, error: Exception) -> JSONResponse:
     assert isinstance(error, CoreError)
     status = UNAVAILABLE if isinstance(error, AdapterError) else REFUSED
     return JSONResponse({"error": error.user_message}, status_code=status)
+
+
+async def _unreadable(request: Request, error: Exception) -> JSONResponse:
+    """A body that is not the multipart it says it is. The parser's exception is its own
+    rather than a `CoreError`, so it walked past `_refused` and left the page a
+    plain-text 500 — which `api.ts` reads as cora being unreachable, the one thing that
+    is false when cora answered."""
+    return JSONResponse({"error": UNREADABLE_UPLOAD}, status_code=REFUSED)
+
+
+async def _as_sentence(request: Request, error: Exception) -> JSONResponse:
+    """Starlette's own refusals — a path with no route, a method a route does not take,
+    a form field past the parser's part size — answer in plain text. The page reads
+    every failure as JSON, so they leave here as JSON too, under the code they arrived
+    with."""
+    assert isinstance(error, HTTPException)
+    return JSONResponse({"error": error.detail}, status_code=error.status_code)
 
 
 def _documents(app: App) -> Callable[[Request], Any]:
@@ -107,6 +133,7 @@ def _ingest(app: App) -> Callable[[Request], Any]:
 
 
 NO_FILE = "No file was uploaded."
+UNREADABLE_UPLOAD = "That upload did not arrive as a file cora could read."
 MEGABYTE = 1024 * 1024
 OVER_CEILING = (
     f"That upload is larger than the {DEFAULT_MAX_BYTES // MEGABYTE} MB cora reads."

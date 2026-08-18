@@ -1,7 +1,9 @@
 import hashlib
 import pathlib
 from collections.abc import Iterator
+from typing import Any
 
+import anyio
 import httpx
 import pytest
 from starlette.testclient import TestClient
@@ -16,6 +18,7 @@ from cora.frontends.react.api import (
     MAX_REQUEST_BYTES,
     NO_LENGTH,
     OVER_CEILING,
+    UNREADABLE_UPLOAD,
     api,
 )
 from fakes import FailingConversations, FailingMemory, FakeConversations, FakeMemory
@@ -273,3 +276,84 @@ def test_an_upload_that_does_not_say_how_large_it_is_is_refused() -> None:
     assert refused.status_code == 411
     assert refused.json()["error"] == NO_LENGTH
     assert app.knowledge_base.list_sources() == []
+
+
+def test_a_body_that_is_not_the_multipart_it_claims_says_so_as_a_sentence() -> None:
+    """`MultipartParseError` is the parser's own, not a `CoreError`, so it walked past
+    the handler and left `Internal Server Error` in a plain-text 500. The page reads a
+    body it cannot parse as cora being unreachable — the one thing that is false when
+    cora answered."""
+    app = assembled()
+
+    refused = client(app).post(
+        "/api/documents",
+        content=b"not multipart at all",
+        headers={"content-type": "multipart/form-data; boundary=b0"},
+    )
+
+    assert refused.status_code == 400
+    assert refused.headers["content-type"].startswith("application/json")
+    assert refused.json()["error"] == UNREADABLE_UPLOAD
+    assert app.knowledge_base.list_sources() == []
+
+
+def test_a_form_part_starlette_itself_refuses_still_reads_as_json() -> None:
+    """Not every refusal on this route is cora's: a field past the parser's own part
+    size is Starlette's `HTTPException`, which answers in plain text. Whatever the
+    sentence, the page has to be able to read it."""
+    oversized = "y" * (1024 * 1024 + 10)
+    body = (
+        "--b0\r\n"
+        'Content-Disposition: form-data; name="note"\r\n\r\n'
+        f"{oversized}\r\n--b0--\r\n"
+    ).encode()
+
+    refused = client(assembled()).post(
+        "/api/documents",
+        content=body,
+        headers={"content-type": "multipart/form-data; boundary=b0"},
+    )
+
+    assert refused.status_code == 400
+    assert refused.headers["content-type"].startswith("application/json")
+    assert refused.json()["error"]
+
+
+UPLOAD_SCOPE = {
+    "type": "http",
+    "asgi": {"version": "3.0", "spec_version": "2.3"},
+    "http_version": "1.1",
+    "method": "POST",
+    "path": "/api/documents",
+    "raw_path": b"/api/documents",
+    "root_path": "",
+    "scheme": "http",
+    "query_string": b"",
+    "client": ("test", 1),
+    "server": ("test", 80),
+}
+
+
+def test_nothing_is_read_from_a_request_over_the_ceiling() -> None:
+    """The guard exists for the reading it prevents, and a status code cannot say
+    whether anything was read: a body the parser chokes on answers 400 either way. So
+    the app is driven directly, with a `receive` that fails the test if it is called."""
+    served = api(assembled())
+    sent: list[dict[str, Any]] = []
+
+    async def receive() -> dict[str, Any]:
+        raise AssertionError("the body was read before the ceiling was applied")
+
+    async def send(message: dict[str, Any]) -> None:
+        sent.append(message)
+
+    scope = UPLOAD_SCOPE | {
+        "headers": [
+            (b"content-type", b"multipart/form-data; boundary=b0"),
+            (b"content-length", str(MAX_REQUEST_BYTES + 1).encode()),
+        ]
+    }
+    anyio.run(served, scope, receive, send)
+
+    [start] = [each for each in sent if each["type"] == "http.response.start"]
+    assert start["status"] == 413

@@ -374,3 +374,30 @@ makes is made by the core docstring it mirrors, and that wording is left where i
 - [x] the page's citation rule claims only what it keeps: a number written inside code is
       resolved by the server and drawn as text, so the clickable-and-load-bearing claim
       is narrowed to the rule the two sides actually share (wording, no test)
+
+#### Found by the branch review (`ai-code-reviewer`, eighth pass)
+
+Two of the seventh pass's own fixes were half-closed: the panel spoke for a turn that
+failed as if it were an answer, and the ceiling's test pinned the *order* of the guard
+only because a malformed body made the parser raise. Core is in scope this time, so the
+private helper the port borrowed gets a name of its own.
+
+- [x] a malformed multipart upload is refused with a sentence under a 4xx, not a 500
+      carrying `Internal Server Error` — the page reads a non-JSON body as "cora could
+      not be reached", which is the one thing that is false when cora answered
+- [x] the upload ceiling is asserted on the reading, not on the reply: a `receive` that
+      fails the test if it is ever called, so the guard cannot move after the parse
+- [ ] `/api/ask` bounds its body like the endpoint next door, under one rule rather than
+      one and a half
+- [ ] **(ui)** a turn that *failed* does not un-cite the answer still on screen — the
+      failure branch carries no `pending` flag, so half the criterion the seventh pass
+      ticked was still open
+- [ ] **(ui)** an answer returning to a conversation the reader left and came back to is
+      not dropped: the thread guard passes while the entry it belongs to was renumbered
+      by the reopen, so the turn lands nowhere
+- [ ] a mistyped setting reaches the operator as the sentence it was raised with, not as
+      a traceback whose last line happens to be that sentence
+- [ ] the number every setting is parsed through has a public name: a frontend borrowing
+      `config`'s private helper breaks on an ordinary rename, and no gate can see it
+- [ ] a built-in that is not the search tool is what proves the label, on its own: the
+      new test could not fail unless the one above it already had
