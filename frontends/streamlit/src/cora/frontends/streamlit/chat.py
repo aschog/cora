@@ -201,7 +201,7 @@ def _thread(plan: DeltaGenerator) -> None:
 def _answer(agent: Agent, prompt: str, plan: DeltaGenerator) -> None:
     _append_and_show({"role": "user", "content": prompt}, plan)
     taken: list[TraceStep] = []
-    live = st.empty()
+    live = plan.empty()
     try:
         with live.container(), st.status(WORKING, expanded=True):
             result = agent.answer(prompt, st.session_state.thread_id, _watch(taken))

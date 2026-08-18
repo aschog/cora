@@ -745,3 +745,35 @@ def test_a_turn_that_went_wrong_says_so_in_the_rail() -> None:
     [trace] = plan.status
 
     assert trace.state == "error"
+
+
+def _holds(container, kind: str) -> bool:
+    """Whether one part of the page holds a node of a given kind, at any depth. Read off
+    the tree because the slot a turn streams into is cleared before the run ends: what
+    survives is where it was drawn, not what it said."""
+    pending = [container]
+    while pending:
+        node = pending.pop()
+        if getattr(node, "type", None) == kind:
+            return True
+        children = getattr(node, "children", None)
+        pending.extend(
+            children.values() if isinstance(children, dict) else children or []
+        )
+    return False
+
+
+@pytest.mark.integration
+def test_the_steps_of_a_turn_in_progress_are_drawn_in_the_rail() -> None:
+    """A turn streams its steps into a slot that is cleared once the answer lands, so
+    the work in progress reads where the settled plan will: in the rail. Drawn in the
+    conversation it pushed the answer down the page as the turn ran."""
+    at = _run_page(_app(_calculating(), plugin=make_plugin(tools=(add_tool(),))))
+
+    at.chat_input[0].set_value("17 + 25?").run()
+
+    plan, _source, _sessions, _memory = at.tabs
+    conversation, _rail = at.columns[:2]
+
+    assert _holds(plan, "empty"), "the working slot belongs to the plan"
+    assert not _holds(conversation, "empty"), "and not to the conversation"
