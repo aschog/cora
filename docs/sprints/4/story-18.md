@@ -54,7 +54,7 @@ a page nobody could use and nothing on it to say why.
       answer stays off the new page
 - [x] **(ui)** a banner raised by the conversation left behind does not follow the new
       session
-- [ ] **(ui)** the control is reachable while it is unavailable: `disabled` takes a button
+- [x] **(ui)** the control is reachable while it is unavailable: `disabled` takes a button
       out of the accessibility tree, which this page settled once already for the rail's
       documents, and clicking it while there is nothing to start changes nothing
 
