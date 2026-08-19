@@ -55,8 +55,10 @@ a page nobody could use and nothing on it to say why.
 - [x] **(ui)** a banner raised by the conversation left behind does not follow the new
       session
 - [x] **(ui)** the control is reachable while it is unavailable: `disabled` takes a button
-      out of the accessibility tree, which this page settled once already for the rail's
-      documents, and clicking it while there is nothing to start changes nothing
+      out of the accessibility tree, and the rail's documents already settled that the
+      reason has to be somewhere the reader can get at — prose beside the list there, read
+      out here, where the header has no room for a sentence. Clicking it while there is
+      nothing to start changes nothing
 
 `NewSession` is inlined into `Header` — one call site, no logic of its own, and a comment
 stating a rule enforced in `App`. `big-picture.md` no longer says the frontend keeps one
@@ -90,3 +92,28 @@ conversation without its newest answer until it is reopened again. Reproduced wi
 session involved — ask in A, reopen B, reopen A while that load is slow — so it is the
 reconciliation between a landing turn and an in-flight load, not this story's control, and
 it wants a story of its own rather than a review fix.
+
+#### Found by the branch review (`ai-code-reviewer`, third pass)
+
+The four fixes of the second pass each killed their mutant. What it found was one level
+down in the same guard: the sentence the second pass added could be swallowed, and could
+outlive what it was about.
+
+- [x] **(ui)** a turn that fails while a reopen is loading is not swallowed by it — the
+      failure was appended to the conversation on screen, and the load already on the wire
+      replaced that conversation and took it with it. `here.current` says where the last
+      load *put* the reader, not what they have asked for next, so a load still flying is
+      the second half of the question
+- [x] **(ui)** the failure of a question you left is not still said once you are back in
+      the conversation it belongs to — the sentence names where the reader is, so it is
+      false there, and it stood until the next question was asked
+
+The page's two sentences are drawn from one place, in one order: a load that failed, and
+then a question left running that will not be answered. The rule about there being
+something to leave has one writer and one reader.
+
+**Also left to the follow-up above.** `ask` re-reads the conversation when the store's own
+list landed while its turn ran, and that read takes a ticket in the same race the reader's
+clicks run in — so a reopen the reader asked for can lose to it and say nothing about
+having lost. The guard is consistent (a load that lost the race says nothing); *why* a
+reader's load can lose is the same counter that owes the follow-up its story.

@@ -1260,3 +1260,91 @@ test('a question left running that fails says so, rather than never arriving', a
 
   expect(screen.queryByText(/conversation you left.*cora is away\./)).toBeNull()
 })
+
+test('a turn that fails while a reopen is loading is not swallowed by it', async () => {
+  /* A failure is appended to the conversation on screen — but a load already in flight
+     replaces that conversation wholesale, and takes the failure with it. `here.current`
+     says where the last load *put* the reader, not what they have asked for next. */
+  const slow = held()
+  const body = (data: unknown) =>
+    ({ ok: true, json: async () => data }) as unknown as Response
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return failing()
+      if (path === '/api/sessions/old') {
+        await slow.until
+        return body([OLDER])
+      }
+      return body(served[path] ?? [])
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  turn.release()
+  await new Promise((settle) => setTimeout(settle, 0))
+  slow.release()
+
+  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
+  expect(screen.getByText(/conversation you left.*cora is away\./)).toBeTruthy()
+})
+
+test('the failure of a question you left is not still said once you are back in it', async () => {
+  /* "In the conversation you left" is a claim about where the reader is. Reopening that
+     conversation makes it false, and it stood until the next question was asked. */
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
+  let asks = 0
+  let recorded = false
+  const body = (data: unknown) =>
+    ({ ok: true, json: async () => data }) as unknown as Response
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      // The first question is answered and checkpointed; the second one fails.
+      if (path === '/api/ask') return asks++ === 0 ? answering() : failing()
+      if (path === '/api/sessions')
+        return body(recorded ? [{ thread_id: 't1', opened_with: 'First question' }] : [])
+      if (path === '/api/sessions/t1')
+        return body(recorded ? [{ question: 'First question', result: TURN }] : [])
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[path] ?? [])
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const ask = (question: string) => {
+    turn = held()
+    fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+      target: { value: question },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  }
+
+  ask('First question')
+  recorded = true
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  ask('And now?')
+  await screen.findByText(/Working/)
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  turn.release()
+  expect(await screen.findByText(/conversation you left.*cora is away\./)).toBeTruthy()
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'First question' }))
+
+  await screen.findByText(/Sleep, not volume/)
+  expect(screen.queryByText(/conversation you left/)).toBeNull()
+})

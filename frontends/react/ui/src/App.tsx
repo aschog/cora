@@ -58,13 +58,16 @@ export default function App() {
      next one that goes through: a turn asked in a conversation the reader has left is
      recorded nowhere when it fails, so this is the only place it exists — and it stands
      until they ask their next question. */
-  const [lost, setLost] = useState<string | null>(null)
+  const [lost, setLost] = useState<{ thread: string; said: string } | null>(null)
   const [leftOpen, setLeftOpen] = useState(true)
   const asked = useRef(0)
   /* How many conversations the page has set about loading. It names the one the reader
      is waiting for, and it tells a turn whether the entry it belongs to is still there
      to land on. */
   const loads = useRef(0)
+  /** How many of those are still on the wire. A conversation in flight replaces the turns
+   *  on the page when it lands, so what is appended in front of it does not survive. */
+  const flying = useRef(0)
   /* Which conversation the reader is in, written where it changes rather than during a
      render: `setThread` schedules a render, so a ref assigned while rendering still
      names the old thread for anything that runs before that render lands — which is any
@@ -98,6 +101,19 @@ export default function App() {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  /** Whether there is a conversation to leave: what the header draws, and what `start`
+   *  refuses on. */
+  const somethingToLeave = () => conversation.length > 0
+
+  /** What the page has to say about itself, in one place: a load that failed, and a
+   *  question left running that will not be answered. The second is not cleared by the
+   *  next load going through, and says nothing once the reader is back in the
+   *  conversation it belongs to — where the sentence would be false. */
+  const banners = [
+    trouble,
+    lost && lost.thread !== thread ? lost.said : null,
+  ].filter((said): said is string => Boolean(said))
 
   const cited = citedDocuments(entries)
   /** What the conversation column shows: its recorded turns, and the one being asked in
@@ -149,6 +165,7 @@ export default function App() {
    *  that arrives last is not the conversation they asked for last. */
   const loaded = (thread_id: string, apply: (kept: Turn[]) => void) => {
     const wanted = ++loads.current
+    flying.current++
     return cora
       .turns(thread_id)
       .then((kept) => {
@@ -158,6 +175,9 @@ export default function App() {
         // A load that lost the race has nothing to say either: its failure is about a
         // conversation that is not on the page.
         if (loads.current === wanted) setTrouble(message(failed))
+      })
+      .finally(() => {
+        flying.current--
       })
   }
 
@@ -202,13 +222,13 @@ export default function App() {
       // A failure is recorded nowhere, so it exists only on the page it was asked from —
       // and where that page has been left, in the one line that says the answer the
       // reader was told to wait for is not coming.
-      if (here.current === on) {
+      if (here.current === on && flying.current === 0) {
         setEntries((said) => [
           ...said,
           { id, question, error: message(failed), citations: [], trace: taken },
         ])
       } else {
-        setLost(`In the conversation you left: ${message(failed)}`)
+        setLost({ thread: on, said: `In the conversation you left: ${message(failed)}` })
       }
     } finally {
       setFlight((running) => (running?.entry.id === id ? null : running))
@@ -222,7 +242,7 @@ export default function App() {
    *  as every load, so a reopen already in flight loses it rather than landing on top of
    *  the new session and taking the reader back. */
   const start = () => {
-    if (conversation.length === 0) return
+    if (!somethingToLeave()) return
     const fresh = newThread()
     loads.current++
     here.current = fresh
@@ -252,11 +272,14 @@ export default function App() {
         onToggleLeft={() => setLeftOpen((shown) => !shown)}
         onToggleRight={() => setRightOpen((shown) => !shown)}
         onNew={start}
-        canStart={conversation.length > 0}
+        canStart={somethingToLeave()}
       />
 
-      {trouble && <div className="trouble">{trouble}</div>}
-      {lost && <div className="trouble">{lost}</div>}
+      {banners.map((said) => (
+        <div key={said} className="trouble">
+          {said}
+        </div>
+      ))}
 
       <div className="columns">
         {leftOpen && (
