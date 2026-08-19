@@ -14,6 +14,7 @@
   --accent-text: #8cc0ff;
   --accent-ring: #274571;
   --magenta: #e05a9c;
+  --magenta-tint: #24121b;
   --radius: 2px;
   --shadow-sm: 0 0 0 1px #1e2530;
   --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px #232a34;
@@ -754,8 +755,7 @@ button {
   gap: 6px;
 }
 
-.trouble,
-.notice {
+.trouble {
   padding: var(--s2) var(--s3);
   border-radius: var(--radius);
   background: var(--surface);
@@ -767,11 +767,57 @@ button {
   box-shadow: -3px 0 0 var(--magenta);
 }
 
-/* What an upload did — news, not trouble, so the rule beside it is the page's own accent
-   and not the colour it keeps for something having gone wrong. */
-.notice {
-  box-shadow: -3px 0 0 var(--accent);
+/* What the last upload did, beside the list it changed. A document added keeps the page's
+   accent; bytes the store already had wear the colour it keeps for an outcome the reader
+   did not ask for, and both can be shut. */
+.upload-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: var(--s3);
+  padding: var(--s2);
+  border: 1px solid var(--accent-ring);
+  border-radius: var(--radius);
+  background: var(--accent-tint);
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--text);
 }
+
+.upload-notice.wrong {
+  border-color: var(--magenta);
+  background: var(--magenta-tint);
+}
+
+.upload-notice-mark {
+  flex: none;
+  width: 15px;
+  height: 15px;
+  margin-top: 1px;
+  border: 1px solid var(--magenta);
+  border-radius: var(--pill);
+  font-size: 11px;
+  line-height: 13px;
+  text-align: center;
+  color: var(--magenta);
+}
+
+.upload-notice-said {
+  flex: 1;
+}
+
+.upload-notice-shut {
+  flex: none;
+  padding: 0 2px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--n600);
+}
+
+.upload-notice-shut:hover {
+  color: var(--text);
+}
+
 
 .plan-step-mark.failed {
   color: var(--magenta);

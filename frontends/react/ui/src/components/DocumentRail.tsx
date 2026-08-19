@@ -1,11 +1,24 @@
+import UploadNotice from './UploadNotice'
+
 type Props = {
   documents: string[]
   cited: Set<string>
   onOpen: (document: string) => void
   onUpload: (file: File) => void
+  /** What the last upload did. It is drawn here rather than over the conversation: it is
+   *  news about this list, raised by the control directly above it. */
+  upload: { said: string; wrong: boolean } | null
+  onDismissUpload: () => void
 }
 
-export default function DocumentRail({ documents, cited, onOpen, onUpload }: Props) {
+export default function DocumentRail({
+  documents,
+  cited,
+  onOpen,
+  onUpload,
+  upload,
+  onDismissUpload,
+}: Props) {
   return (
     <aside className="rail-docs">
       <div className="micro rail-heading">YOUR DOCUMENTS</div>
@@ -23,6 +36,14 @@ export default function DocumentRail({ documents, cited, onOpen, onUpload }: Pro
           }}
         />
       </label>
+
+      {upload && (
+        <UploadNotice
+          said={upload.said}
+          wrong={upload.wrong}
+          onDismiss={onDismissUpload}
+        />
+      )}
 
       <div className="doc-list">
         {documents.map((name) => (

@@ -1937,11 +1937,11 @@ test('a file uploaded twice is added, and then said to be there already', async 
   await screen.findByText('notes.md')
 
   upload('notes.md')
-  expect(await screen.findByText('Added notes.md — 12 passages.')).toBeTruthy()
+  expect(await screen.findByText('Added “notes.md” — 12 passages.')).toBeTruthy()
 
   upload('notes.md')
   expect(
-    await screen.findByText('notes.md is already in your knowledge base.'),
+    await screen.findByText('“notes.md” is already in your documents.'),
   ).toBeTruthy()
 })
 
@@ -1975,31 +1975,56 @@ test('one passage indexed is one passage', async () => {
 
   upload('notes.md')
 
-  expect(await screen.findByText('Added notes.md — 1 passage.')).toBeTruthy()
+  expect(await screen.findByText('Added “notes.md” — 1 passage.')).toBeTruthy()
 })
 
-test('what an upload did is not drawn as trouble', async () => {
-  /* A duplicate is neither a failure nor nothing having happened, and the reader tells the
-     two banners apart by looking at them. */
-  await ready([0])
+test('an upload that indexed nothing is drawn as the outcome it is', async () => {
+  /* A duplicate is not the outcome the reader asked for, and not the one a document added
+     gets: the reader tells the two apart by looking at them. */
+  await ready([0, 12])
+
+  upload('notes.md')
+  const duplicate = await screen.findByText('“notes.md” is already in your documents.')
+  expect(duplicate.closest('.upload-notice')?.className).toContain('wrong')
+
+  upload('notes.md')
+  const added = await screen.findByText('Added “notes.md” — 12 passages.')
+  expect(added.closest('.upload-notice')?.className).not.toContain('wrong')
+})
+
+test('the reader can shut what an upload said', async () => {
+  await ready([12])
+
+  upload('notes.md')
+  await screen.findByText('Added “notes.md” — 12 passages.')
+  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
+
+  expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull()
+})
+
+test('what an upload did is drawn beside the list it changed', async () => {
+  /* Not over the conversation: the sentence is about this rail, and the control that
+     raised it is directly above. */
+  await ready([12])
 
   upload('notes.md')
 
-  const said = await screen.findByText('notes.md is already in your knowledge base.')
-  expect(said.className).toBe('notice')
+  const said = await screen.findByText('Added “notes.md” — 12 passages.')
+  expect(said.closest('.rail-docs')).toBeTruthy()
+  expect(document.querySelector('.banners')?.textContent).toBe('')
 })
 
 test('an upload that fails says so, and takes the last one’s notice away', async () => {
   await ready([12, { error: 'That upload is larger than the 5 MB cora reads.' }])
 
   upload('notes.md')
-  await screen.findByText('Added notes.md — 12 passages.')
+  await screen.findByText('Added “notes.md” — 12 passages.')
   upload('huge.pdf')
 
   expect(
     await screen.findByText('That upload is larger than the 5 MB cora reads.'),
   ).toBeTruthy()
-  expect(screen.queryByText('Added notes.md — 12 passages.')).toBeNull()
+  expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull()
 })
 
 test('a notice for an upload the reader walked away from is not drawn', async () => {
@@ -2038,7 +2063,7 @@ test('a notice for an upload the reader walked away from is not drawn', async ()
   ingesting.release()
   await flushed()
 
-  expect(screen.queryByText('Added notes.md — 12 passages.')).toBeNull()
+  expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull()
 })
 
 test('starting a new session takes the last upload’s notice away', async () => {
@@ -2048,7 +2073,7 @@ test('starting a new session takes the last upload’s notice away', async () =>
   await ready([12])
 
   upload('notes.md')
-  await screen.findByText('Added notes.md — 12 passages.')
+  await screen.findByText('Added “notes.md” — 12 passages.')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
   })
@@ -2058,7 +2083,7 @@ test('starting a new session takes the last upload’s notice away', async () =>
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
   await waitFor(() =>
-    expect(screen.queryByText('Added notes.md — 12 passages.')).toBeNull(),
+    expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull(),
   )
 })
 
@@ -2068,13 +2093,13 @@ test('reopening an earlier conversation takes the notice away too', async () => 
   await ready([12])
 
   upload('notes.md')
-  await screen.findByText('Added notes.md — 12 passages.')
+  await screen.findByText('Added “notes.md” — 12 passages.')
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
   fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   await screen.findByText(OLDER.result.answer)
 
   await waitFor(() =>
-    expect(screen.queryByText('Added notes.md — 12 passages.')).toBeNull(),
+    expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull(),
   )
 })
 
@@ -2084,7 +2109,7 @@ test('a notice stands while the reader asks their next question', async () => {
   await ready([12])
 
   upload('notes.md')
-  await screen.findByText('Added notes.md — 12 passages.')
+  await screen.findByText('Added “notes.md” — 12 passages.')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
   })
@@ -2092,5 +2117,5 @@ test('a notice stands while the reader asks their next question', async () => {
   turn.release()
   await screen.findByRole('button', { name: 'Open cited source 1' })
 
-  expect(screen.getByText('Added notes.md — 12 passages.')).toBeTruthy()
+  expect(screen.getByText('Added “notes.md” — 12 passages.')).toBeTruthy()
 })
