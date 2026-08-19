@@ -1892,7 +1892,7 @@ const GROWN = {
   trace: TURN.trace,
 }
 
-test.fails(
+test(
   'a paragraph the reader is reading is the same node when the answer finishes',
   async () => {
     /* A selection lives on the nodes it was made in, and it is those nodes the fix keeps:

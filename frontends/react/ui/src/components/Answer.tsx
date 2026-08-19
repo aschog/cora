@@ -1,6 +1,7 @@
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent } from 'react'
 import { answerHtml } from '../answer'
+import { patch } from '../patch'
 import type { Citation } from '../api'
 import type { Entry } from '../App'
 
@@ -130,7 +131,10 @@ export default function Answer({
 }
 
 /** One answer's rendered markdown, parsed when that answer changes and not when the
- *  composer's next keystroke re-renders the list around it. */
+ *  composer's next keystroke re-renders the list around it, and *patched* into the block
+ *  rather than assigned to it: an answer is written a piece at a time, and a reader who
+ *  has selected a sentence of it keeps that selection only as long as the nodes it was
+ *  made in are the nodes still on the page. */
 const Written = memo(function Written({
   entry,
   onCite,
@@ -138,15 +142,21 @@ const Written = memo(function Written({
   entry: Entry
   onCite: (citation: Citation) => void
 }) {
+  const body = useRef<HTMLDivElement>(null)
   const html = useMemo(
     () => answerHtml(entry.answer ?? '', entry.citations),
     [entry.answer, entry.citations],
   )
+  /* Before the browser paints, so the answer is never drawn a frame behind what the page
+     knows — the piece that just arrived is the news. */
+  useLayoutEffect(() => {
+    if (body.current) patch(body.current, html)
+  }, [html])
   return (
     <div
       className="answer-body"
+      ref={body}
       onClick={(e) => opened(e, entry.citations, onCite)}
-      dangerouslySetInnerHTML={{ __html: html }}
     />
   )
 })
