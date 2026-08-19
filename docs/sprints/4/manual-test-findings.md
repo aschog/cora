@@ -10,12 +10,15 @@ them — nothing was fixed while the sweep was open. It is closed; *Order of wor
 the triage. Each item taken on gets a failing test that reproduces it, then the fix, then
 the tick. Items larger than a tweak become a story.
 
-The sweep found #1–#15; the branch review that closed it found #16–#22, and checking the
-sprint against `spec.md` found #23–#24.
+The sweep found #1–#15; the branch review that closed it found #16–#22, checking the sprint
+against `spec.md` found #23–#24, and re-checking three points carried from earlier reviews
+found #25–#26.
 
 ## Order of work
 
 **Before submission**
+- **#26** — a malformed tool call is dropped silently and the model's prose served as the
+  answer, ungrounded and uncited.
 - **#16** — the stream emits pre-tool-call asides as `text` events, so the contract stated
   in `README.md` and the route docstring is false.
 - **#18** — a streamed answer pins the reader to the bottom, making it impossible to scroll
@@ -32,8 +35,6 @@ sprint against `spec.md` found #23–#24.
   selection.
 - **#2** — a duplicate upload reports nothing, indistinguishable from success or from
   nothing happening.
-- **#26** — a tool call the model malforms is dropped silently and its prose returned as
-  the answer, ungrounded.
 - **#22** — a failure in the sink is reported to the user as a model failure.
 - **#21** — `test_two_runs_of_one_runner_do_not_cross` does not test what its name claims.
 
@@ -54,15 +55,15 @@ sprint against `spec.md` found #23–#24.
 - **#5** — make a highlighted passage link back to its citation.
 - **#8** — let a conversation be deleted, across both stores that hold it.
 
+**The prompt, verifiable only on the `llm` tier**
+- **#25** — tag the brief's sections in XML so instruction and data differ by shape, not
+  only by wording.
+
 **Design before test list**
 - **#13** — a settings section, scoped deliberately since #4, #10 and #12 all want one.
 - **#10** — a translation seam, covering the API's prose as well as the page's.
 - **#12b** — switching plugins on a live agent.
 - **#9b** — per-session memory, which points against what memory currently is.
-
-**Cheap, one chrome pass**
-- **#25** — tag the brief's sections in XML so instruction and data differ by shape, not
-  only by wording.
 
 **After review**
 - **#24** — tag the sprint-4 submission and write the retrospective.
@@ -400,9 +401,15 @@ prompt and retrieval knob is environment-only (`src/cora/app/config.py`).
     `retrospective.md`. Both are Phase 5 items that follow the review rather than block it —
     recorded so they are not forgotten at the tag step.
 
-    Ten items remain unticked in `sprint-4-feedback.md`. Each carries its disposition in the
-    file (folded into a story, reopened on purpose by story 15, or deferred with a reason),
-    so the backlog is tracked rather than ignored — no action needed for submission.
+    `sprint-4-feedback.md` was checked on the same day and reads 19 ticked, 7 open. Three of
+    its entries had been overtaken by the sprint and were settled on this branch: streaming
+    ticked as shipped by story 19 (through the model boundary, React only, Streamlit
+    deliberately unchanged), the CWD-relative DB path ticked as documented in `README.md`,
+    and the stronger-injection-rules item left open but with its stated blocker removed —
+    plugin composition landed in story 11. The grounding item is now ticked as *decided*:
+    the citation is the evidence and detection is deliberately not built. Each of the seven
+    still open carries its reason, so the backlog is tracked rather than ignored — no action
+    needed for submission.
 
 ## Carried from earlier reviews — checked against this sprint
 
@@ -455,3 +462,10 @@ apply to any code that exists:
     kind of event — a failed turn, not a quiet one. Whether it should retry the round or end
     the turn with a friendly message is the decision; either beats presenting the model's
     aside as an answer. Related to #16 and #20, which are the same mistake in the frontend.
+
+    **Why it leads the order of work.** `sprint-4-feedback.md` now records grounding as
+    settled: the citation is the evidence, and no detection is built behind it. That position
+    holds only while a search that was asked for either runs or fails loudly. This bug is the
+    one path where neither happens — the search is never attempted, the answer arrives with
+    no citations, and it is indistinguishable from a question that legitimately needed no
+    documents. It is cheap to fix and it is the hole under a decision just taken.
