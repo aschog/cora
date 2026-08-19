@@ -29,6 +29,9 @@ export type Entry = {
 
 const UNDRAWABLE = 'That conversation could not be read.'
 
+/** One line of the page's own, and which tone it is drawn in. */
+type Banner = { which: string; said: string; tone: string }
+
 /** What became of a load: drawn on the page, dropped for a later one (or a store that
  *  could not be read, which says so itself), or read and undrawable. */
 type Load = 'drawn' | 'dropped' | 'unreadable'
@@ -60,6 +63,10 @@ export default function App() {
   const [read, setRead] = useState<string | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
+  /* What the last upload did. Its own state, because it is not trouble and is not cleared
+     by a load going through: a duplicate upload is answered with `0` chunks, and saying
+     nothing about it reads the same as success and the same as nothing happening. */
+  const [notice, setNotice] = useState<string | null>(null)
   /* Separate from `trouble`, which is about a load of this page and is cleared by the
      next one that goes through: a turn asked in a conversation the reader has left is
      recorded nowhere when it fails, so this is the only place it exists — and it stands
@@ -105,14 +112,20 @@ export default function App() {
     refresh()
   }, [refresh])
 
-  /** What the page has to say about itself, in one place: a load that failed, and a
-   *  question left running that will not be answered. The second is not cleared by the
-   *  next load going through, and says nothing once the reader is back in the
-   *  conversation it belongs to — where the sentence would be false. */
+  /** What the page has to say about itself, in one place: a load that failed, a question
+   *  left running that will not be answered, and what became of the last upload. The
+   *  second is not cleared by the next load going through, and says nothing once the
+   *  reader is back in the conversation it belongs to — where the sentence would be false.
+   *  The third is news rather than trouble, and says which by the tone it is drawn in. */
   const banners = [
-    ['load', trouble],
-    ['lost', lost && lost.thread !== thread ? lost.said : null],
-  ].filter((banner): banner is [string, string] => Boolean(banner[1]))
+    { which: 'load', said: trouble, tone: 'trouble' },
+    {
+      which: 'lost',
+      said: lost && lost.thread !== thread ? lost.said : null,
+      tone: 'trouble',
+    },
+    { which: 'upload', said: notice, tone: 'notice' },
+  ].filter((banner): banner is Banner => Boolean(banner.said))
 
   const cited = citedDocuments(entries)
   /** What the conversation column shows: its recorded turns, and the one being asked in
@@ -326,8 +339,8 @@ export default function App() {
       />
 
       <div className="banners" role="status">
-        {banners.map(([which, said]) => (
-          <div key={which} className="trouble">
+        {banners.map(({ which, said, tone }) => (
+          <div key={which} className={tone}>
             {said}
           </div>
         ))}
@@ -340,7 +353,16 @@ export default function App() {
             cited={cited}
             onOpen={open}
             onUpload={(file) =>
-              cora.upload(file).then(refresh).catch(reportTo(setTrouble))
+              cora
+                .upload(file)
+                .then((added) => {
+                  setNotice(ingested(added))
+                  return refresh()
+                })
+                .catch((failed) => {
+                  setNotice(null)
+                  setTrouble(message(failed))
+                })
             }
           />
         )}
@@ -421,6 +443,14 @@ function citedDocuments(entries: Entry[]): Set<string> {
 function lastTrace(entries: Entry[]): Step[] {
   return entries.length ? entries[entries.length - 1].trace : []
 }
+
+/** What an upload did, in the words the page uses for what a document is made of. A store
+ *  that already had those bytes indexes nothing and says so — the count is how the two
+ *  outcomes differ, and it is the one thing the page used to throw away. */
+const ingested = ({ document, chunks }: { document: string; chunks: number }) =>
+  chunks
+    ? `Added ${document} — ${chunks} ${chunks === 1 ? 'passage' : 'passages'}.`
+    : `${document} is already in your knowledge base.`
 
 const reportTo = (say: (said: string) => void) => (failed: unknown) =>
   say(message(failed))

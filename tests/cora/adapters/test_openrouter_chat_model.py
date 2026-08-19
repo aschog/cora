@@ -580,3 +580,23 @@ def test_a_stream_that_fails_part_way_keeps_the_category_and_what_was_written(
         model.complete((Message(role="user", content="hi"),), (), written.append)
 
     assert written == [Piece("Sleep, ")]
+
+
+class _ReaderWentAway(Exception):
+    """Nothing the provider could raise: what the caller's own sink does when it
+    fails."""
+
+
+def test_a_sink_that_fails_is_not_the_model_failing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """`on_text` is the caller's code, called from inside the stream. Funnelled through
+    the provider's categories it would tell the reader the model is unavailable because
+    the page that was drawing the answer could not draw a word of it."""
+    model = _model_over(monkeypatch, _streaming(AIMessageChunk(content="Sleep, ")))
+
+    def refuses(piece: Written) -> None:
+        raise _ReaderWentAway
+
+    with pytest.raises(_ReaderWentAway):
+        model.complete((Message(role="user", content="hi"),), (), refuses)
