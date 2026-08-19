@@ -19,19 +19,15 @@ found #25–#26.
 been removed: they were the triage's *Before submission* and *Real bugs, next* blocks, closed
 by
 `done/story-20.md` and `done/story-21.md`, which name them and carry the test lists they
-became. **#6, #7, #11 and #14 have gone the same way**, closed by `story-22.md`, and #3
-and #9 have each lost the half it closed. Anything found while fixing them is in
-`sprint-4-feedback.md`.
+became. **#1, #6, #7, #11 and #14 have gone the same way**, closed by `story-22.md` — whose
+list is now fully ticked — and #3 and #9 have each lost the half it closed. Anything found
+while fixing them is in `sprint-4-feedback.md`.
 
 **The numbers do not move.** Those stories cite them, so the gaps are where the closed
 findings were rather than a renumbering. Line references are re-anchored as the code
-moves — last checked 2026-08-19 against `b6f224b`.
+moves — last checked 2026-08-19 against `2173f1e`.
 
 ## Order of work
-
-**Cheap, one chrome pass**
-
-- **#1** — give the cited passage a warm amber highlight instead of the page's blue.
 
 **Layout, one decision first**
 
@@ -62,16 +58,6 @@ moves — last checked 2026-08-19 against `b6f224b`.
 - **#24** — tag the sprint-4 submission and write the retrospective.
 
 ## Findings — the sweep
-
-1. **The cited passage is highlighted in the page's blue, not a warm callout colour.**
-   *Improvement.* Open an answer's citation, and the cited chunk in the source pane is
-   tinted `--accent-tint` with an `--accent` left rule — the same blue the page already
-   uses for links, focus rings and the send button, so the highlight reads as "this is
-   interactive" rather than "this is the quoted passage"
-   (`frontends/react/ui/src/styles.css:634-640`). It should be a warm amber callout
-   instead: amber tint, amber left rule, text left legible. There is no warm token in the
-   palette yet — the only non-blue accent is `--magenta`, which is spoken for by
-   destructive actions (`styles.css:1-37`), so this adds one.
 
 3. **Every indexed document should open, cited or not.** *Improvement.* Two things, one rail
    (`frontends/react/ui/src/components/DocumentRail.tsx`) — the third, the paragraph of help
