@@ -462,7 +462,9 @@ def _answers_then_fails() -> ChatModel:
     class AnswersThenFails:
         calls = 0
 
-        def complete(self, messages: object, tools: object) -> ModelReply:
+        def complete(
+            self, messages: object, tools: object, on_text: object = None
+        ) -> ModelReply:
             AnswersThenFails.calls += 1
             if AnswersThenFails.calls == 1:
                 return _searching("c1", "protein")

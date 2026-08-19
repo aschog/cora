@@ -4,6 +4,7 @@ import openai
 from langchain_core.exceptions import ContextOverflowError
 from langchain_core.messages import (
     AIMessage,
+    AIMessageChunk,
     BaseMessage,
     HumanMessage,
     SystemMessage,
@@ -20,7 +21,7 @@ from cora.domain.errors import (
     LlmTimeoutError,
     LlmTruncatedError,
 )
-from cora.ports.chat_model import Message, ModelReply
+from cora.ports.chat_model import Message, ModelReply, TextSink, unheard
 from cora.ports.plugin import Tool, ToolCall
 
 MAX_RETRIES = 2
@@ -111,17 +112,41 @@ class OpenRouterChatModel:
         )
 
     def complete(
-        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
     ) -> ModelReply:
+        """The reply is streamed and returned whole. A turn is built from the whole —
+        the transcript it appends to, the answer it records, the tool call it routes on
+        — and `on_text` is that same text reaching the reader while it is still being
+        written."""
         client = self._client
         if tools:
             client = self._client.bind_tools([to_tool_schema(tool) for tool in tools])
         lc_messages = [to_langchain_message(message) for message in messages]
-        try:
-            reply = client.invoke(lc_messages)
-        except Exception as exc:
-            raise _categorise(exc) from exc
-        return to_model_reply(reply)
+        return to_model_reply(_streamed(client, lc_messages, on_text))
+
+
+def _streamed(client: Any, messages: list[BaseMessage], on_text: TextSink) -> AIMessage:
+    """The pieces, handed on as they land and added up as they go. Text is what a reader
+    is shown, so a piece carrying only reasoning or a fragment of a tool call is added
+    to the whole and passed on to nobody.
+
+    A stream that fails part-way fails as its category, like a whole reply that never
+    arrived. The pieces already handed on are not taken back: the caller replaces them
+    with the sentence the failure carries."""
+    whole: AIMessageChunk | None = None
+    try:
+        for piece in client.stream(messages):
+            whole = piece if whole is None else whole + piece
+            if piece.text:
+                on_text(piece.text)
+    except Exception as exc:
+        raise _categorise(exc) from exc
+    if whole is None:
+        raise LlmEmptyReplyError
+    return whole
 
 
 def _categorise(exc: Exception) -> LlmError:

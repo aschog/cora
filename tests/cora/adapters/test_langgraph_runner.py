@@ -24,7 +24,14 @@ from cora.domain.trace import (
 from cora.engine.steps import ModelStep, PrepareStep, Router, ToolStep
 from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import EmptyInputRule
-from cora.ports.chat_model import ChatModel, Message, ModelReply, Role
+from cora.ports.chat_model import (
+    ChatModel,
+    Message,
+    ModelReply,
+    Role,
+    TextSink,
+    unheard,
+)
 from cora.ports.plugin import Tool, ToolCall
 from fakes import FailingChatModel, add_tool
 
@@ -209,7 +216,10 @@ class _AlwaysCalling:
         self.completions = 0
 
     def complete(
-        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
     ) -> ModelReply:
         self.completions += 1
         return ModelReply(

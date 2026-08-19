@@ -30,7 +30,7 @@ from cora.frontends.streamlit.chat import (
     REMEMBER_HEADING,
     TAGLINE,
 )
-from cora.ports.chat_model import ChatModel, ModelReply
+from cora.ports.chat_model import ChatModel, ModelReply, unheard
 from cora.ports.plugin import Plugin, ToolCall
 from cora.ports.retrieval import Retriever
 from fakes import (
@@ -525,7 +525,7 @@ class _FailsOnTheSecondRound:
         self.call = call
         self.completions = 0
 
-    def complete(self, messages, tools) -> ModelReply:
+    def complete(self, messages, tools, on_text=unheard) -> ModelReply:
         self.completions += 1
         if self.completions > 1:
             raise LlmError

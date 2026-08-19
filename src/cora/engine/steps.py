@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Protocol
 
 from cora.domain.agent_state import AgentState
@@ -13,7 +13,7 @@ from cora.domain.trace import (
 from cora.domain.transcript import prompt_from
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
-from cora.ports.chat_model import ChatModel, Message
+from cora.ports.chat_model import ChatModel, Message, TextSink, unheard
 from cora.ports.graph import DONE, TOOLS
 from cora.ports.memory import Fact, Memory
 from cora.ports.plugin import Tool, ToolCall, ToolResult, ValidationRule
@@ -108,9 +108,16 @@ class ModelStep:
     chat_model: ChatModel
     tools: tuple[Tool, ...]
     max_history_turns: int
+    on_text: TextSink = unheard
+
+    def writing_to(self, on_text: TextSink) -> "ModelStep":
+        """This step, writing to one turn's reader. The step an app is assembled with
+        serves every turn, so the sink is bound onto a copy: bound onto the step itself,
+        one reader would be sent another reader's answer."""
+        return replace(self, on_text=on_text)
 
     def __call__(self, state: AgentState) -> AgentState:
-        reply = self.chat_model.complete(self._prompt(state), self.tools)
+        reply = self.chat_model.complete(self._prompt(state), self.tools, self.on_text)
         appended = Message(
             role="assistant", content=reply.text, tool_calls=reply.tool_calls
         )

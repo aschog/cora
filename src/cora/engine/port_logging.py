@@ -2,7 +2,7 @@ import logging
 from dataclasses import dataclass
 
 from cora.domain.chunk import Chunk
-from cora.ports.chat_model import ChatModel, Message, ModelReply
+from cora.ports.chat_model import ChatModel, Message, ModelReply, TextSink, unheard
 from cora.ports.embedding import Embedder
 from cora.ports.plugin import Tool
 from cora.ports.retrieval import RetrievedChunk, Retriever
@@ -24,7 +24,10 @@ class LoggingChatModel:
     inner: ChatModel
 
     def complete(
-        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
     ) -> ModelReply:
         log.debug(
             "chat request: %d messages [%s], last: %s",
@@ -32,7 +35,7 @@ class LoggingChatModel:
             truncate(", ".join(message.role for message in messages)),
             truncate(messages[-1].content) if messages else "",
         )
-        reply = self.inner.complete(messages, tools)
+        reply = self.inner.complete(messages, tools, on_text)
         log.debug(
             "chat reply: tool calls [%s], text: %s",
             truncate(", ".join(call.name for call in reply.tool_calls)),

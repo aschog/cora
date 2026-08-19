@@ -629,3 +629,60 @@ def test_a_payload_that_only_looks_citable_is_fed_back_untouched() -> None:
     assert message.content == "\"_Booking(member='Ada')\""
     [used] = partial["trace"]
     assert used.detail == message.content
+
+
+def test_the_step_hands_the_pieces_the_model_wrote_to_its_sink() -> None:
+    written: list[str] = []
+    model = ScriptedChatModel(
+        [ModelReply(text="The sum is 3.")], pieces=[["The sum ", "is 3."]]
+    )
+    step = ModelStep(
+        chat_model=model, tools=(), max_history_turns=20, on_text=written.append
+    )
+
+    step(_asking())
+
+    assert written == ["The sum ", "is 3."]
+
+
+def test_the_sink_changes_nothing_about_the_state_the_step_returns() -> None:
+    """The pieces are how the answer arrives, not what it is: the state still carries
+    the whole reply, because that is what the turn is recorded and prompted from."""
+    written: list[str] = []
+    model = ScriptedChatModel(
+        [ModelReply(text="The sum is 3.")], pieces=[["The sum ", "is 3."]]
+    )
+    step = ModelStep(
+        chat_model=model, tools=(), max_history_turns=20, on_text=written.append
+    )
+
+    partial = step(_asking())
+
+    assert partial["answer"] == "The sum is 3."
+    [reply] = partial["messages"]
+    assert reply.content == "The sum is 3."
+
+
+def test_a_step_given_no_sink_answers_as_it_always_did() -> None:
+    step = _model_step(ModelReply(text="The sum is 3."))
+
+    assert step(_asking())["answer"] == "The sum is 3."
+
+
+def test_writing_to_leaves_the_step_it_came_from_writing_nowhere() -> None:
+    """One assembled app serves every turn, so the step it holds must stay unbound:
+    a sink bound onto it would send one reader another reader's answer."""
+    written: list[str] = []
+    unbound = ModelStep(
+        chat_model=ScriptedChatModel(
+            [ModelReply(text="ok"), ModelReply(text="ok")], pieces=[["ok"], ["ok"]]
+        ),
+        tools=(),
+        max_history_turns=20,
+    )
+
+    bound = unbound.writing_to(written.append)
+    bound(_asking())
+    unbound(_asking())
+
+    assert written == ["ok"]

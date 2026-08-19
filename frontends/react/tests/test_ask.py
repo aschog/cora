@@ -18,7 +18,7 @@ from cora.frontends.react.api import (
     TOO_LONG_TO_ASK,
     api,
 )
-from cora.ports.chat_model import Message, ModelReply
+from cora.ports.chat_model import Message, ModelReply, TextSink, unheard
 from cora.ports.plugin import Tool, ToolCall
 from fakes import FailingChatModel, FakeConversations, ScriptedChatModel
 from sse import frames
@@ -41,7 +41,10 @@ class BreaksAfterSearching:
         self.completions = 0
 
     def complete(
-        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
     ) -> ModelReply:
         self.completions += 1
         if self.completions == 1:
@@ -129,7 +132,10 @@ class BreaksInAWayNobodyModelled:
     handed a payload it did not expect, say."""
 
     def complete(
-        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
     ) -> ModelReply:
         raise KeyError("range")
 
@@ -186,7 +192,10 @@ class WaitsToAnswer:
         self.completions = 0
 
     def complete(
-        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
     ) -> ModelReply:
         self.completions += 1
         if self.completions == 1:
