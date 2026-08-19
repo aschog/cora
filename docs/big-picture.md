@@ -186,7 +186,8 @@ diagrams, taken from the live test that walks one whole session.
 
 The conversation belongs to the thread, not to the caller: a turn is seeded with the
 question alone, and the graph's checkpointer supplies everything said before it. The
-frontend keeps one thread id per browser session.
+frontend names the thread: it opens on one and mints another when the reader starts a new
+session, so the conversation on screen is the conversation cora is answering in.
 
 1. **Prepare** — check the question against one ordered tuple of rules: cora's own first (not empty, at most 4000 characters), then every loaded plugin's, in the order they were named. If a rule says no, raise `InputRejectedError`; the model never sees the question. Screening for prompt injection is one of those plugin rules — `cora.plugins.security` — and not the engine's, so cora as installed screens nothing until a deployment names it. Then add the question to the thread's transcript and write this turn's **brief**: cora's preamble, cora's own rules (call `search_documents`, cite `[n]`, call `remember` when the user asks to be remembered), one section per plugin under its `name`, and whatever is already remembered about the user — labelled as notes rather than rules, and stated last, because a fact is kept user input. The brief is rewritten each turn, so a ten-turn thread carries one, and a fact learned mid-conversation is in hand the next turn. Rules see the question only.
 2. **Model** — one round. The model is offered `search_documents` and `remember` beside the plugin's tools. It is sent the brief, then the previous turns' words — the last `CORA_HISTORY_TURNS` of them (default 20; `0` means no history) — then this turn verbatim. Old tool calls and their results stay in the thread but out of the prompt. It either answers or asks for tools.

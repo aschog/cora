@@ -7,9 +7,12 @@ type Props = {
   rightOpen: boolean
   onToggleLeft: () => void
   onToggleRight: () => void
+  onNew: () => void
+  canStart: boolean
 }
 
 const BARE = 'bare cora'
+const NOTHING_TO_START = 'You are already in a new session.'
 const HEADING = 'domain plugins — the agent stays the same'
 const FIXED = 'Named by the deployment in CORA_PLUGINS, and bound when cora was assembled.'
 
@@ -19,6 +22,8 @@ export default function Header({
   rightOpen,
   onToggleLeft,
   onToggleRight,
+  onNew,
+  canStart,
 }: Props) {
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
@@ -77,6 +82,26 @@ export default function Header({
           </div>
         )}
       </div>
+
+      {/* Reachable while it is unavailable, and carrying the reason: `disabled` would
+          take the control out of the accessibility tree, which is where the reason a page
+          gives has to be. `start` is what refuses — the rule has one writer. */}
+      <button
+        className="new-session"
+        aria-disabled={!canStart}
+        aria-describedby={canStart ? undefined : 'new-session-why'}
+        onClick={onNew}
+      >
+        <span className="new-session-plus" aria-hidden="true">
+          +
+        </span>
+        New session
+      </button>
+      {!canStart && (
+        <span id="new-session-why" className="told-not-shown">
+          {NOTHING_TO_START}
+        </span>
+      )}
 
       <RailToggle
         side="right"

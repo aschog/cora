@@ -27,6 +27,12 @@ export type Entry = {
   pending?: boolean
 }
 
+const UNDRAWABLE = 'That conversation could not be read.'
+
+/** What became of a load: drawn on the page, dropped for a later one (or a store that
+ *  could not be read, which says so itself), or read and undrawable. */
+type Load = 'drawn' | 'dropped' | 'unreadable'
+
 const newThread = () =>
   globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2)
 
@@ -54,6 +60,11 @@ export default function App() {
   const [read, setRead] = useState<string | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
+  /* Separate from `trouble`, which is about a load of this page and is cleared by the
+     next one that goes through: a turn asked in a conversation the reader has left is
+     recorded nowhere when it fails, so this is the only place it exists — and it stands
+     until they ask their next question. */
+  const [lost, setLost] = useState<{ thread: string; said: string } | null>(null)
   const [leftOpen, setLeftOpen] = useState(true)
   const asked = useRef(0)
   /* How many conversations the page has set about loading. It names the one the reader
@@ -94,6 +105,15 @@ export default function App() {
     refresh()
   }, [refresh])
 
+  /** What the page has to say about itself, in one place: a load that failed, and a
+   *  question left running that will not be answered. The second is not cleared by the
+   *  next load going through, and says nothing once the reader is back in the
+   *  conversation it belongs to — where the sentence would be false. */
+  const banners = [
+    ['load', trouble],
+    ['lost', lost && lost.thread !== thread ? lost.said : null],
+  ].filter((banner): banner is [string, string] => Boolean(banner[1]))
+
   const cited = citedDocuments(entries)
   /** What the conversation column shows: its recorded turns, and the one being asked in
    *  it. A turn in flight elsewhere is that conversation's, and is not drawn here. */
@@ -111,6 +131,10 @@ export default function App() {
       .find((citation) => citation.document === document)
 
   const uploadOf = (document: string) => latestFor(document)?.upload ?? null
+
+  /** Whether there is a conversation to leave: what the header draws, and what `start`
+   *  refuses on. */
+  const somethingToLeave = conversation.length > 0
 
   /** Two different questions about one document. What is *marked* is what this answer
    *  rested on, or a document cited three turns ago accumulates marks until most of it
@@ -142,14 +166,28 @@ export default function App() {
    *  reader is waiting for. Every load is a race with them: they can open another
    *  conversation while this one is in flight, or the same one again — and the response
    *  that arrives last is not the conversation they asked for last. */
-  const loaded = (thread_id: string, apply: (kept: Turn[]) => void) => {
+  const loaded = async (thread_id: string, apply: (kept: Turn[]) => void): Promise<Load> => {
     const wanted = ++loads.current
-    return cora
-      .turns(thread_id)
-      .then((kept) => {
-        if (loads.current === wanted) apply(kept)
-      })
-      .catch(reportTo(setTrouble))
+    let kept: Turn[]
+    try {
+      kept = await cora.turns(thread_id)
+    } catch (failed) {
+      // A load that lost the race has nothing to say either: its failure is about a
+      // conversation that is not on the page. Reported from the read alone, so a failure
+      // inside `apply` is not dressed up as the store being unreachable.
+      if (loads.current === wanted) setTrouble(message(failed))
+      return 'dropped'
+    }
+    if (loads.current !== wanted) return 'dropped'
+    try {
+      apply(kept)
+    } catch {
+      // The read went through and what came back cannot be drawn. Whether that is worth a
+      // sentence is the caller's to say: a reader who clicked a conversation is owed one,
+      // and a turn that re-read its own conversation has the answer in hand instead.
+      return 'unreadable'
+    }
+    return 'drawn'
   }
 
   /** The question joins the thread the moment it is asked, so it is on the page while
@@ -160,6 +198,7 @@ export default function App() {
     const from = loads.current
     const taken: Step[] = []
     setAsking(true)
+    setLost(null)
     setLive({ thread: on, steps: taken })
     setTab('PLAN')
     const id = ++asked.current
@@ -173,29 +212,40 @@ export default function App() {
         setLive({ thread: on, steps: [...taken] })
       })
       // Nothing lands on a conversation the reader left — that turn is another
-      // conversation's work now. Where they are still in it, the store has this turn as
-      // of now: appending it is right unless the conversation was reloaded under them
-      // while it ran, in which case the store's own list is already on the page and
-      // appending to it would show the turn twice. The panels follow for the same
-      // reason; an answer that cites nothing leaves the panel on the document last read,
-      // which says it is not cited in this answer — rather than emptying it and saying
-      // nothing at all.
+      // conversation's work now. The panels follow for the same reason; an answer that
+      // cites nothing leaves the panel on the document last read, which says it is not
+      // cited in this answer — rather than emptying it and saying nothing at all.
       if (here.current === on) {
+        // The store has this turn as of now, so appending is right unless the
+        // conversation was reloaded under the reader while it ran — then its own list is
+        // already on the page and appending to it would show the turn twice. Where that
+        // re-read is the one thing that cannot be drawn, the turn in hand is what the page
+        // has, and it is better on the page than nowhere.
+        // A re-read is awaited, and the reader can leave while it runs — so where the
+        // turn in hand is what lands, it lands only if they are still in that
+        // conversation.
         if (loads.current === from) {
           setEntries((said) => [...said, { id, question, ...result }])
-        } else {
-          await recall(on)
+        } else if ((await recall(on)) !== 'drawn' && here.current === on) {
+          setEntries((said) => [...said, { id, question, ...result }])
         }
         setRead((current) => result.citations[0]?.document ?? current)
       }
     } catch (failed) {
-      // A failure is recorded nowhere, so it exists only on the page it was asked from.
+      // A failure is recorded nowhere, so it exists only on the page it was asked from —
+      // and where that page has been left, in the one line that says the answer the
+      // reader was told to wait for is not coming.
+      // Where the reader is still in that conversation, the failure goes where the answer
+      // would have been — and it is remembered either way, because a load already on the
+      // wire replaces those turns when it lands and takes the failure with it. Which of
+      // the two the reader sees is one question, asked once, when the page is drawn.
       if (here.current === on) {
         setEntries((said) => [
           ...said,
           { id, question, error: message(failed), citations: [], trace: taken },
         ])
       }
+      setLost({ thread: on, said: `In the conversation you left: ${message(failed)}` })
     } finally {
       setFlight((running) => (running?.entry.id === id ? null : running))
       setAsking(false)
@@ -204,16 +254,36 @@ export default function App() {
     }
   }
 
+  /** Starting over is a conversation the store is not asked for: it enters the same race
+   *  as every load, so a reopen already in flight loses it rather than landing on top of
+   *  the new session and taking the reader back. */
+  const start = () => {
+    if (!somethingToLeave) return
+    const fresh = newThread()
+    loads.current++
+    here.current = fresh
+    setThread(fresh)
+    setEntries([])
+    setRead(null)
+    refresh()
+  }
+
   const recall = (thread_id: string) =>
     loaded(thread_id, (kept) => setEntries(recorded(kept)))
 
-  const reopen = (session: Session) =>
-    loaded(session.thread_id, (kept) => {
+  /** Three things at once — which thread the page is in, which turns it shows, which
+   *  document it reads — so the turns are drawn first: what cannot be drawn moves none of
+   *  it, rather than leaving the reader in one conversation looking at another's. */
+  const reopen = async (session: Session) => {
+    const outcome = await loaded(session.thread_id, (kept) => {
+      const turns = recorded(kept)
       here.current = session.thread_id
       setThread(session.thread_id)
-      setEntries(recorded(kept))
+      setEntries(turns)
       setRead(null)
     })
+    if (outcome === 'unreadable') setTrouble(UNDRAWABLE)
+  }
 
   return (
     <div className="app">
@@ -223,9 +293,17 @@ export default function App() {
         rightOpen={rightOpen}
         onToggleLeft={() => setLeftOpen((shown) => !shown)}
         onToggleRight={() => setRightOpen((shown) => !shown)}
+        onNew={start}
+        canStart={somethingToLeave}
       />
 
-      {trouble && <div className="trouble">{trouble}</div>}
+      <div className="banners" role="status">
+        {banners.map(([which, said]) => (
+          <div key={which} className="trouble">
+            {said}
+          </div>
+        ))}
+      </div>
 
       <div className="columns">
         {leftOpen && (
@@ -242,6 +320,7 @@ export default function App() {
         <Answer
           entries={conversation}
           asking={asking}
+          askingElsewhere={asking && flight?.thread !== thread}
           onAsk={ask}
           onCite={setOpened}
         />
