@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 import openai
@@ -18,6 +19,7 @@ from cora.domain.errors import (
     LlmEmptyReplyError,
     LlmError,
     LlmKeyRejectedError,
+    LlmMalformedToolCallError,
     LlmTimeoutError,
     LlmTruncatedError,
 )
@@ -25,6 +27,8 @@ from cora.ports.chat_model import Message, ModelReply, TextSink, unheard
 from cora.ports.plugin import Tool, ToolCall
 
 MAX_RETRIES = 2
+
+log = logging.getLogger(__name__)
 
 _CATEGORIES: tuple[tuple[type[Exception], type[LlmError]], ...] = (
     (ContextOverflowError, LlmConversationTooLongError),
@@ -40,7 +44,22 @@ swallow. First match wins, so the most specific category comes first."""
 def to_model_reply(reply: AIMessage) -> ModelReply:
     """Raises rather than returns when the provider stopped early: a final with no
     usable text is a failed turn, and returning it hands the user a blank or half a
-    sentence as though it were the answer."""
+    sentence as though it were the answer.
+
+    A call whose arguments never parsed is the same kind of event. It reaches us only
+    in `invalid_tool_calls`, so the round arrives asking for nothing and its prose reads
+    as a final — an answer resting on a search that was asked for and never ran. Any of
+    them ends the turn, even beside a call that did parse: running half of what the
+    model asked for answers on half the evidence, with nothing saying which half."""
+    if reply.invalid_tool_calls:
+        for call in reply.invalid_tool_calls:
+            log.warning(
+                "the model malformed a call to %s: %s (%s)",
+                call.get("name"),
+                call.get("args"),
+                call.get("error") or "did not parse",
+            )
+        raise LlmMalformedToolCallError
     tool_calls = tuple(
         ToolCall(name=call["name"], arguments=call["args"], call_id=call["id"] or "")
         for call in reply.tool_calls
