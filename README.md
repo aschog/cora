@@ -194,11 +194,18 @@ uv run ruff format .          # format
 uv run ruff check .           # lint
 uv run ty check               # type check
 make ui-test                  # the React page's own tier (vitest over happy-dom)
+make ui-test-browser          # the selection tier (vitest over real Chromium; opt-in)
 ```
 
-No browser is needed anywhere: the Streamlit UI is driven headlessly through its
+No browser is needed for any gate: the Streamlit UI is driven headlessly through its
 `AppTest`, including the live tier, and the React page through `happy-dom`. The React
 tier is the one gate that needs node, which is why the pre-commit hook does not run it.
+
+One tier is the exception, and it is not a gate. What the reader keeps while an answer is
+being written — a selection inside the paragraph still growing — is invisible to
+happy-dom, which moves no selection boundary when a text node is rewritten, so both the
+fix and the bug pass there. `make ui-test-browser` asserts it in Chromium; it needs
+`npx playwright install chromium --only-shell` once.
 
 The `llm` tier is the only one that spends money. It runs the whole shipped stack —
 the composition root, a real Chroma store and embedder, and OpenRouter over the

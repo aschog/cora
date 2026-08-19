@@ -90,6 +90,22 @@ jobs:
       - name: UI test
         run: npm test
 
+      # The one test that needs a browser. What the reader keeps while an answer is being
+      # written is invisible to happy-dom, so this tier is the only thing that fails if
+      # the patch goes back to rewriting a text node it should have appended to. Only the
+      # headless shell, and cached on the lockfile that pins playwright's version.
+      - name: Cache the browser
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontends/react/ui/package-lock.json') }}
+
+      - name: Install the browser
+        run: npx playwright install chromium --only-shell
+
+      - name: Selection test
+        run: npm run test:browser
+
       # The page the server serves is this build's output, and a broken asset import
       # type-checks and unit-tests clean — nothing else looks at it.
       - name: Build the page

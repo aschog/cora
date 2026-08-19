@@ -28,3 +28,6 @@ ui:
 
 ui-test:
 	cd frontends/react/ui && npm test
+
+ui-test-browser:
+	cd frontends/react/ui && npm run test:browser
