@@ -70,3 +70,35 @@ test('the body is released once the answer has arrived', async () => {
   expect(result.answer).toBe('done')
   expect(released).toBe(true)
 })
+
+test('each piece of the answer is reported as it arrives, and the turn still resolves', async () => {
+  const encoder = new TextEncoder()
+  const frames = [
+    'event: step\ndata: {"summary":"a","detail":"","failed":false,"origin":""}\n\n',
+    'event: text\ndata: {"text":"Sleep, "}\n\n',
+    'event: text\ndata: {"text":"not volume."}\n\n',
+    'event: turn\ndata: {"answer":"Sleep, not volume.","citations":[],"trace":[]}\n\n',
+  ]
+  let next = 0
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({
+      ok: true,
+      body: {
+        getReader: () => ({
+          cancel: async () => {},
+          read: async () =>
+            next === frames.length
+              ? { done: true, value: undefined }
+              : { done: false, value: encoder.encode(frames[next++]) },
+        }),
+      },
+    }) as unknown as Response),
+  )
+  const written: string[] = []
+
+  const result = await ask('why?', 't1', () => {}, (piece) => written.push(piece))
+
+  expect(written).toEqual(['Sleep, ', 'not volume.'])
+  expect(result.answer).toBe('Sleep, not volume.')
+})

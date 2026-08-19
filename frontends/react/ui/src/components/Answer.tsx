@@ -61,7 +61,9 @@ export default function Answer({
                 </span>
                 <span className="who">cora</span>
               </div>
-              {entry.pending ? (
+              {/* A turn in flight with nothing written yet is the only one that says
+                  it is working: once a word of it exists, that word is the news. */}
+              {entry.pending && !entry.answer ? (
                 <p className="working">{WORKING}</p>
               ) : entry.error ? (
                 <p className="trouble">{entry.error}</p>

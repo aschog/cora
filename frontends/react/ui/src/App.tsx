@@ -197,6 +197,14 @@ export default function App() {
     const on = thread
     const from = loads.current
     const taken: Step[] = []
+    /* The answer as it is being written, and whether a step has arrived since the last
+       piece of it. A step means the round that wrote this is over — a model may write an
+       aside before calling a tool, and that aside is the trace's, kept as the step's own
+       detail. So the next piece starts a new answer rather than continuing that one.
+       Reset on the piece and not on the step, or the finished answer is blanked for the
+       frame between the step that ends it and the turn that carries it. */
+    let written = ''
+    let superseded = false
     setAsking(true)
     setLost(null)
     setLive({ thread: on, steps: taken })
@@ -207,10 +215,27 @@ export default function App() {
       entry: { id, question, citations: [], trace: [], pending: true },
     })
     try {
-      const result = await cora.ask(question, thread, (step) => {
-        taken.push(step)
-        setLive({ thread: on, steps: [...taken] })
-      })
+      const result = await cora.ask(
+        question,
+        thread,
+        (step) => {
+          taken.push(step)
+          superseded = true
+          setLive({ thread: on, steps: [...taken] })
+        },
+        (piece) => {
+          if (superseded) {
+            written = ''
+            superseded = false
+          }
+          written += piece
+          setFlight((running) =>
+            running?.entry.id === id
+              ? { ...running, entry: { ...running.entry, answer: written } }
+              : running,
+          )
+        },
+      )
       // Nothing lands on a conversation the reader left — that turn is another
       // conversation's work now. The panels follow for the same reason; an answer that
       // cites nothing leaves the panel on the document last read, which says it is not
