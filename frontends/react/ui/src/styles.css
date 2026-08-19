@@ -866,11 +866,11 @@ button {
   color: var(--text);
 }
 
-.new-session:hover:not(:disabled) {
+.new-session:hover:not([aria-disabled='true']) {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.new-session:disabled {
+.new-session[aria-disabled='true'] {
   color: var(--n500);
   cursor: default;
 }
@@ -882,7 +882,7 @@ button {
   color: var(--accent);
 }
 
-.new-session:disabled .new-session-plus {
+.new-session[aria-disabled='true'] .new-session-plus {
   color: var(--n500);
 }
 

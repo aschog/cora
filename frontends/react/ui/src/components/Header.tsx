@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import NewSession from './NewSession'
 import RailToggle from './RailToggle'
 
 type Props = {
@@ -83,7 +82,18 @@ export default function Header({
         )}
       </div>
 
-      <NewSession onStart={onNew} can={canStart} />
+      {/* Reachable while it is unavailable: `disabled` would take it out of the
+          accessibility tree, and having nothing to start is something to be told. */}
+      <button
+        className="new-session"
+        aria-disabled={!canStart}
+        onClick={() => canStart && onNew()}
+      >
+        <span className="new-session-plus" aria-hidden="true">
+          +
+        </span>
+        New session
+      </button>
 
       <RailToggle
         side="right"

@@ -891,21 +891,22 @@ test('the new session is not offered while the conversation is already new', asy
   render(<App />)
   await screen.findByText('notes.md')
   const start = screen.getByRole('button', { name: 'New session' })
-  expect(start.hasAttribute('disabled')).toBe(true)
+  const unavailable = () => start.getAttribute('aria-disabled') === 'true'
+  expect(unavailable()).toBe(true)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
   })
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
   await screen.findByText(/Working/)
-  expect(start.hasAttribute('disabled')).toBe(false)
+  expect(unavailable()).toBe(false)
 
   turn.release()
   await screen.findByText(/Sleep, not volume/)
-  expect(start.hasAttribute('disabled')).toBe(false)
+  expect(unavailable()).toBe(false)
 
   fireEvent.click(start)
-  expect(start.hasAttribute('disabled')).toBe(true)
+  expect(unavailable()).toBe(true)
 })
 
 test('the panels afterwards speak for the new session, not the one left behind', async () => {
@@ -1131,4 +1132,42 @@ test('a banner raised by the conversation left behind does not follow the new se
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
   await waitFor(() => expect(screen.queryByText(unreachable)).toBeNull())
+})
+
+test('the control is reachable while it is unavailable, and clicking it then changes nothing', async () => {
+  /* A `disabled` button is out of the accessibility tree — the same reason the rail's
+     documents explain themselves on the page rather than in a tooltip. Unavailable is
+     something to be told, so the control stays reachable and does nothing. */
+  const asked: string[] = []
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/ask') {
+        asked.push(JSON.parse(String(init?.body)).thread_id)
+        return answering()
+      }
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const start = screen.getByRole('button', { name: 'New session' })
+  expect(start.getAttribute('aria-disabled')).toBe('true')
+  expect(start.hasAttribute('disabled')).toBe(false)
+
+  fireEvent.click(start)
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  // The thread the page opened with: the click minted nothing.
+  expect(asked).toEqual(['t1'])
 })
