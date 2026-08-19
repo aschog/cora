@@ -14,6 +14,11 @@
   --accent-text: #8cc0ff;
   --accent-ring: #274571;
   --magenta: #e05a9c;
+  /* The one warm pair in a blue palette, and it has one job: the passage an answer quotes.
+     Blue is what the page uses for something to click, magenta for something destructive,
+     so a quotation drawn in either says what it is not. */
+  --amber: #d29922;
+  --amber-tint: #241a08;
   --magenta-tint: #24121b;
   --radius: 2px;
   --shadow-sm: 0 0 0 1px #1e2530;
@@ -634,8 +639,8 @@ button {
 .doc-passage {
   padding: 2px 4px;
   color: var(--text);
-  background: var(--accent-tint);
-  box-shadow: -3px 0 0 var(--accent);
+  background: var(--amber-tint);
+  box-shadow: -3px 0 0 var(--amber);
   white-space: pre-wrap;
 }
 

@@ -2119,3 +2119,63 @@ test('a notice stands while the reader asks their next question', async () => {
 
   expect(screen.getByText('Added “notes.md” — 12 passages.')).toBeTruthy()
 })
+
+/** Every sentence story 22 deleted. Kept as one list so a paragraph reintroduced anywhere
+ *  in the rail fails here, whichever panel it lands in. */
+const EXPLANATIONS = [
+  /fixed pipeline/,
+  /steps cora takes will appear/,
+  /Greyed documents are indexed/,
+  /Nothing indexed yet/,
+  /passage an answer cites/,
+  /will be listed here/,
+  /carries between sessions/,
+  /tell cora something about yourself/,
+  /the agent stays the same/,
+  /CORA_PLUGINS/,
+]
+
+const nothingExplains = () =>
+  EXPLANATIONS.forEach((said) => expect(screen.queryByText(said)).toBeNull())
+
+test('a full page explains none of its own panels', async () => {
+  /* Documents, steps, facts, a plugin and a past conversation — every panel with something
+     in it, and the reader is told about none of them. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  expect(screen.getByText(TURN.trace[0].summary)).toBeTruthy()
+
+  fireEvent.click(screen.getByRole('button', { name: 'notes.md' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'notes.md' })).toBeTruthy()
+  expect(screen.queryByText(/cited passage/)).toBeNull()
+
+  for (const panel of ['STEPS', 'SESSIONS', 'MEMORY']) {
+    fireEvent.click(screen.getByRole('tab', { name: panel }))
+    nothingExplains()
+  }
+  fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
+  nothingExplains()
+})
+
+test('a page with nothing in it yet draws the controls and no prose', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({ ok: true, json: async () => [] }) as unknown as Response),
+  )
+  render(<App />)
+  await screen.findByText('Add a document')
+
+  for (const panel of ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY']) {
+    fireEvent.click(screen.getByRole('tab', { name: panel }))
+    nothingExplains()
+  }
+  expect(screen.getByPlaceholderText(/Ask a question/)).toBeTruthy()
+})

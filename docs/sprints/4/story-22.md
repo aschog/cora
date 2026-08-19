@@ -84,13 +84,13 @@ Three decisions the findings left open:
 
 #### A quotation is not a control (`ui/src/styles.css`) **(br)**
 
-- [ ] a cited passage's tint and left rule are the warm token, not the accent the page uses
+- [x] a cited passage's tint and left rule are the warm token, not the accent the page uses
       for links, focus rings and the send button — asserted where the cascade is real
 
 #### Outer functional tests
 
-- [ ] **(ui)** a full page — documents, steps, facts, a plugin — carries no paragraph
+- [x] **(ui)** a full page — documents, steps, facts, a plugin — carries no paragraph
       explaining any of them, and the source pane opens under its filename with no count
-- [ ] **(ui)** a page with nothing in it yet — nothing indexed, no steps, no facts, no
+- [x] **(ui)** a page with nothing in it yet — nothing indexed, no steps, no facts, no
       conversations — draws no paragraph either, only the controls that fill it
-- [ ] **(br)** the passage a citation opens is amber, not the page's blue
+- [x] **(br)** the passage a citation opens is amber, not the page's blue
