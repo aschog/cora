@@ -34,3 +34,30 @@ behind it. Asserted rather than built.
       conversation's to mark, as leaving one by reopening another already knew
 - [x] **(ui)** an answer arriving after a new session started does not land on it
 - [x] **(ui)** the conversation left behind is listed under SESSIONS
+
+#### Found by the branch review (`ai-code-reviewer`, PR #37)
+
+Every ticked item killed its mutant. What the pass found was the state around the button:
+one writer that did not join a race the page already runs, and a mid-turn start that left
+a page nobody could use and nothing on it to say why.
+
+- [x] **(ui)** a reopen still loading when a new session starts does not land on it —
+      `start` changed which conversation the page was in without claiming `loads`, so a
+      slow reopen resolved on top of it and put the reader back in the conversation they
+      had just left, on its thread
+- [x] **(ui)** a turn left running says so where the question would be typed: cora answers
+      one question at a time, and with the question, the plan and the banner all belonging
+      to the conversation left behind there was nothing on the page to explain a composer
+      that could not be typed in
+- [x] **(ui)** and the answer lands in the conversation it was asked in, reopenable from
+      SESSIONS — the story claimed nothing is thrown away and asserted only that the
+      answer stays off the new page
+- [x] **(ui)** a banner raised by the conversation left behind does not follow the new
+      session
+- [ ] **(ui)** the control is reachable while it is unavailable: `disabled` takes a button
+      out of the accessibility tree, which this page settled once already for the rail's
+      documents, and clicking it while there is nothing to start changes nothing
+
+`NewSession` is inlined into `Header` — one call site, no logic of its own, and a comment
+stating a rule enforced in `App`. `big-picture.md` no longer says the frontend keeps one
+thread id per browser session.

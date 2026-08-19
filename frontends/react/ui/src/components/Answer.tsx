@@ -5,15 +5,26 @@ import type { Citation } from '../api'
 import type { Entry } from '../App'
 
 const WORKING = 'Working…'
+const ELSEWHERE =
+  'cora is still answering a question in the conversation you left. It will be listed under SESSIONS when it lands.'
 
 type Props = {
   entries: Entry[]
   asking: boolean
+  /** Asked in a conversation that is no longer on screen: cora answers one question at a
+   *  time, so this page cannot be asked in either, and nothing on it would say why. */
+  askingElsewhere: boolean
   onAsk: (question: string) => void
   onCite: (citation: Citation) => void
 }
 
-export default function Answer({ entries, asking, onAsk, onCite }: Props) {
+export default function Answer({
+  entries,
+  asking,
+  askingElsewhere,
+  onAsk,
+  onCite,
+}: Props) {
   const [question, setQuestion] = useState('')
   const scroller = useRef<HTMLDivElement>(null)
 
@@ -82,6 +93,7 @@ export default function Answer({ entries, asking, onAsk, onCite }: Props) {
             →
           </button>
         </div>
+        {askingElsewhere && <p className="composer-note">{ELSEWHERE}</p>}
       </div>
     </main>
   )

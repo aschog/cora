@@ -204,12 +204,17 @@ export default function App() {
     }
   }
 
+  /** Starting over is a conversation the store is not asked for: it enters the same race
+   *  as every load, so a reopen already in flight loses it rather than landing on top of
+   *  the new session and taking the reader back. */
   const start = () => {
     const fresh = newThread()
+    loads.current++
     here.current = fresh
     setThread(fresh)
     setEntries([])
     setRead(null)
+    refresh()
   }
 
   const recall = (thread_id: string) =>
@@ -252,6 +257,7 @@ export default function App() {
         <Answer
           entries={conversation}
           asking={asking}
+          askingElsewhere={asking && flight?.thread !== thread}
           onAsk={ask}
           onCite={setOpened}
         />

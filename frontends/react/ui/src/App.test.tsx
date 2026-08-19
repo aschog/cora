@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import App from './App'
 
@@ -994,4 +994,141 @@ test('the conversation left behind is listed under SESSIONS', async () => {
   const listed = await screen.findByRole('button', { name: 'Why am I stalling?' })
   // Reopenable: the conversation is no longer the one the reader is in.
   expect(listed.hasAttribute('disabled')).toBe(false)
+})
+
+test('a reopen still loading when a new session starts does not land on it', async () => {
+  /* Changing which conversation the page is in is a race with the store: `loads` exists
+     so the reader's last choice wins. A new session that did not enter that race was
+     undone by a reopen resolving after it — dropping the reader back into the
+     conversation they had just left, on its thread, with the next question appending
+     to it. */
+  const slow = held()
+  const body = (data: unknown) =>
+    ({ ok: true, json: async () => data }) as unknown as Response
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions/old') {
+        await slow.until
+        return body([OLDER])
+      }
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[path] ?? [])
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+
+  slow.release()
+  await new Promise((settle) => setTimeout(settle, 0))
+
+  expect(screen.queryByText(OLDER.result.answer)).toBeNull()
+  expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
+})
+
+test('a turn left running says so where the question would be typed, and lands in its own conversation', async () => {
+  /* cora answers one question at a time, so starting over mid-turn leaves a page whose
+     composer cannot be typed in — with the question, the plan and the banner all
+     belonging to the conversation left behind, there was nothing on screen to say why,
+     and nothing to say the answer was not lost. */
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
+  let recorded = false
+  const body = (data: unknown) =>
+    ({ ok: true, json: async () => data }) as unknown as Response
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions')
+        return body(
+          recorded ? [{ thread_id: 't1', opened_with: 'Why am I stalling?' }] : [],
+        )
+      if (path === '/api/sessions/t1')
+        return body(recorded ? [{ question: 'Why am I stalling?', result: TURN }] : [])
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[path] ?? [])
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
+
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+
+  // The page is empty and cannot be asked in, and it says which of those is why.
+  expect(screen.getByRole('button', { name: 'Ask' }).hasAttribute('disabled')).toBe(true)
+  expect(screen.getByText(/still answering .* conversation you left/)).toBeTruthy()
+
+  recorded = true
+  turn.release()
+
+  await screen.findByRole('tab', { name: 'SESSIONS' })
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Ask' }).hasAttribute('disabled')).toBe(
+      false,
+    ),
+  )
+  expect(screen.queryByText(/still answering/)).toBeNull()
+
+  // Nothing was thrown away: the answer is in the conversation it was asked in.
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Why am I stalling?' }))
+  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
+})
+
+test('a banner raised by the conversation left behind does not follow the new session', async () => {
+  /* The banner speaks for one load of one conversation. Carried into a new session it is
+     a failure the reader cannot act on, about a page it did not happen to. */
+  const unreachable = 'The conversation store is temporarily unavailable.'
+  const body = (data: unknown) =>
+    ({ ok: true, json: async () => data }) as unknown as Response
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions/old')
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({ error: unreachable }),
+        } as unknown as Response
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[path] ?? [])
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  expect(await screen.findByText(unreachable)).toBeTruthy()
+
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+
+  await waitFor(() => expect(screen.queryByText(unreachable)).toBeNull())
 })
