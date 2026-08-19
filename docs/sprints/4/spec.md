@@ -115,7 +115,7 @@ streams, the graph binds the model node to that turn's reader, and `/api/ask` ca
 `text` event per piece. React only — Streamlit waits for the finished turn as it always
 did.
 
-### [20. Nothing reaches the reader as an answer but the answer](story-20.md)
+### [20. Nothing reaches the reader as an answer but the answer](done/story-20.md) ✔
 
 A tool call the model malforms is dropped before cora sees it, so the round reads as
 a final and its prose goes out ungrounded. A round that wrote before calling a tool sent
