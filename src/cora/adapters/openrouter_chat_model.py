@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Iterator
 from typing import Any
 
 import openai
@@ -156,16 +157,23 @@ def _streamed(client: Any, messages: list[BaseMessage], on_text: TextSink) -> AI
     arrived. The pieces already handed on are not taken back: the caller replaces them
     with the sentence the failure carries."""
     whole: AIMessageChunk | None = None
-    try:
-        for piece in client.stream(messages):
-            whole = piece if whole is None else whole + piece
-            if piece.text:
-                on_text(Piece(piece.text))
-    except Exception as exc:
-        raise _categorise(exc) from exc
+    for piece in _pieces(client, messages):
+        whole = piece if whole is None else whole + piece
+        if piece.text:
+            on_text(Piece(piece.text))
     if whole is None:
         raise LlmEmptyReplyError
     return whole
+
+
+def _pieces(client: Any, messages: list[BaseMessage]) -> Iterator[AIMessageChunk]:
+    """The provider's stream, and nothing else, inside the categories. `on_text` is the
+    caller's code: a sink that fails is not the model being unavailable, and reported as
+    one it would have the reader wait and try again for something no retry can reach."""
+    try:
+        yield from client.stream(messages)
+    except Exception as exc:
+        raise _categorise(exc) from exc
 
 
 def _categorise(exc: Exception) -> LlmError:
