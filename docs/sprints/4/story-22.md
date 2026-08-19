@@ -70,16 +70,16 @@ Three decisions the findings left open:
 
 #### The source pane is found by what it opened on (`ui/src/components/SourcePanel.tsx`) **(ui)**
 
-- [ ] the pane names its document as a heading — the rail draws the same filename, so the
+- [x] the pane names its document as a heading — the rail draws the same filename, so the
       text alone cannot say which pane is open
-- [ ] a document with a cited passage draws the mark and no count above it
-- [ ] a document the answer did not rest on still says so
-- [ ] the four `App.test.tsx` tests that used the count as their proxy ask for the heading
+- [x] a document with a cited passage draws the mark and no count above it
+- [x] a document the answer did not rest on still says so
+- [x] the four `App.test.tsx` tests that used the count as their proxy ask for the heading
       instead, and still assert the mark they were actually after
 
 #### The tab claims what it shows (`ui/src/App.tsx`) **(ui)**
 
-- [ ] the tab over the steps reads `STEPS`, and an answer landing selects it — one union
+- [x] the tab over the steps reads `STEPS`, and an answer landing selects it — one union
       member, two `setTab` calls, six `role="tab"` lookups
 
 #### A quotation is not a control (`ui/src/styles.css`) **(br)**

@@ -10,7 +10,7 @@ import PlanPanel from './components/PlanPanel'
 import SessionsPanel from './components/SessionsPanel'
 import SourcePanel from './components/SourcePanel'
 
-const TABS = ['PLAN', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
+const TABS = ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
 type Tab = (typeof TABS)[number]
 
 export type Entry = {
@@ -41,7 +41,7 @@ const newThread = () =>
   globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2)
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('PLAN')
+  const [tab, setTab] = useState<Tab>('STEPS')
   const [thread, setThread] = useState<string>(newThread)
   const [entries, setEntries] = useState<Entry[]>([])
   /* The turn being asked, and the conversation it is being asked in. Not one of
@@ -220,7 +220,7 @@ export default function App() {
     setAsking(true)
     setLost(null)
     setLive({ thread: on, steps: taken })
-    setTab('PLAN')
+    setTab('STEPS')
     const id = ++asked.current
     setFlight({
       thread: on,
@@ -407,7 +407,7 @@ export default function App() {
             ))}
           </div>
 
-          {tab === 'PLAN' && (
+          {tab === 'STEPS' && (
             <PlanPanel
               steps={live?.thread === thread ? live.steps : lastTrace(entries)}
             />
