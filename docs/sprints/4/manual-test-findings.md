@@ -19,17 +19,17 @@ found #25–#26.
 been removed: they were the triage's *Before submission* and *Real bugs, next* blocks, closed
 by
 `done/story-20.md` and `done/story-21.md`, which name them and carry the test lists they
-became. Anything found while fixing them is in `sprint-4-feedback.md`.
+became. **#7 and #11 have gone the same way**, closed by `story-22.md`, and #3 and #9 have
+each lost the half it closed. Anything found while fixing them is in `sprint-4-feedback.md`.
 
-**The numbers do not move.** Those two stories cite them, so the gaps are where the closed
+**The numbers do not move.** Those stories cite them, so the gaps are where the closed
 findings were rather than a renumbering. Line references are re-anchored as the code
-moves — last checked 2026-08-19 against `a2b568c`.
+moves — last checked 2026-08-19 against `1dea112`.
 
 ## Order of work
 
 **Cheap, one chrome pass**
 
-- **#11, #7, #9a, #3c** — four standing help paragraphs; remove them.
 - **#6** — remove the "1 cited passage · highlighted" caption, after giving four tests a
   better handle.
 - **#14** — rename the PLAN tab to STEPS.
@@ -70,23 +70,20 @@ moves — last checked 2026-08-19 against `a2b568c`.
    tinted `--accent-tint` with an `--accent` left rule — the same blue the page already
    uses for links, focus rings and the send button, so the highlight reads as "this is
    interactive" rather than "this is the quoted passage"
-   (`frontends/react/ui/src/styles.css:638-644`). It should be a warm amber callout
+   (`frontends/react/ui/src/styles.css:632-638`). It should be a warm amber callout
    instead: amber tint, amber left rule, text left legible. There is no warm token in the
    palette yet — the only non-blue accent is `--magenta`, which is spoken for by
    destructive actions (`styles.css:1-37`), so this adds one.
 
-3. **Every indexed document should open, cited or not — and then the rail needs no
-   paragraph to explain itself.** *Improvement.* Three things, one rail
-   (`frontends/react/ui/src/components/DocumentRail.tsx`):
+3. **Every indexed document should open, cited or not.** *Improvement.* Two things, one rail
+   (`frontends/react/ui/src/components/DocumentRail.tsx`) — the third, the paragraph of help
+   text, went with `story-22.md`:
    - **Uncited documents are unclickable.** A row is `disabled={!cited.has(name)}`
-     (`DocumentRail.tsx:40`), so a document that this conversation has not cited cannot be
+     (`DocumentRail.tsx:32`), so a document that this conversation has not cited cannot be
      read at all. Opening it should work like any other.
    - **An uncited document opens with nothing marked.** This part comes free: `passagesIn`
      filters the answer's citations by document, so an uncited one yields `[]` and
      `DocumentBody` draws plain paragraphs (`App.tsx:159`, `DocumentBody.tsx:53-58`).
-   - **The paragraph of help text goes** (`UNCITED`, `DocumentRail.tsx:8-9`), with nothing
-     in its place — and once every document opens, the sentence it carries is no longer
-     true anyway.
 
    The work is not in the rail, it is in *which upload to read*: text is served per upload
    hash (`GET /api/uploads/{upload}`, `api.py:68,324`) and the page only ever learns a
@@ -126,28 +123,18 @@ moves — last checked 2026-08-19 against `a2b568c`.
 
 6. **The "1 cited passage · highlighted" caption in the source rail is noise.** *Bug —
    remove.* The caption sits under the filename in the source panel
-   (`frontends/react/ui/src/components/SourcePanel.tsx:22,29-32`) and says what the reader
+   (`frontends/react/ui/src/components/SourcePanel.tsx:20,27-32`) and says what the reader
    can already see: the passages are marked on screen. Its other branch, `not cited in this
    answer`, is the one that carries information — worth deciding whether that survives when
    #3 makes every document openable, since the uncited case is about to become ordinary
    rather than exceptional.
 
-   Six assertions across four tests in the vitest tier read this exact string
-   (`App.test.tsx:219,588,600,620,641`, `SourcePanel.test.tsx:54`), several of them using it
+   Five assertions across four tests in the vitest tier read this exact string
+   (`App.test.tsx:215,584,596,616,637`, `SourcePanel.test.tsx:56`), several of them using it
    as the proxy for "the source pane opened on this document" — so removing the line means
-   giving those four a better handle, not just deleting the text.
-
-7. **The plan panel's explanatory footer should go.** *Improvement.* "cora
-   chose these steps. Nothing here is a fixed pipeline — the tools come from the loaded
-   plugin." is a paragraph under the steps
-   (`frontends/react/ui/src/components/PlanPanel.tsx:5-6`, `FOOTER`). It explains the panel
-   once and then costs vertical space on every answer.
-
-   Same shape as #3's help paragraph, and the panels have two more of these — the memory
-   panel's `INTRO` (`MemoryPanel.tsx:4`) and each panel's empty-state `NOTHING`
-   (`SourcePanel.tsx:4`, `SessionsPanel.tsx:3`, `PlanPanel.tsx:4`). Empty states earn
-   their words; standing explanations of a panel that is already full do not. Worth doing
-   as one pass over the rail rather than three separate deletions.
+   giving those four a better handle, not just deleting the text. `story-22.md` already hit
+   this: two tests that used the *empty state* as their proxy now read `.source-title`
+   instead, which is the handle this finding wants made explicit.
 
 8. **A conversation can be opened but never deleted.** *Improvement.* The sessions panel
    lists every past conversation as an open-button and nothing else
@@ -171,27 +158,27 @@ moves — last checked 2026-08-19 against `a2b568c`.
    - Deleting the conversation you are *in* is its own case — the page has `start` for
      leaving a thread already, so delete-then-start is the likely shape.
 
-9. **The memory panel's standing intro should go too — and memory per session is an open
-   question.** *Improvement, two parts.*
-   - The removal half is #7's pass over the rail: `INTRO` — "What cora carries between
-     sessions. Remove a line and it stops assuming it." — is drawn above the facts whenever
-     there are any (`frontends/react/ui/src/components/MemoryPanel.tsx:4,15`). Its
-     empty-state sibling stays.
-   - **Per-session memory is a design question, not a tweak, and it points the other way
-     from what memory currently *is*.** The `Memory` port is deliberately one user's facts
-     across all sessions — "What the agent keeps about one user between sessions", with
-     which user and where the facts live left to the adapter
-     (`src/cora/ports/memory.py:11-25`). Scoping facts to a thread is a different feature,
-     not a setting on this one: it would need remembering to know which thread it is in
-     (`remember(text)` takes none), and a fact learned in one conversation would stop
-     applying in the next — which is the behaviour the panel's own sentence promises.
-     Recorded as raised, not as decided; if it is wanted, it wants its own story and
-     probably a sharper statement of the problem it solves.
+9. **Memory per session is an open question.** *Improvement.* The removal half — the panel's
+   standing `INTRO`, and the empty state that turned out to want going too — was closed by
+   `story-22.md`.
+
+   **Per-session memory is a design question, not a tweak, and it points the other way
+   from what memory currently *is*.** The `Memory` port is deliberately one user's facts
+   across all sessions — "What the agent keeps about one user between sessions", with
+   which user and where the facts live left to the adapter
+   (`src/cora/ports/memory.py:11-25`). Scoping facts to a thread is a different feature,
+   not a setting on this one: it would need remembering to know which thread it is in
+   (`remember(text)` takes none), and a fact learned in one conversation would stop
+   applying in the next — which is the opposite of what the port promises.
+   Recorded as raised, not as decided; if it is wanted, it wants its own story and
+   probably a sharper statement of the problem it solves.
 
 10. **The UI's text is hardcoded English; translating it needs a way in.** *Improvement —
     needs design before it needs a test list.* Every visible string is a module constant
-    next to the markup that draws it (`NOTHING`, `INTRO`, `UNCITED`, `FOOTER`, `UNKEPT`, …
+    next to the markup that draws it (`WORKING`, `BARE`, `UNKEPT`, `NOTHING_TO_START`, …
     — about twenty across `frontends/react/ui/src`), so there is no seam to swap.
+    `story-22.md` deleted ten of them by deleting what they said; the seam is the same
+    problem for the ones that carry information.
 
     The scope is wider than the React page, which is what makes this a design question:
     - **Server-side user text.** The API answers with English sentences of its own —
@@ -209,17 +196,6 @@ moves — last checked 2026-08-19 against `a2b568c`.
       "1 cited passage · highlighted" (see #6), and the Python tiers match `user_message`
       text. Whatever seam lands, those assertions have to go through it too, or the suite
       pins English in place by force.
-
-11. **The plugin menu's footnote about `CORA_PLUGINS` should go.** *Bug — remove.* "Named by
-    the deployment in CORA_PLUGINS, and bound when cora was assembled." is the foot of the
-    plugin popover (`frontends/react/ui/src/components/Header.tsx:17,81`, `FIXED`). It
-    explains cora's deployment model to a reader who cannot act on it — the badge already
-    says which plugin is loaded, and the menu already shows each module's dotted path.
-
-    Cheapest of the removals so far: no test in the vitest tier matches this string, so it
-    is a deletion of the constant and its `div`. The popover's remaining text — the heading
-    and "No plugin is loaded." — is not in scope unless #7's rail pass reaches the header
-    too.
 
 12. **Plugins should be classified by kind, so the page offers only the switchable ones.**
     *Improvement — design first.* A `Plugin` is a name plus whatever it contributes:
@@ -266,24 +242,25 @@ moves — last checked 2026-08-19 against `a2b568c`.
     The panel lists finished steps with a ✓ or ✕ each and an expandable result
     (`frontends/react/ui/src/components/PlanPanel.tsx:15-30`), and it is filled *after* the
     answer arrives. A plan is what is about to happen; this is the record of what happened.
-    Every layer below already says so: the domain type is `TraceStep`
-    (`src/cora/domain/trace.py:9`), and the panel's own empty state reads "The steps cora
-    takes will appear here."
+    The layer below already says so: the domain type is `TraceStep`
+    (`src/cora/domain/trace.py:9`). The panel's own empty state used to say it too — "The
+    steps cora takes will appear here." — until `story-22.md` deleted it.
 
-    **STEPS** is the label to take — it matches that empty state, claims exactly what is
-    shown, and stays true when a step fails. `TRACE` is the alternative and matches the code
-    exactly, but reads as a developer's word on a user's page.
+    **STEPS** is the label to take — it claims exactly what is shown, and stays true when a
+    step fails. `TRACE` is the alternative and matches the code exactly, but reads as a
+    developer's word on a user's page.
 
     `TABS` doubles as the tab label and the state key (`App.tsx:13,43,223,398`), so the
     rename touches the union type, two `setTab` calls and six `role="tab"` lookups in the
-    vitest tier (`App.test.tsx:179,183,189,511,833,958`) — mechanical, but not a one-line
+    vitest tier (`App.test.tsx:179,183,189,507,829,954`) — mechanical, but not a one-line
     change. Worth splitting label from key if a second tab is ever renamed.
 
 15. **Both rails should start hidden.** *Improvement.* They open on load —
     `useState(true)` for each (`frontends/react/ui/src/App.tsx:77,88`) — so a first-time
     reader meets three columns before they have asked anything, and the conversation, which
     is the point of the page, gets the middle third. Empty rails at that moment say little:
-    no documents cited yet, no steps taken, no sessions.
+    no documents cited yet, no steps taken, no sessions — and since `story-22.md` they say
+    nothing at all.
 
     Flipping the two defaults is a one-word change each, but it collides with the vitest
     tier, which asserts on rail contents without opening anything, and with two findings
