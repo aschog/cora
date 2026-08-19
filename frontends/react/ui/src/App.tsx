@@ -54,6 +54,11 @@ export default function App() {
   const [read, setRead] = useState<string | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
+  /* Separate from `trouble`, which is about a load of this page and is cleared by the
+     next one that goes through: a turn asked in a conversation the reader has left is
+     recorded nowhere when it fails, so this is the only place it exists — and it stands
+     until they ask their next question. */
+  const [lost, setLost] = useState<string | null>(null)
   const [leftOpen, setLeftOpen] = useState(true)
   const asked = useRef(0)
   /* How many conversations the page has set about loading. It names the one the reader
@@ -149,7 +154,11 @@ export default function App() {
       .then((kept) => {
         if (loads.current === wanted) apply(kept)
       })
-      .catch(reportTo(setTrouble))
+      .catch((failed) => {
+        // A load that lost the race has nothing to say either: its failure is about a
+        // conversation that is not on the page.
+        if (loads.current === wanted) setTrouble(message(failed))
+      })
   }
 
   /** The question joins the thread the moment it is asked, so it is on the page while
@@ -160,6 +169,7 @@ export default function App() {
     const from = loads.current
     const taken: Step[] = []
     setAsking(true)
+    setLost(null)
     setLive({ thread: on, steps: taken })
     setTab('PLAN')
     const id = ++asked.current
@@ -189,12 +199,16 @@ export default function App() {
         setRead((current) => result.citations[0]?.document ?? current)
       }
     } catch (failed) {
-      // A failure is recorded nowhere, so it exists only on the page it was asked from.
+      // A failure is recorded nowhere, so it exists only on the page it was asked from —
+      // and where that page has been left, in the one line that says the answer the
+      // reader was told to wait for is not coming.
       if (here.current === on) {
         setEntries((said) => [
           ...said,
           { id, question, error: message(failed), citations: [], trace: taken },
         ])
+      } else {
+        setLost(`In the conversation you left: ${message(failed)}`)
       }
     } finally {
       setFlight((running) => (running?.entry.id === id ? null : running))
@@ -208,6 +222,7 @@ export default function App() {
    *  as every load, so a reopen already in flight loses it rather than landing on top of
    *  the new session and taking the reader back. */
   const start = () => {
+    if (conversation.length === 0) return
     const fresh = newThread()
     loads.current++
     here.current = fresh
@@ -241,6 +256,7 @@ export default function App() {
       />
 
       {trouble && <div className="trouble">{trouble}</div>}
+      {lost && <div className="trouble">{lost}</div>}
 
       <div className="columns">
         {leftOpen && (

@@ -851,6 +851,19 @@ button {
   color: var(--n700);
 }
 
+/* Read out, never drawn: a reason that belongs to a control with no room for prose. */
+.told-not-shown {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 /* ── starting over ── */
 .new-session {
   display: flex;

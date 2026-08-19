@@ -805,6 +805,7 @@ test('the question in flight stays with the conversation it was asked in', async
     [EARLIER.question, 'Why am I stalling?'],
   )
   expect(screen.getByText(/Working/)).toBeTruthy()
+  expect(screen.queryByText(/still answering/)).toBeNull()
   fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
   expect(screen.getByText(LIVE[0].summary)).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Ask' }).hasAttribute('disabled')).toBe(true)
@@ -1071,6 +1072,8 @@ test('a turn left running says so where the question would be typed, and lands i
   })
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
   await screen.findByText(/Working/)
+  // Asked here, so nothing says it was asked elsewhere.
+  expect(screen.queryByText(/still answering/)).toBeNull()
 
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
@@ -1160,6 +1163,10 @@ test('the control is reachable while it is unavailable, and clicking it then cha
   expect(start.getAttribute('aria-disabled')).toBe('true')
   expect(start.hasAttribute('disabled')).toBe(false)
 
+  // Unavailable, and it says why rather than leaving a dead control to guess at.
+  const why = document.getElementById(start.getAttribute('aria-describedby') ?? '')
+  expect(why?.textContent).toMatch(/already in a new session/)
+
   fireEvent.click(start)
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
@@ -1170,4 +1177,86 @@ test('the control is reachable while it is unavailable, and clicking it then cha
 
   // The thread the page opened with: the click minted nothing.
   expect(asked).toEqual(['t1'])
+  // And with something to leave, the control carries no reason not to.
+  expect(start.hasAttribute('aria-describedby')).toBe(false)
+})
+
+test('a conversation load that lost the race says nothing about it', async () => {
+  /* The banner speaks for the page. A load the reader walked away from has nothing to
+     tell them: it reported a failure they cannot act on, about a conversation that is not
+     on screen — the other half of the property above, in the order where the failure
+     arrives last. */
+  const unreachable = 'The conversation store is temporarily unavailable.'
+  const slow = held()
+  const body = (data: unknown) =>
+    ({ ok: true, json: async () => data }) as unknown as Response
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions/old') {
+        await slow.until
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({ error: unreachable }),
+        } as unknown as Response
+      }
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[path] ?? [])
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+
+  slow.release()
+  await new Promise((settle) => setTimeout(settle, 0))
+
+  expect(screen.queryByText(unreachable)).toBeNull()
+})
+
+test('a question left running that fails says so, rather than never arriving', async () => {
+  /* The reader was told the answer would be listed under SESSIONS when it lands. A turn
+     that fails is recorded nowhere, so nothing would ever be listed and nothing would
+     ever be said: they wait for an answer that no longer exists. */
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return failing()
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
+
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  turn.release()
+
+  expect(await screen.findByText(/conversation you left.*cora is away\./)).toBeTruthy()
+
+  // Until the reader asks the next question, which is them moving on from it.
+  turn = held()
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'And now?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+
+  expect(screen.queryByText(/conversation you left.*cora is away\./)).toBeNull()
 })
