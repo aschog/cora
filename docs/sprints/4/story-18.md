@@ -174,3 +174,15 @@ an answer that died is the safer one, and the alternative — keeping the failed
 per thread, so that reopening that conversation finds it — is the page having a model for a
 turn that exists nowhere but the page. That is the same missing model the two follow-ups
 above want, and it belongs with them rather than in a review fix.
+
+#### Found by the human review (`/code-review`, PR #37)
+
+- [x] **(ui)** a conversation that cannot be drawn does not half-move the page into it:
+      reopening changes the thread, the turns and the document read, and the turns are what
+      can fail — so the reader sat in one conversation looking at another's, and their next
+      question was asked on the thread they could not see. The turns are drawn first, and
+      what cannot be drawn moves none of it
+- [x] whether a load that could not be drawn is worth a sentence is the caller's to say: a
+      reader who clicked a conversation is owed one, and a turn that re-read its own
+      conversation has the answer in hand instead — the write inside the load was dead on
+      that path, cleared by the refresh that follows every turn

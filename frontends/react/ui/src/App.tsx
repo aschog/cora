@@ -29,6 +29,10 @@ export type Entry = {
 
 const UNDRAWABLE = 'That conversation could not be read.'
 
+/** What became of a load: drawn on the page, dropped for a later one (or a store that
+ *  could not be read, which says so itself), or read and undrawable. */
+type Load = 'drawn' | 'dropped' | 'unreadable'
+
 const newThread = () =>
   globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2)
 
@@ -162,7 +166,7 @@ export default function App() {
    *  reader is waiting for. Every load is a race with them: they can open another
    *  conversation while this one is in flight, or the same one again — and the response
    *  that arrives last is not the conversation they asked for last. */
-  const loaded = async (thread_id: string, apply: (kept: Turn[]) => void) => {
+  const loaded = async (thread_id: string, apply: (kept: Turn[]) => void): Promise<Load> => {
     const wanted = ++loads.current
     let kept: Turn[]
     try {
@@ -172,18 +176,18 @@ export default function App() {
       // conversation that is not on the page. Reported from the read alone, so a failure
       // inside `apply` is not dressed up as the store being unreachable.
       if (loads.current === wanted) setTrouble(message(failed))
-      return false
+      return 'dropped'
     }
-    if (loads.current !== wanted) return false
+    if (loads.current !== wanted) return 'dropped'
     try {
       apply(kept)
     } catch {
-      // The read went through and what came back cannot be drawn — the page's own fault,
-      // and neither the store being unreachable nor, inside a turn, that turn failing.
-      setTrouble(UNDRAWABLE)
-      return false
+      // The read went through and what came back cannot be drawn. Whether that is worth a
+      // sentence is the caller's to say: a reader who clicked a conversation is owed one,
+      // and a turn that re-read its own conversation has the answer in hand instead.
+      return 'unreadable'
     }
-    return true
+    return 'drawn'
   }
 
   /** The question joins the thread the moment it is asked, so it is on the page while
@@ -222,7 +226,7 @@ export default function App() {
         // conversation.
         if (loads.current === from) {
           setEntries((said) => [...said, { id, question, ...result }])
-        } else if (!(await recall(on)) && here.current === on) {
+        } else if ((await recall(on)) !== 'drawn' && here.current === on) {
           setEntries((said) => [...said, { id, question, ...result }])
         }
         setRead((current) => result.citations[0]?.document ?? current)
@@ -267,13 +271,19 @@ export default function App() {
   const recall = (thread_id: string) =>
     loaded(thread_id, (kept) => setEntries(recorded(kept)))
 
-  const reopen = (session: Session) =>
-    loaded(session.thread_id, (kept) => {
+  /** Three things at once — which thread the page is in, which turns it shows, which
+   *  document it reads — so the turns are drawn first: what cannot be drawn moves none of
+   *  it, rather than leaving the reader in one conversation looking at another's. */
+  const reopen = async (session: Session) => {
+    const outcome = await loaded(session.thread_id, (kept) => {
+      const turns = recorded(kept)
       here.current = session.thread_id
       setThread(session.thread_id)
-      setEntries(recorded(kept))
+      setEntries(turns)
       setRead(null)
     })
+    if (outcome === 'unreadable') setTrouble(UNDRAWABLE)
+  }
 
   return (
     <div className="app">

@@ -1530,3 +1530,51 @@ test('a turn that succeeded is not drawn as failed by the re-read that follows i
     ['Why am I stalling?'],
   )
 })
+
+test('a conversation that cannot be drawn does not half-move the page into it', async () => {
+  /* Reopening changes three things at once: which thread the page is in, which turns it
+     shows, and which document it reads. Where the turns are what cannot be drawn, the
+     other two had already moved — so the reader sat in one conversation looking at
+     another's, and their next question was asked on the thread they could not see. */
+  const asked: string[] = []
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
+  const body = (data: unknown) =>
+    ({ ok: true, json: async () => data }) as unknown as Response
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/ask') {
+        asked.push(JSON.parse(String(init?.body)).thread_id)
+        return answering()
+      }
+      if (path === '/api/sessions/old') return body(NONSENSE)
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[path] ?? [])
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const ask = (question: string) => {
+    turn = held()
+    fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+      target: { value: question },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+    turn.release()
+  }
+
+  ask('Why am I stalling?')
+  await screen.findByText(/Sleep, not volume/)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  expect(await screen.findByText(/could not be read/)).toBeTruthy()
+
+  // Still in the conversation on screen, and still asking in it.
+  expect(screen.getByText(/Sleep, not volume/)).toBeTruthy()
+  ask('And now?')
+  await screen.findByText('And now?')
+  expect(asked).toEqual(['t1', 't1'])
+})
