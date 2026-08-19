@@ -118,11 +118,9 @@ class LlmEmptyReplyError(LlmError):
 class LlmMalformedToolCallError(LlmError):
     """A tool call whose arguments never parsed, so the round asked for nothing cora
     could run. Its own category because the model's prose beside it reads as a final
-    answer, and serving that is an answer resting on a search that never happened."""
+    answer, and serving that is an answer resting on work that was never done."""
 
-    message = (
-        "The assistant garbled its request to search your documents. Please try again."
-    )
+    message = "The assistant garbled what it was trying to do. Please try again."
 
 
 class MemoryStoreError(AdapterError):
