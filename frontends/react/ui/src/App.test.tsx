@@ -2006,6 +2006,45 @@ test('an upload that fails says so, and takes the last one’s notice away', asy
   expect(screen.queryByText('Added notes.md — 12 passages.')).toBeNull()
 })
 
+test('a notice for an upload the reader walked away from is not drawn', async () => {
+  /* Ingestion takes seconds and nothing stops the reader leaving while it runs, so the
+     notice would land on a conversation the upload never happened in — where nothing can
+     take it away again, `New session` having nothing left to leave. */
+  const ingesting = held()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/documents' && init?.method === 'POST') {
+        await ingesting.until
+        return {
+          ok: true,
+          json: async () => ({ document: 'notes.md', chunks: 12 }),
+        } as unknown as Response
+      }
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  /* A conversation to leave, so `New session` is live. */
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+
+  upload('notes.md')
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  ingesting.release()
+  await flushed()
+
+  expect(screen.queryByText('Added notes.md — 12 passages.')).toBeNull()
+})
+
 test('starting a new session takes the last upload’s notice away', async () => {
   /* The notice is news about what the reader just handed the page. Left standing over a
      conversation opened after it, it is a banner with nothing behind it — and nothing

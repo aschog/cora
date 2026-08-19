@@ -312,6 +312,26 @@ export default function App() {
     refresh()
   }
 
+  /** An upload the reader started and then left behind. Ingestion takes seconds and
+   *  nothing stops them opening another conversation while it runs, so the notice is
+   *  stamped with the one they started it in — news about a desk they have left is not
+   *  drawn, and cannot be left standing where nothing clears it. The refresh is not
+   *  stamped: the document was added wherever they are, and the failure is about the page
+   *  rather than the conversation. */
+  const uploaded = (file: File) => {
+    const from = here.current
+    return cora
+      .upload(file)
+      .then((added) => {
+        if (here.current === from) setNotice(ingested(added))
+        return refresh()
+      })
+      .catch((failed) => {
+        setNotice(null)
+        setTrouble(message(failed))
+      })
+  }
+
   const recall = (thread_id: string) =>
     loaded(thread_id, (kept) => setEntries(recorded(kept)))
 
@@ -356,18 +376,7 @@ export default function App() {
             documents={documents}
             cited={cited}
             onOpen={open}
-            onUpload={(file) =>
-              cora
-                .upload(file)
-                .then((added) => {
-                  setNotice(ingested(added))
-                  return refresh()
-                })
-                .catch((failed) => {
-                  setNotice(null)
-                  setTrouble(message(failed))
-                })
-            }
+            onUpload={uploaded}
           />
         )}
 
