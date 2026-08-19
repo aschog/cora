@@ -316,3 +316,29 @@ having reached the whole of what they claimed.
       what the mutation now does. It stays off `npm test` and out of the pre-commit hook —
       a browser is not something a commit should wait for — and CI runs it as its own
       steps in the `ui-tier` job, so a revert cannot merge green.
+
+## Found by the third `fix/patch-selection` review
+
+One real race left by the notice fixes, three infrastructure findings on the browser tier,
+and one finding that turned out not to be reachable.
+
+- [x] **The notice could still land where it does not belong** — `upload` was the one async
+      result in `App.tsx` with no race guard, while `loaded` compares `loads.current` and
+      `ask` compares `here.current`. Ingestion takes seconds and neither the picker nor
+      *New session* is disabled while it runs, so a reader who left mid-upload got the
+      notice on a conversation the upload never happened in — and with nothing left to
+      leave, `start()` early-returns and nothing could take it away. The notice is now
+      stamped with the conversation the upload was started in; the refresh and the failure
+      are not, because a document is added wherever the reader is.
+- [x] ~~`reopen` clears the notice even when the reader has not gone anywhere~~ — not
+      reachable: `SessionsPanel` disables the row for the current thread, so `reopen` only
+      ever runs for another conversation. Caught by the test written for it, which passed
+      against unfixed code.
+- [x] **`README.md` called the browser tier "not a gate"** while CI runs it as a step of
+      `ui-tier` — a red selection test blocks the merge, which is the point. It is not a
+      *local* gate.
+- [x] **`ui-test-browser` was missing from `.PHONY`**, alone among the targets: a file of
+      that name in the repo root would silently make it a no-op.
+- [x] **The browser's shared libraries came from the runner image** — `--with-deps` as well
+      as `--only-shell`, so an `ubuntu-latest` rotation cannot fail every PR on a step that
+      has nothing to do with the diff.
