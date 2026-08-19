@@ -357,6 +357,24 @@ before being written down.
     text the reader has selected collapses on the next token, so copying mid-stream is
     impossible. `done/story-19.md` flags the parse cost; the selection loss is unrecorded.
 
+    → **Done in story 21** (`story-21.md`), for the selection: the rendered HTML is patched
+    into the block node by node (`frontends/react/ui/src/patch.ts`), so the nodes a reader
+    has selected in are the nodes still there after the next piece.
+
+    → **Decided 2026-08-19: the parse stays whole.** Measured over `answerHtml` + `patch`,
+    four characters per piece — 0.13 ms per piece over a 1 200-character answer, 0.16 ms
+    over 4 800, 0.37 ms over 12 000 (3 001 pieces, 1.1 s of CPU spread across the minute
+    the answer takes). An upper bound, since the DOM half of it is happy-dom's. Splitting
+    the parse into settled blocks — cache the prefix's HTML, re-parse only the block being
+    written — removes the O(n²), and buys it with six ways of being wrong: a blank line
+    settles nothing inside a fenced code block, a blank line between the items of a loose
+    list is not a boundary, `Title` becomes a heading when `===` arrives, a table's shape
+    depends on its second row, a reference link defined at the end changes text rendered
+    before it, and `answerHtml` carries code-block state across the whole document. Not a
+    trade worth making in the component whose output the reader reads, for a cost no reader
+    can perceive. If it ever does bite, coalescing renders to one per animation frame comes
+    first: a few lines, and no parse-correctness risk.
+
 20. **A superseded preamble is shown as cora's answer for the whole tool round, and
     `Working…` never comes back.** *Bug.* `written` is cleared on the *next* piece, not when
     the step arrives (`App.tsx:225-231`), and `entry.pending && !entry.answer` is already
