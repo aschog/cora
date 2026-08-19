@@ -306,6 +306,7 @@ export default function App() {
     setThread(fresh)
     setEntries([])
     setRead(null)
+    setNotice(null)
     refresh()
   }
 

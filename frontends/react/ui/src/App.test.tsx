@@ -2006,6 +2006,27 @@ test('an upload that fails says so, and takes the last one’s notice away', asy
   expect(screen.queryByText('Added notes.md — 12 passages.')).toBeNull()
 })
 
+test('starting a new session takes the last upload’s notice away', async () => {
+  /* The notice is news about what the reader just handed the page. Left standing over a
+     conversation opened after it, it is a banner with nothing behind it — and nothing
+     else ever takes it away. */
+  await ready([12])
+
+  upload('notes.md')
+  await screen.findByText('Added notes.md — 12 passages.')
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+
+  await waitFor(() =>
+    expect(screen.queryByText('Added notes.md — 12 passages.')).toBeNull(),
+  )
+})
+
 test('a notice stands while the reader asks their next question', async () => {
   /* Every load that goes through clears the banner about a load — an upload's outcome is
      not one, and a question in between is not the reader being told twice. */
