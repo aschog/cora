@@ -4,6 +4,7 @@ import type { Citation, Fact, Session, Step, Turn } from './api'
 import Answer from './components/Answer'
 import CitationModal from './components/CitationModal'
 import DocumentRail from './components/DocumentRail'
+import type { Notice } from './components/UploadNotice'
 import Header from './components/Header'
 import MemoryPanel from './components/MemoryPanel'
 import PlanPanel from './components/PlanPanel'
@@ -29,9 +30,8 @@ export type Entry = {
 
 const UNDRAWABLE = 'That conversation could not be read.'
 
-/** One line of the page's own, and which tone it is drawn in. */
-type Banner = { which: string; said: string; tone: string }
-type Notice = { said: string; wrong: boolean }
+/** One line the page says about itself, and which of them it is. */
+type Banner = { which: string; said: string }
 
 /** What became of a load: drawn on the page, dropped for a later one (or a store that
  *  could not be read, which says so itself), or read and undrawable. */
@@ -119,14 +119,11 @@ export default function App() {
    *  left running that will not be answered, and what became of the last upload. The
    *  second is not cleared by the next load going through, and says nothing once the
    *  reader is back in the conversation it belongs to — where the sentence would be false.
-   *  What became of an upload is not here: it belongs beside the list it changed. */
+   *  What became of an upload is not here: it belongs beside the list it changed — which
+   *  leaves both of these trouble, so the strip has one look rather than a tone each. */
   const banners = [
-    { which: 'load', said: trouble, tone: 'trouble' },
-    {
-      which: 'lost',
-      said: lost && lost.thread !== thread ? lost.said : null,
-      tone: 'trouble',
-    },
+    { which: 'load', said: trouble },
+    { which: 'lost', said: lost && lost.thread !== thread ? lost.said : null },
   ].filter((banner): banner is Banner => Boolean(banner.said))
 
   const cited = citedDocuments(entries)
@@ -364,8 +361,8 @@ export default function App() {
       />
 
       <div className="banners" role="status">
-        {banners.map(({ which, said, tone }) => (
-          <div key={which} className={tone}>
+        {banners.map(({ which, said }) => (
+          <div key={which} className="trouble">
             {said}
           </div>
         ))}

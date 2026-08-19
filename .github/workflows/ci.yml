@@ -106,7 +106,7 @@ jobs:
       - name: Install the browser
         run: npx playwright install chromium --only-shell --with-deps
 
-      - name: Selection test
+      - name: Browser tier
         run: npm run test:browser
 
       # The page the server serves is this build's output, and a broken asset import

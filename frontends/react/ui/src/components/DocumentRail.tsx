@@ -1,4 +1,5 @@
 import UploadNotice from './UploadNotice'
+import type { Notice } from './UploadNotice'
 
 type Props = {
   documents: string[]
@@ -7,7 +8,7 @@ type Props = {
   onUpload: (file: File) => void
   /** What the last upload did. It is drawn here rather than over the conversation: it is
    *  news about this list, raised by the control directly above it. */
-  upload: { said: string; wrong: boolean } | null
+  upload: Notice | null
   onDismissUpload: () => void
 }
 
