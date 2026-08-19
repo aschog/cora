@@ -78,3 +78,11 @@ test('an answer arriving in pieces ends as one parse of the whole would have dra
 
   expect(kept.innerHTML).toBe(answerHtml(written, citations))
 })
+
+test('a node that is not an element is its text, so nothing goes looking for attributes', () => {
+  const kept = block('<p>Sleep</p><!-- 1 -->')
+
+  patch(kept, '<p>Sleep</p><!-- 2 -->')
+
+  expect(kept.innerHTML).toBe('<p>Sleep</p><!-- 2 -->')
+})
