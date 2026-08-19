@@ -609,9 +609,10 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
     assert plugin.instructions in runner.prepare.instructions
     assert isinstance(runner.router, Router)
     assert runner.router.max_tool_rounds == 4
-    assert isinstance(runner.model, ModelStep)
-    assert runner.model.max_history_turns == 6
-    offered = {tool.name for tool in runner.model.tools}
+    step = runner.model(unheard)
+    assert isinstance(step, ModelStep)
+    assert step.max_history_turns == 6
+    offered = {tool.name for tool in step.tools}
     assert offered == {
         SEARCH_TOOL_NAME,
         REMEMBER_TOOL_NAME,
@@ -638,8 +639,9 @@ def test_build_hands_the_configured_budgets_to_the_model(tmp_path: Path) -> None
 
     runner = app.agent.runner
     assert isinstance(runner, LangGraphRunner)
-    assert isinstance(runner.model, ModelStep)
-    chat_model = runner.model.chat_model
+    step = runner.model(unheard)
+    assert isinstance(step, ModelStep)
+    chat_model = step.chat_model
     assert isinstance(chat_model, OpenRouterChatModel)
     assert chat_model._client.max_tokens == 4321
     assert chat_model._client.request_timeout == 99
