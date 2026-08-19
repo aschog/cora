@@ -75,15 +75,18 @@ export async function upload(file: File): Promise<{ document: string; chunks: nu
  * so the stream is a `fetch` body read frame by frame — and a frame can be split across
  * two reads, which is what the buffer is for.
  *
- * `onText` is the answer in the pieces it was written in. The turn this resolves with
- * still carries it whole: the pieces are what the reader watches, the whole is what the
- * page keeps.
+ * `onText` is what the model writes as it writes it. A turn may take several rounds and
+ * only the last of them is the answer, so `onAside` says that the pieces before it were
+ * a round that ended in a tool call — the pieces since the last one are the answer. The
+ * turn this resolves with still carries it whole: the pieces are what the reader
+ * watches, the whole is what the page keeps.
  */
 export async function ask(
   question: string,
   thread: string,
   onStep: (step: Step) => void,
   onText: (piece: string) => void = () => {},
+  onAside: () => void = () => {},
 ): Promise<Result> {
   const response = await fetch('/api/ask', {
     method: 'POST',
@@ -105,6 +108,7 @@ export async function ask(
         buffered = buffered.slice(end + 2)
         if (event === 'step') onStep(data as Step)
         if (event === 'text') onText((data as { text: string }).text)
+        if (event === 'aside') onAside()
         if (event === 'turn') return data as Result
         if (event === 'error') throw new Error((data as { error: string }).error)
       }

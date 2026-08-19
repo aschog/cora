@@ -329,8 +329,7 @@ test('the conversation follows what just happened, answered or failed', async ()
   const { container } = render(<App />)
   await screen.findByText('notes.md')
   const scroller = container.querySelector('.scroller') as HTMLElement
-  Object.defineProperty(scroller, 'scrollHeight', { value: 5000, configurable: true })
-  scroller.scrollTop = 0
+  atTheBottom(scroller)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
@@ -339,11 +338,26 @@ test('the conversation follows what just happened, answered or failed', async ()
   await screen.findByText(/Working/)
   await waitFor(() => expect(scroller.scrollTop).toBe(5000))
 
-  scroller.scrollTop = 0
   turn.release()
   await screen.findByText(/Sleep, not volume/)
   await waitFor(() => expect(scroller.scrollTop).toBe(5000))
 })
+
+/** A scroller the reader is at the bottom of, which happy-dom lays out as nothing at all:
+ *  it reports every box as zero, so both the room and the reader's place in it are said
+ *  here rather than measured. */
+function atTheBottom(scroller: HTMLElement): void {
+  Object.defineProperty(scroller, 'scrollHeight', { value: 5000, configurable: true })
+  Object.defineProperty(scroller, 'clientHeight', { value: 800, configurable: true })
+  scroller.scrollTop = 4200
+}
+
+/** The same scroller, with the reader some way up it. */
+function scrolledUp(scroller: HTMLElement): void {
+  atTheBottom(scroller)
+  scroller.scrollTop = 0
+  fireEvent.scroll(scroller)
+}
 
 /** A turn that takes a step and then fails, the failure held back until released. */
 function failing(): Response {
@@ -375,7 +389,7 @@ test('a turn that fails says so where the answer would have been, and is scrolle
   const { container } = render(<App />)
   await screen.findByText('notes.md')
   const scroller = container.querySelector('.scroller') as HTMLElement
-  Object.defineProperty(scroller, 'scrollHeight', { value: 5000, configurable: true })
+  atTheBottom(scroller)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
@@ -385,7 +399,7 @@ test('a turn that fails says so where the answer would have been, and is scrolle
 
   /* The turn it replaces was already scrolled to; a failure that lands in its place
      changes neither the count of turns nor any answer, so nothing follows it down. */
-  scroller.scrollTop = 0
+  scroller.scrollTop = 4200
   turn.release()
 
   expect(await screen.findByText('cora is away.')).toBeTruthy()
@@ -1689,12 +1703,14 @@ test('a turn with nothing written yet still says Working', async () => {
   expect(screen.getByText(/Working/)).toBeTruthy()
 })
 
-test('the first piece after a step starts a new answer', async () => {
+test('the answer after an aside starts clean', async () => {
   /* A model may write before it calls a tool. That text is the trace's — it is already
      kept as the step's detail — and letting the next round append to it would leave the
-     reader an answer with the model's aside glued to the front of it. */
+     reader an answer with the model's aside glued to the front of it. The stream says
+     which is which, so the page no longer infers it from the shape of the steps. */
   await asked([
     frame('text', { text: 'Let me check the log. ' }),
+    frame('aside', {}),
     frame('step', LIVE[0]),
     frame('step', LIVE[1]),
     frame('text', { text: 'Sleep, ' }),
@@ -1706,10 +1722,38 @@ test('the first piece after a step starts a new answer', async () => {
   expect(screen.queryByText(/Let me check the log/)).toBeNull()
 })
 
+test('an aside puts the turn back to Working, rather than reading as the answer', async () => {
+  /* Between the aside and the round that answers, the page has nothing to show but that
+     it is still working. Leaving the superseded sentence there presents the model's note
+     to itself as cora's answer for the whole of a tool round — and if the turn then
+     fails, that is the last thing the reader was told. */
+  const parts = [
+    frame('text', { text: 'Let me check your notes. ' }),
+    frame('aside', {}),
+    frame('step', LIVE[0]),
+    frame('text', { text: 'Sleep, not volume [1].' }),
+    frame('turn', TURN),
+  ]
+  await asked(parts, 3)
+
+  expect(await screen.findByText(LIVE[0].summary)).toBeTruthy()
+  expect(screen.queryByText(/Let me check your notes/)).toBeNull()
+  expect(screen.getByText(/Working/)).toBeTruthy()
+
+  turn.release()
+
+  expect(
+    await screen.findByRole('button', { name: 'Open cited source 1' }),
+  ).toBeTruthy()
+  expect(screen.getByText(/Sleep, not volume/)).toBeTruthy()
+  expect(screen.queryByText(/Working/)).toBeNull()
+})
+
 test('a step arriving does not on its own clear what has been written', async () => {
   /* The step that ends a round arrives after the text written in it and before the turn
-     that supersedes it. Clearing on the step would blank the finished answer for the
-     frame between the two. */
+     that carries it, so a page that cleared on the step would blank the finished answer
+     for the frame between the two. The aside is what clears, and a final round sends
+     none. */
   const parts = [frame('text', { text: 'Sleep, not volume.' }), frame('step', LIVE[0])]
   await asked(parts, parts.length)
 
@@ -1759,10 +1803,67 @@ test('the conversation follows the answer down as it is written', async () => {
   const scroller = document.querySelector('.scroller') as HTMLElement
   await screen.findByText('Sleep, not volume.')
 
-  Object.defineProperty(scroller, 'scrollHeight', { value: 5000, configurable: true })
-  scroller.scrollTop = 0
+  atTheBottom(scroller)
   turn.release()
 
   await screen.findByRole('button', { name: 'Open cited source 1' })
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
+})
+
+test('a reader who has scrolled up is left there as the answer grows', async () => {
+  /* The scroll effect runs once per piece now, so a reader who goes back to re-read an
+     earlier turn during a thirty-second answer was yanked to the bottom on the next
+     one — the conversation could not be read while it was being written. */
+  const parts = [
+    frame('text', { text: 'Sleep, ' }),
+    frame('text', { text: 'not volume.' }),
+    frame('turn', TURN),
+  ]
+  await asked(parts, 1)
+  const scroller = document.querySelector('.scroller') as HTMLElement
+  await screen.findByText('Sleep,')
+  scrolledUp(scroller)
+
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+  await flushed()
+
+  expect(scroller.scrollTop).toBe(0)
+})
+
+test('a reader who scrolls back to the bottom is followed again', async () => {
+  const parts = [
+    frame('text', { text: 'Sleep, ' }),
+    frame('text', { text: 'not volume.' }),
+    frame('turn', TURN),
+  ]
+  await asked(parts, 1)
+  const scroller = document.querySelector('.scroller') as HTMLElement
+  await screen.findByText('Sleep,')
+  scrolledUp(scroller)
+  scroller.scrollTop = 4200
+  fireEvent.scroll(scroller)
+
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
+})
+
+test('asking a question scrolls to it from wherever the reader had scrolled to', async () => {
+  /* Following is the reader's to give up, and asking is them giving it back: the question
+     they just typed is the one thing that belongs on screen. */
+  await asked([frame('turn', TURN)], 1)
+  const scroller = document.querySelector('.scroller') as HTMLElement
+  await screen.findByText(/Working/)
+  scrolledUp(scroller)
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'And now?' },
+  })
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+
   await waitFor(() => expect(scroller.scrollTop).toBe(5000))
 })

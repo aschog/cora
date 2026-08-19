@@ -197,14 +197,11 @@ export default function App() {
     const on = thread
     const from = loads.current
     const taken: Step[] = []
-    /* The answer as it is being written, and whether a step has arrived since the last
-       piece of it. A step means the round that wrote this is over — a model may write an
-       aside before calling a tool, and that aside is the trace's, kept as the step's own
-       detail. So the next piece starts a new answer rather than continuing that one.
-       Reset on the piece and not on the step, or the finished answer is blanked for the
-       frame between the step that ends it and the turn that carries it. */
+    /* The answer as it is being written. A model may write an aside before calling a
+       tool, and that aside is the trace's, kept as the step's own detail — so the stream
+       marks it and the page drops it, rather than reading round boundaries off the shape
+       of the steps. */
     let written = ''
-    let superseded = false
     setAsking(true)
     setLost(null)
     setLive({ thread: on, steps: taken })
@@ -220,18 +217,24 @@ export default function App() {
         thread,
         (step) => {
           taken.push(step)
-          superseded = true
           setLive({ thread: on, steps: [...taken] })
         },
         (piece) => {
-          if (superseded) {
-            written = ''
-            superseded = false
-          }
           written += piece
           setFlight((running) =>
             running?.entry.id === id
               ? { ...running, entry: { ...running.entry, answer: written } }
+              : running,
+          )
+        },
+        /* Back to `Working…` for the rest of the tool round: what was written is no
+           longer an answer, and a superseded sentence left in the answer's place is one
+           cora never gave — the last thing the reader is told if the turn then fails. */
+        () => {
+          written = ''
+          setFlight((running) =>
+            running?.entry.id === id
+              ? { ...running, entry: { ...running.entry, answer: undefined } }
               : running,
           )
         },

@@ -71,6 +71,44 @@ test('the body is released once the answer has arrived', async () => {
   expect(released).toBe(true)
 })
 
+test('an aside is reported, so a client can drop the pieces before it', async () => {
+  const encoder = new TextEncoder()
+  const frames = [
+    'event: text\ndata: {"text":"Let me check. "}\n\n',
+    'event: aside\ndata: {}\n\n',
+    'event: text\ndata: {"text":"Sleep, not volume."}\n\n',
+    'event: turn\ndata: {"answer":"Sleep, not volume.","citations":[],"trace":[]}\n\n',
+  ]
+  let next = 0
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({
+      ok: true,
+      body: {
+        getReader: () => ({
+          cancel: async () => {},
+          read: async () =>
+            next === frames.length
+              ? { done: true, value: undefined }
+              : { done: false, value: encoder.encode(frames[next++]) },
+        }),
+      },
+    }) as unknown as Response),
+  )
+  const read: string[] = []
+
+  const result = await ask(
+    'why?',
+    't1',
+    () => {},
+    (piece) => read.push(piece),
+    () => read.push('<aside>'),
+  )
+
+  expect(read).toEqual(['Let me check. ', '<aside>', 'Sleep, not volume.'])
+  expect(result.answer).toBe('Sleep, not volume.')
+})
+
 test('each piece of the answer is reported as it arrives, and the turn still resolves', async () => {
   const encoder = new TextEncoder()
   const frames = [

@@ -5,6 +5,10 @@ import type { Citation } from '../api'
 import type { Entry } from '../App'
 
 const WORKING = 'Working…'
+/** How close to the end still counts as reading the newest turn. A line of slack, so the
+ *  fraction of a pixel a browser leaves behind at the bottom does not read as scrolling
+ *  away. */
+const NEAR_BOTTOM = 24
 const ELSEWHERE =
   'cora is still answering a question in the conversation you left. It will be listed under SESSIONS when it lands.'
 
@@ -27,6 +31,10 @@ export default function Answer({
 }: Props) {
   const [question, setQuestion] = useState('')
   const scroller = useRef<HTMLDivElement>(null)
+  /* Whether the conversation is still following what happens. An answer is written over
+     half a minute and the effect below runs on every piece of it, so a reader who goes
+     back to re-read an earlier turn has to be able to stay there. */
+  const following = useRef(true)
 
   /* A turn asked, and a turn answered, both belong at the bottom of the scroller — the
      conversation follows what just happened rather than leaving it below the fold. All
@@ -34,19 +42,31 @@ export default function Answer({
      the composer by. */
   useEffect(() => {
     const shown = scroller.current
-    if (shown) shown.scrollTop = shown.scrollHeight
+    if (shown && following.current) shown.scrollTop = shown.scrollHeight
   }, [entries.length, outcome(entries[entries.length - 1])])
 
   const send = () => {
     const asked = question.trim()
     if (!asked || asking) return
     setQuestion('')
+    /* Asking is the reader giving the conversation back: the question they just typed is
+       the one thing that belongs on screen, wherever they had scrolled to. */
+    following.current = true
     onAsk(asked)
   }
 
   return (
     <main className="answer">
-      <div className="scroller" ref={scroller}>
+      <div
+        className="scroller"
+        ref={scroller}
+        onScroll={() => {
+          const shown = scroller.current
+          if (shown)
+            following.current =
+              shown.scrollHeight - shown.scrollTop - shown.clientHeight <= NEAR_BOTTOM
+        }}
+      >
         <div className="turn-column">
           {/* Keyed by the turn's own id. Ids repeat across conversations — every
               reopened thread numbers its turns from -1 — so React reconciles one
