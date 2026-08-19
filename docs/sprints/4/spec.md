@@ -105,6 +105,16 @@ stays, its enforcement was the one branch of the graph that could not be read an
 
 ### [17. The React shell is a frontend, not a mockup](done/story-17.md) ✔
 
+### [18. A conversation you can leave](done/story-18.md) ✔
+
+### [19. The answer arrives as it is written](done/story-19.md) ✔
+
+The page showed `Working…` for as long as the model took. The answer is written *inside*
+the model step and a graph yields only between steps, so a sink travels in: `ChatModel`
+streams, the graph binds the model node to that turn's reader, and `/api/ask` carries a
+`text` event per piece. React only — Streamlit waits for the finished turn as it always
+did.
+
 ## Not built this sprint
 
 Planned, cut once the bonus bar was cleared and the hours ran down. None of them is needed
