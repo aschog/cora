@@ -143,3 +143,34 @@ it a second time. It cannot: the reader is already in that conversation when the
 fails, and clearing on arrival there is indistinguishable from clearing on the reopen that
 swallowed the failure — which is the case the sentence exists for. It is cleared by the
 next question, which is the reader moving on.
+
+#### Found by the branch review (`ai-code-reviewer`, fifth pass)
+
+Ten mutants of the fourth pass's work all died. What it found was the seam the rewrite of
+`loaded` opened: reading and drawing fail differently, and only the read was still being
+reported.
+
+- [x] **(ui)** a conversation that cannot be drawn says so on the page — the read is
+      awaited on its own, so a failure in what the page does with the turns escaped as an
+      unhandled rejection and left a click that did nothing
+- [x] **(ui)** and a turn that *succeeded* is not drawn as failed by the re-read that
+      follows it: the internal message of that failure was reaching the reader where the
+      answer belongs. The turn in hand is what lands when the re-read cannot be drawn —
+      and only while the reader is still in the conversation, because a re-read is awaited
+      and they can leave while it runs
+- [x] **(ui)** both sentences are announced, not only drawn: one arrives with no click
+      behind it, which is the same reason the header's unavailable control carries a reason
+      a screen reader can reach
+
+The flush that separates two arrivals in the race specs has a name that says what it waits
+for.
+
+**Declined, with a reason.** The pass asked that the lost-turn sentence retire once the
+reader has seen the failure drawn in its own conversation, rather than standing until the
+next question. Every rule available here is a guess at what the reader has read: the page
+cannot tell a failure they read from one that was on screen for fifty milliseconds before a
+load they had already asked for replaced it. Of the two errors, repeating a sentence about
+an answer that died is the safer one, and the alternative — keeping the failed turn itself,
+per thread, so that reopening that conversation finds it — is the page having a model for a
+turn that exists nowhere but the page. That is the same missing model the two follow-ups
+above want, and it belongs with them rather than in a review fix.

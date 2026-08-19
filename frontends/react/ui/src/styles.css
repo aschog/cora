@@ -758,6 +758,14 @@ button {
   }
 }
 
+/* Announced when it appears: the sentence about a question left running arrives with no
+   click behind it. Empty when the page has nothing to say, and taking no room for it. */
+.banners {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .trouble {
   padding: var(--s2) var(--s3);
   border-radius: var(--radius);

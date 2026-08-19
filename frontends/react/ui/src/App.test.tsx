@@ -25,6 +25,10 @@ const TURN = {
 const frame = (event: string, data: unknown) =>
   `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
 
+/** Everything already queued has run — used where what is asserted is that something did
+ *  *not* happen, and there is no observable arrival to wait for. */
+const flushed = () => new Promise((settle) => setTimeout(settle, 0))
+
 const held = () => {
   let release = () => {}
   const until = new Promise<void>((resolve) => (release = resolve))
@@ -297,7 +301,7 @@ test('an answer never lands on a conversation that was replaced while it ran', a
      would let the abandoned answer through exactly then. */
   turn.release()
   expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
-  await new Promise((settle) => setTimeout(settle, 0))
+  await flushed()
 
   expect(screen.getByText(OLDER.result.answer)).toBeTruthy()
   expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
@@ -482,7 +486,7 @@ test('a conversation shows its own plan, not the plan of a turn left behind', as
   fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   await screen.findByText(OLDER.result.answer)
   step.release()
-  await new Promise((settle) => setTimeout(settle, 0))
+  await flushed()
 
   fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
   expect(screen.queryByText('After the reopen')).toBeNull()
@@ -663,7 +667,7 @@ test('an answer returning to the conversation it was asked in is not dropped', a
   fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   await screen.findByText(OLDER.result.answer)
   fireEvent.click(await screen.findByRole('button', { name: 'Why am I stalling?' }))
-  await new Promise((settle) => setTimeout(settle, 0))
+  await flushed()
 
   recorded = true
   turn.release()
@@ -720,18 +724,18 @@ test('a conversation that loads late does not overwrite the one the reader is in
   fireEvent.click(await sessions().findByRole('button', { name: OLDER.question }))
   await screen.findByText(OLDER.result.answer)
   fireEvent.click(await screen.findByRole('button', { name: 'Why am I stalling?' }))
-  await new Promise((settle) => setTimeout(settle, 0))
+  await flushed()
 
   // The answer lands, so the thread is re-read from the store — and while that is in
   // flight the reader opens the other conversation.
   recorded = true
   turn.release()
-  await new Promise((settle) => setTimeout(settle, 0))
+  await flushed()
   fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   await screen.findByText(OLDER.result.answer)
 
   slow.release()
-  await new Promise((settle) => setTimeout(settle, 0))
+  await flushed()
 
   expect(screen.getByText(OLDER.result.answer)).toBeTruthy()
   expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
@@ -953,7 +957,7 @@ test('an answer to the conversation left behind does not land on the new session
   expect(screen.queryByText('Why am I stalling?')).toBeNull()
 
   turn.release()
-  await new Promise((settle) => setTimeout(settle, 0))
+  await flushed()
 
   expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
   expect(screen.queryByText('Why am I stalling?')).toBeNull()
@@ -1034,7 +1038,7 @@ test('a reopen still loading when a new session starts does not land on it', asy
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
   slow.release()
-  await new Promise((settle) => setTimeout(settle, 0))
+  await flushed()
 
   expect(screen.queryByText(OLDER.result.answer)).toBeNull()
   expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
@@ -1221,7 +1225,7 @@ test('a conversation load that lost the race says nothing about it', async () =>
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
   slow.release()
-  await new Promise((settle) => setTimeout(settle, 0))
+  await flushed()
 
   expect(screen.queryByText(unreachable)).toBeNull()
 })
@@ -1295,7 +1299,7 @@ test('a turn that fails while a reopen is loading is not swallowed by it', async
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
   fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   turn.release()
-  await new Promise((settle) => setTimeout(settle, 0))
+  await flushed()
   slow.release()
 
   expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
@@ -1440,6 +1444,89 @@ test('the page says both of its sentences at once, in one order', async () => {
   await screen.findByText(unreachable)
 
   expect(
-    [...document.querySelectorAll('.app > .trouble')].map((each) => each.textContent),
+    [...screen.getByRole('status').children].map((each) => each.textContent),
   ).toEqual([unreachable, 'In the conversation you left: cora is away.'])
+})
+
+/** A 200 whose body is not a list of turns: the read went through, what came back cannot
+ *  be drawn. A proxy or a version skew is enough. */
+const NONSENSE = 'not a list of turns at all'
+
+test('a conversation that cannot be drawn says so, and does not read as a failed turn', async () => {
+  /* Reading and drawing fail differently. The read is what the store answered for; what
+     the page does with it is the page's own fault, and reported as neither the store being
+     unreachable nor — inside a turn — as that turn having failed. */
+  const body = (data: unknown) =>
+    ({ ok: true, json: async () => data }) as unknown as Response
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions/old') return body(NONSENSE)
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[path] ?? [])
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+
+  // Said on the page, rather than thrown where nobody sees it.
+  expect(await screen.findByText(/could not be read/)).toBeTruthy()
+  expect(screen.queryByText(/is not a function/)).toBeNull()
+})
+
+test('a turn that succeeded is not drawn as failed by the re-read that follows it', async () => {
+  /* When the store's own list of turns lands while a turn is running, the answer is taken
+     from a re-read rather than appended. A re-read that cannot be drawn was reaching the
+     reader as that turn having failed, with an internal message where the answer belongs. */
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
+  const body = (data: unknown) =>
+    ({ ok: true, json: async () => data }) as unknown as Response
+  let reads = 0
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions')
+        return body([
+          { thread_id: 'old', opened_with: OLDER.question },
+          { thread_id: 't1', opened_with: 'Why am I stalling?' },
+        ])
+      // Readable on the way back into the conversation, nonsense on the re-read after.
+      if (path === '/api/sessions/t1') return body(reads++ === 0 ? [] : NONSENSE)
+      if (path === '/api/sessions/old') return body([OLDER])
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[path] ?? [])
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(LIVE[0].summary)
+
+  // Away and back, so the answer arrives to a conversation the store has re-read.
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  fireEvent.click(await screen.findByRole('button', { name: 'Why am I stalling?' }))
+  await screen.findByText(/Working/)
+
+  turn.release()
+
+  // The answer is on the page, from the turn in hand rather than from the re-read.
+  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
+  expect(screen.queryByText(/is not a function/)).toBeNull()
+  expect(screen.queryByText(/conversation you left/)).toBeNull()
+  // Once in the conversation — the other one on the page is the session it names.
+  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+    ['Why am I stalling?'],
+  )
 })

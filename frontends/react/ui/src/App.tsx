@@ -27,6 +27,8 @@ export type Entry = {
   pending?: boolean
 }
 
+const UNDRAWABLE = 'That conversation could not be read.'
+
 const newThread = () =>
   globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2)
 
@@ -128,7 +130,7 @@ export default function App() {
 
   /** Whether there is a conversation to leave: what the header draws, and what `start`
    *  refuses on. */
-  const somethingToLeave = () => conversation.length > 0
+  const somethingToLeave = conversation.length > 0
 
   /** Two different questions about one document. What is *marked* is what this answer
    *  rested on, or a document cited three turns ago accumulates marks until most of it
@@ -170,9 +172,18 @@ export default function App() {
       // conversation that is not on the page. Reported from the read alone, so a failure
       // inside `apply` is not dressed up as the store being unreachable.
       if (loads.current === wanted) setTrouble(message(failed))
-      return
+      return false
     }
-    if (loads.current === wanted) apply(kept)
+    if (loads.current !== wanted) return false
+    try {
+      apply(kept)
+    } catch {
+      // The read went through and what came back cannot be drawn — the page's own fault,
+      // and neither the store being unreachable nor, inside a turn, that turn failing.
+      setTrouble(UNDRAWABLE)
+      return false
+    }
+    return true
   }
 
   /** The question joins the thread the moment it is asked, so it is on the page while
@@ -197,18 +208,22 @@ export default function App() {
         setLive({ thread: on, steps: [...taken] })
       })
       // Nothing lands on a conversation the reader left — that turn is another
-      // conversation's work now. Where they are still in it, the store has this turn as
-      // of now: appending it is right unless the conversation was reloaded under them
-      // while it ran, in which case the store's own list is already on the page and
-      // appending to it would show the turn twice. The panels follow for the same
-      // reason; an answer that cites nothing leaves the panel on the document last read,
-      // which says it is not cited in this answer — rather than emptying it and saying
-      // nothing at all.
+      // conversation's work now. The panels follow for the same reason; an answer that
+      // cites nothing leaves the panel on the document last read, which says it is not
+      // cited in this answer — rather than emptying it and saying nothing at all.
       if (here.current === on) {
+        // The store has this turn as of now, so appending is right unless the
+        // conversation was reloaded under the reader while it ran — then its own list is
+        // already on the page and appending to it would show the turn twice. Where that
+        // re-read is the one thing that cannot be drawn, the turn in hand is what the page
+        // has, and it is better on the page than nowhere.
+        // A re-read is awaited, and the reader can leave while it runs — so where the
+        // turn in hand is what lands, it lands only if they are still in that
+        // conversation.
         if (loads.current === from) {
           setEntries((said) => [...said, { id, question, ...result }])
-        } else {
-          await recall(on)
+        } else if (!(await recall(on)) && here.current === on) {
+          setEntries((said) => [...said, { id, question, ...result }])
         }
         setRead((current) => result.citations[0]?.document ?? current)
       }
@@ -239,7 +254,7 @@ export default function App() {
    *  as every load, so a reopen already in flight loses it rather than landing on top of
    *  the new session and taking the reader back. */
   const start = () => {
-    if (!somethingToLeave()) return
+    if (!somethingToLeave) return
     const fresh = newThread()
     loads.current++
     here.current = fresh
@@ -269,14 +284,16 @@ export default function App() {
         onToggleLeft={() => setLeftOpen((shown) => !shown)}
         onToggleRight={() => setRightOpen((shown) => !shown)}
         onNew={start}
-        canStart={somethingToLeave()}
+        canStart={somethingToLeave}
       />
 
-      {banners.map(([which, said]) => (
-        <div key={which} className="trouble">
-          {said}
-        </div>
-      ))}
+      <div className="banners" role="status">
+        {banners.map(([which, said]) => (
+          <div key={which} className="trouble">
+            {said}
+          </div>
+        ))}
+      </div>
 
       <div className="columns">
         {leftOpen && (
