@@ -346,6 +346,7 @@ export default function App() {
         )}
 
         <Answer
+          thread={thread}
           entries={conversation}
           asking={asking}
           askingElsewhere={asking && flight?.thread !== thread}

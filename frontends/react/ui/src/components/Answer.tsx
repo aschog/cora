@@ -13,6 +13,9 @@ const ELSEWHERE =
   'cora is still answering a question in the conversation you left. It will be listed under SESSIONS when it lands.'
 
 type Props = {
+  /** Which conversation is on screen. Following is that conversation's — a reader
+   *  halfway up one has said nothing about the next, which opens on its newest turn. */
+  thread: string
   entries: Entry[]
   asking: boolean
   /** Asked in a conversation that is no longer on screen: cora answers one question at a
@@ -23,6 +26,7 @@ type Props = {
 }
 
 export default function Answer({
+  thread,
   entries,
   asking,
   askingElsewhere,
@@ -40,6 +44,10 @@ export default function Answer({
      conversation follows what just happened rather than leaving it below the fold. All
      the way to the bottom, so the room the column leaves is what the last line clears
      the composer by. */
+  useEffect(() => {
+    following.current = true
+  }, [thread])
+
   useEffect(() => {
     const shown = scroller.current
     if (shown && following.current) shown.scrollTop = shown.scrollHeight

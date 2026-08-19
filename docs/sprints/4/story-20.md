@@ -107,6 +107,9 @@ bottom for the whole of a streamed answer (#18).
 - [x] three standing scroll tests set `scrollTop` to 0 to observe the write, which under
       the guard reads as *the reader scrolled up*. They say "the reader is at the bottom"
       now, in one helper; the assertion they make is unchanged
+- [x] **(ui)** following is a conversation's, not the page's — a reader halfway up one and
+      then reopening another was left in the middle of it, because the guard outlived the
+      thread it was given up in
 
 Whether a malformed tool call should be retried was the open decision in #26. It ends the
 turn: `to_model_reply` already raises rather than returns when the provider stopped early,

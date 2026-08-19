@@ -1831,6 +1831,21 @@ test('a reader who has scrolled up is left there as the answer grows', async () 
   expect(scroller.scrollTop).toBe(0)
 })
 
+test('a conversation reopened shows its newest turn, however the reader had scrolled', async () => {
+  /* Following is this conversation's, not the page's: leaving one halfway up it is no
+     statement about the next, which opens on the turn it left off at like any other. */
+  render(<App />)
+  await screen.findByText('notes.md')
+  const scroller = document.querySelector('.scroller') as HTMLElement
+  scrolledUp(scroller)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
+})
+
 test('a reader who scrolls back to the bottom is followed again', async () => {
   const parts = [
     frame('text', { text: 'Sleep, ' }),
