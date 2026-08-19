@@ -41,12 +41,21 @@ reach that is to collapse it mid-ingestion.
 
 **Tiers:** **(ui)** vitest via `make ui-test`.
 
-#### The sentence sits beside the list it is about (`ui/src/components/`) **(ui)**
+#### The sentence sits beside the list it is about (`ui/src/App.test.tsx`) **(ui)**
 
 - [x] what an upload did is drawn inside the documents rail, and the banner strip is empty
-      (`DocumentRail`, `UploadNotice`)
 - [x] a document added names itself and its passage count, quoted
 - [x] one passage indexed is one passage, not one passages
+
+#### It is announced, not only shown (`ui/src/components/DocumentRail.test.tsx`) **(ui)**
+
+The colour and the mark carry the outcome for a reader who can see them; a live region is
+the only channel that carries it for one who cannot — and a region mounted together with its
+first sentence is not one:
+
+- [x] the rail holds the region before there is anything to announce, and it is empty
+- [x] the sentence arrives inside that same region
+- [x] the page's own notices strip and this one are told apart by name, not by role
 
 #### The two outcomes look different (`ui/src/components/UploadNotice.tsx`) **(ui)**
 
@@ -61,6 +70,8 @@ reach that is to collapse it mid-ingestion.
 #### What already held, and still does (`ui/src/App.tsx`) **(ui)**
 
 - [x] an upload that fails says so, and takes the last one's notice away
+- [x] a refusal from a conversation the reader has left does **not** take away news about an
+      upload that worked in the one they are in — the clear is stamped like the notice
 - [x] starting a new session takes the notice away, and reopening an earlier conversation
       does too
 - [x] a notice stands while the reader asks their next question

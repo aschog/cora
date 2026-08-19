@@ -75,9 +75,10 @@ the greying note ever appeared in:
       text alone cannot say which pane is open
 - [x] a document with a cited passage draws the mark and no count above it
 - [x] a document the answer did not rest on still says so
-- [x] the four `App.test.tsx` tests that used the count as their proxy ask for something
-      that means what they were after: two for the heading, two for the document's text and
-      the mark on it
+- [x] the three `App.test.tsx` tests that used the count as their proxy ask for what they
+      were after — one for the heading, two for the document's text and the mark on it
+- [x] the two that used the source pane's *empty state* as their proxy for "nothing is open"
+      ask instead that no heading is drawn
 
 #### The tab claims what it shows (`ui/src/App.tsx`) **(ui)**
 

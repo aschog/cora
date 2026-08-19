@@ -53,8 +53,7 @@ test('a rail with nothing indexed draws the upload control alone', () => {
 test('the rail holds the region an upload’s outcome is announced in before there is one', () => {
   rail(['notes.md'], [])
 
-  expect(screen.getByRole('status')).toBeTruthy()
-  expect(screen.getByRole('status').textContent).toBe('')
+  expect(screen.getByRole('status', { name: 'Last upload' }).textContent).toBe('')
 })
 
 test('what an upload did is announced in that same region', () => {
@@ -69,5 +68,7 @@ test('what an upload did is announced in that same region', () => {
     />,
   )
 
-  expect(screen.getByRole('status').textContent).toContain('already in your documents')
+  expect(
+    screen.getByRole('status', { name: 'Last upload' }).textContent,
+  ).toContain('already in your documents')
 })

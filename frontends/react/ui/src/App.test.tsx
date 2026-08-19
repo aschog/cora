@@ -1459,9 +1459,11 @@ test('the page says both of its sentences at once, in one order', async () => {
   fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   await screen.findByText(unreachable)
 
-  /* Named by its strip rather than by the role: the documents rail carries a live region
-     of its own for what an upload did, and this assertion is about the page's own two. */
-  const banners = document.querySelector('.banners') as HTMLElement
+  /* Resolved through the role, and named: the documents rail carries a live region of its
+     own for what an upload did, so a bare role would find two. The name is what tells the
+     two apart — and what a screen reader says before the sentence, rather than announcing
+     it bare. */
+  const banners = screen.getByRole('status', { name: 'Notices' })
   expect([...banners.children].map((each) => each.textContent)).toEqual([
     unreachable,
     'In the conversation you left: cora is away.',
@@ -1984,7 +1986,9 @@ test('one passage indexed is one passage', async () => {
 
 test('an upload that indexed nothing is drawn as the outcome it is', async () => {
   /* A duplicate is not the outcome the reader asked for, and not the one a document added
-     gets: the reader tells the two apart by looking at them. */
+     gets: the reader tells the two apart by looking at them. The store answering "already
+     there" before "added" cannot happen — the order is arbitrary because only the drawing
+     is under test. */
   await ready([0, 12])
 
   upload('notes.md')
@@ -2190,6 +2194,7 @@ test('an upload that failed in a conversation left behind keeps this one’s not
      conversation owns. The rejection is still drawn — a document is refused wherever the
      reader is — but it may not take away news about an upload that worked here. */
   const refusing = held()
+  let first = true
   vi.stubGlobal(
     'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
@@ -2213,7 +2218,6 @@ test('an upload that failed in a conversation left behind keeps this one’s not
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
-  let first = true
   render(<App />)
   await screen.findByText('notes.md')
 

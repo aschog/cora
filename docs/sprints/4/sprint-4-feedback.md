@@ -342,3 +342,62 @@ and one finding that turned out not to be reachable.
 - [x] **The browser's shared libraries came from the runner image** — `--with-deps` as well
       as `--only-shell`, so an `ubuntu-latest` rotation cannot fail every PR on a step that
       has nothing to do with the diff.
+
+## Found by the fourth `fix/patch-selection` review
+
+Over the branch's whole diff, after story 22 and story 23. Eleven findings, then five more
+on the re-review of the fixes — the last of which was a regression the first pass introduced.
+Two were referred back rather than fixed here, and say why.
+
+- [x] **A deleted paragraph had nothing defending it.** Story 22 ticked the greying note's
+      removal, but the state it appeared in — a rail holding a cited *and* an uncited
+      document — is unreachable from the App fixture, which serves one document and then
+      cites it. Reinstating the paragraph left all 97 tests green. `DocumentRail.test.tsx`
+      now covers the mixed state, and the mutation reds it.
+- [x] **A refusal cleared another conversation's notice.** `uploaded`'s success path was
+      stamped with the conversation it started in; the failure path was not, so an upload
+      refused in a conversation the reader had left wiped news about one that worked in the
+      one they were in. Both sides of the guard are now pinned.
+- [x] **Moving the notice into the rail lost its live region.** `role="status"` sat on the
+      element that mounts *with* its first sentence, which is not a change a screen reader
+      announces. It worked before only because the banner strip is always drawn.
+- [x] **The banner strip's own region then lost its only guard** — the test that had asserted
+      it was rewritten to find the strip by class, because a bare role now found two regions.
+      Both regions carry an `aria-label` and are resolved by role *and* name, so neither can
+      lose the attribute unnoticed — and a reader hears which region is speaking.
+- [x] **The findings file held less than what was open.** An earlier pass removed whole
+      *sections*, taking #24 and #25 with them; both are open. Restored, and the file's
+      invariant now says finding by finding.
+- [x] **Five line references were stale**, having been re-anchored before the commit that
+      shifted them. They are checked by a script that prints what each range's first line
+      actually holds, rather than by hand.
+- [x] **`spec.md` did not know about stories 22 and 23** — the same fault as manual finding
+      #23, one branch after it was closed.
+- [x] **Story 22's test list named five component test files that did not exist.** Eight of
+      the nine claims were in fact covered, by the two page-level outer tests — so it was a
+      labelling defect, except for the one real hole above. Restated as what exists.
+- [x] **Story 22 miscounted the tests it rewrote.** Three used the caption, not four, and two
+      others had used the source pane's empty state — which went a different way.
+- [x] **Story 23's list was three tests behind its own code**, and credited a `DocumentRail`
+      test for an assertion that lives in `App.test.tsx`.
+- [x] **`README.md` said no browser is needed for any gate**, contradicting itself four lines
+      later. CI is a gate. It is the *local* gates that need no browser.
+- [x] **Two failure screenshots were committed** — vitest browser artifacts captured while
+      those tests were red. Untracked, and `browser/__screenshots__/` is ignored.
+- [x] **The browser tier was still called "the selection tier"** in three places after it
+      grew a second thing only a real browser can answer for.
+- [x] **`{ said, wrong }` was declared three times** and `Banner.tone` had become a constant;
+      one exported type, and the strip has one look.
+- [x] **Dead code**: `.source-meta` (dead on `main` too), the styleless `source-uncited`
+      class, `.plan-step-mark.failed` orphaned inside the upload-notice block.
+- [ ] **The page's heading outline starts at level 2, and its tablist has no panels.**
+      `SourcePanel`'s `<h2>` is the only heading in the page, and the `role="tab"` buttons
+      carry no `aria-controls` with no `role="tabpanel"` to point at. Referred back
+      deliberately: the fix is not local — it decides the whole outline (the header's title,
+      `YOUR DOCUMENTS`, the four tab labels) and the tab/panel wiring together. One coherent
+      accessibility story with its own criterion, not a piece of it done off-list here.
+- [x] **A test's stub ordering** read a `let` declared below it — safe only because nothing
+      called it in between. Declared above the stub now. The `ready([0, 12])` ordering was
+      left as it is, with the comment saying the order is arbitrary because only the drawing
+      is under test.
+

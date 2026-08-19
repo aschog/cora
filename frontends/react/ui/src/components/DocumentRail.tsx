@@ -39,8 +39,10 @@ export default function DocumentRail({
       </label>
 
       {/* Always drawn, so a sentence arriving in it is a change a screen reader announces.
-          A region mounted together with its first content is not. */}
-      <div role="status">
+          A region mounted together with its first content is not. Named because the page
+          carries a second one for its own notices, and a name is what a reader hears before
+          the sentence rather than after it. */}
+      <div role="status" aria-label="Last upload">
         {upload && (
           <UploadNotice
             said={upload.said}

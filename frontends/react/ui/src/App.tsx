@@ -4,12 +4,12 @@ import type { Citation, Fact, Session, Step, Turn } from './api'
 import Answer from './components/Answer'
 import CitationModal from './components/CitationModal'
 import DocumentRail from './components/DocumentRail'
-import type { Notice } from './components/UploadNotice'
 import Header from './components/Header'
 import MemoryPanel from './components/MemoryPanel'
 import PlanPanel from './components/PlanPanel'
 import SessionsPanel from './components/SessionsPanel'
 import SourcePanel from './components/SourcePanel'
+import type { Notice } from './components/UploadNotice'
 
 const TABS = ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
 type Tab = (typeof TABS)[number]
@@ -360,7 +360,7 @@ export default function App() {
         canStart={somethingToLeave}
       />
 
-      <div className="banners" role="status">
+      <div className="banners" role="status" aria-label="Notices">
         {banners.map(({ which, said }) => (
           <div key={which} className="trouble">
             {said}
