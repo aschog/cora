@@ -18,7 +18,7 @@ from cora.frontends.react.api import (
     TOO_LONG_TO_ASK,
     api,
 )
-from cora.ports.chat_model import Message, ModelReply, TextSink, unheard
+from cora.ports.chat_model import Message, ModelReply, Piece, TextSink, unheard
 from cora.ports.plugin import Tool, ToolCall
 from fakes import FailingChatModel, FakeConversations, ScriptedChatModel
 from sse import frames
@@ -403,7 +403,7 @@ class WritesThenBreaks:
         tools: tuple[Tool, ...],
         on_text: TextSink = unheard,
     ) -> ModelReply:
-        on_text("Sleep, ")
+        on_text(Piece("Sleep, "))
         raise LlmError()
 
 
@@ -460,6 +460,66 @@ def test_the_turn_still_carries_the_whole_answer() -> None:
     written = "".join(data["text"] for name, data in streamed if name == "text")
     assert streamed[-1][0] == "turn"
     assert streamed[-1][1]["answer"] == written
+
+
+def preambling(answer: str = "Sleep, not volume [1].") -> ScriptedChatModel:
+    """A model that says what it is about to do before it does it — the shape every
+    claim about the wire has to survive, and the one a script with an empty first round
+    quietly avoids."""
+    return ScriptedChatModel(
+        [
+            ModelReply(text="Let me check your notes. ", tool_calls=(SEARCH,)),
+            ModelReply(text=answer),
+        ],
+        pieces=[["Let me check ", "your notes. "], ["Sleep, ", "not volume [1]."]],
+    )
+
+
+def test_an_aside_marks_the_pieces_a_round_wrote_before_calling_a_tool() -> None:
+    """Without it the contract is a lie a client has to know about: pieces arrive for a
+    sentence that is not the answer, and only the shape of the step stream says so."""
+    app = indexed(assembled(chat_model=preambling()), ("notes.md", NOTES))
+
+    streamed = asking(app)
+    names = [name for name, _ in streamed]
+
+    assert names[: names.index("aside")] == ["text", "text"]
+    assert [data["text"] for name, data in streamed[: names.index("aside")]] == [
+        "Let me check ",
+        "your notes. ",
+    ]
+    assert names.index("aside") < names.index("step")
+
+
+def test_a_turn_answered_in_one_round_sends_no_aside() -> None:
+    """An aside has the reader drop what they have been shown, so one after a final
+    would take the answer with it."""
+    app = indexed(
+        assembled(
+            chat_model=ScriptedChatModel(
+                [ModelReply(text="Sleep, not volume.")],
+                pieces=[["Sleep, ", "not volume."]],
+            )
+        ),
+        ("notes.md", NOTES),
+    )
+
+    assert [name for name, _ in asking(app)] == ["text", "text", "step", "turn"]
+
+
+def test_the_pieces_after_the_last_aside_are_the_answer_the_turn_carries() -> None:
+    """The whole of what the wire promises, over a model that writes before it searches:
+    a client keeps the pieces since the last aside and needs nothing else to know it has
+    the answer."""
+    app = indexed(assembled(chat_model=preambling()), ("notes.md", NOTES))
+
+    streamed = asking(app)
+    after = streamed[[name for name, _ in streamed].index("aside") + 1 :]
+
+    written = "".join(data["text"] for name, data in after if name == "text")
+    assert streamed[-1][0] == "turn"
+    assert streamed[-1][1]["answer"] == written
+    assert written == "Sleep, not volume [1]."
 
 
 def test_a_turn_that_fails_after_writing_ends_with_the_error() -> None:

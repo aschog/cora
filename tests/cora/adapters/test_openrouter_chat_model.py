@@ -29,7 +29,7 @@ from cora.domain.errors import (
     LlmTimeoutError,
     LlmTruncatedError,
 )
-from cora.ports.chat_model import Message, ModelReply
+from cora.ports.chat_model import Message, ModelReply, Piece, Written
 from cora.ports.plugin import ToolCall
 from fakes import add_tool
 
@@ -399,7 +399,7 @@ def _model_over(monkeypatch: pytest.MonkeyPatch, client: type) -> OpenRouterChat
 def test_each_piece_the_model_writes_reaches_the_sink(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    written: list[str] = []
+    written: list[Written] = []
     model = _model_over(
         monkeypatch,
         _streaming(
@@ -409,7 +409,7 @@ def test_each_piece_the_model_writes_reaches_the_sink(
 
     model.complete((Message(role="user", content="hi"),), (), written.append)
 
-    assert written == ["Sleep, ", "not volume."]
+    assert written == [Piece("Sleep, "), Piece("not volume.")]
 
 
 def test_a_streamed_reply_is_the_reply_a_whole_response_would_have_given(
@@ -435,7 +435,7 @@ def test_a_streamed_reply_is_the_reply_a_whole_response_would_have_given(
 def test_a_streamed_tool_call_arrives_whole(monkeypatch: pytest.MonkeyPatch) -> None:
     """A provider sends the arguments in fragments of JSON, which is unparseable until
     the last of them has arrived."""
-    written: list[str] = []
+    written: list[Written] = []
     model = _model_over(
         monkeypatch,
         _streaming(
@@ -479,7 +479,7 @@ def test_a_streamed_tool_call_whose_arguments_never_parse_ends_the_turn(
 ) -> None:
     """The fragments are unparseable until the last has arrived, so a call that is still
     broken once the stream is whole is broken for good."""
-    written: list[str] = []
+    written: list[Written] = []
     model = _model_over(
         monkeypatch,
         _streaming(
@@ -507,7 +507,7 @@ def test_what_the_model_thinks_reaches_no_sink(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Reasoning is not the answer, and a reader shown it would read it as one."""
-    written: list[str] = []
+    written: list[Written] = []
     model = _model_over(
         monkeypatch,
         _streaming(
@@ -520,7 +520,7 @@ def test_what_the_model_thinks_reaches_no_sink(
 
     model.complete((Message(role="user", content="hi"),), (), written.append)
 
-    assert written == ["Sleep."]
+    assert written == [Piece("Sleep.")]
 
 
 def test_a_stream_cut_off_at_the_token_limit_is_still_not_an_answer(
@@ -565,7 +565,7 @@ def test_a_stream_that_fails_part_way_keeps_the_category_and_what_was_written(
 ) -> None:
     """The failure travels as its category, and the pieces already sent are not taken
     back — the caller replaces them with the sentence the failure carries."""
-    written: list[str] = []
+    written: list[Written] = []
 
     class _BreaksMidStream:
         def __init__(self, **kwargs: object) -> None: ...
@@ -579,4 +579,4 @@ def test_a_stream_that_fails_part_way_keeps_the_category_and_what_was_written(
     with pytest.raises(LlmTimeoutError):
         model.complete((Message(role="user", content="hi"),), (), written.append)
 
-    assert written == ["Sleep, "]
+    assert written == [Piece("Sleep, ")]

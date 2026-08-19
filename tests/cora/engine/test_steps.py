@@ -27,7 +27,7 @@ from cora.engine.steps import (
 )
 from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import EmptyInputRule
-from cora.ports.chat_model import Message, ModelReply
+from cora.ports.chat_model import Aside, Message, ModelReply, Piece, Written
 from cora.ports.graph import DONE, TOOLS
 from cora.ports.memory import Memory
 from cora.ports.plugin import Tool, ToolCall
@@ -632,7 +632,7 @@ def test_a_payload_that_only_looks_citable_is_fed_back_untouched() -> None:
 
 
 def test_the_step_hands_the_pieces_the_model_wrote_to_its_sink() -> None:
-    written: list[str] = []
+    written: list[Written] = []
     model = ScriptedChatModel(
         [ModelReply(text="The sum is 3.")], pieces=[["The sum ", "is 3."]]
     )
@@ -642,13 +642,13 @@ def test_the_step_hands_the_pieces_the_model_wrote_to_its_sink() -> None:
 
     step(_asking())
 
-    assert written == ["The sum ", "is 3."]
+    assert written == [Piece("The sum "), Piece("is 3.")]
 
 
 def test_the_sink_changes_nothing_about_the_state_the_step_returns() -> None:
     """The pieces are how the answer arrives, not what it is: the state still carries
     the whole reply, because that is what the turn is recorded and prompted from."""
-    written: list[str] = []
+    written: list[Written] = []
     model = ScriptedChatModel(
         [ModelReply(text="The sum is 3.")], pieces=[["The sum ", "is 3."]]
     )
@@ -669,10 +669,72 @@ def test_a_step_given_no_sink_answers_as_it_always_did() -> None:
     assert step(_asking())["answer"] == "The sum is 3."
 
 
+def test_a_round_that_ends_in_a_tool_call_tells_the_sink_the_writing_was_an_aside() -> (
+    None
+):
+    """A model may talk its way to a decision before it calls a tool, and that sentence
+    is not the answer. The sink is told so where it can be acted on — after the pieces
+    of the round, so a reader who was shown them knows to drop them."""
+    written: list[Written] = []
+    model = ScriptedChatModel(
+        [
+            ModelReply(
+                text="Let me check your notes. ",
+                tool_calls=(ToolCall(name="add", arguments={"a": 1}, call_id="c1"),),
+            )
+        ],
+        pieces=[["Let me check ", "your notes. "]],
+    )
+    step = ModelStep(
+        chat_model=model, tools=(), max_history_turns=20, on_text=written.append
+    )
+
+    partial = step(_asking())
+
+    assert written == [Piece("Let me check "), Piece("your notes. "), Aside()]
+    assert "answer" not in partial
+
+
+def test_a_tool_round_that_wrote_nothing_tells_the_sink_nothing() -> None:
+    """The aside exists to have a reader drop what they were shown. A round that asked
+    for a tool and said nothing showed them nothing, so there is nothing to drop."""
+    written: list[Written] = []
+    model = ScriptedChatModel(
+        [
+            ModelReply(
+                tool_calls=(ToolCall(name="add", arguments={"a": 1}, call_id="c1"),)
+            )
+        ]
+    )
+    step = ModelStep(
+        chat_model=model, tools=(), max_history_turns=20, on_text=written.append
+    )
+
+    step(_asking())
+
+    assert written == []
+
+
+def test_a_round_that_ends_in_an_answer_tells_the_sink_nothing_further() -> None:
+    """The pieces are the answer arriving early, so nothing follows them: an aside after
+    a final would have the reader drop the answer they were just shown."""
+    written: list[Written] = []
+    model = ScriptedChatModel(
+        [ModelReply(text="The sum is 3.")], pieces=[["The sum ", "is 3."]]
+    )
+    step = ModelStep(
+        chat_model=model, tools=(), max_history_turns=20, on_text=written.append
+    )
+
+    step(_asking())
+
+    assert written == [Piece("The sum "), Piece("is 3.")]
+
+
 def test_writing_to_leaves_the_step_it_came_from_writing_nowhere() -> None:
     """One assembled app serves every turn, so the step it holds must stay unbound:
     a sink bound onto it would send one reader another reader's answer."""
-    written: list[str] = []
+    written: list[Written] = []
     unbound = ModelStep(
         chat_model=ScriptedChatModel(
             [ModelReply(text="ok"), ModelReply(text="ok")], pieces=[["ok"], ["ok"]]
@@ -685,4 +747,4 @@ def test_writing_to_leaves_the_step_it_came_from_writing_nowhere() -> None:
     bound(_asking())
     unbound(_asking())
 
-    assert written == ["ok"]
+    assert written == [Piece("ok")]

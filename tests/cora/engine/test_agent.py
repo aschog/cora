@@ -8,7 +8,7 @@ from cora.domain.conversation import Turn
 from cora.domain.errors import GraphRunError, LlmError
 from cora.domain.trace import ModelDecision, ToolUse, TraceStep
 from cora.engine.agent import Agent
-from cora.ports.chat_model import TextSink, unheard
+from cora.ports.chat_model import Piece, TextSink, Written, unheard
 from fakes import FailingConversations, FakeConversations
 
 SEARCHED = ToolUse(name="search_documents", arguments={"query": "protein"})
@@ -45,7 +45,7 @@ class _StubRunner:
         self.thread_id = thread_id
         yield {**self.found, **state}
         for piece in self.writes:
-            on_text(piece)
+            on_text(Piece(piece))
         yield from self.states
         if self.then is not None:
             raise self.then
@@ -219,14 +219,14 @@ def test_a_store_that_cannot_be_written_costs_the_turn_nothing() -> None:
 def test_the_answer_reaches_its_reader_as_it_is_written() -> None:
     """The pieces are the same text arriving earlier. What the turn *is* — recorded,
     prompted from, cited against — is still the whole answer in the result."""
-    written: list[str] = []
+    written: list[Written] = []
     runner = _StubRunner(
         {"answer": "Sleep, not volume."}, writes=("Sleep, ", "not volume.")
     )
 
     result = Agent(runner).answer("why", THREAD, on_text=written.append)
 
-    assert written == ["Sleep, ", "not volume."]
+    assert written == [Piece("Sleep, "), Piece("not volume.")]
     assert result.answer == "Sleep, not volume."
 
 
@@ -241,10 +241,10 @@ def test_a_turn_that_fails_keeps_the_text_already_written() -> None:
     """As it already keeps the steps it took: what was written happened, and the caller
     replaces it with the sentence the failure carries rather than pretending to unsay
     it."""
-    written: list[str] = []
+    written: list[Written] = []
     runner = _StubRunner({"trace": [SEARCHED]}, writes=("Sleep, ",), then=LlmError())
 
     with pytest.raises(LlmError):
         Agent(runner).answer("why", THREAD, on_text=written.append)
 
-    assert written == ["Sleep, "]
+    assert written == [Piece("Sleep, ")]

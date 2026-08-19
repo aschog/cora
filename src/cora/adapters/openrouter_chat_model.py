@@ -23,7 +23,7 @@ from cora.domain.errors import (
     LlmTimeoutError,
     LlmTruncatedError,
 )
-from cora.ports.chat_model import Message, ModelReply, TextSink, unheard
+from cora.ports.chat_model import Message, ModelReply, Piece, TextSink, unheard
 from cora.ports.plugin import Tool, ToolCall
 
 MAX_RETRIES = 2
@@ -160,7 +160,7 @@ def _streamed(client: Any, messages: list[BaseMessage], on_text: TextSink) -> AI
         for piece in client.stream(messages):
             whole = piece if whole is None else whole + piece
             if piece.text:
-                on_text(piece.text)
+                on_text(Piece(piece.text))
     except Exception as exc:
         raise _categorise(exc) from exc
     if whole is None:
