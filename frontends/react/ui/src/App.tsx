@@ -65,9 +65,6 @@ export default function App() {
      is waiting for, and it tells a turn whether the entry it belongs to is still there
      to land on. */
   const loads = useRef(0)
-  /** How many of those are still on the wire. A conversation in flight replaces the turns
-   *  on the page when it lands, so what is appended in front of it does not survive. */
-  const flying = useRef(0)
   /* Which conversation the reader is in, written where it changes rather than during a
      render: `setThread` schedules a render, so a ref assigned while rendering still
      names the old thread for anything that runs before that render lands — which is any
@@ -102,18 +99,14 @@ export default function App() {
     refresh()
   }, [refresh])
 
-  /** Whether there is a conversation to leave: what the header draws, and what `start`
-   *  refuses on. */
-  const somethingToLeave = () => conversation.length > 0
-
   /** What the page has to say about itself, in one place: a load that failed, and a
    *  question left running that will not be answered. The second is not cleared by the
    *  next load going through, and says nothing once the reader is back in the
    *  conversation it belongs to — where the sentence would be false. */
   const banners = [
-    trouble,
-    lost && lost.thread !== thread ? lost.said : null,
-  ].filter((said): said is string => Boolean(said))
+    ['load', trouble],
+    ['lost', lost && lost.thread !== thread ? lost.said : null],
+  ].filter((banner): banner is [string, string] => Boolean(banner[1]))
 
   const cited = citedDocuments(entries)
   /** What the conversation column shows: its recorded turns, and the one being asked in
@@ -132,6 +125,10 @@ export default function App() {
       .find((citation) => citation.document === document)
 
   const uploadOf = (document: string) => latestFor(document)?.upload ?? null
+
+  /** Whether there is a conversation to leave: what the header draws, and what `start`
+   *  refuses on. */
+  const somethingToLeave = () => conversation.length > 0
 
   /** Two different questions about one document. What is *marked* is what this answer
    *  rested on, or a document cited three turns ago accumulates marks until most of it
@@ -163,22 +160,19 @@ export default function App() {
    *  reader is waiting for. Every load is a race with them: they can open another
    *  conversation while this one is in flight, or the same one again — and the response
    *  that arrives last is not the conversation they asked for last. */
-  const loaded = (thread_id: string, apply: (kept: Turn[]) => void) => {
+  const loaded = async (thread_id: string, apply: (kept: Turn[]) => void) => {
     const wanted = ++loads.current
-    flying.current++
-    return cora
-      .turns(thread_id)
-      .then((kept) => {
-        if (loads.current === wanted) apply(kept)
-      })
-      .catch((failed) => {
-        // A load that lost the race has nothing to say either: its failure is about a
-        // conversation that is not on the page.
-        if (loads.current === wanted) setTrouble(message(failed))
-      })
-      .finally(() => {
-        flying.current--
-      })
+    let kept: Turn[]
+    try {
+      kept = await cora.turns(thread_id)
+    } catch (failed) {
+      // A load that lost the race has nothing to say either: its failure is about a
+      // conversation that is not on the page. Reported from the read alone, so a failure
+      // inside `apply` is not dressed up as the store being unreachable.
+      if (loads.current === wanted) setTrouble(message(failed))
+      return
+    }
+    if (loads.current === wanted) apply(kept)
   }
 
   /** The question joins the thread the moment it is asked, so it is on the page while
@@ -222,14 +216,17 @@ export default function App() {
       // A failure is recorded nowhere, so it exists only on the page it was asked from —
       // and where that page has been left, in the one line that says the answer the
       // reader was told to wait for is not coming.
-      if (here.current === on && flying.current === 0) {
+      // Where the reader is still in that conversation, the failure goes where the answer
+      // would have been — and it is remembered either way, because a load already on the
+      // wire replaces those turns when it lands and takes the failure with it. Which of
+      // the two the reader sees is one question, asked once, when the page is drawn.
+      if (here.current === on) {
         setEntries((said) => [
           ...said,
           { id, question, error: message(failed), citations: [], trace: taken },
         ])
-      } else {
-        setLost({ thread: on, said: `In the conversation you left: ${message(failed)}` })
       }
+      setLost({ thread: on, said: `In the conversation you left: ${message(failed)}` })
     } finally {
       setFlight((running) => (running?.entry.id === id ? null : running))
       setAsking(false)
@@ -275,8 +272,8 @@ export default function App() {
         canStart={somethingToLeave()}
       />
 
-      {banners.map((said) => (
-        <div key={said} className="trouble">
+      {banners.map(([which, said]) => (
+        <div key={which} className="trouble">
           {said}
         </div>
       ))}

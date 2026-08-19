@@ -117,3 +117,29 @@ list landed while its turn ran, and that read takes a ticket in the same race th
 clicks run in — so a reopen the reader asked for can lose to it and say nothing about
 having lost. The guard is consistent (a load that lost the race says nothing); *why* a
 reader's load can lose is the same counter that owes the follow-up its story.
+
+#### Found by the branch review (`ai-code-reviewer`, fourth pass)
+
+The third pass's `flying` counter was a guess at the question it was asked: *a load is on
+the wire* is not *this conversation is about to be replaced* — a load that already lost its
+race replaces nothing, and one that fails replaces nothing either. Routing on the guess
+while drawing on the fact left a gap where the failure was said in neither place. The
+counter is gone: the failure is recorded either way, and where it is said is one question,
+asked once, when the page is drawn.
+
+- [x] **(ui)** a turn that fails in the conversation on screen says so there, whatever
+      else is loading
+- [x] **(ui)** and it is not dragged onto a page it was never asked on — appending it
+      regardless of where the reader is passed every test the pass had left
+- [x] **(ui)** the page says both of its sentences at once, in one order, keyed by which
+      sentence it is rather than by what it happens to say
+
+The conversation is read in one place and reported from the read alone, so a failure inside
+what the page does with the turns is not dressed up as the store being unreachable.
+
+**Declined, with a reason.** The pass asked that being back in the failed turn's
+conversation *clear* the sentence rather than suppress it, so leaving again does not raise
+it a second time. It cannot: the reader is already in that conversation when the turn
+fails, and clearing on arrival there is indistinguishable from clearing on the reopen that
+swallowed the failure — which is the case the sentence exists for. It is cleared by the
+next question, which is the reader moving on.

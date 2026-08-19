@@ -1250,6 +1250,10 @@ test('a question left running that fails says so, rather than never arriving', a
   turn.release()
 
   expect(await screen.findByText(/conversation you left.*cora is away\./)).toBeTruthy()
+  // Said about the conversation, not *in* the empty one: the failed turn is not dragged
+  // onto a page it was never asked on.
+  expect(screen.queryByText('Why am I stalling?')).toBeNull()
+  expect(document.querySelector('.turn')).toBeNull()
 
   // Until the reader asks the next question, which is them moving on from it.
   turn = held()
@@ -1347,4 +1351,95 @@ test('the failure of a question you left is not still said once you are back in 
 
   await screen.findByText(/Sleep, not volume/)
   expect(screen.queryByText(/conversation you left/)).toBeNull()
+})
+
+test('a turn that fails in the conversation on screen says so there, whatever else is loading', async () => {
+  /* A load on the wire is not a load that will replace this conversation: one that has
+     already lost its race replaces nothing. Reading "a load exists" as "what I append is
+     about to be overwritten" sent the failure to a sentence that is not drawn while the
+     reader is in the conversation it names — so it was said nowhere at all. */
+  const slow = held()
+  let asks = 0
+  const body = (data: unknown) =>
+    ({ ok: true, json: async () => data }) as unknown as Response
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return asks++ === 0 ? answering() : failing()
+      if (path === '/api/sessions/old') {
+        await slow.until
+        return body([OLDER])
+      }
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[path] ?? [])
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const ask = (question: string) => {
+    turn = held()
+    fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+      target: { value: question },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  }
+
+  ask('Why am I stalling?')
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  // A reopen that can never land: the new session below is a later claim on the page.
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+
+  ask('And now?')
+  await screen.findByText(/Working/)
+  turn.release()
+
+  // Where the answer would have been, in the conversation that asked it.
+  expect(await screen.findByText('cora is away.')).toBeTruthy()
+  expect(screen.getByText('And now?')).toBeTruthy()
+  slow.release()
+})
+
+test('the page says both of its sentences at once, in one order', async () => {
+  /* Two facts with two lifetimes: a load that failed, cleared by the next one that goes
+     through, and a question left running that will not be answered, which stands until the
+     reader asks the next one. They are drawn from one place so that order is a decision
+     rather than whatever the two `&&`s happened to be. */
+  const unreachable = 'The conversation store is temporarily unavailable.'
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return failing()
+      if (path === '/api/sessions/old')
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({ error: unreachable }),
+        } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  turn.release()
+  await screen.findByText(/conversation you left/)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(unreachable)
+
+  expect(
+    [...document.querySelectorAll('.app > .trouble')].map((each) => each.textContent),
+  ).toEqual([unreachable, 'In the conversation you left: cora is away.'])
 })
