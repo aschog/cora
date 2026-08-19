@@ -1,3 +1,4 @@
+import threading
 from pathlib import Path
 
 import pytest
@@ -495,17 +496,50 @@ def test_a_run_hands_the_model_node_the_sink_it_was_asked_with() -> None:
     assert written == [Piece("Sleep, "), Piece("not volume.")]
 
 
+def _writing_its_question(both: threading.Barrier) -> ModelFor:
+    """A model that writes the question it was asked, in two pieces, holding between
+    them until the other run has written its first — so the two runs are inside the
+    model node at the same time, which is the only state in which they can cross."""
+
+    def bound(on_text: TextSink) -> Step:
+        def step(state: AgentState) -> AgentState:
+            asked = state["question"]
+            on_text(Piece(f"{asked} first"))
+            both.wait()
+            on_text(Piece(f"{asked} last"))
+            written = f"{asked} first{asked} last"
+            return {"messages": _said("assistant", written), "answer": written}
+
+        return step
+
+    return bound
+
+
 def test_two_runs_of_one_runner_do_not_cross() -> None:
     """One assembled app answers two readers, each on their own thread and their own
-    worker. A sink shared between them would send each the other's answer."""
-    mine: list[Written] = []
-    yours: list[Written] = []
-    runner = _runner(model=_writing("mine"))
+    worker. A sink shared between them would send each the other's answer — which two
+    runs taken in turn cannot show: a sink kept on the runner and rebound per run passes
+    that, and crosses the moment two readers overlap. So they overlap here, and each
+    model node writes the question its own run carried in."""
+    both = threading.Barrier(2, timeout=5)
+    written: dict[str, list[Written]] = {"ada": [], "grace": []}
+    runner = _runner(model=_writing_its_question(both))
 
-    _final(runner, {"question": "q"}, thread_id="ada", on_text=mine.append)
-    _final(runner, {"question": "q"}, thread_id="grace", on_text=yours.append)
+    readers = [
+        threading.Thread(
+            target=_final, args=(runner, {"question": who}, who, written[who].append)
+        )
+        for who in written
+    ]
+    for reader in readers:
+        reader.start()
+    for reader in readers:
+        reader.join(timeout=10)
 
-    assert (mine, yours) == ([Piece("mine")], [Piece("mine")])
+    assert written == {
+        "ada": [Piece("ada first"), Piece("ada last")],
+        "grace": [Piece("grace first"), Piece("grace last")],
+    }
 
 
 def test_a_run_asked_with_no_sink_takes_the_same_turn() -> None:
