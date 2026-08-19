@@ -24,8 +24,8 @@ behind it. Asserted rather than built.
 **Tier:** **(ui)** vitest, run by `npm test` in `frontends/react/ui`.
 
 - [x] **(ui)** the header offers a way to start a new session
-- [ ] **(ui)** starting one takes the conversation off the page
-- [ ] **(ui)** the question asked next runs on a thread other than the one before it
+- [x] **(ui)** starting one takes the conversation off the page
+- [x] **(ui)** the question asked next runs on a thread other than the one before it
 - [ ] **(ui)** the control is disabled while the conversation is already new and empty —
       a click that changes nothing is not offered
 - [ ] **(ui)** the plan panel is empty afterwards: the steps of the turn left behind

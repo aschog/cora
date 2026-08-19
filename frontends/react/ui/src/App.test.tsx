@@ -824,3 +824,62 @@ test('the header offers a way to start a new session', async () => {
 
   expect(screen.getByRole('button', { name: 'New session' })).toBeTruthy()
 })
+
+test('starting a new session takes the conversation off the page', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+
+  expect(screen.queryByText('Why am I stalling?')).toBeNull()
+  expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
+})
+
+test('the question asked after a new session runs on another thread', async () => {
+  /* A new session that reused the thread would go on appending to the conversation the
+     reader just left — off the page, but in the store, and in the model's context. */
+  const asked: string[] = []
+  /* Named here rather than left to the environment: another spec pins `randomUUID` to a
+     constant, and a thread that never changes is exactly what this asserts against. */
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/ask') {
+        asked.push(JSON.parse(String(init?.body)).thread_id)
+        return answering()
+      }
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const ask = async (question: string) => {
+    turn = held()
+    fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+      target: { value: question },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+    turn.release()
+    await screen.findByText(/Sleep, not volume/)
+  }
+
+  await ask('Why am I stalling?')
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  await ask('And now?')
+
+  expect(asked).toHaveLength(2)
+  expect(asked[0]).toBeTruthy()
+  expect(asked[1]).not.toBe(asked[0])
+})
