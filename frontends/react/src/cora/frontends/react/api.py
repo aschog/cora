@@ -30,6 +30,7 @@ from cora.domain.trace import TraceStep
 from cora.engine.ingestion import DEFAULT_MAX_BYTES
 from cora.engine.validation import MAX_INPUT_CHARS
 from cora.frontends.react import payloads
+from cora.ports.chat_model import Piece, Written
 
 log = logging.getLogger(__name__)
 
@@ -214,8 +215,13 @@ that is not closed is a page still spinning under an answer that already failed.
 def _ask(app: App) -> Callable[[Request], Any]:
     """A turn takes as long as it takes, so it is a stream: the steps as the agent takes
     them, the answer in the pieces it is written in, then the answer whole, and either
-    way an end. The whole one is what the page keeps — the pieces are it arriving early,
-    and the two agree because both come off the one turn.
+    way an end. The whole one is what the page keeps — the pieces are it arriving early.
+
+    A turn may take several rounds and only the last of them is the answer, so a model
+    that writes before it calls a tool writes something that is not one. `aside` says
+    that: the pieces before it were that writing, and a client drops them. So the pieces
+    since the last `aside` are what the `turn` event carries, and no client has to infer
+    a round boundary from the shape of the step stream.
 
     `Agent.answer` blocks and reports its steps from the thread it runs on, so the turn
     runs on a thread of its own and hands each event to the event loop. The loop waits
@@ -292,8 +298,11 @@ def _run(
     def report(step: TraceStep) -> None:
         deliver(_event("step", payloads.step(step)))
 
-    def write(piece: str) -> None:
-        deliver(_event("text", {"text": piece}))
+    def write(written: Written) -> None:
+        if isinstance(written, Piece):
+            deliver(_event("text", {"text": written.text}))
+        else:
+            deliver(_event("aside", {}))
 
     try:
         result = app.agent.answer(question, thread_id, report, write)

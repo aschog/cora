@@ -34,8 +34,14 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       → own slice, inside **story 6** (guard rails), with the medical filter. It is defence
       in depth *behind* story 1's fix, not a substitute: a scanner has false negatives,
       message roles do not.
+      → **still open, but no longer blocked.** Story 11 made `CORA_PLUGINS` an ordered list,
+      so plugin composition is done, and the guard now ships as its own distribution,
+      `cora.plugins.security`. What the finding actually asked for has not been built: the
+      rule is still the same two regexes
+      (`plugins/security/src/cora/plugins/security/injection.py:6-15`), and nothing scans
+      document content at ingest. Story 6 was never built, so this needs a story of its own.
 
-- [ ] **No grounding or scope decision** — the prompt asks the model to ground its answer
+- [x] **No grounding or scope decision** — the prompt asks the model to ground its answer
       (`plugins/fitness/__init__.py:10`) but nothing enforces or tests it, so an
       out-of-domain question is answered from model knowledge. Add a tested rule that
       declines unsupported answers, evaluated against in-domain, out-of-domain and
@@ -54,9 +60,19 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       branch of the graph that could not be read and defended. What is left is the
       instruction: `AGENT_RULES` and the fitness plugin's prompt still tell the model to
       search and cite, and the `llm` tier is what can catch a model ignoring them
-      (`test_llm_acceptance.py:147,178`). Enforcement is open again for a later sprint —
-      human-in-the-loop approval on an unsupported answer is the shape to take next, since
-      it asks the user instead of re-prompting the model.
+      (`test_llm_acceptance.py:147,178`).
+      → **Decided 2026-08-19: the citation is the grounding evidence, and detection is
+      deliberately not built.** A citation cannot be conjured — the numbers come from
+      passages the search tool returned, so a clickable `[n]` is text that really is in the
+      user's document at those offsets, and a number with no source behind it degrades to
+      plain text rather than offering a source that does not exist
+      (`frontends/react/ui/src/answer.ts:51-62`). What that does not give is a check that an
+      answer *has* citations: an ungrounded answer looks like a legitimately uncited one,
+      because cora is meant to answer a question that needs no documents directly. Closing
+      that gap costs a gate of the kind story 15 removed for being unreadable, or a
+      human-in-the-loop approval step, and neither is worth it against evidence the reader
+      can verify by clicking. Raised twice by review; recorded here as a position rather
+      than left open a third time.
 
 - [x] **Planner JSON is hand-parsed and fails silently** — `parse_plan` scrapes fences and
       braces, and a parse failure falls back to plain search with no signal
@@ -110,10 +126,16 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
   - [x] the plugin's instructions tell the model to answer with a caveat and point at a
         professional when a condition is named
 
-- [ ] **No streaming** — the port returns a finished reply and the UI blocks on a spinner
+- [x] **No streaming** — the port returns a finished reply and the UI blocks on a spinner
       (`core/ports/chat_model.py`, `app/ui/chat.py:93`). Stream through the model
       boundary and render with `st.write_stream`.
       → own slice, after **story 2** (the trace and the stream share the same surface).
+      **Done in story 19** (`story-19.md`), through the boundary the finding names rather
+      than through Streamlit's renderer: `ChatModel` streams, the graph binds the model node
+      to that turn's reader, and `/api/ask` carries a `text` event per piece, so the React
+      page grows the answer in place. Streamlit still waits for the finished turn — a
+      deliberate cut, not an omission: `st.write_stream` would have been a second streaming
+      path for a frontend the sprint was moving away from.
 
 - [ ] **Contracts at public boundaries are undocumented** — the workflow's rule already
       allows a docstring that states a contract the code can't express; apply it where
@@ -121,7 +143,8 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       the signature (`ToolResult` invariants, `CoreError.user_message`, validation
       ordering). Not a policy change — no docstrings elsewhere.
       → continuous, checked at each merge. Be ready to say what each public service
-      accepts, returns and promises.
+      accepts, returns and promises. **Stays unticked by design** — it is a standing habit
+      with no last increment, so an empty box here reads as "still in force", not "not done".
 
 ## Reviewer's optional suggestions
 
@@ -164,9 +187,13 @@ Recorded with a decision, not scheduled — none is in the sprint-4 story cut.
 - [ ] **#8 No way to remove a document or clear the store** — the sidebar lists sources
       with no chunk count, no removal, no clear (`app/ui/chat.py:34-39`).
       → memory clearing lands in **story 3**; document removal stays open here.
-- [ ] **#10 Default DB path is CWD-relative** — `CORA_DB_PATH` exists, but the default
+- [x] **#10 Default DB path is CWD-relative** — `CORA_DB_PATH` exists, but the default
       `.cora/chroma` still means launching from another directory starts an empty store.
       → own small slice; fix or document loudly before the review.
+      **Closed on the second branch**: `README.md:121-127` states it for every path cora
+      persists to — Chroma, remembered facts and the text behind each citation are all
+      documented as relative to the working directory. The behaviour is unchanged and
+      deliberate; a reader who launches elsewhere is told why the store looks empty.
 
 ## Found by the single-cora-package review
 

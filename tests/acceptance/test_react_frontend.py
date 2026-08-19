@@ -1,35 +1,73 @@
+from collections.abc import Iterator
+
 import pytest
+from langchain_core.messages import AIMessageChunk
 from starlette.testclient import TestClient
 
 from app_builder import assembled
+from cora.adapters.openrouter_chat_model import OpenRouterChatModel
 from cora.app.assembly import App
+from cora.domain.errors import LlmMalformedToolCallError
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.react.api import api
-from cora.ports.chat_model import ModelReply
+from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.plugin import ToolCall
 from fakes import FakeConversations, FakeMemory, ScriptedChatModel
 from sse import frames
+
+
+class _Malforming:
+    """A provider that streams a search whose arguments never parse — the fragment is
+    what langchain is given, so the real adapter is what has to notice. Standing in for
+    `ChatOpenAI` rather than for cora's own port keeps the parse inside the test."""
+
+    def __init__(self, **kwargs: object) -> None: ...
+
+    def bind_tools(self, tools: list[dict[str, object]]) -> "_Malforming":
+        return self
+
+    def stream(self, messages: object) -> Iterator[AIMessageChunk]:
+        yield AIMessageChunk(content="Let me look at your notes. ")
+        yield AIMessageChunk(
+            content="",
+            tool_call_chunks=[
+                {
+                    "name": SEARCH_TOOL_NAME,
+                    "args": "protein",
+                    "id": "call-1",
+                    "index": 0,
+                    "type": "tool_call_chunk",
+                }
+            ],
+        )
+
 
 DOCUMENT = "protein.md"
 PASSAGE = "aim for 1.6 g of protein per kg of bodyweight"
 SEED = f"# Protein\n\nFor strength training, {PASSAGE}.\n".encode()
 QUESTION = "How much protein should I eat?"
+PREAMBLE = "Let me look at your notes. "
 ANSWER = "Your notes say 1.6 g per kg [1]."
 THREAD = "the-only-conversation"
 
 
-def _app() -> App:
+def _app(chat_model: ChatModel | None = None) -> App:
+    """The scripted model says what it is about to do before it does it. A script whose
+    tool round writes nothing agrees with the wire by luck, and would let a claim about
+    the pieces pass while a real model with a preamble broke it."""
     return assembled(
-        chat_model=ScriptedChatModel(
+        chat_model=chat_model
+        or ScriptedChatModel(
             [
                 ModelReply(
+                    text=PREAMBLE,
                     tool_calls=(
                         ToolCall(
                             name=SEARCH_TOOL_NAME,
                             arguments={"query": "protein"},
                             call_id="call-1",
                         ),
-                    )
+                    ),
                 ),
                 ModelReply(text=ANSWER),
             ]
@@ -58,13 +96,19 @@ def test_the_page_uploads_asks_reads_the_passage_and_comes_back_to_it() -> None:
         )
 
         kinds = [name for name, _ in streamed]
-        assert kinds[-1] == "turn" and set(kinds[:-1]) <= {"step", "text"}
+        assert kinds[-1] == "turn" and set(kinds[:-1]) <= {"step", "text", "aside"}
         turn = streamed[-1][1]
         assert turn["answer"] == ANSWER
-        # The answer arrived in pieces before it arrived whole, and the two agree: the
-        # page draws the pieces as they land and the turn's own text once it does.
-        written = "".join(data["text"] for name, data in streamed if name == "text")
+        # The answer arrived in pieces before it arrived whole, and the two agree — the
+        # page draws the pieces as they land and the turn's own text once it does. The
+        # model wrote before it searched, so the pieces are the ones since the aside
+        # said the round they belonged to was not the answer.
+        after = streamed[kinds.index("aside") + 1 :]
+        written = "".join(data["text"] for name, data in after if name == "text")
         assert written == turn["answer"]
+        assert PREAMBLE in "".join(
+            data["text"] for name, data in streamed if name == "text"
+        )
         [citation] = turn["citations"]
         assert citation["document"] == DOCUMENT
 
@@ -76,3 +120,34 @@ def test_the_page_uploads_asks_reads_the_passage_and_comes_back_to_it() -> None:
         [reopened] = page.get(f"/api/sessions/{session['thread_id']}").json()
         assert reopened["question"] == QUESTION
         assert reopened["result"]["answer"] == ANSWER
+
+
+@pytest.mark.integration
+def test_a_search_the_model_asked_for_and_malformed_ends_the_turn(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The one path where a search neither runs nor fails loudly: the call is dropped
+    before cora sees it, so the round reads as a final and the model's own words go out
+    as an answer resting on documents nobody read. It ends as a sentence the reader can
+    act on, and nothing of that prose is offered as the answer."""
+    monkeypatch.setattr("cora.adapters.openrouter_chat_model.ChatOpenAI", _Malforming)
+    model = OpenRouterChatModel(
+        model="m",
+        api_key="k",
+        base_url="https://example/api",
+        max_output_tokens=1024,
+        request_timeout_seconds=30,
+        reasoning_effort="low",
+    )
+
+    with TestClient(api(_app(model), plugins=("cora.plugins.fitness",))) as page:
+        page.post("/api/documents", files={"file": (DOCUMENT, SEED, "text/markdown")})
+
+        streamed = frames(
+            page.post("/api/ask", json={"question": QUESTION, "thread_id": THREAD}).text
+        )
+
+        names = [name for name, _ in streamed]
+        assert "turn" not in names and names[-1] == "error"
+        assert streamed[-1][1]["error"] == LlmMalformedToolCallError().user_message
+        assert page.get("/api/sessions").json() == []

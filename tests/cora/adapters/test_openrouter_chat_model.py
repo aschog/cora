@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Iterator
 
 import httpx
@@ -24,10 +25,11 @@ from cora.domain.errors import (
     LlmEmptyReplyError,
     LlmError,
     LlmKeyRejectedError,
+    LlmMalformedToolCallError,
     LlmTimeoutError,
     LlmTruncatedError,
 )
-from cora.ports.chat_model import Message, ModelReply
+from cora.ports.chat_model import Message, ModelReply, Piece, Written
 from cora.ports.plugin import ToolCall
 from fakes import add_tool
 
@@ -271,6 +273,80 @@ def test_a_tool_round_may_carry_no_text_at_all() -> None:
     assert reply.is_final is False
 
 
+def test_a_tool_call_the_model_malformed_is_not_an_answer() -> None:
+    """The call the model wrote is gone before cora sees it — `tool_calls` is empty and
+    the prose beside it reads as a final. It is a turn that failed, and the search it
+    asked for is what the answer would have rested on."""
+    malformed = AIMessage(
+        content="Let me check your notes.",
+        invalid_tool_calls=[
+            {
+                "name": "search_documents",
+                "args": '{"query": ',
+                "id": "c1",
+                "error": "Unterminated string",
+                "type": "invalid_tool_call",
+            }
+        ],
+    )
+
+    with pytest.raises(LlmMalformedToolCallError):
+        to_model_reply(malformed)
+
+
+def test_one_call_that_parsed_beside_one_that_did_not_is_still_a_failed_turn() -> None:
+    """A round that runs the calls it can and drops the rest answers on half of what the
+    model asked for, with nothing saying which half."""
+    half = AIMessage(
+        content="",
+        tool_calls=[
+            {"name": "add", "args": {"a": 1}, "id": "c1", "type": "tool_call"},
+        ],
+        invalid_tool_calls=[
+            {
+                "name": "search_documents",
+                "args": "not json",
+                "id": "c2",
+                "error": None,
+                "type": "invalid_tool_call",
+            }
+        ],
+    )
+
+    with pytest.raises(LlmMalformedToolCallError):
+        to_model_reply(half)
+
+
+def test_the_parse_failure_is_logged_and_the_reader_is_told_none_of_it(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """What the model wrote is the only way to find out why it broke, and it is no part
+    of a sentence the reader can act on."""
+    malformed = AIMessage(
+        content="",
+        invalid_tool_calls=[
+            {
+                "name": "search_documents",
+                "args": '{"query": ',
+                "id": "c1",
+                "error": "Unterminated string",
+                "type": "invalid_tool_call",
+            }
+        ],
+    )
+
+    with (
+        caplog.at_level(logging.WARNING, logger="cora.adapters"),
+        pytest.raises(LlmMalformedToolCallError) as raised,
+    ):
+        to_model_reply(malformed)
+
+    logged = caplog.text
+    assert "search_documents" in logged
+    assert "Unterminated string" in logged
+    assert "search_documents" not in raised.value.user_message
+
+
 def test_complete_returns_the_mapped_model_reply(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -323,7 +399,7 @@ def _model_over(monkeypatch: pytest.MonkeyPatch, client: type) -> OpenRouterChat
 def test_each_piece_the_model_writes_reaches_the_sink(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    written: list[str] = []
+    written: list[Written] = []
     model = _model_over(
         monkeypatch,
         _streaming(
@@ -333,7 +409,7 @@ def test_each_piece_the_model_writes_reaches_the_sink(
 
     model.complete((Message(role="user", content="hi"),), (), written.append)
 
-    assert written == ["Sleep, ", "not volume."]
+    assert written == [Piece("Sleep, "), Piece("not volume.")]
 
 
 def test_a_streamed_reply_is_the_reply_a_whole_response_would_have_given(
@@ -359,7 +435,7 @@ def test_a_streamed_reply_is_the_reply_a_whole_response_would_have_given(
 def test_a_streamed_tool_call_arrives_whole(monkeypatch: pytest.MonkeyPatch) -> None:
     """A provider sends the arguments in fragments of JSON, which is unparseable until
     the last of them has arrived."""
-    written: list[str] = []
+    written: list[Written] = []
     model = _model_over(
         monkeypatch,
         _streaming(
@@ -398,11 +474,40 @@ def test_a_streamed_tool_call_arrives_whole(monkeypatch: pytest.MonkeyPatch) -> 
     assert written == []
 
 
+def test_a_streamed_tool_call_whose_arguments_never_parse_ends_the_turn(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The fragments are unparseable until the last has arrived, so a call that is still
+    broken once the stream is whole is broken for good."""
+    written: list[Written] = []
+    model = _model_over(
+        monkeypatch,
+        _streaming(
+            AIMessageChunk(content="Let me check your notes. "),
+            AIMessageChunk(
+                content="",
+                tool_call_chunks=[
+                    {
+                        "name": "search_documents",
+                        "args": "bm25",
+                        "id": "c1",
+                        "index": 0,
+                        "type": "tool_call_chunk",
+                    }
+                ],
+            ),
+        ),
+    )
+
+    with pytest.raises(LlmMalformedToolCallError):
+        model.complete((Message(role="user", content="hi"),), (), written.append)
+
+
 def test_what_the_model_thinks_reaches_no_sink(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Reasoning is not the answer, and a reader shown it would read it as one."""
-    written: list[str] = []
+    written: list[Written] = []
     model = _model_over(
         monkeypatch,
         _streaming(
@@ -415,7 +520,7 @@ def test_what_the_model_thinks_reaches_no_sink(
 
     model.complete((Message(role="user", content="hi"),), (), written.append)
 
-    assert written == ["Sleep."]
+    assert written == [Piece("Sleep.")]
 
 
 def test_a_stream_cut_off_at_the_token_limit_is_still_not_an_answer(
@@ -460,7 +565,7 @@ def test_a_stream_that_fails_part_way_keeps_the_category_and_what_was_written(
 ) -> None:
     """The failure travels as its category, and the pieces already sent are not taken
     back — the caller replaces them with the sentence the failure carries."""
-    written: list[str] = []
+    written: list[Written] = []
 
     class _BreaksMidStream:
         def __init__(self, **kwargs: object) -> None: ...
@@ -474,4 +579,4 @@ def test_a_stream_that_fails_part_way_keeps_the_category_and_what_was_written(
     with pytest.raises(LlmTimeoutError):
         model.complete((Message(role="user", content="hi"),), (), written.append)
 
-    assert written == ["Sleep, "]
+    assert written == [Piece("Sleep, ")]

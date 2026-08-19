@@ -37,10 +37,12 @@ class Agent:
         the run takes it, so a caller can show the work in progress, and a run that
         fails keeps the steps already reported.
 
-        `on_text` is the answer itself as it is written, which no step reported between
-        supersteps could carry: it is handed *in* to the run rather than read off the
-        states coming out. Nothing about the result changes — the pieces are the same
-        text, arriving earlier."""
+        `on_text` is what the model writes as it writes it, which no step reported
+        between supersteps could carry: it is handed *in* to the run rather than read
+        off the states coming out. Nothing about the result changes. A turn may take
+        several rounds and only the last of them is the answer, so a round that ends in
+        a tool call closes with an `Aside` — the pieces since the last one are the
+        answer, arriving earlier."""
         found: AgentState | None = None
         final: AgentState = {}
         started = reported = 0

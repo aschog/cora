@@ -13,7 +13,7 @@ from cora.domain.trace import (
 from cora.domain.transcript import prompt_from
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
-from cora.ports.chat_model import ChatModel, Message, TextSink, unheard
+from cora.ports.chat_model import Aside, ChatModel, Message, TextSink, unheard
 from cora.ports.graph import DONE, TOOLS
 from cora.ports.memory import Fact, Memory
 from cora.ports.plugin import Tool, ToolCall, ToolResult, ValidationRule
@@ -118,6 +118,8 @@ class ModelStep:
 
     def __call__(self, state: AgentState) -> AgentState:
         reply = self.chat_model.complete(self._prompt(state), self.tools, self.on_text)
+        if not reply.is_final and reply.text:
+            self.on_text(Aside())
         appended = Message(
             role="assistant", content=reply.text, tool_calls=reply.tool_calls
         )

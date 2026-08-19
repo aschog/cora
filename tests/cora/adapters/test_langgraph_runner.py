@@ -28,8 +28,10 @@ from cora.ports.chat_model import (
     ChatModel,
     Message,
     ModelReply,
+    Piece,
     Role,
     TextSink,
+    Written,
     unheard,
 )
 from cora.ports.graph import ModelFor
@@ -473,7 +475,7 @@ def _writing(*pieces: str) -> ModelFor:
     def bound(on_text: TextSink) -> Step:
         def step(state: AgentState) -> AgentState:
             for piece in pieces:
-                on_text(piece)
+                on_text(Piece(piece))
             written = "".join(pieces)
             return {"messages": _said("assistant", written), "answer": written}
 
@@ -485,25 +487,25 @@ def _writing(*pieces: str) -> ModelFor:
 def test_a_run_hands_the_model_node_the_sink_it_was_asked_with() -> None:
     """The answer is written inside a step, and a graph yields only between steps — so
     the only way out for it is the sink the run carries in."""
-    written: list[str] = []
+    written: list[Written] = []
     runner = _runner(model=_writing("Sleep, ", "not volume."))
 
     _final(runner, {"question": "why"}, on_text=written.append)
 
-    assert written == ["Sleep, ", "not volume."]
+    assert written == [Piece("Sleep, "), Piece("not volume.")]
 
 
 def test_two_runs_of_one_runner_do_not_cross() -> None:
     """One assembled app answers two readers, each on their own thread and their own
     worker. A sink shared between them would send each the other's answer."""
-    mine: list[str] = []
-    yours: list[str] = []
+    mine: list[Written] = []
+    yours: list[Written] = []
     runner = _runner(model=_writing("mine"))
 
     _final(runner, {"question": "q"}, thread_id="ada", on_text=mine.append)
     _final(runner, {"question": "q"}, thread_id="grace", on_text=yours.append)
 
-    assert (mine, yours) == (["mine"], ["mine"])
+    assert (mine, yours) == ([Piece("mine")], [Piece("mine")])
 
 
 def test_a_run_asked_with_no_sink_takes_the_same_turn() -> None:

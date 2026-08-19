@@ -115,6 +115,14 @@ class LlmEmptyReplyError(LlmError):
     message = "The assistant sent an empty answer. Please try again."
 
 
+class LlmMalformedToolCallError(LlmError):
+    """A tool call whose arguments never parsed, so the round asked for nothing cora
+    could run. Its own category because the model's prose beside it reads as a final
+    answer, and serving that is an answer resting on work that was never done."""
+
+    message = "The assistant garbled what it was trying to do. Please try again."
+
+
 class MemoryStoreError(AdapterError):
     message = "What I remember about you is temporarily unavailable. Please try again."
 

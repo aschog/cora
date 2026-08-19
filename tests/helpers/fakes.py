@@ -12,7 +12,7 @@ from cora.domain.errors import (
     DocumentStoreError,
     MemoryStoreError,
 )
-from cora.ports.chat_model import Message, ModelReply, TextSink, unheard
+from cora.ports.chat_model import Message, ModelReply, Piece, TextSink, unheard
 from cora.ports.loading import Loaders
 from cora.ports.memory import Fact
 from cora.ports.plugin import Tool
@@ -119,7 +119,7 @@ class ScriptedChatModel:
         written = self._pieces.pop(0) if self._pieces is not None else [reply.text]
         for piece in written:
             if piece:
-                on_text(piece)
+                on_text(Piece(piece))
         return reply
 
 
