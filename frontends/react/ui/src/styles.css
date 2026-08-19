@@ -766,13 +766,23 @@ button {
   gap: 6px;
 }
 
-.trouble {
+.trouble,
+.notice {
   padding: var(--s2) var(--s3);
   border-radius: var(--radius);
   background: var(--surface);
-  box-shadow: -3px 0 0 var(--magenta);
   font-size: 13.5px;
   color: var(--text);
+}
+
+.trouble {
+  box-shadow: -3px 0 0 var(--magenta);
+}
+
+/* What an upload did — news, not trouble, so the rule beside it is the page's own accent
+   and not the colour it keeps for something having gone wrong. */
+.notice {
+  box-shadow: -3px 0 0 var(--accent);
 }
 
 .plan-step-mark.failed {

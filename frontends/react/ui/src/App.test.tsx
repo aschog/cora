@@ -1924,7 +1924,7 @@ const upload = (name: string) => {
   fireEvent.change(picker, { target: { files: [new File(['notes'], name)] } })
 }
 
-test.fails('a file uploaded twice is added, and then said to be there already', async () => {
+test('a file uploaded twice is added, and then said to be there already', async () => {
   const counts = [12, 0]
   vi.stubGlobal(
     'fetch',
@@ -1947,4 +1947,78 @@ test.fails('a file uploaded twice is added, and then said to be there already', 
   expect(
     await screen.findByText('notes.md is already in your knowledge base.'),
   ).toBeTruthy()
+})
+
+/** The page with a rail whose uploads are answered in turn: a chunk count, or a refusal. */
+async function ready(outcomes: (number | { error: string })[]): Promise<void> {
+  const answers = [...outcomes]
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/documents' && init?.method === 'POST') {
+        const outcome = answers.shift()
+        if (typeof outcome === 'number')
+          return {
+            ok: true,
+            json: async () => ({ document: 'notes.md', chunks: outcome }),
+          } as unknown as Response
+        return { ok: false, json: async () => outcome } as unknown as Response
+      }
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+}
+
+test('one passage indexed is one passage', async () => {
+  await ready([1])
+
+  upload('notes.md')
+
+  expect(await screen.findByText('Added notes.md — 1 passage.')).toBeTruthy()
+})
+
+test('what an upload did is not drawn as trouble', async () => {
+  /* A duplicate is neither a failure nor nothing having happened, and the reader tells the
+     two banners apart by looking at them. */
+  await ready([0])
+
+  upload('notes.md')
+
+  const said = await screen.findByText('notes.md is already in your knowledge base.')
+  expect(said.className).toBe('notice')
+})
+
+test('an upload that fails says so, and takes the last one’s notice away', async () => {
+  await ready([12, { error: 'That upload is larger than the 5 MB cora reads.' }])
+
+  upload('notes.md')
+  await screen.findByText('Added notes.md — 12 passages.')
+  upload('huge.pdf')
+
+  expect(
+    await screen.findByText('That upload is larger than the 5 MB cora reads.'),
+  ).toBeTruthy()
+  expect(screen.queryByText('Added notes.md — 12 passages.')).toBeNull()
+})
+
+test('a notice stands while the reader asks their next question', async () => {
+  /* Every load that goes through clears the banner about a load — an upload's outcome is
+     not one, and a question in between is not the reader being told twice. */
+  await ready([12])
+
+  upload('notes.md')
+  await screen.findByText('Added notes.md — 12 passages.')
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+
+  expect(screen.getByText('Added notes.md — 12 passages.')).toBeTruthy()
 })
