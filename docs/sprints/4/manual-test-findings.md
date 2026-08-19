@@ -19,20 +19,18 @@ found #25–#26.
 been removed: they were the triage's *Before submission* and *Real bugs, next* blocks, closed
 by
 `done/story-20.md` and `done/story-21.md`, which name them and carry the test lists they
-became. **#7 and #11 have gone the same way**, closed by `story-22.md`, and #3 and #9 have
-each lost the half it closed. Anything found while fixing them is in `sprint-4-feedback.md`.
+became. **#6, #7, #11 and #14 have gone the same way**, closed by `story-22.md`, and #3
+and #9 have each lost the half it closed. Anything found while fixing them is in
+`sprint-4-feedback.md`.
 
 **The numbers do not move.** Those stories cite them, so the gaps are where the closed
 findings were rather than a renumbering. Line references are re-anchored as the code
-moves — last checked 2026-08-19 against `1dea112`.
+moves — last checked 2026-08-19 against `b6f224b`.
 
 ## Order of work
 
 **Cheap, one chrome pass**
 
-- **#6** — remove the "1 cited passage · highlighted" caption, after giving four tests a
-  better handle.
-- **#14** — rename the PLAN tab to STEPS.
 - **#1** — give the cited passage a warm amber highlight instead of the page's blue.
 
 **Layout, one decision first**
@@ -70,7 +68,7 @@ moves — last checked 2026-08-19 against `1dea112`.
    tinted `--accent-tint` with an `--accent` left rule — the same blue the page already
    uses for links, focus rings and the send button, so the highlight reads as "this is
    interactive" rather than "this is the quoted passage"
-   (`frontends/react/ui/src/styles.css:632-638`). It should be a warm amber callout
+   (`frontends/react/ui/src/styles.css:634-640`). It should be a warm amber callout
    instead: amber tint, amber left rule, text left legible. There is no warm token in the
    palette yet — the only non-blue accent is `--magenta`, which is spoken for by
    destructive actions (`styles.css:1-37`), so this adds one.
@@ -79,11 +77,11 @@ moves — last checked 2026-08-19 against `1dea112`.
    (`frontends/react/ui/src/components/DocumentRail.tsx`) — the third, the paragraph of help
    text, went with `story-22.md`:
    - **Uncited documents are unclickable.** A row is `disabled={!cited.has(name)}`
-     (`DocumentRail.tsx:32`), so a document that this conversation has not cited cannot be
+     (`DocumentRail.tsx:53`), so a document that this conversation has not cited cannot be
      read at all. Opening it should work like any other.
    - **An uncited document opens with nothing marked.** This part comes free: `passagesIn`
      filters the answer's citations by document, so an uncited one yields `[]` and
-     `DocumentBody` draws plain paragraphs (`App.tsx:159`, `DocumentBody.tsx:53-58`).
+     `DocumentBody` draws plain paragraphs (`App.tsx:159-164`, `DocumentBody.tsx:53-58`).
 
    The work is not in the rail, it is in *which upload to read*: text is served per upload
    hash (`GET /api/uploads/{upload}`, `api.py:68,324`) and the page only ever learns a
@@ -96,10 +94,10 @@ moves — last checked 2026-08-19 against `1dea112`.
 4. **The two rails are a fixed width; they should be draggable.** *Improvement.* Both
    rails are flex items with a hard basis and floor — `flex: 0 1 232px; min-width: 180px`
    for the documents rail and `flex: 0 1 360px; min-width: 268px` for the panels rail
-   (`frontends/react/ui/src/styles.css:161-163,513-515`) — so a long filename truncates and
+   (`frontends/react/ui/src/styles.css:163-164,515-516`) — so a long filename truncates and
    a citation pane cannot be widened to read a passage. Wanted: a drag handle on each inner
    edge, within a min/max, with the conversation column absorbing the difference
-   (`.columns`, `styles.css:111-118`).
+   (`.columns`, `styles.css:112-119`).
 
    Open decisions this carries: whether a chosen width survives a reload — the page persists
    nothing client-side today, `localStorage` appears nowhere in `ui/src` — and whether the
@@ -119,26 +117,11 @@ moves — last checked 2026-08-19 against `1dea112`.
    spans *with* the citation numbers that fed them, and the multi-citation case the
    improvement asks about is precisely a merged mark, plus the same passage cited twice in
    one answer. The scroll target already exists — `[data-cite="n"]` — and only the newest
-   answer is ever marked (`App.tsx:154-165`), so the jump stays inside one answer.
-
-6. **The "1 cited passage · highlighted" caption in the source rail is noise.** *Bug —
-   remove.* The caption sits under the filename in the source panel
-   (`frontends/react/ui/src/components/SourcePanel.tsx:20,27-32`) and says what the reader
-   can already see: the passages are marked on screen. Its other branch, `not cited in this
-   answer`, is the one that carries information — worth deciding whether that survives when
-   #3 makes every document openable, since the uncited case is about to become ordinary
-   rather than exceptional.
-
-   Five assertions across four tests in the vitest tier read this exact string
-   (`App.test.tsx:215,584,596,616,637`, `SourcePanel.test.tsx:56`), several of them using it
-   as the proxy for "the source pane opened on this document" — so removing the line means
-   giving those four a better handle, not just deleting the text. `story-22.md` already hit
-   this: two tests that used the *empty state* as their proxy now read `.source-title`
-   instead, which is the handle this finding wants made explicit.
+   answer is ever marked (`App.tsx:159-164`), so the jump stays inside one answer.
 
 8. **A conversation can be opened but never deleted.** *Improvement.* The sessions panel
    lists every past conversation as an open-button and nothing else
-   (`frontends/react/ui/src/components/SessionsPanel.tsx:15-25`), so a thread started by a
+   (`frontends/react/ui/src/components/SessionsPanel.tsx:12-21`), so a thread started by a
    mistyped question is there for good.
 
    This one goes all the way down, and the depth is the point:
@@ -192,10 +175,10 @@ moves — last checked 2026-08-19 against `1dea112`.
       where both can reach it — or be chosen knowing only one frontend gets it.
     - **The model's answer** is not UI text at all: language there comes from the plugin
       prompt and the user's own question, and is a separate decision from labels.
-    - **The test tiers assert on literal English** — the vitest suite matches strings like
-      "1 cited passage · highlighted" (see #6), and the Python tiers match `user_message`
-      text. Whatever seam lands, those assertions have to go through it too, or the suite
-      pins English in place by force.
+    - **The test tiers assert on literal English** — the vitest suite matches sentences
+      like "“notes.md” is already in your documents.", and the Python tiers match
+      `user_message` text. Whatever seam lands, those assertions have to go through it too,
+      or the suite pins English in place by force.
 
 12. **Plugins should be classified by kind, so the page offers only the switchable ones.**
     *Improvement — design first.* A `Plugin` is a name plus whatever it contributes:
@@ -238,25 +221,8 @@ moves — last checked 2026-08-19 against `1dea112`.
     - **Store paths and `CORA_DEBUG`** are deployment, not user preference, and should stay
       out however the rest lands.
 
-14. **The "PLAN" tab is misnamed — it shows what cora did, not what it intends.** *Improvement.*
-    The panel lists finished steps with a ✓ or ✕ each and an expandable result
-    (`frontends/react/ui/src/components/PlanPanel.tsx:15-30`), and it is filled *after* the
-    answer arrives. A plan is what is about to happen; this is the record of what happened.
-    The layer below already says so: the domain type is `TraceStep`
-    (`src/cora/domain/trace.py:9`). The panel's own empty state used to say it too — "The
-    steps cora takes will appear here." — until `story-22.md` deleted it.
-
-    **STEPS** is the label to take — it claims exactly what is shown, and stays true when a
-    step fails. `TRACE` is the alternative and matches the code exactly, but reads as a
-    developer's word on a user's page.
-
-    `TABS` doubles as the tab label and the state key (`App.tsx:13,43,223,398`), so the
-    rename touches the union type, two `setTab` calls and six `role="tab"` lookups in the
-    vitest tier (`App.test.tsx:179,183,189,507,829,954`) — mechanical, but not a one-line
-    change. Worth splitting label from key if a second tab is ever renamed.
-
 15. **Both rails should start hidden.** *Improvement.* They open on load —
-    `useState(true)` for each (`frontends/react/ui/src/App.tsx:77,88`) — so a first-time
+    `useState(true)` for each (`frontends/react/ui/src/App.tsx:78,89`) — so a first-time
     reader meets three columns before they have asked anything, and the conversation, which
     is the point of the page, gets the middle third. Empty rails at that moment say little:
     no documents cited yet, no steps taken, no sessions — and since `story-22.md` they say
@@ -267,5 +233,5 @@ moves — last checked 2026-08-19 against `1dea112`.
     already logged: whether the choice persists across reloads is the same question #4 asks
     about widths, and if it persists it is a preference and belongs in #13's settings. Also
     worth deciding whether a rail *opens itself* when it gains something to say — clicking
-    a citation already forces the source tab (`App.tsx:168`), and that call is
+    a citation already forces the source tab (`App.tsx:167-169`), and that call is
     meaningless while the rail is shut.
