@@ -123,7 +123,7 @@ that aside as `text`, so the contract `README.md` states was false and the page 
 the boundary from the steps. And a streamed answer pinned the reader to the bottom. The
 stream now marks the round it wrote in, and a malformed call ends the turn.
 
-### [21. The page keeps what the reader has, and a failure is called what it is](story-21.md) ✔
+### [21. The page keeps what the reader has, and a failure is called what it is](done/story-21.md) ✔
 
 The *Real bugs, next* block of the manual sweep. A streamed answer re-parsed its markdown
 and replaced the whole block on every token, so a reader could not hold a selection long

@@ -30,7 +30,7 @@ found #25–#26.
 - [x] **#17** — the acceptance test asserts pieces equal the answer, passing only by luck
   of the scripted model.
 
-**Real bugs, next** — done, as `story-21.md`:
+**Real bugs, next** — done, as `done/story-21.md`:
 - [x] **#19** — every token re-parses the whole answer and replaces its DOM, killing text
   selection.
 - [x] **#2** — a duplicate upload reports nothing, indistinguishable from success or from
@@ -357,7 +357,7 @@ before being written down.
     text the reader has selected collapses on the next token, so copying mid-stream is
     impossible. `done/story-19.md` flags the parse cost; the selection loss is unrecorded.
 
-    → **Done in story 21** (`story-21.md`), for the selection: the rendered HTML is patched
+    → **Done in story 21** (`done/story-21.md`), for the selection: the rendered HTML is patched
     into the block node by node (`frontends/react/ui/src/patch.ts`), so the nodes a reader
     has selected in are the nodes still there after the next piece.
 
