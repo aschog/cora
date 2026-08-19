@@ -26,7 +26,7 @@ from cora.engine.plugin_set import PluginSet
 from cora.engine.port_logging import LoggingEmbedder, LoggingRetriever
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.steps import ModelStep, PrepareStep, Router
-from cora.ports.chat_model import ModelReply
+from cora.ports.chat_model import ModelReply, unheard
 from cora.ports.plugin import Plugin, ToolCall
 from cora.ports.retrieval import RetrievedChunk
 from fakes import FakeMemory, FakeRetriever, ScriptedChatModel
@@ -413,8 +413,10 @@ def test_the_search_tool_reads_the_knowledge_base_itself() -> None:
     app = _indexed(make_plugin())
     runner = app.agent.runner
     assert isinstance(runner, LangGraphRunner)
-    assert isinstance(runner.model, ModelStep)
-    search = next(tool for tool in runner.model.tools if tool.name == SEARCH_TOOL_NAME)
+    # The slot holds a step per turn rather than the step itself; either has the tools.
+    step = runner.model(unheard)
+    assert isinstance(step, ModelStep)
+    search = next(tool for tool in step.tools if tool.name == SEARCH_TOOL_NAME)
 
     found = search.run(query="protein")
 
@@ -656,11 +658,11 @@ def test_the_graph_is_a_slot_like_every_other_port() -> None:
             self._model = model
             self.thread_id: str | None = None
 
-        def run(self, state: Any, thread_id: str) -> Any:
+        def run(self, state: Any, thread_id: str, on_text: Any = unheard) -> Any:
             self.thread_id = thread_id
             yield dict(state)  # the thread as this turn found it
             prepared = {**state, **self._prepare(state)}
-            replied = {**prepared, **self._model(prepared)}
+            replied = {**prepared, **self._model(on_text)(prepared)}
             yield replied
 
     def _graph_for(*, prepare: Any, model: Any, **rest: Any) -> Any:

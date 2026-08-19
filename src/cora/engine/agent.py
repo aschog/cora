@@ -8,6 +8,7 @@ from cora.domain.citations import cited
 from cora.domain.conversation import Turn
 from cora.domain.errors import AdapterError, GraphRunError
 from cora.domain.trace import TraceStep
+from cora.ports.chat_model import TextSink, unheard
 from cora.ports.conversations import Conversations
 from cora.ports.graph import GraphRunner
 
@@ -28,16 +29,22 @@ class Agent:
         question: str,
         thread_id: str,
         on_step: Callable[[TraceStep], None] = _ignore,
+        on_text: TextSink = unheard,
     ) -> ChatResult:
         """One turn on a named thread, which is where the conversation now lives: the
         question alone is seeded, and the steps reported are this turn's — the thread
         arrives carrying every step it has ever taken. Each step is reported the moment
         the run takes it, so a caller can show the work in progress, and a run that
-        fails keeps the steps already reported."""
+        fails keeps the steps already reported.
+
+        `on_text` is the answer itself as it is written, which no step reported between
+        supersteps could carry: it is handed *in* to the run rather than read off the
+        states coming out. Nothing about the result changes — the pieces are the same
+        text, arriving earlier."""
         found: AgentState | None = None
         final: AgentState = {}
         started = reported = 0
-        for state in self.runner.run({"question": question}, thread_id):
+        for state in self.runner.run({"question": question}, thread_id, on_text):
             if found is None:
                 found = state
                 started = reported = len(state.get("trace", ()))

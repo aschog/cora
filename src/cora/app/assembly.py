@@ -78,7 +78,7 @@ def assemble(
         ),
         model=ModelStep(
             chat_model=chat_model, tools=tools, max_history_turns=history_turns
-        ),
+        ).writing_to,
         tools=ToolStep(tool_runtime=ToolRuntime(tools=tools)),
         router=Router(max_tool_rounds=max_tool_rounds),
         max_tool_rounds=max_tool_rounds,

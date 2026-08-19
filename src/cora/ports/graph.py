@@ -2,6 +2,7 @@ from collections.abc import Callable, Iterator
 from typing import Protocol
 
 from cora.domain.agent_state import AgentState
+from cora.ports.chat_model import TextSink, unheard
 
 DONE = "done"
 TOOLS = "tools"
@@ -16,6 +17,11 @@ class Step(Protocol):
 
 
 Route = Callable[[AgentState], str]
+ModelFor = Callable[[TextSink], Step]
+"""How a graph asks for the step that talks to the model: one per turn, bound to that
+turn's reader. The other two steps are the same for every turn and are handed over as
+themselves; this one is not, because an app assembled once answers two readers at once
+and neither may be sent the other's text."""
 
 
 class GraphRunner(Protocol):
@@ -27,7 +33,9 @@ class GraphRunner(Protocol):
     such a failure, so it is no evidence about what the run had reached when it
     failed."""
 
-    def run(self, state: AgentState, thread_id: str) -> Iterator[AgentState]: ...
+    def run(
+        self, state: AgentState, thread_id: str, on_text: TextSink = unheard
+    ) -> Iterator[AgentState]: ...
 
 
 class GraphFor(Protocol):
@@ -40,7 +48,7 @@ class GraphFor(Protocol):
         self,
         *,
         prepare: Step,
-        model: Step,
+        model: ModelFor,
         tools: Step,
         router: Route,
         max_tool_rounds: int,

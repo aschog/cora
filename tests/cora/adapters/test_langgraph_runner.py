@@ -32,6 +32,7 @@ from cora.ports.chat_model import (
     TextSink,
     unheard,
 )
+from cora.ports.graph import ModelFor
 from cora.ports.plugin import Tool, ToolCall
 from fakes import FailingChatModel, add_tool
 
@@ -44,9 +45,12 @@ NOTE = Citation(number=1, document="note.md", start=0, end=7)
 
 
 def _final(
-    runner: LangGraphRunner, state: AgentState, thread_id: str = THREAD
+    runner: LangGraphRunner,
+    state: AgentState,
+    thread_id: str = THREAD,
+    on_text: TextSink = unheard,
 ) -> AgentState:
-    return list(runner.run(state, thread_id))[-1]
+    return list(runner.run(state, thread_id, on_text))[-1]
 
 
 def _answered(state: AgentState) -> bool:
@@ -80,10 +84,16 @@ def _ran(state: AgentState) -> AgentState:
     return {"messages": _said("tool", "ran")}
 
 
+def _always(step: Step) -> ModelFor:
+    """A model slot that writes nowhere: what a step with nothing to say to the reader
+    looks like when the graph asks for one per turn."""
+    return lambda _on_text: step
+
+
 def _runner(
     *,
     prepare: Step = _prepare,
-    model: Step,
+    model: ModelFor,
     tools: Step = _ran,
     rounds: int = ROUNDS,
     recursion_limit: int | None = None,
@@ -103,7 +113,7 @@ def test_the_graph_is_built_from_the_steps_of_a_turn_alone() -> None:
     assert isinstance(
         langgraph_for(
             prepare=_prepare,
-            model=_replies,
+            model=_always(_replies),
             tools=_ran,
             router=Router(max_tool_rounds=8),
             max_tool_rounds=8,
@@ -114,7 +124,7 @@ def test_the_graph_is_built_from_the_steps_of_a_turn_alone() -> None:
     with pytest.raises(TypeError):
         langgraph_for(
             prepare=_prepare,
-            model=_replies,
+            model=_always(_replies),
             tools=_ran,
             ground=_ran,  # ty: ignore[unknown-argument]
             router=Router(max_tool_rounds=8),
@@ -140,7 +150,7 @@ def test_run_walks_prepare_then_model_then_tools_then_model() -> None:
         return {"messages": _said("tool", "ran")}
 
     final = _final(
-        _runner(prepare=prepare, model=model, tools=tools), {"question": "q"}
+        _runner(prepare=prepare, model=_always(model), tools=tools), {"question": "q"}
     )
 
     assert visited == ["prepare", "model", "tools", "model"]
@@ -160,7 +170,7 @@ def test_the_returned_state_accumulated_every_partial() -> None:
             "citations": [NOTE],
         }
 
-    final = _final(_runner(model=model, tools=tools), {"question": "q"})
+    final = _final(_runner(model=_always(model), tools=tools), {"question": "q"})
 
     assert [m.content for m in final["messages"]] == ["q", "asking", "ran", "done"]
     assert final["trace"] == [ToolUse(name="search_documents", outcome="1 passage")]
@@ -176,7 +186,7 @@ def test_an_answer_ends_the_turn_with_no_third_node_to_visit() -> None:
         visited.append("model")
         return {"messages": _said("assistant", "off the cuff"), "answer": "off"}
 
-    final = _final(_runner(model=model), {"question": "q"})
+    final = _final(_runner(model=_always(model)), {"question": "q"})
 
     assert visited == ["model"]
     assert final["answer"] == "off"
@@ -193,7 +203,7 @@ def test_a_step_is_seen_before_the_run_is_over() -> None:
             return {"messages": _said("assistant", "done")}
         return {"messages": _asked_for_a_tool("asking")}
 
-    states = _runner(model=model).run({"question": "q"}, THREAD)
+    states = _runner(model=_always(model)).run({"question": "q"}, THREAD)
     for state in states:
         if _answered(state):
             break
@@ -205,7 +215,7 @@ def test_a_runaway_graph_surfaces_as_the_friendly_give_up() -> None:
     def endless(state: AgentState) -> AgentState:
         return {"messages": _asked_for_a_tool("again")}
 
-    runner = _runner(model=endless, rounds=999, recursion_limit=4)
+    runner = _runner(model=_always(endless), rounds=999, recursion_limit=4)
 
     with pytest.raises(ToolLoopLimitError):
         _final(runner, {"question": "q"})
@@ -239,7 +249,9 @@ def _real_runner(model: ChatModel, rounds: int) -> LangGraphRunner:
             rules=(EmptyInputRule(),),
             instructions="SYS",
         ),
-        model=ModelStep(chat_model=model, tools=(add_tool(),), max_history_turns=20),
+        model=ModelStep(
+            chat_model=model, tools=(add_tool(),), max_history_turns=20
+        ).writing_to,
         tools=ToolStep(ToolRuntime(tools=(add_tool(),))),
         router=Router(max_tool_rounds=rounds),
         recursion_limit=recursion_limit_for(rounds),
@@ -280,7 +292,7 @@ def _replies(state: AgentState) -> AgentState:
 def test_a_second_run_on_one_thread_starts_where_the_first_finished() -> None:
     """What makes the conversation the graph's rather than the caller's: the second
     turn is seeded with a question alone and finds the first turn already there."""
-    runner = _runner(model=_replies)
+    runner = _runner(model=_always(_replies))
 
     _final(runner, {"question": "first"})
     final = _final(runner, {"question": "second"})
@@ -290,7 +302,7 @@ def test_a_second_run_on_one_thread_starts_where_the_first_finished() -> None:
 
 
 def test_two_threads_share_nothing() -> None:
-    runner = _runner(model=_replies)
+    runner = _runner(model=_always(_replies))
 
     _final(runner, {"question": "mine"}, thread_id="ada")
     final = _final(runner, {"question": "yours"}, thread_id="grace")
@@ -307,7 +319,7 @@ def test_the_first_state_yielded_is_the_thread_as_the_turn_found_it() -> None:
     def tracing(state: AgentState) -> AgentState:
         return {"messages": _said("assistant", "ok"), "trace": [_A_STEP]}
 
-    runner = _runner(model=tracing)
+    runner = _runner(model=_always(tracing))
 
     _final(runner, {"question": "first"})
     states = list(runner.run({"question": "second"}, THREAD))
@@ -351,7 +363,7 @@ def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
             "citations": [NOTE],
         }
 
-    runner = _runner(model=tracing)
+    runner = _runner(model=_always(tracing))
 
     _final(runner, {"question": "first"})
     final = _final(runner, {"question": "second"})
@@ -388,7 +400,7 @@ def test_an_unlisted_type_does_not_come_back_as_itself() -> None:
     runner actually builds, not of a serializer a test made: LangGraph's default is
     permissive, so a runner that forgot the allowlist would pass every round-trip test
     there is and fail the first turn after the default changes."""
-    serde = _runner(model=_replies).checkpointer.serde
+    serde = _runner(model=_always(_replies)).checkpointer.serde
 
     declared = serde.loads_typed(serde.dumps_typed(Message(role="user", content="hi")))
     undeclared = serde.loads_typed(
@@ -416,7 +428,7 @@ def test_a_thread_resumed_in_a_second_runner_carries_what_the_model_was_told(
 
     first = langgraph_for(
         prepare=_prepare,
-        model=remembering,
+        model=_always(remembering),
         tools=_ran,
         router=Router(max_tool_rounds=ROUNDS),
         max_tool_rounds=ROUNDS,
@@ -426,7 +438,7 @@ def test_a_thread_resumed_in_a_second_runner_carries_what_the_model_was_told(
 
     second = langgraph_for(
         prepare=_prepare,
-        model=remembering,
+        model=_always(remembering),
         tools=_ran,
         router=Router(max_tool_rounds=ROUNDS),
         max_tool_rounds=ROUNDS,
@@ -444,7 +456,7 @@ def test_a_runner_told_no_path_keeps_its_thread_in_memory() -> None:
     lives as long as the process, as every test here relies on."""
     runner = langgraph_for(
         prepare=_prepare,
-        model=_replies,
+        model=_always(_replies),
         tools=_ran,
         router=Router(max_tool_rounds=ROUNDS),
         max_tool_rounds=ROUNDS,
@@ -452,3 +464,49 @@ def test_a_runner_told_no_path_keeps_its_thread_in_memory() -> None:
 
     assert isinstance(runner, LangGraphRunner)
     assert isinstance(runner.checkpointer, InMemorySaver)
+
+
+def _writing(*pieces: str) -> ModelFor:
+    """The model slot as assembly fills it: asked for a step per turn, and the step it
+    hands back writes to that turn's reader."""
+
+    def bound(on_text: TextSink) -> Step:
+        def step(state: AgentState) -> AgentState:
+            for piece in pieces:
+                on_text(piece)
+            written = "".join(pieces)
+            return {"messages": _said("assistant", written), "answer": written}
+
+        return step
+
+    return bound
+
+
+def test_a_run_hands_the_model_node_the_sink_it_was_asked_with() -> None:
+    """The answer is written inside a step, and a graph yields only between steps — so
+    the only way out for it is the sink the run carries in."""
+    written: list[str] = []
+    runner = _runner(model=_writing("Sleep, ", "not volume."))
+
+    _final(runner, {"question": "why"}, on_text=written.append)
+
+    assert written == ["Sleep, ", "not volume."]
+
+
+def test_two_runs_of_one_runner_do_not_cross() -> None:
+    """One assembled app answers two readers, each on their own thread and their own
+    worker. A sink shared between them would send each the other's answer."""
+    mine: list[str] = []
+    yours: list[str] = []
+    runner = _runner(model=_writing("mine"))
+
+    _final(runner, {"question": "q"}, thread_id="ada", on_text=mine.append)
+    _final(runner, {"question": "q"}, thread_id="grace", on_text=yours.append)
+
+    assert (mine, yours) == (["mine"], ["mine"])
+
+
+def test_a_run_asked_with_no_sink_takes_the_same_turn() -> None:
+    final = _final(_runner(model=_writing("ok")), {"question": "why"})
+
+    assert final["answer"] == "ok"
