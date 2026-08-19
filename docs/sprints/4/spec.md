@@ -115,6 +115,14 @@ streams, the graph binds the model node to that turn's reader, and `/api/ask` ca
 `text` event per piece. React only — Streamlit waits for the finished turn as it always
 did.
 
+### [20. Nothing reaches the reader as an answer but the answer](story-20.md)
+
+A tool call the model malforms is dropped before cora sees it, so the round reads as
+a final and its prose goes out ungrounded. A round that wrote before calling a tool sent
+that aside as `text`, so the contract `README.md` states was false and the page inferred
+the boundary from the steps. And a streamed answer pinned the reader to the bottom. The
+stream now marks the round it wrote in, and a malformed call ends the turn.
+
 ## Not built this sprint
 
 Planned, cut once the bonus bar was cleared and the hours ran down. None of them is needed
@@ -143,7 +151,7 @@ for a task requirement:
 |---|---|
 | 1 · Agent purpose | *Purpose* above; restated in `README.md` |
 | 2 · Core functionality | Stories 1, 3 — plan, tools, retrieval as a decision, memory |
-| 3 · User interface | Story 2 (trace), story 3 (memory panel), plus upload, sources and chat in `README.md` § *Run the app* |
+| 3 · User interface | **Streamlit** — story 2 (trace), story 3 (memory panel), plus upload, sources and chat in `README.md` § *Run the app*. **React** — story 16 (the cited passage, opened), story 17 (the shell over cora's own API), story 18 (leaving a conversation), story 19 (the answer as it is written), story 20 (nothing shown as an answer but the answer), with `make run-react` and the shell's own settings in `README.md` § *Run the app* |
 | 4 · Technical implementation | *Architecture decision* above, plus the failure criteria carried by every story (below) |
 | 5 · Documentation | `README.md` setup and usage, worked examples of asking, remembering and small talk, decisions recorded here, `big-picture.md` drawn around the agent |
 

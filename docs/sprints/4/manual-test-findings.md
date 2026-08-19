@@ -16,21 +16,21 @@ found #25–#26.
 
 ## Order of work
 
-**Before submission**
-- **#26** — a malformed tool call is dropped silently and the model's prose served as the
-  answer, ungrounded and uncited.
-- **#16** — the stream emits pre-tool-call asides as `text` events, so the contract stated
-  in `README.md` and the route docstring is false.
-- **#18** — a streamed answer pins the reader to the bottom, making it impossible to scroll
-  up mid-answer.
-- **#23** — `spec.md`'s coverage table cites only Streamlit, omitting the React frontend
-  that stories 16–19 shipped.
+**Before submission** — done, as `story-20.md`, which took #17 and #20 with them:
+- [x] **#26** — a malformed tool call is dropped silently and the model's prose served as
+  the answer, ungrounded and uncited.
+- [x] **#16** — the stream emits pre-tool-call asides as `text` events, so the contract
+  stated in `README.md` and the route docstring is false.
+- [x] **#18** — a streamed answer pins the reader to the bottom, making it impossible to
+  scroll up mid-answer.
+- [x] **#23** — `spec.md`'s coverage table cites only Streamlit, omitting the React
+  frontend that stories 16–19 shipped.
+- [x] **#20** — a superseded preamble sits in the answer slot for the whole tool round
+  with no `Working…` (same root as #16).
+- [x] **#17** — the acceptance test asserts pieces equal the answer, passing only by luck
+  of the scripted model.
 
 **Real bugs, next**
-- **#20** — a superseded preamble sits in the answer slot for the whole tool round with no
-  `Working…` (same root as #16).
-- **#17** — the acceptance test asserts pieces equal the answer, passing only by luck of the
-  scripted model.
 - **#19** — every token re-parses the whole answer and replaces its DOM, killing text
   selection.
 - **#2** — a duplicate upload reports nothing, indistinguishable from success or from

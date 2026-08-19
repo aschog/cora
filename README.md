@@ -145,8 +145,11 @@ that cap and `411` for a multipart body that declares no length at all — a cei
 client can step around by chunking is not a ceiling. `POST /api/ask` bounds its own body
 on the reading instead, so it needs no declared length. That route answers as a
 server-sent-event stream: a `step` event per step as it is taken, a `text` event per piece
-of the answer as it is written, then one `turn` event carrying the finished turn — which
-is what a client keeps, the pieces being the same text arriving early. Every refusal the
+the model writes as it writes it, an `aside` event when a round it wrote in ended in a
+tool call, then one `turn` event carrying the finished turn — which is what a client
+keeps. A turn may take several rounds and only the last of them is the answer, so it is
+the pieces since the last `aside` that are the same text arriving early; the ones before
+it were the model writing its way to a tool call, and a client drops them. Every refusal the
 shell models
 arrives as `{"error": "<one sentence>"}` under the code and headers it was raised with —
 cora's own, the form parser's and Starlette's alike. A failure nobody modelled is still

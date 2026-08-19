@@ -36,69 +36,77 @@ bottom for the whole of a streamed answer (#18).
 
 #### The tool call that did not parse (`adapters/openrouter_chat_model.py`, `domain/errors.py`)
 
-- [ ] a reply whose tool-call arguments did not parse raises rather than answering — prose
+- [x] a reply whose tool-call arguments did not parse raises rather than answering — prose
       is not an answer when the search it asked for never ran
-- [ ] a reply carrying one call that parsed and one that did not raises too: a dropped
+- [x] a reply carrying one call that parsed and one that did not raises too: a dropped
       intent is a dropped intent
-- [ ] the parse error each invalid call carries reaches the log, and the sentence the
+- [x] the parse error each invalid call carries reaches the log, and the sentence the
       reader gets carries none of it
-- [ ] a streamed tool call whose argument JSON never completes aggregates into an invalid
+- [x] a streamed tool call whose argument JSON never completes aggregates into an invalid
       call and raises
-- [ ] a reply with no tool calls of either kind still answers, truncates and empties
+- [x] a reply with no tool calls of either kind still answers, truncates and empties
       exactly as it did
 
 #### The sink is told which round wrote to it (`ports/chat_model.py`, `engine/steps.py`)
 
-- [ ] the pieces reach the sink as `Piece`, in the order they were written
-- [ ] a round that ends in a tool call tells the sink its writing was an aside, after the
+- [x] the pieces reach the sink as `Piece`, in the order they were written
+- [x] a round that ends in a tool call tells the sink its writing was an aside, after the
       pieces of it
-- [ ] a round that ends in an answer tells it nothing further
-- [ ] the state the step returns is unchanged either way — `answer` is still the whole
+- [x] a round that ends in an answer tells it nothing further
+- [x] the state the step returns is unchanged either way — `answer` is still the whole
       final reply
-- [ ] a step given no sink answers as it always did
+- [x] a step given no sink answers as it always did
 
 #### The wire marks the boundary (`frontends/react/api.py`)
 
-- [ ] `/api/ask` sends an `aside` event after the pieces of a round that called a tool
-- [ ] the `aside` arrives before the `step` event that ends the round it belongs to
-- [ ] a turn answered in one round sends no `aside` at all
-- [ ] the `text` pieces after the last `aside` are exactly the answer the `turn` event
+- [x] `/api/ask` sends an `aside` event after the pieces of a round that called a tool
+- [x] the `aside` arrives before the `step` event that ends the round it belongs to
+- [x] a turn answered in one round sends no `aside` at all
+- [x] the `text` pieces after the last `aside` are exactly the answer the `turn` event
       carries, for a model that writes before it searches
 
 #### The page believes the wire instead of guessing (`ui/api.ts`, `App.tsx`) **(ui)**
 
-- [ ] `ask` reports the `aside` frame to its caller and still resolves with the `turn`
-- [ ] an aside puts the turn back to `Working…`, rather than leaving a superseded preamble
+- [x] `ask` reports the `aside` frame to its caller and still resolves with the `turn`
+- [x] an aside puts the turn back to `Working…`, rather than leaving a superseded preamble
       where the answer goes for the whole tool round
-- [ ] the answer written after an aside starts clean — the aside is not prepended to it
-- [ ] a `step` event clears nothing on its own, because the page no longer infers a round
+- [x] the answer written after an aside starts clean — the aside is not prepended to it
+- [x] a `step` event clears nothing on its own, because the page no longer infers a round
       boundary from one
 
 #### The reader keeps their place (`ui/components/Answer.tsx`) **(ui)**
 
-- [ ] a reader who has scrolled up is not pulled down as the answer grows
-- [ ] a reader at the bottom is still followed down, as story 19 asked
-- [ ] a reader who scrolls back to the bottom is followed again
-- [ ] asking a question scrolls to it from wherever the reader had scrolled to
+- [x] a reader who has scrolled up is not pulled down as the answer grows
+- [x] a reader at the bottom is still followed down, as story 19 asked
+- [x] a reader who scrolls back to the bottom is followed again
+- [x] asking a question scrolls to it from wherever the reader had scrolled to
 
 #### Outer functional tests
 
-- [ ] **(int)** over a scripted model that writes a preamble, calls a tool and then
+- [x] **(int)** over a scripted model that writes a preamble, calls a tool and then
       answers, the pieces after the last `aside` concatenate to the answer the `turn` event
       carried — `test_react_frontend.py`'s assertion held by construction rather than by a
       script whose preamble happens to be empty
-- [ ] **(int)** a turn whose tool call is malformed ends as an `error` event with one
+- [x] **(int)** a turn whose tool call is malformed ends as an `error` event with one
       friendly sentence and no `turn`, with nothing of the model's prose on the wire
 
 #### The docs say what is true
 
-- [ ] ~~`README.md` and `_ask`'s docstring state the contract the stream now keeps~~ — no
+- [x] ~~`README.md` and `_ask`'s docstring state the contract the stream now keeps~~ — no
       test to write: `tests/guards/test_docs.py` checks that the paths a page names
       resolve, not that its prose is true. The tests above are what make the sentence
       true; this is writing it down
-- [ ] ~~`spec.md`'s coverage table cites stories 16–19 and the React frontend~~ — no test,
+- [x] ~~`spec.md`'s coverage table cites stories 16–19 and the React frontend~~ — no test,
       and deliberately: the guard leaves `docs/sprints/**` alone, because a record that
       follows the code is not a record
+
+#### Found while building it
+
+- [x] an aside for a round that wrote nothing is noise on the wire — it exists to have a
+      reader drop what they were shown, so it fires only when that round wrote
+- [x] three standing scroll tests set `scrollTop` to 0 to observe the write, which under
+      the guard reads as *the reader scrolled up*. They say "the reader is at the bottom"
+      now, in one helper; the assertion they make is unchanged
 
 Whether a malformed tool call should be retried was the open decision in #26. It ends the
 turn: `to_model_reply` already raises rather than returns when the provider stopped early,
