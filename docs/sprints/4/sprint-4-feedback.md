@@ -273,8 +273,8 @@ present tense.
       still being written lost it on the very next piece — the criterion the story is
       named for. Only *settled* nodes, left alone because their text compares equal,
       survived. Text that merely grew is now appended to, which moves no boundary already
-      in it. **No test:** happy-dom adjusts ranges on neither path, the same blind spot
-      story 21 recorded for node removal, so a selection assertion would pass either way.
+      in it. happy-dom adjusts ranges on neither path — the same blind spot story 21
+      recorded for node removal — so the assertion moved to a browser: see the tier below.
 - [x] **Anything that was neither element nor text crashed the page** — a comment node
       matches on `nodeType` and `nodeName`, fell through to the element branch and threw
       on `undefined.attributes`; from `useLayoutEffect` that unmounts the conversation
@@ -289,8 +289,30 @@ present tense.
 - [x] **More than `on_text` left the categories** — adding a piece to the whole moved out
       with it, and the library refuses a field two pieces disagree about, so a provider
       streaming reasoning oddly raised a bare `TypeError` out of `complete()` instead of a
-      category. The route still logged it and sent the generic sentence, so nothing was
-      silently swallowed. Only the sink call needed to move.
+      category. Only the sink call needed to move.
 - [x] **A comment claimed a marker the tests no longer carry** — story 21's outer tests
       read as still held under `test.fails`, in the present tense, above three plain
       `test` calls.
+
+## Found by the second `fix/patch-selection` review
+
+The same reviewer over the accumulated branch diff. Both findings are the fixes above not
+having reached the whole of what they claimed.
+
+- [x] **A failure nobody modelled was kept nowhere** — categorising the chunk merge closed
+      the raw `TypeError` and, with it, the traceback: the routes deliver a `CoreError`'s
+      sentence without logging it, and only the unmodelled `except Exception` logged. So
+      the reader was told the model is temporarily unavailable and the operator had
+      nothing to read. This was already true of every provider error matching no category,
+      so the log went where that decision is made rather than at the merge.
+- [x] **`reopen` left the notice standing** — `start` clears it, but reopening an earlier
+      conversation from the rail left an upload's notice above a conversation that predates
+      it. The two are the same boundary and now clear the same things.
+- [x] **The append had nothing defending it** — the fix the branch is named for passed
+      and failed identically under happy-dom, so reverting `appended` to a whole-node
+      write left all 91 tests green. Rather than assert the call, the criterion moved to
+      a browser: `make ui-test-browser` runs `browser/selection.test.ts` in Chromium,
+      where selecting a phrase in the paragraph being written and losing it is exactly
+      what the mutation now does. It stays off `npm test` and out of the pre-commit hook —
+      a browser is not something a commit should wait for — and CI runs it as its own
+      steps in the `ui-tier` job, so a revert cannot merge green.
