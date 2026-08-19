@@ -844,8 +844,39 @@ button {
   background: rgba(255, 255, 255, 0.07);
 }
 
-.header .rail-toggle:last-child {
+/* ── starting over ── */
+.new-session {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-left: auto;
+  padding: 9px 20px 9px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  border-radius: var(--pill);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.new-session:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.new-session:disabled {
+  color: var(--n500);
+  cursor: default;
+}
+
+.new-session-plus {
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.new-session:disabled .new-session-plus {
+  color: var(--n500);
 }
 
 /* ── what the deployment loaded ── */

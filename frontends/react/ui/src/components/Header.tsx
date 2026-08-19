@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import NewSession from './NewSession'
 import RailToggle from './RailToggle'
 
 type Props = {
@@ -7,6 +8,7 @@ type Props = {
   rightOpen: boolean
   onToggleLeft: () => void
   onToggleRight: () => void
+  onNew: () => void
 }
 
 const BARE = 'bare cora'
@@ -19,6 +21,7 @@ export default function Header({
   rightOpen,
   onToggleLeft,
   onToggleRight,
+  onNew,
 }: Props) {
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
@@ -77,6 +80,8 @@ export default function Header({
           </div>
         )}
       </div>
+
+      <NewSession onStart={onNew} />
 
       <RailToggle
         side="right"

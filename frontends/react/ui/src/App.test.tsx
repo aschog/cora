@@ -817,3 +817,10 @@ test('the question in flight stays with the conversation it was asked in', async
     [EARLIER.question, 'Why am I stalling?'],
   )
 })
+
+test('the header offers a way to start a new session', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  expect(screen.getByRole('button', { name: 'New session' })).toBeTruthy()
+})

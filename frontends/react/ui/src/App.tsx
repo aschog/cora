@@ -204,6 +204,12 @@ export default function App() {
     }
   }
 
+  const start = () => {
+    const fresh = newThread()
+    here.current = fresh
+    setThread(fresh)
+  }
+
   const recall = (thread_id: string) =>
     loaded(thread_id, (kept) => setEntries(recorded(kept)))
 
@@ -223,6 +229,7 @@ export default function App() {
         rightOpen={rightOpen}
         onToggleLeft={() => setLeftOpen((shown) => !shown)}
         onToggleRight={() => setRightOpen((shown) => !shown)}
+        onNew={start}
       />
 
       {trouble && <div className="trouble">{trouble}</div>}
