@@ -14,6 +14,11 @@ The sweep found #1–#15; the branch review that closed it found #16–#22, chec
 against `spec.md` found #23–#24, and re-checking three points carried from earlier reviews
 found #25–#26.
 
+**Reading the references.** A finding's own text is the report as it was written, and its
+line numbers point at the code as it stood then. Where a finding has been closed, a `→`
+note under it says what the code does today, with current references. Open findings are
+re-anchored as the code moves — last checked 2026-08-19 at `c93a5d4`.
+
 ## Order of work
 
 **Before submission** — done, as `story-20.md`, which took #17 and #20 with them:
@@ -96,22 +101,28 @@ found #25–#26.
    (`frontends/streamlit/.../chat.py:263`, `formatting.py:102-106`), and the React page has
    no equivalent for a successful upload either — neither count nor confirmation.
 
+   → **Done in story 21** (`done/story-21.md`): the count is what decides the sentence —
+   added with how many passages it became, or already in the knowledge base by name
+   (`ingested`, `App.tsx:463`). The notice is drawn in a tone of its own, not as trouble,
+   and it ends when the reader moves to another conversation rather than when a refresh
+   goes through (`App.tsx:321-333`).
+
 3. **Every indexed document should open, cited or not — and the rail should say so with an
    affordance, not a paragraph.** *Improvement.* Three things, one rail
    (`frontends/react/ui/src/components/DocumentRail.tsx`):
    - **Uncited documents are unclickable.** A row is `disabled={!cited.has(name)}`
-     (`DocumentRail.tsx:41`), so a document that this conversation has not cited cannot be
+     (`DocumentRail.tsx:40`), so a document that this conversation has not cited cannot be
      read at all. Opening it should work like any other.
    - **An uncited document opens with nothing marked.** This part comes free: `passagesIn`
      filters the answer's citations by document, so an uncited one yields `[]` and
-     `DocumentBody` draws plain paragraphs (`App.tsx:143-150`, `DocumentBody.tsx:41`).
+     `DocumentBody` draws plain paragraphs (`App.tsx:159`, `DocumentBody.tsx:53-58`).
    - **The paragraph of help text goes**, replaced by something like an info icon on the
      rail heading (`UNCITED`, `DocumentRail.tsx:8-9`) — and once every document opens, the
      sentence it carries is no longer true anyway.
 
    The work is not in the rail, it is in *which upload to read*: text is served per upload
-   hash (`GET /api/uploads/{upload}`, `api.py:314-319`) and the page only ever learns a
-   hash from a citation (`uploadOf`, `App.tsx:135`), while `/api/documents` returns bare
+   hash (`GET /api/uploads/{upload}`, `api.py:68,324`) and the page only ever learns a
+   hash from a citation (`uploadOf`, `App.tsx:141-148`), while `/api/documents` returns bare
    filenames (`knowledge_base.list_sources`). So an uncited document has no upload to open
    until the documents list carries one — an API change, which makes this story-sized
    rather than a tweak. It also decides what "the document" means when one filename covers
@@ -132,18 +143,18 @@ found #25–#26.
 5. **A highlighted passage should link back to the citation in the answer.** *Improvement.*
    Today the link runs one way: `[1]` in the answer is a
    `<button class="cite" data-cite="1">` that opens the source pane and scrolls to the
-   passage (`frontends/react/ui/src/answer.ts:58`, `Answer.tsx:120,131-146`). Going back is
+   passage (`frontends/react/ui/src/answer.ts:58`, `Answer.tsx:159,171`). Going back is
    manual. Clicking a mark should scroll the conversation to the `[n]` it belongs to, and
    where a mark answers to more than one, offer the choice.
 
    The blocker is in `DocumentBody`: `merged()` unions overlapping spans into a single
    `<mark>` and keeps only its start and end, so the mark no longer knows which citations
-   produced it (`DocumentBody.tsx:53-58,73-88`) — and it is a bare `<mark>`, not a button,
+   produced it (`DocumentBody.tsx:51-58,75`) — and it is a bare `<mark>`, not a button,
    so it has neither click target nor keyboard reach. Both are the same change: merge
    spans *with* the citation numbers that fed them, and the multi-citation case the
    improvement asks about is precisely a merged mark, plus the same passage cited twice in
    one answer. The scroll target already exists — `[data-cite="n"]` — and only the newest
-   answer is ever marked (`App.tsx:141-150`), so the jump stays inside one answer.
+   answer is ever marked (`App.tsx:154-165`), so the jump stays inside one answer.
 
 6. **The "1 cited passage · highlighted" caption in the source rail is noise.** *Bug —
    remove.* The caption sits under the filename in the source panel
@@ -154,7 +165,7 @@ found #25–#26.
    rather than exceptional.
 
    Five assertions in the vitest tier read this exact string
-   (`App.test.tsx:219,574,586,606,627`, `SourcePanel.test.tsx:54`), several of them using it
+   (`App.test.tsx:219,588,600,620,641`, `SourcePanel.test.tsx:54`), several of them using it
    as the proxy for "the source pane opened on this document" — so removing the line means
    giving those tests a better handle, not just deleting the text.
 
@@ -167,7 +178,7 @@ found #25–#26.
 
    Same shape as #3's help paragraph, and the panels have two more of these — the memory
    panel's `INTRO` (`MemoryPanel.tsx:4`) and each panel's empty-state `NOTHING`
-   (`SourcePanel.tsx:17`, `SessionsPanel.tsx:12`, `PlanPanel.tsx:11`). Empty states earn
+   (`SourcePanel.tsx:4`, `SessionsPanel.tsx:3`, `PlanPanel.tsx:4`). Empty states earn
    their words; standing explanations of a panel that is already full do not. Worth doing
    as one pass over the rail with a single info component rather than three separate
    deletions.
@@ -219,7 +230,7 @@ found #25–#26.
     The scope is wider than the React page, which is what makes this a design question:
     - **Server-side user text.** The API answers with English sentences of its own —
       `NO_FILE`, `OVER_CEILING`, `UNKEPT`, `NO_LENGTH`
-      (`frontends/react/src/cora/frontends/react/api.py:167-175,324`) — plus every
+      (`frontends/react/src/cora/frontends/react/api.py:170-176,333`) — plus every
       `user_message` on a raised error. Those are drawn verbatim by the page, so a
       translated UI over an English API is half-translated. Either the server sends a code
       the page renders, or the page never gets prose from the server.
@@ -246,10 +257,10 @@ found #25–#26.
 
 12. **Plugins should be classified by kind, so the page offers only the switchable ones.**
     *Improvement — design first.* A `Plugin` is a name plus whatever it contributes:
-    instructions, tools, validation rules (`src/cora/ports/plugin.py:50-66`). Nothing says
+    instructions, tools, validation rules (`src/cora/ports/plugin.py:51-65`). Nothing says
     what *sort* of plugin it is, so every loaded module is one undifferentiated list — the
     header shows all of them together (`/api/plugins`,
-    `frontends/react/src/cora/frontends/react/api.py:73`; `Header.tsx:63,74-80`) and the
+    `frontends/react/src/cora/frontends/react/api.py:74`; `Header.tsx:63,74-80`) and the
     engine merges all their tools and instructions into one brief (`assembly.py:72-76`).
 
     Two separable pieces, and the first is cheap:
@@ -260,7 +271,7 @@ found #25–#26.
       (`sprint-4-feedback.md`), and that is exactly a plugin a user must **not** be able to
       switch off from the page — so the classification has a second caller waiting.
     - **Switching, which does not exist at all.** Plugins are named in `CORA_PLUGINS` and
-      bound once when cora is assembled (`config.py:125-129`, `assembly.py:143`);
+      bound once when cora is assembled (`config.py:126-128`, `assembly.py:143`);
       `/api/plugins` is `GET` only, and the badge is a read-only display. Letting the page
       change the loaded set means rebinding tools and instructions on a live agent, and
       deciding what that does to a conversation already in flight under the old set. That
@@ -297,13 +308,14 @@ found #25–#26.
     shown, and stays true when a step fails. `TRACE` is the alternative and matches the code
     exactly, but reads as a developer's word on a user's page.
 
-    `TABS` doubles as the tab label and the state key (`App.tsx:13,40,211,369`), so the rename
-    touches the union type, two `setTab` calls and three `role="tab"` lookups in the vitest
-    tier (`App.test.tsx:179,183,189,497`) — mechanical, but not a one-line change. Worth
+    `TABS` doubles as the tab label and the state key (`App.tsx:13,43,223,398`), so the
+    rename touches the union type, two `setTab` calls and six `role="tab"` lookups in the
+    vitest tier (`App.test.tsx:179,183,189,511,833,958`) — mechanical, but not a one-line
+    change. Worth
     splitting label from key if a second tab is ever renamed.
 
 15. **Both rails should start hidden.** *Improvement.* They open on load —
-    `useState(true)` for each (`frontends/react/ui/src/App.tsx:68,79`) — so a first-time
+    `useState(true)` for each (`frontends/react/ui/src/App.tsx:77,88`) — so a first-time
     reader meets three columns before they have asked anything, and the conversation, which
     is the point of the page, gets the middle third. Empty rails at that moment say little:
     no documents cited yet, no steps taken, no sessions.
@@ -313,7 +325,7 @@ found #25–#26.
     already logged: whether the choice persists across reloads is the same question #4 asks
     about widths, and if it persists it is a preference and belongs in #13's settings. Also
     worth deciding whether a rail *opens itself* when it gains something to say — clicking
-    a citation already forces the source tab (`App.tsx:152-153`), and that call is
+    a citation already forces the source tab (`App.tsx:168`), and that call is
     meaningless while the rail is shut.
 
 ## Review findings — `62bc643`, the streaming turn
@@ -336,11 +348,21 @@ before being written down.
     non-final rounds — leaving every client to reimplement the heuristic is the wrong half to
     document.
 
+    → **Done in story 20** (`done/story-20.md`): the sink is handed what *kind* of piece
+    this is, so an aside is an `aside` event of its own and `text` carries the answer only
+    (`api.py:301-307`). The contract in `README.md:147-149` names all three events and is
+    now true as written.
+
 17. **`tests/acceptance/test_react_frontend.py:67` pins an invariant the system does not
     hold.** *Bug — test.* `assert written == turn["answer"]` passes only because
     `ScriptedChatModel`'s tool-calling reply has empty `text`; a real model with a preamble
     breaks it. It reads as a guarantee to clients and is not one. Fixing #16 is what makes
     this assertion true rather than lucky.
+
+    → **Done in story 20**: the pieces are summed from the aside onwards and compared with
+    the turn's answer, and the scripted model now writes a preamble before it searches —
+    so the assertion holds because the boundary is marked, not because nothing crossed it
+    (`tests/acceptance/test_react_frontend.py:99-112`).
 
 18. **The conversation is pinned to the bottom for the whole of a streamed answer.**
     *Bug — hit while reading.* The scroll effect depends on `outcome(entries.at(-1))`, which
@@ -349,6 +371,10 @@ before being written down.
     a turn; now it runs per token, so a reader who scrolls up during a 30-second answer to
     re-read an earlier turn is yanked back on the next piece. Needs the usual guard: follow
     only if already near the bottom.
+
+    → **Done in story 20**: the scroller follows only while the reader is within a line of
+    the bottom, and scrolling away turns it off until they come back
+    (`Answer.tsx:12,52-55,70-78`).
 
 19. **The answer's markdown is re-parsed and its DOM replaced on every token.** *Bug.*
     `useMemo` keys on `entry.answer`, so each piece re-runs `answerHtml` over the whole
@@ -375,6 +401,15 @@ before being written down.
     can perceive. If it ever does bite, coalescing renders to one per animation frame comes
     first: a few lines, and no parse-correctness risk.
 
+    → **Finished on `fix/patch-selection`, 2026-08-19.** Patching by node kept the
+    reader's *nodes* but not their selection: assigning `nodeValue` is DOM's replace-data
+    across the whole node, and its steps pull every selection boundary inside that node
+    back to the start — so a phrase selected in the paragraph still being written was still
+    lost. Text
+    that only grew is appended to instead (`patch.ts:33-48`). happy-dom moves no boundary
+    either way, which is why the criterion is asserted in Chromium: `make ui-test-browser`,
+    `browser/selection.test.ts`.
+
 20. **A superseded preamble is shown as cora's answer for the whole tool round, and
     `Working…` never comes back.** *Bug.* `written` is cleared on the *next* piece, not when
     the step arrives (`App.tsx:225-231`), and `entry.pending && !entry.answer` is already
@@ -383,6 +418,10 @@ before being written down.
     If the turn then dies on `ToolLoopLimitError`, the reader spent it looking at a sentence
     that was never an answer. Same root as #16.
 
+    → **Done in story 20**: an aside arrives as its own event and what was written is
+    cleared then, so the page goes back to `Working…` for the rest of the tool round
+    (`App.tsx:245-249`, `Answer.tsx:95-96`).
+
 21. **`test_two_runs_of_one_runner_do_not_cross` does not test what its name claims.**
     *Bug — test.* The two runs are sequential and the model slot is a fresh closure per call
     (`tests/cora/adapters/test_langgraph_runner.py:496`), so it passes whether or not the
@@ -390,12 +429,24 @@ before being written down.
     is covered by `test_writing_to_leaves_the_step_it_came_from_writing_nowhere`, so this is
     an over-claiming name rather than a hole, but the name is what a reader trusts.
 
+    → **Done in story 21**: the two runs overlap in time now, so the name is the claim the
+    test makes (`tests/cora/adapters/test_langgraph_runner.py:518-522`).
+
 22. **A failure in the *sink* is reported to the user as a model failure.** *Bug — latent.*
     `on_text(piece.text)` sits inside the `try` whose `except Exception` funnels into
     `_categorise` (`src/cora/adapters/openrouter_chat_model.py:140-146`), which returns a bare
     `LlmError` for anything it does not recognise. The sink is the caller's code; if it ever
     raises, the turn aborts and the user is told the model failed. Low likelihood today,
     wrong category regardless.
+
+    → **Done in story 21, and finished on `fix/patch-selection`.** The provider's own
+    stream is what sits inside the categories (`_pieces`, `openrouter_chat_model.py:169`)
+    and the sink is called outside them. Adding the pieces up belongs to the stream as
+    well — the
+    library refuses a field two pieces disagree about — so that is categorised too
+    (`_added`, `:179`), and a failure matching no category is logged where that is decided,
+    since the routes deliver a modelled error's sentence without logging it
+    (`_categorise`, `:191`).
 
 ## Submission readiness — checked against `spec.md`
 
@@ -415,15 +466,20 @@ prompt and retrieval knob is environment-only (`src/cora/app/config.py`).
     reads the table as the map misses the largest visible piece of the sprint. `README.md`
     itself does cover React, so this is the table, not the documentation.
 
+    → **Done in story 20**: the row cites both frontends, React through story 21
+    (`spec.md:164`).
+
 24. **Sprint 4 is not closed out.** *Process, not code.* `v1.0.0` is sprint 3's tag and
     points at `36a4da9`; the sprint-4 submission has no tag, and there is no
     `retrospective.md`. Both are Phase 5 items that follow the review rather than block it —
     recorded so they are not forgotten at the tag step.
 
-    `sprint-4-feedback.md` was checked on the same day and reads 19 ticked, 7 open. Three of
-    its entries had been overtaken by the sprint and were settled on this branch: streaming
-    ticked as shipped by story 19 (through the model boundary, React only, Streamlit
-    deliberately unchanged), the CWD-relative DB path ticked as documented in `README.md`,
+    `sprint-4-feedback.md` was checked on the same day and read 19 ticked, 7 open — it now
+    reads 53 ticked and the same 7 open, the sprint's three review rounds having been
+    tracked and ticked there since. Three of its entries had been overtaken by the sprint
+    and were settled on this branch: streaming ticked as shipped by story 19 (through the
+    model boundary, React only, Streamlit deliberately unchanged), the CWD-relative DB path
+    ticked as documented in `README.md`,
     and the stronger-injection-rules item left open but with its stated blocker removed —
     plugin composition landed in story 11. The grounding item is now ticked as *decided*:
     the citation is the evidence and detection is deliberately not built. Each of the seven
@@ -488,3 +544,8 @@ apply to any code that exists:
     one path where neither happens — the search is never attempted, the answer arrives with
     no citations, and it is indistinguishable from a question that legitimately needed no
     documents. It is cheap to fix and it is the hole under a decision just taken.
+
+    → **Done in story 20**: `invalid_tool_calls` is read, each call's parse error is
+    logged, and the turn ends as `LlmMalformedToolCallError` rather than serving the prose
+    beside it
+    (`openrouter_chat_model.py:55-63`).
