@@ -1,7 +1,5 @@
 import type { Session } from '../api'
 
-const NOTHING = 'Conversations you have had will be listed here.'
-
 type Props = {
   sessions: Session[]
   here: string
@@ -9,8 +7,6 @@ type Props = {
 }
 
 export default function SessionsPanel({ sessions, here, onOpen }: Props) {
-  if (sessions.length === 0) return <div className="panel-intro">{NOTHING}</div>
-
   return (
     <div className="session-list">
       {sessions.map((session) => (

@@ -1,8 +1,5 @@
 import type { Fact } from '../api'
 
-const NOTHING = 'Nothing yet — tell cora something about yourself.'
-const INTRO = 'What cora carries between sessions. Remove a line and it stops assuming it.'
-
 type Props = {
   facts: Fact[]
   onForget: (key: string) => void
@@ -12,7 +9,6 @@ type Props = {
 export default function MemoryPanel({ facts, onForget, onForgetEverything }: Props) {
   return (
     <div>
-      <div className="panel-intro">{facts.length === 0 ? NOTHING : INTRO}</div>
       <div className="saved-list">
         {facts.map((fact) => (
           <div key={fact.key} className="saved-card">

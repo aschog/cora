@@ -13,8 +13,6 @@ type Props = {
 
 const BARE = 'bare cora'
 const NOTHING_TO_START = 'You are already in a new session.'
-const HEADING = 'domain plugins — the agent stays the same'
-const FIXED = 'Named by the deployment in CORA_PLUGINS, and bound when cora was assembled.'
 
 export default function Header({
   plugins,
@@ -67,7 +65,6 @@ export default function Header({
         </button>
         {open && (
           <div className="plugin-menu">
-            <div className="micro plugin-menu-heading">{HEADING}</div>
             {plugins.length === 0 ? (
               <div className="plugin-option-blurb">No plugin is loaded.</div>
             ) : (
@@ -78,7 +75,6 @@ export default function Header({
                 </div>
               ))
             )}
-            <div className="plugin-menu-foot">{FIXED}</div>
           </div>
         )}
       </div>

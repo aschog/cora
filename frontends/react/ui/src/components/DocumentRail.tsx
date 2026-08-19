@@ -5,10 +5,6 @@ type Props = {
   onUpload: (file: File) => void
 }
 
-const UNCITED =
-  'Greyed documents are indexed but not cited in this conversation — ask something they can answer and they open here.'
-
-
 export default function DocumentRail({ documents, cited, onOpen, onUpload }: Props) {
   return (
     <aside className="rail-docs">
@@ -28,10 +24,6 @@ export default function DocumentRail({ documents, cited, onOpen, onUpload }: Pro
         />
       </label>
 
-      {documents.length === 0 && (
-        <div className="rail-empty">Nothing indexed yet.</div>
-      )}
-
       <div className="doc-list">
         {documents.map((name) => (
           <button
@@ -45,10 +37,6 @@ export default function DocumentRail({ documents, cited, onOpen, onUpload }: Pro
           </button>
         ))}
       </div>
-
-      {documents.some((name) => !cited.has(name)) && (
-        <div className="rail-note">{UNCITED}</div>
-      )}
     </aside>
   )
 }

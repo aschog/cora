@@ -196,9 +196,6 @@ test('a document the answer cited opens in the source panel, marked at the passa
   expect(await screen.findByText('notes.md')).toBeTruthy()
   const inTheRail = screen.getByRole('button', { name: 'notes.md' })
   expect(inTheRail.hasAttribute('disabled')).toBe(true)
-  /* A disabled button is out of the accessibility tree and its tooltip is unreliable,
-     so the reason is on the page rather than on the control it explains. */
-  expect(screen.getByText(/not cited in this conversation/)).toBeTruthy()
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why?' },
@@ -209,7 +206,6 @@ test('a document the answer cited opens in the source panel, marked at the passa
 
   // Cited now, so the rail opens it — into SOURCE, marked where the citation falls.
   expect(inTheRail.hasAttribute('disabled')).toBe(false)
-  expect(screen.queryByText(/not cited in this conversation/)).toBeNull()
   fireEvent.click(inTheRail)
 
   expect(screen.getByRole('tab', { name: 'SOURCE' }).getAttribute('aria-selected')).toBe(
@@ -312,9 +308,9 @@ test('an answer never lands on a conversation that was replaced while it ran', a
      something false about it — that its text was never kept, when the truth is that
      nothing here cites it. */
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
-  const rail = within(document.querySelector('.rail-panels') as HTMLElement)
-  expect(rail.queryByText('notes.md')).toBeNull()
-  expect(rail.getByText(/passage an answer cites/)).toBeTruthy()
+  const panels = document.querySelector('.rail-panels') as HTMLElement
+  expect(within(panels).queryByText('notes.md')).toBeNull()
+  expect(panels.querySelector('.source-title')).toBeNull()
 })
 
 test('the conversation follows what just happened, answered or failed', async () => {
@@ -481,9 +477,9 @@ function steppingSlowly(): Response {
 }
 
 test('a conversation shows its own plan, not the plan of a turn left behind', async () => {
-  /* The panel's own footer says cora chose these steps — for what is on screen. A turn
-     the reader walked away from is another conversation's work: it must neither go on
-     filling this panel nor leave behind what it had already filled. */
+  /* The panel shows the steps behind what is on screen. A turn the reader walked away
+     from is another conversation's work: it must neither go on filling this panel nor
+     leave behind what it had already filled. */
   vi.stubGlobal(
     'fetch',
     vi.fn(async (path: string) => {
@@ -935,9 +931,9 @@ test('the new session is not offered while the conversation is already new', asy
 })
 
 test('the panels afterwards speak for the new session, not the one left behind', async () => {
-  /* The plan panel's footer says these are the steps behind what is on screen, and the
-     source panel marks what this answer rested on. With the conversation gone, both are
-     speaking for a turn the reader can no longer see. */
+  /* The plan panel shows the steps behind what is on screen, and the source panel marks
+     what this answer rested on. With the conversation gone, both would be speaking for a
+     turn the reader can no longer see. */
   render(<App />)
   await screen.findByText('notes.md')
 
@@ -953,11 +949,11 @@ test('the panels afterwards speak for the new session, not the one left behind',
 
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
-  const rail = within(document.querySelector('.rail-panels') as HTMLElement)
-  expect(rail.getByText(/passage an answer cites/)).toBeTruthy()
+  const panels = document.querySelector('.rail-panels') as HTMLElement
+  expect(panels.querySelector('.source-title')).toBeNull()
   fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
   expect(screen.queryByText(TURN.trace[0].summary)).toBeNull()
-  expect(rail.getByText(/steps cora takes will appear/)).toBeTruthy()
+  expect(panels.querySelector('.plan-step')).toBeNull()
 })
 
 test('an answer to the conversation left behind does not land on the new session', async () => {

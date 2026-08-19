@@ -1,8 +1,6 @@
 import type { Citation } from '../api'
 import DocumentBody, { usePassage } from './DocumentBody'
 
-const NOTHING = 'A document you open, or the passage an answer cites, is shown here.'
-
 type Props = {
   document: string | null
   /** Where the text is kept: any citation the conversation carries for this document
@@ -14,7 +12,7 @@ type Props = {
 export default function SourcePanel({ document, upload, citations }: Props) {
   const { text, trouble } = usePassage(upload)
 
-  if (!document) return <div className="panel-intro">{NOTHING}</div>
+  if (!document) return null
 
   return (
     <div>

@@ -22,10 +22,12 @@ beforeEach(() => {
 
 afterEach(cleanup)
 
-test('with nothing opened the panel says what it is for', () => {
-  render(<SourcePanel document={null} upload={null} citations={[]} />)
+test('with nothing opened the panel draws nothing', () => {
+  const { container } = render(
+    <SourcePanel document={null} upload={null} citations={[]} />,
+  )
 
-  expect(screen.getByText(/passage an answer cites/)).toBeTruthy()
+  expect(container.textContent).toBe('')
 })
 
 test('a passage whose text was never kept says so rather than drawing an empty page', async () => {
