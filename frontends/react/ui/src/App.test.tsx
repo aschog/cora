@@ -319,7 +319,13 @@ test('an answer never lands on a conversation that was replaced while it ran', a
 
 test('the conversation follows what just happened, answered or failed', async () => {
   /* happy-dom lays nothing out, so what is observable is the scroll the effect asks
-     for — enough to catch the newest turn being left below the fold. */
+     for — enough to catch the newest turn being left below the fold.
+
+     Awaited rather than read once: the scroll is a passive effect, which React flushes
+     after the commit that `findByText` is already satisfied by. Reading it on the next
+     line asserts that the effect has *already* run, which is a race the test never meant
+     to make — and the assertion is the same either way, because it must still reach the
+     bottom. */
   const { container } = render(<App />)
   await screen.findByText('notes.md')
   const scroller = container.querySelector('.scroller') as HTMLElement
@@ -331,12 +337,12 @@ test('the conversation follows what just happened, answered or failed', async ()
   })
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
   await screen.findByText(/Working/)
-  expect(scroller.scrollTop).toBe(5000)
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
 
   scroller.scrollTop = 0
   turn.release()
   await screen.findByText(/Sleep, not volume/)
-  expect(scroller.scrollTop).toBe(5000)
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
 })
 
 /** A turn that takes a step and then fails, the failure held back until released. */
@@ -1758,5 +1764,5 @@ test('the conversation follows the answer down as it is written', async () => {
   turn.release()
 
   await screen.findByRole('button', { name: 'Open cited source 1' })
-  expect(scroller.scrollTop).toBe(5000)
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
 })
