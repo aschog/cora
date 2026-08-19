@@ -213,7 +213,9 @@ that is not closed is a page still spinning under an answer that already failed.
 
 def _ask(app: App) -> Callable[[Request], Any]:
     """A turn takes as long as it takes, so it is a stream: the steps as the agent takes
-    them, then the answer, and either way an end.
+    them, the answer in the pieces it is written in, then the answer whole, and either
+    way an end. The whole one is what the page keeps — the pieces are it arriving early,
+    and the two agree because both come off the one turn.
 
     `Agent.answer` blocks and reports its steps from the thread it runs on, so the turn
     runs on a thread of its own and hands each event to the event loop. The loop waits
@@ -290,8 +292,11 @@ def _run(
     def report(step: TraceStep) -> None:
         deliver(_event("step", payloads.step(step)))
 
+    def write(piece: str) -> None:
+        deliver(_event("text", {"text": piece}))
+
     try:
-        result = app.agent.answer(question, thread_id, report)
+        result = app.agent.answer(question, thread_id, report, write)
         deliver(_event("turn", payloads.result(result)))
     except CoreError as refused:
         deliver(_event("error", {"error": refused.user_message}))
