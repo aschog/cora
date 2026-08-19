@@ -49,24 +49,25 @@ Three decisions the findings left open:
 **Tiers:** unit unless marked — **(ui)** vitest via `make ui-test`, **(br)** Chromium via
 `make ui-test-browser`.
 
-#### Nothing in the page explains the page (`ui/src/components/`) **(ui)**
+#### Nothing in the page explains the page (`ui/src/App.test.tsx`) **(ui)**
 
-- [x] a panel of steps draws the steps and no footer about pipelines (`PlanPanel`, `FOOTER`)
-- [x] a memory panel with facts draws the facts and nothing above them (`MemoryPanel`,
-      `INTRO`)
-- [x] a documents rail holding an uncited document draws the list and no note about greying
-      (`DocumentRail`, `UNCITED`)
-- [x] the plugin popover is the modules and nothing else — no heading over them, no
-      footnote about `CORA_PLUGINS` under them (`Header`, `HEADING`, `FIXED`)
+One list of every deleted sentence, asserted from the page rather than per component, so a
+paragraph reintroduced anywhere fails whichever panel it lands in (`EXPLANATIONS`):
 
-#### An empty panel is empty (`ui/src/components/`) **(ui)**
+- [x] a page with steps, facts, a plugin and a past conversation explains none of them
+      (`FOOTER`, `INTRO`, `HEADING`, `FIXED`)
+- [x] a page with nothing in it yet draws its controls and no prose (`NOTHING` × 4)
 
-- [x] no steps yet draws nothing (`PlanPanel`, `NOTHING`)
-- [x] no conversations yet draws nothing (`SessionsPanel`, `NOTHING`)
-- [x] no facts yet draws nothing — the same slot the intro left, so both branches go
-      (`MemoryPanel`, `NOTHING`)
-- [x] no document open draws nothing (`SourcePanel`, `NOTHING`)
-- [x] nothing indexed yet draws the upload control alone (`DocumentRail`)
+#### The one state the page-level tests cannot reach (`ui/src/components/DocumentRail.test.tsx`) **(ui)**
+
+The App fixture serves one document, and citing it is what makes the rail openable — so a
+rail holding a cited *and* an uncited document exists only here, and it is the only state
+the greying note ever appeared in:
+
+- [x] a rail holding both draws the list and no note about greying (`UNCITED`)
+- [x] the uncited one cannot be opened and the cited one can — the note's own claim, left
+      standing by its deletion
+- [x] nothing indexed yet draws the upload control alone
 
 #### The source pane is found by what it opened on (`ui/src/components/SourcePanel.tsx`) **(ui)**
 
@@ -74,8 +75,9 @@ Three decisions the findings left open:
       text alone cannot say which pane is open
 - [x] a document with a cited passage draws the mark and no count above it
 - [x] a document the answer did not rest on still says so
-- [x] the four `App.test.tsx` tests that used the count as their proxy ask for the heading
-      instead, and still assert the mark they were actually after
+- [x] the four `App.test.tsx` tests that used the count as their proxy ask for something
+      that means what they were after: two for the heading, two for the document's text and
+      the mark on it
 
 #### The tab claims what it shows (`ui/src/App.tsx`) **(ui)**
 
