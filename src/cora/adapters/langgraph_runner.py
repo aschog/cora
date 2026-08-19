@@ -14,7 +14,8 @@ from langgraph.graph import END, START, StateGraph
 from cora.domain.agent_state import AgentState
 from cora.domain.errors import ToolLoopLimitError
 from cora.domain.trace import step_kinds
-from cora.ports.graph import DONE, TOOLS, GraphRunner, Route, Step
+from cora.ports.chat_model import TextSink, unheard
+from cora.ports.graph import DONE, TOOLS, GraphRunner, ModelFor, Route, Step
 
 PREPARE = "prepare"
 MODEL = "model"
@@ -71,15 +72,17 @@ class LangGraphRunner:
     asked on a resumed thread is asked of a model that saw the exchange before it."""
 
     prepare: Step
-    model: Step
+    model: ModelFor
     tools: Step
     router: Route
     recursion_limit: int
     checkpointer: BaseCheckpointSaver = field(default_factory=_saver)
 
-    def run(self, state: AgentState, thread_id: str) -> Iterator[AgentState]:
+    def run(
+        self, state: AgentState, thread_id: str, on_text: TextSink = unheard
+    ) -> Iterator[AgentState]:
         try:
-            yield from self._graph().stream(
+            yield from self._graph(on_text).stream(
                 state,
                 {
                     "recursion_limit": self.recursion_limit,
@@ -90,12 +93,15 @@ class LangGraphRunner:
         except GraphRecursionError as exhausted:
             raise ToolLoopLimitError from exhausted
 
-    def _graph(self) -> Any:
+    def _graph(self, on_text: TextSink) -> Any:
+        """Built per run, which is what lets the model node be this turn's: the sink
+        belongs to the reader waiting on it, and a graph shared between turns could
+        only hold one of them."""
         # ty does not see __required_keys__ on a TypedDict class, so it cannot
         # tell that AgentState satisfies LangGraph's state-schema bound.
         builder = StateGraph(AgentState)  # ty: ignore[invalid-argument-type]
         builder.add_node(PREPARE, self.prepare)
-        builder.add_node(MODEL, self.model)
+        builder.add_node(MODEL, self.model(on_text))
         builder.add_node(TOOLS, self.tools)
         builder.add_edge(START, PREPARE)
         builder.add_edge(PREPARE, MODEL)
@@ -107,7 +113,7 @@ class LangGraphRunner:
 def langgraph_for(
     *,
     prepare: Step,
-    model: Step,
+    model: ModelFor,
     tools: Step,
     router: Route,
     max_tool_rounds: int,

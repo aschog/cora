@@ -319,7 +319,13 @@ test('an answer never lands on a conversation that was replaced while it ran', a
 
 test('the conversation follows what just happened, answered or failed', async () => {
   /* happy-dom lays nothing out, so what is observable is the scroll the effect asks
-     for — enough to catch the newest turn being left below the fold. */
+     for — enough to catch the newest turn being left below the fold.
+
+     Awaited rather than read once: the scroll is a passive effect, which React flushes
+     after the commit that `findByText` is already satisfied by. Reading it on the next
+     line asserts that the effect has *already* run, which is a race the test never meant
+     to make — and the assertion is the same either way, because it must still reach the
+     bottom. */
   const { container } = render(<App />)
   await screen.findByText('notes.md')
   const scroller = container.querySelector('.scroller') as HTMLElement
@@ -331,12 +337,12 @@ test('the conversation follows what just happened, answered or failed', async ()
   })
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
   await screen.findByText(/Working/)
-  expect(scroller.scrollTop).toBe(5000)
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
 
   scroller.scrollTop = 0
   turn.release()
   await screen.findByText(/Sleep, not volume/)
-  expect(scroller.scrollTop).toBe(5000)
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
 })
 
 /** A turn that takes a step and then fails, the failure held back until released. */
@@ -1577,4 +1583,186 @@ test('a conversation that cannot be drawn does not half-move the page into it', 
   ask('And now?')
   await screen.findByText('And now?')
   expect(asked).toEqual(['t1', 't1'])
+})
+
+/**
+ * A stream of the given frames. Everything from `held` on waits until the test releases
+ * it — including the end of the stream, so a turn can be left in flight — which is what
+ * makes "this was on the page before the turn was" assertable.
+ */
+function streaming(parts: string[], held = parts.length - 1): Response {
+  const encoder = new TextEncoder()
+  let next = 0
+  const reader = {
+    cancel: async () => {},
+    read: async () => {
+      if (next === held) await turn.until
+      if (next === parts.length) return { done: true, value: undefined }
+      return { done: false, value: encoder.encode(parts[next++]) }
+    },
+  }
+  return { ok: true, body: { getReader: () => reader } } as unknown as Response
+}
+
+/** A turn that writes its answer in pieces, its final step and its `turn` withheld. */
+function writing(pieces: string[]): Response {
+  const parts = [
+    frame('step', LIVE[0]),
+    ...pieces.map((piece) => frame('text', { text: piece })),
+    frame('step', TURN.trace[0]),
+    frame('turn', TURN),
+  ]
+  return streaming(parts, parts.length - 2)
+}
+
+/** The page over a stream of the given frames, asked one question. */
+async function asked(parts: string[], held?: number): Promise<void> {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return streaming(parts, held)
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+}
+
+/* The outer test of story 19. Held under `test.fails` — vitest's strict xfail — while
+   the list was worked through, so leaving the marker behind was not possible. */
+test(
+  'the answer arrives as it is written, and its citation is clickable once it lands',
+  async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string) => {
+        if (path === '/api/ask') return writing(['Sleep, ', 'not volume [1].'])
+        if (path.startsWith('/api/uploads/'))
+          return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+        return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      }),
+    )
+    render(<App />)
+    await screen.findByText('notes.md')
+
+    fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+      target: { value: 'Why am I stalling?' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+
+    // Written, before the turn that carries it exists — so `[1]` is still literal text.
+    expect(await screen.findByText(/Sleep, not volume \[1\]\./)).toBeTruthy()
+    expect(screen.queryByText(/Working/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Open cited source 1' })).toBeNull()
+
+    turn.release()
+
+    const cite = await screen.findByRole('button', { name: 'Open cited source 1' })
+    fireEvent.click(cite)
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+  },
+)
+
+
+test('a turn still being written shows what has been written, not Working', async () => {
+  await asked([
+    frame('step', LIVE[0]),
+    frame('text', { text: 'Sleep, ' }),
+    frame('text', { text: 'not volume.' }),
+    frame('turn', TURN),
+  ])
+
+  expect(await screen.findByText('Sleep, not volume.')).toBeTruthy()
+  expect(screen.queryByText(/Working/)).toBeNull()
+})
+
+test('a turn with nothing written yet still says Working', async () => {
+  await asked([frame('step', LIVE[0]), frame('turn', TURN)])
+
+  expect(await screen.findByText(LIVE[0].summary)).toBeTruthy()
+  expect(screen.getByText(/Working/)).toBeTruthy()
+})
+
+test('the first piece after a step starts a new answer', async () => {
+  /* A model may write before it calls a tool. That text is the trace's — it is already
+     kept as the step's detail — and letting the next round append to it would leave the
+     reader an answer with the model's aside glued to the front of it. */
+  await asked([
+    frame('text', { text: 'Let me check the log. ' }),
+    frame('step', LIVE[0]),
+    frame('step', LIVE[1]),
+    frame('text', { text: 'Sleep, ' }),
+    frame('text', { text: 'not volume.' }),
+    frame('turn', TURN),
+  ])
+
+  expect(await screen.findByText('Sleep, not volume.')).toBeTruthy()
+  expect(screen.queryByText(/Let me check the log/)).toBeNull()
+})
+
+test('a step arriving does not on its own clear what has been written', async () => {
+  /* The step that ends a round arrives after the text written in it and before the turn
+     that supersedes it. Clearing on the step would blank the finished answer for the
+     frame between the two. */
+  const parts = [frame('text', { text: 'Sleep, not volume.' }), frame('step', LIVE[0])]
+  await asked(parts, parts.length)
+
+  expect(await screen.findByText(LIVE[0].summary)).toBeTruthy()
+  expect(screen.getByText('Sleep, not volume.')).toBeTruthy()
+})
+
+test('a turn that fails after writing shows the error in place of what was written', async () => {
+  const parts = [
+    frame('text', { text: 'Sleep, ' }),
+    frame('error', { error: 'The model is busy. Please try again.' }),
+  ]
+  await asked(parts, parts.length - 1)
+
+  expect(await screen.findByText('Sleep,')).toBeTruthy()
+
+  turn.release()
+
+  expect(await screen.findByText(/The model is busy/)).toBeTruthy()
+  expect(screen.queryByText('Sleep,')).toBeNull()
+})
+
+test('an answer written into a conversation the reader left does not land on the page', async () => {
+  const parts = [
+    frame('text', { text: 'Sleep, ' }),
+    frame('text', { text: 'not volume.' }),
+    frame('turn', TURN),
+  ]
+  await asked(parts, 1)
+
+  expect(await screen.findByText('Sleep,')).toBeTruthy()
+
+  fireEvent.click(screen.getByRole('button', { name: /New session/i }))
+  turn.release()
+  await flushed()
+
+  expect(screen.queryByText(/Sleep/)).toBeNull()
+})
+
+test('the conversation follows the answer down as it is written', async () => {
+  const parts = [
+    frame('text', { text: 'Sleep, ' }),
+    frame('text', { text: 'not volume.' }),
+    frame('turn', TURN),
+  ]
+  await asked(parts, parts.length - 1)
+  const scroller = document.querySelector('.scroller') as HTMLElement
+  await screen.findByText('Sleep, not volume.')
+
+  Object.defineProperty(scroller, 'scrollHeight', { value: 5000, configurable: true })
+  scroller.scrollTop = 0
+  turn.release()
+
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
 })

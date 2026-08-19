@@ -83,6 +83,10 @@ API and the built page from one process on `127.0.0.1:8000`; in development run
 `/api` to the first. The page is built with `npm run build` in `frontends/react/ui/`,
 after which the server picks its output up on its own.
 
+In that shell the answer appears as cora writes it, rather than all at once when the turn
+ends; a `[1]` becomes clickable once the turn lands and its citations are resolved. The
+Streamlit page waits for the finished turn, as it always did.
+
 cora loads no plugin unless asked, so the second line is what turns this from a bare
 document assistant into the coaching app with a prompt-injection screen. Drop it to see
 what the box does on its own. `make run-env` reads its environment from `.env` instead,
@@ -139,7 +143,11 @@ Its HTTP surface bounds what it will read, because the cap on a document is appl
 once the whole of it is in memory. `POST /api/documents` answers `413` for an upload past
 that cap and `411` for a multipart body that declares no length at all — a ceiling a
 client can step around by chunking is not a ceiling. `POST /api/ask` bounds its own body
-on the reading instead, so it needs no declared length. Every refusal the shell models
+on the reading instead, so it needs no declared length. That route answers as a
+server-sent-event stream: a `step` event per step as it is taken, a `text` event per piece
+of the answer as it is written, then one `turn` event carrying the finished turn — which
+is what a client keeps, the pieces being the same text arriving early. Every refusal the
+shell models
 arrives as `{"error": "<one sentence>"}` under the code and headers it was raised with —
 cora's own, the form parser's and Starlette's alike. A failure nobody modelled is still
 the server's plain-text 500.

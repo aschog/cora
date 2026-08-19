@@ -63,8 +63,8 @@ sequenceDiagram
   participant Memory
 
   You->>UI: a question
-  UI->>Agent: answer(question, thread_id, on_step)
-  Agent->>LangGraphRunner: run({"question": …}, thread_id)
+  UI->>Agent: answer(question, thread_id, on_step, on_text)
+  Agent->>LangGraphRunner: run({"question": …}, thread_id, on_text)
   LangGraphRunner-->>Agent: the thread as the turn found it
   LangGraphRunner->>PrepareStep: state
   PrepareStep->>PrepareStep: every plugin rule over the question
@@ -73,9 +73,12 @@ sequenceDiagram
   PrepareStep-->>LangGraphRunner: the question, and this turn's brief
 
   loop until the router says done
-    LangGraphRunner->>ModelStep: state
-    ModelStep->>OpenRouter: complete(brief + transcript, tools)
-    OpenRouter-->>ModelStep: text, or tool calls
+    LangGraphRunner->>ModelStep: state, bound to this turn's on_text
+    ModelStep->>OpenRouter: complete(brief + transcript, tools, on_text)
+    loop as the reply is written
+      OpenRouter-->>UI: a piece of text, through on_text
+    end
+    OpenRouter-->>ModelStep: the whole reply: text, or tool calls
     ModelStep-->>LangGraphRunner: assistant message + ModelDecision
     Note over Agent,UI: each new trace step reaches on_step,<br/>so the page shows the work as it happens
     LangGraphRunner->>Router: state

@@ -12,7 +12,7 @@ from cora.domain.errors import (
     DocumentStoreError,
     MemoryStoreError,
 )
-from cora.ports.chat_model import Message, ModelReply
+from cora.ports.chat_model import Message, ModelReply, TextSink, unheard
 from cora.ports.loading import Loaders
 from cora.ports.memory import Fact
 from cora.ports.plugin import Tool
@@ -93,19 +93,34 @@ def _cosine(a: list[float], b: list[float]) -> float:
 
 
 class ScriptedChatModel:
-    def __init__(self, replies: list[ModelReply]) -> None:
+    """`pieces` is how each reply is written, one list per reply. Left out, a reply is
+    written in one piece — a real model writes whatever it returns, so a fake that
+    returned text and wrote none of it would let a sink go untested by accident."""
+
+    def __init__(
+        self, replies: list[ModelReply], pieces: list[list[str]] | None = None
+    ) -> None:
         self._replies = list(replies)
+        self._pieces = [list(each) for each in pieces] if pieces is not None else None
         self.last_messages: tuple[Message, ...] | None = None
         self.last_tools: tuple[Tool, ...] | None = None
         self.completions = 0
 
     def complete(
-        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
     ) -> ModelReply:
         self.last_messages = messages
         self.last_tools = tools
         self.completions += 1
-        return self._replies.pop(0)
+        reply = self._replies.pop(0)
+        written = self._pieces.pop(0) if self._pieces is not None else [reply.text]
+        for piece in written:
+            if piece:
+                on_text(piece)
+        return reply
 
 
 class CountingRetriever(FakeRetriever):
@@ -241,7 +256,10 @@ class FailingChatModel:
     error: Exception
 
     def complete(
-        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
     ) -> ModelReply:
         raise self.error
 

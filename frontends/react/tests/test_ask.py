@@ -18,7 +18,7 @@ from cora.frontends.react.api import (
     TOO_LONG_TO_ASK,
     api,
 )
-from cora.ports.chat_model import Message, ModelReply
+from cora.ports.chat_model import Message, ModelReply, TextSink, unheard
 from cora.ports.plugin import Tool, ToolCall
 from fakes import FailingChatModel, FakeConversations, ScriptedChatModel
 from sse import frames
@@ -41,7 +41,10 @@ class BreaksAfterSearching:
         self.completions = 0
 
     def complete(
-        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
     ) -> ModelReply:
         self.completions += 1
         if self.completions == 1:
@@ -72,12 +75,18 @@ def test_the_steps_arrive_as_they_are_taken_and_the_answer_last() -> None:
 
     streamed = asking(app)
 
-    assert [name for name, _ in streamed] == ["step", "step", "step", "turn"]
+    assert [name for name, _ in streamed] == [
+        "step",
+        "step",
+        "text",
+        "step",
+        "turn",
+    ]
     _, turn = streamed[-1]
     assert turn["answer"] == "Sleep, not volume [1]."
     assert [citation["document"] for citation in turn["citations"]] == ["notes.md"]
     assert [step["summary"] for step in turn["trace"]] == [
-        step["summary"] for _, step in streamed[:-1]
+        step["summary"] for name, step in streamed[:-1] if name == "step"
     ]
 
 
@@ -129,7 +138,10 @@ class BreaksInAWayNobodyModelled:
     handed a payload it did not expect, say."""
 
     def complete(
-        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
     ) -> ModelReply:
         raise KeyError("range")
 
@@ -186,7 +198,10 @@ class WaitsToAnswer:
         self.completions = 0
 
     def complete(
-        self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
     ) -> ModelReply:
         self.completions += 1
         if self.completions == 1:
@@ -377,3 +392,82 @@ def test_the_ceiling_never_refuses_a_question_the_engine_would_allow() -> None:
 
     assert streamed.status_code == 200
     assert [name for name, _ in frames(streamed.text)][-1] == "turn"
+
+
+class WritesThenBreaks:
+    """A model that writes half a sentence and then cannot be reached."""
+
+    def complete(
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
+    ) -> ModelReply:
+        on_text("Sleep, ")
+        raise LlmError()
+
+
+def test_each_piece_the_turn_writes_arrives_as_its_own_event() -> None:
+    """What the reader is waiting for is the answer, and until now it arrived only with
+    the turn that ended — after every step, and after the model had finished writing."""
+    app = indexed(
+        assembled(
+            chat_model=ScriptedChatModel(
+                [ModelReply(text="Sleep, not volume [1].")],
+                pieces=[["Sleep, ", "not volume [1]."]],
+            )
+        ),
+        ("notes.md", NOTES),
+    )
+
+    streamed = asking(app)
+
+    assert [data["text"] for name, data in streamed if name == "text"] == [
+        "Sleep, ",
+        "not volume [1].",
+    ]
+
+
+def test_a_piece_arrives_before_the_step_that_ends_the_round_it_was_written_in() -> (
+    None
+):
+    """The page resets what it is showing when a piece follows a step, so the two have
+    to be ordered against each other — they are, because both reach the wire through
+    the one queue this endpoint drains."""
+    app = indexed(assembled(chat_model=searching()), ("notes.md", NOTES))
+
+    names = [name for name, _ in asking(app)]
+
+    assert names.index("text") < names.index("step", names.index("text"))
+    assert names[-1] == "turn"
+
+
+def test_the_turn_still_carries_the_whole_answer() -> None:
+    """The page never assembles the pieces into the answer it keeps: what a reopened
+    conversation redraws is what the turn event carried, so the two must agree."""
+    app = indexed(
+        assembled(
+            chat_model=ScriptedChatModel(
+                [ModelReply(text="Sleep, not volume [1].")],
+                pieces=[["Sleep, ", "not volume [1]."]],
+            )
+        ),
+        ("notes.md", NOTES),
+    )
+
+    streamed = asking(app)
+
+    written = "".join(data["text"] for name, data in streamed if name == "text")
+    assert streamed[-1][0] == "turn"
+    assert streamed[-1][1]["answer"] == written
+
+
+def test_a_turn_that_fails_after_writing_ends_with_the_error() -> None:
+    """The pieces are not taken back on the wire — the page replaces them with the
+    sentence, which is the one thing that is true about that turn."""
+    app = assembled(chat_model=WritesThenBreaks())
+
+    streamed = asking(app)
+
+    assert [name for name, _ in streamed] == ["text", "error"]
+    assert streamed[-1][1]["error"] == LlmError().user_message

@@ -9,7 +9,7 @@ from cora.domain.chunk import Chunk
 from cora.domain.citations import CitableHits
 from cora.domain.errors import ToolLoopLimitError
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
-from cora.ports.chat_model import ChatModel, Message, ModelReply
+from cora.ports.chat_model import ChatModel, Message, ModelReply, TextSink, unheard
 from cora.ports.plugin import Tool, ToolCall
 from cora.ports.retrieval import RetrievedChunk
 from fakes import ScriptedChatModel
@@ -157,7 +157,10 @@ def test_a_turn_that_spends_its_budget_does_not_spend_the_next_ones() -> None:
             self.completions = 0
 
         def complete(
-            self, messages: tuple[Message, ...], tools: tuple[Tool, ...]
+            self,
+            messages: tuple[Message, ...],
+            tools: tuple[Tool, ...],
+            on_text: TextSink = unheard,
         ) -> ModelReply:
             self.completions += 1
             if self.completions > 2:
