@@ -30,13 +30,14 @@ found #25–#26.
 - [x] **#17** — the acceptance test asserts pieces equal the answer, passing only by luck
   of the scripted model.
 
-**Real bugs, next**
-- **#19** — every token re-parses the whole answer and replaces its DOM, killing text
+**Real bugs, next** — done, as `story-21.md`:
+- [x] **#19** — every token re-parses the whole answer and replaces its DOM, killing text
   selection.
-- **#2** — a duplicate upload reports nothing, indistinguishable from success or from
+- [x] **#2** — a duplicate upload reports nothing, indistinguishable from success or from
   nothing happening.
-- **#22** — a failure in the sink is reported to the user as a model failure.
-- **#21** — `test_two_runs_of_one_runner_do_not_cross` does not test what its name claims.
+- [x] **#22** — a failure in the sink is reported to the user as a model failure.
+- [x] **#21** — `test_two_runs_of_one_runner_do_not_cross` does not test what its name
+  claims.
 
 **Cheap, one chrome pass**
 - **#11, #7, #9a, #3c** — four standing help paragraphs become one info component.
