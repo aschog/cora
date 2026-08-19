@@ -29,8 +29,8 @@ moves — last checked 2026-08-19 against `a2b568c`.
 
 **Cheap, one chrome pass**
 
-- **#11, #7, #9a, #3c** — four standing help paragraphs become one info component.
-- **#6** — remove the "1 cited passage · highlighted" caption, after giving six tests a
+- **#11, #7, #9a, #3c** — four standing help paragraphs; remove them.
+- **#6** — remove the "1 cited passage · highlighted" caption, after giving four tests a
   better handle.
 - **#14** — rename the PLAN tab to STEPS.
 - **#1** — give the cited passage a warm amber highlight instead of the page's blue.
@@ -75,8 +75,8 @@ moves — last checked 2026-08-19 against `a2b568c`.
    palette yet — the only non-blue accent is `--magenta`, which is spoken for by
    destructive actions (`styles.css:1-37`), so this adds one.
 
-3. **Every indexed document should open, cited or not — and the rail should say so with an
-   affordance, not a paragraph.** *Improvement.* Three things, one rail
+3. **Every indexed document should open, cited or not — and then the rail needs no
+   paragraph to explain itself.** *Improvement.* Three things, one rail
    (`frontends/react/ui/src/components/DocumentRail.tsx`):
    - **Uncited documents are unclickable.** A row is `disabled={!cited.has(name)}`
      (`DocumentRail.tsx:40`), so a document that this conversation has not cited cannot be
@@ -84,9 +84,9 @@ moves — last checked 2026-08-19 against `a2b568c`.
    - **An uncited document opens with nothing marked.** This part comes free: `passagesIn`
      filters the answer's citations by document, so an uncited one yields `[]` and
      `DocumentBody` draws plain paragraphs (`App.tsx:159`, `DocumentBody.tsx:53-58`).
-   - **The paragraph of help text goes**, replaced by something like an info icon on the
-     rail heading (`UNCITED`, `DocumentRail.tsx:8-9`) — and once every document opens, the
-     sentence it carries is no longer true anyway.
+   - **The paragraph of help text goes** (`UNCITED`, `DocumentRail.tsx:8-9`), with nothing
+     in its place — and once every document opens, the sentence it carries is no longer
+     true anyway.
 
    The work is not in the rail, it is in *which upload to read*: text is served per upload
    hash (`GET /api/uploads/{upload}`, `api.py:68,324`) and the page only ever learns a
@@ -132,24 +132,22 @@ moves — last checked 2026-08-19 against `a2b568c`.
    #3 makes every document openable, since the uncited case is about to become ordinary
    rather than exceptional.
 
-   Five assertions in the vitest tier read this exact string
+   Six assertions across four tests in the vitest tier read this exact string
    (`App.test.tsx:219,588,600,620,641`, `SourcePanel.test.tsx:54`), several of them using it
    as the proxy for "the source pane opened on this document" — so removing the line means
-   giving those tests a better handle, not just deleting the text.
+   giving those four a better handle, not just deleting the text.
 
-7. **The plan panel's explanatory footer should become an icon.** *Improvement.* "cora
+7. **The plan panel's explanatory footer should go.** *Improvement.* "cora
    chose these steps. Nothing here is a fixed pipeline — the tools come from the loaded
    plugin." is a paragraph under the steps
    (`frontends/react/ui/src/components/PlanPanel.tsx:5-6`, `FOOTER`). It explains the panel
-   once and then costs vertical space on every answer; an info affordance on the panel
-   heading says the same thing on demand.
+   once and then costs vertical space on every answer.
 
    Same shape as #3's help paragraph, and the panels have two more of these — the memory
    panel's `INTRO` (`MemoryPanel.tsx:4`) and each panel's empty-state `NOTHING`
    (`SourcePanel.tsx:4`, `SessionsPanel.tsx:3`, `PlanPanel.tsx:4`). Empty states earn
    their words; standing explanations of a panel that is already full do not. Worth doing
-   as one pass over the rail with a single info component rather than three separate
-   deletions.
+   as one pass over the rail rather than three separate deletions.
 
 8. **A conversation can be opened but never deleted.** *Improvement.* The sessions panel
    lists every past conversation as an open-button and nothing else
@@ -173,9 +171,9 @@ moves — last checked 2026-08-19 against `a2b568c`.
    - Deleting the conversation you are *in* is its own case — the page has `start` for
      leaving a thread already, so delete-then-start is the likely shape.
 
-9. **The memory panel's standing intro should become an icon too — and memory per session
-   is an open question.** *Improvement, two parts.*
-   - The icon half is #7's pass over the rail: `INTRO` — "What cora carries between
+9. **The memory panel's standing intro should go too — and memory per session is an open
+   question.** *Improvement, two parts.*
+   - The removal half is #7's pass over the rail: `INTRO` — "What cora carries between
      sessions. Remove a line and it stops assuming it." — is drawn above the facts whenever
      there are any (`frontends/react/ui/src/components/MemoryPanel.tsx:4,15`). Its
      empty-state sibling stays.
