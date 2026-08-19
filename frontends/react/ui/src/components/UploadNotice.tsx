@@ -9,7 +9,7 @@ type Props = {
 
 export default function UploadNotice({ said, wrong, onDismiss }: Props) {
   return (
-    <div className={wrong ? 'upload-notice wrong' : 'upload-notice'} role="status">
+    <div className={wrong ? 'upload-notice wrong' : 'upload-notice'}>
       {wrong && (
         <span className="upload-notice-mark" aria-hidden="true">
           !

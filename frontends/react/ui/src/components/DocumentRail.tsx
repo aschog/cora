@@ -37,13 +37,17 @@ export default function DocumentRail({
         />
       </label>
 
-      {upload && (
-        <UploadNotice
-          said={upload.said}
-          wrong={upload.wrong}
-          onDismiss={onDismissUpload}
-        />
-      )}
+      {/* Always drawn, so a sentence arriving in it is a change a screen reader announces.
+          A region mounted together with its first content is not. */}
+      <div role="status">
+        {upload && (
+          <UploadNotice
+            said={upload.said}
+            wrong={upload.wrong}
+            onDismiss={onDismissUpload}
+          />
+        )}
+      </div>
 
       <div className="doc-list">
         {documents.map((name) => (

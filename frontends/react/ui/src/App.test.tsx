@@ -1459,9 +1459,13 @@ test('the page says both of its sentences at once, in one order', async () => {
   fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   await screen.findByText(unreachable)
 
-  expect(
-    [...screen.getByRole('status').children].map((each) => each.textContent),
-  ).toEqual([unreachable, 'In the conversation you left: cora is away.'])
+  /* Named by its strip rather than by the role: the documents rail carries a live region
+     of its own for what an upload did, and this assertion is about the page's own two. */
+  const banners = document.querySelector('.banners') as HTMLElement
+  expect([...banners.children].map((each) => each.textContent)).toEqual([
+    unreachable,
+    'In the conversation you left: cora is away.',
+  ])
 })
 
 /** A 200 whose body is not a list of turns: the read went through, what came back cannot

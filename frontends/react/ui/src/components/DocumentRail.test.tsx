@@ -46,3 +46,28 @@ test('a rail with nothing indexed draws the upload control alone', () => {
   expect(screen.queryByText(/Nothing indexed yet/)).toBeNull()
   expect(container.querySelectorAll('.doc-row')).toHaveLength(0)
 })
+
+/* A live region has to be in the DOM before its content changes for a screen reader to
+   announce the change. The colour and the `!` mark carry the outcome for a reader who can
+   see it; this region is the only channel that carries it for one who cannot. */
+test('the rail holds the region an upload’s outcome is announced in before there is one', () => {
+  rail(['notes.md'], [])
+
+  expect(screen.getByRole('status')).toBeTruthy()
+  expect(screen.getByRole('status').textContent).toBe('')
+})
+
+test('what an upload did is announced in that same region', () => {
+  render(
+    <DocumentRail
+      documents={['notes.md']}
+      cited={new Set<string>()}
+      onOpen={vi.fn()}
+      onUpload={vi.fn()}
+      upload={{ said: '“notes.md” is already in your documents.', wrong: true }}
+      onDismissUpload={vi.fn()}
+    />,
+  )
+
+  expect(screen.getByRole('status').textContent).toContain('already in your documents')
+})
