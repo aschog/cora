@@ -1884,7 +1884,7 @@ test('asking a question scrolls to it from wherever the reader had scrolled to',
 })
 
 /* The outer tests of story 21. Held under `test.fails` — vitest's strict xfail — while
-   the list is worked through, so leaving the marker behind is not possible. */
+   the list was worked through, so leaving the marker behind was not possible. */
 
 const GROWN = {
   answer: 'Sleep is the lever.\n\nNot volume and not intensity [1].',

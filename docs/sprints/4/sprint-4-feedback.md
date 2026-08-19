@@ -259,3 +259,38 @@ case that was reported rather than to the class it belongs to.
       wrapping test is gone and `httpx` is a declared dev dependency.
 - [x] **`found == [] ⇒ nothing uploaded` rested on untested infrastructure** — an
       integration test now pins that a fresh Chroma collection answers with no hits.
+
+## Found by the story-21 review
+
+`/code-review` on the merged commit, after the story closed. Two of the five are the
+story's own criterion not actually being met by the fix that claimed it; the rest are a
+crash the current caller cannot reach, a banner with no end, and a comment left in the
+present tense.
+
+- [x] **The patch kept the nodes but not the selection** — `drawn.nodeValue = …` is DOM's
+      replace-data across the whole node, and its steps pull every live-range boundary
+      inside the node back to offset `0`. So a reader selecting a phrase in the paragraph
+      still being written lost it on the very next piece — the criterion the story is
+      named for. Only *settled* nodes, left alone because their text compares equal,
+      survived. Text that merely grew is now appended to, which moves no boundary already
+      in it. **No test:** happy-dom adjusts ranges on neither path, the same blind spot
+      story 21 recorded for node removal, so a selection assertion would pass either way.
+- [x] **Anything that was neither element nor text crashed the page** — a comment node
+      matches on `nodeType` and `nodeName`, fell through to the element branch and threw
+      on `undefined.attributes`; from `useLayoutEffect` that unmounts the conversation
+      tree, so a blank page mid-answer. Unreachable only because `answer.ts` builds
+      markdown-it with `html: false`, a precondition `patch`'s own docstring does not
+      make. The branch now asks whether a node *is* an element rather than whether it is
+      text.
+- [x] **The notice had no end** — `start()` cleared the entries, the read document and the
+      load banner but not the notice, so "Added notes.md — 12 passages." stood over every
+      later conversation until the reader happened to upload again. A new session is the
+      reader clearing their desk.
+- [x] **More than `on_text` left the categories** — adding a piece to the whole moved out
+      with it, and the library refuses a field two pieces disagree about, so a provider
+      streaming reasoning oddly raised a bare `TypeError` out of `complete()` instead of a
+      category. The route still logged it and sent the generic sentence, so nothing was
+      silently swallowed. Only the sink call needed to move.
+- [x] **A comment claimed a marker the tests no longer carry** — story 21's outer tests
+      read as still held under `test.fails`, in the present tense, above three plain
+      `test` calls.
