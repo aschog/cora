@@ -1578,3 +1578,63 @@ test('a conversation that cannot be drawn does not half-move the page into it', 
   await screen.findByText('And now?')
   expect(asked).toEqual(['t1', 't1'])
 })
+
+/**
+ * A turn that writes its answer in pieces. The final step and the `turn` event are
+ * withheld until released, so an answer read before that was read as it was written.
+ */
+function writing(pieces: string[]): Response {
+  const encoder = new TextEncoder()
+  const parts = [
+    frame('step', LIVE[0]),
+    ...pieces.map((piece) => frame('text', { text: piece })),
+    frame('step', TURN.trace[0]),
+    frame('turn', TURN),
+  ]
+  const held = parts.length - 2
+  let next = 0
+  const reader = {
+    cancel: async () => {},
+    read: async () => {
+      if (next === parts.length) return { done: true, value: undefined }
+      if (next === held) await turn.until
+      return { done: false, value: encoder.encode(parts[next++]) }
+    },
+  }
+  return { ok: true, body: { getReader: () => reader } } as unknown as Response
+}
+
+/* The outer test of story 19. `test.fails` is vitest's strict xfail: it fails if the
+   body passes, so the marker cannot be left behind once the feature works. */
+test.fails(
+  'the answer arrives as it is written, and its citation is clickable once it lands',
+  async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string) => {
+        if (path === '/api/ask') return writing(['Sleep, ', 'not volume [1].'])
+        if (path.startsWith('/api/uploads/'))
+          return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+        return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      }),
+    )
+    render(<App />)
+    await screen.findByText('notes.md')
+
+    fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+      target: { value: 'Why am I stalling?' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+
+    // Written, before the turn that carries it exists — so `[1]` is still literal text.
+    expect(await screen.findByText(/Sleep, not volume \[1\]\./)).toBeTruthy()
+    expect(screen.queryByText(/Working/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Open cited source 1' })).toBeNull()
+
+    turn.release()
+
+    const cite = await screen.findByRole('button', { name: 'Open cited source 1' })
+    fireEvent.click(cite)
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+  },
+)
