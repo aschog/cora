@@ -201,10 +201,11 @@ No browser is needed for any gate: the Streamlit UI is driven headlessly through
 `AppTest`, including the live tier, and the React page through `happy-dom`. The React
 tier is the one gate that needs node, which is why the pre-commit hook does not run it.
 
-One tier is the exception, and it is not a gate. What the reader keeps while an answer is
-being written — a selection inside the paragraph still growing — is invisible to
-happy-dom, which moves no selection boundary when a text node is rewritten, so both the
-fix and the bug pass there. `make ui-test-browser` asserts it in Chromium; it needs
+One tier is the exception, and it is not a *local* gate: CI runs it, the pre-commit hook
+does not, and `npm test` leaves it out. What the reader keeps while an answer is being
+written — a selection inside the paragraph still growing — is invisible to happy-dom,
+which moves no selection boundary when a text node is rewritten, so the fix and the bug
+pass alike there. `make ui-test-browser` asserts it in Chromium; locally that needs
 `npx playwright install chromium --only-shell` once.
 
 The `llm` tier is the only one that spends money. It runs the whole shipped stack —
