@@ -158,7 +158,7 @@ def _streamed(client: Any, messages: list[BaseMessage], on_text: TextSink) -> AI
     with the sentence the failure carries."""
     whole: AIMessageChunk | None = None
     for piece in _pieces(client, messages):
-        whole = piece if whole is None else whole + piece
+        whole = _added(whole, piece)
         if piece.text:
             on_text(Piece(piece.text))
     if whole is None:
@@ -172,6 +172,18 @@ def _pieces(client: Any, messages: list[BaseMessage]) -> Iterator[AIMessageChunk
     one it would have the reader wait and try again for something no retry can reach."""
     try:
         yield from client.stream(messages)
+    except Exception as exc:
+        raise _categorise(exc) from exc
+
+
+def _added(whole: AIMessageChunk | None, piece: AIMessageChunk) -> AIMessageChunk:
+    """Adding the pieces up is the provider's stream as much as reading them is: the
+    library refuses a field two pieces disagree about, which is a stream that failed
+    rather than anything the caller can be told about."""
+    if whole is None:
+        return piece
+    try:
+        return whole + piece
     except Exception as exc:
         raise _categorise(exc) from exc
 
