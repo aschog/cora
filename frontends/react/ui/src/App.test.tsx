@@ -1882,3 +1882,69 @@ test('asking a question scrolls to it from wherever the reader had scrolled to',
 
   await waitFor(() => expect(scroller.scrollTop).toBe(5000))
 })
+
+/* The outer tests of story 21. Held under `test.fails` — vitest's strict xfail — while
+   the list is worked through, so leaving the marker behind is not possible. */
+
+const GROWN = {
+  answer: 'Sleep is the lever.\n\nNot volume and not intensity [1].',
+  citations: TURN.citations,
+  trace: TURN.trace,
+}
+
+test.fails(
+  'a paragraph the reader is reading is the same node when the answer finishes',
+  async () => {
+    /* A selection lives on the nodes it was made in, and it is those nodes the fix keeps:
+       happy-dom's Selection outlives their removal where a browser's collapses, so the
+       node is what can be asserted here — the reader's copy is what it buys. */
+    await asked(
+      [
+        frame('text', { text: 'Sleep is the lever.\n\n' }),
+        frame('text', { text: 'Not volume ' }),
+        frame('text', { text: 'and not intensity [1].' }),
+        frame('turn', GROWN),
+      ],
+      2,
+    )
+    const read = await screen.findByText('Sleep is the lever.')
+    const words = read.firstChild
+
+    turn.release()
+    await screen.findByRole('button', { name: 'Open cited source 1' })
+
+    expect(screen.getByText('Sleep is the lever.')).toBe(read)
+    expect(read.firstChild).toBe(words)
+  },
+)
+
+/** The rail's file input, which has no label of its own — the label is the button. */
+const upload = (name: string) => {
+  const picker = document.querySelector('input[type="file"]') as HTMLInputElement
+  fireEvent.change(picker, { target: { files: [new File(['notes'], name)] } })
+}
+
+test.fails('a file uploaded twice is added, and then said to be there already', async () => {
+  const counts = [12, 0]
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/documents' && init?.method === 'POST')
+        return {
+          ok: true,
+          json: async () => ({ document: 'notes.md', chunks: counts.shift() }),
+        } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  upload('notes.md')
+  expect(await screen.findByText('Added notes.md — 12 passages.')).toBeTruthy()
+
+  upload('notes.md')
+  expect(
+    await screen.findByText('notes.md is already in your knowledge base.'),
+  ).toBeTruthy()
+})
