@@ -42,9 +42,9 @@ def _app() -> App:
 @pytest.mark.integration
 def test_the_page_uploads_asks_reads_the_passage_and_comes_back_to_it() -> None:
     """The whole slice over the HTTP surface the page reads: a document arrives, a
-    question is answered against it with its steps on the wire as they are taken, the
-    citation opens onto the text its offsets were measured in, and the conversation is
-    there to reopen afterwards."""
+    question is answered against it with its steps on the wire as they are taken and
+    its answer in the pieces it was written in, the citation opens onto the text its
+    offsets were measured in, and the conversation is there to reopen afterwards."""
     with TestClient(api(_app(), plugins=("cora.plugins.fitness",))) as page:
         added = page.post(
             "/api/documents", files={"file": (DOCUMENT, SEED, "text/markdown")}
@@ -58,9 +58,13 @@ def test_the_page_uploads_asks_reads_the_passage_and_comes_back_to_it() -> None:
         )
 
         kinds = [name for name, _ in streamed]
-        assert kinds[-1] == "turn" and kinds[:-1] == ["step"] * (len(kinds) - 1)
+        assert kinds[-1] == "turn" and set(kinds[:-1]) <= {"step", "text"}
         turn = streamed[-1][1]
         assert turn["answer"] == ANSWER
+        # The answer arrived in pieces before it arrived whole, and the two agree: the
+        # page draws the pieces as they land and the turn's own text once it does.
+        written = "".join(data["text"] for name, data in streamed if name == "text")
+        assert written == turn["answer"]
         [citation] = turn["citations"]
         assert citation["document"] == DOCUMENT
 
