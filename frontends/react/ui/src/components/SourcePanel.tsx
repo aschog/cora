@@ -16,15 +16,12 @@ export default function SourcePanel({ document, upload, citations }: Props) {
 
   return (
     <div>
-      <div className="source-title">{document}</div>
-      <div className="micro source-count">{counted(citations.length)}</div>
+      <h2 className="source-title">{document}</h2>
+      {citations.length === 0 && (
+        <div className="micro source-uncited">not cited in this answer</div>
+      )}
       {trouble && <div className="trouble">{trouble}</div>}
       {text !== null && <DocumentBody text={text} spans={citations} />}
     </div>
   )
 }
-
-const counted = (n: number) =>
-  n === 0
-    ? 'not cited in this answer'
-    : `${n} cited ${n === 1 ? 'passage' : 'passages'} · highlighted`

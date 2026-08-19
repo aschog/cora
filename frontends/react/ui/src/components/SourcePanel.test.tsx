@@ -47,11 +47,19 @@ test('a passage whose text was never kept says so rather than drawing an empty p
   expect(screen.queryByText(/The rest of the document follows/)).toBeNull()
 })
 
-test('a document with its text kept is shown, counted and marked', async () => {
-  render(
+test('a document with its text kept is shown under its name, and marked', async () => {
+  const { container } = render(
     <SourcePanel document="notes.md" upload="u1" citations={[cited('u1')]} />,
   )
 
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(screen.getByText('1 cited passage · highlighted')).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'notes.md' })).toBeTruthy()
+  expect(container.querySelector('.doc-passage')?.textContent).toBe('Sleep ')
+  expect(screen.queryByText('not cited in this answer')).toBeNull()
+})
+
+test('a document this answer did not rest on still says so', () => {
+  render(<SourcePanel document="notes.md" upload="u1" citations={[]} />)
+
+  expect(screen.getByText('not cited in this answer')).toBeTruthy()
 })

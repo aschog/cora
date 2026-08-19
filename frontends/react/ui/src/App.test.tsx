@@ -212,7 +212,7 @@ test('a document the answer cited opens in the source panel, marked at the passa
     'true',
   )
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(screen.getByText('1 cited passage · highlighted')).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'notes.md' })).toBeTruthy()
   expect(container.querySelector('.doc-passage')?.textContent).toBe(
     KEPT.slice(0, 6),
   )
@@ -310,7 +310,7 @@ test('an answer never lands on a conversation that was replaced while it ran', a
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   const panels = document.querySelector('.rail-panels') as HTMLElement
   expect(within(panels).queryByText('notes.md')).toBeNull()
-  expect(panels.querySelector('.source-title')).toBeNull()
+  expect(within(panels).queryByRole('heading', { name: 'notes.md' })).toBeNull()
 })
 
 test('the conversation follows what just happened, answered or failed', async () => {
@@ -581,7 +581,8 @@ test('a question in flight does not un-cite the answer still on screen', async (
   await screen.findByText(/Sleep, not volume/)
 
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
-  expect(await screen.findByText('1 cited passage · highlighted')).toBeTruthy()
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
 
   turn = held()
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -593,7 +594,6 @@ test('a question in flight does not un-cite the answer still on screen', async (
   // Back to the passage while cora works: the answer above it has not changed.
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(screen.getByText('1 cited passage · highlighted')).toBeTruthy()
   expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
 })
 
@@ -613,7 +613,8 @@ test('a turn that failed does not un-cite the answer still on screen', async () 
   await screen.findByText(/Sleep, not volume/)
 
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
-  expect(await screen.findByText('1 cited passage · highlighted')).toBeTruthy()
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
 
   turn = held()
   vi.stubGlobal(
@@ -634,7 +635,6 @@ test('a turn that failed does not un-cite the answer still on screen', async () 
 
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(screen.getByText('1 cited passage · highlighted')).toBeTruthy()
   expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
 })
 
@@ -950,7 +950,7 @@ test('the panels afterwards speak for the new session, not the one left behind',
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
   const panels = document.querySelector('.rail-panels') as HTMLElement
-  expect(panels.querySelector('.source-title')).toBeNull()
+  expect(within(panels).queryByRole('heading', { name: 'notes.md' })).toBeNull()
   fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
   expect(screen.queryByText(TURN.trace[0].summary)).toBeNull()
   expect(panels.querySelector('.plan-step')).toBeNull()
