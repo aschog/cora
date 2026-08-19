@@ -63,9 +63,11 @@ export default function App() {
   const [read, setRead] = useState<string | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
-  /* What the last upload did. Its own state, because it is not trouble and is not cleared
-     by a load going through: a duplicate upload is answered with `0` chunks, and saying
-     nothing about it reads the same as success and the same as nothing happening. */
+  /* What the last upload did. Its own state, because it is not trouble and a refresh
+     going through does not take it away: a duplicate upload is answered with `0` chunks,
+     and saying nothing about it reads the same as success and the same as nothing
+     happening. Moving to another conversation does end it — it is news about the desk the
+     reader was at. */
   const [notice, setNotice] = useState<string | null>(null)
   /* Separate from `trouble`, which is about a load of this page and is cleared by the
      next one that goes through: a turn asked in a conversation the reader has left is
@@ -323,6 +325,7 @@ export default function App() {
       setThread(session.thread_id)
       setEntries(turns)
       setRead(null)
+      setNotice(null)
     })
     if (outcome === 'unreadable') setTrouble(UNDRAWABLE)
   }

@@ -2027,6 +2027,22 @@ test('starting a new session takes the last upload’s notice away', async () =>
   )
 })
 
+test('reopening an earlier conversation takes the notice away too', async () => {
+  /* The same boundary as a new session: the reader has moved to a conversation the upload
+     had not happened in yet. */
+  await ready([12])
+
+  upload('notes.md')
+  await screen.findByText('Added notes.md — 12 passages.')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+
+  await waitFor(() =>
+    expect(screen.queryByText('Added notes.md — 12 passages.')).toBeNull(),
+  )
+})
+
 test('a notice stands while the reader asks their next question', async () => {
   /* Every load that goes through clears the banner about a load — an upload's outcome is
      not one, and a question in between is not the reader being told twice. */
