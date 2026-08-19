@@ -32,5 +32,5 @@ behind it. Asserted rather than built.
       speak for a conversation that is no longer on screen
 - [x] **(ui)** and the source panel with it — the document the answer opened is not this
       conversation's to mark, as leaving one by reopening another already knew
-- [ ] **(ui)** an answer arriving after a new session started does not land on it
-- [ ] **(ui)** the conversation left behind is listed under SESSIONS
+- [x] **(ui)** an answer arriving after a new session started does not land on it
+- [x] **(ui)** the conversation left behind is listed under SESSIONS

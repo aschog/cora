@@ -933,3 +933,65 @@ test('the panels afterwards speak for the new session, not the one left behind',
   expect(screen.queryByText(TURN.trace[0].summary)).toBeNull()
   expect(rail.getByText(/steps cora takes will appear/)).toBeTruthy()
 })
+
+test('an answer to the conversation left behind does not land on the new session', async () => {
+  /* Starting over mid-turn is leaving that conversation: the turn is recorded on the
+     thread it was asked in, and the reader can reopen it under SESSIONS. What it must
+     never do is arrive in the empty conversation they moved to. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
+
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  expect(screen.queryByText('Why am I stalling?')).toBeNull()
+
+  turn.release()
+  await new Promise((settle) => setTimeout(settle, 0))
+
+  expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
+  expect(screen.queryByText('Why am I stalling?')).toBeNull()
+})
+
+test('the conversation left behind is listed under SESSIONS', async () => {
+  /* Starting over is not throwing away: what was asked is checkpointed under its own
+     thread, and the only way back to it is the sessions list. */
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
+  let recorded = false
+  const body = (data: unknown) =>
+    ({ ok: true, json: async () => data }) as unknown as Response
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return answering()
+      // The store has the conversation once its first turn is over, and not before.
+      if (path === '/api/sessions')
+        return body(recorded ? [{ thread_id: 't1', opened_with: 'Why am I stalling?' }] : [])
+      if (path.startsWith('/api/uploads/'))
+        return body({ text: KEPT })
+      return body(served[path] ?? [])
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  recorded = true
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+
+  const listed = await screen.findByRole('button', { name: 'Why am I stalling?' })
+  // Reopenable: the conversation is no longer the one the reader is in.
+  expect(listed.hasAttribute('disabled')).toBe(false)
+})
