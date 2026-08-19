@@ -209,6 +209,7 @@ export default function App() {
     here.current = fresh
     setThread(fresh)
     setEntries([])
+    setRead(null)
   }
 
   const recall = (thread_id: string) =>

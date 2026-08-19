@@ -28,7 +28,9 @@ behind it. Asserted rather than built.
 - [x] **(ui)** the question asked next runs on a thread other than the one before it
 - [x] **(ui)** the control is disabled while the conversation is already new and empty —
       a click that changes nothing is not offered
-- [ ] **(ui)** the plan panel is empty afterwards: the steps of the turn left behind
+- [x] **(ui)** the plan panel is empty afterwards: the steps of the turn left behind
       speak for a conversation that is no longer on screen
+- [x] **(ui)** and the source panel with it — the document the answer opened is not this
+      conversation's to mark, as leaving one by reopening another already knew
 - [ ] **(ui)** an answer arriving after a new session started does not land on it
 - [ ] **(ui)** the conversation left behind is listed under SESSIONS

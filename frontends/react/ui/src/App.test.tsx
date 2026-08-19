@@ -907,3 +907,29 @@ test('the new session is not offered while the conversation is already new', asy
   fireEvent.click(start)
   expect(start.hasAttribute('disabled')).toBe(true)
 })
+
+test('the panels afterwards speak for the new session, not the one left behind', async () => {
+  /* The plan panel's footer says these are the steps behind what is on screen, and the
+     source panel marks what this answer rested on. With the conversation gone, both are
+     speaking for a turn the reader can no longer see. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  expect(screen.getByText(TURN.trace[0].summary)).toBeTruthy()
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+
+  const rail = within(document.querySelector('.rail-panels') as HTMLElement)
+  expect(rail.getByText(/passage an answer cites/)).toBeTruthy()
+  fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
+  expect(screen.queryByText(TURN.trace[0].summary)).toBeNull()
+  expect(rail.getByText(/steps cora takes will appear/)).toBeTruthy()
+})
