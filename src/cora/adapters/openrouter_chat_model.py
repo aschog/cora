@@ -189,7 +189,11 @@ def _added(whole: AIMessageChunk | None, piece: AIMessageChunk) -> AIMessageChun
 
 
 def _categorise(exc: Exception) -> LlmError:
+    """A category carries a sentence the reader can act on. What matches none of them
+    carries one that says nothing, so the failure is logged here or it is kept
+    nowhere — the routes deliver a modelled error's sentence without logging it."""
     for provider_error, wrapped in _CATEGORIES:
         if isinstance(exc, provider_error):
             return wrapped()
+    log.warning("the model call failed in a way nobody modelled", exc_info=exc)
     return LlmError()
