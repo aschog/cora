@@ -70,17 +70,17 @@ class Config:
             model=_model(env),
             base_url=_named(env, "OPENROUTER_BASE_URL", DEFAULT_BASE_URL),
             plugin_modules=_plugin_modules(env),
-            top_k=_int(env, "CORA_TOP_K", DEFAULT_TOP_K, minimum=1),
-            max_tool_rounds=_int(
+            top_k=int_setting(env, "CORA_TOP_K", DEFAULT_TOP_K, minimum=1),
+            max_tool_rounds=int_setting(
                 env, "CORA_MAX_TOOL_ROUNDS", DEFAULT_MAX_TOOL_ROUNDS, minimum=1
             ),
-            history_turns=_int(
+            history_turns=int_setting(
                 env, "CORA_HISTORY_TURNS", DEFAULT_HISTORY_TURNS, minimum=0
             ),
-            max_output_tokens=_int(
+            max_output_tokens=int_setting(
                 env, "CORA_MAX_OUTPUT_TOKENS", DEFAULT_MAX_OUTPUT_TOKENS, minimum=1
             ),
-            request_timeout_seconds=_int(
+            request_timeout_seconds=int_setting(
                 env,
                 "CORA_REQUEST_TIMEOUT",
                 DEFAULT_REQUEST_TIMEOUT_SECONDS,
@@ -133,8 +133,10 @@ def _bool(env: Mapping[str, str], key: str) -> bool:
     return env.get(key, "").strip().lower() in {"1", "true"}
 
 
-def _int(env: Mapping[str, str], key: str, default: int, *, minimum: int) -> int:
-    """`minimum` is 0 only where the feature reads it as off, as history turns do."""
+def int_setting(env: Mapping[str, str], key: str, default: int, *, minimum: int) -> int:
+    """One reading of a number from the environment, for every setting that is one —
+    including a frontend's own, which is why it is named rather than private. `minimum`
+    is 0 only where the feature reads it as off, as history turns do."""
     raw = _named(env, key, str(default))
     try:
         value = int(raw)

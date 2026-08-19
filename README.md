@@ -18,8 +18,9 @@ plugins.
 ## Stack
 
 Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangGraph · LangChain over
-OpenRouter · Chroma · sentence-transformers · Streamlit — with ruff, ty and pytest as
-quality gates. Runtime dependencies are added feature-by-feature, story by story.
+OpenRouter · Chroma · sentence-transformers · Streamlit · React over Starlette —
+with ruff, ty and pytest as quality gates. Runtime dependencies are added
+feature-by-feature, story by story.
 
 ## The packages
 
@@ -33,6 +34,7 @@ The app is the repository root; a `uv` workspace sharing the `cora` namespace. Y
 | `cora-plugin-security` | `cora.plugins.security` — the prompt-injection screen | `cora` |
 | `cora-plugin-fitness` | `cora.plugins.fitness` — the reference domain plugin | `cora` |
 | `cora-frontend-streamlit` | `cora.frontends.streamlit` — the app you run below | `cora` |
+| `cora-frontend-react` | `cora.frontends.react` — the same app over HTTP, drawn by a React page | `cora` |
 
 `cora.plugins.*` and `cora.frontends.*` are the extension points: another domain or a
 second user interface is a package to add, not a file to edit. A plugin need not be a
@@ -46,7 +48,7 @@ The tree says which is which by its position:
 ```
 src/cora/                          domain  ports  engine  adapters  app
 plugins/fitness  plugins/security  one of many — the directory expects siblings
-frontends/streamlit
+frontends/streamlit  frontends/react
 ```
 
 `src/` is the app; a directory beside it is an extension point, named in the plural for
@@ -74,6 +76,12 @@ make run                                   # or: make run-env, to read the key f
 `make run` wraps `uv run streamlit run` over the app's module path. The target exists so
 the command survives the next time a package moves — the path itself is one line, in the
 `Makefile`.
+
+The React shell is the same app behind an HTTP surface. `make run-react` serves both the
+API and the built page from one process on `127.0.0.1:8000`; in development run
+`make run-react` and `make ui` side by side, and Vite serves the page on `5173`, proxying
+`/api` to the first. The page is built with `npm run build` in `frontends/react/ui/`,
+after which the server picks its output up on its own.
 
 cora loads no plugin unless asked, so the second line is what turns this from a bare
 document assistant into the coaching app with a prompt-injection screen. Drop it to see
@@ -119,6 +127,23 @@ way), `CORA_DOCUMENTS_PATH` (where the text behind each citation persists, so cl
 startup if they fall below their lowest useful value — `0` for history turns, `1`
 for the others.
 
+Three belong to the React shell alone: `CORA_UI_PATH` (the built page to serve; the
+default sits beside the package at `frontends/react/ui/dist`, which a wheel install has
+no copy of, so a deployment that serves a build names it here), `CORA_HOST` and
+`CORA_PORT` (default `127.0.0.1` and `8000`). With no build at the path it names, the
+API still answers and `/` is simply not served — which is a dev machine running the page
+on Vite. A setting the shell cannot use is refused before anything is built, as one line
+on stderr and a non-zero exit.
+
+Its HTTP surface bounds what it will read, because the cap on a document is applied only
+once the whole of it is in memory. `POST /api/documents` answers `413` for an upload past
+that cap and `411` for a multipart body that declares no length at all — a ceiling a
+client can step around by chunking is not a ceiling. `POST /api/ask` bounds its own body
+on the reading instead, so it needs no declared length. Every refusal the shell models
+arrives as `{"error": "<one sentence>"}` under the code and headers it was raised with —
+cora's own, the form parser's and Starlette's alike. A failure nobody modelled is still
+the server's plain-text 500.
+
 Three more belong to whichever model `CORA_MODEL` names, and are set with it:
 `CORA_MAX_OUTPUT_TOKENS` (default `8192`), `CORA_REQUEST_TIMEOUT` (seconds per model
 request, default `90`) and `CORA_REASONING_EFFORT` (`low`, `medium` or `high`; default
@@ -157,10 +182,12 @@ uv run --env-file .env pytest -m llm   # live acceptance: real OpenRouter round-
 uv run ruff format .          # format
 uv run ruff check .           # lint
 uv run ty check               # type check
+make ui-test                  # the React page's own tier (vitest over happy-dom)
 ```
 
-No browser is needed anywhere: the UI is driven headlessly through Streamlit's
-`AppTest`, including the live tier.
+No browser is needed anywhere: the Streamlit UI is driven headlessly through its
+`AppTest`, including the live tier, and the React page through `happy-dom`. The React
+tier is the one gate that needs node, which is why the pre-commit hook does not run it.
 
 The `llm` tier is the only one that spends money. It runs the whole shipped stack —
 the composition root, a real Chroma store and embedder, and OpenRouter over the
@@ -172,4 +199,5 @@ stays out of CI.
 
 The pre-commit hook runs format check, lint, type check and unit tests;
 commit messages must follow [Conventional Commits](https://www.conventionalcommits.org).
-CI (GitHub Actions) mirrors the same gates on every push.
+CI (GitHub Actions) runs those same gates on every push, plus two tiers the hook leaves
+out: the integration tests, and the React page's own.

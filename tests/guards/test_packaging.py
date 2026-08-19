@@ -71,6 +71,7 @@ def test_the_workspace_holds_the_app_and_its_extension_points() -> None:
     installs them."""
     assert {workspace.location(m): workspace.distribution(m) for m in MEMBERS} == {
         ".": "cora",
+        "frontends/react": "cora-frontend-react",
         "frontends/streamlit": "cora-frontend-streamlit",
         "plugins/fitness": "cora-plugin-fitness",
         "plugins/security": "cora-plugin-security",
@@ -151,12 +152,21 @@ def test_a_plugin_needs_the_app_and_nothing_else(plugin: str) -> None:
     assert workspace.requirements(member) == {"cora"}
 
 
-def test_a_frontend_needs_the_app_and_its_own_toolkit() -> None:
+@pytest.mark.parametrize(
+    ("frontend", "toolkit"),
+    [
+        ("streamlit", {"streamlit", "markdown-it-py"}),
+        ("react", {"starlette", "uvicorn", "python-multipart"}),
+    ],
+    ids=lambda value: value if isinstance(value, str) else "",
+)
+def test_a_frontend_needs_the_app_and_its_own_toolkit(
+    frontend: str, toolkit: set[str]
+) -> None:
     """One of several possible shells: it takes `cora` for the wiring and the types that
-    cross its screen, and the technologies it draws with — the toolkit, and the markdown
-    renderer that turns an answer into the HTML a citation can be clicked in. The
-    adapters it never names: what it shows is decided by the use cases, what technology
-    answers is decided at assembly."""
-    requires = workspace.requirements(workspace.ROOT / "frontends" / "streamlit")
+    cross its screen, and the technologies it draws with — a widget toolkit for one, an
+    HTTP server for the other. The adapters neither names: what a shell shows is decided
+    by the use cases, what technology answers is decided at assembly."""
+    requires = workspace.requirements(workspace.ROOT / "frontends" / frontend)
 
-    assert requires == {"cora", "streamlit", "markdown-it-py"}
+    assert requires == {"cora", *toolkit}

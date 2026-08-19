@@ -101,7 +101,9 @@ The grounding gate of story 8 goes, and story 12's two silences with it: a turn 
 backlog's *no grounding or scope decision* on purpose — the instruction to search and cite
 stays, its enforcement was the one branch of the graph that could not be read and defended.
 
-### [16. Read the passage the answer cites](story-16.md)
+### [16. Read the passage the answer cites](done/story-16.md) ✔
+
+### [17. The React shell is a frontend, not a mockup](done/story-17.md) ✔
 
 ## Not built this sprint
 

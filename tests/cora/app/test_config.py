@@ -2,7 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from cora.app.config import DEFAULT_MEMORY_PATH, DEFAULT_PLUGINS, Config
+import workspace
+from cora.app.config import (
+    DEFAULT_MEMORY_PATH,
+    DEFAULT_MODEL,
+    DEFAULT_PLUGINS,
+    Config,
+)
 from cora.domain.errors import ConfigurationError
 
 
@@ -356,3 +362,12 @@ def test_the_log_path_is_a_setting_like_every_other_path() -> None:
     assert config.log_path
     blanked = Config.from_env({"OPENROUTER_API_KEY": "key-123", "CORA_LOG_PATH": "  "})
     assert blanked.log_path == config.log_path, "a blank reads as unset, as paths do"
+
+
+def test_the_default_model_is_the_one_the_readme_names() -> None:
+    """The default reaches anyone who runs cora without naming a model, so it is a
+    documented fact rather than a constant: a change to it that leaves the README and
+    the reasoning-effort note behind is a deployment answering from a model, at a cost
+    and a latency, that neither page promised."""
+    assert DEFAULT_MODEL == "openai/gpt-4o-mini"
+    assert f"`{DEFAULT_MODEL}`" in (workspace.ROOT / "README.md").read_text()
