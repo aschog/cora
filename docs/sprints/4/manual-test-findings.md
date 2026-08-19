@@ -32,6 +32,8 @@ sprint against `spec.md` found #23–#24.
   selection.
 - **#2** — a duplicate upload reports nothing, indistinguishable from success or from
   nothing happening.
+- **#26** — a tool call the model malforms is dropped silently and its prose returned as
+  the answer, ungrounded.
 - **#22** — a failure in the sink is reported to the user as a model failure.
 - **#21** — `test_two_runs_of_one_runner_do_not_cross` does not test what its name claims.
 
@@ -413,7 +415,9 @@ apply to any code that exists:
   surviving `json.loads` calls read cora's own SQLite rows and an HTTP request body. Recorded
   as closed-by-removal in `sprint-4-feedback.md`.
 - **An output-format selector that accepts either schema** — there is no output-format
-  selector in the codebase, so there is nothing to enforce.
+  selector in the codebase, so there is nothing to enforce. Chasing where model output *is*
+  parsed turned up #26 below, which is the parse-failure-becomes-silent-fallback pattern the
+  reviewer warned about, one layer lower than they were looking.
 - **XML-tagged prompts** — still applies. Carried below as #25.
 
 25. **The brief's sections are separated by blank lines, not named tags.** *Improvement.*
@@ -432,3 +436,22 @@ apply to any code that exists:
     predictable. And adherence cannot be unit-tested — a scripted model answers however the
     script says, so the unit tier can assert the brief's *structure* and only the `llm` tier
     can show a real model following it better.
+
+26. **A tool call the model malforms is dropped without a trace, and its prose is served as
+    the answer.** *Bug.* cora reads `reply.tool_calls`
+    (`src/cora/adapters/openrouter_chat_model.py:44-46`), which langchain-openai fills with
+    the calls whose `arguments` JSON parsed. The ones that did not go to
+    `reply.invalid_tool_calls`, each carrying its parse error — and `invalid_tool_calls`
+    appears nowhere in this repository.
+
+    So a turn in which the model tried to search but wrote broken arguments arrives as
+    `tool_calls = ()`, and `to_model_reply` reads that as a final answer: empty prose raises
+    `LlmEmptyReplyError`, and non-empty prose is handed to the user as the answer — ungrounded,
+    with no search having run, nothing in the trace and nothing in the log. The step budget
+    never notices, because no step was taken.
+
+    The fix is small and the shape is already in the file: `to_model_reply` already raises
+    rather than returns when the provider stopped early, so an invalid tool call is the same
+    kind of event — a failed turn, not a quiet one. Whether it should retry the round or end
+    the turn with a friendly message is the decision; either beats presenting the model's
+    aside as an answer. Related to #16 and #20, which are the same mistake in the frontend.
