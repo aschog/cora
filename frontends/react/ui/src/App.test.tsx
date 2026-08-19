@@ -2179,3 +2179,56 @@ test('a page with nothing in it yet draws the controls and no prose', async () =
   }
   expect(screen.getByPlaceholderText(/Ask a question/)).toBeTruthy()
 })
+
+test('an upload that failed in a conversation left behind keeps this one’s notice', async () => {
+  /* The success path is stamped with the conversation the upload was started in; the
+     failure path was not, and `setNotice(null)` reaches into state the reader's *current*
+     conversation owns. The rejection is still drawn — a document is refused wherever the
+     reader is — but it may not take away news about an upload that worked here. */
+  const refusing = held()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/documents' && init?.method === 'POST') {
+        if (first) {
+          first = false
+          await refusing.until
+          return {
+            ok: false,
+            json: async () => ({ error: 'That upload is larger than the 5 MB cora reads.' }),
+          } as unknown as Response
+        }
+        return {
+          ok: true,
+          json: async () => ({ document: 'notes.md', chunks: 12 }),
+        } as unknown as Response
+      }
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  let first = true
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  /* A conversation to leave, so `New session` is live. */
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+
+  upload('huge.pdf')
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  upload('notes.md')
+  await screen.findByText('Added “notes.md” — 12 passages.')
+
+  refusing.release()
+  expect(
+    await screen.findByText('That upload is larger than the 5 MB cora reads.'),
+  ).toBeTruthy()
+  expect(screen.getByText('Added “notes.md” — 12 passages.')).toBeTruthy()
+})

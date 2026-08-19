@@ -315,9 +315,10 @@ export default function App() {
   /** An upload the reader started and then left behind. Ingestion takes seconds and
    *  nothing stops them opening another conversation while it runs, so the notice is
    *  stamped with the one they started it in — news about a desk they have left is not
-   *  drawn, and cannot be left standing where nothing clears it. The refresh is not
-   *  stamped: the document was added wherever they are, and the failure is about the page
-   *  rather than the conversation. */
+   *  drawn, and cannot be left standing where nothing clears it. Taking a notice *away*
+   *  is stamped for the same reason: a refusal from a conversation they have left must not
+   *  clear news about an upload that worked in this one. The refresh and the refusal's own
+   *  sentence are not stamped — a document is added, or refused, wherever they are. */
   const uploaded = (file: File) => {
     const from = here.current
     return cora
@@ -327,7 +328,7 @@ export default function App() {
         return refresh()
       })
       .catch((failed) => {
-        setNotice(null)
+        if (here.current === from) setNotice(null)
         setTrouble(message(failed))
       })
   }
