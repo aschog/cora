@@ -9,6 +9,7 @@ type Props = {
   onToggleLeft: () => void
   onToggleRight: () => void
   onNew: () => void
+  canStart: boolean
 }
 
 const BARE = 'bare cora'
@@ -22,6 +23,7 @@ export default function Header({
   onToggleLeft,
   onToggleRight,
   onNew,
+  canStart,
 }: Props) {
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
@@ -81,7 +83,7 @@ export default function Header({
         )}
       </div>
 
-      <NewSession onStart={onNew} />
+      <NewSession onStart={onNew} can={canStart} />
 
       <RailToggle
         side="right"

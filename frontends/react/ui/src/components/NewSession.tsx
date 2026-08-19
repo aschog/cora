@@ -1,8 +1,9 @@
-type Props = { onStart: () => void }
+type Props = { onStart: () => void; can: boolean }
 
-export default function NewSession({ onStart }: Props) {
+/** Nothing to start when the conversation is already an empty one on an unused thread. */
+export default function NewSession({ onStart, can }: Props) {
   return (
-    <button className="new-session" onClick={onStart}>
+    <button className="new-session" disabled={!can} onClick={onStart}>
       <span className="new-session-plus" aria-hidden="true">
         +
       </span>

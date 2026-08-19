@@ -883,3 +883,27 @@ test('the question asked after a new session runs on another thread', async () =
   expect(asked[0]).toBeTruthy()
   expect(asked[1]).not.toBe(asked[0])
 })
+
+test('the new session is not offered while the conversation is already new', async () => {
+  /* Nothing to start: the page is already an empty conversation on an unused thread, and
+     a control that changes nothing is not a control. A question in flight is a
+     conversation — asked and unanswered is something to leave. */
+  render(<App />)
+  await screen.findByText('notes.md')
+  const start = screen.getByRole('button', { name: 'New session' })
+  expect(start.hasAttribute('disabled')).toBe(true)
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
+  expect(start.hasAttribute('disabled')).toBe(false)
+
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  expect(start.hasAttribute('disabled')).toBe(false)
+
+  fireEvent.click(start)
+  expect(start.hasAttribute('disabled')).toBe(true)
+})

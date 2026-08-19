@@ -231,6 +231,7 @@ export default function App() {
         onToggleLeft={() => setLeftOpen((shown) => !shown)}
         onToggleRight={() => setRightOpen((shown) => !shown)}
         onNew={start}
+        canStart={conversation.length > 0}
       />
 
       {trouble && <div className="trouble">{trouble}</div>}

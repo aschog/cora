@@ -26,7 +26,7 @@ behind it. Asserted rather than built.
 - [x] **(ui)** the header offers a way to start a new session
 - [x] **(ui)** starting one takes the conversation off the page
 - [x] **(ui)** the question asked next runs on a thread other than the one before it
-- [ ] **(ui)** the control is disabled while the conversation is already new and empty —
+- [x] **(ui)** the control is disabled while the conversation is already new and empty —
       a click that changes nothing is not offered
 - [ ] **(ui)** the plan panel is empty afterwards: the steps of the turn left behind
       speak for a conversation that is no longer on screen
