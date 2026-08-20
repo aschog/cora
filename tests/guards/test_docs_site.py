@@ -45,3 +45,9 @@ def test_the_built_site_is_not_tracked() -> None:
     assert ignored.returncode == 0, (
         "the built site must be ignored, not reviewed as source"
     )
+
+
+def test_the_nav_names_the_reference_once_and_never_a_module() -> None:
+    pages = _nav_pages(_config()["nav"])
+    assert "api/" in pages, "the reference section is one entry literate-nav resolves"
+    assert [page for page in pages if page.startswith("api/") and page != "api/"] == []

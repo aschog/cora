@@ -15,6 +15,24 @@ nav:
   - Understand:
       - The map: big-picture.md
       - A session end to end: happy-path.md
+  - Reference: api/
+
+# One entry above resolves to every module: gen-files writes a page per module plus the
+# api/index.md that lists them, and literate-nav reads that index as the nav — so a module
+# added later needs no edit here, and no nav file ships as a page beside the list.
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - scripts/gen_reference.py
+  - literate-nav:
+      implicit_index: true
+  - mkdocstrings:
+      handlers:
+        python:
+          # Read off the tree rather than the installed package, so the site is built
+          # from what the repository holds.
+          paths: [src]
 
 # Build history and a mockup are in docs/ without being pages of it.
 exclude_docs: |

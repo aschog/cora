@@ -67,6 +67,7 @@ dev = [
 [tool.ty.environment]
 root = [
     "src",
+    "scripts",
     "frontends/react/src",
     "frontends/streamlit/src",
     "plugins/fitness/src",
@@ -77,6 +78,7 @@ root = [
 [tool.ruff]
 src = [
     "src",
+    "scripts",
     "frontends/react/src",
     "frontends/streamlit/src",
     "plugins/fitness/src",
@@ -105,7 +107,7 @@ select = [
 # path. Nothing in there may be named for a shipped module, or it joins that namespace
 # as its first portion; the mirror is safe precisely because it is not on the path.
 testpaths = ["tests", "plugins", "frontends"]
-pythonpath = ["tests/helpers"]
+pythonpath = ["tests/helpers", "scripts"]
 addopts = "--strict-markers --import-mode=importlib -m 'not integration and not llm'"
 # Starlette's TestClient warns that its httpx backend is deprecated in favour of httpx2.
 # The suite is otherwise warning-free, and this one is the library's own plan for its

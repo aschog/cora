@@ -64,11 +64,17 @@ breakage.
 
 #### One reference page per module, found rather than listed (`docs/api/`)
 
-- [ ] every module of the four packages has a generated page, read off the tree — a module
-      added later needs no edit to `mkdocs.yml`
-- [ ] a module whose name starts with `_` gets no page
-- [ ] `__init__.py` becomes the package's own page, not a page called `__init__`
-- [ ] `adapters`, `plugins/` and `frontends/` get no pages
+- [x] every module of the four packages has a generated page, read off the tree — the nav
+      names the reference once and never a module, so one added later needs no edit to
+      `mkdocs.yml`
+- [x] a module whose name starts with `_` gets no page
+- [x] `__init__.py` becomes the package's own page, not a page called `__init__`
+- [x] `adapters`, `plugins/` and `frontends/` get no pages
+- [x] a module's page is at `api/cora/<package>/<module>/`, so the built path is the dotted
+      name
+- [x] **(int)** the reference has a landing page listing every module
+- [x] **(int)** no nav file is shipped as a page — literate-nav's implicit index makes the
+      summary *be* that landing page, rather than a stray `SUMMARY` beside it
 
 #### What a reference page carries with no docstring present
 
