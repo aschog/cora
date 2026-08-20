@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as cora from './api'
-import type { Citation, Fact, Session, Step, Turn } from './api'
+import type { Citation, Decision, Fact, Session, Step, Turn } from './api'
 import Answer from './components/Answer'
 import CitationModal from './components/CitationModal'
 import DocumentRail from './components/DocumentRail'
@@ -26,7 +26,44 @@ export type Entry = {
   trace: Step[]
   /** Asked, not yet answered: the question is on the page while cora works on it. */
   pending?: boolean
+  /** The question cora stopped on: a card while it is open, and afterwards the line that
+   *  says what it settled. */
+  decision?: Decision
+  /** What the reader picked — `null` is choosing none of them. Absent is a card still
+   *  waiting on them. */
+  chosen?: string | null
+  /** The card put back up: picking now asks a new question, because the turn it belonged
+   *  to has already gone on. */
+  changing?: boolean
 }
+
+const PARKED = 'cora.parked'
+/** Which conversation a card was left open in. A reload mints a new thread, and a paused
+ *  turn is in no store — so without this the question would be unreachable: SESSIONS
+ *  lists only conversations that have answered something. */
+const stow = (thread_id: string) => keep(PARKED, thread_id)
+const forget = () => keep(PARKED, null)
+
+const keep = (name: string, value: string | null) => {
+  try {
+    if (value === null) globalThis.sessionStorage?.removeItem(name)
+    else globalThis.sessionStorage?.setItem(name, value)
+  } catch {
+    /* A browser that keeps nothing for this page. The card is then a reload away from
+       gone, which is what it was before it could be kept at all. */
+  }
+}
+
+const stowed = () => {
+  try {
+    return globalThis.sessionStorage?.getItem(PARKED) ?? null
+  } catch {
+    return null
+  }
+}
+
+/** What a different pick asks for, once the turn that raised the question has moved on. */
+const correction = (label: string) => `Use ${label} instead.`
 
 const UNDRAWABLE = 'That conversation could not be read.'
 
@@ -114,6 +151,17 @@ export default function App() {
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  /* A card left open outlives the page it was drawn on: the conversation it was open in
+     is picked back up, and the question with it. */
+  useEffect(() => {
+    const parked = stowed()
+    if (!parked) return
+    here.current = parked
+    setThread(parked)
+    void reopen({ thread_id: parked, opened_with: '' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   /** What the page has to say about itself, in one place: a load that failed, a question
    *  left running that will not be answered, and what became of the last upload. The
@@ -224,7 +272,7 @@ export default function App() {
       entry: { id, question, citations: [], trace: [], pending: true },
     })
     try {
-      const result = await cora.ask(
+      const reply = await cora.ask(
         question,
         thread,
         (step) => {
@@ -251,6 +299,24 @@ export default function App() {
           )
         },
       )
+      if (cora.paused(reply)) {
+        // The turn is on the page now rather than in flight: it is waiting on the
+        // reader, and what they pick lands on it where it stands.
+        stow(on)
+        if (here.current === on) {
+          setEntries((said) => [
+            ...said,
+            {
+              id,
+              question,
+              citations: [],
+              trace: taken,
+              decision: reply.decision,
+            },
+          ])
+        }
+        return
+      }
       // Nothing lands on a conversation the reader left — that turn is another
       // conversation's work now. The panels follow for the same reason; an answer that
       // cites nothing leaves the panel on the document last read, which says it is not
@@ -265,11 +331,11 @@ export default function App() {
         // turn in hand is what lands, it lands only if they are still in that
         // conversation.
         if (loads.current === from) {
-          setEntries((said) => [...said, { id, question, ...result }])
+          setEntries((said) => [...said, { id, question, ...reply }])
         } else if ((await recall(on)) !== 'drawn' && here.current === on) {
-          setEntries((said) => [...said, { id, question, ...result }])
+          setEntries((said) => [...said, { id, question, ...reply }])
         }
-        setRead((current) => result.citations[0]?.document ?? current)
+        setRead((current) => reply.citations[0]?.document ?? current)
       }
     } catch (failed) {
       // A failure is recorded nowhere, so it exists only on the page it was asked from —
@@ -333,6 +399,106 @@ export default function App() {
   const recall = (thread_id: string) =>
     loaded(thread_id, (kept) => setEntries(recorded(kept)))
 
+  /** A decision answered. The turn is already on the page, so the rest of it lands on
+   *  the entry that asked rather than after it. */
+  const decide = async (entry: Entry, chosen: string | null) => {
+    const on = thread
+    const taken: Step[] = []
+    let written = ''
+    const at = (change: (found: Entry) => Entry) =>
+      setEntries((said) =>
+        said.map((each) => (each.id === entry.id ? change(each) : each)),
+      )
+    setAsking(true)
+    setLive({ thread: on, steps: taken })
+    setTab('STEPS')
+    at((found) => ({ ...found, chosen, changing: false, pending: true }))
+    try {
+      const reply = await cora.resume(
+        on,
+        chosen,
+        (step) => {
+          taken.push(step)
+          setLive({ thread: on, steps: [...taken] })
+        },
+        (piece) => {
+          written += piece
+          at((found) => ({ ...found, answer: written }))
+        },
+        () => {
+          written = ''
+          at((found) => ({ ...found, answer: undefined }))
+        },
+      )
+      if (cora.paused(reply)) {
+        at((found) => ({
+          ...found,
+          decision: reply.decision,
+          chosen: undefined,
+          pending: false,
+        }))
+        return
+      }
+      forget()
+      at((found) => ({ ...found, ...reply, pending: false }))
+      setRead((current) => reply.citations[0]?.document ?? current)
+    } catch (failed) {
+      forget()
+      at((found) => ({ ...found, error: message(failed), pending: false }))
+    } finally {
+      setAsking(false)
+      setLive(null)
+      refresh()
+    }
+  }
+
+  /** A pick. On a card still waiting it finishes the turn; on one the reader put back up
+   *  it asks a new question, because the turn that raised it has already gone on and
+   *  what it did cannot be taken back. */
+  const decided = (entry: Entry, chosen: string | null) => {
+    if (!entry.changing) {
+      void decide(entry, chosen)
+      return
+    }
+    setEntries((said) =>
+      said.map((each) => (each.id === entry.id ? { ...each, changing: false } : each)),
+    )
+    if (chosen !== null) void ask(correction(chosen))
+  }
+
+  const change = (entry: Entry) =>
+    setEntries((said) =>
+      said.map((each) => (each.id === entry.id ? { ...each, changing: true } : each)),
+    )
+
+  /** The question a conversation is still parked on, drawn after its turns: it is in no
+   *  store, so nothing else on the page would bring it back. */
+  const parked = async (thread_id: string) => {
+    const waiting = await cora.pending(thread_id).catch(() => null)
+    if (here.current !== thread_id) return
+    /* A payload with no decision in it is not a pause, however it arrived: the card is
+       drawn from the decision or not at all. */
+    if (!waiting?.decision) {
+      forget()
+      return
+    }
+    stow(thread_id)
+    setEntries((said) =>
+      said.some((each) => each.decision && each.chosen === undefined)
+        ? said
+        : [
+            ...said,
+            {
+              id: -(said.length + 1),
+              question: waiting.asked,
+              citations: [],
+              trace: [],
+              decision: waiting.decision,
+            },
+          ],
+    )
+  }
+
   /** Three things at once — which thread the page is in, which turns it shows, which
    *  document it reads — so the turns are drawn first: what cannot be drawn moves none of
    *  it, rather than leaving the reader in one conversation looking at another's. */
@@ -346,6 +512,7 @@ export default function App() {
       setNotice(null)
     })
     if (outcome === 'unreadable') setTrouble(UNDRAWABLE)
+    if (outcome === 'drawn') void parked(session.thread_id)
   }
 
   return (
@@ -387,6 +554,8 @@ export default function App() {
           askingElsewhere={asking && flight?.thread !== thread}
           onAsk={ask}
           onCite={setOpened}
+          onDecide={decided}
+          onChange={change}
         />
 
         {rightOpen && (

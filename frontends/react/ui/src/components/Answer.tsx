@@ -2,10 +2,12 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'rea
 import type { MouseEvent } from 'react'
 import { answerHtml } from '../answer'
 import { patch } from '../patch'
+import DecisionCard from './DecisionCard'
 import type { Citation } from '../api'
 import type { Entry } from '../App'
 
 const WORKING = 'Working…'
+const DECIDING = 'cora is waiting on the decision above.'
 /** How close to the end still counts as reading the newest turn. A line of slack, so the
  *  fraction of a pixel a browser leaves behind at the bottom does not read as scrolling
  *  away. */
@@ -24,7 +26,12 @@ type Props = {
   askingElsewhere: boolean
   onAsk: (question: string) => void
   onCite: (citation: Citation) => void
+  onDecide: (entry: Entry, chosen: string | null) => void
+  onChange: (entry: Entry) => void
 }
+
+/** A turn stopped on a question nobody has answered yet. */
+const waiting = (entry: Entry) => !!entry.decision && entry.chosen === undefined
 
 export default function Answer({
   thread,
@@ -33,6 +40,8 @@ export default function Answer({
   askingElsewhere,
   onAsk,
   onCite,
+  onDecide,
+  onChange,
 }: Props) {
   const [question, setQuestion] = useState('')
   const scroller = useRef<HTMLDivElement>(null)
@@ -54,9 +63,14 @@ export default function Answer({
     if (shown && following.current) shown.scrollTop = shown.scrollHeight
   }, [entries.length, outcome(entries[entries.length - 1])])
 
+  /* cora is parked on a question in this conversation, so there is one thing to do and
+     it is not typing: two open questions on one thread would be two answers to one
+     turn. */
+  const parked = entries.some(waiting)
+
   const send = () => {
     const asked = question.trim()
-    if (!asked || asking) return
+    if (!asked || asking || parked) return
     setQuestion('')
     /* Asking is the reader giving the conversation back: the question they just typed is
        the one thing that belongs on screen, wherever they had scrolled to. */
@@ -90,9 +104,19 @@ export default function Answer({
                 </span>
                 <span className="who">cora</span>
               </div>
+              {entry.decision && (
+                <DecisionCard
+                  decision={entry.decision}
+                  chosen={entry.chosen}
+                  changing={!!entry.changing}
+                  onChoose={(chosen) => onDecide(entry, chosen)}
+                  onChange={() => onChange(entry)}
+                />
+              )}
               {/* A turn in flight with nothing written yet is the only one that says
-                  it is working: once a word of it exists, that word is the news. */}
-              {entry.pending && !entry.answer ? (
+                  it is working: once a word of it exists, that word is the news. A turn
+                  waiting on the reader says neither — the card is what it has to say. */}
+              {waiting(entry) ? null : entry.pending && !entry.answer ? (
                 <p className="working">{WORKING}</p>
               ) : entry.error ? (
                 <p className="trouble">{entry.error}</p>
@@ -119,12 +143,13 @@ export default function Answer({
             className="composer-ask"
             aria-label="Ask"
             onClick={send}
-            disabled={asking}
+            disabled={asking || parked}
           >
             →
           </button>
         </div>
         {askingElsewhere && <p className="composer-note">{ELSEWHERE}</p>}
+        {parked && <p className="composer-note">{DECIDING}</p>}
       </div>
     </main>
   )
@@ -164,7 +189,9 @@ const Written = memo(function Written({
 /** What a turn has become, so that a turn *replaced* in place — a failure landing where
  *  the answer would have been — is a change the scroller notices. Keying on the answer
  *  alone leaves a failure below the fold, reading as nothing having happened. */
-const outcome = (entry?: Entry) => entry && (entry.answer ?? entry.error ?? '…')
+const outcome = (entry?: Entry) =>
+  entry &&
+  (entry.answer ?? entry.error ?? (entry.decision ? String(entry.chosen) : '…'))
 
 /** The answer is rendered markdown, so its citations are buttons in that HTML rather
  *  than elements React placed — which makes the click one listener on the block. */

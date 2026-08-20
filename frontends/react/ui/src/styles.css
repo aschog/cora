@@ -19,6 +19,12 @@
      so a quotation drawn in either says what it is not. */
   --amber: #d29922;
   --amber-tint: #241a08;
+  /* A question the page is waiting on. Its own pair, because amber above has one job and
+     a card drawn in it would read as a quotation, while blue is what the page uses for
+     something to click — and the card is a question, not a control. */
+  --pause: #d9b84a;
+  --pause-edge: #4c4426;
+  --pause-tint: #14130d;
   --magenta-tint: #24121b;
   --radius: 2px;
   --shadow-sm: 0 0 0 1px #1e2530;
@@ -989,4 +995,100 @@ button {
 
 .plan-origin {
   margin-top: 6px;
+}
+
+/* ── a question waiting on the reader ── */
+.decision {
+  padding: var(--s3) var(--s4) var(--s4);
+  border: 1px solid var(--pause-edge);
+  border-radius: 14px;
+  background: var(--pause-tint);
+}
+
+.decision-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 var(--s3);
+}
+
+.decision-dot {
+  color: var(--pause);
+  font-size: 9px;
+  line-height: 1;
+}
+
+.decision-question {
+  margin: 0 0 var(--s3);
+  font-size: 16px;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+
+.decision-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.decision-option {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  width: 100%;
+  padding: 12px var(--s3);
+  text-align: left;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+.decision-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--pause-edge);
+}
+
+.decision-label {
+  font-weight: 600;
+}
+
+.decision-note {
+  flex: 1;
+  font-size: 13.5px;
+  line-height: 1.3;
+  color: var(--n700);
+}
+
+.decision-decline {
+  margin-top: var(--s3);
+  font-size: 13.5px;
+  color: var(--n600);
+}
+
+.decision-decline:hover {
+  color: var(--text);
+}
+
+.decision-resolved {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.decision-settled {
+  flex: 1;
+  text-wrap: pretty;
+}
+
+.decision-change {
+  flex: none;
+  font-size: 14px;
+  color: var(--accent-text);
+}
+
+.decision-change:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
 }
