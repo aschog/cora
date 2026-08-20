@@ -1,108 +1,38 @@
 # Big picture
 
-Read this page first. It shows cora's engine, its eight ports, and the technology behind
+Read this page first. It shows cora's engine, its nine ports, and the technology behind
 each port. The design is called *hexagonal* (also known as *ports and adapters*).
 The tests show how the code really works. The story files in `docs/sprints/` show how
 the code was built, not how it works today.
 
 ## The map
 
-```mermaid
-%%{init: {"flowchart": {"nodeSpacing": 45, "rankSpacing": 55, "curve": "basis"}}}%%
-flowchart TB
-  subgraph shell["cora.frontends.streamlit"]
-    ui["UI<br/><i>Streamlit widgets</i>"]
-  end
+![cora as ports and adapters: the frontends drive the engine from the left, its nine ports
+bind a technology on the right, and plugins arrive from below.](assets/hexagon-map.svg)
 
-  subgraph wiring["cora.app"]
-    root["Composition root<br/><i>loads plugins, binds ports</i>"]
-  end
-
-  subgraph core["cora.engine"]
-    agent["Agent"]
-    steps["Steps<br/><i>prepare · model · tools</i>"]
-    router["Router<br/><i>one more round, or done</i>"]
-    pset["PluginSet<br/><i>sections · tools · rules</i>"]
-    rt["ToolRuntime"]
-    search["search_documents<br/><i>retrieval as a tool</i>"]
-    remember["remember<br/><i>memory as a tool</i>"]
-    kb["KnowledgeBase"]
-  end
-
-  subgraph seam["cora.ports"]
-    gr{{"GraphRunner"}}
-    cm{{"ChatModel"}}
-    emb{{"Embedder"}}
-    ret{{"Retriever"}}
-    load{{"Loaders"}}
-    mem{{"Memory"}}
-    docs{{"Documents"}}
-    plug{{"Plugin"}}
-  end
-
-  subgraph infra["cora.adapters · cora.plugins"]
-    lg["LangGraphRunner<br/><i>LangGraph</i>"]
-    orc["OpenRouterChatModel<br/><i>LangChain</i>"]
-    ste["SentenceTransformerEmbedder<br/><i>all-MiniLM-L6-v2</i>"]
-    chroma["ChromaRetriever<br/><i>Chroma</i>"]
-    load_reg["load_txt · load_pdf<br/><i>pypdf</i>"]
-    store["SqliteStoreMemory<br/><i>LangGraph store · SQLite</i>"]
-    sqldocs["SqliteDocuments<br/><i>SQLite</i>"]
-    fit["fitness plugin<br/><i>a domain</i>"]
-    sec["security plugin<br/><i>a guard</i>"]
-  end
-
-  ui -->|"answer()"| agent
-  ui -->|"add_file()"| kb
-  ui -->|"recall() · forget()"| mem
-  root ==> agent
-  root ==> kb
-  root ==> pset
-  pset --> plug
-  agent --> gr
-  lg -->|"walks"| steps
-  lg -->|"asks"| router
-  steps --> cm
-  steps -->|"rules"| pset
-  steps --> rt
-  rt --> search
-  rt --> remember
-  remember --> mem
-  steps --> mem
-  search --> kb
-  kb --> emb
-  kb --> ret
-  kb --> load
-  kb --> docs
-  gr -.-> lg
-  cm -.-> orc
-  emb -.-> ste
-  ret -.-> chroma
-  load -.-> load_reg
-  mem -.-> store
-  docs -.-> sqldocs
-  plug -.-> fit
-  plug -.-> sec
-
-  classDef port fill:#8c4b00,stroke:#d98a1f,color:#fff;
-  classDef logic fill:#134e6f,stroke:#1f78b4,color:#fff;
-  class gr,cm,emb,ret,load,mem,docs,plug port;
-  class agent,steps,router,pset,rt,search,remember,kb logic;
-```
-
-Read the map from top to bottom. The frontend (top) calls the engine (middle) through the
-app that wired it. The engine has eight ports. When the app starts, each port is connected to
-one adapter (bottom); the engine does not know which. The one arrow pointing back up is
-`LangGraphRunner` driving the engine's steps: the adapter supplies the graph, the engine
-supplies every step it walks.
+Read the map from the outside in. The outer hexagon is one installed deployment; the inner one
+is the engine and the ports on its edge. **Left** is who calls cora — a frontend, holding the
+engine's own classes, because cora has no driving port: a screen depends on `Agent` and
+`KnowledgeBase` directly. **Right** is what cora calls: every port on the engine's boundary
+has one adapter behind it, and the engine does not know which. **Below** is what a deployment
+adds, arriving through the one port a plugin fills. `cora.app` is the composition root: it
+builds the engine and binds each port once, at startup.
 
 | Mark | Means |
 |---|---|
-| blue box | A part of the engine. It is plain Python, so a test can build it with fakes. |
-| amber hexagon | A port — a slot for one kind of technology. The eight ports are the only way in and out of the engine. |
-| thin arrow | A call made while answering a request. |
-| thick arrow | Built by the composition root when the app starts. |
-| dotted arrow | The adapter behind a port. Every one is an argument to `assemble`, so a different technology is a different argument. |
+| green box | A part of the engine. Plain Python, so a test can build it with fakes. |
+| grey box on the engine's edge | A port — a slot for one kind of technology. The nine ports are the only way in and out of the engine. |
+| orange box | A frontend. It calls the engine; nothing calls it. |
+| blue box | The technology behind a port. |
+| yellow box | A plugin: the domain, or a guard, that a deployment names. |
+| solid arrow | A call made while answering a request, or a binding made at startup. |
+| dashed arrow | The adapter behind a port. |
+
+One arrow runs against the grain: `LangGraphRunner` drives the engine's steps, so the
+adapter supplies the graph and the engine supplies every step it walks.
+
+The map is an overview; the detail is in the tables below. `PluginSet`, `ToolRuntime` and the
+two tools the model may call are parts of the engine the map leaves out to stay readable.
 
 **Ingestion**, the **plugin registry** and the **citation numbering** are real parts of the code.
 To keep the map simple, they are shown inside KnowledgeBase, the composition root, and the
@@ -112,12 +42,14 @@ search tool.
 the same index the uploads were written to. Asking it several ways is the agent's job, and
 the agent does it in the open — one search, one trace step.
 
-A **port** is a fixed slot in the engine for one kind of technology. There are exactly eight:
+A **port** is a fixed slot in the engine for one kind of technology. There are exactly nine:
 one for driving the agent, one for chat, one for embedding, one for retrieval, one for reading
-a file format, one for what the agent keeps about the user, one for the text of a document, and
-one for the plugin. Every one
-of them is an argument to `assemble`, so a different technology goes in a slot without the
-engine or the composition root changing.
+a file format, one for what the agent keeps about the user, one for the text of a document, one
+for the turns of a conversation, and one for the plugin. Seven of the nine are arguments to
+`assemble`, so a different technology goes in a slot without the engine or the composition root
+changing. The other two are not: the loader registry is fixed at the composition root, and a
+plugin arrives in the plugin set. `tests/guards/test_hexagon_map.py` reads the nine off
+`assemble` and fails if the map draws a different set.
 
 Memory is the one optional slot. Leave it out and the agent is offered no `remember` tool and
 told no rule about remembering — an app with no memory cannot quietly forget.
@@ -244,8 +176,8 @@ because the map shows them inside another part.
 
 ## The ports
 
-The eight ports are the only outward surface of the engine. Seven of them describe technology —
-six Protocols and one registry of them. The eighth, **Plugin**, is a frozen **dataclass** (the
+The nine ports are the only outward surface of the engine. Eight of them describe technology —
+seven Protocols and one registry of them. The ninth, **Plugin**, is a frozen **dataclass** (the
 domain — the topic the app is about). So an adapter and a plugin work the same way: each one
 is chosen in one place.
 
@@ -258,6 +190,7 @@ is chosen in one place.
 | **Loaders** | `Mapping[str, Loader]`, each `Loader` a `(data, filename) -> str` | `cora.adapters.loaders.LOADERS` — `.txt` and `.md` read directly, `.pdf` through pypdf. Which formats a deployment accepts is an entry in the registry, not an edit inside ingestion. |
 | **Memory** | `remember(text)`, `recall() -> tuple[Fact, ...]`, `forget(key)`, `clear()` | `SqliteStoreMemory` — LangGraph's SQLite-backed store (the second adapter to use LangGraph, behind a port of its own), one namespace per user, at `CORA_MEMORY_PATH`. `recall()` hands back the newest 100 facts, oldest first. The only optional slot: with nothing bound, the agent is offered no `remember` tool. |
 | **Documents** | `keep(upload, text)`, `read(upload) -> str \| None` | `SqliteDocuments` — one row per upload at `CORA_DOCUMENTS_PATH`, keyed by the hash of the bytes it arrived as, holding the *cleaned* text ingestion chunked. Keyed by the upload rather than the filename because a filename is not a promise: the same name uploaded twice is two documents, and a span measured in the first would read the second. A citation is a span of that text, so the pane can open `[n]` and show the passage in place; without it a number would name a document nobody could read. |
+| **Conversations** | `record(thread_id, turn)`, `turns(thread_id) -> tuple[Turn, ...]`, `sessions() -> tuple[Session, ...]` | `SqliteConversations` — every turn of every conversation, so one can be reopened after the process that ran it has gone. This is not the agent's memory of a thread, which is the runner's checkpointer: it is what a reader comes back to — what was asked, what was answered, and what that answer rested on. `turns` is ordered as the conversation was taken, oldest first; `sessions` newest first, because a list of conversations is read from the top. Optional, like memory: leave it out and a turn is answered and not kept. |
 | **Plugin** | data only: `name`, and any of `instructions`, `tools`, `validation_rules` | none by default — `CORA_PLUGINS` names the set, in order, and takes as many as you like. It is a frozen dataclass, not a class you subclass. |
 
 Set `CORA_DEBUG=1` to wrap the chat, embedding and retrieval ports in a logger

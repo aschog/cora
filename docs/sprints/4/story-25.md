@@ -171,6 +171,25 @@ first one from firing.
       otherwise bury the `stderr` a failing docs test reports. We stay on mkdocs 1.6.1,
       pinned by `uv.lock`
 
+#### The map, redrawn — and the drift it exposed
+
+- [x] `big-picture.md`'s map is the hexagonal drawing: one deployment outside, the engine and
+      its ports inside, who calls cora on the left, what cora calls on the right, what a
+      deployment adds below. A committed SVG rather than inline, because GitHub strips inline
+      `<svg>` and the page is read there too, and Mermaid cannot nest hexagons at all
+- [x] it reads in both themes — the SVG carries its own `prefers-color-scheme` block, since an
+      `<img>`-embedded SVG inherits nothing from the page
+- [x] **the page was wrong about its own ports, and the drawing is what found it.**
+      `Conversations` is a port with `SqliteConversations` behind it, bound by `assemble` since
+      story 18 — and it appeared nowhere on the page: not in the map, not in the count, not in
+      the ports table. Meanwhile the page said *eight* ports and `README.md` said *seven*, and
+      the claim that every one is an argument to `assemble` had stopped being true: `LOADERS`
+      is imported and fixed at `assembly.py:71`. There are **nine**, seven of them arguments
+- [x] the map draws exactly the ports the composition root binds, read off `assemble`'s
+      signature — the guard that would have caught `Conversations` the day it was added
+- [x] the ports table has a row for each of them, `Conversations` included
+- [x] the page shows the map it references, so a renamed asset cannot leave a blank
+
 #### Not on the list, and deliberately
 
 `make docs` and `make docs-serve` have no test of their own: the targets are two lines over
