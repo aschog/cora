@@ -112,6 +112,10 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       → continuous, checked at each merge. Be ready to say what each public service
       accepts, returns and promises. **Stays unticked by design** — it is a standing habit
       with no last increment, so an empty box here reads as "still in force", not "not done".
+      → **story 25** takes the half of this a test can hold: `cora.domain` and `cora.ports`
+      get a generated reference, so a contract that is written is *shown*, and Google's
+      docstring sections become a ruff rule rather than a habit. It requires no docstring
+      and adds none — the prose half stays the standing habit above.
 
 ## Reviewer's optional suggestions
 

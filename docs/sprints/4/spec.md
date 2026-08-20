@@ -161,6 +161,17 @@ marks can only ask *may I run this?*, and choosing between three remembered valu
 them read and ranked, which is the model's work. The card is the React page's; the widget
 page declines on the reader's behalf.
 
+### [25. The contract is read off the code](story-25.md)
+
+`cora.domain` and `cora.ports` get a browsable reference, generated from source rather
+than written: Griffe collects the two packages as an AST, so the build imports nothing and
+the annotations, the dataclass fields and the `CoreError` hierarchy are what the page
+carries. It requires no docstring — the standing rule that names and types are the source
+of truth is what makes these two packages worth generating in the first place — and it
+turns Google's docstring sections into a lint rule for the docstrings that do exist. Built
+and read locally, gated by an integration-marked guard; nothing is published. This is the
+renderer half of the open feedback item on undocumented contracts, not the prose half.
+
 ## Not built this sprint
 
 Planned, cut once the bonus bar was cleared and the hours ran down. None of them is needed
