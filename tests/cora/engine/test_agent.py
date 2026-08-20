@@ -5,7 +5,8 @@ import pytest
 from cora.domain.agent_state import AgentState
 from cora.domain.citations import Citation
 from cora.domain.conversation import Turn
-from cora.domain.errors import GraphRunError, LlmError
+from cora.domain.decision import Decision, Option, Pending, TurnPaused
+from cora.domain.errors import GraphRunError, LlmError, NothingToResumeError
 from cora.domain.trace import ModelDecision, ToolUse, TraceStep
 from cora.engine.agent import Agent
 from cora.ports.chat_model import Piece, TextSink, Written, unheard
@@ -30,13 +31,19 @@ class _StubRunner:
         found: AgentState | None = None,
         then: Exception | None = None,
         writes: tuple[str, ...] = (),
+        waiting: Pending | None = None,
+        after: tuple[AgentState, ...] = (),
     ) -> None:
         self.found = found or {}
         self.states = states
         self.then = then
         self.writes = writes
+        self.waiting = waiting
+        self.after = after
         self.seeded: AgentState | None = None
         self.thread_id: str | None = None
+        self.chosen: str | None = None
+        self.resumes = 0
 
     def run(
         self, state: AgentState, thread_id: str, on_text: TextSink = unheard
@@ -49,6 +56,19 @@ class _StubRunner:
         yield from self.states
         if self.then is not None:
             raise self.then
+
+    def resume(
+        self, answer: str | None, thread_id: str, on_text: TextSink = unheard
+    ) -> Iterator[AgentState]:
+        self.chosen = answer
+        self.resumes += 1
+        self.thread_id = thread_id
+        self.waiting = None
+        yield {**self.found}
+        yield from self.after
+
+    def pending(self, thread_id: str) -> Pending | None:
+        return self.waiting
 
 
 def _traced(*steps: TraceStep) -> AgentState:
@@ -248,3 +268,82 @@ def test_a_turn_that_fails_keeps_the_text_already_written() -> None:
         Agent(runner).answer("why", THREAD, on_text=written.append)
 
     assert written == [Piece("Sleep, ")]
+
+
+# ── a turn that stopped to ask ──
+
+ASKED = "Which bodyweight should I treat as current?"
+QUESTION = "What is my BMR?"
+PARKED = Pending(
+    asked=QUESTION,
+    decision=Decision(
+        question=ASKED,
+        options=(Option(label="77 kg"), Option(label="75 kg", note="February")),
+        decline="Neither",
+    ),
+)
+
+
+def test_a_turn_that_stopped_to_ask_says_so_rather_than_answering() -> None:
+    runner = _StubRunner({"answer": ""}, waiting=PARKED)
+
+    with pytest.raises(TurnPaused) as paused:
+        Agent(runner).answer(QUESTION, THREAD)
+
+    assert paused.value.pending == PARKED
+
+
+def test_a_paused_turn_is_not_reported_as_an_empty_answer() -> None:
+    """The one outcome that would read as a successful turn: a blank answer with
+    citations and a trace, served as though the model had finished."""
+    kept = FakeConversations()
+    runner = _StubRunner(_traced(SEARCHED), waiting=PARKED)
+
+    with pytest.raises(TurnPaused):
+        Agent(runner, kept).answer(QUESTION, THREAD)
+
+    assert kept.turns(THREAD) == (), "a turn with no answer yet is not a turn"
+
+
+def test_a_pause_on_the_first_step_is_a_pause_and_not_a_failed_start() -> None:
+    """A run that parks before any step lands yields once, which is what a runner that
+    walked nothing looks like — and that would apologise instead of asking."""
+    runner = _StubRunner(waiting=PARKED)
+
+    with pytest.raises(TurnPaused):
+        Agent(runner).answer(QUESTION, THREAD)
+
+
+def test_resuming_finishes_the_turn_the_pause_belonged_to() -> None:
+    kept = FakeConversations()
+    runner = _StubRunner(waiting=PARKED, after=({"answer": "1,730 kcal."},))
+
+    result = Agent(runner, kept).resume("75 kg", THREAD)
+
+    assert runner.chosen == "75 kg"
+    assert result.answer == "1,730 kcal."
+    [recorded] = kept.turns(THREAD)
+    assert recorded == Turn(question=QUESTION, result=result), (
+        "the turn is kept under the question that opened it, not under the decision"
+    )
+
+
+def test_declining_resumes_with_nothing_chosen() -> None:
+    runner = _StubRunner(waiting=PARKED, after=({"answer": "Without a weight, then."},))
+
+    Agent(runner).resume(None, THREAD)
+
+    assert runner.chosen is None
+
+
+def test_resuming_a_thread_that_is_waiting_on_nothing_is_refused() -> None:
+    runner = _StubRunner({"answer": "done"})
+
+    with pytest.raises(NothingToResumeError):
+        Agent(runner).resume("75 kg", THREAD)
+
+    assert runner.resumes == 0
+
+
+def test_a_thread_that_never_stopped_is_waiting_on_nothing() -> None:
+    assert Agent(_StubRunner({"answer": "done"})).pending(THREAD) is None

@@ -1,9 +1,7 @@
 import pytest
 
 from cora.domain.errors import ConfigurationError, InputRejectedError
-from cora.engine.memory_tool import REMEMBER_TOOL_NAME
-from cora.engine.plugin_set import CORA_RULES, PluginSet
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.engine.plugin_set import CORA_RULES, RESERVED_TOOL_NAMES, PluginSet
 from fixture_plugins import make_plugin, make_tool
 
 FITNESS = "cora.plugins.fitness"
@@ -70,7 +68,7 @@ def test_two_plugins_offering_one_tool_name_is_a_config_error() -> None:
     assert "bmi" in message
 
 
-@pytest.mark.parametrize("reserved", [SEARCH_TOOL_NAME, REMEMBER_TOOL_NAME])
+@pytest.mark.parametrize("reserved", sorted(RESERVED_TOOL_NAMES))
 def test_a_plugin_taking_a_name_of_coras_own_is_a_config_error(reserved: str) -> None:
     with pytest.raises(ConfigurationError) as excinfo:
         PluginSet(((FITNESS, make_plugin(tools=(make_tool(reserved),))),))

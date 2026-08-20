@@ -82,6 +82,7 @@ afterEach(() => {
   turn.release()
   step.release()
   cleanup()
+  globalThis.sessionStorage?.clear()
 })
 
 beforeEach(() => {
@@ -2239,4 +2240,365 @@ test('an upload that failed in a conversation left behind keeps this one’s not
     await screen.findByText('That upload is larger than the 5 MB cora reads.'),
   ).toBeTruthy()
   expect(screen.getByText('Added “notes.md” — 12 passages.')).toBeTruthy()
+})
+
+
+// ── a question waiting on the reader ──
+
+const DECISION = {
+  question: 'Which bodyweight should I treat as current?',
+  options: [
+    { label: '77 kg', note: 'intake form, 17 Aug' },
+    { label: '75 kg', note: 'coach notes, February' },
+  ],
+  decline: 'Do not use any of them',
+}
+const PAUSED = { asked: 'What is my BMR?', decision: DECISION }
+const WEIGHED = {
+  answer: 'At 75 kg your BMR is about 1,730 kcal.',
+  citations: [],
+  trace: [],
+}
+
+const stream = (...parts: string[]): Response => {
+  const encoder = new TextEncoder()
+  let next = 0
+  return {
+    ok: true,
+    body: {
+      getReader: () => ({
+        cancel: async () => {},
+        read: async () =>
+          next === parts.length
+            ? { done: true, value: undefined }
+            : { done: false, value: encoder.encode(parts[next++]) },
+      }),
+    },
+  } as unknown as Response
+}
+
+type Sent = { path: string; body: Record<string, unknown> }
+
+/** A stream whose last frame is withheld until the test lets it go, so what is asserted
+ *  before that can only be what the page does while a turn is still running. */
+const holding = (gate: { until: Promise<void> }, ...parts: string[]): Response => {
+  const encoder = new TextEncoder()
+  let next = 0
+  return {
+    ok: true,
+    body: {
+      getReader: () => ({
+        cancel: async () => {},
+        read: async () => {
+          if (next === parts.length) return { done: true, value: undefined }
+          if (next === parts.length - 1) await gate.until
+          return { done: false, value: encoder.encode(parts[next++]) }
+        },
+      }),
+    },
+  } as unknown as Response
+}
+
+/** A page whose every turn stops to ask, and whose resume answers. What comes back is
+ *  what the page sent, so a test can say which of the two requests it made. */
+const stopping = (
+  pending: unknown = null,
+  gate?: { until: Promise<void> },
+): Sent[] => {
+  const sent: Sent[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.body && typeof init.body === 'string')
+        sent.push({ path, body: JSON.parse(init.body) })
+      if (path === '/api/ask') return stream(frame('paused', PAUSED))
+      if (path === '/api/resume')
+        return gate
+          ? holding(gate, frame('turn', WEIGHED))
+          : stream(frame('turn', WEIGHED))
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => pending } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  return sent
+}
+
+const askAbout = (question = 'What is my BMR?') => {
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: question },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+}
+
+const card = () => screen.findByRole('group', { name: /Paused/ })
+
+const stopped = async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+  askAbout()
+  return card()
+}
+
+const of = (sent: Sent[], path: string) => sent.filter((each) => each.path === path)
+
+test('a turn that stops to ask draws the question and every way out of it', async () => {
+  stopping()
+
+  const asked = await stopped()
+
+  expect(within(asked).getByText(DECISION.question)).toBeTruthy()
+  expect(within(asked).getByRole('button', { name: /77 kg/ })).toBeTruthy()
+  expect(within(asked).getByRole('button', { name: /75 kg/ })).toBeTruthy()
+  expect(within(asked).getByRole('button', { name: DECISION.decline })).toBeTruthy()
+})
+
+test('an option says where it came from, beside the value itself', async () => {
+  stopping()
+
+  const asked = await stopped()
+
+  expect(within(asked).getByText('coach notes, February')).toBeTruthy()
+})
+
+test('picking an option finishes the turn, and the answer takes the card away', async () => {
+  const sent = stopping()
+  const asked = await stopped()
+
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+
+  expect(await screen.findByText(/1,730 kcal/)).toBeTruthy()
+  expect(of(sent, '/api/resume')[0].body.answer).toBe('75 kg')
+  expect(screen.queryByText(DECISION.question)).toBeNull()
+})
+
+test('the line left behind names what was chosen', async () => {
+  stopping()
+  const asked = await stopped()
+
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+
+  expect(await screen.findByText(/You chose 75 kg/)).toBeTruthy()
+})
+
+test('a card that has been answered is not still called paused', async () => {
+  stopping()
+  const asked = await stopped()
+
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/You chose 75 kg/)
+
+  expect(screen.getByRole('group', { name: /Settled/ })).toBeTruthy()
+  expect(screen.queryByRole('group', { name: /Paused/ })).toBeNull()
+  expect(screen.queryByText(/needs your decision/)).toBeNull()
+})
+
+test('a card put back up is waiting again, and says so', async () => {
+  stopping()
+  const asked = await stopped()
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/You chose 75 kg/)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Change' }))
+
+  expect(await screen.findByRole('group', { name: /Paused/ })).toBeTruthy()
+})
+
+test('choosing none of them is sent as choosing nothing, and still answers', async () => {
+  const sent = stopping()
+  const asked = await stopped()
+
+  fireEvent.click(within(asked).getByRole('button', { name: DECISION.decline }))
+
+  expect(await screen.findByText(/1,730 kcal/)).toBeTruthy()
+  expect(of(sent, '/api/resume')[0].body.answer).toBeNull()
+  expect(screen.getByText(/You chose none of them/)).toBeTruthy()
+})
+
+test('changing a decision puts the options back', async () => {
+  stopping()
+  const asked = await stopped()
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/You chose 75 kg/)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Change' }))
+
+  expect(await screen.findByRole('button', { name: /77 kg/ })).toBeTruthy()
+})
+
+test('picking again after a change asks, rather than answering a turn that has gone on', async () => {
+  const sent = stopping()
+  const asked = await stopped()
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/You chose 75 kg/)
+  fireEvent.click(screen.getByRole('button', { name: 'Change' }))
+
+  fireEvent.click(await screen.findByRole('button', { name: /77 kg/ }))
+
+  await waitFor(() => expect(of(sent, '/api/ask')).toHaveLength(2))
+  expect(of(sent, '/api/resume')).toHaveLength(1)
+  expect(of(sent, '/api/ask')[1].body.question).toBe('Use 77 kg instead.')
+})
+
+test('a card left open comes back when the page does', async () => {
+  stopping(PAUSED)
+  await stopped()
+
+  cleanup()
+  render(<App />)
+
+  expect(await screen.findByText(DECISION.question)).toBeTruthy()
+})
+
+test('a card the conversation moved past does not come back', async () => {
+  stopping(null)
+  const asked = await stopped()
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/1,730 kcal/)
+
+  cleanup()
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  expect(screen.queryByText(DECISION.question)).toBeNull()
+})
+
+test('the composer says why it is unavailable while a card waits', async () => {
+  stopping()
+  const asked = await stopped()
+
+  expect(screen.getByText(/waiting on the decision/)).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Ask' })).toHaveProperty('disabled', true)
+
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/1,730 kcal/)
+
+  expect(screen.queryByText(/waiting on the decision/)).toBeNull()
+})
+
+test('a card arriving brings the conversation down to it', async () => {
+  stopping()
+  render(<App />)
+  await screen.findByText('notes.md')
+  const scroller = document.querySelector('.scroller') as HTMLElement
+  atTheBottom(scroller)
+
+  askAbout()
+  await card()
+
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
+})
+
+
+test('a resume in the conversation on screen is not called work you left behind', async () => {
+  /* The note is about a question running in a conversation the reader is no longer in.
+     A resume has no entry in flight to name its thread, and saying it of the turn on
+     screen tells them to wait for it under SESSIONS, where it will never appear. */
+  const gate = held()
+  stopping(null, gate)
+  const asked = await stopped()
+
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await flushed()
+
+  expect(screen.queryByText(/conversation you left/)).toBeNull()
+
+  gate.release()
+  expect(await screen.findByText(/1,730 kcal/)).toBeTruthy()
+})
+
+test('an answer to a decision does not land on the conversation the reader moved to', async () => {
+  /* Ids repeat across conversations — every reopened thread numbers its turns from -1 —
+     so a restored card and another conversation's first turn can carry the same one. */
+  const gate = held()
+  stopping(PAUSED, gate)
+  await stopped()
+
+  cleanup()
+  render(<App />)
+  const restored = await screen.findByRole('group', { name: /Paused/ })
+  fireEvent.click(within(restored).getByRole('button', { name: /75 kg/ }))
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  gate.release()
+  await flushed()
+
+  expect(screen.getByText(OLDER.result.answer)).toBeTruthy()
+  expect(screen.queryByText(/1,730 kcal/)).toBeNull()
+})
+
+test('starting over leaves the parked card behind', async () => {
+  stopping(PAUSED)
+  await stopped()
+
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  await flushed()
+  cleanup()
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  expect(screen.queryByText(DECISION.question)).toBeNull()
+})
+
+
+test('a card parked in an unrecorded conversation is not lost by reading another', async () => {
+  /* A thread parked on its *first* question has answered nothing, so it is listed under
+     no session: forgetting it while reading a different conversation would leave the
+     card reachable by no route at all. */
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return stream(frame('paused', PAUSED))
+      // Only the parked conversation is waiting on anything; the older one is not.
+      if (path === '/api/sessions/old/pending')
+        return { ok: true, json: async () => null } as unknown as Response
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => PAUSED } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  await stopped()
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+
+  cleanup()
+  render(<App />)
+
+  expect(await screen.findByText(DECISION.question)).toBeTruthy()
+})
+
+test('a decision that could not be sent is still answerable, and says what went wrong', async () => {
+  const sent: Sent[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.body && typeof init.body === 'string')
+        sent.push({ path, body: JSON.parse(init.body) })
+      if (path === '/api/ask') return stream(frame('paused', PAUSED))
+      if (path === '/api/resume')
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({ error: 'cora is having a moment.' }),
+        } as unknown as Response
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => PAUSED } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  const asked = await stopped()
+
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+
+  expect(await screen.findByText('cora is having a moment.')).toBeTruthy()
+  expect(screen.queryByText(/You chose 75 kg/)).toBeNull()
+  expect(screen.getByRole('button', { name: /75 kg/ })).toBeTruthy()
+
+  fireEvent.click(screen.getByRole('button', { name: /75 kg/ }))
+
+  await waitFor(() => expect(of(sent, '/api/resume')).toHaveLength(2))
 })

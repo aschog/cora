@@ -151,15 +151,26 @@ the mark the page keeps for an outcome the reader did not ask for — which reve
 own decision, deliberately and on the record. A document added keeps the accent, so success
 does not arrive in an error's clothes.
 
+### [24. cora asks when it cannot tell](story-24.md)
+
+Where memory holds one fact at two or more values and nothing says which is current, cora
+stops rather than guessing: the model calls a tool that raises the question in its own
+words, the run parks in the checkpointer, and the value the reader picks is what the answer
+rests on. This is the human-in-the-loop item below, reshaped — a gate on a step the plugin
+marks can only ask *may I run this?*, and choosing between three remembered values needs
+them read and ranked, which is the model's work. The card is the React page's; the widget
+page declines on the reader's behalf.
+
 ## Not built this sprint
 
 Planned, cut once the bonus bar was cleared and the hours ran down. None of them is needed
 for a task requirement:
 
-- **Human-in-the-loop approval** (pause on a step the plugin marks as needing approval,
-  approve / edit / reject, resume from the pause). LangGraph's `interrupt()` is the whole
-  mechanism; the cost is the UI and the resume path. The most interesting of the five and
-  the first thing to pick up next sprint.
+- **Human-in-the-loop approval on a step the plugin marks** (approve / edit / reject a
+  pending tool call). Story 24 built the pause and the resume path on LangGraph's
+  `interrupt()`, but keyed to the model finding a fork rather than to a mark on a tool: a
+  marked step is a second trigger over the same mechanism, and nothing in the tool, the
+  node or the card would have to learn about it.
 - **Plugin-supplied specialist agents** (delegate to a declared specialist, second one
   costs no core change). The plugin seam is already proven by the shipped plugin's tools,
   prompt, validation rules and seed documents.

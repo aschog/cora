@@ -18,6 +18,20 @@ export type Result = { answer: string; citations: Citation[]; trace: Step[] }
 
 export type Turn = { question: string; result: Result }
 
+export type Option = { label: string; note: string }
+
+/** What cora stopped to have settled, in its own words. */
+export type Decision = { question: string; options: Option[]; decline: string }
+
+/** A turn parked on a decision, with the question that opened it — a paused turn is in
+ *  no store, so this is the only thing the card can be drawn under. */
+export type Pending = { asked: string; decision: Decision }
+
+/** How a turn ends: with an answer, or with a question for the reader. */
+export type Reply = Result | Pending
+
+export const paused = (reply: Reply): reply is Pending => 'decision' in reply
+
 export type Fact = { key: string; text: string }
 
 export type Session = { thread_id: string; opened_with: string }
@@ -80,6 +94,9 @@ export async function upload(file: File): Promise<{ document: string; chunks: nu
  * a round that ended in a tool call — the pieces since the last one are the answer. The
  * turn this resolves with still carries it whole: the pieces are what the reader
  * watches, the whole is what the page keeps.
+ *
+ * A turn that stopped to ask resolves with a `Pending` instead of a `Result`, which is
+ * not a failure: `resume` is what finishes it.
  */
 export async function ask(
   question: string,
@@ -87,12 +104,53 @@ export async function ask(
   onStep: (step: Step) => void,
   onText: (piece: string) => void = () => {},
   onAside: () => void = () => {},
-): Promise<Result> {
-  const response = await fetch('/api/ask', {
+): Promise<Reply> {
+  return streamed(
+    await post('/api/ask', { question, thread_id: thread }),
+    onStep,
+    onText,
+    onAside,
+  )
+}
+
+/**
+ * The rest of a turn that stopped to ask, on the label the reader picked — or on `null`,
+ * which is declining. A second request rather than an answer written back up the first
+ * one: a stream only goes one way, and the pause is parked where the turn was left.
+ */
+export async function resume(
+  thread: string,
+  answer: string | null,
+  onStep: (step: Step) => void,
+  onText: (piece: string) => void = () => {},
+  onAside: () => void = () => {},
+): Promise<Reply> {
+  return streamed(
+    await post('/api/resume', { thread_id: thread, answer }),
+    onStep,
+    onText,
+    onAside,
+  )
+}
+
+/** What a conversation is waiting on, or nothing. A page that arrived after the pause
+ *  has nowhere else to look: the turn is recorded only once it has an answer. */
+export const pending = (thread: string) =>
+  read<Pending | null>(`/api/sessions/${thread}/pending`)
+
+const post = (path: string, body: unknown) =>
+  fetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ question, thread_id: thread }),
+    body: JSON.stringify(body),
   })
+
+async function streamed(
+  response: Response,
+  onStep: (step: Step) => void,
+  onText: (piece: string) => void,
+  onAside: () => void,
+): Promise<Reply> {
   if (!response.ok || !response.body) throw new Error(await failure(response))
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
@@ -110,6 +168,7 @@ export async function ask(
         if (event === 'text') onText((data as { text: string }).text)
         if (event === 'aside') onAside()
         if (event === 'turn') return data as Result
+        if (event === 'paused') return data as Pending
         if (event === 'error') throw new Error((data as { error: string }).error)
       }
     }

@@ -10,10 +10,12 @@ from starlette.testclient import TestClient
 from app_builder import assembled, indexed
 from cora.app.assembly import App
 from cora.domain.errors import LlmError
+from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.validation import MAX_INPUT_CHARS
 from cora.frontends.react.api import (
     MAX_ASK_BYTES,
+    NOT_A_DECISION,
     NOT_A_QUESTION,
     TOO_LONG_TO_ASK,
     api,
@@ -531,3 +533,160 @@ def test_a_turn_that_fails_after_writing_ends_with_the_error() -> None:
 
     assert [name for name, _ in streamed] == ["text", "error"]
     assert streamed[-1][1]["error"] == LlmError().user_message
+
+
+# ── a turn that stops to ask ──
+
+ASKED = "Which bodyweight should I treat as current?"
+STOPPING = ToolCall(
+    name=ASK_TOOL_NAME,
+    arguments={
+        "question": ASKED,
+        "options": [
+            {"label": "77 kg", "note": "intake form, 17 Aug"},
+            {"label": "75 kg", "note": "coach notes, February"},
+        ],
+        "decline": "Neither of them",
+    },
+    call_id="a1",
+)
+WEIGHED = "At 75 kg your BMR is about 1,730 kcal."
+
+
+def _stopping() -> ScriptedChatModel:
+    return ScriptedChatModel([ModelReply(tool_calls=(STOPPING,)), ModelReply(WEIGHED)])
+
+
+def _named(streamed: str) -> list[str]:
+    return [name for name, _ in frames(streamed)]
+
+
+def _carried(streamed: str, event: str) -> list[dict]:
+    return [data for name, data in frames(streamed) if name == event]
+
+
+def test_a_turn_that_stops_to_ask_ends_its_stream_paused() -> None:
+    """Not `turn`: there is no answer yet. A stream that closed with an empty turn would
+    read on the page as cora having replied with nothing."""
+    with TestClient(api(assembled(chat_model=_stopping()))) as reader:
+        streamed = reader.post(
+            "/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"}
+        )
+
+    assert _named(streamed.text)[-1] == "paused"
+    assert "turn" not in _named(streamed.text)
+
+
+def test_the_paused_frame_carries_the_question_and_every_way_out() -> None:
+    with TestClient(api(assembled(chat_model=_stopping()))) as reader:
+        streamed = reader.post(
+            "/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"}
+        )
+
+    [paused] = _carried(streamed.text, "paused")
+    assert paused == {
+        "asked": "What is my BMR?",
+        "decision": {
+            "question": ASKED,
+            "options": [
+                {"label": "77 kg", "note": "intake form, 17 Aug"},
+                {"label": "75 kg", "note": "coach notes, February"},
+            ],
+            "decline": "Neither of them",
+        },
+    }
+
+
+def test_picking_an_option_streams_the_rest_of_the_turn() -> None:
+    app = assembled(chat_model=_stopping())
+    with TestClient(api(app)) as reader:
+        reader.post("/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"})
+        resumed = reader.post(
+            "/api/resume", json={"thread_id": "t1", "answer": "75 kg"}
+        )
+
+    assert resumed.status_code == 200
+    assert resumed.headers["content-type"].startswith("text/event-stream")
+    [turn] = _carried(resumed.text, "turn")
+    assert turn["answer"] == WEIGHED
+
+
+def test_choosing_nothing_still_finishes_the_turn() -> None:
+    app = assembled(chat_model=_stopping())
+    with TestClient(api(app)) as reader:
+        reader.post("/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"})
+        resumed = reader.post("/api/resume", json={"thread_id": "t1", "answer": None})
+
+    [turn] = _carried(resumed.text, "turn")
+    assert turn["answer"] == WEIGHED
+
+
+def test_a_decision_for_a_thread_waiting_on_nothing_is_refused() -> None:
+    """A card clicked twice, or one left open while the conversation moved on: a
+    sentence under a status code, not a stream carrying a failure."""
+    with TestClient(api(assembled(chat_model=_stopping()))) as reader:
+        refused = reader.post(
+            "/api/resume", json={"thread_id": "t1", "answer": "75 kg"}
+        )
+
+    assert refused.status_code == 400
+    assert refused.json()["error"]
+
+
+def test_a_decision_with_no_conversation_is_refused_like_a_question_with_none() -> None:
+    with TestClient(api(assembled(chat_model=_stopping()))) as reader:
+        refused = reader.post("/api/resume", json={"answer": "75 kg"})
+
+    assert refused.status_code == 400
+    assert refused.json() == {"error": NOT_A_DECISION}
+
+
+def test_the_thread_reports_what_it_is_waiting_on() -> None:
+    """A page that reloaded while the card was open has nowhere else to look: the turn
+    is recorded only once it has an answer."""
+    app = assembled(chat_model=_stopping())
+    with TestClient(api(app)) as reader:
+        reader.post("/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"})
+        waiting = reader.get("/api/sessions/t1/pending")
+
+    assert waiting.json()["decision"]["question"] == ASKED
+    assert waiting.json()["asked"] == "What is my BMR?"
+
+
+def test_a_thread_waiting_on_nothing_reports_nothing() -> None:
+    with TestClient(api(assembled(chat_model=_stopping()))) as reader:
+        waiting = reader.get("/api/sessions/t1/pending")
+
+    assert waiting.status_code == 200
+    assert waiting.json() is None
+
+
+def test_a_paused_turn_is_absent_from_the_conversation_until_it_is_answered() -> None:
+    kept = FakeConversations()
+    app = assembled(chat_model=_stopping(), conversations=kept)
+    with TestClient(api(app)) as reader:
+        reader.post("/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"})
+
+        assert reader.get("/api/sessions/t1").json() == []
+
+        reader.post("/api/resume", json={"thread_id": "t1", "answer": "75 kg"})
+
+        [turn] = reader.get("/api/sessions/t1").json()
+        assert turn["question"] == "What is my BMR?"
+        assert turn["result"]["answer"] == WEIGHED
+
+
+def test_a_decision_that_says_nothing_at_all_is_refused() -> None:
+    """`answer` has to be said, even to say nothing. A body that leaves it out reads the
+    same as one that declines, so a client with the field misspelled would quietly tell
+    the model the reader rejected every option."""
+    app = assembled(chat_model=_stopping())
+    with TestClient(api(app)) as reader:
+        reader.post("/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"})
+        refused = reader.post("/api/resume", json={"thread_id": "t1"})
+
+    assert refused.status_code == 400
+    assert refused.json() == {"error": NOT_A_DECISION}
+    assert reader.get("/api/sessions/t1/pending").json() is not None, (
+        "the thread is still waiting, so the card is still answerable"
+    )

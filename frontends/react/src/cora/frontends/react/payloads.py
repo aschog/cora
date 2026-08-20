@@ -10,6 +10,7 @@ from typing import Any
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
+from cora.domain.decision import Decision, Option, Pending
 from cora.domain.trace import ToolUse, TraceStep
 from cora.engine.plugin_set import RESERVED_TOOL_NAMES
 from cora.ports.memory import Fact
@@ -59,6 +60,24 @@ def result(result: ChatResult) -> dict[str, Any]:
 
 def turn(turn: Turn) -> dict[str, Any]:
     return {"question": turn.question, "result": result(turn.result)}
+
+
+def option(option: Option) -> dict[str, Any]:
+    return {"label": option.label, "note": option.note}
+
+
+def decision(decision: Decision) -> dict[str, Any]:
+    return {
+        "question": decision.question,
+        "options": [option(each) for each in decision.options],
+        "decline": decision.decline,
+    }
+
+
+def pending(pending: Pending) -> dict[str, Any]:
+    """A turn parked on a question, with the question that opened it: a paused turn is
+    in no store, so the page has nothing else to draw the card under."""
+    return {"asked": pending.asked, "decision": decision(pending.decision)}
 
 
 def fact(fact: Fact) -> dict[str, Any]:

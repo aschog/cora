@@ -8,13 +8,19 @@ from cora.adapters.langgraph_runner import (
     LangGraphRunner,
     Step,
     checkpointed_types,
+    interrupting,
     langgraph_for,
     recursion_limit_for,
 )
 from cora.domain.agent_state import AgentState
 from cora.domain.chunk import Chunk
 from cora.domain.citations import Citation
-from cora.domain.errors import InputRejectedError, LlmError, ToolLoopLimitError
+from cora.domain.errors import (
+    InputRejectedError,
+    LlmError,
+    NothingToResumeError,
+    ToolLoopLimitError,
+)
 from cora.domain.trace import (
     MemoryUnread,
     ModelDecision,
@@ -22,7 +28,15 @@ from cora.domain.trace import (
     TraceStep,
     step_kinds,
 )
-from cora.engine.steps import ModelStep, PrepareStep, Router, ToolStep
+from cora.engine.ask_tool import ASK_TOOL_NAME
+from cora.engine.steps import (
+    NOTHING_CHOSEN,
+    AskStep,
+    ModelStep,
+    PrepareStep,
+    Router,
+    ToolStep,
+)
 from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import EmptyInputRule
 from cora.ports.chat_model import (
@@ -93,11 +107,16 @@ def _always(step: Step) -> ModelFor:
     return lambda _on_text: step
 
 
+def _nothing(state: AgentState) -> AgentState:
+    return {}
+
+
 def _runner(
     *,
     prepare: Step = _prepare,
     model: ModelFor,
     tools: Step = _ran,
+    ask: Step = _nothing,
     rounds: int = ROUNDS,
     recursion_limit: int | None = None,
 ) -> LangGraphRunner:
@@ -105,6 +124,7 @@ def _runner(
         prepare=prepare,
         model=model,
         tools=tools,
+        ask=ask,
         router=Router(max_tool_rounds=rounds),
         recursion_limit=recursion_limit or recursion_limit_for(rounds),
     )
@@ -112,7 +132,7 @@ def _runner(
 
 def test_the_graph_is_built_from_the_steps_of_a_turn_alone() -> None:
     """`langgraph_for` is the `GraphFor` slot, so what it accepts is the port itself: a
-    fourth step is not something a composition root can hand it."""
+    step the port does not name is not something a composition root can hand it."""
     assert isinstance(
         langgraph_for(
             prepare=_prepare,
@@ -546,3 +566,162 @@ def test_a_run_asked_with_no_sink_takes_the_same_turn() -> None:
     final = _final(_runner(model=_writing("ok")), {"question": "why"})
 
     assert final["answer"] == "ok"
+
+
+def test_a_decision_travels_through_a_checkpoint_as_itself() -> None:
+    """A pause lives in the checkpointer until it is picked up, so the card is only ever
+    as good as the allowlist: an unlisted type comes back a dict on the day LangGraph
+    makes good on refusing what it was not told about."""
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+
+    from cora.domain.decision import Decision, Option
+
+    settled = Decision(
+        question="Which bodyweight should I treat as current?",
+        options=(Option(label="75 kg", note="coach notes, February"),),
+        decline="Neither",
+    )
+    serde = JsonPlusSerializer(allowed_msgpack_modules=checkpointed_types())
+
+    back = serde.loads_typed(serde.dumps_typed(settled))
+
+    assert isinstance(back, Decision)
+    assert back.question == settled.question
+    assert back.decline == settled.decline
+    assert [(option.label, option.note) for option in back.options] == [
+        ("75 kg", "coach notes, February")
+    ], "the options are read back one by one, as a sequence of Options"
+
+
+# ── a run that stops to ask ──
+
+ASKED_AT_THE_NODE = "Which bodyweight should I treat as current?"
+WANTED = "What is my BMR?"
+
+
+def _asks_then_answers(state: AgentState) -> AgentState:
+    if _answered(state):
+        return {"messages": _said("assistant", "done"), "answer": "done"}
+    call = ToolCall(
+        name=ASK_TOOL_NAME,
+        arguments={
+            "question": ASKED_AT_THE_NODE,
+            "options": [{"label": "77 kg"}, {"label": "75 kg", "note": "February"}],
+            "decline": "Neither",
+        },
+        call_id="a1",
+    )
+    return {"messages": [Message(role="assistant", content="", tool_calls=(call,))]}
+
+
+def _stopping(rounds: int = ROUNDS) -> LangGraphRunner:
+    return _runner(
+        model=_always(_asks_then_answers),
+        tools=_nothing,
+        ask=AskStep(pause=interrupting),
+        rounds=rounds,
+    )
+
+
+def _answers(state: AgentState) -> tuple[str, ...]:
+    return tuple(
+        message.content
+        for message in state.get("messages", ())
+        if message.role == "tool"
+    )
+
+
+def test_a_run_that_stops_to_ask_parks_what_it_stopped_on() -> None:
+    """The pause is not something the caller can see go past: the stream simply ends,
+    so what the thread is waiting on has to be read back off the checkpoint."""
+    runner = _stopping()
+
+    list(runner.run({"question": WANTED}, THREAD))
+
+    waiting = runner.pending(THREAD)
+    assert waiting is not None
+    assert waiting.asked == WANTED
+    assert waiting.decision.question == ASKED_AT_THE_NODE
+    assert [option.label for option in waiting.decision.options] == ["77 kg", "75 kg"]
+    assert waiting.decision.decline == "Neither"
+
+
+def test_resuming_hands_the_answer_back_into_the_step_that_asked() -> None:
+    runner = _stopping()
+    list(runner.run({"question": WANTED}, THREAD))
+
+    final = list(runner.resume("75 kg", THREAD))[-1]
+
+    assert final["answer"] == "done"
+    assert _answers(final) == ("75 kg",)
+    assert runner.pending(THREAD) is None, "the thread is waiting on nothing now"
+
+
+def test_declining_arrives_at_the_step_as_nothing_chosen() -> None:
+    runner = _stopping()
+    list(runner.run({"question": WANTED}, THREAD))
+
+    final = list(runner.resume(None, THREAD))[-1]
+
+    assert _answers(final) == (NOTHING_CHOSEN,)
+    assert final["answer"] == "done"
+
+
+def test_resuming_a_thread_with_nothing_parked_is_refused_as_a_core_error() -> None:
+    """A card clicked twice, or one left open while the conversation moved on. The
+    shell already turns a `CoreError` into a sentence; a library error is a
+    traceback."""
+    runner = _stopping()
+
+    with pytest.raises(NothingToResumeError):
+        list(runner.resume("75 kg", THREAD))
+
+
+def test_a_thread_that_never_stopped_is_waiting_on_nothing() -> None:
+    runner = _stopping()
+
+    assert runner.pending(THREAD) is None
+
+
+def test_a_turn_that_stops_to_ask_still_gets_its_whole_round_budget() -> None:
+    """The pause costs a superstep of its own, so a limit sized for rounds alone would
+    make a turn that stopped to check look like a runaway one."""
+    runner = _stopping(rounds=1)
+    list(runner.run({"question": WANTED}, THREAD))
+
+    final = list(runner.resume("75 kg", THREAD))[-1]
+
+    assert final["answer"] == "done"
+
+
+def test_a_turn_that_keeps_asking_is_stopped_by_the_round_budget() -> None:
+    """The pause is visited once a turn, so a limit sized for one ask still holds: a
+    model that asks again is routed to the tools, where the engine's own budget stops
+    it — rather than the graph overrunning a limit that never expected a second."""
+    rounds = 0
+
+    def asks(state: AgentState) -> AgentState:
+        nonlocal rounds
+        rounds += 1
+        call = ToolCall(
+            name=ASK_TOOL_NAME,
+            arguments={
+                "question": "Which bodyweight?",
+                "options": [{"label": "77 kg"}, {"label": "75 kg"}],
+            },
+            call_id=f"a{rounds}",
+        )
+        return {"messages": [Message(role="assistant", content="", tool_calls=(call,))]}
+
+    runner = _runner(
+        model=_always(asks),
+        tools=_nothing,
+        ask=AskStep(pause=interrupting),
+        rounds=2,
+    )
+    list(runner.run({"question": "q"}, THREAD))
+
+    with pytest.raises(ToolLoopLimitError):
+        list(runner.resume("77 kg", THREAD))
+
+    assert rounds == 2, "exactly the rounds the budget allows, and no more"

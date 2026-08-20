@@ -41,39 +41,6 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       (`plugins/security/src/cora/plugins/security/injection.py:6-15`), and nothing scans
       document content at ingest. Story 6 was never built, so this needs a story of its own.
 
-- [x] **No grounding or scope decision** — the prompt asks the model to ground its answer
-      (`plugins/fitness/__init__.py:10`) but nothing enforces or tests it, so an
-      out-of-domain question is answered from model knowledge. Add a tested rule that
-      declines unsupported answers, evaluated against in-domain, out-of-domain and
-      weak-retrieval cases. Also manual finding #6.
-      → own slice, **after story 1**, and story 1 changes nothing here: the instruction
-      already ships in the plugin prompt (`plugins/fitness/__init__.py:10`), which is where
-      domain policy belongs — a plugin whose tools answer without documents must be able to
-      opt out. Enforcement is not unit-sized: against a scripted model the assertion is the
-      script, and "in-domain / out-of-domain / weak-retrieval" is the evaluation set below.
-      Story 1 also makes retrieval a *decision*, so any rule phrased as "no context →
-      refuse" would contradict its second criterion (a greeting is answered without
-      retrieving); it has to be scoped to questions the documents were asked to answer.
-      **Closed in story 8** (`story-08.md`) and **reopened by story 15** (`story-15.md`):
-      the gate that enforced it — a first answer with no search behind it sent back through
-      the model once, against a `scope` the plugin named — is gone, because it was the one
-      branch of the graph that could not be read and defended. What is left is the
-      instruction: `AGENT_RULES` and the fitness plugin's prompt still tell the model to
-      search and cite, and the `llm` tier is what can catch a model ignoring them
-      (`test_llm_acceptance.py:147,178`).
-      → **Decided 2026-08-19: the citation is the grounding evidence, and detection is
-      deliberately not built.** A citation cannot be conjured — the numbers come from
-      passages the search tool returned, so a clickable `[n]` is text that really is in the
-      user's document at those offsets, and a number with no source behind it degrades to
-      plain text rather than offering a source that does not exist
-      (`frontends/react/ui/src/answer.ts:51-62`). What that does not give is a check that an
-      answer *has* citations: an ungrounded answer looks like a legitimately uncited one,
-      because cora is meant to answer a question that needs no documents directly. Closing
-      that gap costs a gate of the kind story 15 removed for being unreadable, or a
-      human-in-the-loop approval step, and neither is worth it against evidence the reader
-      can verify by clicking. Raised twice by review; recorded here as a position rather
-      than left open a third time.
-
 - [x] **Planner JSON is hand-parsed and fails silently** — `parse_plan` scrapes fences and
       braces, and a parse failure falls back to plain search with no signal
       (`core/services/query_planner.py:22-23,56-77`). Use structured output
@@ -400,4 +367,3 @@ Two were referred back rather than fixed here, and say why.
       called it in between. Declared above the stub now. The `ready([0, 12])` ordering was
       left as it is, with the comment saying the order is arbitrary because only the drawing
       is under test.
-

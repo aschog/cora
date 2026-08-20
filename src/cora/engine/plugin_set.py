@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from cora.domain.errors import ConfigurationError
+from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.validation import MAX_INPUT_CHARS, EmptyInputRule, MaxLengthRule
@@ -16,6 +17,7 @@ not here: it is a plugin, and so something a deployment adds."""
 RESERVED_TOOL_NAMES = {
     SEARCH_TOOL_NAME: "document search",
     REMEMBER_TOOL_NAME: "what the agent keeps about the user",
+    ASK_TOOL_NAME: "stopping to ask the user",
 }
 
 

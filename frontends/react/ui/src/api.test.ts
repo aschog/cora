@@ -1,5 +1,13 @@
 import { beforeEach, expect, test, vi } from 'vitest'
-import { ask, forget, forgetEverything } from './api'
+import { ask, forget, forgetEverything, paused } from './api'
+import type { Reply, Result } from './api'
+
+/** A turn that answered. A turn may end with a question for the reader instead, and
+ *  every test here is about one that did not. */
+const replied = (reply: Reply): Result => {
+  if (paused(reply)) throw new Error('the turn stopped to ask')
+  return reply
+}
 
 const answering = (status: number, body?: unknown) =>
   vi.fn(
@@ -65,7 +73,7 @@ test('the body is released once the answer has arrived', async () => {
     }) as unknown as Response),
   )
 
-  const result = await ask('why?', 't1', () => {})
+  const result = replied(await ask('why?', 't1', () => {}))
 
   expect(result.answer).toBe('done')
   expect(released).toBe(true)
@@ -97,12 +105,14 @@ test('an aside is reported, so a client can drop the pieces before it', async ()
   )
   const read: string[] = []
 
-  const result = await ask(
-    'why?',
-    't1',
-    () => {},
-    (piece) => read.push(piece),
-    () => read.push('<aside>'),
+  const result = replied(
+    await ask(
+      'why?',
+      't1',
+      () => {},
+      (piece) => read.push(piece),
+      () => read.push('<aside>'),
+    ),
   )
 
   expect(read).toEqual(['Let me check. ', '<aside>', 'Sleep, not volume.'])
@@ -135,7 +145,9 @@ test('each piece of the answer is reported as it arrives, and the turn still res
   )
   const written: string[] = []
 
-  const result = await ask('why?', 't1', () => {}, (piece) => written.push(piece))
+  const result = replied(
+    await ask('why?', 't1', () => {}, (piece) => written.push(piece)),
+  )
 
   expect(written).toEqual(['Sleep, ', 'not volume.'])
   expect(result.answer).toBe('Sleep, not volume.')
