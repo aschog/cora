@@ -1018,6 +1018,11 @@ button {
   line-height: 1;
 }
 
+/* Nothing is waiting on the reader any more, so the light that said so goes out. */
+.decision-dot.settled {
+  color: var(--n500);
+}
+
 .decision-question {
   margin: 0 0 var(--s3);
   font-size: 16px;

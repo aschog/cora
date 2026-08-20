@@ -105,6 +105,8 @@ real cascade, **(llm)** live model.
 - [x] **(vitest)** an option's note is drawn beside its label
 - [x] **(vitest)** clicking an option resumes the turn, and the answer replaces the card
 - [x] **(vitest)** the resolved line names what was chosen
+- [x] **(vitest)** a card that has been answered is not still called paused, and one put
+      back up is waiting again
 - [x] **(vitest)** declining resumes with nothing chosen
 - [x] **(vitest)** `Change` puts the options back
 - [x] **(vitest)** picking again after `Change` asks a new turn rather than resuming

@@ -2355,6 +2355,29 @@ test('the line left behind names what was chosen', async () => {
   expect(await screen.findByText(/You chose 75 kg/)).toBeTruthy()
 })
 
+test('a card that has been answered is not still called paused', async () => {
+  stopping()
+  const asked = await stopped()
+
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/You chose 75 kg/)
+
+  expect(screen.getByRole('group', { name: /Settled/ })).toBeTruthy()
+  expect(screen.queryByRole('group', { name: /Paused/ })).toBeNull()
+  expect(screen.queryByText(/needs your decision/)).toBeNull()
+})
+
+test('a card put back up is waiting again, and says so', async () => {
+  stopping()
+  const asked = await stopped()
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/You chose 75 kg/)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Change' }))
+
+  expect(await screen.findByRole('group', { name: /Paused/ })).toBeTruthy()
+})
+
 test('choosing none of them is sent as choosing nothing, and still answers', async () => {
   const sent = stopping()
   const asked = await stopped()

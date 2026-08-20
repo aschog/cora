@@ -1,6 +1,7 @@
 import type { Decision } from '../api'
 
 export const WAITING = 'Paused · needs your decision'
+export const SETTLED = 'Settled · your decision'
 export const CHANGE = 'Change'
 export const DECLINED = 'You chose none of them.'
 export const chose = (label: string) => `You chose ${label}.`
@@ -27,13 +28,19 @@ export default function DecisionCard({
   onChange,
 }: Props) {
   const open = chosen === undefined || changing
+  /* What the card is, said once: the head a reader sees and the name a screen reader
+     hears are the same words, and a card that has been answered is not still paused. */
+  const state = open ? WAITING : SETTLED
   return (
-    <div className="decision" role="group" aria-label={WAITING}>
+    <div className="decision" role="group" aria-label={state}>
       <p className="decision-head micro">
-        <span className="decision-dot" aria-hidden="true">
+        <span
+          className={open ? 'decision-dot' : 'decision-dot settled'}
+          aria-hidden="true"
+        >
           ●
         </span>
-        {WAITING}
+        {state}
       </p>
       {open ? (
         <>
