@@ -76,5 +76,5 @@ and the ignore line is what makes it fail.
 
 #### What the repo claims about itself
 
-- [ ] `docs/workflow.md`'s path claims still resolve after the paragraph is rewritten —
+- [x] `docs/workflow.md`'s path claims still resolve after the paragraph is rewritten —
       `test_docs.py` already reads that page
