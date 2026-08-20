@@ -41,7 +41,6 @@ def ingest(
     for a document that was never going to be accepted.
 
     Args:
-        data: The uploaded bytes.
         filename: What the upload was called. Its extension picks the loader, and it is
             named in every refusal.
         loaders: Which extensions this deployment reads, and by what.

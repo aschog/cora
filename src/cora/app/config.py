@@ -164,7 +164,6 @@ def int_setting(env: Mapping[str, str], key: str, default: int, *, minimum: int)
     same way.
 
     Args:
-        env: The environment to read.
         key: The variable's name, quoted back in any refusal.
         default: What the setting is when the variable is unset or blank.
         minimum: The lowest value that means anything. 0 only where the feature reads

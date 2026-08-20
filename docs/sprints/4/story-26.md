@@ -64,12 +64,15 @@ and the ignore line is what makes it fail.
 
 #### What the reference shows once the prose exists
 
-- [ ] **(int)** a `Raises:` section renders as a section, not as preformatted text — the one
+- [x] **(int)** a `Raises:` section renders as a section, not as preformatted text — the one
       thing no annotation carries has to read as structure
-- [ ] **(int)** an `Args:` section naming one parameter of three renders that one, and the
-      other two still show their annotations from the signature
-- [ ] **(int)** a `Protocol`'s page carries the ordering guarantee its docstring states —
+- [x] **(int)** an `Args:` section that leaves a parameter out renders the ones it names, and
+      the one left out still shows its annotation from the signature — `ingest` documents
+      three of four, because `data: bytes` is what an entry could only restate
+- [x] **(int)** a `Protocol`'s page carries the ordering guarantee its docstring states —
       `Conversations.sessions` is newest first, and the page is where an implementer reads it
+- [x] **(int)** the guard that read `ChatResult` as a class with no docstring is renamed:
+      after this story there is no such class in a rendered package
 
 #### What the repo claims about itself
 

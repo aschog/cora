@@ -117,9 +117,6 @@ convention = "google"
 # docstring: the prose would have to be copy-pasted out of `ports/`. Nothing outside
 # `cora` imports an adapter either, so no page renders one.
 "src/cora/adapters/**" = ["D"]
-# The backlog. A rendered package is taken by deleting its line, and the docstrings it
-# owes are written until this gate is green again — so the list says what is left, and no
-# gate stays red waiting for the next package.
 # A plugin is data and a frontend is a shell over `cora.app`; neither is in the reference.
 "plugins/**" = ["D"]
 "frontends/**" = ["D"]
