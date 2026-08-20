@@ -3,6 +3,7 @@ from typing import Protocol
 
 from cora.domain.agent_state import AgentState
 from cora.domain.citations import Citable, Citation
+from cora.domain.decision import Decision
 from cora.domain.errors import AdapterError, ToolLoopLimitError
 from cora.domain.trace import (
     MemoryUnread,
@@ -11,12 +12,14 @@ from cora.domain.trace import (
     TraceStep,
 )
 from cora.domain.transcript import prompt_from
+from cora.engine.ask_tool import ASK_TOOL_NAME, decision_from
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import Aside, ChatModel, Message, TextSink, unheard
-from cora.ports.graph import DONE, TOOLS
+from cora.ports.graph import ASK, DONE, TOOLS
 from cora.ports.memory import Fact, Memory
-from cora.ports.plugin import Tool, ToolCall, ToolResult, ValidationRule
+from cora.ports.pause import Pause, declined
+from cora.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult, ValidationRule
 
 
 class ToolExecutor(Protocol):
@@ -46,6 +49,21 @@ MEMORY_RULE = (
     f"Call the {REMEMBER_TOOL_NAME} tool only when the user asks you to remember "
     'something — "remember that…", "keep this in mind…". Never decide for '
     "yourself that something is worth keeping."
+)
+ASK_RULE = (
+    f"Call the {ASK_TOOL_NAME} tool when what you already know about this user holds "
+    "the same fact at two or more different values, nothing says which is current, and "
+    "the answer depends on it. Offer the values you found, one option each, and say "
+    "where each came from. Ask once, then answer with what you are given — never guess "
+    "which of them was meant."
+)
+ASKED_ALREADY = (
+    "You have already asked this turn. Answer with what you were given rather than "
+    "asking a second time."
+)
+NOTHING_CHOSEN = (
+    "The user chose none of the options. Carry on without one, say what you could not "
+    "settle, and do not ask again."
 )
 REMEMBERED_HEADING = "What you already know about this user:"
 REMEMBERED_NOTICE = (
@@ -87,6 +105,7 @@ class PrepareStep:
             CORA_PREAMBLE,
             AGENT_RULES,
             *((MEMORY_RULE,) if self.memory is not None else ()),
+            ASK_RULE,
             *((self.instructions,) if self.instructions.strip() else ()),
             *_remembered(facts),
         )
@@ -173,15 +192,50 @@ class ToolStep:
 
 
 @dataclass(frozen=True)
+class AskStep:
+    """The one step that can stop the run. It settles the round's `ask_user` call ahead
+    of the round's tools, because a resumed step is replayed from its first line: a tool
+    that had run before the pause would run a second time on the way back."""
+
+    pause: Pause = declined
+
+    def __call__(self, state: AgentState) -> AgentState:
+        call = next(
+            (call for call in _requested_calls(state) if call.name == ASK_TOOL_NAME),
+            None,
+        )
+        if call is None:
+            return {}
+        try:
+            decision = self._decision(state, call)
+        except ToolRefusal as refused:
+            return _settled(call, outcome=str(refused), failed=True)
+        chosen = self.pause(decision)
+        return _settled(
+            call,
+            outcome=chosen if chosen is not None else NOTHING_CHOSEN,
+            failed=False,
+        )
+
+    def _decision(self, state: AgentState, call: ToolCall) -> Decision:
+        if _asks(state) > 1:
+            raise ToolRefusal(ASKED_ALREADY)
+        return decision_from(call.arguments)
+
+
+@dataclass(frozen=True)
 class Router:
     max_tool_rounds: int
 
     def __call__(self, state: AgentState) -> str:
-        if _requested_calls(state):
-            if _rounds(state) >= self.max_tool_rounds:
-                raise ToolLoopLimitError
-            return TOOLS
-        return DONE
+        calls = _requested_calls(state)
+        if not calls:
+            return DONE
+        if any(call.name == ASK_TOOL_NAME for call in calls):
+            return ASK
+        if _rounds(state) >= self.max_tool_rounds:
+            raise ToolLoopLimitError
+        return TOOLS
 
 
 def _remembered(facts: tuple[Fact, ...]) -> tuple[str, ...]:
@@ -194,8 +248,44 @@ def _remembered(facts: tuple[Fact, ...]) -> tuple[str, ...]:
 
 
 def _requested_calls(state: AgentState) -> tuple[ToolCall, ...]:
-    messages = state.get("messages") or []
-    return messages[-1].tool_calls if messages else ()
+    """The round's calls that nothing has answered yet. The last assistant message asked
+    for them and a `tool` message settles one, so a round whose question has already
+    been put to the user arrives at the tools with that call spoken for — and the tools
+    run only what is left of the round."""
+    asked: tuple[ToolCall, ...] = ()
+    answered: set[str] = set()
+    for message in _this_turn(state):
+        if message.role == "assistant":
+            asked, answered = message.tool_calls, set()
+        elif message.tool_call_id is not None:
+            answered.add(message.tool_call_id)
+    return tuple(call for call in asked if call.call_id not in answered)
+
+
+def _asks(state: AgentState) -> int:
+    """How many times this turn has reached for the user, the round in flight included:
+    the count is what stops a model answering a question with another one."""
+    return sum(
+        1
+        for message in _this_turn(state)
+        for call in message.tool_calls
+        if call.name == ASK_TOOL_NAME
+    )
+
+
+def _settled(call: ToolCall, *, outcome: str, failed: bool) -> AgentState:
+    return {
+        "messages": [Message(role="tool", content=outcome, tool_call_id=call.call_id)],
+        "trace": [
+            ToolUse(
+                name=call.name,
+                arguments=call.arguments,
+                outcome=outcome,
+                detail=outcome,
+                failed=failed,
+            )
+        ],
+    }
 
 
 def _this_turn(state: AgentState) -> tuple[Message, ...]:

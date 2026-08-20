@@ -6,6 +6,7 @@ from cora.ports.chat_model import TextSink, unheard
 
 DONE = "done"
 TOOLS = "tools"
+ASK = "ask"
 """What the router can decide, and therefore what a `GraphRunner` has to understand. It
 belongs beside the port for the same reason `AgentState` marks its accumulating keys: a
 graph engine is told the shape and the vocabulary, and imports nothing of the engine to

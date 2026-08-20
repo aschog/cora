@@ -6,6 +6,7 @@ import pytest
 from cora.domain.agent_state import AgentState
 from cora.domain.chunk import Chunk
 from cora.domain.citations import Citation
+from cora.domain.decision import Decision, Option
 from cora.domain.errors import (
     InputRejectedError,
     LlmError,
@@ -13,13 +14,17 @@ from cora.domain.errors import (
     ToolLoopLimitError,
 )
 from cora.domain.trace import ModelDecision, ToolUse
+from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.engine.steps import (
     AGENT_RULES,
+    ASKED_ALREADY,
     CORA_PREAMBLE,
     MEMORY_RULE,
+    NOTHING_CHOSEN,
     REMEMBERED_HEADING,
+    AskStep,
     ModelStep,
     PrepareStep,
     Router,
@@ -28,7 +33,7 @@ from cora.engine.steps import (
 from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import EmptyInputRule
 from cora.ports.chat_model import Aside, Message, ModelReply, Piece, Written
-from cora.ports.graph import DONE, TOOLS
+from cora.ports.graph import ASK, DONE, TOOLS
 from cora.ports.memory import Memory
 from cora.ports.plugin import Tool, ToolCall
 from cora.ports.retrieval import RetrievedChunk
@@ -748,3 +753,141 @@ def test_writing_to_leaves_the_step_it_came_from_writing_nowhere() -> None:
     unbound(_asking())
 
     assert written == [Piece("ok")]
+
+
+# ── stopping to ask ──
+
+ASKED = "Which bodyweight should I treat as current?"
+OFFERED = [{"label": "77 kg"}, {"label": "75 kg", "note": "February"}]
+
+
+def _ask_call(call_id: str = "a1", **arguments: object) -> ToolCall:
+    return ToolCall(
+        name=ASK_TOOL_NAME,
+        arguments={"question": ASKED, "options": OFFERED, **arguments},
+        call_id=call_id,
+    )
+
+
+class _Chosen:
+    """A pause that answers with whatever it was handed, and keeps the decision it was
+    shown so a test can read what the reader would have been asked."""
+
+    def __init__(self, answer: str | None) -> None:
+        self.answer = answer
+        self.shown: Decision | None = None
+
+    def __call__(self, decision: Decision) -> str | None:
+        self.shown = decision
+        return self.answer
+
+
+def test_a_reply_calling_ask_user_routes_to_the_ask() -> None:
+    assert Router(max_tool_rounds=8)(_replied(_ask_call())) == ASK
+
+
+def test_a_reply_asking_beside_another_tool_still_routes_to_the_ask() -> None:
+    """The ask is settled first so that nothing has run when the run parks: on resume
+    the node is replayed from the top, and a tool replayed with it would run twice."""
+    assert Router(max_tool_rounds=8)(_replied(_ask_call(), _add_call("c1"))) == ASK
+
+
+def test_an_ask_does_not_spend_a_tool_round() -> None:
+    """A question is not work the model asked for, so one raised at the budget is still
+    asked — otherwise a turn could be given up on for stopping to check."""
+    assert Router(max_tool_rounds=2)(_replied(_ask_call(), rounds=2)) == ASK
+
+
+def test_the_step_states_the_decision_it_stops_on() -> None:
+    pause = _Chosen("75 kg")
+
+    AskStep(pause=pause)(_asked(_ask_call()))
+
+    assert pause.shown == Decision(
+        question=ASKED,
+        options=(Option(label="77 kg"), Option(label="75 kg", note="February")),
+    )
+
+
+def test_the_label_chosen_comes_back_as_the_answer_to_the_call() -> None:
+    partial = AskStep(pause=_Chosen("75 kg"))(_asked(_ask_call("a7")))
+
+    [message] = partial["messages"]
+    assert (message.role, message.content, message.tool_call_id) == (
+        "tool",
+        "75 kg",
+        "a7",
+    )
+
+
+def test_declining_says_so_rather_than_leaving_the_call_unanswered() -> None:
+    """A tool call with no message after it is a prompt the provider refuses, so the
+    round has to be told that nothing was chosen and carry on without it."""
+    partial = AskStep(pause=_Chosen(None))(_asked(_ask_call("a7")))
+
+    [message] = partial["messages"]
+    assert message.tool_call_id == "a7"
+    assert message.content == NOTHING_CHOSEN
+
+
+def test_a_malformed_ask_is_refused_and_never_reaches_the_reader() -> None:
+    pause = _Chosen("75 kg")
+    unusable = ToolCall(name=ASK_TOOL_NAME, arguments={"question": ASKED}, call_id="a1")
+
+    partial = AskStep(pause=pause)(_asked(unusable))
+
+    [message] = partial["messages"]
+    assert "options" in message.content
+    assert pause.shown is None, "a broken card is never put in front of the reader"
+
+
+def test_a_second_ask_in_one_turn_is_refused_so_a_turn_stops_once() -> None:
+    pause = _Chosen("75 kg")
+    asked_once: AgentState = {
+        "messages": [
+            Message(role="assistant", content="", tool_calls=(_ask_call("a1"),)),
+            Message(role="tool", content="75 kg", tool_call_id="a1"),
+            Message(role="assistant", content="", tool_calls=(_ask_call("a2"),)),
+        ],
+        "turn_start": 0,
+    }
+
+    partial = AskStep(pause=pause)(asked_once)
+
+    [message] = partial["messages"]
+    assert (message.tool_call_id, message.content) == ("a2", ASKED_ALREADY)
+    assert pause.shown is None
+
+
+def test_the_ask_is_traced_with_what_was_asked_and_what_came_back() -> None:
+    partial = AskStep(pause=_Chosen("75 kg"))(_asked(_ask_call()))
+
+    [step] = partial["trace"]
+    assert isinstance(step, ToolUse)
+    assert step.name == ASK_TOOL_NAME
+    assert step.outcome == "75 kg"
+    assert not step.failed
+
+
+def test_a_round_that_asked_runs_only_the_calls_the_ask_left() -> None:
+    """The round arrives at the tools with one call already answered by the step that
+    stopped on it. Running it again would put the same card up twice."""
+    round_asked: AgentState = {
+        "messages": [
+            Message(
+                role="assistant",
+                content="",
+                tool_calls=(_ask_call("a1"), _add_call("c1")),
+            ),
+            Message(role="tool", content="75 kg", tool_call_id="a1"),
+        ],
+        "turn_start": 0,
+    }
+
+    partial = ToolStep(tool_runtime=ToolRuntime(tools=(add_tool(),)))(round_asked)
+
+    assert [message.tool_call_id for message in partial["messages"]] == ["c1"]
+    [used] = partial["trace"]
+    assert used == ToolUse(
+        name="add", arguments={"a": 1, "b": 2}, outcome="3", detail="3"
+    )
