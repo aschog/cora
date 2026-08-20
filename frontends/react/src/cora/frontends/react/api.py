@@ -25,12 +25,14 @@ from starlette.routing import Match, Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from cora.app.assembly import App
-from cora.domain.errors import AdapterError, CoreError
+from cora.domain.chat_result import ChatResult
+from cora.domain.decision import TurnPaused
+from cora.domain.errors import AdapterError, CoreError, NothingToResumeError
 from cora.domain.trace import TraceStep
 from cora.engine.ingestion import DEFAULT_MAX_BYTES
 from cora.engine.validation import MAX_INPUT_CHARS
 from cora.frontends.react import payloads
-from cora.ports.chat_model import Piece, Written
+from cora.ports.chat_model import Piece, TextSink, Written
 
 log = logging.getLogger(__name__)
 
@@ -65,9 +67,11 @@ def api(
         Route("/api/documents", _documents(app), methods=["GET"]),
         Route("/api/documents", _ingest(app), methods=["POST"]),
         Route("/api/ask", _ask(app), methods=["POST"]),
+        Route("/api/resume", _resume(app), methods=["POST"]),
         Route("/api/uploads/{upload}", _upload(app), methods=["GET"]),
         Route("/api/sessions", _sessions(app), methods=["GET"]),
         Route("/api/sessions/{thread_id}", _turns(app), methods=["GET"]),
+        Route("/api/sessions/{thread_id}/pending", _pending(app), methods=["GET"]),
         Route("/api/memory", _memory(app), methods=["GET"]),
         Route("/api/memory", _clear(app), methods=["DELETE"]),
         Route("/api/memory/{key}", _forget(app), methods=["DELETE"]),
@@ -203,6 +207,7 @@ MAX_ASK_BYTES = MAX_INPUT_CHARS * ESCAPED_CHARACTER_BYTES + 1024
 around the two. Whether the question is too long is the engine's rule — this is only how
 much cora reads to find out."""
 TOO_LONG_TO_ASK = "That question is longer than cora reads."
+NOT_A_DECISION = "A decision needs the conversation it belongs to."
 WENT_WRONG = "Something went wrong answering that. Please try again."
 """What an unmodelled failure says. A `CoreError` was written to be read by whoever
 asked; anything else was not, so its text goes to the log and the reader gets a sentence
@@ -244,29 +249,70 @@ def _ask(app: App) -> Callable[[Request], Any]:
         question, thread_id = asked.get("question"), asked.get("thread_id")
         if not _said(question) or not _said(thread_id):
             return JSONResponse({"error": NOT_A_QUESTION}, status_code=REFUSED)
-        events: asyncio.Queue[str | None] = asyncio.Queue()
-        loop = asyncio.get_running_loop()
-
-        def deliver(event: str | None) -> None:
-            """The worker's only reach into the loop. A page closed mid-turn takes the
-            loop with it in tests and at shutdown; the turn is then simply unheard."""
-            with contextlib.suppress(RuntimeError):
-                loop.call_soon_threadsafe(events.put_nowait, event)
-
-        turn = threading.Thread(
-            target=_run,
-            args=(app, question, thread_id, deliver),
-            daemon=True,
+        return _streaming(
+            lambda report, write: app.agent.answer(question, thread_id, report, write)
         )
 
-        async def body() -> AsyncIterator[str]:
-            turn.start()
-            while (event := await events.get()) is not DONE:
-                yield event
-
-        return StreamingResponse(body(), media_type=STREAM, headers=UNBUFFERED)
-
     return taken
+
+
+def _resume(app: App) -> Callable[[Request], Any]:
+    """The rest of a turn that stopped to ask. A second request rather than an answer
+    written back up the first one: the stream only goes one way, and the pause is parked
+    in the checkpointer, which is what makes picking it up an ordinary turn."""
+
+    async def picked(request: Request) -> Response:
+        body = await _read_within(request, MAX_ASK_BYTES)
+        if body is None:
+            return JSONResponse({"error": TOO_LONG_TO_ASK}, status_code=TOO_LARGE)
+        try:
+            answered = json.loads(body)
+        except ValueError:
+            return JSONResponse({"error": NOT_A_DECISION}, status_code=REFUSED)
+        if not isinstance(answered, dict):
+            return JSONResponse({"error": NOT_A_DECISION}, status_code=REFUSED)
+        thread_id, chosen = answered.get("thread_id"), answered.get("answer")
+        if not _said(thread_id) or not (chosen is None or _said(chosen)):
+            return JSONResponse({"error": NOT_A_DECISION}, status_code=REFUSED)
+        if await run_in_threadpool(app.agent.pending, thread_id) is None:
+            raise NothingToResumeError
+        return _streaming(
+            lambda report, write: app.agent.resume(chosen, thread_id, report, write)
+        )
+
+    return picked
+
+
+def _pending(app: App) -> Callable[[Request], Any]:
+    """What a thread is waiting on, for a page that arrived after the pause. A turn is
+    recorded only once it has an answer, so a reload mid-question finds the card here or
+    nowhere."""
+
+    def waiting(request: Request) -> JSONResponse:
+        parked = app.agent.pending(request.path_params["thread_id"])
+        return JSONResponse(None if parked is None else payloads.pending(parked))
+
+    return waiting
+
+
+def _streaming(turning: "Turning") -> StreamingResponse:
+    events: asyncio.Queue[str | None] = asyncio.Queue()
+    loop = asyncio.get_running_loop()
+
+    def deliver(event: str | None) -> None:
+        """The worker's only reach into the loop. A page closed mid-turn takes the
+        loop with it in tests and at shutdown; the turn is then simply unheard."""
+        with contextlib.suppress(RuntimeError):
+            loop.call_soon_threadsafe(events.put_nowait, event)
+
+    turn = threading.Thread(target=_run, args=(turning, deliver), daemon=True)
+
+    async def body() -> AsyncIterator[str]:
+        turn.start()
+        while (event := await events.get()) is not DONE:
+            yield event
+
+    return StreamingResponse(body(), media_type=STREAM, headers=UNBUFFERED)
 
 
 async def _read_within(request: Request, ceiling: int) -> bytes | None:
@@ -289,12 +335,13 @@ def _said(half: Any) -> bool:
     return isinstance(half, str) and bool(half.strip())
 
 
-def _run(
-    app: App,
-    question: str,
-    thread_id: str,
-    deliver: Callable[[str | None], None],
-) -> None:
+Turning = Callable[[Callable[[TraceStep], None], TextSink], ChatResult]
+"""A turn waiting to be walked: begun, or picked up from where it stopped. Both report
+their steps and write their text the same way, so the stream above is told how to run
+one rather than which of the two it is."""
+
+
+def _run(turning: Turning, deliver: Callable[[str | None], None]) -> None:
     def report(step: TraceStep) -> None:
         deliver(_event("step", payloads.step(step)))
 
@@ -305,8 +352,10 @@ def _run(
             deliver(_event("aside", {}))
 
     try:
-        result = app.agent.answer(question, thread_id, report, write)
+        result = turning(report, write)
         deliver(_event("turn", payloads.result(result)))
+    except TurnPaused as waiting:
+        deliver(_event("paused", payloads.pending(waiting.pending)))
     except CoreError as refused:
         deliver(_event("error", {"error": refused.user_message}))
     except Exception:

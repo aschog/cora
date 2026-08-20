@@ -1,6 +1,5 @@
 """The outer test for story 24."""
 
-import pytest
 from starlette.testclient import TestClient
 
 from app_builder import assembled
@@ -51,7 +50,6 @@ def _of(body: str, name: str) -> list[dict]:
     return [data for event, data in frames(body) if event == name]
 
 
-@pytest.mark.xfail(strict=True, reason="story 24 is in flight")
 def test_a_fact_recalled_three_ways_stops_the_turn_and_the_pick_answers_it() -> None:
     """The criterion: memory holds one fact at three values, cora stops rather than
     guessing, and the value chosen is the one the answer rests on."""
