@@ -9,6 +9,18 @@ use_directory_urls: true
 
 theme:
   name: material
+  # Material otherwise fetches Roboto from fonts.googleapis.com on every page view, so a
+  # site read offline loses its typeface and leaks a request per reader.
+  font: false
+
+# The diagrams are Mermaid fences in the narrative pages, drawn client-side from the
+# vendored copy below rather than from a CDN.
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
 
 nav:
   - Home: index.md
@@ -33,6 +45,13 @@ plugins:
           # Read off the tree rather than the installed package, so the site is built
           # from what the repository holds.
           paths: [src]
+
+# Loaded before Material looks for a diagram, so the global already exists and Material's
+# own `typeof mermaid == "undefined"` fallback — a fetch of mermaid@11 from unpkg — never
+# fires. The version is in the filename because it is the one the diagrams are drawn
+# against, and a silent bump is what this pins.
+extra_javascript:
+  - assets/mermaid-10.2.3.min.js
 
 # Build history and a mockup are in docs/ without being pages of it.
 exclude_docs: |

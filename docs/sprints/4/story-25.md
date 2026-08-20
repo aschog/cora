@@ -41,7 +41,7 @@ breakage.
 
 #### The outer test
 
-- [ ] **(int)** the site builds strict-clean from the tree alone; both narrative pages are
+- [x] **(int)** the site builds strict-clean from the tree alone; both narrative pages are
       in it, and every module of `cora.domain`, `cora.ports`, `cora.engine` and `cora.app`
       has a reference page no one wrote by hand
 
@@ -56,11 +56,21 @@ breakage.
 
 #### It reads with no network (`extra_javascript`, `theme.font`)
 
-- [ ] no built page loads a script, stylesheet, font or image from another host — "built and
+- [x] no built page loads a script, stylesheet, font or image from another host — "built and
       read locally" has to mean it renders with the network off
-- [ ] the vendored Mermaid is 10.2.3, the version the diagrams are written against
-- [ ] all five Mermaid blocks across the two pages survive into the built HTML as diagram
+- [x] the vendored Mermaid is 10.2.3, the version the diagrams are written against, and the
+      version is in the filename so a silent bump cannot pass
+- [x] all five Mermaid blocks across the two pages survive into the built HTML as diagram
       containers rather than as code blocks
+- [x] **(int)** every page with a diagram loads the vendored copy — Material falls back to
+      fetching `mermaid@11` from unpkg when the global is missing, so loading ours is what
+      makes the fallback inert
+
+The guard reads what a *page* references. Material's own bundle carries two conditional
+CDN fallbacks it cannot be configured out of — `mermaid@11` and a `ResizeObserver`
+polyfill — so "no CDN string anywhere in the build" is not a claim any test here can make.
+Both are guarded by a `typeof … == "undefined"` check, and the item above is what keeps the
+first one from firing.
 
 #### One reference page per module, found rather than listed (`docs/api/`)
 

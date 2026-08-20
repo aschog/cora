@@ -6,10 +6,7 @@ import pytest
 
 import workspace
 
-pytestmark = [
-    pytest.mark.integration,
-    pytest.mark.xfail(strict=True, reason="story 25: the diagrams do not render yet"),
-]
+pytestmark = pytest.mark.integration
 
 RENDERED = ("domain", "ports", "engine", "app")
 NARRATIVE = ("big-picture", "happy-path")

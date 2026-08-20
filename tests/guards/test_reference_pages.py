@@ -1,6 +1,4 @@
 import pathlib
-import subprocess
-import sys
 
 import pytest
 
@@ -50,19 +48,6 @@ def test_a_module_gets_a_page_of_its_own(src: pathlib.Path) -> None:
 
 def test_only_the_rendered_packages_get_pages(src: pathlib.Path) -> None:
     assert [name for name in _named(src) if "adapters" in name] == []
-
-
-@pytest.fixture(scope="module")
-def built(tmp_path_factory: pytest.TempPathFactory) -> pathlib.Path:
-    out = tmp_path_factory.mktemp("site")
-    build = subprocess.run(
-        [sys.executable, "-m", "mkdocs", "build", "--strict", "--site-dir", str(out)],
-        cwd=workspace.ROOT,
-        capture_output=True,
-        text=True,
-    )
-    assert build.returncode == 0, build.stderr
-    return out
 
 
 @pytest.mark.integration

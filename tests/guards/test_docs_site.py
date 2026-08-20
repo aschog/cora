@@ -1,16 +1,30 @@
+import pathlib
+import re
 import subprocess
 
+import pytest
 import yaml
 
 import workspace
 
 CONFIG = workspace.ROOT / "mkdocs.yml"
-NARRATIVE = ("big-picture.md", "happy-path.md")
+NARRATIVE = ("big-picture", "happy-path")
+NARRATIVE_PAGES = tuple(f"{name}.md" for name in NARRATIVE)
 NOT_THE_PRODUCT = ("sprints/", "cora_mockup.html", "workflow.md")
 
 
+class _Tolerant(yaml.SafeLoader):
+    """mkdocs writes `!!python/name:` tags that a safe loader refuses; the guards read
+    the config as data and never call what those tags name."""
+
+
+_Tolerant.add_multi_constructor(
+    "tag:yaml.org,2002:python/name:", lambda loader, suffix, node: suffix
+)
+
+
 def _config() -> dict[str, object]:
-    return yaml.safe_load(CONFIG.read_text())
+    return yaml.load(CONFIG.read_text(), Loader=_Tolerant)
 
 
 def _nav_pages(entry: object) -> list[str]:
@@ -25,7 +39,7 @@ def _nav_pages(entry: object) -> list[str]:
 
 def test_both_narrative_pages_are_in_the_nav() -> None:
     pages = _nav_pages(_config()["nav"])
-    assert [name for name in NARRATIVE if name in pages] == list(NARRATIVE)
+    assert [name for name in NARRATIVE_PAGES if name in pages] == list(NARRATIVE_PAGES)
 
 
 def test_build_history_the_mockup_and_the_process_page_are_not_pages() -> None:
@@ -51,3 +65,58 @@ def test_the_nav_names_the_reference_once_and_never_a_module() -> None:
     pages = _nav_pages(_config()["nav"])
     assert "api/" in pages, "the reference section is one entry literate-nav resolves"
     assert [page for page in pages if page.startswith("api/") and page != "api/"] == []
+
+
+MERMAID = workspace.ROOT / "docs" / "assets" / "mermaid-10.2.3.min.js"
+ASSET = re.compile(r"<(?:script|img)[^>]+src=\"([^\"]+)\"|<link[^>]+href=\"([^\"]+)\"")
+
+
+def _asset_urls(page: pathlib.Path) -> list[str]:
+    found = ASSET.findall(page.read_text())
+    return [url for pair in found for url in pair if url]
+
+
+def test_the_vendored_mermaid_is_the_version_the_diagrams_are_written_against() -> None:
+    assert MERMAID.is_file(), "the diagrams are written against Mermaid 10.2.3"
+    assert MERMAID.name in str(_config()["extra_javascript"])
+
+
+@pytest.mark.integration
+def test_no_page_loads_an_asset_from_another_host(built: pathlib.Path) -> None:
+    remote = {
+        url
+        for page in built.rglob("*.html")
+        for url in _asset_urls(page)
+        if url.startswith(("http://", "https://", "//"))
+    }
+    assert remote == set(), "the site has to render with the network off"
+
+
+@pytest.mark.integration
+def test_every_fenced_diagram_becomes_a_diagram_container(built: pathlib.Path) -> None:
+    drawn = {
+        name: (built / name / "index.html").read_text().count('class="mermaid"')
+        for name in NARRATIVE
+    }
+    fenced = {
+        name: (workspace.ROOT / "docs" / name)
+        .with_suffix(".md")
+        .read_text()
+        .count("```mermaid")
+        for name in NARRATIVE
+    }
+    assert drawn == fenced
+
+
+@pytest.mark.integration
+def test_every_page_with_a_diagram_loads_the_vendored_mermaid(
+    built: pathlib.Path,
+) -> None:
+    unvendored = [
+        name
+        for name in NARRATIVE
+        if MERMAID.name not in (built / name / "index.html").read_text()
+    ]
+    assert unvendored == [], (
+        "without the global, Material fetches mermaid@11 from unpkg"
+    )
