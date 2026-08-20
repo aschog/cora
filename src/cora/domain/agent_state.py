@@ -1,3 +1,5 @@
+"""The state one turn of the agent accumulates."""
+
 import operator
 from typing import Annotated, TypedDict
 
@@ -7,17 +9,19 @@ from cora.ports.chat_model import Message
 
 
 class AgentState(TypedDict, total=False):
-    """One conversation's state. Annotated keys accumulate — `messages` is the
-    thread's append-only transcript and `citations` its citation registry, both
-    spanning every turn — while the rest are set once per turn. A step returns only
-    the keys it contributes.
+    """One conversation's state, as it stands part-way through a turn.
+
+    Annotated keys accumulate — `messages` is the thread's append-only transcript and
+    `citations` its citation registry, both spanning every turn — while the rest are set
+    once per turn. A step returns only the keys it contributes.
 
     `turn_start` is where the current turn begins in the transcript: everything a
     turn needs to know about *itself* rather than the conversation — how many model
     calls it has spent — is read from there, so no counter has to be reset and none
     can carry over. `trace_start` is the same mark in the trace, and it is what lets a
     turn picked up after a pause still report every step it took, including the ones
-    taken before it stopped."""
+    taken before it stopped.
+    """
 
     question: str
     messages: Annotated[list[Message], operator.add]

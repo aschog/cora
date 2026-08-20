@@ -1,3 +1,9 @@
+"""How a passage becomes a `[n]` the reader can click, and open.
+
+A citation is handed out once and keeps its number for the life of the conversation, so
+a number the user has seen never moves to another passage.
+"""
+
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -15,9 +21,12 @@ citation the answer rests on are the same thing by construction."""
 
 
 class Nothing(NamedTuple):
-    """What came back when nothing came back, worded twice: `told` is what the model
-    reads, `shown` names the step in the trace the user reads. One sentence cannot do
-    both — the model is being told about the user, the user is being told about cora."""
+    """What came back when nothing came back, worded twice.
+
+    `told` is what the model reads, `shown` names the step in the trace the user reads.
+    One sentence cannot do both — the model is being told about the user, the user is
+    being told about cora.
+    """
 
     told: str
     shown: str
@@ -28,13 +37,16 @@ NOTHING_FOUND = Nothing(told=NO_MATCHES, shown=NO_MATCHES)
 
 @dataclass(frozen=True)
 class Citation:
-    """One passage of one document, numbered. The span is where the passage sits in the
-    cleaned text of `upload` — the document as it arrived that time — so `[n]` can be
-    opened and read rather than merely named: two passages of one document are two
-    citations, and a number the user has been shown never moves to another passage, not
-    even when the same filename is uploaded again with other text in it.
+    """One passage of one document, numbered.
 
-    `document` is the name to show; `upload` is what to read."""
+    The span is where the passage sits in the cleaned text of `upload` — the document as
+    it arrived that time — so `[n]` can be opened and read rather than merely named: two
+    passages of one document are two citations, and a number the user has been shown
+    never moves to another passage, not even when the same filename is uploaded again
+    with other text in it.
+
+    `document` is the name to show; `upload` is what to read.
+    """
 
     number: int
     document: str
@@ -45,17 +57,29 @@ class Citation:
 
 @dataclass(frozen=True)
 class Context:
+    """A block of numbered passages for the model, and the citations it hands out.
+
+    `citations` are only the ones this block added: a passage the conversation has
+    already cited keeps the number it was given then.
+    """
+
     text: str
     citations: tuple[Citation, ...]
 
 
 def cited_numbers(text: str) -> tuple[int, ...]:
+    """The numbers an answer cites, in the order it first cites them, each once."""
     runs = CITATION_RUN.findall(text)
     found = (int(number) for run in runs for number in re.findall(r"\d+", run))
     return tuple(dict.fromkeys(found))
 
 
 def cited(text: str, citations: tuple[Citation, ...]) -> tuple[Citation, ...]:
+    """The citations an answer actually cites, in number order.
+
+    A number the answer cites that nothing was handed out for is dropped: the model
+    inventing `[9]` must not put a ninth source under the answer.
+    """
     by_number = {citation.number: citation for citation in citations}
     found = (by_number[n] for n in cited_numbers(text) if n in by_number)
     return tuple(sorted(found, key=lambda citation: citation.number))
@@ -66,6 +90,20 @@ def build_context_block(
     known: tuple[Citation, ...] = (),
     nothing: Nothing = NOTHING_FOUND,
 ) -> Context:
+    """Number these passages for the model, continuing from the ones already handed out.
+
+    Args:
+        hits: The passages to write into the block, in the order they came back.
+        known: Citations this conversation has already handed out. A passage among them
+            is written under the number it already has, so a number the user has seen
+            keeps pointing where it pointed.
+        nothing: What an empty result means here, worded for the model and for the
+            trace.
+
+    Returns:
+        The block as the model reads it, and the citations this block added — never the
+        ones it reused.
+    """
     if not hits:
         return Context(text=nothing.told, citations=())
     number_of = {_span(citation): citation.number for citation in known}
@@ -99,40 +137,52 @@ def _span(citation: Citation) -> tuple[str, str, int, int]:
 
 
 def _hit_span(hit: RetrievedChunk) -> tuple[str, str, int, int]:
-    """What makes two passages the same passage: the upload, because a span means
-    nothing without the text it was measured in, and the name beside it, because an
-    upload whose hash was never recorded would otherwise pool with every other."""
+    """What makes two passages the same passage.
+
+    The upload, because a span means nothing without the text it was measured in, and
+    the name beside it, because an upload whose hash was never recorded would otherwise
+    pool with every other.
+    """
     chunk = hit.chunk
     return (chunk.upload, chunk.source, chunk.offset, chunk.offset + len(chunk.text))
 
 
 class Citable(ABC):
-    """A tool payload that cites its own material: it takes the citations already
-    handed out, renders itself as a numbered block, and says in one line what it
-    found. Declared by inheritance, not by shape — a plugin payload with a
-    `register` of its own is not citable.
+    """A tool payload that cites its own material.
+
+    It takes the citations already handed out, renders itself as a numbered block, and
+    says in one line what it found. Declared by inheritance, not by shape — a plugin
+    payload with a `register` of its own is not citable.
     """
 
     @abstractmethod
-    def register(self, known: tuple[Citation, ...]) -> Context: ...
+    def register(self, known: tuple[Citation, ...]) -> Context:
+        """Render this payload as a numbered block, continuing from `known`."""
+        ...
 
     @property
     @abstractmethod
-    def summary(self) -> str: ...
+    def summary(self) -> str:
+        """The one line the trace shows for what was found."""
+        ...
 
 
 @dataclass(frozen=True)
 class CitableHits(Citable):
+    """Retrieved passages, citable — what a document search hands back."""
+
     hits: list[RetrievedChunk]
     nothing: Nothing = field(default=NOTHING_FOUND)
     """What an empty result means *here*: a search of a store nothing was uploaded to
     says something a search that merely matched nothing does not."""
 
     def register(self, known: tuple[Citation, ...]) -> Context:
+        """The hits as a numbered block, or this search's own word for nothing."""
         return build_context_block(self.hits, known, self.nothing)
 
     @property
     def summary(self) -> str:
+        """How many passages, from which documents — each document named once."""
         if not self.hits:
             return self.nothing.shown
         sources = dict.fromkeys(hit.chunk.source for hit in self.hits)

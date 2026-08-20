@@ -120,7 +120,6 @@ convention = "google"
 # The backlog. A rendered package is taken by deleting its line, and the docstrings it
 # owes are written until this gate is green again — so the list says what is left, and no
 # gate stays red waiting for the next package.
-"src/cora/domain/**" = ["D"]
 "src/cora/engine/**" = ["D"]
 "src/cora/app/**" = ["D"]
 # A plugin is data and a frontend is a shell over `cora.app`; neither is in the reference.

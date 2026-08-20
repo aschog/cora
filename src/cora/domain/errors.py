@@ -11,6 +11,7 @@ class CoreError(Exception):
     """Base error for all application failures."""
 
     def __init__(self, user_message: str) -> None:
+        """Carry the sentence the user is shown; there is no second, internal one."""
         super().__init__(user_message)
         self.user_message = user_message
 
@@ -18,20 +19,31 @@ class CoreError(Exception):
 class IngestionError(CoreError):
     """A document could not be ingested; the message names the file.
 
-    Subclasses set ``reason`` to describe the specific failure.
+    Subclasses set `reason` to describe the specific failure, and the name reaches the
+    user because a refusal about one upload has to say which.
     """
 
     reason = "the file could not be ingested."
 
     def __init__(self, filename: str) -> None:
+        """Name the file in the message, and keep it for whoever handles the failure."""
         super().__init__(f"Could not process '{filename}': {self.reason}")
         self.filename = filename
 
 
 class UnsupportedFileTypeError(IngestionError):
+    """The file's extension is not one the deployment has a loader for."""
+
     reason = "unsupported file type."
 
     def __init__(self, filename: str, supported: Iterable[str] = ()) -> None:
+        """Say which formats would have worked, when the caller knows them.
+
+        Args:
+            filename: The upload that was refused.
+            supported: The extensions the deployment reads. Omitted, the message says
+                only that the type is unsupported.
+        """
         formats = ", ".join(sorted(supported))
         if formats:
             self.reason = f"unsupported file type (supported: {formats})."
@@ -39,65 +51,106 @@ class UnsupportedFileTypeError(IngestionError):
 
 
 class FileTooLargeError(IngestionError):
+    """The upload is over the size the deployment accepts. Nothing was read."""
+
     reason = "the file is too large."
 
 
 class EmptyDocumentError(IngestionError):
+    """The file was read and held no text — a scan, or a document of images."""
+
     reason = "the document has no readable text."
 
 
 class UnreadableFileError(IngestionError):
+    """The bytes are not the format the extension claims, or are damaged."""
+
     reason = "the file is corrupted or unreadable."
 
 
 class PluginLoadError(CoreError):
+    """A plugin named in the configuration could not be loaded or was refused.
+
+    Raised while the app is being assembled, so a misconfigured deployment fails at
+    startup rather than mid-answer.
+    """
+
     def __init__(self, plugin_name: str, reason: str) -> None:
+        """Name the plugin and why it was refused — both reach the user."""
         super().__init__(f"Plugin '{plugin_name}' could not be loaded: {reason}.")
         self.plugin_name = plugin_name
 
 
 class InputRejectedError(CoreError):
+    """A `ValidationRule` refused what the user sent. The message says what to do."""
+
     pass
 
 
 class ConfigurationError(CoreError):
+    """A setting is missing or unusable, so the app cannot be assembled."""
+
     pass
 
 
 class AdapterError(CoreError):
+    """Something outside cora failed. The class is the category, not a diagnosis.
+
+    Every adapter translates its technology's exceptions into one of these, so nothing
+    from a library reaches a shell — and the original is kept as the cause for the log.
+    """
+
     message = "The document service is temporarily unavailable. Please try again."
 
     def __init__(self) -> None:
+        """Take no message.
+
+        The class is the message, so one category reads alike everywhere it is raised.
+        """
         super().__init__(self.message)
 
 
 class EmbeddingError(AdapterError):
+    """The embedding model could not be loaded or could not run."""
+
     message = "Could not generate embeddings for the document. Please try again."
 
 
 class RetrievalError(AdapterError):
+    """The index could not be reached, read or written."""
+
     message = "The knowledge base is temporarily unavailable. Please try again."
 
 
 class LlmError(AdapterError):
+    """The model gave cora nothing it could use. The subclasses say what went wrong."""
+
     message = "The assistant is temporarily unavailable. Please try again."
 
 
 class LlmTimeoutError(LlmError):
+    """The provider did not answer inside the request timeout."""
+
     message = "The assistant took too long to answer. Please try again."
 
 
 class LlmBusyError(LlmError):
+    """The provider is rate-limiting; the same question may work in a moment."""
+
     message = "The assistant is busy right now. Please try again in a moment."
 
 
 class LlmKeyRejectedError(LlmError):
+    """The provider rejected the key. No retry helps, so the message says so."""
+
     message = (
         "The assistant's API key was rejected. Check OPENROUTER_API_KEY and restart."
     )
 
 
 class LlmConversationTooLongError(LlmError):
+    """The prompt is past the model's context window — the thread, not the question."""
+
     message = (
         "This conversation has grown too long for the assistant to read. Please start "
         "a new one."
@@ -105,6 +158,12 @@ class LlmConversationTooLongError(LlmError):
 
 
 class LlmTruncatedError(LlmError):
+    """The answer stopped at the output limit, so half a sentence arrived.
+
+    A failure rather than a short answer: serving it would present an unfinished
+    sentence as the answer.
+    """
+
     message = (
         "The answer was cut off before it finished. Please try again, or ask for a "
         "shorter answer."
@@ -112,46 +171,68 @@ class LlmTruncatedError(LlmError):
 
 
 class LlmEmptyReplyError(LlmError):
+    """The round asked for no tool and wrote nothing — a turn with no answer in it."""
+
     message = "The assistant sent an empty answer. Please try again."
 
 
 class LlmMalformedToolCallError(LlmError):
-    """A tool call whose arguments never parsed, so the round asked for nothing cora
-    could run. Its own category because the model's prose beside it reads as a final
-    answer, and serving that is an answer resting on work that was never done."""
+    """A tool call whose arguments never parsed, so the round asked for nothing.
+
+    Its own category because the model's prose beside it reads as a final answer, and
+    serving that is an answer resting on work that was never done.
+    """
 
     message = "The assistant garbled what it was trying to do. Please try again."
 
 
 class MemoryStoreError(AdapterError):
+    """What cora remembers about the user could not be read or written."""
+
     message = "What I remember about you is temporarily unavailable. Please try again."
 
 
 class DocumentStoreError(AdapterError):
+    """A document's kept text could not be read or written, so no span can be opened."""
+
     message = "That document is temporarily unavailable. Please try again."
 
 
 class ConversationStoreError(AdapterError):
+    """The record of earlier conversations could not be read or written."""
+
     message = "I could not reach your earlier conversations. Please try again."
 
 
 class GraphRunError(AdapterError):
-    """A runner that walked no step at all: the run cannot be reported on, and a
-    blank answer would read like a successful turn."""
+    """A runner walked no step at all.
+
+    The run cannot be reported on, and a blank answer would read like a successful turn.
+    """
 
     message = "The assistant could not start. Please try again."
 
 
 class NothingToResumeError(CoreError):
-    """A decision was answered for a thread that is not waiting on one — a card clicked
-    twice, or one left open while the conversation moved on."""
+    """A decision was answered for a thread that is not waiting on one.
+
+    A card clicked twice, or one left open while the conversation moved on.
+    """
 
     def __init__(self) -> None:
+        """Say so in one sentence: the thread is still answerable afterwards."""
         super().__init__("There is nothing waiting on your decision.")
 
 
 class ToolLoopLimitError(CoreError):
+    """The turn spent its tool rounds without reaching an answer.
+
+    The budget is what keeps a model that keeps searching from running a turn
+    indefinitely; the question is worth rephrasing rather than repeating.
+    """
+
     def __init__(self) -> None:
+        """Ask for a rephrasing: repeating the question would spend the budget again."""
         super().__init__(
             "Sorry, I couldn't complete your request. Please try rephrasing."
         )
