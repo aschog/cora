@@ -7,6 +7,7 @@ from cora.app.assembly import App
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
+from cora.domain.decision import TurnPaused
 from cora.domain.errors import AdapterError, CoreError
 from cora.domain.trace import TraceStep
 from cora.engine.agent import Agent
@@ -35,6 +36,7 @@ TRACE_LABEL = "How I got there"
 REMEMBER_HEADING = "What I remember"
 NOTHING_REMEMBERED = "Nothing yet — tell me something about yourself."
 NO_SESSIONS = "Conversations you have had will be listed here."
+CHOSE_NOTHING = "cora had a question about this, which this page cannot put to you."
 FORGET_LABEL = "✕"
 CONVERSATION_SHARE = 2
 RAIL_SHARE = 1
@@ -279,9 +281,14 @@ def _answer(agent: Agent, prompt: str, plan: DeltaGenerator) -> None:
     _append_and_show({"role": "user", "content": prompt}, plan)
     taken: list[TraceStep] = []
     live = plan.empty()
+    asked = False
     try:
         with live.container(), st.status(WORKING, expanded=True):
-            result = agent.answer(prompt, st.session_state.thread_id, _watch(taken))
+            try:
+                result = agent.answer(prompt, st.session_state.thread_id, _watch(taken))
+            except TurnPaused:
+                asked = True
+                result = agent.resume(None, st.session_state.thread_id, _watch(taken))
     except CoreError as error:
         live.empty()
         _append_and_show(
@@ -290,6 +297,8 @@ def _answer(agent: Agent, prompt: str, plan: DeltaGenerator) -> None:
         return
     live.empty()
     _append_and_show(_assistant_message(result), plan)
+    if asked:
+        st.info(CHOSE_NOTHING)
 
 
 def _watch(taken: list[TraceStep]) -> Callable[[TraceStep], None]:

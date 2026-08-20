@@ -20,10 +20,12 @@ from cora.domain.errors import (
     PluginLoadError,
     RetrievalError,
 )
+from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.streamlit.chat import (
     APP_NAME,
+    CHOSE_NOTHING,
     NO_SESSIONS,
     NOTHING_REMEMBERED,
     RAIL_PANELS,
@@ -967,3 +969,34 @@ def test_a_session_that_cannot_be_opened_says_so_where_it_was_clicked() -> None:
     assert [error.value for error in _sessions_panel(at).error] == [
         ConversationStoreError().user_message
     ]
+
+
+@pytest.mark.integration
+def test_a_question_cora_cannot_put_to_this_page_is_declined_and_answered() -> None:
+    """This page draws no card, so leaving the turn parked would leave the reader
+    watching a status that never finishes. It declines on their behalf and says so —
+    the answer arrives, and nothing pretends the question was never raised."""
+    model = ScriptedChatModel(
+        [
+            ModelReply(
+                tool_calls=(
+                    ToolCall(
+                        name=ASK_TOOL_NAME,
+                        arguments={
+                            "question": "Which bodyweight is current?",
+                            "options": [{"label": "77 kg"}, {"label": "75 kg"}],
+                        },
+                        call_id="a1",
+                    ),
+                )
+            ),
+            ModelReply(text="Without a weight I can only give you a range."),
+        ]
+    )
+    at = _run_page(_app(model))
+
+    at.chat_input[0].set_value("What is my BMR?").run()
+
+    assert not at.exception
+    assert "Without a weight I can only give you a range." in _visible_text(at)
+    assert [info.value for info in at.info] == [CHOSE_NOTHING]
