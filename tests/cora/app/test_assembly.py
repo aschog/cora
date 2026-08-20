@@ -800,7 +800,7 @@ def test_nothing_is_written_while_the_turn_is_still_waiting() -> None:
                         name=ASK_TOOL_NAME,
                         arguments={
                             "question": "Which bodyweight is current?",
-                            "options": [{"label": "75 kg"}],
+                            "options": [{"label": "77 kg"}, {"label": "75 kg"}],
                         },
                         call_id="a1",
                     ),

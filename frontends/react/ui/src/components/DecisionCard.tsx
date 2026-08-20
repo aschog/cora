@@ -3,6 +3,10 @@ import type { Decision } from '../api'
 export const WAITING = 'Paused · needs your decision'
 export const SETTLED = 'Settled · your decision'
 export const CHANGE = 'Change'
+/** A way out of every card, whether or not the model wrote one. The page has nothing
+ *  else to offer while a card is open, so one with no control on it is a conversation
+ *  the reader cannot leave. */
+export const NO_OPTION = 'None of them'
 export const DECLINED = 'You chose none of them.'
 export const chose = (label: string) => `You chose ${label}.`
 
@@ -57,11 +61,9 @@ export default function DecisionCard({
               </button>
             ))}
           </div>
-          {decision.decline && (
-            <button className="decision-decline" onClick={() => onChoose(null)}>
-              {decision.decline}
-            </button>
-          )}
+          <button className="decision-decline" onClick={() => onChoose(null)}>
+            {decision.decline || NO_OPTION}
+          </button>
         </>
       ) : (
         <p className="decision-resolved">

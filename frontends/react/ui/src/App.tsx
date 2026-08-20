@@ -97,7 +97,10 @@ export default function App() {
   /* Separate from `live`, which is a panel's contents: a conversation left behind is not
      shown the steps of the turn it left, while that request is still the one request cora
      is answering. One value cannot say both. */
-  const [asking, setAsking] = useState(false)
+  /** Which conversation cora is working in, if any. `asking` alone could not say: a
+   *  resume has no entry in flight to name the thread, and the note about a question
+   *  left running is only true when the work is somewhere else. */
+  const [working, setWorking] = useState<string | null>(null)
   const [read, setRead] = useState<string | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
@@ -195,6 +198,7 @@ export default function App() {
   /** Whether there is a conversation to leave: what the header draws, and what `start`
    *  refuses on. */
   const somethingToLeave = conversation.length > 0
+  const asking = working !== null
 
   /** Two different questions about one document. What is *marked* is what this answer
    *  rested on, or a document cited three turns ago accumulates marks until most of it
@@ -262,7 +266,7 @@ export default function App() {
        marks it and the page drops it, rather than reading round boundaries off the shape
        of the steps. */
     let written = ''
-    setAsking(true)
+    setWorking(on)
     setLost(null)
     setLive({ thread: on, steps: taken })
     setTab('STEPS')
@@ -354,7 +358,7 @@ export default function App() {
       setLost({ thread: on, said: `In the conversation you left: ${message(failed)}` })
     } finally {
       setFlight((running) => (running?.entry.id === id ? null : running))
-      setAsking(false)
+      setWorking(null)
       setLive(null)
       refresh()
     }
@@ -364,6 +368,9 @@ export default function App() {
    *  as every load, so a reopen already in flight loses it rather than landing on top of
    *  the new session and taking the reader back. */
   const start = () => {
+    /* The card belonged to the conversation being left, so the page must not be put
+       back into it by the next reload. */
+    forget()
     if (!somethingToLeave) return
     const fresh = newThread()
     loads.current++
@@ -405,11 +412,16 @@ export default function App() {
     const on = thread
     const taken: Step[] = []
     let written = ''
-    const at = (change: (found: Entry) => Entry) =>
+    /* Nothing lands on a conversation the reader left. Ids repeat across
+       conversations — every reopened thread numbers its turns from -1 — so an entry
+       matched by id alone could be somebody else's turn entirely. */
+    const at = (change: (found: Entry) => Entry) => {
+      if (here.current !== on) return
       setEntries((said) =>
         said.map((each) => (each.id === entry.id ? change(each) : each)),
       )
-    setAsking(true)
+    }
+    setWorking(on)
     setLive({ thread: on, steps: taken })
     setTab('STEPS')
     at((found) => ({ ...found, chosen, changing: false, pending: true }))
@@ -441,12 +453,13 @@ export default function App() {
       }
       forget()
       at((found) => ({ ...found, ...reply, pending: false }))
-      setRead((current) => reply.citations[0]?.document ?? current)
+      if (here.current === on)
+        setRead((current) => reply.citations[0]?.document ?? current)
     } catch (failed) {
       forget()
       at((found) => ({ ...found, error: message(failed), pending: false }))
     } finally {
-      setAsking(false)
+      setWorking(null)
       setLive(null)
       refresh()
     }
@@ -551,7 +564,7 @@ export default function App() {
           thread={thread}
           entries={conversation}
           asking={asking}
-          askingElsewhere={asking && flight?.thread !== thread}
+          askingElsewhere={working !== null && working !== thread}
           onAsk={ask}
           onCite={setOpened}
           onDecide={decided}

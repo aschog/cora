@@ -34,6 +34,10 @@ real cascade, **(llm)** live model.
 
 - [x] the schema accepts a question, its options and a decline line
 - [x] an option is a label alone when the model offers no note
+- [x] a fork with one way out of it is refused — the page offers nothing else while a
+      card is open, so a card with one control is a conversation with no way on
+- [x] running the tool says the turn has already asked, which is the only way the
+      dispatcher reaches it
 - [x] a plugin tool named `ask_user` is rejected at assembly rather than silently
       shadowed, as `search_documents` already is
 
@@ -45,6 +49,8 @@ real cascade, **(llm)** live model.
       so the resume replays nothing
 - [x] an ask round does not spend a tool round — a question asked mid-run cannot exhaust
       the budget the answer still needs
+- [x] a turn that has already stopped the reader routes its next ask to the tools
+- [x] an ask that was refused does not spend the turn's question
 
 #### `AskStep`
 
@@ -53,7 +59,8 @@ real cascade, **(llm)** live model.
 - [x] the chosen label comes back as the `ask_user` tool message
 - [x] declining comes back as a tool message saying the reader chose nothing
 - [x] a malformed `ask_user` call comes back as a tool error and never pauses
-- [x] a second ask in the same turn is refused as a tool error — a turn pauses once
+- [x] a label nobody offered counts as choosing nothing — whatever answered the pause
+      came from outside the run
 
 #### `ToolStep`
 
@@ -79,6 +86,8 @@ real cascade, **(llm)** live model.
 - [x] `resume` hands the answer back into the ask node and the run finishes
 - [x] a decline arrives at the ask node as nothing chosen
 - [x] resuming a thread with nothing parked raises a `CoreError`, not a library error
+- [x] a turn that keeps asking is stopped by the round budget, not by the graph
+      overrunning a limit sized for one pause
 
 #### ⇄ Switchover (one commit: the tool is offered and the pause is wired)
 
@@ -114,6 +123,12 @@ real cascade, **(llm)** live model.
 - [x] **(vitest)** a card arriving scrolls the conversation down to it
 - [x] **(vitest)** the composer says why it is unavailable while a card waits, rather than
       going missing from the page
+- [x] **(vitest)** a card the model wrote no way out of still has one
+- [x] **(vitest)** a resume in the conversation on screen is not called work you left
+      behind
+- [x] **(vitest)** an answer to a decision does not land on the conversation the reader
+      moved to — ids repeat across conversations
+- [x] **(vitest)** starting over leaves the parked card behind
 
 #### Close
 

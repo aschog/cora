@@ -692,3 +692,36 @@ def test_a_turn_that_stops_to_ask_still_gets_its_whole_round_budget() -> None:
     final = list(runner.resume("75 kg", THREAD))[-1]
 
     assert final["answer"] == "done"
+
+
+def test_a_turn_that_keeps_asking_is_stopped_by_the_round_budget() -> None:
+    """The pause is visited once a turn, so a limit sized for one ask still holds: a
+    model that asks again is routed to the tools, where the engine's own budget stops
+    it — rather than the graph overrunning a limit that never expected a second."""
+    rounds = 0
+
+    def asks(state: AgentState) -> AgentState:
+        nonlocal rounds
+        rounds += 1
+        call = ToolCall(
+            name=ASK_TOOL_NAME,
+            arguments={
+                "question": "Which bodyweight?",
+                "options": [{"label": "77 kg"}, {"label": "75 kg"}],
+            },
+            call_id=f"a{rounds}",
+        )
+        return {"messages": [Message(role="assistant", content="", tool_calls=(call,))]}
+
+    runner = _runner(
+        model=_always(asks),
+        tools=_nothing,
+        ask=AskStep(pause=interrupting),
+        rounds=2,
+    )
+    list(runner.run({"question": "q"}, THREAD))
+
+    with pytest.raises(ToolLoopLimitError):
+        list(runner.resume("77 kg", THREAD))
+
+    assert rounds == 2, "exactly the rounds the budget allows, and no more"

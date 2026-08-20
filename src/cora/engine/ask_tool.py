@@ -7,8 +7,9 @@ from cora.ports.plugin import Tool, ToolRefusal
 
 ASK_TOOL_NAME = "ask_user"
 NOT_A_DECISION = "invalid arguments: {reason}"
-ANSWERED_BEFORE_ANY_TOOL = (
-    "an ask_user call is settled before the round's tools run, so this never runs"
+ASKED_ALREADY = (
+    "You have already asked this turn. Answer with what you were given rather than "
+    "asking a second time."
 )
 ASK_TOOL_DESCRIPTION = (
     "Ask the user to settle one thing you cannot settle yourself, then wait. Use it "
@@ -28,6 +29,7 @@ ASK_SCHEMA: dict[str, Any] = {
         "options": {
             "type": "array",
             "description": "The ways you found, in the order you would rank them.",
+            "minItems": 2,
             "items": {
                 "type": "object",
                 "properties": {
@@ -73,12 +75,13 @@ def decision_from(arguments: dict[str, Any]) -> Decision:
     )
 
 
-def _answered_before_any_tool(**_: Any) -> str:
-    """The one tool whose work is not its own: the router sends an `ask_user` call to
-    the step that can stop the run, ahead of the round's tools, so the dispatcher never
-    reaches this. It refuses rather than returning, because a value here would mean the
-    pause was skipped."""
-    raise ToolRefusal(ANSWERED_BEFORE_ANY_TOOL)
+def _asked_already(**_: Any) -> str:
+    """The one tool whose work is not its own. The router sends the ask that will stop
+    the run to the step that can stop it, ahead of the round's tools — so the dispatcher
+    reaches this only for an ask that will not: a second one in the same round, or one
+    raised after the reader has already been stopped. Either way what the round needs to
+    hear is why, not that it found an unreachable branch."""
+    raise ToolRefusal(ASKED_ALREADY)
 
 
 def ask_tool() -> Tool:
@@ -86,5 +89,5 @@ def ask_tool() -> Tool:
         name=ASK_TOOL_NAME,
         description=ASK_TOOL_DESCRIPTION,
         parameter_schema=ASK_SCHEMA,
-        run=_answered_before_any_tool,
+        run=_asked_already,
     )

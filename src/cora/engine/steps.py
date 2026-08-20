@@ -57,10 +57,6 @@ ASK_RULE = (
     "where each came from. Ask once, then answer with what you are given — never guess "
     "which of them was meant."
 )
-ASKED_ALREADY = (
-    "You have already asked this turn. Answer with what you were given rather than "
-    "asking a second time."
-)
 NOTHING_CHOSEN = (
     "The user chose none of the options. Carry on without one, say what you could not "
     "settle, and do not ask again."
@@ -211,12 +207,12 @@ class AskStep:
         if call is None:
             return {}
         try:
-            decision = self._decision(state, call)
+            decision = decision_from(call.arguments)
         except ToolRefusal as refused:
             return _settled(
                 call, asked="", said=str(refused), outcome=str(refused), failed=True
             )
-        chosen = self.pause(decision)
+        chosen = _offered(decision, self.pause(decision))
         return _settled(
             call,
             asked=decision.question,
@@ -224,11 +220,6 @@ class AskStep:
             outcome=chosen if chosen is not None else CHOSE_NOTHING,
             failed=False,
         )
-
-    def _decision(self, state: AgentState, call: ToolCall) -> Decision:
-        if _asks(state) > 1:
-            raise ToolRefusal(ASKED_ALREADY)
-        return decision_from(call.arguments)
 
 
 @dataclass(frozen=True)
@@ -239,7 +230,9 @@ class Router:
         calls = _requested_calls(state)
         if not calls:
             return DONE
-        if any(call.name == ASK_TOOL_NAME for call in calls):
+        if any(call.name == ASK_TOOL_NAME for call in calls) and not _already_asked(
+            state
+        ):
             return ASK
         if _rounds(state) >= self.max_tool_rounds:
             raise ToolLoopLimitError
@@ -270,15 +263,27 @@ def _requested_calls(state: AgentState) -> tuple[ToolCall, ...]:
     return tuple(call for call in asked if call.call_id not in answered)
 
 
-def _asks(state: AgentState) -> int:
-    """How many times this turn has reached for the user, the round in flight included:
-    the count is what stops a model answering a question with another one."""
-    return sum(
-        1
-        for message in _this_turn(state)
-        for call in message.tool_calls
-        if call.name == ASK_TOOL_NAME
+def _already_asked(state: AgentState) -> bool:
+    """Whether this turn has stopped the reader once already, which is all it may do.
+    Read off the trace rather than off the calls: an ask that was refused never reached
+    them, and spending the turn's one question on a malformed call would leave cora
+    guessing between the very values it stopped for."""
+    return any(
+        isinstance(step, ToolUse) and step.name == ASK_TOOL_NAME and not step.failed
+        for step in tuple(state.get("trace", ()))[state.get("trace_start", 0) :]
     )
+
+
+def _offered(decision: Decision, chosen: str | None) -> str | None:
+    """Only a label that was on the card counts as a choice. Whatever answered the
+    pause reached the run from outside it, and a value nobody offered would be
+    arbitrary text arriving as a tool result — the one message class a round is not
+    told to distrust."""
+    if chosen is None:
+        return None
+    if any(option.label == chosen for option in decision.options):
+        return chosen
+    return None
 
 
 def _settled(
