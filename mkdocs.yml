@@ -12,6 +12,13 @@ theme:
   # Material otherwise fetches Roboto from fonts.googleapis.com on every page view, so a
   # site read offline loses its typeface and leaks a request per reader.
   font: false
+  # Light or dark as the reader's system asks, with no toggle: a toggle is a preference to
+  # store and a control to explain, and the reader has already stated this one to their OS.
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
 
 # The diagrams are Mermaid fences in the narrative pages, drawn client-side from the
 # vendored copy below rather than from a CDN.

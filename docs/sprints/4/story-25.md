@@ -79,6 +79,14 @@ polyfill — so "no CDN string anywhere in the build" is not a claim any test he
 Both are guarded by a `typeof … == "undefined"` check, and the item above is what keeps the
 first one from firing.
 
+#### Light or dark, as the reader's system asks
+
+- [x] the palette is two entries keyed to `prefers-color-scheme`, light and dark, with no
+      toggle — a toggle is a preference to store and a control to explain, and the reader
+      has already told their OS
+- [x] **(int)** both schemes reach a built page, so the switch happens in the reader's
+      browser rather than at build time
+
 #### One reference page per module, found rather than listed (`docs/api/`)
 
 - [x] every module of the four packages has a generated page, read off the tree — the nav

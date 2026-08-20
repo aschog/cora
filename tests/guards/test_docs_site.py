@@ -180,3 +180,29 @@ def test_the_docs_and_the_app_do_not_want_the_same_port() -> None:
     assert int(served.group(1)) != DEFAULT_PORT, (
         "reading the docs while the app runs must not need one of them stopped"
     )
+
+
+def test_the_site_follows_the_readers_system_theme() -> None:
+    theme = _config()["theme"]
+    assert isinstance(theme, dict)
+    palettes = theme.get("palette")
+    assert isinstance(palettes, list)
+    by_media: dict[str, object] = {}
+    for entry in palettes:
+        assert isinstance(entry, dict)
+        by_media[str(entry.get("media"))] = entry.get("scheme")
+    assert by_media == {
+        "(prefers-color-scheme: light)": "default",
+        "(prefers-color-scheme: dark)": "slate",
+    }
+
+
+@pytest.mark.integration
+def test_both_schemes_reach_the_built_page(built: pathlib.Path) -> None:
+    front = (built / "index.html").read_text()
+    for scheme, media in (
+        ("default", "(prefers-color-scheme: light)"),
+        ("slate", "(prefers-color-scheme: dark)"),
+    ):
+        assert f'data-md-color-scheme="{scheme}"' in front, scheme
+        assert f'data-md-color-media="{media}"' in front, media
