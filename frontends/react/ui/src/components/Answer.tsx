@@ -113,13 +113,16 @@ export default function Answer({
                   onChange={() => onChange(entry)}
                 />
               )}
-              {/* A turn in flight with nothing written yet is the only one that says
-                  it is working: once a word of it exists, that word is the news. A turn
-                  waiting on the reader says neither — the card is what it has to say. */}
-              {waiting(entry) ? null : entry.pending && !entry.answer ? (
-                <p className="working">{WORKING}</p>
-              ) : entry.error ? (
+              {/* What went wrong comes first, because it is the news whatever else the
+                  turn has: a resume that failed leaves a card still waiting, and the
+                  reader has to be told why before they answer it again. A turn in flight
+                  with nothing written yet is the only one that says it is working — once
+                  a word of it exists, that word is the news — and a turn waiting on the
+                  reader says neither, because the card is what it has to say. */}
+              {entry.error ? (
                 <p className="trouble">{entry.error}</p>
+              ) : waiting(entry) ? null : entry.pending && !entry.answer ? (
+                <p className="working">{WORKING}</p>
               ) : (
                 <Written entry={entry} onCite={onCite} />
               )}

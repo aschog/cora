@@ -296,9 +296,8 @@ def _answer(agent: Agent, prompt: str, plan: DeltaGenerator) -> None:
         )
         return
     live.empty()
-    _append_and_show(_assistant_message(result), plan)
-    if asked:
-        st.info(CHOSE_NOTHING)
+    said = _assistant_message(result)
+    _append_and_show({**said, "declined": True} if asked else said, plan)
 
 
 def _watch(taken: list[TraceStep]) -> Callable[[TraceStep], None]:
@@ -330,6 +329,8 @@ def _show(message: ThreadEntry, plan: DeltaGenerator) -> None:
         if "error" in message:
             st.error(message["error"])
         elif message["role"] == "assistant":
+            if message.get("declined"):
+                st.info(CHOSE_NOTHING)
             cited_answer(
                 message["content"],
                 message.get("citations", ()),

@@ -2541,3 +2541,64 @@ test('starting over leaves the parked card behind', async () => {
 
   expect(screen.queryByText(DECISION.question)).toBeNull()
 })
+
+
+test('a card parked in an unrecorded conversation is not lost by reading another', async () => {
+  /* A thread parked on its *first* question has answered nothing, so it is listed under
+     no session: forgetting it while reading a different conversation would leave the
+     card reachable by no route at all. */
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return stream(frame('paused', PAUSED))
+      // Only the parked conversation is waiting on anything; the older one is not.
+      if (path === '/api/sessions/old/pending')
+        return { ok: true, json: async () => null } as unknown as Response
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => PAUSED } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  await stopped()
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+
+  cleanup()
+  render(<App />)
+
+  expect(await screen.findByText(DECISION.question)).toBeTruthy()
+})
+
+test('a decision that could not be sent is still answerable, and says what went wrong', async () => {
+  const sent: Sent[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.body && typeof init.body === 'string')
+        sent.push({ path, body: JSON.parse(init.body) })
+      if (path === '/api/ask') return stream(frame('paused', PAUSED))
+      if (path === '/api/resume')
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({ error: 'cora is having a moment.' }),
+        } as unknown as Response
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => PAUSED } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  const asked = await stopped()
+
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+
+  expect(await screen.findByText('cora is having a moment.')).toBeTruthy()
+  expect(screen.queryByText(/You chose 75 kg/)).toBeNull()
+  expect(screen.getByRole('button', { name: /75 kg/ })).toBeTruthy()
+
+  fireEvent.click(screen.getByRole('button', { name: /75 kg/ }))
+
+  await waitFor(() => expect(of(sent, '/api/resume')).toHaveLength(2))
+})

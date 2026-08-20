@@ -43,6 +43,12 @@ const PARKED = 'cora.parked'
  *  lists only conversations that have answered something. */
 const stow = (thread_id: string) => keep(PARKED, thread_id)
 const forget = () => keep(PARKED, null)
+/** Only this conversation's own card is forgotten. A thread parked on its *first*
+ *  question is recorded nowhere and listed under no session, so clearing the stow while
+ *  reading a different conversation would leave that card reachable by no route at all. */
+const forgetIf = (thread_id: string) => {
+  if (stowed() === thread_id) forget()
+}
 
 const keep = (name: string, value: string | null) => {
   try {
@@ -424,7 +430,13 @@ export default function App() {
     setWorking(on)
     setLive({ thread: on, steps: taken })
     setTab('STEPS')
-    at((found) => ({ ...found, chosen, changing: false, pending: true }))
+    at((found) => ({
+      ...found,
+      chosen,
+      changing: false,
+      pending: true,
+      error: undefined,
+    }))
     try {
       const reply = await cora.resume(
         on,
@@ -456,8 +468,14 @@ export default function App() {
       if (here.current === on)
         setRead((current) => reply.citations[0]?.document ?? current)
     } catch (failed) {
-      forget()
-      at((found) => ({ ...found, error: message(failed), pending: false }))
+      /* Nothing was settled, so the card says nothing was: it goes back to waiting and
+         the stow stays, which is what lets the reader pick again. */
+      at((found) => ({
+        ...found,
+        chosen: undefined,
+        error: message(failed),
+        pending: false,
+      }))
     } finally {
       setWorking(null)
       setLive(null)
@@ -492,7 +510,7 @@ export default function App() {
     /* A payload with no decision in it is not a pause, however it arrived: the card is
        drawn from the decision or not at all. */
     if (!waiting?.decision) {
-      forget()
+      forgetIf(thread_id)
       return
     }
     stow(thread_id)

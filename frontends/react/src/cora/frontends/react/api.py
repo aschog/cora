@@ -272,6 +272,11 @@ def _resume(app: App) -> Callable[[Request], Any]:
         if not isinstance(answered, dict):
             return JSONResponse({"error": NOT_A_DECISION}, status_code=REFUSED)
         thread_id, chosen = answered.get("thread_id"), answered.get("answer")
+        # `answer` must be *said*, even to say nothing: a body that leaves it out reads
+        # the same as one that declines, so a client with a typo in the field silently
+        # tells the model the reader rejected every option.
+        if "answer" not in answered:
+            return JSONResponse({"error": NOT_A_DECISION}, status_code=REFUSED)
         if not _said(thread_id) or not (chosen is None or _said(chosen)):
             return JSONResponse({"error": NOT_A_DECISION}, status_code=REFUSED)
         if await run_in_threadpool(app.agent.pending, thread_id) is None:

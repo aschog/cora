@@ -1000,3 +1000,37 @@ def test_a_question_cora_cannot_put_to_this_page_is_declined_and_answered() -> N
     assert not at.exception
     assert "Without a weight I can only give you a range." in _visible_text(at)
     assert [info.value for info in at.info] == [CHOSE_NOTHING]
+
+
+@pytest.mark.integration
+def test_the_notice_about_a_declined_question_survives_a_redraw() -> None:
+    """Every rerun redraws the thread from what was kept, so a notice drawn beside the
+    script rather than into the thread is gone by the next click, leaving an answer that
+    rests on a declined decision with nothing on the page saying so."""
+    model = ScriptedChatModel(
+        [
+            ModelReply(
+                tool_calls=(
+                    ToolCall(
+                        name=ASK_TOOL_NAME,
+                        arguments={
+                            "question": "Which bodyweight is current?",
+                            "options": [{"label": "77 kg"}, {"label": "75 kg"}],
+                        },
+                        call_id="a1",
+                    ),
+                )
+            ),
+            ModelReply(text="Without a weight I can only give you a range."),
+        ]
+    )
+    at = _run_page(_app(model))
+    at.chat_input[0].set_value("What is my BMR?").run()
+    assert [info.value for info in at.info] == [CHOSE_NOTHING]
+
+    at.run()
+
+    assert not at.exception
+    assert [info.value for info in at.info] == [CHOSE_NOTHING], (
+        "the notice belongs to the turn, not to the run that drew it"
+    )

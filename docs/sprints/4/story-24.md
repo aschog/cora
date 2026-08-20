@@ -95,6 +95,8 @@ real cascade, **(llm)** live model.
 - [x] the assembled agent pauses on a scripted `ask_user` call and answers after a resume
 - [x] `ASK_RULE` reaches the brief, ahead of the facts it governs
 - [x] the Streamlit page declines a pause and shows the answer it produced
+- [x] the notice about a declined question survives a redraw — it belongs to the turn,
+      not to the run that drew it
 
 #### The API
 
@@ -105,6 +107,8 @@ real cascade, **(llm)** live model.
 - [x] a resume with no answer declines and still answers
 - [x] a resume on a thread with nothing parked is refused as a sentence, not a traceback
 - [x] a resume without a thread is refused like a question without one
+- [x] a resume that says nothing at all is refused — leaving the answer out reads the
+      same as declining, and the thread is still answerable afterwards
 - [x] `GET /api/sessions/{thread}/pending` returns the parked decision
 - [x] it returns nothing for a thread with none
 
@@ -129,6 +133,10 @@ real cascade, **(llm)** live model.
 - [x] **(vitest)** an answer to a decision does not land on the conversation the reader
       moved to — ids repeat across conversations
 - [x] **(vitest)** starting over leaves the parked card behind
+- [x] **(vitest)** a card parked in an unrecorded conversation is not lost by reading
+      another — a thread that has answered nothing is listed under no session
+- [x] **(vitest)** a decision that could not be sent is still answerable, and says what
+      went wrong
 
 #### Close
 

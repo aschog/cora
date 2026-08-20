@@ -674,3 +674,19 @@ def test_a_paused_turn_is_absent_from_the_conversation_until_it_is_answered() ->
         [turn] = reader.get("/api/sessions/t1").json()
         assert turn["question"] == "What is my BMR?"
         assert turn["result"]["answer"] == WEIGHED
+
+
+def test_a_decision_that_says_nothing_at_all_is_refused() -> None:
+    """`answer` has to be said, even to say nothing. A body that leaves it out reads the
+    same as one that declines, so a client with the field misspelled would quietly tell
+    the model the reader rejected every option."""
+    app = assembled(chat_model=_stopping())
+    with TestClient(api(app)) as reader:
+        reader.post("/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"})
+        refused = reader.post("/api/resume", json={"thread_id": "t1"})
+
+    assert refused.status_code == 400
+    assert refused.json() == {"error": NOT_A_DECISION}
+    assert reader.get("/api/sessions/t1/pending").json() is not None, (
+        "the thread is still waiting, so the card is still answerable"
+    )
