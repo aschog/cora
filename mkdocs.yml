@@ -45,6 +45,16 @@ plugins:
           # Read off the tree rather than the installed package, so the site is built
           # from what the repository holds.
           paths: [src]
+          options:
+            # A page has to carry the contract where no prose does yet: left at its
+            # default, the handler omits a member without a docstring entirely, so most
+            # of the reference would be blank until story 26 lands.
+            show_if_no_docstring: true
+            show_signature_annotations: true
+            separate_signature: true
+            show_root_heading: true
+            show_symbol_type_heading: true
+            members_order: source
 
 # Loaded before Material looks for a diagram, so the global already exists and Material's
 # own `typeof mermaid == "undefined"` fallback — a fetch of mermaid@11 from unpkg — never

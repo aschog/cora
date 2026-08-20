@@ -88,14 +88,17 @@ first one from firing.
 
 #### What a reference page carries with no docstring present
 
-- [ ] **(int)** a frozen dataclass shows its fields with their annotations —
+- [x] **(int)** a frozen dataclass shows its fields with their annotations —
       `ToolResult.error` reads `str | None`
-- [ ] **(int)** a class carrying no docstring still shows its signature and its fields, so
+- [x] **(int)** a class carrying no docstring still shows its signature and its fields, so
       the site is useful before story 26 lands
-- [ ] **(int)** a `Protocol`'s methods show their signatures — `Retriever.query` is on the
+- [x] **(int)** a `Protocol`'s methods show their signatures — `Retriever.query` is on the
       page
-- [ ] **(int)** an error subclass shows what it inherits, so `errors.py` reads as one
+- [x] **(int)** an error subclass shows what it inherits, so `errors.py` reads as one
       hierarchy rather than twenty unrelated classes
+- [x] **(int)** all four are read off the *rendered* page, with the collapsed source block
+      removed first — every definition's source is on the page, so an assertion that saw it
+      would pass on any rendering at all
 
 #### What the repo claims about itself
 
