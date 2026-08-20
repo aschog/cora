@@ -1,0 +1,23 @@
+# The site is two Diátaxis quadrants: the narrative pages under Understand, written and
+# kept by hand because a diagram of which port is a seam cannot be derived; and the
+# reference under it, generated from source. How-to stays in README.md, the repo's front
+# door, and docs/workflow.md documents the process rather than the product.
+site_name: cora
+site_description: A RAG chatbot grounded in your uploaded documents
+docs_dir: docs
+use_directory_urls: true
+
+theme:
+  name: material
+
+nav:
+  - Home: index.md
+  - Understand:
+      - The map: big-picture.md
+      - A session end to end: happy-path.md
+
+# Build history and a mockup are in docs/ without being pages of it.
+exclude_docs: |
+  sprints/
+  cora_mockup.html
+  workflow.md

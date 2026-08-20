@@ -47,12 +47,12 @@ breakage.
 
 #### The site holds what the repo has, and nothing else (`mkdocs.yml`, `docs/index.md`)
 
-- [ ] `docs/sprints/**` contributes no page — 52 files of build history are not the product
-- [ ] `docs/cora_mockup.html` and `docs/workflow.md` contribute none either: one is a
+- [x] `docs/sprints/**` contributes no page — 52 files of build history are not the product
+- [x] `docs/cora_mockup.html` and `docs/workflow.md` contribute none either: one is a
       mockup, the other documents the process rather than the product
-- [ ] both narrative pages are reachable from the nav
+- [x] both narrative pages are reachable from the nav
 - [ ] `docs/index.md` links every top-level section, so the front page is not a dead end
-- [ ] the built site is not tracked; a generated tree in the repo would be reviewed as source
+- [x] the built site is not tracked; a generated tree in the repo would be reviewed as source
 
 #### It reads with no network (`extra_javascript`, `theme.font`)
 
