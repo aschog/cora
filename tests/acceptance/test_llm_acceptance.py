@@ -24,6 +24,7 @@ from apptest import (
 )
 from cora.app.assembly import App, build
 from cora.app.config import Config
+from cora.domain.decision import TurnPaused
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.streamlit.viewer import OPEN_CITATION
@@ -290,3 +291,42 @@ def test_a_real_model_cites_a_passage_the_reader_can_open(tmp_path: Path) -> Non
     [pane] = mounted_html(at, PANE_COMPONENT)
     [marked] = re.findall(r"<mark[^>]*>(.*?)</mark>", pane, re.DOTALL)
     assert "1.6" in marked, f"the cited passage is not what the pane marked: {pane}"
+
+
+CONFLICTING = (
+    "bodyweight 77 kg, from the intake form on 17 August",
+    "bodyweight 75 kg, from the coach notes in February",
+    "bodyweight 85 kg, from the physio letter",
+)
+NEEDS_A_WEIGHT = "What is my basal metabolic rate?"
+DECIDING = "llm-decision"
+
+
+def test_a_real_model_asks_which_value_to_use_instead_of_picking_one(
+    tmp_path: Path,
+) -> None:
+    """The honest proof that the pause is the model's decision: nothing in the question
+    mentions bodyweight or asks to be asked, and no script offers the options. Three
+    values for one fact are in memory, and the question depends on it — a model that
+    guesses answers straight through, and one that reads them stops."""
+    app = _live_app(tmp_path)
+    assert app.memory is not None
+    for fact in CONFLICTING:
+        app.memory.remember(fact)
+
+    with pytest.raises(TurnPaused) as stopped:
+        app.agent.answer(NEEDS_A_WEIGHT, DECIDING)
+
+    decision = stopped.value.pending.decision
+    offered = " ".join(option.label for option in decision.options)
+    assert {"77", "75", "85"} <= set(re.findall(r"\d+", offered)), (
+        f"the model asked about something other than the three it holds: {decision}"
+    )
+
+    answered = app.agent.resume("75 kg", DECIDING)
+
+    assert answered.answer.strip(), "the resumed turn came back with nothing"
+    rested_on = answered.answer + " ".join(step.summary for step in answered.trace)
+    assert "75" in rested_on, (
+        f"the answer does not rest on the value chosen: {rested_on!r}"
+    )
