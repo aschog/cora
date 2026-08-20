@@ -13,3 +13,8 @@ tiers are in `README.md`.
   Start here.
 - [A session end to end](happy-path.md) — one upload and three questions, drawn as they
   happen.
+
+## Reference
+
+- [Every public name in `cora.domain`, `cora.ports`, `cora.engine` and `cora.app`](api/index.md)
+  — generated from the source, one page per module.

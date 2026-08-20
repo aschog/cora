@@ -5,7 +5,7 @@
 APP := frontends/streamlit/src/cora/frontends/streamlit/streamlit_app.py
 REACT := cora.frontends.react.server
 
-.PHONY: run run-env run-react run-env-react ui ui-build ui-test ui-test-browser
+.PHONY: run run-env run-react run-env-react ui ui-build ui-test ui-test-browser docs docs-serve
 
 # Reads OPENROUTER_API_KEY from the environment.
 run:
@@ -35,3 +35,12 @@ ui-test:
 
 ui-test-browser:
 	cd frontends/react/ui && npm run test:browser
+
+# The docs site — the two narrative pages and a reference generated from the source.
+# `mkdocs.yml` configures it; --strict is what the integration tier runs, so a build that
+# passes here is the one CI checks.
+docs:
+	uv run mkdocs build --strict
+
+docs-serve:
+	uv run mkdocs serve

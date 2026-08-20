@@ -19,6 +19,7 @@ import workspace
 PAGES = (
     "README.md",
     "CLAUDE.md",
+    "docs/index.md",
     "docs/big-picture.md",
     "docs/happy-path.md",
     "docs/workflow.md",

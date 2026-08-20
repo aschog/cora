@@ -51,7 +51,7 @@ breakage.
 - [x] `docs/cora_mockup.html` and `docs/workflow.md` contribute none either: one is a
       mockup, the other documents the process rather than the product
 - [x] both narrative pages are reachable from the nav
-- [ ] `docs/index.md` links every top-level section, so the front page is not a dead end
+- [x] `docs/index.md` links every top-level section, so the front page is not a dead end
 - [x] the built site is not tracked; a generated tree in the repo would be reviewed as source
 
 #### It reads with no network (`extra_javascript`, `theme.font`)
@@ -99,9 +99,20 @@ first one from firing.
 
 #### What the repo claims about itself
 
-- [ ] a backticked `mkdocs.yml` in `README.md` resolves against the tree — `test_docs.py`
-      reads `.py`, `.md`, `.toml` and directories, and the repo now has a `.yml` worth
-      policing
-- [ ] `docs/index.md` joins `test_docs.py`'s `PAGES`, so the front page's path claims are
+- [x] `docs/index.md` joins `test_docs.py`'s `PAGES`, so the front page's path claims are
       checked like every other current page
-- [ ] `README.md` names the site and how to build it, beside the pages it already lists
+- [x] `README.md` names the site, `make docs`, `make docs-serve` and the script that
+      generates the reference — and that last path is what the guard can hold
+- [x] ~~a backticked `mkdocs.yml` in `README.md` resolves against the tree~~ — **not
+      achievable, and the item was wrong.** `test_docs.py` matches a *path*: its regex
+      requires a slash, so a bare filename is invisible to it whatever suffixes are
+      listed. Adding `.yml` to `SUFFIXES` changed nothing and was reverted as dead config
+      — the mutation that renamed `mkdocs.yml` in `README.md` stayed green, which is how
+      this was found. `scripts/gen_reference.py` is the claim the guard does police, and
+      renaming it reds the guard.
+
+#### Not on the list, and deliberately
+
+`make docs` and `make docs-serve` have no test of their own: the targets are two lines over
+`uv run mkdocs`, and the strict build they wrap is what the outer test already runs. A test
+asserting a Makefile line exists would pin the wrapper, not the behaviour.

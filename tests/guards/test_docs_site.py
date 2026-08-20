@@ -120,3 +120,25 @@ def test_every_page_with_a_diagram_loads_the_vendored_mermaid(
     assert unvendored == [], (
         "without the global, Material fetches mermaid@11 from unpkg"
     )
+
+
+def _sections() -> dict[str, list[str]]:
+    nav = _config()["nav"]
+    assert isinstance(nav, list)
+    found: dict[str, list[str]] = {}
+    for entry in nav:
+        if isinstance(entry, dict):
+            for title, under in entry.items():
+                if str(title) != "Home":
+                    found[str(title)] = _nav_pages(under)
+    return found
+
+
+def test_the_front_page_links_every_top_level_section() -> None:
+    front = (workspace.ROOT / "docs" / "index.md").read_text()
+    unlinked = [
+        title
+        for title, pages in _sections().items()
+        if not any(page in front for page in pages)
+    ]
+    assert unlinked == []
