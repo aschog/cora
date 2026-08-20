@@ -2,6 +2,7 @@ from collections.abc import Callable, Iterator
 from typing import Protocol
 
 from cora.domain.agent_state import AgentState
+from cora.domain.decision import Pending
 from cora.ports.chat_model import TextSink, unheard
 
 DONE = "done"
@@ -38,6 +39,19 @@ class GraphRunner(Protocol):
         self, state: AgentState, thread_id: str, on_text: TextSink = unheard
     ) -> Iterator[AgentState]: ...
 
+    def resume(
+        self, answer: str | None, thread_id: str, on_text: TextSink = unheard
+    ) -> Iterator[AgentState]:
+        """The same turn, picked up from where it stopped to ask, with the label the
+        user chose — or nothing, if they declined. Yields as `run` does."""
+        ...
+
+    def pending(self, thread_id: str) -> Pending | None:
+        """What the thread is waiting on, or nothing. A parked run stops yielding rather
+        than saying so, so this is the only way to tell a turn that stopped to ask from
+        one that finished."""
+        ...
+
 
 class GraphFor(Protocol):
     """How a composition root asks for a runner. It has the steps and the router
@@ -51,6 +65,7 @@ class GraphFor(Protocol):
         prepare: Step,
         model: ModelFor,
         tools: Step,
+        ask: Step,
         router: Route,
         max_tool_rounds: int,
     ) -> GraphRunner: ...

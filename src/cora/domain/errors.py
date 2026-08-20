@@ -142,6 +142,14 @@ class GraphRunError(AdapterError):
     message = "The assistant could not start. Please try again."
 
 
+class NothingToResumeError(CoreError):
+    """A decision was answered for a thread that is not waiting on one — a card clicked
+    twice, or one left open while the conversation moved on."""
+
+    def __init__(self) -> None:
+        super().__init__("There is nothing waiting on your decision.")
+
+
 class ToolLoopLimitError(CoreError):
     def __init__(self) -> None:
         super().__init__(

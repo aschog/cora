@@ -19,6 +19,7 @@ from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.engine.steps import (
     AGENT_RULES,
+    ASK_RULE,
     ASKED_ALREADY,
     CORA_PREAMBLE,
     MEMORY_RULE,
@@ -891,3 +892,15 @@ def test_a_round_that_asked_runs_only_the_calls_the_ask_left() -> None:
     assert used == ToolUse(
         name="add", arguments={"a": 1, "b": 2}, outcome="3", detail="3"
     )
+
+
+def test_the_rule_for_when_to_ask_lands_ahead_of_the_facts_it_governs() -> None:
+    """A rule stated after the notes it is about reads as a comment on them rather than
+    as the instruction that decides what happens to them."""
+    partial = _prepare(memory=FakeMemory(("bodyweight 77 kg", "bodyweight 75 kg")))(
+        {"question": "What is my BMR?"}
+    )
+
+    brief = partial["brief"]
+    assert ASK_TOOL_NAME in brief
+    assert brief.index(ASK_RULE) < brief.index(REMEMBERED_HEADING)

@@ -91,6 +91,7 @@ class PrepareStep:
         return {
             "messages": [Message(role="user", content=question)],
             "turn_start": len(state.get("messages", ())),
+            "trace_start": len(state.get("trace", ())),
             "brief": brief,
             "trace": [MemoryUnread()] if unread else [],
             "answer": "",

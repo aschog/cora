@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 
-from cora.adapters.langgraph_runner import langgraph_for
+from cora.adapters.langgraph_runner import interrupting, langgraph_for
 from cora.adapters.loaders import LOADERS
 from cora.app.config import (
     DEFAULT_HISTORY_TURNS,
@@ -11,6 +11,7 @@ from cora.app.config import (
 )
 from cora.app.log_config import enable_debug_logs
 from cora.engine.agent import Agent
+from cora.engine.ask_tool import ask_tool
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.memory_tool import remember_tool
 from cora.engine.plugin_registry import load_plugins
@@ -21,7 +22,7 @@ from cora.engine.port_logging import (
     LoggingRetriever,
 )
 from cora.engine.retrieval_tool import search_tool
-from cora.engine.steps import ModelStep, PrepareStep, Router, ToolStep
+from cora.engine.steps import AskStep, ModelStep, PrepareStep, Router, ToolStep
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
@@ -80,6 +81,7 @@ def assemble(
             chat_model=chat_model, tools=tools, max_history_turns=history_turns
         ).writing_to,
         tools=ToolStep(tool_runtime=ToolRuntime(tools=tools)),
+        ask=AskStep(pause=interrupting),
         router=Router(max_tool_rounds=max_tool_rounds),
         max_tool_rounds=max_tool_rounds,
     )
@@ -113,7 +115,12 @@ def _offered_tools(
     """No memory slot behind the app means no `remember` offered, so the absence is
     visible to the model rather than a tool that quietly forgets."""
     remembering = (remember_tool(memory),) if memory is not None else ()
-    return (search_tool(context_source, top_k), *remembering, *plugins.tools)
+    return (
+        search_tool(context_source, top_k),
+        *remembering,
+        ask_tool(),
+        *plugins.tools,
+    )
 
 
 def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:

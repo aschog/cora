@@ -29,3 +29,15 @@ class Pending:
 
     asked: str
     decision: Decision
+
+
+class TurnPaused(Exception):
+    """Not a failure: the turn stopped to ask, and picking it up again is the caller's
+    to do. Deliberately not a `CoreError` — a shell that catches those to show a
+    sentence must not show this one, because what belongs on the screen is the
+    decision. A caller that handles neither hears about it loudly, which is the point:
+    the alternative is a turn reported as answered with nothing in it."""
+
+    def __init__(self, pending: Pending) -> None:
+        super().__init__(pending.decision.question)
+        self.pending = pending

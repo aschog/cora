@@ -10,16 +10,26 @@ from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.checkpoint.sqlite import SqliteSaver
 from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
+from langgraph.types import Command, interrupt
 
 from cora.domain.agent_state import AgentState
-from cora.domain.errors import ToolLoopLimitError
+from cora.domain.decision import Decision, Pending
+from cora.domain.errors import NothingToResumeError, ToolLoopLimitError
 from cora.domain.trace import step_kinds
 from cora.ports.chat_model import TextSink, unheard
-from cora.ports.graph import DONE, TOOLS, GraphRunner, ModelFor, Route, Step
+from cora.ports.graph import ASK, DONE, TOOLS, GraphRunner, ModelFor, Route, Step
 
 PREPARE = "prepare"
 MODEL = "model"
 SUPERSTEPS_PER_ROUND = 2
+DECLINED = "\x00declined"
+"""How choosing nothing travels back into the run. `Command(resume=None)` is not a
+resume LangGraph accepts — it reads as an empty command — so a decline has to carry a
+value of its own, and this one is not a label any model could have written."""
+ASKS_PER_TURN = 1
+"""A turn may stop to ask once, and the pause costs a superstep of its own. Counted
+into the limit because a question raised early would otherwise make a legitimate turn
+look like a runaway one."""
 CHECKPOINTED_DATA = (
     ("cora.ports.chat_model", "Message"),
     ("cora.ports.plugin", "ToolCall"),
@@ -61,8 +71,25 @@ def _saver_at(path: str) -> SqliteSaver:
 
 def recursion_limit_for(max_tool_rounds: int) -> int:
     """Wide enough that the core's round budget always trips first: preparing
-    costs one superstep, then each round costs a model call and its tools."""
-    return SUPERSTEPS_PER_ROUND * max_tool_rounds + 2
+    costs one superstep, then each round costs a model call and its tools, and one
+    round of the turn may stop to ask."""
+    return SUPERSTEPS_PER_ROUND * max_tool_rounds + 2 + ASKS_PER_TURN
+
+
+def interrupting(decision: Decision) -> str | None:
+    """The engine's `Pause`, bound to LangGraph's: the run is parked in the
+    checkpointer carrying the decision, and the label chosen arrives here when someone
+    picks it up. Nothing chosen comes back as nothing."""
+    chosen = interrupt(decision)
+    if not isinstance(chosen, str) or chosen == DECLINED:
+        return None
+    return chosen
+
+
+def _unasked(state: AgentState) -> AgentState:
+    """The ask node of a graph that was given no way to stop. It answers nothing,
+    which is what a deployment that never offers the tool looks like."""
+    return {}
 
 
 @dataclass(frozen=True)
@@ -78,22 +105,57 @@ class LangGraphRunner:
     tools: Step
     router: Route
     recursion_limit: int
+    ask: Step = _unasked
     checkpointer: BaseCheckpointSaver = field(default_factory=_saver)
 
     def run(
         self, state: AgentState, thread_id: str, on_text: TextSink = unheard
     ) -> Iterator[AgentState]:
+        yield from self._streamed(state, thread_id, on_text)
+
+    def resume(
+        self, answer: str | None, thread_id: str, on_text: TextSink = unheard
+    ) -> Iterator[AgentState]:
+        """The parked run, picked up where it stopped. The step that asked is replayed
+        from its first line with `interrupt` returning the answer this time, which is
+        why nothing that has run may sit in front of it."""
+        if self.pending(thread_id) is None:
+            raise NothingToResumeError
+        picked = DECLINED if answer is None else answer
+        yield from self._streamed(Command(resume=picked), thread_id, on_text)
+
+    def pending(self, thread_id: str) -> Pending | None:
+        """What the thread is waiting on, read off the checkpoint rather than the
+        stream: a run that parks simply stops yielding, so the pause is not something a
+        caller can see go past."""
+        parked = self._graph(unheard).get_state(self._config(thread_id))
+        decision = next(
+            (
+                found.value
+                for found in parked.interrupts
+                if isinstance(found.value, Decision)
+            ),
+            None,
+        )
+        if decision is None:
+            return None
+        return Pending(asked=parked.values.get("question", ""), decision=decision)
+
+    def _streamed(
+        self, opening: Any, thread_id: str, on_text: TextSink
+    ) -> Iterator[AgentState]:
         try:
             yield from self._graph(on_text).stream(
-                state,
-                {
-                    "recursion_limit": self.recursion_limit,
-                    "configurable": {"thread_id": thread_id},
-                },
-                stream_mode="values",
+                opening, self._config(thread_id), stream_mode="values"
             )
         except GraphRecursionError as exhausted:
             raise ToolLoopLimitError from exhausted
+
+    def _config(self, thread_id: str) -> dict[str, Any]:
+        return {
+            "recursion_limit": self.recursion_limit,
+            "configurable": {"thread_id": thread_id},
+        }
 
     def _graph(self, on_text: TextSink) -> Any:
         """Built per run, which is what lets the model node be this turn's: the sink
@@ -105,9 +167,13 @@ class LangGraphRunner:
         builder.add_node(PREPARE, self.prepare)
         builder.add_node(MODEL, self.model(on_text))
         builder.add_node(TOOLS, self.tools)
+        builder.add_node(ASK, self.ask)
         builder.add_edge(START, PREPARE)
         builder.add_edge(PREPARE, MODEL)
-        builder.add_conditional_edges(MODEL, self.router, {DONE: END, TOOLS: TOOLS})
+        builder.add_conditional_edges(
+            MODEL, self.router, {DONE: END, TOOLS: TOOLS, ASK: ASK}
+        )
+        builder.add_edge(ASK, TOOLS)
         builder.add_edge(TOOLS, MODEL)
         return builder.compile(checkpointer=self.checkpointer)
 
@@ -119,6 +185,7 @@ def langgraph_for(
     tools: Step,
     router: Route,
     max_tool_rounds: int,
+    ask: Step = _unasked,
     checkpoints_at: str | None = None,
 ) -> GraphRunner:
     """`checkpoints_at` is this binding's own, not the `GraphFor` port's: where a thread
@@ -128,6 +195,7 @@ def langgraph_for(
         prepare=prepare,
         model=model,
         tools=tools,
+        ask=ask,
         router=router,
         recursion_limit=recursion_limit_for(max_tool_rounds),
         checkpointer=_saver() if checkpoints_at is None else _saver_at(checkpoints_at),

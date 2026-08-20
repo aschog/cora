@@ -1,12 +1,13 @@
 import logging
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 
 from cora.domain.agent_state import AgentState
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import cited
 from cora.domain.conversation import Turn
-from cora.domain.errors import AdapterError, GraphRunError
+from cora.domain.decision import Pending, TurnPaused
+from cora.domain.errors import AdapterError, GraphRunError, NothingToResumeError
 from cora.domain.trace import TraceStep
 from cora.ports.chat_model import TextSink, unheard
 from cora.ports.conversations import Conversations
@@ -42,11 +43,55 @@ class Agent:
         off the states coming out. Nothing about the result changes. A turn may take
         several rounds and only the last of them is the answer, so a round that ends in
         a tool call closes with an `Aside` — the pieces since the last one are the
-        answer, arriving earlier."""
+        answer, arriving earlier.
+
+        A turn that stopped to ask raises `TurnPaused` instead of returning: there is no
+        answer yet, and `resume` is what finishes it."""
+        return self._turn(
+            self.runner.run({"question": question}, thread_id, on_text),
+            question,
+            thread_id,
+            on_step,
+        )
+
+    def resume(
+        self,
+        chosen: str | None,
+        thread_id: str,
+        on_step: Callable[[TraceStep], None] = _ignore,
+        on_text: TextSink = unheard,
+    ) -> ChatResult:
+        """The rest of a turn that stopped to ask, on the label the user picked — or on
+        nothing, if they declined. The question is read off the pause rather than passed
+        in, because the turn it belongs to is the one already parked on this thread and
+        no caller should be able to record it under a different one."""
+        waiting = self.runner.pending(thread_id)
+        if waiting is None:
+            raise NothingToResumeError
+        return self._turn(
+            self.runner.resume(chosen, thread_id, on_text),
+            waiting.asked,
+            thread_id,
+            on_step,
+        )
+
+    def pending(self, thread_id: str) -> Pending | None:
+        """What this thread is waiting on, for a caller that arrived after the pause —
+        a page reloaded while a decision was still open has no other way to find it,
+        because a turn is recorded only once it has an answer."""
+        return self.runner.pending(thread_id)
+
+    def _turn(
+        self,
+        states: Iterator[AgentState],
+        question: str,
+        thread_id: str,
+        on_step: Callable[[TraceStep], None],
+    ) -> ChatResult:
         found: AgentState | None = None
         final: AgentState = {}
         started = reported = 0
-        for state in self.runner.run({"question": question}, thread_id, on_text):
+        for state in states:
             if found is None:
                 found = state
                 started = reported = len(state.get("trace", ()))
@@ -56,13 +101,16 @@ class Agent:
             for step in steps[reported:]:
                 on_step(step)
             reported = len(steps)
+        waiting = self.runner.pending(thread_id)
+        if waiting is not None:
+            raise TurnPaused(waiting)
         if not final:
             raise GraphRunError
         answer = final.get("answer", "")
         result = ChatResult(
             answer=answer,
             citations=cited(answer, tuple(final.get("citations", ()))),
-            trace=tuple(final.get("trace", ()))[started:],
+            trace=tuple(final.get("trace", ()))[final.get("trace_start", started) :],
         )
         self._record(thread_id, Turn(question=question, result=result))
         return result

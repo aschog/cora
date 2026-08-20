@@ -15,12 +15,15 @@ class AgentState(TypedDict, total=False):
     `turn_start` is where the current turn begins in the transcript: everything a
     turn needs to know about *itself* rather than the conversation — how many model
     calls it has spent — is read from there, so no counter has to be reset and none
-    can carry over."""
+    can carry over. `trace_start` is the same mark in the trace, and it is what lets a
+    turn picked up after a pause still report every step it took, including the ones
+    taken before it stopped."""
 
     question: str
     messages: Annotated[list[Message], operator.add]
     trace: Annotated[list[TraceStep], operator.add]
     citations: Annotated[list[Citation], operator.add]
     turn_start: int
+    trace_start: int
     brief: str
     answer: str

@@ -15,11 +15,13 @@ from cora.app.config import DEFAULT_PLUGINS, Config
 from cora.app.log_config import DEBUG_HANDLER_NAME, FILE_HANDLER_NAME
 from cora.domain.chat_result import ChatResult
 from cora.domain.conversation import Turn
+from cora.domain.decision import TurnPaused
 from cora.domain.errors import (
     InputRejectedError,
     ToolLoopLimitError,
 )
 from cora.domain.trace import ToolUse
+from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.memory_tool import MAX_FACT_CHARS, REMEMBER_TOOL_NAME
 from cora.engine.plugin_registry import load_plugin, load_plugins
 from cora.engine.plugin_set import PluginSet
@@ -128,6 +130,7 @@ def test_the_offered_tools_are_coras_first_then_each_plugins_in_order() -> None:
     assert [tool.name for tool in model.last_tools] == [
         SEARCH_TOOL_NAME,
         REMEMBER_TOOL_NAME,
+        ASK_TOOL_NAME,
         "bmi",
         "tdee",
     ]
@@ -667,6 +670,9 @@ def test_the_graph_is_a_slot_like_every_other_port() -> None:
             replied = {**prepared, **self._model(on_text)(prepared)}
             yield replied
 
+        def pending(self, thread_id: str) -> None:
+            return None
+
     def _graph_for(*, prepare: Any, model: Any, **rest: Any) -> Any:
         asked.update(rest)
         return _OneStepRunner(prepare, model)
@@ -683,7 +689,7 @@ def test_the_graph_is_a_slot_like_every_other_port() -> None:
     assert runner.thread_id == THREAD
     assert asked["max_tool_rounds"] == 8
     assert isinstance(asked["router"], Router)
-    assert set(asked) == {"tools", "router", "max_tool_rounds"}, (
+    assert set(asked) == {"tools", "ask", "router", "max_tool_rounds"}, (
         "the slot is asked for the steps of a turn and nothing else"
     )
 
@@ -721,3 +727,96 @@ def test_build_checkpoints_threads_in_the_conversations_file(tmp_path: Path) -> 
 
     assert "turns" in tables, "the turns the page redraws"
     assert "checkpoints" in tables, "and the thread the model is given"
+
+
+# ── the round that stops to ask ──
+
+
+class _CountingMemory(FakeMemory):
+    def __init__(self) -> None:
+        super().__init__()
+        self.writes = 0
+
+    def remember(self, text: str) -> None:
+        self.writes += 1
+        super().remember(text)
+
+
+def test_a_round_that_asks_and_remembers_runs_the_write_once() -> None:
+    """The step that stopped is replayed from its first line when the run is picked up,
+    so a tool that had already run would run a second time on the way back. Settling the
+    question ahead of the round's tools is what keeps that from happening — and a second
+    write is what it would look like if the order ever changed."""
+    memory = _CountingMemory()
+    model = ScriptedChatModel(
+        [
+            ModelReply(
+                tool_calls=(
+                    ToolCall(
+                        name=ASK_TOOL_NAME,
+                        arguments={
+                            "question": "Which bodyweight is current?",
+                            "options": [{"label": "77 kg"}, {"label": "75 kg"}],
+                        },
+                        call_id="a1",
+                    ),
+                    ToolCall(
+                        name=REMEMBER_TOOL_NAME,
+                        arguments={"fact": "bodyweight 75 kg"},
+                        call_id="m1",
+                    ),
+                )
+            ),
+            ModelReply(text="1,730 kcal."),
+        ]
+    )
+    app = assembled(chat_model=model, memory=memory)
+
+    with pytest.raises(TurnPaused):
+        app.agent.answer("What is my BMR?", THREAD)
+    result = app.agent.resume("75 kg", THREAD)
+
+    assert result.answer == "1,730 kcal."
+    assert memory.writes == 1
+    written = [
+        step
+        for step in result.trace
+        if isinstance(step, ToolUse) and step.name == REMEMBER_TOOL_NAME
+    ]
+    assert len(written) == 1, "the round's tools ran once, after the pause"
+
+
+def test_nothing_is_written_while_the_turn_is_still_waiting() -> None:
+    """The write belongs to the round the question was raised in, and that round has not
+    finished: a fact filed before the reader answered would be one they never confirmed.
+    """
+    memory = _CountingMemory()
+    model = ScriptedChatModel(
+        [
+            ModelReply(
+                tool_calls=(
+                    ToolCall(
+                        name=ASK_TOOL_NAME,
+                        arguments={
+                            "question": "Which bodyweight is current?",
+                            "options": [{"label": "75 kg"}],
+                        },
+                        call_id="a1",
+                    ),
+                    ToolCall(
+                        name=REMEMBER_TOOL_NAME,
+                        arguments={"fact": "bodyweight 75 kg"},
+                        call_id="m1",
+                    ),
+                )
+            ),
+            ModelReply(text="1,730 kcal."),
+        ]
+    )
+    app = assembled(chat_model=model, memory=memory)
+
+    with pytest.raises(TurnPaused):
+        app.agent.answer("What is my BMR?", THREAD)
+
+    assert memory.writes == 0
+    assert memory.recall() == ()
