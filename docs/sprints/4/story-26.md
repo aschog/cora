@@ -55,7 +55,7 @@ and the ignore line is what makes it fail.
 
 #### Package by package (`ruff check` red until the package is done)
 
-- [ ] `cora.ports` — 48; taken first, because a Protocol's docstring is the only place its
+- [x] `cora.ports` — 48; taken first, because a Protocol's docstring is the only place its
       contract exists at all: `ty` checks conformance and no test spells it out
 - [ ] `cora.domain` — 60; the types that cross to a frontend
 - [ ] `cora.app` — 10; `build`, `App`, `Config`, `int_setting` — what a new frontend calls

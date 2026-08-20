@@ -1,3 +1,5 @@
+"""How a run stops to ask the user something, and what a shell that cannot answers."""
+
 from collections.abc import Callable
 
 from cora.domain.decision import Decision
@@ -10,7 +12,9 @@ declined."""
 
 
 def declined(_: Decision) -> None:
-    """The pause of a caller that cannot stop and ask: the decision is declined the
-    moment it is raised, so a shell with no card to draw still gets its answer. Every
-    slot that takes a `Pause` defaults to this, which is what keeps a run that cannot
-    be interrupted from hanging on one."""
+    """Decline every decision the moment it is raised.
+
+    The pause of a caller that cannot stop and ask, so a shell with no card to draw
+    still gets its answer. Every slot that takes a `Pause` defaults to this, which is
+    what keeps a run that cannot be interrupted from hanging on one.
+    """
