@@ -1,30 +1,39 @@
-# Story 25: the contract is read off the code
+# Story 25: one site — the map, the walkthrough and the reference
 
-**As a** developer picking cora up · **I want** the domain and the ports as a browsable
-reference · **So that** I read what a type promises without opening eleven modules to
-find out
+**As a** developer picking cora up · **I want** the map, the walkthrough and the contracts
+under one nav · **So that** I look a type up in the same place I learned how a turn runs
 
-> **Given** `cora.domain` and `cora.ports` as they stand
-> **When** I build the reference and open it
-> **Then** every module of both has a page carrying its types, its fields and the errors
-> it inherits — and a module added later has one without anyone editing a nav
+> **Given** `docs/big-picture.md`, `docs/happy-path.md` and the four packages the reference
+> covers
+> **When** I build the site and open it
+> **Then** the two narrative pages render with their five diagrams, and `cora.domain`,
+> `cora.ports`, `cora.engine` and `cora.app` each have a page per module — and a module
+> added later has one without anyone editing a nav
 
-The reference is generated, never written: `mkdocstrings` collects through Griffe, which
-reads source as an AST rather than importing it, so the docs never load the layers and
-the purity guard in `tests/guards/test_architecture.py` has nothing to say about them.
-That is also what makes the story possible under the standing no-docstring rule —
-annotations, dataclass fields and the `CoreError` hierarchy are the contract for these two
-packages, and a page is not empty without prose. Google's docstring *sections* become a
-lint rule for the docstrings that do exist; none is required. Built locally with
-`make docs` and read with `make docs-serve`; the strict build is an integration-marked
-guard, so CI runs it as part of `integration-tier` and needs no step of its own.
+Two Diátaxis quadrants, one nav. *Explanation* stays written and stays where it is:
+`big-picture.md` names every engine component to its file and states what `PrepareStep` and
+`add_file` guarantee, `happy-path.md` draws the turn as a sequence. Neither can be derived
+from source — the port map encodes which Protocol is a seam and why, the sequence encodes
+an order of calls no import graph sees — which is why the diagrams stay hand-drawn Mermaid.
+*Reference* is generated: `mkdocstrings` collects through Griffe, which reads source as an
+AST rather than importing it, so the build loads no layer and
+`tests/guards/test_architecture.py` has nothing to say about it. How-to stays in
+`README.md`, which keeps its job as the repo's front door and links in; there is no
+tutorial and nothing here needs one.
 
-**Out of scope.** Publishing — no Pages workflow, no `gh-pages`, no public URL. And
-`engine`, `adapters` and `app`: they are how cora works, not what it promises. `griffe
-check` was considered as a break-detector and dropped: the only stable reference point in
-the tree is `v1.0.0`, which the sprint has deliberately left far behind, so the check
-would report this sprint's intended rewrite as a wall of breakage. A guard that fails on
-every change made on purpose is noise.
+The ruff rule arrives in **story 26**, not here. Griffe renders signatures, annotations,
+dataclass fields and inheritance from the code alone, so all 42 modules have a page the day
+the site builds, and story 26's prose lands on pages already in place. Splitting them is
+what lets this one merge as something you can open.
+
+`adapters` is not in the reference: every public class in it implements a port, so its
+methods *are* the port's methods, and a Protocol implementation inherits no docstring to
+render — the prose would have to be copy-pasted from `ports/`.
+
+**Out of scope.** Publishing: no Pages workflow, no `gh-pages`, no public URL. `griffe
+check` as a break-detector — the only stable reference point is `v1.0.0`, which this sprint
+has deliberately left behind, so it would report the intended rewrite as a wall of
+breakage.
 
 ## Test list
 
@@ -32,51 +41,51 @@ every change made on purpose is noise.
 
 #### The outer test
 
-- [ ] **(int)** the reference builds strict-clean from the tree alone, and every public
-      name `cora.domain` and `cora.ports` export is on a page — no module's page is
-      written by hand
+- [ ] **(int)** the site builds strict-clean from the tree alone; both narrative pages are
+      in it, and every module of `cora.domain`, `cora.ports`, `cora.engine` and `cora.app`
+      has a reference page no one wrote by hand
 
-#### One page per module, found rather than listed (`docs/api/`, `mkdocs.yml`)
+#### The site holds what the repo has, and nothing else (`mkdocs.yml`, `docs/index.md`)
 
-- [ ] every module of both packages has a generated page, read off the tree — a module
+- [ ] `docs/sprints/**` contributes no page — 52 files of build history are not the product
+- [ ] `docs/cora_mockup.html` and `docs/workflow.md` contribute none either: one is a
+      mockup, the other documents the process rather than the product
+- [ ] both narrative pages are reachable from the nav
+- [ ] `docs/index.md` links every top-level section, so the front page is not a dead end
+- [ ] the built site is not tracked; a generated tree in the repo would be reviewed as source
+
+#### It reads with no network (`extra_javascript`, `theme.font`)
+
+- [ ] no built page loads a script, stylesheet, font or image from another host — "built and
+      read locally" has to mean it renders with the network off
+- [ ] the vendored Mermaid is 10.2.3, the version the diagrams are written against
+- [ ] all five Mermaid blocks across the two pages survive into the built HTML as diagram
+      containers rather than as code blocks
+
+#### One reference page per module, found rather than listed (`docs/api/`)
+
+- [ ] every module of the four packages has a generated page, read off the tree — a module
       added later needs no edit to `mkdocs.yml`
 - [ ] a module whose name starts with `_` gets no page
 - [ ] `__init__.py` becomes the package's own page, not a page called `__init__`
-- [ ] a package under `plugins/` or `frontends/` gets no page — the reference is the app's
-      contract, not every distribution's surface
-- [ ] the built site is not tracked; a generated tree read as source would be reviewed as
-      source
+- [ ] `adapters`, `plugins/` and `frontends/` get no pages
 
-#### What a page has to carry
+#### What a reference page carries with no docstring present
 
 - [ ] **(int)** a frozen dataclass shows its fields with their annotations —
       `ToolResult.error` reads `str | None`
 - [ ] **(int)** a class carrying no docstring still shows its signature and its fields, so
-      the policy leaves no empty page behind
-- [ ] **(int)** a `Protocol`'s methods show their signatures — `Retriever.query` is the
-      contract and it is on the page
+      the site is useful before story 26 lands
+- [ ] **(int)** a `Protocol`'s methods show their signatures — `Retriever.query` is on the
+      page
 - [ ] **(int)** an error subclass shows what it inherits, so `errors.py` reads as one
       hierarchy rather than twenty unrelated classes
-- [ ] **(int)** the class docstring `Documents` already carries is rendered — the
-      invariants that *are* written are the ones a reader came for
-
-#### The docstrings that exist keep their form (ruff `D`, Google convention)
-
-- [ ] a docstring with an `Args:` section that omits a parameter is reported
-- [ ] a public class with no docstring at all is reported by nothing — `D1xx` stays off,
-      so nothing about the standing policy changes
-- [ ] a docstring whose summary runs straight into its second sentence is reported by
-      nothing — `D205` and `D209` stay off deliberately, so turning the convention on
-      cannot reformat fifty-nine docstrings that were written the way the house writes
-      them
-- [ ] the five `D` findings outside `src/` — two `D403`, one each of `D202`, `D210`,
-      `D301` — are gone, so the rule turns on for the whole workspace rather than for two
-      packages
 
 #### What the repo claims about itself
 
 - [ ] a backticked `mkdocs.yml` in `README.md` resolves against the tree — `test_docs.py`
       reads `.py`, `.md`, `.toml` and directories, and the repo now has a `.yml` worth
       policing
-- [ ] `README.md` names the reference and how to build it, beside the four pages it
-      already lists
+- [ ] `docs/index.md` joins `test_docs.py`'s `PAGES`, so the front page's path claims are
+      checked like every other current page
+- [ ] `README.md` names the site and how to build it, beside the pages it already lists
