@@ -112,6 +112,15 @@ sprint-4 story from `docs/sprints/4/spec.md`, or as its own slice.
       → continuous, checked at each merge. Be ready to say what each public service
       accepts, returns and promises. **Stays unticked by design** — it is a standing habit
       with no last increment, so an empty box here reads as "still in force", not "not done".
+      → **stories 25 and 26** take this further than the finding asked, in two slices.
+      Story 25 builds the site that renders `domain`, `ports`, `engine` and `app`, so a
+      contract that is written is *shown*. Story 26 then requires one: 174 docstrings in
+      Google's sections, and **the standing no-docstring rule is retired** for those four
+      packages — `docs/workflow.md` says what replaces it. The habit above stays in force
+      for `adapters`, the plugins, the frontends and the tests, so the box stays open.
+      `tool_runtime`'s swallow-versus-propagate rule is inside story 26's `engine` slice;
+      the *flows* stay in `docs/big-picture.md`, which already documents the rule ordering
+      beside it.
 
 ## Reviewer's optional suggestions
 

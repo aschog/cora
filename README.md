@@ -8,10 +8,14 @@ specialisation (reference domain: fitness coach) is provided exclusively through
 plugins.
 
 - Architecture (start here): [`docs/big-picture.md`](docs/big-picture.md) — the map, the
-  seven ports, and what the tests pin down
+  nine ports, and what the tests pin down
 - One session end to end: [`docs/happy-path.md`](docs/happy-path.md) — upload, question,
   calculation and memory as sequence diagrams, drawn from the live test that walks them
 - Development workflow (TDD): [`docs/workflow.md`](docs/workflow.md)
+- The docs as a site: `make docs` builds the two pages above plus a reference page for
+  every module of `cora.domain`, `cora.ports`, `cora.engine` and `cora.app`, generated
+  from the source by `scripts/gen_reference.py`; `make docs-serve` reads it with live
+  reload on http://127.0.0.1:8001, beside the app on 8000. Configured in `mkdocs.yml`, and it renders with no network.
 - Assignment brief: [`docs/sprints/4/assignment.md`](docs/sprints/4/assignment.md) —
   current sprint; sprint 3's brief, spec and test findings are in `docs/sprints/3/`
 

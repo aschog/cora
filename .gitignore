@@ -21,3 +21,6 @@ node_modules/
 # Local vector store (Chroma persistence)
 .cora/
 e2e-artifacts/
+
+# The built docs site.
+site/

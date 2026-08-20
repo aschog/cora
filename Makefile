@@ -5,7 +5,7 @@
 APP := frontends/streamlit/src/cora/frontends/streamlit/streamlit_app.py
 REACT := cora.frontends.react.server
 
-.PHONY: run run-env run-react run-env-react ui ui-build ui-test ui-test-browser
+.PHONY: run run-env run-react run-env-react ui ui-build ui-test ui-test-browser docs docs-serve
 
 # Reads OPENROUTER_API_KEY from the environment.
 run:
@@ -35,3 +35,20 @@ ui-test:
 
 ui-test-browser:
 	cd frontends/react/ui && npm run test:browser
+
+# MkDocs has forked: its owner is publishing a v2 that drops the plugin system, and
+# `properdocs` is a continuation of 1.x that arrives here transitively. Both sides warn on
+# every build, in opposite directions, and each reads its own variable. We stay on
+# mkdocs 1.6.1, pinned by uv.lock, and say so once here instead of in every log.
+QUIET_FORK := NO_MKDOCS_2_WARNING=true DISABLE_MKDOCS_2_WARNING=true
+
+# The docs site — the two narrative pages and a reference generated from the source.
+# `mkdocs.yml` configures it; --strict is what the integration tier runs, so a build that
+# passes here is the one CI checks.
+docs:
+	$(QUIET_FORK) uv run mkdocs build --strict
+
+# 8001, because the React shell already wants 8000: reading the docs beside the running
+# app must not need one of them stopped. `tests/guards/test_docs_site.py` holds that.
+docs-serve:
+	$(QUIET_FORK) uv run mkdocs serve --dev-addr 127.0.0.1:8001

@@ -1,0 +1,89 @@
+# The site is two Diátaxis quadrants: the narrative pages under Understand, written and
+# kept by hand because a diagram of which port is a seam cannot be derived; and the
+# reference under it, generated from source. How-to stays in README.md, the repo's front
+# door, and docs/workflow.md documents the process rather than the product.
+site_name: cora
+site_description: A RAG chatbot grounded in your uploaded documents
+docs_dir: docs
+use_directory_urls: true
+
+theme:
+  name: material
+  # Material otherwise fetches Roboto from fonts.googleapis.com on every page view, so a
+  # site read offline loses its typeface and leaks a request per reader.
+  font: false
+  # Light or dark as the reader's system asks, with no toggle: a toggle is a preference to
+  # store and a control to explain, and the reader has already stated this one to their OS.
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+
+# The diagrams are Mermaid fences in the narrative pages, drawn client-side from the
+# vendored copy below rather than from a CDN.
+markdown_extensions:
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+
+nav:
+  - Home: index.md
+  - Understand:
+      - The map: big-picture.md
+      - A session end to end: happy-path.md
+  - Reference: api/
+
+# The single `api/` entry above resolves to every module. gen-files writes a page per
+# module plus the api/index.md that lists them; literate-nav is what expands a directory
+# entry into pages at all, and it writes no nav file — with none to read it infers the
+# section from the generated files in path order, which is the order the landing page is
+# written in. So a module added later needs no edit here.
+plugins:
+  - search
+  - gen-files:
+      scripts:
+        - scripts/gen_reference.py
+  - literate-nav
+  - mkdocstrings:
+      handlers:
+        python:
+          # Read off the tree rather than the installed package, so the site is built
+          # from what the repository holds.
+          paths: [src]
+          options:
+            # A page has to carry the contract where no prose does yet: left at its
+            # default, the handler omits a member without a docstring entirely, so most
+            # of the reference would be blank until story 26 lands.
+            show_if_no_docstring: true
+            # Default, named because the reference is where `errors.py` reads as one
+            # hierarchy rather than twenty unrelated classes.
+            show_bases: true
+            show_signature_annotations: true
+            separate_signature: true
+            show_root_heading: true
+            show_symbol_type_heading: true
+            # What draws `dataclass` beside a class name, which is the only signature a
+            # frozen dataclass has on the page.
+            show_labels: true
+            members_order: source
+
+# Loaded before Material looks for a diagram, so the global already exists and Material's
+# own `typeof mermaid == "undefined"` fallback — a fetch of mermaid@11 from unpkg — never
+# fires. The version is in the filename because it is the one the diagrams are drawn
+# against, and a silent bump is what this pins — the bundle's own version string is
+# checked against that name.
+#
+# Vendored from https://unpkg.com/mermaid@10.2.3/dist/mermaid.min.js
+# sha256 245a6d632e0acc9e4e40ff90f5fb9b35fddcc693cf9992aa50ea2fc8438d2ab4
+# Mermaid is MIT-licensed; the minified UMD bundle carries no header of its own.
+extra_javascript:
+  - assets/mermaid-10.2.3.min.js
+
+# Build history and a mockup are in docs/ without being pages of it.
+exclude_docs: |
+  sprints/
+  cora_mockup.html
+  workflow.md

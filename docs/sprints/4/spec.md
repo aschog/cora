@@ -161,6 +161,32 @@ marks can only ask *may I run this?*, and choosing between three remembered valu
 them read and ranked, which is the model's work. The card is the React page's; the widget
 page declines on the reader's behalf.
 
+### [25. One site — the map, the walkthrough and the reference](done/story-25.md)
+
+Two Diátaxis quadrants under one nav. `big-picture.md` and `happy-path.md` become pages of
+a site with their five Mermaid diagrams rendering — vendored and pinned, so it reads with
+the network off — and beside them a reference generated from source for `domain`, `ports`,
+`engine` and `app`. Griffe collects them as an AST, so the build loads no layer. Explanation
+stays written because it cannot be derived: the port map encodes which Protocol is a seam
+and why, and the sequence encodes an order of calls no import graph sees. `adapters` is
+left out because every class in it implements a port, so its pages would repeat `ports/`.
+The ruff rule arrives in story 26, not here: Griffe renders signatures and fields from the
+code, so the site merges as something you can open and the prose lands on pages already in
+place. Built and read locally, gated by an integration-marked guard; nothing is published.
+
+### [26. A public name says what it promises](story-26.md)
+
+The prose the reference renders. This retires the standing no-docstring rule for the four
+rendered packages — 174 docstrings in Google's sections, carrying only what an annotation
+cannot: a unit, a constraint, an ownership rule, and `Raises:`, which no type expresses.
+`D417` stays off, because demanding that an `Args:` block name every parameter forces
+`query: The query string.` beside `query: str`. The rule arrives one package at a time by
+deleting a line from `per-file-ignores`, so that list is the backlog and no gate waits;
+`adapters`, the plugins, the frontends and the tests keep it ignored. In `engine` a
+docstring states what a *name* promises and never how a turn runs — the flows are
+`big-picture.md`'s and `happy-path.md`'s. Closes the prose half of the open feedback item on
+undocumented contracts.
+
 ## Not built this sprint
 
 Planned, cut once the bonus bar was cleared and the hours ran down. None of them is needed

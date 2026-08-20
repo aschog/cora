@@ -50,8 +50,14 @@ dev = [
     "cora-plugin-fitness",
     "cora-plugin-security",
     "httpx>=0.28.1",
+    "mkdocs>=1.6.1",
+    "mkdocs-gen-files>=0.6.1",
+    "mkdocs-literate-nav>=0.6.3",
+    "mkdocs-material>=9.7.7",
+    "mkdocstrings[python]>=1.0.6",
     "pytest>=9.1.1",
     "pytest-watcher>=0.6.3",
+    "pyyaml>=6.0.3",
     "ruff>=0.15.22",
     "ty>=0.0.60",
 ]
@@ -61,6 +67,7 @@ dev = [
 [tool.ty.environment]
 root = [
     "src",
+    "scripts",
     "frontends/react/src",
     "frontends/streamlit/src",
     "plugins/fitness/src",
@@ -71,6 +78,7 @@ root = [
 [tool.ruff]
 src = [
     "src",
+    "scripts",
     "frontends/react/src",
     "frontends/streamlit/src",
     "plugins/fitness/src",
@@ -99,7 +107,7 @@ select = [
 # path. Nothing in there may be named for a shipped module, or it joins that namespace
 # as its first portion; the mirror is safe precisely because it is not on the path.
 testpaths = ["tests", "plugins", "frontends"]
-pythonpath = ["tests/helpers"]
+pythonpath = ["tests/helpers", "scripts"]
 addopts = "--strict-markers --import-mode=importlib -m 'not integration and not llm'"
 # Starlette's TestClient warns that its httpx backend is deprecated in favour of httpx2.
 # The suite is otherwise warning-free, and this one is the library's own plan for its
@@ -109,7 +117,7 @@ filterwarnings = [
     "ignore:Using .httpx. with .starlette.testclient. is deprecated:UserWarning",
 ]
 markers = [
-    "integration: touches real infrastructure (Chroma, embedding model, Streamlit); run in CI",
+    "integration: touches real infrastructure (Chroma, embedding model, Streamlit, a docs build); run in CI",
     "llm: real OpenRouter round-trip through the assembled app; manual acceptance only, never in CI",
 ]
 
