@@ -546,3 +546,28 @@ def test_a_run_asked_with_no_sink_takes_the_same_turn() -> None:
     final = _final(_runner(model=_writing("ok")), {"question": "why"})
 
     assert final["answer"] == "ok"
+
+
+def test_a_decision_travels_through_a_checkpoint_as_itself() -> None:
+    """A pause lives in the checkpointer until it is picked up, so the card is only ever
+    as good as the allowlist: an unlisted type comes back a dict on the day LangGraph
+    makes good on refusing what it was not told about."""
+    from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
+
+    from cora.domain.decision import Decision, Option
+
+    settled = Decision(
+        question="Which bodyweight should I treat as current?",
+        options=(Option(label="75 kg", note="coach notes, February"),),
+        decline="Neither",
+    )
+    serde = JsonPlusSerializer(allowed_msgpack_modules=checkpointed_types())
+
+    back = serde.loads_typed(serde.dumps_typed(settled))
+
+    assert isinstance(back, Decision)
+    assert back.question == settled.question
+    assert back.decline == settled.decline
+    assert [(option.label, option.note) for option in back.options] == [
+        ("75 kg", "coach notes, February")
+    ], "the options are read back one by one, as a sequence of Options"

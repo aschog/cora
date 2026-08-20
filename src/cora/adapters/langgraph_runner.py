@@ -24,6 +24,8 @@ CHECKPOINTED_DATA = (
     ("cora.ports.chat_model", "Message"),
     ("cora.ports.plugin", "ToolCall"),
     ("cora.domain.citations", "Citation"),
+    ("cora.domain.decision", "Decision"),
+    ("cora.domain.decision", "Option"),
 )
 """What a thread's state is made of besides its trace. Named because the alternative is
 LangGraph's default — deserialise anything and log a warning saying it will be blocked
