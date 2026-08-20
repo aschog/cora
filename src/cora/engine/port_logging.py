@@ -1,3 +1,9 @@
+"""The three outward ports, wrapped so `CORA_DEBUG` can watch them.
+
+Each wrapper implements the port it wraps and adds nothing to it: what is logged is what
+crossed the seam, and nothing about a turn changes because someone is watching.
+"""
+
 import logging
 from dataclasses import dataclass
 
@@ -13,6 +19,11 @@ log = logging.getLogger(__name__)
 
 
 def truncate(text: str) -> str:
+    """One line, at most `MAX_LOGGED_CHARS` of it, ending in an ellipsis when cut.
+
+    A prompt or a passage would otherwise put a page of text through the log for every
+    turn, which is how a debug log stops being read.
+    """
     one_line = " ".join(text.split())
     if len(one_line) <= MAX_LOGGED_CHARS:
         return one_line
@@ -21,6 +32,8 @@ def truncate(text: str) -> str:
 
 @dataclass(frozen=True)
 class LoggingChatModel:
+    """A `ChatModel` that logs what was asked and what came back."""
+
     inner: ChatModel
 
     def complete(
@@ -29,6 +42,7 @@ class LoggingChatModel:
         tools: tuple[Tool, ...],
         on_text: TextSink = unheard,
     ) -> ModelReply:
+        """The reply, unchanged. Logged around the call, so a failure shows as one."""
         log.debug(
             "chat request: %d messages [%s], last: %s",
             len(messages),
@@ -46,11 +60,14 @@ class LoggingChatModel:
 
 @dataclass(frozen=True)
 class LoggingRetriever:
+    """A `Retriever` that logs what went into the index and what came out of it."""
+
     inner: Retriever
 
     def add(
         self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
     ) -> None:
+        """Index the chunks, saying how many and from where."""
         log.debug(
             "indexing: %d chunks from %s",
             len(chunks),
@@ -59,6 +76,7 @@ class LoggingRetriever:
         self.inner.add(chunks, vectors, file_hash)
 
     def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
+        """The hits, unchanged, with their sources and scores in the log."""
         hits = self.inner.query(query_vector, k)
         log.debug(
             "retrieval: k=%d, %d hits [%s]",
@@ -69,17 +87,22 @@ class LoggingRetriever:
         return hits
 
     def sources(self) -> list[str]:
+        """Straight through: a list of filenames says nothing a log needs."""
         return self.inner.sources()
 
     def contains(self, file_hash: str) -> bool:
+        """Straight through."""
         return self.inner.contains(file_hash)
 
 
 @dataclass(frozen=True)
 class LoggingEmbedder:
+    """An `Embedder` that logs how much was embedded, never the text itself."""
+
     inner: Embedder
 
     def embed(self, texts: list[str]) -> list[list[float]]:
+        """The vectors, unchanged."""
         log.debug("embedding: %d texts", len(texts))
         return self.inner.embed(texts)
 

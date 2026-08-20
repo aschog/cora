@@ -1,3 +1,5 @@
+"""How a document is cut into the passages the index holds."""
+
 from cora.domain.chunk import Chunk
 
 DEFAULT_CHUNK_SIZE = 1000
@@ -14,6 +16,24 @@ def chunk_text(
     chunk_size: int = DEFAULT_CHUNK_SIZE,
     overlap: int = DEFAULT_OVERLAP,
 ) -> list[Chunk]:
+    """Cut text into chunks that can be read back out of it exactly.
+
+    Every chunk is a substring of `text` and carries the offset it starts at, so a
+    citation into one is a span of the document the user can be shown.
+
+    Args:
+        text: The cleaned text, which is what an offset is measured in.
+        source: The filename to stamp on each chunk.
+        chunk_size: Characters, not tokens — the largest a chunk may be.
+        overlap: Characters each chunk after the first reaches back by, so a sentence
+            cut in two is whole in one of them.
+
+    Returns:
+        The chunks in reading order, or none at all for text that is only whitespace.
+
+    Raises:
+        ValueError: `chunk_size` is not positive, or `overlap` does not fit inside it.
+    """
     if chunk_size <= 0:
         raise ValueError("chunk_size must be positive")
     if not 0 <= overlap < chunk_size:
@@ -32,8 +52,8 @@ def _split(
 
     Spans are positions in the original text, so each piece is always an exact
     substring. Packs adjacent fragments greedily at the coarsest separator that
-    fits; any fragment still too large is split at the next finer one. ``base``
-    is the offset of ``text`` within the original.
+    fits; any fragment still too large is split at the next finer one. `base`
+    is the offset of `text` within the original.
     """
     if len(text) <= chunk_size:
         return [(base, base + len(text))]
@@ -66,7 +86,7 @@ def _split(
 
 
 def _fragments(text: str, separator: str) -> list[tuple[str, int]]:
-    """Yield each non-empty fragment with its start offset within ``text``."""
+    """Each non-empty fragment with its start offset within `text`."""
     fragments: list[tuple[str, int]] = []
     offset = 0
     for fragment in text.split(separator):

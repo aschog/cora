@@ -148,10 +148,19 @@ functional test goes green  →  feature done
 > weaken or delete a red test to make the bar go green — the test is the spec, the
 > production code is what moves. Watching the intermediate steps is how you catch it.
 
-> **Settled, not per file.** Docstrings and comments are extra effort to keep in
-> sync and appear **only if needed**: write none unless they state a contract the
-> code can't express — names + tests are the source of truth. This is decided;
-> don't relitigate it file by file.
+> **Settled, not per file.** A public name in `cora.domain`, `cora.ports`,
+> `cora.engine` or `cora.app` carries a docstring: those four are what the reference
+> renders, so an absent one is a blank space on a page someone opened on purpose.
+> Google's sections, carrying only what the annotation cannot — a unit, a constraint,
+> an ownership rule, and `Raises:`, which no type expresses. `D417` is off, so an
+> `Args:` block documents the parameter whose meaning the type cannot carry and leaves
+> the rest to the signature. A flow is not a docstring: `docs/big-picture.md` and
+> `docs/happy-path.md` say how a turn runs, and a name says what *it* promises.
+> Everywhere else — the adapters, the plugins, the frontends, the tests — a docstring
+> appears **only if needed**, and a comment always does: write none unless they state
+> a contract the code can't express, and let names + tests be the source of truth.
+> `ruff` holds both halves, the boundary written once in `pyproject.toml`. This is
+> decided; don't relitigate it file by file.
 
 > Don't narrate the diff — the reviewer reads it. After a step, say only what the
 > diff can't show: a decision, a surprise, anything urgent or important. Silence

@@ -1,3 +1,5 @@
+"""Where the ports are filled and the agent is put together."""
+
 import logging
 from dataclasses import dataclass
 
@@ -41,6 +43,12 @@ log = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class App:
+    """Everything a frontend is handed: an agent to ask, and the stores behind it.
+
+    `memory` and `conversations` are optional because an app can run without either —
+    what is missing is then missing from the page too, rather than faked.
+    """
+
     agent: Agent
     knowledge_base: KnowledgeBase
     memory: Memory | None = None
@@ -62,6 +70,26 @@ def assemble(
     graph: GraphFor = langgraph_for,
     debug: bool = False,
 ) -> App:
+    """Put an app together from the slots given, and offer the tools they imply.
+
+    Args:
+        chat_model: The model behind every turn.
+        embedder: Embeds both the chunks and the queries; one embedder for both, or
+            neither side is comparable.
+        retriever: The index the chunks go into.
+        documents: Where the text a citation opens onto is kept.
+        plugins: The bundles cora was asked for. Already valid: a set that could not
+            be composed was refused when it was built.
+        memory: What cora keeps about the user. Without it, no `remember` tool is
+            offered at all.
+        conversations: Where turns are recorded. Without it, a turn is answered and
+            not kept.
+        top_k: How many passages a document search returns.
+        max_tool_rounds: How many rounds of tools one turn may spend.
+        history_turns: How many earlier turns of the thread reach the prompt.
+        graph: Which engine walks the steps; LangGraph unless a test says otherwise.
+        debug: Wraps the three outward ports in logging ones.
+    """
     _announce(plugins)
     if debug:
         chat_model = LoggingChatModel(chat_model)
@@ -94,10 +122,13 @@ def assemble(
 
 
 def _announce(plugins: PluginSet) -> None:
-    """A screened app and an unscreened one are otherwise indistinguishable once
-    running, so an unscreened one is a warning: it is the level that reaches the user
-    without `CORA_DEBUG`, where the `cora` logger carries no handler. A bundle may
-    contribute only tools, so what is announced is the screen, not the count."""
+    """Say in the log what was loaded, and warn when nothing screens the user's input.
+
+    A screened app and an unscreened one are otherwise indistinguishable once running,
+    so an unscreened one is a warning: it is the level that reaches the user without
+    `CORA_DEBUG`, where the `cora` logger carries no handler. A bundle may contribute
+    only tools, so what is announced is the screen, not the count.
+    """
     if plugins.entries:
         log.info(
             "plugins loaded: %s", ", ".join(module for module, _ in plugins.entries)
@@ -112,8 +143,11 @@ def _offered_tools(
     top_k: int,
     memory: Memory | None,
 ) -> tuple[Tool, ...]:
-    """No memory slot behind the app means no `remember` offered, so the absence is
-    visible to the model rather than a tool that quietly forgets."""
+    """What the model may call, cora's own tools first and the plugins' after.
+
+    No memory slot behind the app means no `remember` offered, so the absence is visible
+    to the model rather than a tool that quietly forgets.
+    """
     remembering = (remember_tool(memory),) if memory is not None else ()
     return (
         search_tool(context_source, top_k),
@@ -124,6 +158,17 @@ def _offered_tools(
 
 
 def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
+    """The real app: every slot filled from configuration, ready to answer.
+
+    The adapters are imported here rather than at the top, so importing `cora.app` costs
+    nothing a frontend does not use — the embedding model in particular is loaded on
+    first use, not on import.
+
+    Raises:
+        AdapterError: A store could not be opened.
+        PluginLoadError: A plugin named in the configuration could not be loaded.
+        ConfigurationError: The plugins load but cannot be composed together.
+    """
     from functools import partial
 
     from cora.adapters.chroma_retriever import ChromaRetriever

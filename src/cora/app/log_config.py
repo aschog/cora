@@ -1,3 +1,5 @@
+"""Where cora's own logs go when `CORA_DEBUG` is set, and nowhere otherwise."""
+
 import logging
 from collections.abc import Callable
 from pathlib import Path
@@ -9,6 +11,16 @@ LOG_FILE = ".cora/logs/cora.log"
 
 
 def enable_debug_logs(enabled: bool, log_file: str | Path = LOG_FILE) -> None:
+    """Attach cora's debug handlers — the stream and the file — once.
+
+    Called twice on one logger it adds nothing: a frontend that reloads its script would
+    otherwise log every line as many times as it has run.
+
+    Args:
+        enabled: Off means untouched. cora's logger carries no handler of its own then,
+            so nothing below `warning` reaches the user's terminal.
+        log_file: Where the file handler writes; its parent is created if it is missing.
+    """
     if not enabled:
         return
     logger = logging.getLogger(PACKAGE_LOGGER)

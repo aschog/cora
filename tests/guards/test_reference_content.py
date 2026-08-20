@@ -13,10 +13,13 @@ BRACKETS = re.compile(r"\s*([\[\]()])\s*")
 SOURCE = re.compile(r"<details\b.*?</details>", re.DOTALL)
 
 
-def _text(built: pathlib.Path, dotted: str) -> str:
+def _markup(built: pathlib.Path, dotted: str) -> str:
     page = built.joinpath("api", *dotted.split(".")) / "index.html"
-    rendered = SOURCE.sub(" ", page.read_text())
-    plain = SPACE.sub(" ", TAGS.sub(" ", rendered))
+    return SOURCE.sub(" ", page.read_text())
+
+
+def _text(built: pathlib.Path, dotted: str) -> str:
+    plain = SPACE.sub(" ", TAGS.sub(" ", _markup(built, dotted)))
     return BRACKETS.sub(r"\1", plain)
 
 
@@ -31,7 +34,7 @@ def test_a_frozen_dataclass_shows_its_fields_with_annotations(
 
 
 @pytest.mark.integration
-def test_a_class_with_no_docstring_still_shows_its_annotated_fields(
+def test_a_dataclass_shows_its_annotated_fields_beside_its_prose(
     built: pathlib.Path,
 ) -> None:
     result = _text(built, "cora.domain.chat_result")
@@ -72,3 +75,43 @@ def test_a_hierarchy_reads_in_source_order(built: pathlib.Path) -> None:
         "FileTooLargeError",
         "EmptyDocumentError",
     ]
+
+
+@pytest.mark.integration
+def test_a_raises_section_renders_as_a_section(built: pathlib.Path) -> None:
+    """The one thing no annotation carries has to read as structure: a titled section
+    over a table, not the docstring's own indentation left as prose."""
+    assert '<span class="doc-section-title">Raises:</span>' in _markup(
+        built, "cora.ports.embedding"
+    )
+    embedding = _text(built, "cora.ports.embedding")
+
+    assert "Raises: Type Description EmbeddingError" in embedding
+
+
+@pytest.mark.integration
+def test_an_undocumented_parameter_still_shows_its_annotation(
+    built: pathlib.Path,
+) -> None:
+    """`ingest` documents three of its four, because `data: bytes` is what an `Args:`
+    entry could only restate. The one left out is still on the page — from the
+    signature, which is where a type belongs."""
+    ingestion = _text(built, "cora.engine.ingestion")
+    parameters = ingestion.split("Parameters:")[1].split("Raises:")[0]
+
+    assert "ingest(data : bytes ," in ingestion
+    for documented in ("filename str", "loaders Loaders", "max_bytes int"):
+        assert documented in parameters, documented
+    assert "data" not in parameters
+
+
+@pytest.mark.integration
+def test_a_protocols_page_carries_the_ordering_it_guarantees(
+    built: pathlib.Path,
+) -> None:
+    """An implementer reads the contract here: `ty` checks the signatures and nothing
+    else states the order the results come back in."""
+    conversations = _text(built, "cora.ports.conversations")
+
+    assert "oldest first" in conversations
+    assert "newest first" in conversations

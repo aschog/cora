@@ -97,7 +97,34 @@ select = [
     "C4",  # flake8-comprehensions
     "SIM", # flake8-simplify
     "RUF", # ruff-specific
+    "D",   # pydocstyle
 ]
+# `D417` would demand that an `Args:` block name every parameter, which turns
+# `query: str` into `query: The query string.` — the one restatement certain to drift out
+# of sync with the annotation beside it. A section here carries what the type cannot.
+ignore = ["D417"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+# Where a missing docstring is not a finding. The four packages the reference renders are
+# the exception: `cora.domain`, `cora.ports`, `cora.engine` and `cora.app` each have a
+# page per module, and an undocumented public name there is a blank space on a page
+# someone opened on purpose. Everything else keeps the older rule — a docstring appears
+# only if it states something the code cannot.
+[tool.ruff.lint.per-file-ignores]
+# Every class in here implements a port, and a Protocol implementation inherits no
+# docstring: the prose would have to be copy-pasted out of `ports/`. Nothing outside
+# `cora` imports an adapter either, so no page renders one.
+"src/cora/adapters/**" = ["D"]
+# A plugin is data and a frontend is a shell over `cora.app`; neither is in the reference.
+"plugins/**" = ["D"]
+"frontends/**" = ["D"]
+# A test name carries the behaviour, and no page renders a test.
+"conftest.py" = ["D"]
+"tests/**" = ["D"]
+# The nav generator the docs build runs; it documents nothing but itself.
+"scripts/**" = ["D"]
 
 [tool.pytest.ini_options]
 # `tests/cora/` mirrors `src/cora/`; `acceptance/` holds the outer test per story and

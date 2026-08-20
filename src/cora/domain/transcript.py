@@ -1,3 +1,5 @@
+"""What the model is shown of a conversation, which is less than the thread holds."""
+
 from collections.abc import Sequence
 
 from cora.ports.chat_model import Message
@@ -12,10 +14,13 @@ def prompt_from(
     turn_start: int,
     max_history_turns: int,
 ) -> tuple[Message, ...]:
-    """What this turn's model call sees: the brief, then what was said before it,
-    then the turn so far verbatim. The thread keeps everything; the prompt is a
-    projection of it, so a conversation grows without the prompt growing with it —
-    and the brief is stated once however long the thread runs."""
+    """What this turn's model call sees.
+
+    The brief, then what was said before it, then the turn so far verbatim. The thread
+    keeps everything; the prompt is a projection of it, so a conversation grows without
+    the prompt growing with it — and the brief is stated once however long the thread
+    runs.
+    """
     said = _distilled(transcript[:turn_start])
     recent = said[max(len(said) - max_history_turns, 0) :]
     return (
@@ -26,8 +31,11 @@ def prompt_from(
 
 
 def _distilled(past: Sequence[Message]) -> tuple[Message, ...]:
-    """Words, not machinery: a past turn's tool calls, tool results and reminders
-    were addressed to a round that has ended."""
+    """Words, not machinery.
+
+    A past turn's tool calls, tool results and reminders were addressed to a round that
+    has ended.
+    """
     return tuple(
         Message(role=message.role, content=message.content)
         for message in past

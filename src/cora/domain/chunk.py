@@ -1,3 +1,5 @@
+"""A passage of a document, and where in that document it came from."""
+
 from dataclasses import dataclass
 
 

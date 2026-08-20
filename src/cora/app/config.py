@@ -1,3 +1,5 @@
+"""Every setting a deployment can make, read from the environment and checked once."""
+
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -40,6 +42,12 @@ DEFAULT_LOG_PATH = LOG_FILE
 
 @dataclass(frozen=True)
 class Config:
+    """What a deployment decided. Read once at startup and never re-read.
+
+    Every path is where cora keeps something of the user's, and each is separate so one
+    can be moved without moving the others.
+    """
+
     api_key: str
     model: str
     base_url: str
@@ -59,6 +67,16 @@ class Config:
 
     @classmethod
     def from_env(cls, env: Mapping[str, str] | None = None) -> "Config":
+        """Read the configuration, refusing anything unusable rather than guessing.
+
+        Args:
+            env: The environment to read. A mapping of a test's own, or the real one.
+
+        Raises:
+            ConfigurationError: A required setting is missing, or one is set to
+                something it cannot be. Raised at startup, so a misconfigured
+                deployment never reaches a question.
+        """
         env = os.environ if env is None else env
         api_key = _named(env, "OPENROUTER_API_KEY", "")
         if not api_key:
@@ -99,9 +117,12 @@ class Config:
 
 
 def _model(env: Mapping[str, str]) -> str:
-    """The key and the base URL are named `OPENROUTER_*`, so the model gets guessed that
+    """The model to ask, under either name.
+
+    The key and the base URL are named `OPENROUTER_*`, so the model gets guessed that
     way too; `CORA_MODEL` is the documented name and stays the one that wins whenever it
-    names a model — blanks are not a name, and would otherwise outrank the alias."""
+    names a model — blanks are not a name, and would otherwise outrank the alias.
+    """
     return _named(env, "CORA_MODEL", _named(env, "OPENROUTER_MODEL", DEFAULT_MODEL))
 
 
@@ -116,9 +137,12 @@ def _effort(env: Mapping[str, str]) -> str:
 
 
 def _named(env: Mapping[str, str], key: str, default: str) -> str:
-    """A variable blanked rather than deleted reads as unset to whoever blanked it, so a
-    blank is never a value: `sqlite3.connect("")` opens a private database that dies
-    with the connection, and every fact the user asked to keep goes with it."""
+    """One setting, or its default. A blank is not a value.
+
+    A variable blanked rather than deleted reads as unset to whoever blanked it:
+    `sqlite3.connect("")` opens a private database that dies with the connection, and
+    every fact the user asked to keep goes with it.
+    """
     return env.get(key, "").strip() or default
 
 
@@ -134,9 +158,20 @@ def _bool(env: Mapping[str, str], key: str) -> bool:
 
 
 def int_setting(env: Mapping[str, str], key: str, default: int, *, minimum: int) -> int:
-    """One reading of a number from the environment, for every setting that is one —
-    including a frontend's own, which is why it is named rather than private. `minimum`
-    is 0 only where the feature reads it as off, as history turns do."""
+    """One reading of a number from the environment, for every setting that is one.
+
+    Named rather than private because a frontend has settings of its own to read the
+    same way.
+
+    Args:
+        key: The variable's name, quoted back in any refusal.
+        default: What the setting is when the variable is unset or blank.
+        minimum: The lowest value that means anything. 0 only where the feature reads
+            zero as off, as history turns do.
+
+    Raises:
+        ConfigurationError: The value is not a whole number, or is below `minimum`.
+    """
     raw = _named(env, key, str(default))
     try:
         value = int(raw)

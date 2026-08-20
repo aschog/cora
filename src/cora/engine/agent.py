@@ -1,3 +1,5 @@
+"""The agent a frontend talks to: one turn in, one result out."""
+
 import logging
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
@@ -22,6 +24,12 @@ def _ignore(step: TraceStep) -> None:
 
 @dataclass(frozen=True)
 class Agent:
+    """What a frontend asks. Answers a turn, or stops and says what it needs settled.
+
+    Without a `conversations` slot a turn is answered and not kept: the record is
+    bookkeeping beside the answer, never a condition of it.
+    """
+
     runner: GraphRunner
     conversations: Conversations | None = None
 
@@ -32,21 +40,33 @@ class Agent:
         on_step: Callable[[TraceStep], None] = _ignore,
         on_text: TextSink = unheard,
     ) -> ChatResult:
-        """One turn on a named thread, which is where the conversation now lives: the
-        question alone is seeded, and the steps reported are this turn's — the thread
+        """One turn on a named thread, which is where the conversation now lives.
+
+        The question alone is seeded, and the steps reported are this turn's — a thread
         arrives carrying every step it has ever taken. Each step is reported the moment
         the run takes it, so a caller can show the work in progress, and a run that
         fails keeps the steps already reported.
 
-        `on_text` is what the model writes as it writes it, which no step reported
-        between supersteps could carry: it is handed *in* to the run rather than read
-        off the states coming out. Nothing about the result changes. A turn may take
-        several rounds and only the last of them is the answer, so a round that ends in
-        a tool call closes with an `Aside` — the pieces since the last one are the
-        answer, arriving earlier.
+        Args:
+            question: What to answer. The thread supplies everything said before it.
+            thread_id: The conversation this turn belongs to. One nothing was recorded
+                under starts a new one.
+            on_step: Called once per step, as it is taken.
+            on_text: What the model writes as it writes it, which no step reported
+                between supersteps could carry: it is handed *in* to the run rather than
+                read off the states coming out. Nothing about the result changes. Only
+                the last round of a turn is the answer, so a round that ends in a tool
+                call closes with an `Aside`.
 
-        A turn that stopped to ask raises `TurnPaused` instead of returning: there is no
-        answer yet, and `resume` is what finishes it."""
+        Returns:
+            The answer, the citations it rests on, and this turn's steps.
+
+        Raises:
+            TurnPaused: The turn stopped to ask. There is no answer yet, and `resume` is
+                what finishes it.
+            InputRejectedError: A rule refused the question.
+            AdapterError: Something outside cora failed mid-turn.
+        """
         return self._turn(
             self.runner.run({"question": question}, thread_id, on_text),
             question,
@@ -61,10 +81,15 @@ class Agent:
         on_step: Callable[[TraceStep], None] = _ignore,
         on_text: TextSink = unheard,
     ) -> ChatResult:
-        """The rest of a turn that stopped to ask, on the label the user picked — or on
-        nothing, if they declined. The question is read off the pause rather than passed
-        in, because the turn it belongs to is the one already parked on this thread and
-        no caller should be able to record it under a different one."""
+        """The rest of a turn that stopped to ask, on the label the user picked.
+
+        Or on nothing, if they declined. The question is read off the pause rather than
+        passed in, because the turn it belongs to is the one already parked on this
+        thread and no caller should be able to record it under a different one.
+
+        Raises:
+            NothingToResumeError: This thread is not waiting on a decision.
+        """
         waiting = self.runner.pending(thread_id)
         if waiting is None:
             raise NothingToResumeError
@@ -76,9 +101,12 @@ class Agent:
         )
 
     def pending(self, thread_id: str) -> Pending | None:
-        """What this thread is waiting on, for a caller that arrived after the pause —
-        a page reloaded while a decision was still open has no other way to find it,
-        because a turn is recorded only once it has an answer."""
+        """What this thread is waiting on, or nothing.
+
+        For a caller that arrived after the pause: a page reloaded while a decision was
+        still open has no other way to find it, because a turn is recorded only once it
+        has an answer.
+        """
         return self.runner.pending(thread_id)
 
     def _turn(
@@ -116,8 +144,11 @@ class Agent:
         return result
 
     def _record(self, thread_id: str, turn: Turn) -> None:
-        """Keeping the conversation is bookkeeping beside the answer it is about: a
-        store that went away loses the record, never the reply the user asked for."""
+        """Keep the turn, if there is anywhere to keep it.
+
+        Bookkeeping beside the answer it is about: a store that went away loses the
+        record, never the reply the user asked for.
+        """
         if self.conversations is None:
             return
         try:

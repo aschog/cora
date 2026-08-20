@@ -1,3 +1,5 @@
+"""The tool the model calls to stop and ask the user which of two facts it meant."""
+
 from typing import Any
 
 from jsonschema import Draft202012Validator, ValidationError
@@ -58,9 +60,15 @@ ASK_SCHEMA: dict[str, Any] = {
 
 
 def decision_from(arguments: dict[str, Any]) -> Decision:
-    """The call as a decision, or a refusal written for the model that made it. The
-    schema is the tool's own, so a malformed ask is refused the way a malformed call to
-    any other tool is — the round hears about it and carries on."""
+    """The call as a decision, or a refusal written for the model that made it.
+
+    The schema is the tool's own, so a malformed ask is refused the way a malformed call
+    to any other tool is — the round hears about it and carries on.
+
+    Raises:
+        ToolRefusal: The arguments are not a decision. The message quotes what was
+            wrong, so the model can ask properly instead.
+    """
     try:
         Draft202012Validator(ASK_SCHEMA).validate(arguments)
     except ValidationError as invalid:
@@ -76,15 +84,26 @@ def decision_from(arguments: dict[str, Any]) -> Decision:
 
 
 def _asked_already(**_: Any) -> str:
-    """The one tool whose work is not its own. The router sends the ask that will stop
-    the run to the step that can stop it, ahead of the round's tools — so the dispatcher
-    reaches this only for an ask that will not: a second one in the same round, or one
-    raised after the reader has already been stopped. Either way what the round needs to
-    hear is why, not that it found an unreachable branch."""
+    """The one tool whose work is not its own.
+
+    The router sends the ask that will stop the run to the step that can stop it, ahead
+    of the round's tools — so the dispatcher reaches this only for an ask that will not:
+    a second one in the same round, or one raised after the reader has already been
+    stopped. Either way what the round needs to hear is why, not that it found an
+    unreachable branch.
+
+    Raises:
+        ToolRefusal: Always. The turn has had its question.
+    """
     raise ToolRefusal(ASKED_ALREADY)
 
 
 def ask_tool() -> Tool:
+    """The `ask_user` tool as the model is offered it.
+
+    Running it is a refusal by design: what a real ask does is stop the run, which is
+    `AskStep`'s to do and no tool's.
+    """
     return Tool(
         name=ASK_TOOL_NAME,
         description=ASK_TOOL_DESCRIPTION,

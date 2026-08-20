@@ -40,38 +40,41 @@ and the ignore line is what makes it fail.
 
 #### The rule's edges, pinned so they cannot drift (fixture under `tests/guards/`)
 
-- [ ] a public class in a rendered package with no docstring is reported
-- [ ] the same class in `cora.adapters` is not — the ignore list is the boundary, and it is
+- [x] a public class in a rendered package with no docstring is reported
+- [x] the same class in `cora.adapters` is not — the ignore list is the boundary, and it is
       the backlog for what has not been taken
-- [ ] a test function with no docstring is reported by nothing; test names carry the
+- [x] a test function with no docstring is reported by nothing; test names carry the
       behaviour and no page renders them
-- [ ] a docstring with an `Args:` section naming one parameter of three is *not* reported —
+- [x] a docstring with an `Args:` section naming one parameter of three is *not* reported —
       `D417` is off, so documenting only the parameter whose meaning the type cannot carry
       is allowed
-- [ ] a summary line running straight into its second sentence *is* reported in a rendered
+- [x] a summary line running straight into its second sentence *is* reported in a rendered
       package, so a page does not open on a wall of prose
-- [ ] the convention is read from `pyproject.toml`, not from a per-file directive — one
+- [x] the convention is read from `pyproject.toml`, not from a per-file directive — one
       place decides the format
 
 #### Package by package (`ruff check` red until the package is done)
 
-- [ ] `cora.ports` — 48; taken first, because a Protocol's docstring is the only place its
+- [x] `cora.ports` — 48; taken first, because a Protocol's docstring is the only place its
       contract exists at all: `ty` checks conformance and no test spells it out
-- [ ] `cora.domain` — 60; the types that cross to a frontend
-- [ ] `cora.app` — 10; `build`, `App`, `Config`, `int_setting` — what a new frontend calls
-- [ ] `cora.engine` — 56; per-name guarantees only, with the flows left to the narrative
+- [x] `cora.domain` — 60; the types that cross to a frontend
+- [x] `cora.app` — 10; `build`, `App`, `Config`, `int_setting` — what a new frontend calls
+- [x] `cora.engine` — 56; per-name guarantees only, with the flows left to the narrative
       pages
 
 #### What the reference shows once the prose exists
 
-- [ ] **(int)** a `Raises:` section renders as a section, not as preformatted text — the one
+- [x] **(int)** a `Raises:` section renders as a section, not as preformatted text — the one
       thing no annotation carries has to read as structure
-- [ ] **(int)** an `Args:` section naming one parameter of three renders that one, and the
-      other two still show their annotations from the signature
-- [ ] **(int)** a `Protocol`'s page carries the ordering guarantee its docstring states —
+- [x] **(int)** an `Args:` section that leaves a parameter out renders the ones it names, and
+      the one left out still shows its annotation from the signature — `ingest` documents
+      three of four, because `data: bytes` is what an entry could only restate
+- [x] **(int)** a `Protocol`'s page carries the ordering guarantee its docstring states —
       `Conversations.sessions` is newest first, and the page is where an implementer reads it
+- [x] **(int)** the guard that read `ChatResult` as a class with no docstring is renamed:
+      after this story there is no such class in a rendered package
 
 #### What the repo claims about itself
 
-- [ ] `docs/workflow.md`'s path claims still resolve after the paragraph is rewritten —
+- [x] `docs/workflow.md`'s path claims still resolve after the paragraph is rewritten —
       `test_docs.py` already reads that page

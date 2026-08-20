@@ -1,3 +1,5 @@
+"""Loading the plugins a deployment named, and refusing the ones it cannot have."""
+
 import importlib
 from collections.abc import Iterable
 
@@ -9,12 +11,31 @@ from cora.ports.plugin import Plugin
 
 
 def load_plugins(module_paths: Iterable[str]) -> PluginSet:
-    """Each module is named in its own refusal, so one bad entry in a list of three
-    points at itself rather than at the list."""
+    """Load every named plugin, in the order it was named.
+
+    Each module is named in its own refusal, so one bad entry in a list of three points
+    at itself rather than at the list.
+
+    Raises:
+        PluginLoadError: One of the modules could not be loaded.
+        ConfigurationError: The modules load but the set they make cannot be composed —
+            a module named twice, or two plugins offering one tool name.
+    """
     return PluginSet(tuple((path, load_plugin(path)) for path in module_paths))
 
 
 def load_plugin(module_path: str) -> Plugin:
+    """The `PLUGIN` bundle a module contributes, checked before it is trusted.
+
+    A plugin is arbitrary code cora was told to import, so every assumption about the
+    bundle is stated as a refusal here rather than met later as an attribute error.
+
+    Raises:
+        PluginLoadError: The module is missing, failed to import, defines no `PLUGIN`,
+            or defines one that is not usable — a blank name, two tools sharing a name,
+            a tool that cannot be called, or a parameter schema that is not valid JSON
+            Schema.
+    """
     try:
         module = importlib.import_module(module_path)
     except ModuleNotFoundError as exc:
