@@ -40,17 +40,17 @@ and the ignore line is what makes it fail.
 
 #### The rule's edges, pinned so they cannot drift (fixture under `tests/guards/`)
 
-- [ ] a public class in a rendered package with no docstring is reported
-- [ ] the same class in `cora.adapters` is not — the ignore list is the boundary, and it is
+- [x] a public class in a rendered package with no docstring is reported
+- [x] the same class in `cora.adapters` is not — the ignore list is the boundary, and it is
       the backlog for what has not been taken
-- [ ] a test function with no docstring is reported by nothing; test names carry the
+- [x] a test function with no docstring is reported by nothing; test names carry the
       behaviour and no page renders them
-- [ ] a docstring with an `Args:` section naming one parameter of three is *not* reported —
+- [x] a docstring with an `Args:` section naming one parameter of three is *not* reported —
       `D417` is off, so documenting only the parameter whose meaning the type cannot carry
       is allowed
-- [ ] a summary line running straight into its second sentence *is* reported in a rendered
+- [x] a summary line running straight into its second sentence *is* reported in a rendered
       package, so a page does not open on a wall of prose
-- [ ] the convention is read from `pyproject.toml`, not from a per-file directive — one
+- [x] the convention is read from `pyproject.toml`, not from a per-file directive — one
       place decides the format
 
 #### Package by package (`ruff check` red until the package is done)
