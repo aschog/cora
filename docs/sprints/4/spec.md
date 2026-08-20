@@ -133,6 +133,24 @@ route already returns is now a notice, and a first upload gets its confirmation 
 two names were wrong: a failure in the *sink* was reported as the model being unavailable,
 and a test claimed a property its two sequential runs could not observe.
 
+### [22. The page stops explaining itself, and a quotation looks like one](done/story-22.md) ✔
+
+The chrome block of the manual sweep. Ten paragraphs explaining the page's own panels are
+gone — four standing explanations of a panel already full, six empty states saying what a
+panel *will* hold when the tab that opened it already said. The source pane lost the caption
+counting marks the reader can see and gained the filename as a heading, which is what the
+tests that had used that caption were actually after. `PLAN` became `STEPS`, because the
+panel is filled after the answer lands. And the quoted passage is amber: the page's blue
+means "click this", so a quotation drawn in it read as a control.
+
+### [23. What an upload did is said beside the list it changed](done/story-23.md) ✔
+
+The notice story 21 shipped moves out of the page-wide banner strip into the documents rail,
+under the control that raises it, and gains a dismiss. A duplicate now wears the colour and
+the mark the page keeps for an outcome the reader did not ask for — which reverses story 21's
+own decision, deliberately and on the record. A document added keeps the accent, so success
+does not arrive in an error's clothes.
+
 ## Not built this sprint
 
 Planned, cut once the bonus bar was cleared and the hours ran down. None of them is needed
@@ -161,7 +179,7 @@ for a task requirement:
 |---|---|
 | 1 · Agent purpose | *Purpose* above; restated in `README.md` |
 | 2 · Core functionality | Stories 1, 3 — plan, tools, retrieval as a decision, memory |
-| 3 · User interface | **Streamlit** — story 2 (trace), story 3 (memory panel), plus upload, sources and chat in `README.md` § *Run the app*. **React** — story 16 (the cited passage, opened), story 17 (the shell over cora's own API), story 18 (leaving a conversation), story 19 (the answer as it is written), story 20 (nothing shown as an answer but the answer), story 21 (the reader's selection kept, an upload's outcome said), with `make run-react` and the shell's own settings in `README.md` § *Run the app* |
+| 3 · User interface | **Streamlit** — story 2 (trace), story 3 (memory panel), plus upload, sources and chat in `README.md` § *Run the app*. **React** — story 16 (the cited passage, opened), story 17 (the shell over cora's own API), story 18 (leaving a conversation), story 19 (the answer as it is written), story 20 (nothing shown as an answer but the answer), story 21 (the reader's selection kept, an upload's outcome said), story 22 (the page spends its space on the reader's own work, and a quotation reads as one), story 23 (what an upload did, said beside the list it changed), with `make run-react` and the shell's own settings in `README.md` § *Run the app* |
 | 4 · Technical implementation | *Architecture decision* above, plus the failure criteria carried by every story (below) |
 | 5 · Documentation | `README.md` setup and usage, worked examples of asking, remembering and small talk, decisions recorded here, `big-picture.md` drawn around the agent |
 

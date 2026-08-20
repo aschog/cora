@@ -582,6 +582,50 @@ def test_a_stream_that_fails_part_way_keeps_the_category_and_what_was_written(
     assert written == [Piece("Sleep, ")]
 
 
+def test_a_failure_nobody_modelled_leaves_the_operator_something_to_read(
+    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+) -> None:
+    """A category the reader can act on says what to do about it. The rest fall through
+    to a sentence that says nothing, so the traceback is the only account of what
+    happened and the log is the only place it can be kept."""
+
+    class _BreaksUnrecognisably:
+        def __init__(self, **kwargs: object) -> None: ...
+
+        def stream(self, messages: object) -> Iterator[AIMessageChunk]:
+            raise RuntimeError("the socket said something else entirely")
+            yield
+
+    model = _model_over(monkeypatch, _BreaksUnrecognisably)
+
+    with (
+        caplog.at_level(logging.WARNING, logger="cora.adapters"),
+        pytest.raises(LlmError),
+    ):
+        model.complete((Message(role="user", content="hi"),), ())
+
+    assert "the socket said something else entirely" in caplog.text
+
+
+def test_two_pieces_that_will_not_add_up_are_the_provider_s_failure(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Adding a piece to the whole is the library's merge, and it refuses a field two
+    pieces disagree about — seen from providers that stream reasoning oddly. It is the
+    provider's stream failing, so the reader is told what a failed stream tells them,
+    not handed a `TypeError`."""
+    model = _model_over(
+        monkeypatch,
+        _streaming(
+            AIMessageChunk(content="Sleep, ", additional_kwargs={"reasoning": 1}),
+            AIMessageChunk(content="not volume.", additional_kwargs={"reasoning": "x"}),
+        ),
+    )
+
+    with pytest.raises(LlmError):
+        model.complete((Message(role="user", content="hi"),), ())
+
+
 class _ReaderWentAway(Exception):
     """Nothing the provider could raise: what the caller's own sink does when it
     fails."""

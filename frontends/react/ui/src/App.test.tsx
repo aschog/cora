@@ -176,17 +176,17 @@ test('each rail folds away and comes back, and its toggle says which it is', asy
 
   fireEvent.click(documents)
   expect(screen.queryByText('notes.md')).toBeNull()
-  expect(screen.getByRole('tab', { name: 'PLAN' })).toBeTruthy()
+  expect(screen.getByRole('tab', { name: 'STEPS' })).toBeTruthy()
   expect(documents.getAttribute('aria-pressed')).toBe('false')
 
   fireEvent.click(rail)
-  expect(screen.queryByRole('tab', { name: 'PLAN' })).toBeNull()
+  expect(screen.queryByRole('tab', { name: 'STEPS' })).toBeNull()
   expect(rail.getAttribute('aria-pressed')).toBe('false')
 
   fireEvent.click(documents)
   fireEvent.click(rail)
   expect(screen.getByText('notes.md')).toBeTruthy()
-  expect(screen.getByRole('tab', { name: 'PLAN' })).toBeTruthy()
+  expect(screen.getByRole('tab', { name: 'STEPS' })).toBeTruthy()
 })
 
 
@@ -196,9 +196,6 @@ test('a document the answer cited opens in the source panel, marked at the passa
   expect(await screen.findByText('notes.md')).toBeTruthy()
   const inTheRail = screen.getByRole('button', { name: 'notes.md' })
   expect(inTheRail.hasAttribute('disabled')).toBe(true)
-  /* A disabled button is out of the accessibility tree and its tooltip is unreliable,
-     so the reason is on the page rather than on the control it explains. */
-  expect(screen.getByText(/not cited in this conversation/)).toBeTruthy()
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why?' },
@@ -209,14 +206,13 @@ test('a document the answer cited opens in the source panel, marked at the passa
 
   // Cited now, so the rail opens it — into SOURCE, marked where the citation falls.
   expect(inTheRail.hasAttribute('disabled')).toBe(false)
-  expect(screen.queryByText(/not cited in this conversation/)).toBeNull()
   fireEvent.click(inTheRail)
 
   expect(screen.getByRole('tab', { name: 'SOURCE' }).getAttribute('aria-selected')).toBe(
     'true',
   )
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(screen.getByText('1 cited passage · highlighted')).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'notes.md' })).toBeTruthy()
   expect(container.querySelector('.doc-passage')?.textContent).toBe(
     KEPT.slice(0, 6),
   )
@@ -312,9 +308,9 @@ test('an answer never lands on a conversation that was replaced while it ran', a
      something false about it — that its text was never kept, when the truth is that
      nothing here cites it. */
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
-  const rail = within(document.querySelector('.rail-panels') as HTMLElement)
-  expect(rail.queryByText('notes.md')).toBeNull()
-  expect(rail.getByText(/passage an answer cites/)).toBeTruthy()
+  const panels = document.querySelector('.rail-panels') as HTMLElement
+  expect(within(panels).queryByText('notes.md')).toBeNull()
+  expect(within(panels).queryByRole('heading', { name: 'notes.md' })).toBeNull()
 })
 
 test('the conversation follows what just happened, answered or failed', async () => {
@@ -481,9 +477,9 @@ function steppingSlowly(): Response {
 }
 
 test('a conversation shows its own plan, not the plan of a turn left behind', async () => {
-  /* The panel's own footer says cora chose these steps — for what is on screen. A turn
-     the reader walked away from is another conversation's work: it must neither go on
-     filling this panel nor leave behind what it had already filled. */
+  /* The panel shows the steps behind what is on screen. A turn the reader walked away
+     from is another conversation's work: it must neither go on filling this panel nor
+     leave behind what it had already filled. */
   vi.stubGlobal(
     'fetch',
     vi.fn(async (path: string) => {
@@ -508,7 +504,7 @@ test('a conversation shows its own plan, not the plan of a turn left behind', as
   step.release()
   await flushed()
 
-  fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
   expect(screen.queryByText('After the reopen')).toBeNull()
   expect(screen.queryByText('Before the reopen')).toBeNull()
   // The request is still in flight, so cora is still answering one question.
@@ -585,7 +581,8 @@ test('a question in flight does not un-cite the answer still on screen', async (
   await screen.findByText(/Sleep, not volume/)
 
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
-  expect(await screen.findByText('1 cited passage · highlighted')).toBeTruthy()
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
 
   turn = held()
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -597,7 +594,6 @@ test('a question in flight does not un-cite the answer still on screen', async (
   // Back to the passage while cora works: the answer above it has not changed.
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(screen.getByText('1 cited passage · highlighted')).toBeTruthy()
   expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
 })
 
@@ -617,7 +613,8 @@ test('a turn that failed does not un-cite the answer still on screen', async () 
   await screen.findByText(/Sleep, not volume/)
 
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
-  expect(await screen.findByText('1 cited passage · highlighted')).toBeTruthy()
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
 
   turn = held()
   vi.stubGlobal(
@@ -638,7 +635,6 @@ test('a turn that failed does not un-cite the answer still on screen', async () 
 
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(screen.getByText('1 cited passage · highlighted')).toBeTruthy()
   expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
 })
 
@@ -830,7 +826,7 @@ test('the question in flight stays with the conversation it was asked in', async
   )
   expect(screen.getByText(/Working/)).toBeTruthy()
   expect(screen.queryByText(/still answering/)).toBeNull()
-  fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
   expect(screen.getByText(LIVE[0].summary)).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Ask' }).hasAttribute('disabled')).toBe(true)
 
@@ -935,9 +931,9 @@ test('the new session is not offered while the conversation is already new', asy
 })
 
 test('the panels afterwards speak for the new session, not the one left behind', async () => {
-  /* The plan panel's footer says these are the steps behind what is on screen, and the
-     source panel marks what this answer rested on. With the conversation gone, both are
-     speaking for a turn the reader can no longer see. */
+  /* The plan panel shows the steps behind what is on screen, and the source panel marks
+     what this answer rested on. With the conversation gone, both would be speaking for a
+     turn the reader can no longer see. */
   render(<App />)
   await screen.findByText('notes.md')
 
@@ -953,11 +949,11 @@ test('the panels afterwards speak for the new session, not the one left behind',
 
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
-  const rail = within(document.querySelector('.rail-panels') as HTMLElement)
-  expect(rail.getByText(/passage an answer cites/)).toBeTruthy()
-  fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
+  const panels = document.querySelector('.rail-panels') as HTMLElement
+  expect(within(panels).queryByRole('heading', { name: 'notes.md' })).toBeNull()
+  fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
   expect(screen.queryByText(TURN.trace[0].summary)).toBeNull()
-  expect(rail.getByText(/steps cora takes will appear/)).toBeTruthy()
+  expect(panels.querySelector('.plan-step')).toBeNull()
 })
 
 test('an answer to the conversation left behind does not land on the new session', async () => {
@@ -1463,9 +1459,15 @@ test('the page says both of its sentences at once, in one order', async () => {
   fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   await screen.findByText(unreachable)
 
-  expect(
-    [...screen.getByRole('status').children].map((each) => each.textContent),
-  ).toEqual([unreachable, 'In the conversation you left: cora is away.'])
+  /* Resolved through the role, and named: the documents rail carries a live region of its
+     own for what an upload did, so a bare role would find two. The name is what tells the
+     two apart — and what a screen reader says before the sentence, rather than announcing
+     it bare. */
+  const banners = screen.getByRole('status', { name: 'Notices' })
+  expect([...banners.children].map((each) => each.textContent)).toEqual([
+    unreachable,
+    'In the conversation you left: cora is away.',
+  ])
 })
 
 /** A 200 whose body is not a list of turns: the read went through, what came back cannot
@@ -1884,7 +1886,7 @@ test('asking a question scrolls to it from wherever the reader had scrolled to',
 })
 
 /* The outer tests of story 21. Held under `test.fails` — vitest's strict xfail — while
-   the list is worked through, so leaving the marker behind is not possible. */
+   the list was worked through, so leaving the marker behind was not possible. */
 
 const GROWN = {
   answer: 'Sleep is the lever.\n\nNot volume and not intensity [1].',
@@ -1941,11 +1943,11 @@ test('a file uploaded twice is added, and then said to be there already', async 
   await screen.findByText('notes.md')
 
   upload('notes.md')
-  expect(await screen.findByText('Added notes.md — 12 passages.')).toBeTruthy()
+  expect(await screen.findByText('Added “notes.md” — 12 passages.')).toBeTruthy()
 
   upload('notes.md')
   expect(
-    await screen.findByText('notes.md is already in your knowledge base.'),
+    await screen.findByText('“notes.md” is already in your documents.'),
   ).toBeTruthy()
 })
 
@@ -1979,31 +1981,134 @@ test('one passage indexed is one passage', async () => {
 
   upload('notes.md')
 
-  expect(await screen.findByText('Added notes.md — 1 passage.')).toBeTruthy()
+  expect(await screen.findByText('Added “notes.md” — 1 passage.')).toBeTruthy()
 })
 
-test('what an upload did is not drawn as trouble', async () => {
-  /* A duplicate is neither a failure nor nothing having happened, and the reader tells the
-     two banners apart by looking at them. */
-  await ready([0])
+test('an upload that indexed nothing is drawn as the outcome it is', async () => {
+  /* A duplicate is not the outcome the reader asked for, and not the one a document added
+     gets: the reader tells the two apart by looking at them. The store answering "already
+     there" before "added" cannot happen — the order is arbitrary because only the drawing
+     is under test. */
+  await ready([0, 12])
+
+  upload('notes.md')
+  const duplicate = await screen.findByText('“notes.md” is already in your documents.')
+  expect(duplicate.closest('.upload-notice')?.className).toContain('wrong')
+
+  upload('notes.md')
+  const added = await screen.findByText('Added “notes.md” — 12 passages.')
+  expect(added.closest('.upload-notice')?.className).not.toContain('wrong')
+})
+
+test('the reader can shut what an upload said', async () => {
+  await ready([12])
+
+  upload('notes.md')
+  await screen.findByText('Added “notes.md” — 12 passages.')
+  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
+
+  expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull()
+})
+
+test('what an upload did is drawn beside the list it changed', async () => {
+  /* Not over the conversation: the sentence is about this rail, and the control that
+     raised it is directly above. */
+  await ready([12])
 
   upload('notes.md')
 
-  const said = await screen.findByText('notes.md is already in your knowledge base.')
-  expect(said.className).toBe('notice')
+  const said = await screen.findByText('Added “notes.md” — 12 passages.')
+  expect(said.closest('.rail-docs')).toBeTruthy()
+  expect(document.querySelector('.banners')?.textContent).toBe('')
 })
 
 test('an upload that fails says so, and takes the last one’s notice away', async () => {
   await ready([12, { error: 'That upload is larger than the 5 MB cora reads.' }])
 
   upload('notes.md')
-  await screen.findByText('Added notes.md — 12 passages.')
+  await screen.findByText('Added “notes.md” — 12 passages.')
   upload('huge.pdf')
 
   expect(
     await screen.findByText('That upload is larger than the 5 MB cora reads.'),
   ).toBeTruthy()
-  expect(screen.queryByText('Added notes.md — 12 passages.')).toBeNull()
+  expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull()
+})
+
+test('a notice for an upload the reader walked away from is not drawn', async () => {
+  /* Ingestion takes seconds and nothing stops the reader leaving while it runs, so the
+     notice would land on a conversation the upload never happened in — where nothing can
+     take it away again, `New session` having nothing left to leave. */
+  const ingesting = held()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/documents' && init?.method === 'POST') {
+        await ingesting.until
+        return {
+          ok: true,
+          json: async () => ({ document: 'notes.md', chunks: 12 }),
+        } as unknown as Response
+      }
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  /* A conversation to leave, so `New session` is live. */
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+
+  upload('notes.md')
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  ingesting.release()
+  await flushed()
+
+  expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull()
+})
+
+test('starting a new session takes the last upload’s notice away', async () => {
+  /* The notice is news about what the reader just handed the page. Left standing over a
+     conversation opened after it, it is a banner with nothing behind it — and nothing
+     else ever takes it away. */
+  await ready([12])
+
+  upload('notes.md')
+  await screen.findByText('Added “notes.md” — 12 passages.')
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+
+  await waitFor(() =>
+    expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull(),
+  )
+})
+
+test('reopening an earlier conversation takes the notice away too', async () => {
+  /* The same boundary as a new session: the reader has moved to a conversation the upload
+     had not happened in yet. */
+  await ready([12])
+
+  upload('notes.md')
+  await screen.findByText('Added “notes.md” — 12 passages.')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+
+  await waitFor(() =>
+    expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull(),
+  )
 })
 
 test('a notice stands while the reader asks their next question', async () => {
@@ -2012,7 +2117,7 @@ test('a notice stands while the reader asks their next question', async () => {
   await ready([12])
 
   upload('notes.md')
-  await screen.findByText('Added notes.md — 12 passages.')
+  await screen.findByText('Added “notes.md” — 12 passages.')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
   })
@@ -2020,5 +2125,118 @@ test('a notice stands while the reader asks their next question', async () => {
   turn.release()
   await screen.findByRole('button', { name: 'Open cited source 1' })
 
-  expect(screen.getByText('Added notes.md — 12 passages.')).toBeTruthy()
+  expect(screen.getByText('Added “notes.md” — 12 passages.')).toBeTruthy()
+})
+
+/** Every sentence story 22 deleted. Kept as one list so a paragraph reintroduced anywhere
+ *  in the rail fails here, whichever panel it lands in. */
+const EXPLANATIONS = [
+  /fixed pipeline/,
+  /steps cora takes will appear/,
+  /Greyed documents are indexed/,
+  /Nothing indexed yet/,
+  /passage an answer cites/,
+  /will be listed here/,
+  /carries between sessions/,
+  /tell cora something about yourself/,
+  /the agent stays the same/,
+  /CORA_PLUGINS/,
+]
+
+const nothingExplains = () =>
+  EXPLANATIONS.forEach((said) => expect(screen.queryByText(said)).toBeNull())
+
+test('a full page explains none of its own panels', async () => {
+  /* Documents, steps, facts, a plugin and a past conversation — every panel with something
+     in it, and the reader is told about none of them. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  expect(screen.getByText(TURN.trace[0].summary)).toBeTruthy()
+
+  fireEvent.click(screen.getByRole('button', { name: 'notes.md' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'notes.md' })).toBeTruthy()
+  expect(screen.queryByText(/cited passage/)).toBeNull()
+
+  for (const panel of ['STEPS', 'SESSIONS', 'MEMORY']) {
+    fireEvent.click(screen.getByRole('tab', { name: panel }))
+    nothingExplains()
+  }
+  fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
+  nothingExplains()
+})
+
+test('a page with nothing in it yet draws the controls and no prose', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({ ok: true, json: async () => [] }) as unknown as Response),
+  )
+  render(<App />)
+  await screen.findByText('Add a document')
+
+  for (const panel of ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY']) {
+    fireEvent.click(screen.getByRole('tab', { name: panel }))
+    nothingExplains()
+  }
+  expect(screen.getByPlaceholderText(/Ask a question/)).toBeTruthy()
+})
+
+test('an upload that failed in a conversation left behind keeps this one’s notice', async () => {
+  /* The success path is stamped with the conversation the upload was started in; the
+     failure path was not, and `setNotice(null)` reaches into state the reader's *current*
+     conversation owns. The rejection is still drawn — a document is refused wherever the
+     reader is — but it may not take away news about an upload that worked here. */
+  const refusing = held()
+  let first = true
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/documents' && init?.method === 'POST') {
+        if (first) {
+          first = false
+          await refusing.until
+          return {
+            ok: false,
+            json: async () => ({ error: 'That upload is larger than the 5 MB cora reads.' }),
+          } as unknown as Response
+        }
+        return {
+          ok: true,
+          json: async () => ({ document: 'notes.md', chunks: 12 }),
+        } as unknown as Response
+      }
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  /* A conversation to leave, so `New session` is live. */
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+
+  upload('huge.pdf')
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  upload('notes.md')
+  await screen.findByText('Added “notes.md” — 12 passages.')
+
+  refusing.release()
+  expect(
+    await screen.findByText('That upload is larger than the 5 MB cora reads.'),
+  ).toBeTruthy()
+  expect(screen.getByText('Added “notes.md” — 12 passages.')).toBeTruthy()
 })

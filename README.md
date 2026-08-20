@@ -77,11 +77,12 @@ make run                                   # or: make run-env, to read the key f
 the command survives the next time a package moves — the path itself is one line, in the
 `Makefile`.
 
-The React shell is the same app behind an HTTP surface. `make run-react` serves both the
-API and the built page from one process on `127.0.0.1:8000`; in development run
+The React shell is the same app behind an HTTP surface. `make run-react` builds the page
+and then serves it with the API from one process on `127.0.0.1:8000`; in development run
 `make run-react` and `make ui` side by side, and Vite serves the page on `5173`, proxying
-`/api` to the first. The page is built with `npm run build` in `frontends/react/ui/`,
-after which the server picks its output up on its own.
+`/api` to the first. The server reads only the build at `frontends/react/ui/dist`, so
+`make ui` is the one that shows a source change as you save it — `make ui-build` is the
+same build on its own.
 
 In that shell the answer appears as cora writes it, rather than all at once when the turn
 ends; a `[1]` becomes clickable once the turn lands and its citations are resolved. The
@@ -194,11 +195,20 @@ uv run ruff format .          # format
 uv run ruff check .           # lint
 uv run ty check               # type check
 make ui-test                  # the React page's own tier (vitest over happy-dom)
+make ui-test-browser          # the browser tier (vitest over real Chromium; opt-in)
 ```
 
-No browser is needed anywhere: the Streamlit UI is driven headlessly through its
-`AppTest`, including the live tier, and the React page through `happy-dom`. The React
+No browser is needed for any *local* gate: the Streamlit UI is driven headlessly through
+its `AppTest`, including the live tier, and the React page through `happy-dom`. The React
 tier is the one gate that needs node, which is why the pre-commit hook does not run it.
+
+One tier does need a browser, and CI is where it gates: the pre-commit hook leaves it out
+and so does `npm test`. Two things are invisible to happy-dom. What the reader keeps while
+an answer is being written — a selection inside the paragraph still growing — survives or
+collapses identically there, because it moves no selection boundary when a text node is
+rewritten. And it applies no stylesheet, so what colour the page actually draws a cited
+passage in cannot be read from it at all. `make ui-test-browser` asserts both in Chromium;
+locally that needs `npx playwright install chromium --only-shell` once.
 
 The `llm` tier is the only one that spends money. It runs the whole shipped stack —
 the composition root, a real Chroma store and embedder, and OpenRouter over the

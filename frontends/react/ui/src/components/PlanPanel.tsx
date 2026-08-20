@@ -1,14 +1,8 @@
 import { useState } from 'react'
 import type { Step } from '../api'
 
-const NOTHING = 'The steps cora takes will appear here.'
-const FOOTER =
-  'cora chose these steps. Nothing here is a fixed pipeline — the tools come from the loaded plugin.'
-
 export default function PlanPanel({ steps }: { steps: Step[] }) {
   const [open, setOpen] = useState<number | null>(null)
-
-  if (steps.length === 0) return <div className="panel-intro">{NOTHING}</div>
 
   return (
     <div className="plan">
@@ -33,7 +27,6 @@ export default function PlanPanel({ steps }: { steps: Step[] }) {
           )}
         </div>
       ))}
-      <div className="plan-footer">{FOOTER}</div>
     </div>
   )
 }

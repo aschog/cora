@@ -1,15 +1,25 @@
+import UploadNotice from './UploadNotice'
+import type { Notice } from './UploadNotice'
+
 type Props = {
   documents: string[]
   cited: Set<string>
   onOpen: (document: string) => void
   onUpload: (file: File) => void
+  /** What the last upload did. It is drawn here rather than over the conversation: it is
+   *  news about this list, raised by the control directly above it. */
+  upload: Notice | null
+  onDismissUpload: () => void
 }
 
-const UNCITED =
-  'Greyed documents are indexed but not cited in this conversation — ask something they can answer and they open here.'
-
-
-export default function DocumentRail({ documents, cited, onOpen, onUpload }: Props) {
+export default function DocumentRail({
+  documents,
+  cited,
+  onOpen,
+  onUpload,
+  upload,
+  onDismissUpload,
+}: Props) {
   return (
     <aside className="rail-docs">
       <div className="micro rail-heading">YOUR DOCUMENTS</div>
@@ -28,9 +38,19 @@ export default function DocumentRail({ documents, cited, onOpen, onUpload }: Pro
         />
       </label>
 
-      {documents.length === 0 && (
-        <div className="rail-empty">Nothing indexed yet.</div>
-      )}
+      {/* Always drawn, so a sentence arriving in it is a change a screen reader announces.
+          A region mounted together with its first content is not. Named because the page
+          carries a second one for its own notices, and a name is what a reader hears before
+          the sentence rather than after it. */}
+      <div role="status" aria-label="Last upload">
+        {upload && (
+          <UploadNotice
+            said={upload.said}
+            wrong={upload.wrong}
+            onDismiss={onDismissUpload}
+          />
+        )}
+      </div>
 
       <div className="doc-list">
         {documents.map((name) => (
@@ -45,10 +65,6 @@ export default function DocumentRail({ documents, cited, onOpen, onUpload }: Pro
           </button>
         ))}
       </div>
-
-      {documents.some((name) => !cited.has(name)) && (
-        <div className="rail-note">{UNCITED}</div>
-      )}
     </aside>
   )
 }

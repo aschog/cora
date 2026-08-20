@@ -9,8 +9,9 @@ import MemoryPanel from './components/MemoryPanel'
 import PlanPanel from './components/PlanPanel'
 import SessionsPanel from './components/SessionsPanel'
 import SourcePanel from './components/SourcePanel'
+import type { Notice } from './components/UploadNotice'
 
-const TABS = ['PLAN', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
+const TABS = ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
 type Tab = (typeof TABS)[number]
 
 export type Entry = {
@@ -29,8 +30,8 @@ export type Entry = {
 
 const UNDRAWABLE = 'That conversation could not be read.'
 
-/** One line of the page's own, and which tone it is drawn in. */
-type Banner = { which: string; said: string; tone: string }
+/** One line the page says about itself, and which of them it is. */
+type Banner = { which: string; said: string }
 
 /** What became of a load: drawn on the page, dropped for a later one (or a store that
  *  could not be read, which says so itself), or read and undrawable. */
@@ -40,7 +41,7 @@ const newThread = () =>
   globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2)
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('PLAN')
+  const [tab, setTab] = useState<Tab>('STEPS')
   const [thread, setThread] = useState<string>(newThread)
   const [entries, setEntries] = useState<Entry[]>([])
   /* The turn being asked, and the conversation it is being asked in. Not one of
@@ -63,10 +64,12 @@ export default function App() {
   const [read, setRead] = useState<string | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
-  /* What the last upload did. Its own state, because it is not trouble and is not cleared
-     by a load going through: a duplicate upload is answered with `0` chunks, and saying
-     nothing about it reads the same as success and the same as nothing happening. */
-  const [notice, setNotice] = useState<string | null>(null)
+  /* What the last upload did. Its own state, because it is not trouble and a refresh
+     going through does not take it away: a duplicate upload is answered with `0` chunks,
+     and saying nothing about it reads the same as success and the same as nothing
+     happening. Moving to another conversation does end it — it is news about the desk the
+     reader was at. */
+  const [notice, setNotice] = useState<Notice | null>(null)
   /* Separate from `trouble`, which is about a load of this page and is cleared by the
      next one that goes through: a turn asked in a conversation the reader has left is
      recorded nowhere when it fails, so this is the only place it exists — and it stands
@@ -116,15 +119,11 @@ export default function App() {
    *  left running that will not be answered, and what became of the last upload. The
    *  second is not cleared by the next load going through, and says nothing once the
    *  reader is back in the conversation it belongs to — where the sentence would be false.
-   *  The third is news rather than trouble, and says which by the tone it is drawn in. */
+   *  What became of an upload is not here: it belongs beside the list it changed — which
+   *  leaves both of these trouble, so the strip has one look rather than a tone each. */
   const banners = [
-    { which: 'load', said: trouble, tone: 'trouble' },
-    {
-      which: 'lost',
-      said: lost && lost.thread !== thread ? lost.said : null,
-      tone: 'trouble',
-    },
-    { which: 'upload', said: notice, tone: 'notice' },
+    { which: 'load', said: trouble },
+    { which: 'lost', said: lost && lost.thread !== thread ? lost.said : null },
   ].filter((banner): banner is Banner => Boolean(banner.said))
 
   const cited = citedDocuments(entries)
@@ -218,7 +217,7 @@ export default function App() {
     setAsking(true)
     setLost(null)
     setLive({ thread: on, steps: taken })
-    setTab('PLAN')
+    setTab('STEPS')
     const id = ++asked.current
     setFlight({
       thread: on,
@@ -306,7 +305,29 @@ export default function App() {
     setThread(fresh)
     setEntries([])
     setRead(null)
+    setNotice(null)
     refresh()
+  }
+
+  /** An upload the reader started and then left behind. Ingestion takes seconds and
+   *  nothing stops them opening another conversation while it runs, so the notice is
+   *  stamped with the one they started it in — news about a desk they have left is not
+   *  drawn, and cannot be left standing where nothing clears it. Taking a notice *away*
+   *  is stamped for the same reason: a refusal from a conversation they have left must not
+   *  clear news about an upload that worked in this one. The refresh and the refusal's own
+   *  sentence are not stamped — a document is added, or refused, wherever they are. */
+  const uploaded = (file: File) => {
+    const from = here.current
+    return cora
+      .upload(file)
+      .then((added) => {
+        if (here.current === from) setNotice(ingested(added))
+        return refresh()
+      })
+      .catch((failed) => {
+        if (here.current === from) setNotice(null)
+        setTrouble(message(failed))
+      })
   }
 
   const recall = (thread_id: string) =>
@@ -322,6 +343,7 @@ export default function App() {
       setThread(session.thread_id)
       setEntries(turns)
       setRead(null)
+      setNotice(null)
     })
     if (outcome === 'unreadable') setTrouble(UNDRAWABLE)
   }
@@ -338,9 +360,9 @@ export default function App() {
         canStart={somethingToLeave}
       />
 
-      <div className="banners" role="status">
-        {banners.map(({ which, said, tone }) => (
-          <div key={which} className={tone}>
+      <div className="banners" role="status" aria-label="Notices">
+        {banners.map(({ which, said }) => (
+          <div key={which} className="trouble">
             {said}
           </div>
         ))}
@@ -352,18 +374,9 @@ export default function App() {
             documents={documents}
             cited={cited}
             onOpen={open}
-            onUpload={(file) =>
-              cora
-                .upload(file)
-                .then((added) => {
-                  setNotice(ingested(added))
-                  return refresh()
-                })
-                .catch((failed) => {
-                  setNotice(null)
-                  setTrouble(message(failed))
-                })
-            }
+            onUpload={uploaded}
+            upload={notice}
+            onDismissUpload={() => setNotice(null)}
           />
         )}
 
@@ -392,7 +405,7 @@ export default function App() {
             ))}
           </div>
 
-          {tab === 'PLAN' && (
+          {tab === 'STEPS' && (
             <PlanPanel
               steps={live?.thread === thread ? live.steps : lastTrace(entries)}
             />
@@ -447,10 +460,13 @@ function lastTrace(entries: Entry[]): Step[] {
 /** What an upload did, in the words the page uses for what a document is made of. A store
  *  that already had those bytes indexes nothing and says so — the count is how the two
  *  outcomes differ, and it is the one thing the page used to throw away. */
-const ingested = ({ document, chunks }: { document: string; chunks: number }) =>
+const ingested = ({ document, chunks }: { document: string; chunks: number }): Notice =>
   chunks
-    ? `Added ${document} — ${chunks} ${chunks === 1 ? 'passage' : 'passages'}.`
-    : `${document} is already in your knowledge base.`
+    ? {
+        said: `Added “${document}” — ${chunks} ${chunks === 1 ? 'passage' : 'passages'}.`,
+        wrong: false,
+      }
+    : { said: `“${document}” is already in your documents.`, wrong: true }
 
 const reportTo = (say: (said: string) => void) => (failed: unknown) =>
   say(message(failed))

@@ -5,7 +5,7 @@
 APP := frontends/streamlit/src/cora/frontends/streamlit/streamlit_app.py
 REACT := cora.frontends.react.server
 
-.PHONY: run run-env run-react run-env-react ui ui-test
+.PHONY: run run-env run-react run-env-react ui ui-build ui-test ui-test-browser
 
 # Reads OPENROUTER_API_KEY from the environment.
 run:
@@ -16,15 +16,22 @@ run-env:
 	uv run --env-file .env streamlit run $(APP)
 
 # The React shell. `ui` is the page in dev — Vite on 5173, proxying /api to the server
-# below; `run-react` is the one process that serves both once `ui` has been built.
-run-react:
+# below; `run-react` is the one process that serves both, and it builds first because the
+# server only ever reads `ui/dist` — without this a source change is invisible on the page.
+run-react: ui-build
 	uv run python -m $(REACT)
 
-run-env-react:
+run-env-react: ui-build
 	uv run --env-file .env python -m $(REACT)
 
 ui:
 	cd frontends/react/ui && npm run dev
 
+ui-build:
+	cd frontends/react/ui && npm run build
+
 ui-test:
 	cd frontends/react/ui && npm test
+
+ui-test-browser:
+	cd frontends/react/ui && npm run test:browser

@@ -21,14 +21,30 @@ function reconcile(kept: Node, wanted: Node): void {
     if (!drawn) kept.appendChild(node)
     else if (drawn.nodeType !== node.nodeType || drawn.nodeName !== node.nodeName)
       kept.replaceChild(node, drawn)
-    else if (drawn.nodeType === Node.TEXT_NODE) {
-      if (drawn.nodeValue !== node.nodeValue) drawn.nodeValue = node.nodeValue
-    } else {
+    else if (drawn.nodeType !== Node.ELEMENT_NODE) written(drawn, node)
+    else {
       attributes(drawn as Element, node as Element)
       reconcile(drawn, node)
     }
   })
   here.slice(next.length).forEach((gone) => kept.removeChild(gone))
+}
+
+/** Text that only grew is *appended to* rather than assigned. Assigning `nodeValue` is
+ *  DOM's replace-data across the whole node, which pulls every selection boundary inside
+ *  it back to the start — so the reader would lose the sentence they selected in the
+ *  paragraph still being written, which is the one the answer arrives in. Appending moves
+ *  no boundary that is already in the text. */
+function written(drawn: Node, wanted: Node): void {
+  if (drawn.nodeValue === wanted.nodeValue) return
+  if (drawn.nodeType === Node.TEXT_NODE) appended(drawn as Text, wanted as Text)
+  else drawn.nodeValue = wanted.nodeValue
+}
+
+function appended(drawn: Text, wanted: Text): void {
+  if (wanted.data.startsWith(drawn.data))
+    drawn.appendData(wanted.data.slice(drawn.data.length))
+  else drawn.data = wanted.data
 }
 
 function attributes(kept: Element, wanted: Element): void {

@@ -259,3 +259,145 @@ case that was reported rather than to the class it belongs to.
       wrapping test is gone and `httpx` is a declared dev dependency.
 - [x] **`found == [] ⇒ nothing uploaded` rested on untested infrastructure** — an
       integration test now pins that a fresh Chroma collection answers with no hits.
+
+## Found by the story-21 review
+
+`/code-review` on the merged commit, after the story closed. Two of the five are the
+story's own criterion not actually being met by the fix that claimed it; the rest are a
+crash the current caller cannot reach, a banner with no end, and a comment left in the
+present tense.
+
+- [x] **The patch kept the nodes but not the selection** — `drawn.nodeValue = …` is DOM's
+      replace-data across the whole node, and its steps pull every live-range boundary
+      inside the node back to offset `0`. So a reader selecting a phrase in the paragraph
+      still being written lost it on the very next piece — the criterion the story is
+      named for. Only *settled* nodes, left alone because their text compares equal,
+      survived. Text that merely grew is now appended to, which moves no boundary already
+      in it. happy-dom adjusts ranges on neither path — the same blind spot story 21
+      recorded for node removal — so the assertion moved to a browser: see the tier below.
+- [x] **Anything that was neither element nor text crashed the page** — a comment node
+      matches on `nodeType` and `nodeName`, fell through to the element branch and threw
+      on `undefined.attributes`; from `useLayoutEffect` that unmounts the conversation
+      tree, so a blank page mid-answer. Unreachable only because `answer.ts` builds
+      markdown-it with `html: false`, a precondition `patch`'s own docstring does not
+      make. The branch now asks whether a node *is* an element rather than whether it is
+      text.
+- [x] **The notice had no end** — `start()` cleared the entries, the read document and the
+      load banner but not the notice, so "Added notes.md — 12 passages." stood over every
+      later conversation until the reader happened to upload again. A new session is the
+      reader clearing their desk.
+- [x] **More than `on_text` left the categories** — adding a piece to the whole moved out
+      with it, and the library refuses a field two pieces disagree about, so a provider
+      streaming reasoning oddly raised a bare `TypeError` out of `complete()` instead of a
+      category. Only the sink call needed to move.
+- [x] **A comment claimed a marker the tests no longer carry** — story 21's outer tests
+      read as still held under `test.fails`, in the present tense, above three plain
+      `test` calls.
+
+## Found by the second `fix/patch-selection` review
+
+The same reviewer over the accumulated branch diff. Both findings are the fixes above not
+having reached the whole of what they claimed.
+
+- [x] **A failure nobody modelled was kept nowhere** — categorising the chunk merge closed
+      the raw `TypeError` and, with it, the traceback: the routes deliver a `CoreError`'s
+      sentence without logging it, and only the unmodelled `except Exception` logged. So
+      the reader was told the model is temporarily unavailable and the operator had
+      nothing to read. This was already true of every provider error matching no category,
+      so the log went where that decision is made rather than at the merge.
+- [x] **`reopen` left the notice standing** — `start` clears it, but reopening an earlier
+      conversation from the rail left an upload's notice above a conversation that predates
+      it. The two are the same boundary and now clear the same things.
+- [x] **The append had nothing defending it** — the fix the branch is named for passed
+      and failed identically under happy-dom, so reverting `appended` to a whole-node
+      write left all 91 tests green. Rather than assert the call, the criterion moved to
+      a browser: `make ui-test-browser` runs `browser/selection.test.ts` in Chromium,
+      where selecting a phrase in the paragraph being written and losing it is exactly
+      what the mutation now does. It stays off `npm test` and out of the pre-commit hook —
+      a browser is not something a commit should wait for — and CI runs it as its own
+      steps in the `ui-tier` job, so a revert cannot merge green.
+
+## Found by the third `fix/patch-selection` review
+
+One real race left by the notice fixes, three infrastructure findings on the browser tier,
+and one finding that turned out not to be reachable.
+
+- [x] **The notice could still land where it does not belong** — `upload` was the one async
+      result in `App.tsx` with no race guard, while `loaded` compares `loads.current` and
+      `ask` compares `here.current`. Ingestion takes seconds and neither the picker nor
+      *New session* is disabled while it runs, so a reader who left mid-upload got the
+      notice on a conversation the upload never happened in — and with nothing left to
+      leave, `start()` early-returns and nothing could take it away. The notice is now
+      stamped with the conversation the upload was started in; the refresh and the failure
+      are not, because a document is added wherever the reader is.
+- [x] ~~`reopen` clears the notice even when the reader has not gone anywhere~~ — not
+      reachable: `SessionsPanel` disables the row for the current thread, so `reopen` only
+      ever runs for another conversation. Caught by the test written for it, which passed
+      against unfixed code.
+- [x] **`README.md` called the browser tier "not a gate"** while CI runs it as a step of
+      `ui-tier` — a red selection test blocks the merge, which is the point. It is not a
+      *local* gate.
+- [x] **`ui-test-browser` was missing from `.PHONY`**, alone among the targets: a file of
+      that name in the repo root would silently make it a no-op.
+- [x] **The browser's shared libraries came from the runner image** — `--with-deps` as well
+      as `--only-shell`, so an `ubuntu-latest` rotation cannot fail every PR on a step that
+      has nothing to do with the diff.
+
+## Found by the fourth `fix/patch-selection` review
+
+Over the branch's whole diff, after story 22 and story 23. Eleven findings, then five more
+on the re-review of the fixes — the last of which was a regression the first pass introduced.
+Two were referred back rather than fixed here, and say why.
+
+- [x] **A deleted paragraph had nothing defending it.** Story 22 ticked the greying note's
+      removal, but the state it appeared in — a rail holding a cited *and* an uncited
+      document — is unreachable from the App fixture, which serves one document and then
+      cites it. Reinstating the paragraph left all 97 tests green. `DocumentRail.test.tsx`
+      now covers the mixed state, and the mutation reds it.
+- [x] **A refusal cleared another conversation's notice.** `uploaded`'s success path was
+      stamped with the conversation it started in; the failure path was not, so an upload
+      refused in a conversation the reader had left wiped news about one that worked in the
+      one they were in. Both sides of the guard are now pinned.
+- [x] **Moving the notice into the rail lost its live region.** `role="status"` sat on the
+      element that mounts *with* its first sentence, which is not a change a screen reader
+      announces. It worked before only because the banner strip is always drawn.
+- [x] **The banner strip's own region then lost its only guard** — the test that had asserted
+      it was rewritten to find the strip by class, because a bare role now found two regions.
+      Both regions carry an `aria-label` and are resolved by role *and* name, so neither can
+      lose the attribute unnoticed — and a reader hears which region is speaking.
+- [x] **The findings file held less than what was open.** An earlier pass removed whole
+      *sections*, taking #24 and #25 with them; both are open. Restored, and the file's
+      invariant now says finding by finding.
+- [x] **Five line references were stale**, having been re-anchored before the commit that
+      shifted them. They are checked by a script that prints what each range's first line
+      actually holds, rather than by hand.
+- [x] **`spec.md` did not know about stories 22 and 23** — the same fault as manual finding
+      #23, one branch after it was closed.
+- [x] **Story 22's test list named five component test files that did not exist.** Eight of
+      the nine claims were in fact covered, by the two page-level outer tests — so it was a
+      labelling defect, except for the one real hole above. Restated as what exists.
+- [x] **Story 22 miscounted the tests it rewrote.** Three used the caption, not four, and two
+      others had used the source pane's empty state — which went a different way.
+- [x] **Story 23's list was three tests behind its own code**, and credited a `DocumentRail`
+      test for an assertion that lives in `App.test.tsx`.
+- [x] **`README.md` said no browser is needed for any gate**, contradicting itself four lines
+      later. CI is a gate. It is the *local* gates that need no browser.
+- [x] **Two failure screenshots were committed** — vitest browser artifacts captured while
+      those tests were red. Untracked, and `browser/__screenshots__/` is ignored.
+- [x] **The browser tier was still called "the selection tier"** in three places after it
+      grew a second thing only a real browser can answer for.
+- [x] **`{ said, wrong }` was declared three times** and `Banner.tone` had become a constant;
+      one exported type, and the strip has one look.
+- [x] **Dead code**: `.source-meta` (dead on `main` too), the styleless `source-uncited`
+      class, `.plan-step-mark.failed` orphaned inside the upload-notice block.
+- [ ] **The page's heading outline starts at level 2, and its tablist has no panels.**
+      `SourcePanel`'s `<h2>` is the only heading in the page, and the `role="tab"` buttons
+      carry no `aria-controls` with no `role="tabpanel"` to point at. Referred back
+      deliberately: the fix is not local — it decides the whole outline (the header's title,
+      `YOUR DOCUMENTS`, the four tab labels) and the tab/panel wiring together. One coherent
+      accessibility story with its own criterion, not a piece of it done off-list here.
+- [x] **A test's stub ordering** read a `let` declared below it — safe only because nothing
+      called it in between. Declared above the stub now. The `ready([0, 12])` ordering was
+      left as it is, with the comment saying the order is arbitrary because only the drawing
+      is under test.
+
