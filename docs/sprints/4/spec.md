@@ -161,7 +161,7 @@ marks can only ask *may I run this?*, and choosing between three remembered valu
 them read and ranked, which is the model's work. The card is the React page's; the widget
 page declines on the reader's behalf.
 
-### [25. One site — the map, the walkthrough and the reference](story-25.md)
+### [25. One site — the map, the walkthrough and the reference](done/story-25.md)
 
 Two Diátaxis quadrants under one nav. `big-picture.md` and `happy-path.md` become pages of
 a site with their five Mermaid diagrams rendering — vendored and pinned, so it reads with
