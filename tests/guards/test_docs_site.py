@@ -7,6 +7,7 @@ import pytest
 import yaml
 
 import workspace
+from cora.frontends.react.server import DEFAULT_PORT
 
 CONFIG = workspace.ROOT / "mkdocs.yml"
 NARRATIVE = ("big-picture", "happy-path")
@@ -168,3 +169,14 @@ def test_the_front_page_links_every_top_level_section() -> None:
         if not any(page in front for page in pages)
     ]
     assert unlinked == []
+
+
+def test_the_docs_and_the_app_do_not_want_the_same_port() -> None:
+    served = re.search(
+        r"mkdocs serve[^\n]*--dev-addr[= ]\S*?:(\d+)",
+        (workspace.ROOT / "Makefile").read_text(),
+    )
+    assert served, "`make docs-serve` has to name a port"
+    assert int(served.group(1)) != DEFAULT_PORT, (
+        "reading the docs while the app runs must not need one of them stopped"
+    )

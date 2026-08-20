@@ -148,6 +148,13 @@ first one from firing.
       this was found. `scripts/gen_reference.py` is the claim the guard does police, and
       renaming it reds the guard.
 
+#### Found in use
+
+- [x] `make docs-serve` does not want the app's port — the React shell defaults to
+      `127.0.0.1:8000` and so does `mkdocs serve`, so reading the docs beside the running
+      app needed one of them stopped. The docs take 8001, and the guard reads the app's
+      `DEFAULT_PORT` rather than a copy of the number
+
 #### Not on the list, and deliberately
 
 `make docs` and `make docs-serve` have no test of their own: the targets are two lines over

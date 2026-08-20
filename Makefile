@@ -42,5 +42,7 @@ ui-test-browser:
 docs:
 	uv run mkdocs build --strict
 
+# 8001, because the React shell already wants 8000: reading the docs beside the running
+# app must not need one of them stopped. `tests/guards/test_docs_site.py` holds that.
 docs-serve:
-	uv run mkdocs serve
+	uv run mkdocs serve --dev-addr 127.0.0.1:8001
