@@ -155,6 +155,14 @@ first one from firing.
       app needed one of them stopped. The docs take 8001, and the guard reads the app's
       `DEFAULT_PORT` rather than a copy of the number
 
+- [x] the build says nothing about the fork — MkDocs's owner is publishing a v2 that drops
+      the plugin system, `properdocs` is a continuation of 1.x that arrives transitively,
+      and both warn on every build in opposite directions. Each reads its *own* variable
+      (`NO_MKDOCS_2_WARNING`, `DISABLE_MKDOCS_2_WARNING`), so both are set — in the two
+      Makefile targets, and in the subprocess builds, where twenty lines of warning would
+      otherwise bury the `stderr` a failing docs test reports. We stay on mkdocs 1.6.1,
+      pinned by `uv.lock`
+
 #### Not on the list, and deliberately
 
 `make docs` and `make docs-serve` have no test of their own: the targets are two lines over

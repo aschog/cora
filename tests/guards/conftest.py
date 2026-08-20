@@ -1,3 +1,4 @@
+import os
 import pathlib
 import subprocess
 import sys
@@ -5,6 +6,11 @@ import sys
 import pytest
 
 import workspace
+
+QUIET_FORK = {
+    "NO_MKDOCS_2_WARNING": "true",
+    "DISABLE_MKDOCS_2_WARNING": "true",
+}
 
 
 @pytest.fixture(scope="session")
@@ -15,6 +21,7 @@ def built(tmp_path_factory: pytest.TempPathFactory) -> pathlib.Path:
         cwd=workspace.ROOT,
         capture_output=True,
         text=True,
+        env={**os.environ, **QUIET_FORK},
     )
     assert build.returncode == 0, build.stderr
     return out

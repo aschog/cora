@@ -1,3 +1,4 @@
+import os
 import pathlib
 import subprocess
 import sys
@@ -7,6 +8,12 @@ import pytest
 import workspace
 
 pytestmark = pytest.mark.integration
+
+QUIET_FORK = {
+    "NO_MKDOCS_2_WARNING": "true",
+    "DISABLE_MKDOCS_2_WARNING": "true",
+}
+
 
 RENDERED = ("domain", "ports", "engine", "app")
 NARRATIVE = ("big-picture", "happy-path")
@@ -43,6 +50,7 @@ def test_the_site_holds_the_narrative_pages_and_a_generated_page_per_rendered_mo
         cwd=workspace.ROOT,
         capture_output=True,
         text=True,
+        env={**os.environ, **QUIET_FORK},
     )
     assert build.returncode == 0, build.stderr
 
