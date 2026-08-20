@@ -619,6 +619,7 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
     assert offered == {
         SEARCH_TOOL_NAME,
         REMEMBER_TOOL_NAME,
+        ASK_TOOL_NAME,
         *(tool.name for tool in plugin.tools),
     }
     assert app.memory is runner.prepare.memory, (
