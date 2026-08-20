@@ -21,7 +21,7 @@ restored at the end. The fixed ones — #2, #16–#23 and #26 — have
 been removed: they were the triage's *Before submission* and *Real bugs, next* blocks, closed
 by
 `done/story-20.md` and `done/story-21.md`, which name them and carry the test lists they
-became. **#1, #6, #7, #11 and #14 have gone the same way**, closed by `story-22.md` — whose
+became. **#1, #6, #7, #11 and #14 have gone the same way**, closed by `done/story-22.md` — whose
 list is now fully ticked — and #3 and #9 have each lost the half it closed. Anything found
 while fixing them is in `sprint-4-feedback.md`.
 
@@ -67,7 +67,7 @@ under the headings that raised them.
 
 3. **Every indexed document should open, cited or not.** *Improvement.* Two things, one rail
    (`frontends/react/ui/src/components/DocumentRail.tsx`) — the third, the paragraph of help
-   text, went with `story-22.md`:
+   text, went with `done/story-22.md`:
    - **Uncited documents are unclickable.** A row is `disabled={!cited.has(name)}`
      (`DocumentRail.tsx:58`), so a document that this conversation has not cited cannot be
      read at all. Opening it should work like any other.
@@ -135,7 +135,7 @@ under the headings that raised them.
 
 9. **Memory per session is an open question.** *Improvement.* The removal half — the panel's
    standing `INTRO`, and the empty state that turned out to want going too — was closed by
-   `story-22.md`.
+   `done/story-22.md`.
 
    **Per-session memory is a design question, not a tweak, and it points the other way
    from what memory currently *is*.** The `Memory` port is deliberately one user's facts
@@ -152,7 +152,7 @@ under the headings that raised them.
     needs design before it needs a test list.* Every visible string is a module constant
     next to the markup that draws it (`WORKING`, `BARE`, `UNKEPT`, `NOTHING_TO_START`, …
     — about twenty across `frontends/react/ui/src`), so there is no seam to swap.
-    `story-22.md` deleted ten of them by deleting what they said; the seam is the same
+    `done/story-22.md` deleted ten of them by deleting what they said; the seam is the same
     problem for the ones that carry information.
 
     The scope is wider than the React page, which is what makes this a design question:
@@ -217,7 +217,7 @@ under the headings that raised them.
     `useState(true)` for each (`frontends/react/ui/src/App.tsx:78,89`) — so a first-time
     reader meets three columns before they have asked anything, and the conversation, which
     is the point of the page, gets the middle third. Empty rails at that moment say little:
-    no documents cited yet, no steps taken, no sessions — and since `story-22.md` they say
+    no documents cited yet, no steps taken, no sessions — and since `done/story-22.md` they say
     nothing at all.
 
     Flipping the two defaults is a one-word change each, but it collides with the vitest

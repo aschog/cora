@@ -133,7 +133,7 @@ route already returns is now a notice, and a first upload gets its confirmation 
 two names were wrong: a failure in the *sink* was reported as the model being unavailable,
 and a test claimed a property its two sequential runs could not observe.
 
-### [22. The page stops explaining itself, and a quotation looks like one](story-22.md) ✔
+### [22. The page stops explaining itself, and a quotation looks like one](done/story-22.md) ✔
 
 The chrome block of the manual sweep. Ten paragraphs explaining the page's own panels are
 gone — four standing explanations of a panel already full, six empty states saying what a
@@ -143,7 +143,7 @@ tests that had used that caption were actually after. `PLAN` became `STEPS`, bec
 panel is filled after the answer lands. And the quoted passage is amber: the page's blue
 means "click this", so a quotation drawn in it read as a control.
 
-### [23. What an upload did is said beside the list it changed](story-23.md) ✔
+### [23. What an upload did is said beside the list it changed](done/story-23.md) ✔
 
 The notice story 21 shipped moves out of the page-wide banner strip into the documents rail,
 under the control that raises it, and gains a dismiss. A duplicate now wears the colour and
