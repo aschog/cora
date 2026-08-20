@@ -1,3 +1,5 @@
+"""The tool that keeps one fact about the user, when the user asks for it."""
+
 from dataclasses import dataclass
 
 from cora.domain.errors import AdapterError
@@ -20,13 +22,24 @@ REMEMBER_TOOL_DESCRIPTION = (
 
 @dataclass(frozen=True)
 class RememberFact:
-    """The two guards are the tool's own, not prompt validation: they stop a blank or
+    """What `remember` runs: one fact into the store behind it.
+
+    The two guards are the tool's own, not prompt validation: they stop a blank or
     oversized blob reaching the store. A store that cannot be written refuses rather
-    than ending the turn — failing to file a note is not worth the user's answer."""
+    than ending the turn — failing to file a note is not worth the user's answer.
+    """
 
     memory: Memory
 
     def __call__(self, fact: str) -> str:
+        """Keep the fact, and say so in the sentence the model reads.
+
+        A fact already kept word for word is not kept twice, and says as much.
+
+        Raises:
+            ToolRefusal: The fact is blank, longer than `MAX_FACT_CHARS`, or the store
+                could not be reached. The turn goes on either way.
+        """
         if not fact.strip():
             raise ToolRefusal(NOTHING_TO_REMEMBER)
         if len(fact) > MAX_FACT_CHARS:
@@ -41,6 +54,7 @@ class RememberFact:
 
 
 def remember_tool(memory: Memory) -> Tool:
+    """The `remember` tool as the model is offered it, bound to one memory slot."""
     return Tool(
         name=REMEMBER_TOOL_NAME,
         description=REMEMBER_TOOL_DESCRIPTION,

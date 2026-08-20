@@ -1,3 +1,5 @@
+"""The plugins as one set — what they contribute, and what they may not."""
+
 from dataclasses import dataclass
 
 from cora.domain.errors import ConfigurationError
@@ -23,27 +25,41 @@ RESERVED_TOOL_NAMES = {
 
 @dataclass(frozen=True)
 class PluginSet:
-    """The plugins cora was asked for, composed in the order they were named. Each
-    travels with the module path it was loaded from, because that is what the user
+    """The plugins cora was asked for, composed in the order they were named.
+
+    Each travels with the module path it was loaded from, because that is what the user
     typed and what a collision has to quote back to them — `name` only words a prompt
     heading, so two plugins may share one.
 
     Every refusal a *combination* can earn is raised here, at construction: the
-    composition root wires an already-valid set."""
+    composition root wires an already-valid set.
+    """
 
     entries: tuple[tuple[str, Plugin], ...] = ()
 
     def __post_init__(self) -> None:
+        """Refuse a set that cannot be composed, before anything is wired to it.
+
+        Raises:
+            ConfigurationError: A module is named twice, a plugin offers a tool name
+                that is cora's own, or two plugins offer the same one.
+        """
         self._reject_a_module_named_twice()
         self._reject_a_name_of_coras_own()
         self._reject_one_name_offered_twice()
 
     @property
     def tools(self) -> tuple[Tool, ...]:
+        """Every plugin's tools, in the order the plugins were named."""
         return tuple(tool for _, plugin in self.entries for tool in plugin.tools)
 
     @property
     def rules(self) -> tuple[ValidationRule, ...]:
+        """Cora's own rules first, then the plugins' in the order they were named.
+
+        The order is the order they run in, and cora's come first so a plugin's rule is
+        never handed something cora would have refused outright.
+        """
         offered = tuple(
             rule for _, plugin in self.entries for rule in plugin.validation_rules
         )
@@ -51,8 +67,10 @@ class PluginSet:
 
     @property
     def instructions(self) -> str:
-        """One section per plugin that has something to say, headed by its name, in
-        the order they were named."""
+        """One section per plugin that has something to say, headed by its name.
+
+        In the order they were named, and a plugin with nothing to say gets no heading.
+        """
         return "\n\n".join(
             f"## {plugin.name}\n{plugin.instructions.strip()}"
             for _, plugin in self.entries

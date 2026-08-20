@@ -1,3 +1,5 @@
+"""The tool that searches the user's own documents, and cites what it finds."""
+
 from dataclasses import dataclass
 
 from cora.domain.citations import CitableHits, Nothing
@@ -24,16 +26,20 @@ SEARCH_TOOL_DESCRIPTION = (
 
 @dataclass(frozen=True)
 class DocumentSearch:
+    """What `search_documents` runs: one query against the documents behind it."""
+
     context_source: ContextSource
     top_k: int
 
     def __call__(self, query: str) -> CitableHits:
+        """The passages found, as a payload that numbers itself to be cited."""
         return CitableHits(
             self.context_source.search(query, self.top_k), nothing=EMPTY_STORE
         )
 
 
 def search_tool(context_source: ContextSource, top_k: int) -> Tool:
+    """The `search_documents` tool as the model is offered it."""
     return Tool(
         name=SEARCH_TOOL_NAME,
         description=SEARCH_TOOL_DESCRIPTION,

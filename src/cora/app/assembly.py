@@ -167,6 +167,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
     Raises:
         AdapterError: A store could not be opened.
         PluginLoadError: A plugin named in the configuration could not be loaded.
+        ConfigurationError: The plugins load but cannot be composed together.
     """
     from functools import partial
 

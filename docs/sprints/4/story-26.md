@@ -59,7 +59,7 @@ and the ignore line is what makes it fail.
       contract exists at all: `ty` checks conformance and no test spells it out
 - [x] `cora.domain` — 60; the types that cross to a frontend
 - [x] `cora.app` — 10; `build`, `App`, `Config`, `int_setting` — what a new frontend calls
-- [ ] `cora.engine` — 56; per-name guarantees only, with the flows left to the narrative
+- [x] `cora.engine` — 56; per-name guarantees only, with the flows left to the narrative
       pages
 
 #### What the reference shows once the prose exists
