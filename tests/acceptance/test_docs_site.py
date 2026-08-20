@@ -16,14 +16,12 @@ def _rendered_modules() -> list[str]:
     root = workspace.ROOT / "src" / "cora"
     found = []
     for package in RENDERED:
-        for path in sorted((root / package).glob("*.py")):
-            if path.stem.startswith("_") and path.name != "__init__.py":
+        for path in sorted((root / package).rglob("*.py")):
+            parts = ("cora", *path.relative_to(root).with_suffix("").parts)
+            if parts[-1] == "__init__":
+                parts = parts[:-1]
+            if any(part.startswith("_") for part in parts[1:]):
                 continue
-            parts = (
-                ("cora", package)
-                if path.name == "__init__.py"
-                else ("cora", package, path.stem)
-            )
             found.append(".".join(parts))
     return found
 

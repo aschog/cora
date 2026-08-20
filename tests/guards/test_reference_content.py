@@ -35,8 +35,10 @@ def test_a_class_with_no_docstring_still_shows_its_signature_and_fields(
     built: pathlib.Path,
 ) -> None:
     result = _text(built, "cora.domain.chat_result")
-    assert "ChatResult" in result
-    for field in ("answer", "citations", "trace"):
+    assert "ChatResult dataclass" in result
+    # The annotated field, not the bare name: every name is also a contents entry, so a
+    # name-only assertion holds whatever the page renders.
+    for field in ("answer : str", "citations : tuple[Citation , ...]=()"):
         assert field in result, field
 
 
@@ -50,5 +52,23 @@ def test_a_protocols_methods_show_their_signatures(built: pathlib.Path) -> None:
 @pytest.mark.integration
 def test_an_error_subclass_shows_what_it_inherits(built: pathlib.Path) -> None:
     errors = _text(built, "cora.domain.errors")
-    assert "UnsupportedFileTypeError" in errors
-    assert "IngestionError" in errors
+    # The pair, not the two names: both classes are defined in this module, so each is a
+    # heading and a contents entry however the bases render.
+    assert "UnsupportedFileTypeError Bases: IngestionError" in errors
+    assert "IngestionError Bases: CoreError" in errors
+
+
+@pytest.mark.integration
+def test_a_hierarchy_reads_in_source_order(built: pathlib.Path) -> None:
+    errors = _text(built, "cora.domain.errors")
+    # These three invert under alphabetical ordering, which is the point — and `Bases:`
+    # only follows a rendered class, so this reads the article, not the contents list.
+    inverting = (
+        r"(UnsupportedFileTypeError|FileTooLargeError|EmptyDocumentError) Bases:"
+    )
+    found = re.findall(inverting, errors)
+    assert found == [
+        "UnsupportedFileTypeError",
+        "FileTooLargeError",
+        "EmptyDocumentError",
+    ]

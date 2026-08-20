@@ -4,8 +4,8 @@ A RAG chatbot grounded in your own documents: upload them, ask in your own words
 agent decides what to look up, which of the domain's tools to run, and what to remember
 about you.
 
-This site is for reading the project, not for running it — setup, the gates and the test
-tiers are in `README.md`.
+This site is for reading the project, not for running it: setup, the gates and the test
+tiers stay in the repository's README, which is not part of the site.
 
 ## Understand
 
@@ -16,5 +16,7 @@ tiers are in `README.md`.
 
 ## Reference
 
-- [Every public name in `cora.domain`, `cora.ports`, `cora.engine` and `cora.app`](api/index.md)
-  — generated from the source, one page per module.
+- [`cora.domain`, `cora.ports`, `cora.engine` and `cora.app`](api/index.md) — generated
+  from the source, one page per module. These four are what anything outside the app
+  imports; `cora.adapters` is not here, because every class in it implements a port and
+  its pages would repeat `cora.ports`.

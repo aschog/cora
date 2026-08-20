@@ -56,15 +56,19 @@ breakage.
 
 #### It reads with no network (`extra_javascript`, `theme.font`)
 
-- [x] no built page loads a script, stylesheet, font or image from another host — "built and
-      read locally" has to mean it renders with the network off
-- [x] the vendored Mermaid is 10.2.3, the version the diagrams are written against, and the
-      version is in the filename so a silent bump cannot pass
+- [x] no built page loads anything from another host — every fetched attribute of every
+      tag, not three named elements: the first version matched only `script src`, `img src`
+      and `link href`, so an `iframe src` or an `img srcset` walked straight past it. `a`
+      is allow-listed, being a link the reader chooses to follow
+- [x] the vendored Mermaid is 10.2.3 — the version *inside* the bundle is checked against
+      the one in its filename, because the first version read neither and a Mermaid 11
+      bundle under the same name passed. Provenance sits beside the declaration
 - [x] all five Mermaid blocks across the two pages survive into the built HTML as diagram
       containers rather than as code blocks
-- [x] **(int)** every page with a diagram loads the vendored copy — Material falls back to
+- [x] **(int)** every narrative page loads the vendored copy — Material falls back to
       fetching `mermaid@11` from unpkg when the global is missing, so loading ours is what
-      makes the fallback inert
+      makes the fallback inert. `extra_javascript` is site-wide, so the 42 reference pages
+      carry it too without needing it
 
 The guard reads what a *page* references. Material's own bundle carries two conditional
 CDN fallbacks it cannot be configured out of — `mermaid@11` and a `ResizeObserver`
@@ -77,25 +81,44 @@ first one from firing.
 - [x] every module of the four packages has a generated page, read off the tree — the nav
       names the reference once and never a module, so one added later needs no edit to
       `mkdocs.yml`
-- [x] a module whose name starts with `_` gets no page
+- [x] no page for anything private — every part below `cora`, not just the last: the walk
+      is recursive, so a public module inside a `_private` package was reaching the site
+- [x] a module inside a *public* subpackage does get one — the case that makes the
+      recursion itself testable, and the outer test discovers the same way
 - [x] `__init__.py` becomes the package's own page, not a page called `__init__`
-- [x] `adapters`, `plugins/` and `frontends/` get no pages
+- [x] `adapters`, `plugins/` and `frontends/` get no pages — all three, where the fixture
+      had only held `adapters`
 - [x] a module's page is at `api/cora/<package>/<module>/`, so the built path is the dotted
       name
 - [x] **(int)** the reference has a landing page listing every module
-- [x] **(int)** no nav file is shipped as a page — literate-nav's implicit index makes the
-      summary *be* that landing page, rather than a stray `SUMMARY` beside it
+- [x] **(int)** every module page is titled by its dotted name — mkdocs takes a title from
+      the filename long before mkdocstrings renders one, so `<module>/index.md` made all 42
+      pages `Index` in the tab, the sidebar and the search results. Front matter fixes it
+- [x] **(int)** search finds a module by its dotted name, and nothing is titled `Index`
+- [x] **(int)** the landing page and the sidebar agree on one order — literate-nav writes no
+      nav file and infers the section in path order, so the landing page is written sorted
+      to match. Two orders for one list was the tell that the nav file was never read
+- [x] ~~no nav file is shipped as a page — literate-nav's implicit index makes the summary
+      *be* that landing page~~ — **the mechanism was never running.** `implicit_index` is
+      inert: with no `nav_file` present literate-nav globs the directory, and setting
+      `nav_file: index.md` is not the fix either — it makes *every* `index.md` a nav file,
+      including the site's front page, whose prose then fails the parser. The option is
+      gone and the test that asserted no stray `SUMMARY` went with it: nothing writes one,
+      so no mutation could red it. Found by the branch review
 
 #### What a reference page carries with no docstring present
 
 - [x] **(int)** a frozen dataclass shows its fields with their annotations —
       `ToolResult.error` reads `str | None`
-- [x] **(int)** a class carrying no docstring still shows its signature and its fields, so
-      the site is useful before story 26 lands
+- [x] **(int)** a class carrying no docstring still shows its annotated fields — `answer :
+      str`, `citations : tuple[Citation, ...] = ()` — so the site is useful before story 26
+      lands. Asserting the bare field *names* proved nothing: each is a contents entry too
 - [x] **(int)** a `Protocol`'s methods show their signatures — `Retriever.query` is on the
       page
-- [x] **(int)** an error subclass shows what it inherits, so `errors.py` reads as one
-      hierarchy rather than twenty unrelated classes
+- [x] **(int)** an error subclass shows what it inherits — the pair `UnsupportedFileTypeError
+      Bases: IngestionError`, not the two names, which are headings whatever the bases do
+- [x] **(int)** the hierarchy reads in source order, asserted on three classes that invert
+      under alphabetical ordering — the first three chosen did not, so the mutation passed
 - [x] **(int)** all four are read off the *rendered* page, with the collapsed source block
       removed first — every definition's source is on the page, so an assertion that saw it
       would pass on any rendering at all

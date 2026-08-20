@@ -29,16 +29,17 @@ nav:
       - A session end to end: happy-path.md
   - Reference: api/
 
-# One entry above resolves to every module: gen-files writes a page per module plus the
-# api/index.md that lists them, and literate-nav reads that index as the nav — so a module
-# added later needs no edit here, and no nav file ships as a page beside the list.
+# The single `api/` entry above resolves to every module. gen-files writes a page per
+# module plus the api/index.md that lists them; literate-nav is what expands a directory
+# entry into pages at all, and it writes no nav file — with none to read it infers the
+# section from the generated files in path order, which is the order the landing page is
+# written in. So a module added later needs no edit here.
 plugins:
   - search
   - gen-files:
       scripts:
         - scripts/gen_reference.py
-  - literate-nav:
-      implicit_index: true
+  - literate-nav
   - mkdocstrings:
       handlers:
         python:
@@ -50,6 +51,9 @@ plugins:
             # default, the handler omits a member without a docstring entirely, so most
             # of the reference would be blank until story 26 lands.
             show_if_no_docstring: true
+            # Default, named because the reference is where `errors.py` reads as one
+            # hierarchy rather than twenty unrelated classes.
+            show_bases: true
             show_signature_annotations: true
             separate_signature: true
             show_root_heading: true
@@ -59,7 +63,12 @@ plugins:
 # Loaded before Material looks for a diagram, so the global already exists and Material's
 # own `typeof mermaid == "undefined"` fallback — a fetch of mermaid@11 from unpkg — never
 # fires. The version is in the filename because it is the one the diagrams are drawn
-# against, and a silent bump is what this pins.
+# against, and a silent bump is what this pins — the bundle's own version string is
+# checked against that name.
+#
+# Vendored from https://unpkg.com/mermaid@10.2.3/dist/mermaid.min.js
+# sha256 245a6d632e0acc9e4e40ff90f5fb9b35fddcc693cf9992aa50ea2fc8438d2ab4
+# Mermaid is MIT-licensed; the minified UMD bundle carries no header of its own.
 extra_javascript:
   - assets/mermaid-10.2.3.min.js
 

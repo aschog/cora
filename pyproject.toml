@@ -117,7 +117,7 @@ filterwarnings = [
     "ignore:Using .httpx. with .starlette.testclient. is deprecated:UserWarning",
 ]
 markers = [
-    "integration: touches real infrastructure (Chroma, embedding model, Streamlit); run in CI",
+    "integration: touches real infrastructure (Chroma, embedding model, Streamlit, a docs build); run in CI",
     "llm: real OpenRouter round-trip through the assembled app; manual acceptance only, never in CI",
 ]
 

@@ -68,17 +68,33 @@ def test_the_nav_names_the_reference_once_and_never_a_module() -> None:
 
 
 MERMAID = workspace.ROOT / "docs" / "assets" / "mermaid-10.2.3.min.js"
-ASSET = re.compile(r"<(?:script|img)[^>]+src=\"([^\"]+)\"|<link[^>]+href=\"([^\"]+)\"")
+TAG = re.compile(r"<([a-zA-Z][\w-]*)((?:\s+[\w:-]+=\"[^\"]*\")*)")
+ATTRIBUTE = re.compile(r"([\w:-]+)=\"([^\"]*)\"")
+REMOTE = re.compile(r"(?:https?:)?//[A-Za-z0-9.-]+")
+# `a` is a link the reader chooses to follow, not something the page loads.
+# `xmlns` names an XML namespace and `content` a meta value; neither is fetched.
+FOLLOWED = frozenset({"a"})
+NOT_FETCHED = frozenset({"xmlns", "content"})
 
 
 def _asset_urls(page: pathlib.Path) -> list[str]:
-    found = ASSET.findall(page.read_text())
-    return [url for pair in found for url in pair if url]
+    found = []
+    for tag, attributes in TAG.findall(page.read_text()):
+        if tag.lower() in FOLLOWED:
+            continue
+        for name, value in ATTRIBUTE.findall(attributes):
+            if name.split(":")[0] not in NOT_FETCHED:
+                found.extend(REMOTE.findall(value))
+    return found
 
 
 def test_the_vendored_mermaid_is_the_version_the_diagrams_are_written_against() -> None:
     assert MERMAID.is_file(), "the diagrams are written against Mermaid 10.2.3"
     assert MERMAID.name in str(_config()["extra_javascript"])
+    pinned = MERMAID.name.removeprefix("mermaid-").removesuffix(".min.js")
+    assert f'"{pinned}"' in MERMAID.read_text(), (
+        "the filename pins the version, so the bundle has to say the same"
+    )
 
 
 @pytest.mark.integration
