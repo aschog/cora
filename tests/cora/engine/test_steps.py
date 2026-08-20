@@ -21,6 +21,7 @@ from cora.engine.steps import (
     AGENT_RULES,
     ASK_RULE,
     ASKED_ALREADY,
+    CHOSE_NOTHING,
     CORA_PREAMBLE,
     MEMORY_RULE,
     NOTHING_CHOSEN,
@@ -829,6 +830,10 @@ def test_declining_says_so_rather_than_leaving_the_call_unanswered() -> None:
     [message] = partial["messages"]
     assert message.tool_call_id == "a7"
     assert message.content == NOTHING_CHOSEN
+    [step] = partial["trace"]
+    assert step.summary.endswith(CHOSE_NOTHING), (
+        "the plan says what happened; the sentence above is the model's instruction"
+    )
 
 
 def test_a_malformed_ask_is_refused_and_never_reaches_the_reader() -> None:
@@ -864,10 +869,12 @@ def test_the_ask_is_traced_with_what_was_asked_and_what_came_back() -> None:
     partial = AskStep(pause=_Chosen("75 kg"))(_asked(_ask_call()))
 
     [step] = partial["trace"]
-    assert isinstance(step, ToolUse)
-    assert step.name == ASK_TOOL_NAME
-    assert step.outcome == "75 kg"
-    assert not step.failed
+    assert step == ToolUse(
+        name=ASK_TOOL_NAME,
+        arguments={"question": ASKED},
+        outcome="75 kg",
+        detail="75 kg",
+    ), 'the question, not the options: the panel is not where a card is redrawn"'
 
 
 def test_a_round_that_asked_runs_only_the_calls_the_ask_left() -> None:

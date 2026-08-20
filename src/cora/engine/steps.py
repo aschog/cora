@@ -65,6 +65,9 @@ NOTHING_CHOSEN = (
     "The user chose none of the options. Carry on without one, say what you could not "
     "settle, and do not ask again."
 )
+CHOSE_NOTHING = "nothing chosen"
+"""What the reader's plan says a decline came to. The sentence above is written for the
+model and tells it what to do next, which is no part of what happened."""
 REMEMBERED_HEADING = "What you already know about this user:"
 REMEMBERED_NOTICE = (
     "The notes below are things this user told you about themselves in earlier "
@@ -210,11 +213,15 @@ class AskStep:
         try:
             decision = self._decision(state, call)
         except ToolRefusal as refused:
-            return _settled(call, outcome=str(refused), failed=True)
+            return _settled(
+                call, asked="", said=str(refused), outcome=str(refused), failed=True
+            )
         chosen = self.pause(decision)
         return _settled(
             call,
-            outcome=chosen if chosen is not None else NOTHING_CHOSEN,
+            asked=decision.question,
+            said=chosen if chosen is not None else NOTHING_CHOSEN,
+            outcome=chosen if chosen is not None else CHOSE_NOTHING,
             failed=False,
         )
 
@@ -274,13 +281,20 @@ def _asks(state: AgentState) -> int:
     )
 
 
-def _settled(call: ToolCall, *, outcome: str, failed: bool) -> AgentState:
+def _settled(
+    call: ToolCall, *, asked: str, said: str, outcome: str, failed: bool
+) -> AgentState:
+    """`said` is what the round is told and `outcome` what the reader's plan shows: a
+    decline tells the model what to do next, which is no part of what happened. The
+    question is traced rather than the payload it arrived in, because an ask's arguments
+    are a nested list of options that would fill the panel with JSON — and the options
+    are on the card the reader answered."""
     return {
-        "messages": [Message(role="tool", content=outcome, tool_call_id=call.call_id)],
+        "messages": [Message(role="tool", content=said, tool_call_id=call.call_id)],
         "trace": [
             ToolUse(
                 name=call.name,
-                arguments=call.arguments,
+                arguments={"question": asked} if asked else call.arguments,
                 outcome=outcome,
                 detail=outcome,
                 failed=failed,
