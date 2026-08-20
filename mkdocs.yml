@@ -58,6 +58,9 @@ plugins:
             separate_signature: true
             show_root_heading: true
             show_symbol_type_heading: true
+            # What draws `dataclass` beside a class name, which is the only signature a
+            # frozen dataclass has on the page.
+            show_labels: true
             members_order: source
 
 # Loaded before Material looks for a diagram, so the global already exists and Material's

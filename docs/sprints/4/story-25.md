@@ -56,10 +56,13 @@ breakage.
 
 #### It reads with no network (`extra_javascript`, `theme.font`)
 
-- [x] no built page loads anything from another host — every fetched attribute of every
-      tag, not three named elements: the first version matched only `script src`, `img src`
-      and `link href`, so an `iframe src` or an `img srcset` walked straight past it. `a`
-      is allow-listed, being a link the reader chooses to follow
+- [x] no built page loads anything from another host, read with `html.parser` rather than a
+      pattern. Two hand-written versions were narrower than their name: the first matched
+      only `script src`, `img src` and `link href`, so an `iframe src` or `img srcset` went
+      by; the second stopped reading a tag at its first boolean attribute, so
+      `<script defer src=…>` and any single-quoted value went by. `a` is allow-listed as a
+      link the reader follows, and the `content` exemption is gone — it bought nothing and
+      would have exempted a real `og:image`
 - [x] the vendored Mermaid is 10.2.3 — the version *inside* the bundle is checked against
       the one in its filename, because the first version read neither and a Mermaid 11
       bundle under the same name passed. Provenance sits beside the declaration
@@ -94,10 +97,15 @@ first one from firing.
 - [x] **(int)** every module page is titled by its dotted name — mkdocs takes a title from
       the filename long before mkdocstrings renders one, so `<module>/index.md` made all 42
       pages `Index` in the tab, the sidebar and the search results. Front matter fixes it
-- [x] **(int)** search finds a module by its dotted name, and nothing is titled `Index`
-- [x] **(int)** the landing page and the sidebar agree on one order — literate-nav writes no
-      nav file and infers the section in path order, so the landing page is written sorted
-      to match. Two orders for one list was the tell that the nav file was never read
+- [x] **(int)** nothing in the search index is titled `Index`, counted over page titles
+      only — an anchor document carries the mkdocstrings heading, so a module's dotted name
+      is in the index whatever its page is titled, and that half held either way
+- [x] **(int)** the landing page and the sidebar agree on one order, compared over whole
+      module paths — literate-nav writes no nav file and infers the section in path order,
+      so the landing page is written sorted to match. Two orders for one list was the tell
+      that the nav file was never read. The first version of this guard captured only the
+      segment after `cora/`, so it compared four package names for forty-two modules and
+      reversing the per-module sort left it green
 - [x] ~~no nav file is shipped as a page — literate-nav's implicit index makes the summary
       *be* that landing page~~ — **the mechanism was never running.** `implicit_index` is
       inert: with no `nav_file` present literate-nav globs the directory, and setting
@@ -112,7 +120,10 @@ first one from firing.
       `ToolResult.error` reads `str | None`
 - [x] **(int)** a class carrying no docstring still shows its annotated fields — `answer :
       str`, `citations : tuple[Citation, ...] = ()` — so the site is useful before story 26
-      lands. Asserting the bare field *names* proved nothing: each is a contents entry too
+      lands. Asserting the bare field *names* proved nothing: each is a contents entry too.
+      The item said *signature* until the page was read: mkdocstrings renders no class
+      signature for a frozen dataclass, only the `dataclass` label, the annotated
+      attributes and a separate `__init__` member
 - [x] **(int)** a `Protocol`'s methods show their signatures — `Retriever.query` is on the
       page
 - [x] **(int)** an error subclass shows what it inherits — the pair `UnsupportedFileTypeError

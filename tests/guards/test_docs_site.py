@@ -1,6 +1,7 @@
 import pathlib
 import re
 import subprocess
+from html.parser import HTMLParser
 
 import pytest
 import yaml
@@ -68,24 +69,33 @@ def test_the_nav_names_the_reference_once_and_never_a_module() -> None:
 
 
 MERMAID = workspace.ROOT / "docs" / "assets" / "mermaid-10.2.3.min.js"
-TAG = re.compile(r"<([a-zA-Z][\w-]*)((?:\s+[\w:-]+=\"[^\"]*\")*)")
-ATTRIBUTE = re.compile(r"([\w:-]+)=\"([^\"]*)\"")
 REMOTE = re.compile(r"(?:https?:)?//[A-Za-z0-9.-]+")
 # `a` is a link the reader chooses to follow, not something the page loads.
-# `xmlns` names an XML namespace and `content` a meta value; neither is fetched.
+# `xmlns` names an XML namespace, which is not fetched either.
 FOLLOWED = frozenset({"a"})
-NOT_FETCHED = frozenset({"xmlns", "content"})
+NOT_FETCHED = frozenset({"xmlns"})
+
+
+class _Loaded(HTMLParser):
+    """A parser, not a pattern: a hand-written one stopped reading a tag at its first
+    boolean attribute, so `<script defer src=…>` and any single-quoted value went by."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.remote: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in FOLLOWED:
+            return
+        for name, value in attrs:
+            if value and name.split(":")[0] not in NOT_FETCHED:
+                self.remote.extend(REMOTE.findall(value))
 
 
 def _asset_urls(page: pathlib.Path) -> list[str]:
-    found = []
-    for tag, attributes in TAG.findall(page.read_text()):
-        if tag.lower() in FOLLOWED:
-            continue
-        for name, value in ATTRIBUTE.findall(attributes):
-            if name.split(":")[0] not in NOT_FETCHED:
-                found.extend(REMOTE.findall(value))
-    return found
+    parser = _Loaded()
+    parser.feed(page.read_text())
+    return parser.remote
 
 
 def test_the_vendored_mermaid_is_the_version_the_diagrams_are_written_against() -> None:

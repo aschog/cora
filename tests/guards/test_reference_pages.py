@@ -89,7 +89,7 @@ def test_a_module_page_is_titled_by_its_dotted_name(built: pathlib.Path) -> None
 @pytest.mark.integration
 def test_search_names_every_module_by_its_dotted_name(built: pathlib.Path) -> None:
     index = json.loads((built / "search" / "search_index.json").read_text())
-    titled = {entry["title"] for entry in index["docs"]}
+    titled = {entry["title"] for entry in index["docs"] if "#" not in entry["location"]}
     assert "Index" not in titled, "a page titled by its filename is unfindable"
     missing = [
         ".".join(parts)
@@ -104,6 +104,8 @@ def test_the_landing_page_and_the_nav_agree_on_one_order(built: pathlib.Path) ->
     page = (built / "api" / "index.html").read_text()
     split = page.index("md-content")
     sidebar, article = page[:split], page[split:]
-    navigated = list(dict.fromkeys(re.findall(r'href="cora/(\w+)/', sidebar)))
-    listed = list(dict.fromkeys(re.findall(r'href="cora/(\w+)/', article)))
+    # The whole path: capturing only the segment after `cora/` collapsed both sides to
+    # four package names, so reversing the per-module sort left this green.
+    navigated = list(dict.fromkeys(re.findall(r'href="cora/([\w/]+)/', sidebar)))
+    listed = list(dict.fromkeys(re.findall(r'href="cora/([\w/]+)/', article)))
     assert listed == navigated != []

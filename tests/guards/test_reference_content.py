@@ -31,7 +31,7 @@ def test_a_frozen_dataclass_shows_its_fields_with_annotations(
 
 
 @pytest.mark.integration
-def test_a_class_with_no_docstring_still_shows_its_signature_and_fields(
+def test_a_class_with_no_docstring_still_shows_its_annotated_fields(
     built: pathlib.Path,
 ) -> None:
     result = _text(built, "cora.domain.chat_result")
