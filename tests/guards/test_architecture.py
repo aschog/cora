@@ -1,6 +1,11 @@
 import ast
+import dataclasses
+import importlib
+import inspect
 import pathlib
+import pkgutil
 import sys
+import typing
 from importlib.metadata import packages_distributions
 from types import ModuleType
 
@@ -521,4 +526,93 @@ def test_a_frontend_is_allowed_only_the_toolkit_its_manifest_buys(
         f"the {frontend} shell is allowed {sorted(unbought)}, which "
         f"{workspace.location(workspace.member_of(f'cora.frontends.{frontend}'))}"
         "/pyproject.toml does not declare"
+    )
+
+
+def _domain_modules() -> list[ModuleType]:
+    """`cora.domain` and everything under it, however deep.
+
+    Walked rather than listed, and the package itself is one of them: a class declared
+    in an `__init__` or in a subpackage added later is a class the rule below would
+    otherwise never be asked about.
+    """
+    walked = pkgutil.walk_packages(cora.domain.__path__, prefix="cora.domain.")
+    return [cora.domain] + [importlib.import_module(module.name) for module in walked]
+
+
+def _domain_classes() -> list[type]:
+    """Every class those modules declare, under the name it is imported by.
+
+    A name starting with `_` is left out: it is not a value anything outside its own
+    module can hold.
+    """
+    found = [
+        kind
+        for module in _domain_modules()
+        for _, kind in inspect.getmembers(module, inspect.isclass)
+        if kind.__module__ == module.__name__ and not kind.__name__.startswith("_")
+    ]
+    return sorted(found, key=lambda kind: f"{kind.__module__}.{kind.__name__}")
+
+
+def _is_frozen_dataclass(kind: type) -> bool:
+    # `dataclasses` publishes no reader for `frozen`, and the decorator records it here.
+    params = getattr(kind, "__dataclass_params__", None)
+    return dataclasses.is_dataclass(kind) and bool(params and params.frozen)
+
+
+def _states_a_shape(kind: type) -> bool:
+    """The three things in the domain that are not values: the abstract bases a payload
+    or a trace step is declared by, the state a step returns keys of, and the pause that
+    is raised.
+
+    Each is asked of the thing itself rather than of a list of names. `isabstract` is
+    false for a base that declares no abstract method, so a marker base would be
+    reported as a value — the exemptions err towards a failing test, never towards a
+    value slipping past.
+    """
+    return (
+        inspect.isabstract(kind)
+        or typing.is_typeddict(kind)
+        or issubclass(kind, BaseException)
+    )
+
+
+# One from every module that declares a class, so a walk that quietly stops covering a
+# module fails here and names it — a count alone would still pass on `errors.py` alone.
+REPRESENTATIVE = {
+    "cora.domain.agent_state": "AgentState",
+    "cora.domain.chat_result": "ChatResult",
+    "cora.domain.chunk": "Chunk",
+    "cora.domain.citations": "Nothing",
+    "cora.domain.conversation": "Turn",
+    "cora.domain.decision": "Decision",
+    "cora.domain.errors": "CoreError",
+    "cora.domain.trace": "TraceStep",
+}
+
+
+def test_every_module_of_the_domain_is_walked() -> None:
+    found = {f"{kind.__module__}.{kind.__name__}" for kind in _domain_classes()}
+
+    assert {f"{module}.{name}" for module, name in REPRESENTATIVE.items()} <= found
+
+
+@pytest.mark.parametrize(
+    "kind", _domain_classes(), ids=lambda kind: f"{kind.__module__}.{kind.__name__}"
+)
+def test_a_value_in_the_domain_is_a_frozen_dataclass(kind: type) -> None:
+    """One shape for a value, so it is read by name and cannot be mistaken for what it
+    is made of. A `NamedTuple` also unpacks, indexes and compares equal to a plain tuple
+    of the same fields — three readings of a value the domain never means, and each one
+    a caller can come to depend on.
+
+    Asked of `cora.domain` alone: a value crosses to a caller and is held, while
+    `engine.ingestion.Ingested` is a return read apart at each call that makes it, and
+    unpacking it there is the point rather than a reading of a value.
+    """
+    named = f"{kind.__module__}.{kind.__name__}"
+
+    assert _is_frozen_dataclass(kind) or _states_a_shape(kind), (
+        f"{named} carries data without being a frozen dataclass"
     )

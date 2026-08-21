@@ -376,3 +376,7 @@ Two were referred back rather than fixed here, and say why.
       called it in between. Declared above the stub now. The `ready([0, 12])` ordering was
       left as it is, with the comment saying the order is arbitrary because only the drawing
       is under test.
+- [x] **`Nothing` was the one `NamedTuple` in `cora.domain`**, so a value there compared equal
+      to a pair of strings and unpacked by position. It is a frozen dataclass like the rest,
+      and the shape is now a guard over every class the domain declares rather than one
+      class's habit.

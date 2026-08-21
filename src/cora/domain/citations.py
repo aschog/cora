@@ -7,7 +7,6 @@ a number the user has seen never moves to another passage.
 import re
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import NamedTuple
 
 from cora.domain.prose import counted, listed
 from cora.ports.retrieval import RetrievedChunk
@@ -20,7 +19,8 @@ this rule and `cited_numbers` resolves by it, so a citation the reader can click
 citation the answer rests on are the same thing by construction."""
 
 
-class Nothing(NamedTuple):
+@dataclass(frozen=True)
+class Nothing:
     """What came back when nothing came back, worded twice.
 
     `told` is what the model reads, `shown` names the step in the trace the user reads.

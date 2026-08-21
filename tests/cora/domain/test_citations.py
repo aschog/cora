@@ -5,6 +5,7 @@ from cora.domain.citations import (
     NO_MATCHES,
     CitableHits,
     Citation,
+    Nothing,
     build_context_block,
     cited,
     cited_numbers,
@@ -190,3 +191,12 @@ def test_one_span_of_two_uploads_is_two_citations() -> None:
         (2, "sha-2"),
     ]
     assert _numbered(context.text, "a.txt") == ["[1]", "[2]"]
+
+
+def test_an_empty_result_is_not_a_pair_of_strings() -> None:
+    """One absence worded twice and read by name: a value that compares equal to two
+    strings in the right order offers a reading of itself where position says which
+    wording is which."""
+    nothing = Nothing(told="the store is empty", shown="No documents uploaded yet.")
+
+    assert nothing != ("the store is empty", "No documents uploaded yet.")
