@@ -5,6 +5,7 @@ import inspect
 import pathlib
 import pkgutil
 import sys
+import typing
 from importlib.metadata import packages_distributions
 from types import ModuleType
 
@@ -528,17 +529,29 @@ def test_a_frontend_is_allowed_only_the_toolkit_its_manifest_buys(
     )
 
 
+def _domain_modules() -> list[ModuleType]:
+    """`cora.domain` and everything under it, however deep.
+
+    Walked rather than listed, and the package itself is one of them: a class declared
+    in an `__init__` or in a subpackage added later is a class the rule below would
+    otherwise never be asked about.
+    """
+    walked = pkgutil.walk_packages(cora.domain.__path__, prefix="cora.domain.")
+    return [cora.domain] + [importlib.import_module(module.name) for module in walked]
+
+
 def _domain_classes() -> list[type]:
-    """Every class `cora.domain` declares, found by walking it rather than listing."""
-    found = []
-    for module in pkgutil.iter_modules(cora.domain.__path__):
-        imported = importlib.import_module(f"cora.domain.{module.name}")
-        found += [
-            kind
-            for _, kind in inspect.getmembers(imported, inspect.isclass)
-            if kind.__module__ == imported.__name__
-            and not kind.__name__.startswith("_")
-        ]
+    """Every class those modules declare, under the name it is imported by.
+
+    A name starting with `_` is left out: it is not a value anything outside its own
+    module can hold.
+    """
+    found = [
+        kind
+        for module in _domain_modules()
+        for _, kind in inspect.getmembers(module, inspect.isclass)
+        if kind.__module__ == module.__name__ and not kind.__name__.startswith("_")
+    ]
     return sorted(found, key=lambda kind: f"{kind.__module__}.{kind.__name__}")
 
 
@@ -551,16 +564,38 @@ def _is_frozen_dataclass(kind: type) -> bool:
 def _states_a_shape(kind: type) -> bool:
     """The three things in the domain that are not values: the abstract bases a payload
     or a trace step is declared by, the state a step returns keys of, and the pause that
-    is raised."""
+    is raised.
+
+    Each is asked of the thing itself rather than of a list of names. `isabstract` is
+    false for a base that declares no abstract method, so a marker base would be
+    reported as a value — the exemptions err towards a failing test, never towards a
+    value slipping past.
+    """
     return (
         inspect.isabstract(kind)
-        or hasattr(kind, "__required_keys__")
+        or typing.is_typeddict(kind)
         or issubclass(kind, BaseException)
     )
 
 
-def test_the_domain_classes_are_discovered() -> None:
-    assert len(_domain_classes()) > 10, "the walk found almost none — check the roots"
+# One from every module that declares a class, so a walk that quietly stops covering a
+# module fails here and names it — a count alone would still pass on `errors.py` alone.
+REPRESENTATIVE = {
+    "cora.domain.agent_state": "AgentState",
+    "cora.domain.chat_result": "ChatResult",
+    "cora.domain.chunk": "Chunk",
+    "cora.domain.citations": "Nothing",
+    "cora.domain.conversation": "Turn",
+    "cora.domain.decision": "Decision",
+    "cora.domain.errors": "CoreError",
+    "cora.domain.trace": "TraceStep",
+}
+
+
+def test_every_module_of_the_domain_is_walked() -> None:
+    found = {f"{kind.__module__}.{kind.__name__}" for kind in _domain_classes()}
+
+    assert {f"{module}.{name}" for module, name in REPRESENTATIVE.items()} <= found
 
 
 @pytest.mark.parametrize(
@@ -570,7 +605,12 @@ def test_a_value_in_the_domain_is_a_frozen_dataclass(kind: type) -> None:
     """One shape for a value, so it is read by name and cannot be mistaken for what it
     is made of. A `NamedTuple` also unpacks, indexes and compares equal to a plain tuple
     of the same fields — three readings of a value the domain never means, and each one
-    a caller can come to depend on."""
+    a caller can come to depend on.
+
+    Asked of `cora.domain` alone: a value crosses to a caller and is held, while
+    `engine.ingestion.Ingested` is a return read apart at the one call that made it, and
+    unpacking it there is the point rather than a reading of a value.
+    """
     named = f"{kind.__module__}.{kind.__name__}"
 
     assert _is_frozen_dataclass(kind) or _states_a_shape(kind), (
