@@ -1,5 +1,9 @@
 import ast
+import dataclasses
+import importlib
+import inspect
 import pathlib
+import pkgutil
 import sys
 from importlib.metadata import packages_distributions
 from types import ModuleType
@@ -521,4 +525,54 @@ def test_a_frontend_is_allowed_only_the_toolkit_its_manifest_buys(
         f"the {frontend} shell is allowed {sorted(unbought)}, which "
         f"{workspace.location(workspace.member_of(f'cora.frontends.{frontend}'))}"
         "/pyproject.toml does not declare"
+    )
+
+
+def _domain_classes() -> list[type]:
+    """Every class `cora.domain` declares, found by walking it rather than listing."""
+    found = []
+    for module in pkgutil.iter_modules(cora.domain.__path__):
+        imported = importlib.import_module(f"cora.domain.{module.name}")
+        found += [
+            kind
+            for _, kind in inspect.getmembers(imported, inspect.isclass)
+            if kind.__module__ == imported.__name__
+            and not kind.__name__.startswith("_")
+        ]
+    return sorted(found, key=lambda kind: f"{kind.__module__}.{kind.__name__}")
+
+
+def _is_frozen_dataclass(kind: type) -> bool:
+    # `dataclasses` publishes no reader for `frozen`, and the decorator records it here.
+    params = getattr(kind, "__dataclass_params__", None)
+    return dataclasses.is_dataclass(kind) and bool(params and params.frozen)
+
+
+def _states_a_shape(kind: type) -> bool:
+    """The three things in the domain that are not values: the abstract bases a payload
+    or a trace step is declared by, the state a step returns keys of, and the pause that
+    is raised."""
+    return (
+        inspect.isabstract(kind)
+        or hasattr(kind, "__required_keys__")
+        or issubclass(kind, BaseException)
+    )
+
+
+def test_the_domain_classes_are_discovered() -> None:
+    assert len(_domain_classes()) > 10, "the walk found almost none — check the roots"
+
+
+@pytest.mark.parametrize(
+    "kind", _domain_classes(), ids=lambda kind: f"{kind.__module__}.{kind.__name__}"
+)
+def test_a_value_in_the_domain_is_a_frozen_dataclass(kind: type) -> None:
+    """One shape for a value, so it is read by name and cannot be mistaken for what it
+    is made of. A `NamedTuple` also unpacks, indexes and compares equal to a plain tuple
+    of the same fields — three readings of a value the domain never means, and each one
+    a caller can come to depend on."""
+    named = f"{kind.__module__}.{kind.__name__}"
+
+    assert _is_frozen_dataclass(kind) or _states_a_shape(kind), (
+        f"{named} carries data without being a frozen dataclass"
     )
