@@ -7,38 +7,11 @@ the code was built, not how it works today.
 
 ## The map
 
-![cora as components: two frontends drive the engine, its nine ports each bind one
-adapter, and every component speaks cora.domain.](assets/component-map.svg)
+![cora as a UML component diagram: two frontends, the engine and its parts, nine required
+interfaces wired to the components that provide them, and the packages each one depends
+on.](assets/component-map.svg)
 
-A UML component diagram, generated from the source by `scripts/gen_component_map.py`:
-`cora.app`'s `assemble` says what the engine is made of and which slots it has, `build`
-says what fills each slot, and the drawing says nothing else. **Centre** is the engine and
-the parts `assemble` always builds. **Left** is who calls cora — a frontend depends on the
-`App` it is handed, because cora has no driving port: a screen reaches `Agent` and
-`KnowledgeBase` directly. **Right** is what cora calls: nine ports, one adapter behind
-each, and the engine does not know which. **Below** is `cora.domain`, which every other box
-imports: the value objects and the errors are the words all four groups speak. `cora.app` is
-the composition root — not drawn, because it is what the drawing is *read from*: it builds
-the engine and binds every port once, at startup.
-
-| Mark | Means |
-|---|---|
-| purple box | The engine, and inside it the parts `assemble` always builds. Plain Python, so a test can build each one with fakes. |
-| ball and socket | A port. The socket is the engine requiring an interface, the ball the component providing it; the label is the Protocol's name. |
-| grey box | A component outside the engine: a frontend, an adapter, a plugin, or the domain. |
-| dashed arrow | A dependency, pointing at what is depended on. |
-
-Three things to read carefully. The `Logging*` wrappers are absent because they are not parts
-of the engine but debug decorators around a port: they stand behind an `if` in `assemble`, and
-so behind none of these boxes. The `Memory` and `Conversations` sockets are drawn like the rest
-although either slot may be left empty — what an absent adapter costs is below, not in the
-picture. And the two plugins are what ships, not what runs: `build` fills that socket with
-whatever `CORA_PLUGINS` names, which is nothing by default.
-
-One dependency runs against the grain: `LangGraphRunner` drives the engine's steps, so the
-adapter supplies the graph and the engine supplies every step it walks.
-
-The map is an overview; the detail is in the tables below. `PluginSet` and the tools the model
+Drawn from the source by `scripts/gen_component_map.py`. `PluginSet` and the tools the model
 may call are parts of the engine the map leaves out to stay readable.
 
 **Ingestion**, the **plugin registry** and the **citation numbering** are real parts of the code.

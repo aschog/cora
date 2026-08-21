@@ -1,15 +1,33 @@
 import ast
 from dataclasses import dataclass
+from itertools import pairwise
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
-ASSEMBLY = ROOT / "src" / "cora" / "app" / "assembly.py"
-PORTS = ROOT / "src" / "cora" / "ports"
-LOADERS = ROOT / "src" / "cora" / "adapters" / "loaders.py"
+SRC = ROOT / "src"
+ASSEMBLY = SRC / "cora" / "app" / "assembly.py"
+PORTS = SRC / "cora" / "ports"
 MAP = ROOT / "docs" / "assets" / "component-map.svg"
 
+ENGINE = "cora.engine"
+APP = "cora.app"
+DOMAIN = "cora.domain"
+ADAPTERS = "cora.adapters"
+PLUGINS = "cora.plugins"
+FRONTENDS = "cora.frontends"
+
+# Where each drawn package keeps its source. `cora.ports` is not among them: its
+# Protocols are drawn as the interfaces on the connectors; a box would draw them twice.
+TREES = {
+    FRONTENDS: ("frontends",),
+    PLUGINS: ("plugins",),
+    ENGINE: ("src", "cora", "engine"),
+    ADAPTERS: ("src", "cora", "adapters"),
+    APP: ("src", "cora", "app"),
+    DOMAIN: ("src", "cora", "domain"),
+}
 # `assemble` takes the factory; the engine holds the runner it returns, and that is the
-# port a reader of the map is looking for.
+# interface a reader of the map is looking for.
 AS_DRAWN = {"GraphFor": "GraphRunner"}
 # Two slots the engine talks through that are not arguments to `assemble`: the loader
 # registry is fixed at the composition root, and a plugin arrives in the plugin set.
@@ -18,11 +36,30 @@ BESIDE_THE_SIGNATURE = ("Loader", "Plugin")
 
 @dataclass(frozen=True)
 class Binding:
+    """One interface the engine requires, and the components that provide it."""
+
     port: str
-    adapters: tuple[str, ...]
+    providers: tuple[str, ...]
+    package: str
 
 
-def _module(tree: ast.Module) -> dict[str, str]:
+def _tree(name: str) -> Path:
+    return ROOT.joinpath(*TREES[name])
+
+
+def _modules(name: str) -> list[Path]:
+    return [
+        module
+        for module in sorted(_tree(name).rglob("*.py"))
+        if "node_modules" not in module.parts
+    ]
+
+
+def _parsed(path: Path) -> ast.Module:
+    return ast.parse(path.read_text())
+
+
+def _imported(tree: ast.Module) -> dict[str, str]:
     return {
         alias.asname or alias.name: node.module or ""
         for node in ast.walk(tree)
@@ -42,7 +79,7 @@ def _function(tree: ast.Module, name: str) -> ast.FunctionDef:
 def _protocols(path: Path) -> set[str]:
     return {
         node.name
-        for node in ast.parse(path.read_text()).body
+        for node in _parsed(path).body
         if isinstance(node, ast.ClassDef)
         and any(
             isinstance(base, ast.Name) and base.id == "Protocol" for base in node.bases
@@ -55,15 +92,12 @@ def declared_ports() -> set[str]:
 
 
 def _named(annotation: ast.expr | None) -> set[str]:
-    return (
-        {node.id for node in ast.walk(annotation) if isinstance(node, ast.Name)}
-        if (annotation)
-        else set()
-    )
+    if annotation is None:
+        return set()
+    return {node.id for node in ast.walk(annotation) if isinstance(node, ast.Name)}
 
 
 def _slots(tree: ast.Module) -> list[tuple[str, str]]:
-    """Each keyword-only slot of `assemble` that names a port, in signature order."""
     ports = declared_ports()
     found = []
     for argument in _function(tree, "assemble").args.kwonlyargs:
@@ -75,10 +109,8 @@ def _slots(tree: ast.Module) -> list[tuple[str, str]]:
 
 
 def _called(node: ast.expr) -> str | None:
-    """The class or function a slot is filled with, however the call is written."""
     if isinstance(node, ast.Call):
         if isinstance(node.func, ast.Name):
-            # `partial(langgraph_for, …)` binds the factory, not the partial.
             if node.func.id == "partial" and node.args:
                 return _called(node.args[0])
             return node.func.id
@@ -88,6 +120,8 @@ def _called(node: ast.expr) -> str | None:
             return node.func.value.id
     if isinstance(node, ast.Name):
         return node.id
+    if isinstance(node, ast.Attribute):
+        return _called(node.value)
     return None
 
 
@@ -105,24 +139,24 @@ def _locals(build: ast.FunctionDef) -> dict[str, str]:
 
 def _provider(name: str, imported: dict[str, str]) -> str:
     """Past a factory to the class it returns: `langgraph_for` is how the runner is
-    made, `LangGraphRunner` is what stands behind the port.
+    made, `LangGraphRunner` is what stands behind the interface.
     """
     module = imported.get(name, "")
     if not module.startswith("cora."):
         return name
-    source = ROOT.joinpath("src", *module.split(".")).with_suffix(".py")
+    source = SRC.joinpath(*module.split(".")).with_suffix(".py")
     if not source.exists():
         return name
-    made = [
-        returned
-        for node in ast.parse(source.read_text()).body
+    returned = [
+        made
+        for node in _parsed(source).body
         if isinstance(node, ast.FunctionDef) and node.name == name
         for statement in ast.walk(node)
         if isinstance(statement, ast.Return) and statement.value is not None
-        for returned in (_called(statement.value),)
-        if returned
+        for made in (_called(statement.value),)
+        if made
     ]
-    return made[0] if made else name
+    return returned[0] if returned else name
 
 
 def _assembled(tree: ast.Module) -> dict[str, str]:
@@ -135,7 +169,7 @@ def _assembled(tree: ast.Module) -> dict[str, str]:
         and node.func.id == "assemble"
     )
     resolved = _locals(build)
-    imported = _module(tree)
+    imported = _imported(tree)
     filled = {}
     for keyword in call.keywords:
         if keyword.arg and (name := _called(keyword.value)):
@@ -143,84 +177,93 @@ def _assembled(tree: ast.Module) -> dict[str, str]:
     return filled
 
 
-def _loaders() -> tuple[str, ...]:
-    registry = next(
-        node
-        for node in ast.parse(LOADERS.read_text()).body
-        if isinstance(node, ast.AnnAssign)
-        and isinstance(node.target, ast.Name)
-        and node.target.id == "LOADERS"
-    )
-    assert isinstance(registry.value, ast.Dict)
-    named = [value.id for value in registry.value.values if isinstance(value, ast.Name)]
-    return tuple(dict.fromkeys(named))
+def _registry_module(tree: ast.Module) -> str:
+    """The module the loader registry lives in. The loaders are functions and a function
+    is no component, so the module that holds them is what provides `Loader`.
+    """
+    return _imported(tree)["LOADERS"].rsplit(".", 1)[-1]
 
 
-def _packages(directory: str) -> tuple[str, ...]:
-    return tuple(
-        sorted(path.name for path in (ROOT / directory).iterdir() if path.is_dir())
-    )
+def _packages(name: str) -> tuple[str, ...]:
+    return tuple(sorted(path.name for path in _tree(name).iterdir() if path.is_dir()))
 
 
 def bindings() -> tuple[Binding, ...]:
-    tree = ast.parse(ASSEMBLY.read_text())
+    tree = _parsed(ASSEMBLY)
     filled = _assembled(tree)
     bound = [
-        Binding(port, (filled[slot],)) for slot, port in _slots(tree) if slot in filled
+        Binding(port, (filled[slot],), ADAPTERS)
+        for slot, port in _slots(tree)
+        if slot in filled
     ]
     beside = {
-        "Loader": _loaders(),
-        "Plugin": tuple(f"cora.plugins.{name}" for name in _packages("plugins")),
+        "Loader": Binding("Loader", (_registry_module(tree),), ADAPTERS),
+        "Plugin": Binding("Plugin", _packages(PLUGINS), PLUGINS),
     }
-    return tuple(bound) + tuple(
-        Binding(port, beside[port]) for port in BESIDE_THE_SIGNATURE
-    )
+    return tuple(bound) + tuple(beside[port] for port in BESIDE_THE_SIGNATURE)
 
 
-def engine_parts() -> tuple[str, ...]:
-    """What `assemble` always builds, in the order it reads. The debug wrappers are not
-    here because they are not always there: they stand behind an `if`, around a port."""
-    tree = ast.parse(ASSEMBLY.read_text())
-    imported = _module(tree)
-    always = [
-        node
-        for statement in _function(tree, "assemble").body
-        if not isinstance(statement, ast.If)
-        for node in ast.walk(statement)
-        if isinstance(node, ast.Call)
-        and isinstance(node.func, ast.Name)
-        and imported.get(node.func.id, "").startswith("cora.engine")
-    ]
-    named = [
-        node.func.id
-        for node in sorted(always, key=lambda call: (call.lineno, call.col_offset))
-        if isinstance(node.func, ast.Name)
-    ]
-    return tuple(dict.fromkeys(named))
+def _parents(node: ast.AST) -> dict[ast.AST, ast.AST]:
+    return {
+        child: parent
+        for parent in ast.walk(node)
+        for child in ast.iter_child_nodes(parent)
+    }
+
+
+def _role(call: ast.Call, parents: dict[ast.AST, ast.AST]) -> str | None:
+    """What the engine calls this part: the keyword it is passed as, or the name it is
+    assigned to. A part is drawn `role: Type`, so the role comes off the source as well.
+    """
+    node: ast.AST = call
+    while node in parents:
+        parent = parents[node]
+        if isinstance(parent, ast.keyword) and parent.arg:
+            return parent.arg
+        if isinstance(parent, ast.Assign) and isinstance(parent.targets[0], ast.Name):
+            return parent.targets[0].id
+        node = parent
+    return None
+
+
+def engine_parts() -> tuple[tuple[str, str], ...]:
+    """The parts `assemble` always builds, as `role: Type` in the order it reads them.
+    The debug wrappers are not among them: they stand behind an `if`, around a port.
+    """
+    tree = _parsed(ASSEMBLY)
+    imported = _imported(tree)
+    assemble = _function(tree, "assemble")
+    parents = _parents(assemble)
+    found = []
+    for statement in assemble.body:
+        if isinstance(statement, ast.If):
+            continue
+        for node in ast.walk(statement):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Name)
+                and imported.get(node.func.id, "").startswith(ENGINE)
+                and (role := _role(node, parents))
+            ):
+                found.append((node.lineno, node.col_offset, role, node.func.id))
+    return tuple(dict.fromkeys((role, kind) for _, _, role, kind in sorted(found)))
 
 
 def frontends() -> tuple[str, ...]:
-    return _packages("frontends")
+    return _packages(FRONTENDS)
 
 
-DOMAIN = "cora.domain"
-SPEAKERS = {
-    "engine": ("src", "cora", "engine"),
-    "outward": ("src", "cora", "adapters"),
-    "frontends": ("frontends",),
-    "plugins": ("plugins",),
-}
-
-
-def speaks_domain() -> frozenset[str]:
-    """Which drawn groups import the domain. Everything cora has speaks in its value
-    objects and its errors, and the drawing should say so rather than imply a layer."""
+def dependencies() -> frozenset[tuple[str, str]]:
+    """Which drawn package imports which, off every `from cora.…` in their trees."""
     found = set()
-    for group, parts in SPEAKERS.items():
-        for module in ROOT.joinpath(*parts).rglob("*.py"):
-            if f"from {DOMAIN}" in module.read_text():
-                found.add(group)
-                break
+    for client in TREES:
+        for module in _modules(client):
+            for node in ast.walk(_parsed(module)):
+                if not isinstance(node, ast.ImportFrom) or not node.module:
+                    continue
+                supplier = ".".join(node.module.split(".")[:2])
+                if supplier in TREES and supplier != client:
+                    found.add((client, supplier))
     return frozenset(found)
 
 
@@ -229,22 +272,19 @@ STYLE = """
     text { font: 13px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; fill: #202124 }
     .stereotype { font-size: 10.5px; fill: #5f6368; letter-spacing: .04em }
     .name { font-weight: 600 }
+    .role { font-size: 12px }
     .engine { fill: #f6f4ff; stroke: #6c5ce7; stroke-width: 1.8 }
     .part { fill: #ffffff; stroke: #6c5ce7; stroke-width: 1.2 }
-    .part-name { fill: #4b3fbb; font-weight: 600 }
+    .part-name { fill: #4b3fbb }
+    .frame { fill: none; stroke: #9aa0a6; stroke-width: 1.1; stroke-dasharray: 3 3 }
     .outer { fill: #ffffff; stroke: #9aa0a6; stroke-width: 1.4 }
     .wire { stroke: #9aa0a6; stroke-width: 1.3; fill: none }
     .socket { stroke: #9aa0a6; stroke-width: 1.6; fill: none }
     .ball { fill: #ffffff; stroke: #9aa0a6; stroke-width: 1.6 }
-    /* The two labels that stand on the page itself, not on a box: one mid-tone that
-       reads on either background, because the page's scheme is the site's to choose
-       and this file only sees the reader's system. */
     .port { fill: #6b7280; font-size: 12px }
-    .drives { stroke: #e8710a; stroke-width: 1.4; fill: none;
-              stroke-dasharray: 5 4; marker-end: url(#arrow) }
-    .uses { stroke: #9aa0a6; stroke-width: 1.3; fill: none;
-            stroke-dasharray: 5 4; marker-end: url(#uses) }
-    .drives-label { fill: #d97706; font-size: 12px }
+    .use { stroke: #8f96a3; stroke-width: 1.3; fill: none;
+           stroke-dasharray: 6 4; marker-end: url(#use) }
+    .use-label { fill: #6b7280; font-size: 10.5px; letter-spacing: .04em }
     @media (prefers-color-scheme: dark) {
       text { fill: #e8eaed }
       .stereotype { fill: #9aa0a6 }
@@ -257,14 +297,51 @@ STYLE = """
   </style>
 """
 
-ROW = 70
-BOX = 56
-PART = 46
-ENGINE_X, ENGINE_W = 352.0, 300.0
-OUTER_W = 268.0
-ADAPTER_X = 892.0
-FRONTEND_X, FRONTEND_W = 16.0, 200.0
-DOMAIN_GAP = 60.0
+WIDTH = 1200.0
+LEFT_X, LEFT_W = 34.0, 236.0
+ENGINE_X, ENGINE_W = 384.0, 300.0
+RIGHT_X, RIGHT_W = 872.0, 296.0
+MEMBER = 46.0
+GAP = 10.0
+FRAME_HEAD = 30.0
+TOP = 46.0
+
+
+@dataclass(frozen=True)
+class Box:
+    x: float
+    y: float
+    w: float
+    h: float
+
+    @property
+    def right(self) -> float:
+        return self.x + self.w
+
+    @property
+    def bottom(self) -> float:
+        return self.y + self.h
+
+    @property
+    def mid_x(self) -> float:
+        return self.x + self.w / 2
+
+    @property
+    def mid_y(self) -> float:
+        return self.y + self.h / 2
+
+
+def _framed(x: float, y: float, w: float, count: int) -> Box:
+    return Box(x, y, w, count * (MEMBER + GAP) - GAP + FRAME_HEAD + GAP)
+
+
+def _member(frame: Box, index: int) -> Box:
+    return Box(
+        frame.x + 12,
+        frame.y + FRAME_HEAD + index * (MEMBER + GAP),
+        frame.w - 24,
+        MEMBER,
+    )
 
 
 def _text(x: float, y: float, value: str, style: str, anchor: str = "middle") -> str:
@@ -274,126 +351,200 @@ def _text(x: float, y: float, value: str, style: str, anchor: str = "middle") ->
     )
 
 
-def _component(x: float, y: float, width: float, name: str, height: float = BOX) -> str:
-    return "\n".join(
-        (
-            f'  <rect x="{x:g}" y="{y:g}" width="{width:g}" height="{height:g}"'
-            ' rx="4" class="outer"/>',
-            _text(x + width / 2, y + 22, "«component»", "stereotype"),
-            _text(x + width / 2, y + 40, name, "name"),
-        )
+def _rect(box: Box, style: str, radius: float = 4.0) -> str:
+    return (
+        f'  <rect x="{box.x:g}" y="{box.y:g}" width="{box.w:g}" height="{box.h:g}"'
+        f' rx="{radius:g}" class="{style}"/>'
     )
 
 
-def _socket(x: float, y: float, port: str, wire_from: float, wire_to: float) -> str:
-    """The engine's required interface cupping the adapter's provided one."""
-    return "\n".join(
-        (
-            f'  <path d="M {wire_from:g} {y:g} H {x - 13:g}" class="wire"/>',
-            f'  <path d="M {x - 13:g} {y - 11:g} A 11 11 0 0 0 {x - 13:g} {y + 11:g}"'
-            ' class="socket"/>',
-            f'  <circle cx="{x + 4:g}" cy="{y:g}" r="5.5" class="ball"/>',
-            f'  <path d="M {x + 9.5:g} {y:g} H {wire_to:g}" class="wire"/>',
-            _text((wire_from + wire_to) / 2, y - 12, port, "port"),
-        )
+def _component(box: Box, name: str, style: str = "outer") -> list[str]:
+    return [
+        _rect(box, style),
+        _text(box.mid_x, box.y + 19, "«component»", "stereotype"),
+        _text(box.mid_x, box.y + 36, name, "name"),
+    ]
+
+
+def _frame(box: Box, name: str) -> list[str]:
+    return [
+        _rect(box, "frame"),
+        _text(box.x + 10, box.y + 18, f"«package» {name}", "stereotype", "start"),
+    ]
+
+
+def _path(points: list[tuple[float, float]], style: str) -> str:
+    head, *rest = points
+    drawn = f"M {head[0]:g} {head[1]:g} " + " ".join(f"L {x:g} {y:g}" for x, y in rest)
+    return f'  <path d="{drawn}" class="{style}"/>'
+
+
+def _use(points: list[tuple[float, float]]) -> list[str]:
+    segments = list(pairwise(points))
+    (x1, y1), (x2, y2) = max(
+        segments,
+        key=lambda pair: abs(pair[0][0] - pair[1][0]) + abs(pair[0][1] - pair[1][1]),
     )
+    flat = y1 == y2
+    x, y = (x1 + x2) / 2, (y1 + y2) / 2
+    aside = 0.0 if flat else (-24.0 if x > WIDTH - 60 else 24.0)
+    return [
+        _path(points, "use"),
+        _text(x + aside, y - 6 if flat else y, "«use»", "use-label"),
+    ]
+
+
+def _socket(x: float, y: float, port: str, engine_right: float) -> list[str]:
+    return [
+        _path([(engine_right, y), (x - 13, y)], "wire"),
+        f'  <path d="M {x - 13:g} {y - 11:g} A 11 11 0 0 0 {x - 13:g} {y + 11:g}"'
+        ' class="socket"/>',
+        _text(x - 4, y - 15, port, "port"),
+    ]
+
+
+def _ball(x: float, y: float, to: float) -> list[str]:
+    return [
+        f'  <circle cx="{x + 4:g}" cy="{y:g}" r="5.5" class="ball"/>',
+        _path([(x + 9.5, y), (to, y)], "wire"),
+    ]
 
 
 def svg() -> str:
     bound = bindings()
     parts = engine_parts()
     pages = frontends()
-    # The engine spans the ports it binds: a connector that left its side to reach a row
-    # below the box would draw a port the engine does not have.
-    speakers = speaks_domain()
-    height = len(bound) * ROW + 40 + DOMAIN_GAP + BOX
-    engine_y, engine_h = 20.0, len(bound) * ROW - ROW + BOX
-    domain_y = engine_y + engine_h + DOMAIN_GAP
-    rails = engine_y + engine_h / 2
-    pitch = (engine_h - 66) / len(parts)
+    plugged = _packages(PLUGINS)
+    adapters = [
+        (binding.port, binding.providers[0])
+        for binding in bound
+        if binding.package == ADAPTERS
+    ]
+
+    adapter_frame = _framed(RIGHT_X, TOP, RIGHT_W, len(adapters))
+    plugin_frame = _framed(RIGHT_X, adapter_frame.bottom + 36, RIGHT_W, len(plugged))
+    engine = Box(ENGINE_X, TOP, ENGINE_W, plugin_frame.bottom - TOP)
+    pitch = (engine.h - 56) / len(parts)
+    frontend_frame = _framed(LEFT_X, TOP, LEFT_W, len(pages))
+    app = Box(LEFT_X, frontend_frame.bottom + 96, LEFT_W, MEMBER)
+    lane = engine.bottom + 28
+    domain = Box(LEFT_X, lane + 32, WIDTH - 2 * LEFT_X, MEMBER)
+    height = domain.bottom + TOP
+
     label = (
-        f"cora as components: {len(pages)} frontends drive the engine, "
-        f"and its {len(bound)} ports bind one adapter each; every component speaks "
-        f"cora.domain. Generated by "
+        f"cora as a UML component diagram: {len(pages)} frontends, an engine of "
+        f"{len(parts)} parts, {len(bound)} required interfaces wired to the components "
+        "that provide them, and the packages each one depends on. Generated by "
         "scripts/gen_component_map.py."
     )
     out = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 {height:g}"'
-        f' width="1180" height="{height:g}" role="img" aria-label="{label}">',
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH:g} {height:g}"'
+        f' width="{WIDTH:g}" height="{height:g}" role="img" aria-label="{label}">',
         STYLE.strip("\n"),
-        '  <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5"'
-        ' markerWidth="7" markerHeight="7" orient="auto-start-reverse">'
-        '<path d="M 0 1 L 9 5 L 0 9 z" fill="#e8710a"/></marker>'
-        '<marker id="uses" viewBox="0 0 10 10" refX="9" refY="5"'
-        ' markerWidth="7" markerHeight="7" orient="auto-start-reverse">'
-        '<path d="M 0 1 L 9 5 L 0 9 z" fill="#9aa0a6"/></marker></defs>',
-        f'  <rect x="{ENGINE_X:g}" y="{engine_y:g}" width="{ENGINE_W:g}"'
-        f' height="{engine_h:g}" rx="8" class="engine"/>',
-        _text(ENGINE_X + ENGINE_W / 2, engine_y + 26, "«component»", "stereotype"),
-        _text(ENGINE_X + ENGINE_W / 2, engine_y + 46, "cora.engine", "name"),
+        '  <defs><marker id="use" viewBox="0 0 10 10" refX="9" refY="5"'
+        ' markerWidth="9" markerHeight="9" orient="auto-start-reverse">'
+        '<path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#8f96a3"'
+        ' stroke-width="1.4"/></marker></defs>',
     ]
 
-    for index, part in enumerate(parts):
-        top = engine_y + 60 + index * pitch
+    out += _component(engine, ENGINE, "engine")
+    for index, (role, kind) in enumerate(parts):
+        part = Box(
+            engine.x + 20, engine.y + 50 + index * pitch, engine.w - 40, pitch - 9
+        )
         out += [
-            f'  <rect x="{ENGINE_X + 24:g}" y="{top:g}" width="{ENGINE_W - 48:g}"'
-            f' height="{pitch - 12:g}" rx="4" class="part"/>',
-            _text(ENGINE_X + ENGINE_W / 2, top + pitch / 2 - 2, part, "part-name"),
+            _rect(part, "part"),
+            _text(part.mid_x, part.mid_y + 4, f"{role}: {kind}", "part-name role"),
         ]
 
+    out += _frame(frontend_frame, FRONTENDS)
     for index, page in enumerate(pages):
-        top = rails - len(pages) * (BOX + 14) / 2 + index * (BOX + 14)
-        out.append(_component(FRONTEND_X, top, FRONTEND_W, f"cora.frontends.{page}"))
-    spine = FRONTEND_X + FRONTEND_W + 42
-    out += [
-        f'  <path d="M {FRONTEND_X + FRONTEND_W:g} {rails - (BOX + 14) / 2:g}'
-        f" H {spine:g} V {rails + (BOX + 14) / 2:g}"
-        f' H {FRONTEND_X + FRONTEND_W:g}" class="wire"/>',
-        f'  <path d="M {spine:g} {rails:g} H {ENGINE_X:g}" class="drives"/>',
-        _text((spine + ENGINE_X) / 2, rails - 12, "App", "drives-label"),
-    ]
+        out += _component(_member(frontend_frame, index), page)
+    out += _component(app, APP)
+    out += _component(domain, DOMAIN)
 
-    for index, binding in enumerate(bound):
-        middle = 20 + index * ROW + BOX / 2
-        out.append(
-            _socket(
-                (ENGINE_X + ENGINE_W + ADAPTER_X) / 2,
-                middle,
-                binding.port,
-                ENGINE_X + ENGINE_W,
-                ADAPTER_X,
-            )
-        )
-        stacked = len(binding.adapters)
-        each = (BOX - 6 * (stacked - 1)) / stacked
-        for offset, adapter in enumerate(binding.adapters):
-            top = 20 + index * ROW + offset * (each + 6)
-            if stacked == 1:
-                out.append(_component(ADAPTER_X, top, OUTER_W, adapter))
-            else:
-                out += [
-                    f'  <rect x="{ADAPTER_X:g}" y="{top:g}" width="{OUTER_W:g}"'
-                    f' height="{each:g}" rx="4" class="outer"/>',
-                    _text(ADAPTER_X + OUTER_W / 2, top + each / 2 + 4, adapter, "name"),
-                ]
-    out.append(_component(ENGINE_X, domain_y, ENGINE_W, DOMAIN))
-    middle = domain_y + BOX / 2
-    if "engine" in speakers:
-        out.append(
-            f'  <path d="M {ENGINE_X + ENGINE_W / 2:g} {engine_y + engine_h:g}'
-            f' V {domain_y:g}" class="uses"/>'
-        )
-    if "frontends" in speakers:
-        out.append(
-            f'  <path d="M {spine:g} {rails + (BOX + 14) / 2:g} V {middle:g}'
-            f' H {ENGINE_X:g}" class="uses"/>'
-        )
-    if speakers & {"outward", "plugins"}:
-        column = ADAPTER_X + OUTER_W / 2
-        out.append(
-            f'  <path d="M {column:g} {domain_y - DOMAIN_GAP + 6:g} V {middle:g}'
-            f' H {ENGINE_X + ENGINE_W:g}" class="uses"/>'
-        )
+    out += _frame(adapter_frame, ADAPTERS)
+    socket_x = (engine.right + RIGHT_X) / 2
+    for index, (port, provider) in enumerate(adapters):
+        member = _member(adapter_frame, index)
+        out += _component(member, provider)
+        out += _socket(socket_x, member.mid_y, port, engine.right)
+        out += _ball(socket_x, member.mid_y, member.x)
+
+    out += _frame(plugin_frame, PLUGINS)
+    members = [_member(plugin_frame, index) for index in range(len(plugged))]
+    for member, plugin in zip(members, plugged, strict=True):
+        out += _component(member, plugin)
+    shared = sum(member.mid_y for member in members) / len(members)
+    out += _socket(socket_x, shared, "Plugin", engine.right)
+    fork = socket_x + 44
+    out.append(_path([(socket_x - 4, shared), (fork, shared)], "wire"))
+    for member in members:
+        out += [
+            _path([(fork, shared), (fork, member.mid_y)], "wire"),
+            *_ball(member.x - 30, member.mid_y, member.x),
+            _path([(fork, member.mid_y), (member.x - 30, member.mid_y)], "wire"),
+        ]
+
+    routes = {
+        (FRONTENDS, ENGINE): [
+            (frontend_frame.right, frontend_frame.mid_y),
+            (engine.x, frontend_frame.mid_y),
+        ],
+        (FRONTENDS, APP): [
+            (frontend_frame.mid_x, frontend_frame.bottom),
+            (frontend_frame.mid_x, app.y),
+        ],
+        (FRONTENDS, DOMAIN): [
+            (frontend_frame.x, frontend_frame.bottom - 16),
+            (LEFT_X - 20, frontend_frame.bottom - 16),
+            (LEFT_X - 20, domain.mid_y),
+            (domain.x, domain.mid_y),
+        ],
+        (APP, ENGINE): [
+            (app.right, app.mid_y),
+            (engine.x - 36, app.mid_y),
+            (engine.x - 36, engine.mid_y + 60),
+            (engine.x, engine.mid_y + 60),
+        ],
+        (APP, ADAPTERS): [
+            (app.mid_x + 44, app.y),
+            (app.mid_x + 44, TOP - 30),
+            (adapter_frame.mid_x + 70, TOP - 30),
+            (adapter_frame.mid_x + 70, adapter_frame.y),
+        ],
+        (APP, DOMAIN): [
+            (app.mid_x, app.bottom),
+            (app.mid_x, domain.y),
+        ],
+        (ENGINE, DOMAIN): [
+            (engine.mid_x - 60, engine.bottom),
+            (engine.mid_x - 60, domain.y),
+        ],
+        (ADAPTERS, DOMAIN): [
+            (adapter_frame.right, adapter_frame.bottom - 16),
+            (WIDTH - 16, adapter_frame.bottom - 16),
+            (WIDTH - 16, domain.mid_y),
+            (domain.right, domain.mid_y),
+        ],
+        (PLUGINS, DOMAIN): [
+            (plugin_frame.mid_x, plugin_frame.bottom),
+            (plugin_frame.mid_x, domain.y),
+        ],
+        (PLUGINS, ENGINE): [
+            (plugin_frame.x, plugin_frame.bottom - 14),
+            (plugin_frame.x - 46, plugin_frame.bottom - 14),
+            (plugin_frame.x - 46, lane),
+            (engine.mid_x + 60, lane),
+            (engine.mid_x + 60, engine.bottom),
+        ],
+    }
+    edges = dependencies()
+    if unrouted := edges - routes.keys():
+        raise SystemExit(f"the source has a dependency the map cannot draw: {unrouted}")
+    for edge in sorted(edges):
+        out += _use(routes[edge])
+
     out.append("</svg>")
     return "\n".join(out) + "\n"
 
