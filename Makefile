@@ -53,10 +53,12 @@ docs:
 docs-serve:
 	$(QUIET_FORK) uv run mkdocs serve --dev-addr 127.0.0.1:8001
 
-# The component map on `big-picture.md`: the script reads `cora.app.assembly` for what the
-# boxes and the connectors are, and places them itself — the map has one fixed shape, so
-# there is no layout to search for. The SVG is committed, and
-# `tests/guards/test_component_map.py` fails when the committed file is not what this
-# target writes, so a port added without a redraw is a red test.
+# The two drawings on `big-picture.md`. The component map reads `cora.app.assembly` for
+# what the boxes and the connectors are and places them itself — that map has one fixed
+# shape, so there is no layout to search for. The domain map is read out of the classes by
+# pyreverse and laid out by graphviz, which this target needs installed. Both SVGs are
+# committed, and the guards beside them fail when a committed file is behind the source,
+# so a port or a class added without a redraw is a red test.
 diagram:
 	uv run python scripts/gen_component_map.py
+	uv run python scripts/gen_domain_map.py

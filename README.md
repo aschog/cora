@@ -54,8 +54,9 @@ network. Sorted by what you came for:
   [assignment brief](docs/sprints/4/assignment.md) it was built for; sprint 3's brief,
   spec and test findings are in `docs/sprints/3/`
 
-`make diagram` redraws the component map on the big-picture page from
-`cora.app.assembly`; the SVG is committed, and a guard fails when it is behind the source.
+`make diagram` redraws both maps on the big-picture page — the component map from
+`cora.app.assembly`, the domain's classes through pyreverse and graphviz. The SVGs are
+committed, and a guard fails when one is behind the source.
 
 ## Stack
 

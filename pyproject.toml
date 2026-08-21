@@ -55,6 +55,7 @@ dev = [
     "mkdocs-literate-nav>=0.6.3",
     "mkdocs-material>=9.7.7",
     "mkdocstrings[python]>=1.0.6",
+    "pylint>=4.0.7",
     "pytest>=9.1.1",
     "pytest-watcher>=0.6.3",
     "pyyaml>=6.0.3",
