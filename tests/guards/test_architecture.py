@@ -608,7 +608,7 @@ def test_a_value_in_the_domain_is_a_frozen_dataclass(kind: type) -> None:
     a caller can come to depend on.
 
     Asked of `cora.domain` alone: a value crosses to a caller and is held, while
-    `engine.ingestion.Ingested` is a return read apart at the one call that made it, and
+    `engine.ingestion.Ingested` is a return read apart at each call that makes it, and
     unpacking it there is the point rather than a reading of a value.
     """
     named = f"{kind.__module__}.{kind.__name__}"
