@@ -19,6 +19,13 @@ received it.
 | `CORA_REQUEST_TIMEOUT` | Seconds to wait for a reply. Minimum 1. | `90` |
 | `CORA_REASONING_EFFORT` | How much of that budget a reasoning model may spend thinking: `low`, `medium` or `high`. Sent on every request; a model that does not reason ignores it. | `low` |
 
+A reasoning model bills its thinking to the same budget it writes the answer from, so a
+cap sized for a model that does not reason cuts every long answer off — and raising it
+alone only trades that truncation for a timeout. The effort is the dial between them: on
+one question `low` answered in 22-25s against `medium`'s 32-61s, citing the documents
+either way, while `high` spent an entire 8192-token budget thinking and returned no
+answer at all.
+
 ## The turn
 
 | Setting | What it does | Default |

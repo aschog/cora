@@ -1,8 +1,9 @@
-# The site is sorted the way Diátaxis sorts documentation. Understand explains and is
-# written by hand, because which port is a seam cannot be derived. How-to holds one task
-# per page — extending cora and operating it; setup and running stay in README.md, the
-# repo's front door. Reference states facts: the written pages that a table says better
-# than prose, then the module pages generated from source. docs/workflow.md documents the
+# The site is sorted the way Diátaxis sorts documentation. The Tutorial is the one page
+# that teaches, so it is the only one that walks a reader through a whole session.
+# Understand explains and is written by hand, because which port is a seam cannot be
+# derived. How-to holds one task per page. Reference states facts: the written pages that
+# a table says better than prose, then the module pages generated from source. README.md
+# is the front door and links here rather than repeating any of it. docs/workflow.md documents the
 # process rather than the product, so it is not a page here.
 # `tests/guards/test_docs_shape.py` holds the two boundaries that slip on their own: an
 # instruction inside an explanation, and a setting the source reads and no page names.
@@ -35,6 +36,8 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Tutorial:
+      - Your first session: tutorial/first-session.md
   - Understand:
       - The map: big-picture.md
       - A session end to end: happy-path.md
@@ -42,6 +45,8 @@ nav:
       - Write a plugin: how-to/write-a-plugin.md
       - Add a file format: how-to/add-a-file-format.md
       - Swap the technology behind a port: how-to/swap-a-port.md
+      - Run the React shell: how-to/run-the-react-shell.md
+      - Run the tests: how-to/run-the-tests.md
       - Watch a turn happen: how-to/watch-a-turn.md
   - Reference:
       - Configuration: reference/configuration.md
@@ -49,6 +54,7 @@ nav:
       - The components: reference/components.md
       - A turn, step by step: reference/a-turn.md
       - The packages: reference/packages.md
+      - The HTTP surface: reference/http-api.md
       - Modules: api/
 
 # The single `api/` entry above resolves to every module. gen-files writes a page per

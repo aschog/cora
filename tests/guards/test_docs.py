@@ -27,11 +27,15 @@ PAGES = (
     "docs/how-to/add-a-file-format.md",
     "docs/how-to/swap-a-port.md",
     "docs/how-to/watch-a-turn.md",
+    "docs/how-to/run-the-react-shell.md",
+    "docs/how-to/run-the-tests.md",
+    "docs/tutorial/first-session.md",
     "docs/reference/configuration.md",
     "docs/reference/ports.md",
     "docs/reference/components.md",
     "docs/reference/a-turn.md",
     "docs/reference/packages.md",
+    "docs/reference/http-api.md",
 )
 CONFIGS = (".streamlit/config.toml", "Makefile")
 SUFFIXES = (".py", ".md", ".toml", "/")

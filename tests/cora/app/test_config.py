@@ -364,10 +364,11 @@ def test_the_log_path_is_a_setting_like_every_other_path() -> None:
     assert blanked.log_path == config.log_path, "a blank reads as unset, as paths do"
 
 
-def test_the_default_model_is_the_one_the_readme_names() -> None:
+def test_the_default_model_is_the_one_the_reference_names() -> None:
     """The default reaches anyone who runs cora without naming a model, so it is a
-    documented fact rather than a constant: a change to it that leaves the README and
-    the reasoning-effort note behind is a deployment answering from a model, at a cost
-    and a latency, that neither page promised."""
+    documented fact rather than a constant: a change that leaves the page behind is
+    a deployment answering from a model at a cost and a latency nothing promised."""
+    page = workspace.ROOT / "docs" / "reference" / "configuration.md"
+
     assert DEFAULT_MODEL == "openai/gpt-4o-mini"
-    assert f"`{DEFAULT_MODEL}`" in (workspace.ROOT / "README.md").read_text()
+    assert f"`{DEFAULT_MODEL}`" in page.read_text()
