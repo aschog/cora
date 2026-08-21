@@ -220,21 +220,23 @@ ARROWS = {
     "aggregation": "dir=back, arrowtail=odiamond",
     "association": "arrowhead=vee",
 }
-# Measured in Georgia, which is the widest of the serifs the stylesheet asks for: a
-# reader who has Charter instead gets the same boxes with a little more air in them,
-# never a line pushed through its own border.
-FONT = "Georgia"
+# Measured in Helvetica and read in the map's own stack, whose metrics are its near
+# neighbours: a reader on another system gets the same boxes with a little more air in
+# them, never a line pushed through its own border.
+FONT = "Helvetica"
 BREAK = '<BR ALIGN="LEFT"/>'
 
-# Every colour the drawing uses, and the class the stylesheet knows it by. A run of text
-# or a cell inside an HTML label carries no class of its own, so the colour is what
-# `_classed` reads to put one back — which is also why no two of these may be equal.
+# A handle, not a palette: graphviz gives a run of text or a cell in a label no class of
+# its own, so the DOT paints each one a colour nothing else uses and `_classed` reads it
+# back off as a class. The colours are gone from the file by then — every one of them is
+# in the stylesheet, which is what lets one drawing answer to both pages.
 INK = {
     "name": "#1a1a1a",
     "member": "#33312e",
     "stereotype": "#8a857e",
     "group": "#3f6d94",
     "head": "#f5f4f1",
+    "body": "#fdfdfc",
     "frame": "#c9c6c1",
     "accent": "#2b7fc4",
     "accent-head": "#dceefb",
@@ -266,7 +268,7 @@ def _label(klass: Klass) -> str:
     accented = klass.stereotype == ACCENTED
     frame = INK["accent"] if accented else INK["frame"]
     head = INK["accent-head"] if accented else INK["head"]
-    body = INK["accent-body"] if accented else ""
+    body = INK["accent-body"] if accented else INK["body"]
     stereotype_ink = (
         INK["exception"]
         if klass.stereotype == "Exception"
@@ -378,31 +380,56 @@ def dot() -> str:
     return "\n".join(lines) + "\n"
 
 
-# The typeface, and the same drawing for a reader whose system asks for a dark page.
-# Every colour is on the shapes already, so this restates only what has to change —
-# and never a size, because graphviz measured every box against the ones it was given.
+# The component map's stylesheet, over this drawing's shapes: its typeface, its greys,
+# its blue, and its answer to a reader whose system asks for a dark page. Every colour
+# is stated here and none on a shape, which is what makes the dark page a rewrite of a
+# dozen rules rather than a second drawing. Sizes are the drawing's own — graphviz
+# measured every box against them, so a rule resizing text would push it out of its box.
 STYLE = """<style>
-  text { font-family: Charter, Georgia, "Times New Roman", serif }
-  .group { letter-spacing: .12em }
-  .edge text { font-style: italic }
+  text { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; fill: #202124 }
+  .member { fill: #202124 }
+  .name { font-weight: 600; fill: #14425f }
+  .stereotype { fill: #5f6368; letter-spacing: .03em }
+  .group { fill: #2b7fc4; letter-spacing: .12em; font-weight: 600 }
+  .cluster polygon { fill: none; stroke: none }
+  .frame { fill: none; stroke: #5f6368; stroke-width: 1.3 }
+  .head { fill: #f8f9fa }
+  .body { fill: #ffffff }
+  .rule { fill: #dadce0; stroke: #dadce0 }
+  .accent { fill: none; stroke: #2b7fc4; stroke-width: 1.6 }
+  .accent-head { fill: #e4f0fa }
+  .accent-body { fill: #f2f8fd }
+  .accent-ink { fill: #2b7fc4 }
+  .accent-rule { fill: #a8cfec; stroke: #a8cfec }
+  .exception { fill: #9a3b3b }
+  .edge path { fill: none; stroke: #5f6368; stroke-width: 1.1 }
+  .edge text { fill: #6b7280; font-style: italic }
+  .uml-specialization polygon,
+  .uml-aggregation polygon { fill: #ffffff; stroke: #5f6368 }
+  .uml-association polygon,
+  .uml-composition polygon { fill: #5f6368; stroke: #5f6368 }
   @media (prefers-color-scheme: dark) {
-    .name { fill: #e8eaed }
-    .member { fill: #d2cec8 }
-    .stereotype { fill: #9c968e }
-    .group { fill: #7fb0d8 }
+    text { fill: #e8eaed }
+    .member { fill: #e8eaed }
+    .name { fill: #cfe6f7 }
+    .stereotype { fill: #9aa0a6 }
+    .group { fill: #6fb6ea }
+    .frame { stroke: #bdc1c6 }
     .head { fill: #2b2c2f }
-    .frame { stroke: #5f6368 }
+    .body { fill: #303134 }
     .rule { fill: #5f6368; stroke: #5f6368 }
     .accent { stroke: #6fb6ea }
-    .accent-rule { fill: #6fb6ea; stroke: #6fb6ea }
     .accent-head { fill: #16354b }
-    .accent-body { fill: #101f2b }
+    .accent-body { fill: #10283a }
     .accent-ink { fill: #6fb6ea }
-    .exception { fill: #d98a8a }
+    .accent-rule { fill: #2b5670; stroke: #2b5670 }
+    .exception { fill: #e59b9b }
     .edge path { stroke: #bdc1c6 }
     .edge text { fill: #9aa0a6 }
-    .edge polygon[fill="none"] { stroke: #bdc1c6 }
-    .edge polygon:not([fill="none"]) { fill: #bdc1c6; stroke: #bdc1c6 }
+    .uml-specialization polygon,
+    .uml-aggregation polygon { fill: #303134; stroke: #bdc1c6 }
+    .uml-association polygon,
+    .uml-composition polygon { fill: #bdc1c6; stroke: #bdc1c6 }
   }
 </style>"""
 DESCRIPTION = (
@@ -423,7 +450,7 @@ PAINTED = {ink: name for name, ink in INK.items()}
 # that a rule is filled with it and an outline is not.
 STROKED = {INK["frame"]: "rule", INK["accent"]: "accent-rule"}
 OUTLINED = {INK["frame"]: "frame", INK["accent"]: "accent"}
-INKED = re.compile(r"<(text|polygon)\b[^>]*?>")
+INKED = re.compile(r"<(text|polygon|path)\b[^>]*?>")
 ATTRIBUTE = re.compile(r'(fill|stroke)="([^"]+)"')
 # The XML prologue and graphviz's own notes about the run, dropped so the file opens on
 # the drawing the way the component map does.
@@ -460,14 +487,24 @@ def _class_of(painted: str, stroked: str) -> str:
 
 
 def _classed(drawn: str) -> str:
+    """Every shape and every run of text named by a class, and stripped of its colour.
+
+    The colour leaves with the class it bought: a shape that kept one would be painted
+    twice — its own way on the light page and the stylesheet's way on the dark one — and
+    the reader whose renderer skips the media query would be shown the light drawing on
+    a dark ground. What is left carries no palette at all.
+    """
+
     def swap(found: re.Match[str]) -> str:
         element = found.group(0)
         attributes = dict(ATTRIBUTE.findall(element))
-        name = _class_of(attributes.get("fill", ""), attributes.get("stroke", ""))
+        painted, stroked = attributes.get("fill", ""), attributes.get("stroke", "")
+        name = _class_of(painted, stroked)
         if not name:
-            return element
-        closing = "/>" if element.endswith("/>") else ">"
-        return f'{element[: -len(closing)]} class="{name}"{closing}'
+            return ATTRIBUTE.sub("", element) if painted or stroked else element
+        bare = ATTRIBUTE.sub("", element).replace("  ", " ")
+        closing = "/>" if bare.endswith("/>") else ">"
+        return f'{bare[: -len(closing)].rstrip()} class="{name}"{closing}'
 
     return INKED.sub(swap, drawn)
 
