@@ -282,9 +282,9 @@ STYLE = """
     .socket { stroke: #9aa0a6; stroke-width: 1.6; fill: none }
     .ball { fill: #ffffff; stroke: #9aa0a6; stroke-width: 1.6 }
     .port { fill: #6b7280; font-size: 12px }
-    .use { stroke: #8f96a3; stroke-width: 1.3; fill: none;
-           stroke-dasharray: 6 4; marker-end: url(#use) }
-    .use-label { fill: #6b7280; font-size: 10.5px; letter-spacing: .04em }
+    .imports { stroke: #8f96a3; stroke-width: 1.3; fill: none;
+               stroke-dasharray: 6 4; marker-end: url(#import) }
+    .import-label { fill: #6b7280; font-size: 10.5px; letter-spacing: .04em }
     @media (prefers-color-scheme: dark) {
       text { fill: #e8eaed }
       .stereotype { fill: #9aa0a6 }
@@ -379,7 +379,7 @@ def _path(points: list[tuple[float, float]], style: str) -> str:
     return f'  <path d="{drawn}" class="{style}"/>'
 
 
-def _use(points: list[tuple[float, float]]) -> list[str]:
+def _imports(points: list[tuple[float, float]]) -> list[str]:
     segments = list(pairwise(points))
     (x1, y1), (x2, y2) = max(
         segments,
@@ -387,10 +387,10 @@ def _use(points: list[tuple[float, float]]) -> list[str]:
     )
     flat = y1 == y2
     x, y = (x1 + x2) / 2, (y1 + y2) / 2
-    aside = 0.0 if flat else (-24.0 if x > WIDTH - 60 else 24.0)
+    aside = 0.0 if flat else (-42.0 if x > WIDTH - 60 else 28.0)
     return [
-        _path(points, "use"),
-        _text(x + aside, y - 6 if flat else y, "«use»", "use-label"),
+        _path(points, "imports"),
+        _text(x + aside, y - 6 if flat else y, "«import»", "import-label"),
     ]
 
 
@@ -441,7 +441,7 @@ def svg() -> str:
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH:g} {height:g}"'
         f' width="{WIDTH:g}" height="{height:g}" role="img" aria-label="{label}">',
         STYLE.strip("\n"),
-        '  <defs><marker id="use" viewBox="0 0 10 10" refX="9" refY="5"'
+        '  <defs><marker id="import" viewBox="0 0 10 10" refX="9" refY="5"'
         ' markerWidth="9" markerHeight="9" orient="auto-start-reverse">'
         '<path d="M 0 1 L 9 5 L 0 9" fill="none" stroke="#8f96a3"'
         ' stroke-width="1.4"/></marker></defs>',
@@ -543,7 +543,7 @@ def svg() -> str:
     if unrouted := edges - routes.keys():
         raise SystemExit(f"the source has a dependency the map cannot draw: {unrouted}")
     for edge in sorted(edges):
-        out += _use(routes[edge])
+        out += _imports(routes[edge])
 
     out.append("</svg>")
     return "\n".join(out) + "\n"
