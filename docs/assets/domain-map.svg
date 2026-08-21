@@ -31,12 +31,12 @@
 <!-- Nothing -->
 <g id="node1" class="node uml&#45;class">
 <title>Nothing</title>
-<polygon fill="none" stroke="black" points="26.25,-233.25 26.25,-269.25 116.75,-269.25 116.75,-233.25 26.25,-233.25"/>
-<text xml:space="preserve" text-anchor="start" x="33.25" y="-252.8" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00">«NamedTuple»</text>
+<polygon fill="none" stroke="black" points="33.75,-233.25 33.75,-269.25 109.25,-269.25 109.25,-233.25 33.75,-233.25"/>
+<text xml:space="preserve" text-anchor="start" x="40.75" y="-252.8" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00">«dataclass»</text>
 <text xml:space="preserve" text-anchor="start" x="50.5" y="-241.8" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="11.00">Nothing</text>
-<polygon fill="none" stroke="black" points="26.25,-195.25 26.25,-233.25 116.75,-233.25 116.75,-195.25 26.25,-195.25"/>
-<text xml:space="preserve" text-anchor="start" x="33.25" y="-217.25" font-family="Helvetica,sans-Serif" font-size="11.00">+ shown: str</text>
-<text xml:space="preserve" text-anchor="start" x="33.25" y="-205.25" font-family="Helvetica,sans-Serif" font-size="11.00">+ told: str</text>
+<polygon fill="none" stroke="black" points="33.75,-195.25 33.75,-233.25 109.25,-233.25 109.25,-195.25 33.75,-195.25"/>
+<text xml:space="preserve" text-anchor="start" x="40.75" y="-217.25" font-family="Helvetica,sans-Serif" font-size="11.00">+ shown: str</text>
+<text xml:space="preserve" text-anchor="start" x="40.75" y="-205.25" font-family="Helvetica,sans-Serif" font-size="11.00">+ told: str</text>
 </g>
 <!-- Citation -->
 <g id="node2" class="node uml&#45;class">
@@ -325,5 +325,5 @@
 <text xml:space="preserve" text-anchor="start" x="941.75" y="-529.75" font-family="Helvetica,sans-Serif" font-size="11.00">+ upload: str</text>
 </g>
 </g>
-<!-- drawn by scripts/gen_domain_map.py from bd1d32cba5f32746 -->
+<!-- drawn by scripts/gen_domain_map.py from 39bd28c58d89f504 -->
 </svg>

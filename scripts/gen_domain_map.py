@@ -12,13 +12,10 @@ import argparse
 import hashlib
 import re
 import subprocess
-from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from astroid import nodes
-from pylint.pyreverse import inspector
 from pylint.pyreverse.diadefslib import DiadefsHandler
 from pylint.pyreverse.diagrams import ClassDiagram
 from pylint.pyreverse.inspector import Linker, project_from_files
@@ -32,34 +29,6 @@ MAP = ROOT / "docs" / "assets" / "domain-map.svg"
 # says the same thing at every node.
 NOT_DRAWN = ("errors.py",)
 CONTAINER = re.compile(r"^(tuple|list|dict|set|frozenset|Annotated)\[")
-
-
-Assignment = nodes.AssignAttr | nodes.AssignName
-Handle = Callable[[Any, Assignment, nodes.ClassDef], None]
-
-
-def _only_assignments(handle: Handle) -> Handle:
-    """pyreverse reads a name off every node it is handed, and astroid hands it an
-    `EmptyNode` for a `NamedTuple`'s synthesised attributes — which crashes every
-    association pass over `citations.py` (pylint 4.0.7). Its own handlers are declared
-    over assignments alone, so anything else is dropped before it reaches them.
-    """
-
-    def guarded(self: Any, node: Assignment, parent: nodes.ClassDef) -> None:
-        # The annotation is pyreverse's own, and what it is handed is anything astroid
-        # put in `instance_attrs` — so the check is over what arrives, not what is
-        # declared to.
-        if isinstance(node, nodes.AssignAttr | nodes.AssignName):
-            handle(self, node, parent)
-
-    return guarded
-
-
-# A function put where a method was declared: same parameters, and `self` is passed the
-# handler it is called on.
-inspector.CompositionsHandler.handle = _only_assignments(  # ty: ignore[invalid-assignment]
-    inspector.CompositionsHandler.handle
-)
 
 CONFIG = argparse.Namespace(
     mode="PUB_ONLY",
