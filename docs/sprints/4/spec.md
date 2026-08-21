@@ -161,7 +161,7 @@ marks can only ask *may I run this?*, and choosing between three remembered valu
 them read and ranked, which is the model's work. The card is the React page's; the widget
 page declines on the reader's behalf.
 
-### [25. One site — the map, the walkthrough and the reference](done/story-25.md)
+### [25. One site — the map, the walkthrough and the reference](done/story-25.md) ✔
 
 Two Diátaxis quadrants under one nav. `big-picture.md` and `happy-path.md` become pages of
 a site with their five Mermaid diagrams rendering — vendored and pinned, so it reads with
@@ -174,7 +174,7 @@ The ruff rule arrives in story 26, not here: Griffe renders signatures and field
 code, so the site merges as something you can open and the prose lands on pages already in
 place. Built and read locally, gated by an integration-marked guard; nothing is published.
 
-### [26. A public name says what it promises](story-26.md)
+### [26. A public name says what it promises](done/story-26.md) ✔
 
 The prose the reference renders. This retires the standing no-docstring rule for the four
 rendered packages — 174 docstrings in Google's sections, carrying only what an annotation
