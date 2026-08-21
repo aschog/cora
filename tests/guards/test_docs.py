@@ -23,6 +23,15 @@ PAGES = (
     "docs/big-picture.md",
     "docs/happy-path.md",
     "docs/workflow.md",
+    "docs/how-to/write-a-plugin.md",
+    "docs/how-to/add-a-file-format.md",
+    "docs/how-to/swap-a-port.md",
+    "docs/how-to/watch-a-turn.md",
+    "docs/reference/configuration.md",
+    "docs/reference/ports.md",
+    "docs/reference/components.md",
+    "docs/reference/a-turn.md",
+    "docs/reference/packages.md",
 )
 CONFIGS = (".streamlit/config.toml", "Makefile")
 SUFFIXES = (".py", ".md", ".toml", "/")

@@ -4,39 +4,15 @@ import subprocess
 from html.parser import HTMLParser
 
 import pytest
-import yaml
 
 import workspace
 from cora.frontends.react.server import DEFAULT_PORT
+from site_config import config as _config
+from site_config import nav_pages as _nav_pages
 
-CONFIG = workspace.ROOT / "mkdocs.yml"
 NARRATIVE = ("big-picture", "happy-path")
 NARRATIVE_PAGES = tuple(f"{name}.md" for name in NARRATIVE)
 NOT_THE_PRODUCT = ("sprints/", "cora_mockup.html", "workflow.md")
-
-
-class _Tolerant(yaml.SafeLoader):
-    """mkdocs writes `!!python/name:` tags that a safe loader refuses; the guards read
-    the config as data and never call what those tags name."""
-
-
-_Tolerant.add_multi_constructor(
-    "tag:yaml.org,2002:python/name:", lambda loader, suffix, node: suffix
-)
-
-
-def _config() -> dict[str, object]:
-    return yaml.load(CONFIG.read_text(), Loader=_Tolerant)
-
-
-def _nav_pages(entry: object) -> list[str]:
-    if isinstance(entry, str):
-        return [entry]
-    if isinstance(entry, dict):
-        return [page for value in entry.values() for page in _nav_pages(value)]
-    if isinstance(entry, list):
-        return [page for item in entry for page in _nav_pages(item)]
-    return []
 
 
 def test_both_narrative_pages_are_in_the_nav() -> None:

@@ -5,7 +5,7 @@ in `tests/acceptance/test_llm_acceptance.py`. It runs the shipped composition ro
 a real model, so every arrow below is a call that really happens on the `llm` tier —
 nothing here is drawn from a library's documentation or from how the code once worked.
 
-Run it and watch: `uv run --env-file .env pytest -m llm -k whole_session`.
+Running it yourself is in [watch a turn happen](how-to/watch-a-turn.md).
 
 The session has four acts. A document goes in, a question is answered from it, a
 calculation goes to a plugin's tool, and a fact the user asks to be kept is kept.
