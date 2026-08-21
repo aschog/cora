@@ -456,6 +456,7 @@ ATTRIBUTE = re.compile(r'(fill|stroke)="([^"]+)"')
 # the drawing the way the component map does.
 PROLOGUE = re.compile(r"\A.*?(?=<svg\b)", re.DOTALL)
 SIZED = re.compile(r'(width|height)="([0-9.]+)pt"')
+SIZED_IN_PIXELS = re.compile(r'width="[0-9.]+" height="[0-9.]+"')
 
 
 def stamp(source: str) -> str:
@@ -532,13 +533,26 @@ def _to_pixels(drawn: str) -> str:
     return SIZED.sub(lambda found: f'{found.group(1)}="{found.group(2)}"', drawn, 2)
 
 
+def _to_the_width_it_is_given(drawn: str) -> str:
+    """Wide as whatever it is opened in, and never wider.
+
+    A width in pixels is a demand: a window or a column narrower than the drawing gets
+    it with the right-hand side cut off. The `viewBox` carries the shape already, so
+    asking for the full width and no height leaves the reader's container to say how big
+    it is, and the ratio to say how tall.
+    """
+    return SIZED_IN_PIXELS.sub('width="100%"', drawn, count=1)
+
+
 def svg() -> str:
     source = dot()
     drawn = subprocess.run(
         ["dot", "-Tsvg"], input=source, capture_output=True, text=True, check=True
     )
     out = PROLOGUE.sub("", drawn.stdout, count=1)
-    out = _to_pixels(_described(_classed(SHEET.sub("", out))))
+    out = _to_the_width_it_is_given(
+        _to_pixels(_described(_classed(SHEET.sub("", out))))
+    )
     out = OPENING.sub(rf"\1{STYLE}\n", out, count=1)
     drawn_from = f"<!-- drawn by scripts/gen_domain_map.py from {stamp(source)} -->"
     return out.replace("</svg>", f"{drawn_from}\n</svg>")
