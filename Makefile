@@ -53,8 +53,10 @@ docs:
 docs-serve:
 	$(QUIET_FORK) uv run mkdocs serve --dev-addr 127.0.0.1:8001
 
-# The component map on `big-picture.md`, read off `cora.app.assembly` and written to
-# `docs/assets/`. The SVG is committed; `tests/guards/test_component_map.py` fails when it
-# is not what this target writes, so a port added without a redraw is a red test.
+# The component map on `big-picture.md`: the script reads `cora.app.assembly` for what the
+# boxes and the connectors are, and places them itself — the map has one fixed shape, so
+# there is no layout to search for. The SVG is committed, and
+# `tests/guards/test_component_map.py` fails when the committed file is not what this
+# target writes, so a port added without a redraw is a red test.
 diagram:
 	uv run python scripts/gen_component_map.py

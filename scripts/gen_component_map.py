@@ -1,6 +1,5 @@
 import ast
 from dataclasses import dataclass
-from itertools import pairwise
 from pathlib import Path
 
 ROOT = Path(__file__).parent.parent
@@ -89,6 +88,18 @@ def _protocols(path: Path) -> set[str]:
 
 def declared_ports() -> set[str]:
     return {name for path in PORTS.glob("*.py") for name in _protocols(path)}
+
+
+def declaring_modules() -> dict[str, str]:
+    """Which module of `cora.ports` declares each interface. `__init__` re-exports
+    nothing, so the module is part of the name a reader would import.
+    """
+    return {
+        node.name: f"cora.ports.{path.stem}"
+        for path in sorted(PORTS.glob("*.py"))
+        for node in _parsed(path).body
+        if isinstance(node, ast.ClassDef)
+    }
 
 
 def _named(annotation: ast.expr | None) -> set[str]:
@@ -270,45 +281,75 @@ def dependencies() -> frozenset[tuple[str, str]]:
 STYLE = """
   <style>
     text { font: 13px/1.4 -apple-system, "Segoe UI", Roboto, sans-serif; fill: #202124 }
-    .stereotype { font-size: 10.5px; fill: #5f6368; letter-spacing: .04em }
+    .stereotype { font-size: 11px; fill: #5f6368; letter-spacing: .03em }
     .name { font-weight: 600 }
-    .role { font-size: 12px }
-    .engine { fill: #f6f4ff; stroke: #6c5ce7; stroke-width: 1.8 }
-    .part { fill: #ffffff; stroke: #6c5ce7; stroke-width: 1.2 }
-    .part-name { fill: #4b3fbb }
-    .frame { fill: none; stroke: #9aa0a6; stroke-width: 1.1; stroke-dasharray: 3 3 }
-    .outer { fill: #ffffff; stroke: #9aa0a6; stroke-width: 1.4 }
-    .wire { stroke: #9aa0a6; stroke-width: 1.3; fill: none }
-    .socket { stroke: #9aa0a6; stroke-width: 1.6; fill: none }
-    .ball { fill: #ffffff; stroke: #9aa0a6; stroke-width: 1.6 }
-    .port { fill: #6b7280; font-size: 12px }
-    .imports { stroke: #8f96a3; stroke-width: 1.3; fill: none;
+    .role { font-size: 12.5px }
+    .engine { fill: #f2f8fd; stroke: #2b7fc4; stroke-width: 1.6 }
+    .part { fill: #ffffff; stroke: #2b7fc4; stroke-width: 1.1 }
+    .part-name { fill: #14425f }
+    .frame { fill: #f8f9fa; stroke: #9aa0a6; stroke-width: 1.1 }
+    .outer { fill: #ffffff; stroke: #5f6368; stroke-width: 1.3 }
+    .glyph { fill: #ffffff; stroke: #5f6368; stroke-width: 1.1 }
+    .glyph-engine { fill: #f2f8fd; stroke: #2b7fc4; stroke-width: 1.1 }
+    .socket-port { fill: #f2f8fd; stroke: #2b7fc4; stroke-width: 1.4 }
+    .wire { stroke: #5f6368; stroke-width: 1.3; fill: none }
+    .socket { stroke: #5f6368; stroke-width: 1.5; fill: none }
+    .ball { fill: #ffffff; stroke: #5f6368; stroke-width: 1.5 }
+    .port { fill: #202124; font-size: 13px; font-weight: 600 }
+    .multiplicity { fill: #5f6368; font-size: 11.5px; font-style: italic }
+    .imports { stroke: #8f96a3; stroke-width: 1.2; fill: none;
                stroke-dasharray: 6 4; marker-end: url(#import) }
-    .import-label { fill: #6b7280; font-size: 10.5px; letter-spacing: .04em }
+    .import-label { fill: #6b7280; font-size: 11px; font-style: italic }
     @media (prefers-color-scheme: dark) {
       text { fill: #e8eaed }
       .stereotype { fill: #9aa0a6 }
-      .engine { fill: #2a2550; stroke: #a99cff }
-      .part { fill: #35306080; stroke: #a99cff }
-      .part-name { fill: #cfc7ff }
-      .outer { fill: #303134; stroke: #9aa0a6 }
-      .ball { fill: #303134 }
+      .port { fill: #e8eaed }
+      .engine { fill: #10283a; stroke: #6fb6ea }
+      .part { fill: #1b2b3480; stroke: #6fb6ea }
+      .part-name { fill: #cfe6f7 }
+      .frame { fill: #2b2c2f; stroke: #9aa0a6 }
+      .outer { fill: #303134; stroke: #bdc1c6 }
+      .glyph { fill: #303134; stroke: #bdc1c6 }
+      .glyph-engine { fill: #10283a; stroke: #6fb6ea }
+      .socket-port { fill: #10283a; stroke: #6fb6ea }
+      .wire, .socket { stroke: #bdc1c6 }
+      .ball { fill: #303134; stroke: #bdc1c6 }
     }
   </style>
 """
 
-WIDTH = 1200.0
-LEFT_X, LEFT_W = 34.0, 236.0
-ENGINE_X, ENGINE_W = 384.0, 300.0
-RIGHT_X, RIGHT_W = 872.0, 296.0
-MEMBER = 46.0
-GAP = 10.0
-FRAME_HEAD = 30.0
-TOP = 46.0
+MARGIN = 24.0
+# One required interface per row, and the row is the unit the whole drawing is built on:
+# the component that provides it, the port it leaves the engine by, and its name all sit
+# on the same line, so a reader follows one interface across without tracking a bend.
+ROW = 92.0
+MEMBER_H = 52.0
+PART_H = 46.0
+TAB_H = 22.0
+FRAME_PAD = 16.0
+COLUMN_GAP = 68.0
+# The width kept clear between the engine and the components it is wired to: the
+# names of the interfaces are read here, so nothing is drawn through it.
+CHANNEL = 300.0
+# Above the drawing, for the one import that carries a sentence.
+NOTE_BAND = 78.0
+BAR_H = 62.0
+# Under the packages, for the arrows into `cora.domain`.
+BAR_GAP = 118.0
+
+CUP = 11.0
+BALL = 7.0
+# How far the glyph is seated from the component that provides the interface, so the
+# wire is drawn on both sides of it: an interface is where two components meet, and
+# neither of them owns it.
+SEAT = 62.0
+ICON = 14.0
 
 
 @dataclass(frozen=True)
 class Box:
+    """Where one box sits, in the coordinates the drawing uses."""
+
     x: float
     y: float
     w: float
@@ -331,16 +372,129 @@ class Box:
         return self.y + self.h / 2
 
 
-def _framed(x: float, y: float, w: float, count: int) -> Box:
-    return Box(x, y, w, count * (MEMBER + GAP) - GAP + FRAME_HEAD + GAP)
+@dataclass(frozen=True)
+class Plan:
+    """Every box and every row of the map, placed.
+
+    The arrangement is fixed here rather than searched for: the map has one shape —
+    the frontends and the composition root on the left, the engine in the middle, one
+    row per required interface out to the right, and `cora.domain` under all of it — so
+    a reader who has seen it once finds the same thing in the same place next time.
+    """
+
+    width: float
+    height: float
+    frames: dict[str, Box]
+    boxes: dict[str, Box]
+    parts: dict[str, Box]
+    rows: dict[str, float]
+    domain: Box
 
 
-def _member(frame: Box, index: int) -> Box:
-    return Box(
-        frame.x + 12,
-        frame.y + FRAME_HEAD + index * (MEMBER + GAP),
-        frame.w - 24,
-        MEMBER,
+def _wide(text: str, size: float = 13.0, bold: bool = False) -> float:
+    """Roughly how wide a label draws, so a box is made wide enough for its text."""
+    per = 0.58 if bold else 0.62 if size < 12 else 0.54
+    return len(text) * size * per
+
+
+def _stack(top: float, count: int) -> list[float]:
+    """The tops of `count` boxes on the row pitch, starting at `top`."""
+    return [top + index * ROW for index in range(count)]
+
+
+def _framed(rows: int) -> float:
+    """How tall a package frame is that holds `rows` members on the row pitch."""
+    return TAB_H + FRAME_PAD + (rows - 1) * ROW + MEMBER_H + FRAME_PAD
+
+
+def plan() -> Plan:
+    """Place every box, off what the source said is in the drawing."""
+    bound = bindings()
+    outward = [binding for binding in bound if binding.package == ADAPTERS]
+    plugged = _packages(PLUGINS)
+    pages = frontends()
+    parts = engine_parts()
+
+    page_w = max(_wide(page, bold=True) for page in pages) + 96
+    provider_w = max(_wide(binding.providers[0], bold=True) for binding in outward) + 92
+    plugin_w = max(_wide(name, bold=True) for name in plugged) + 92
+    part_w = max(_wide(f"{role}: {kind}", 12.5) for role, kind in parts) + 44
+
+    plugins_w = plugin_w + 2 * FRAME_PAD
+    # The adapters' own arrow down to `cora.domain` passes the plugins frame on the way,
+    # so the wider frame keeps a lane open beside the narrower one.
+    adapters_w = max(provider_w + 2 * FRAME_PAD, plugins_w + 72)
+
+    frontends_box = Box(MARGIN, 0.0, page_w + 2 * FRAME_PAD, _framed(len(pages)))
+    app = Box(
+        frontends_box.right + COLUMN_GAP, 0.0, _wide(APP, bold=True) + 112, MEMBER_H
+    )
+    engine_x = app.right + COLUMN_GAP
+    engine_w = part_w + 44
+
+    adapters = Box(
+        engine_x + engine_w + CHANNEL,
+        MARGIN + NOTE_BAND,
+        adapters_w,
+        _framed(len(outward)),
+    )
+    tops = _stack(adapters.y + TAB_H + FRAME_PAD, len(outward))
+    rows = {
+        binding.port: top + MEMBER_H / 2
+        for binding, top in zip(outward, tops, strict=True)
+    }
+    boxes = {
+        binding.providers[0]: Box(adapters.x + FRAME_PAD, top, provider_w, MEMBER_H)
+        for binding, top in zip(outward, tops, strict=False)
+    }
+
+    plugins = Box(adapters.x, adapters.bottom + 26, plugins_w, _framed(len(plugged)))
+    plugin_tops = _stack(plugins.y + TAB_H + FRAME_PAD, len(plugged))
+    boxes |= {
+        name: Box(plugins.x + FRAME_PAD, top, plugin_w, MEMBER_H)
+        for name, top in zip(plugged, plugin_tops, strict=False)
+    }
+
+    first, last = tops[0] + MEMBER_H / 2, tops[-1] + MEMBER_H / 2
+    engine = Box(engine_x, first - 46, engine_w, last + 46 - (first - 46))
+    part_tops = _stack(engine.y + 68, len(parts))
+    spread = (engine.bottom - 20 - PART_H - part_tops[0]) / (len(parts) - 1)
+    parts_placed = {
+        role: Box(engine.x + 22, part_tops[0] + index * spread, part_w, PART_H)
+        for index, (role, _) in enumerate(parts)
+    }
+
+    frontends_box = Box(
+        frontends_box.x,
+        engine.mid_y - frontends_box.h / 2,
+        frontends_box.w,
+        frontends_box.h,
+    )
+    boxes |= {
+        page: Box(frontends_box.x + FRAME_PAD, top, page_w, MEMBER_H)
+        for page, top in zip(
+            pages, _stack(frontends_box.y + TAB_H + FRAME_PAD, len(pages)), strict=False
+        )
+    }
+    app = Box(app.x, engine.mid_y - app.h / 2, app.w, app.h)
+    boxes[APP] = app
+    boxes[ENGINE] = engine
+
+    domain = Box(
+        MARGIN,
+        max(plugins.bottom, adapters.bottom) + BAR_GAP,
+        adapters.right - MARGIN,
+        BAR_H,
+    )
+    boxes[DOMAIN] = domain
+    return Plan(
+        width=adapters.right + MARGIN,
+        height=domain.bottom + MARGIN,
+        frames={FRONTENDS: frontends_box, ADAPTERS: adapters, PLUGINS: plugins},
+        boxes=boxes,
+        parts=parts_placed,
+        rows=rows,
+        domain=domain,
     )
 
 
@@ -351,26 +505,11 @@ def _text(x: float, y: float, value: str, style: str, anchor: str = "middle") ->
     )
 
 
-def _rect(box: Box, style: str, radius: float = 4.0) -> str:
+def _rect(box: Box, style: str, radius: float = 3.0) -> str:
     return (
         f'  <rect x="{box.x:g}" y="{box.y:g}" width="{box.w:g}" height="{box.h:g}"'
         f' rx="{radius:g}" class="{style}"/>'
     )
-
-
-def _component(box: Box, name: str, style: str = "outer") -> list[str]:
-    return [
-        _rect(box, style),
-        _text(box.mid_x, box.y + 19, "«component»", "stereotype"),
-        _text(box.mid_x, box.y + 36, name, "name"),
-    ]
-
-
-def _frame(box: Box, name: str) -> list[str]:
-    return [
-        _rect(box, "frame"),
-        _text(box.x + 10, box.y + 18, f"«package» {name}", "stereotype", "start"),
-    ]
 
 
 def _path(points: list[tuple[float, float]], style: str) -> str:
@@ -379,67 +518,231 @@ def _path(points: list[tuple[float, float]], style: str) -> str:
     return f'  <path d="{drawn}" class="{style}"/>'
 
 
-def _imports(points: list[tuple[float, float]]) -> list[str]:
-    segments = list(pairwise(points))
-    (x1, y1), (x2, y2) = max(
-        segments,
-        key=lambda pair: abs(pair[0][0] - pair[1][0]) + abs(pair[0][1] - pair[1][1]),
+def _icon(box: Box, style: str = "glyph") -> list[str]:
+    """The UML component icon, in the corner a component wears it: the shape is what
+    says «component», so the word is not written as well.
+    """
+    x = box.right - ICON - 14
+    y = box.y + 10
+    return [
+        f'  <rect x="{x:g}" y="{y:g}" width="{ICON:g}" height="14" class="{style}"/>',
+        *(
+            f'  <rect x="{x - 4:g}" y="{y + dy:g}" width="8" height="4"'
+            f' class="{style}"/>'
+            for dy in (2.0, 8.0)
+        ),
+    ]
+
+
+def _component(box: Box, name: str) -> list[str]:
+    return [
+        _rect(box, "outer"),
+        _text(box.x + 18, box.mid_y + 5, name, "name", "start"),
+        *_icon(box),
+    ]
+
+
+def _frame(box: Box, name: str) -> list[str]:
+    """A package as UML draws one: the name on its tab, the members in the body."""
+    tab = Box(box.x, box.y, _wide(name, 11) + 26, TAB_H)
+    body = Box(box.x, box.y + TAB_H, box.w, box.h - TAB_H)
+    return [
+        _rect(tab, "frame", 2.0),
+        _rect(body, "frame"),
+        _text(tab.x + 12, tab.y + 15, name, "stereotype", "start"),
+    ]
+
+
+def _port_square(x: float, y: float) -> str:
+    """A UML port where a connector leaves the engine: the engine requires what the wire
+    carries, and the square is where it is required.
+    """
+    return (
+        f'  <rect x="{x - 5:g}" y="{y - 5:g}" width="10" height="10"'
+        ' class="socket-port"/>'
     )
-    flat = y1 == y2
-    x, y = (x1 + x2) / 2, (y1 + y2) / 2
-    aside = 0.0 if flat else (-42.0 if x > WIDTH - 60 else 28.0)
+
+
+def _cup(x: float, y: float) -> str:
+    """The socket of the component that requires the interface, open to the ball."""
+    return (
+        f'  <path d="M {x:g} {y - CUP:g} A {CUP:g} {CUP:g} 0 0 0 {x:g} {y + CUP:g}"'
+        ' class="socket"/>'
+    )
+
+
+def _ball(x: float, y: float) -> str:
+    return f'  <circle cx="{x:g}" cy="{y:g}" r="{BALL:g}" class="ball"/>'
+
+
+def _interface_name(
+    x: float, y: float, module: str, port: str, extra: str = ""
+) -> list[str]:
+    """The interface's qualified name, above the wire it belongs to: the module it is
+    declared in over the name the code uses, so both are read off the drawing.
+    """
+    drawn = [
+        _text(x, y - 26, module, "stereotype", "start"),
+        _text(x, y - 10, port, "port", "start"),
+    ]
+    if extra:
+        drawn.append(
+            _text(
+                x + _wide(port, 13, bold=True) + 8,
+                y - 10,
+                extra,
+                "multiplicity",
+                "start",
+            )
+        )
+    return drawn
+
+
+def _assembly(at: Plan, port: str, provider: str, modules: dict[str, str]) -> list[str]:
+    """One required interface, drawn on its own row: the engine's port, its socket, the
+    ball of the component that provides it, and a stick to each.
+    """
+    engine = at.boxes[ENGINE]
+    box = at.boxes[provider]
+    y = at.rows[port]
+    ball_x = box.x - SEAT
     return [
-        _path(points, "imports"),
-        _text(x + aside, y - 6 if flat else y, "«import»", "import-label"),
+        _port_square(engine.right, y),
+        _path([(engine.right, y), (ball_x - CUP, y)], "wire"),
+        _cup(ball_x, y),
+        _ball(ball_x, y),
+        _path([(ball_x + BALL, y), (box.x, y)], "wire"),
+        *_interface_name(engine.right + 30, y, modules[port], port),
     ]
 
 
-def _socket(x: float, y: float, port: str, engine_right: float) -> list[str]:
-    return [
-        _path([(engine_right, y), (x - 13, y)], "wire"),
-        f'  <path d="M {x - 13:g} {y - 11:g} A 11 11 0 0 0 {x - 13:g} {y + 11:g}"'
-        ' class="socket"/>',
-        _text(x - 4, y - 15, port, "port"),
+def _plugin_assembly(
+    at: Plan, providers: tuple[str, ...], modules: dict[str, str]
+) -> list[str]:
+    """The one interface with more than one provider: a single socket on the engine's
+    stick, and a ball on every plugin that fills it. `[0..*]` is what the engine takes —
+    a plugin set that is empty is a set.
+    """
+    engine = at.boxes[ENGINE]
+    boxes = [at.boxes[name] for name in providers]
+    fan_x = min(box.x for box in boxes) - 200
+    fan_y = sum(box.mid_y for box in boxes) / len(boxes)
+    drop_x = engine.x + engine.w * 0.7
+    drawn = [
+        _port_square(drop_x, engine.bottom),
+        _path([(drop_x, engine.bottom), (drop_x, fan_y), (fan_x - CUP, fan_y)], "wire"),
+        _cup(fan_x, fan_y),
+        *_interface_name(
+            fan_x - CUP - 120, fan_y, modules["Plugin"], "Plugin", "[0..*]"
+        ),
     ]
+    for box in boxes:
+        ball_x = box.x - 30
+        drawn += [
+            _path([(fan_x, fan_y), (ball_x - BALL, box.mid_y)], "wire"),
+            _ball(ball_x, box.mid_y),
+            _path([(ball_x + BALL, box.mid_y), (box.x, box.mid_y)], "wire"),
+        ]
+    return drawn
 
 
-def _ball(x: float, y: float, to: float) -> list[str]:
-    return [
-        f'  <circle cx="{x + 4:g}" cy="{y:g}" r="5.5" class="ball"/>',
-        _path([(x + 9.5, y), (to, y)], "wire"),
-    ]
+# Why one package imports another is the same everywhere but here: `cora.app` is the
+# only one that names an adapter, because it is the only one that builds any.
+IMPORT = "«import»"
+
+
+def _centred(left: float, right: float) -> float:
+    """Where `«import»` starts for it to sit in the middle of a run that wide."""
+    return (left + right) / 2 - _wide(IMPORT, 11) / 2
+
+
+COMPOSITION_ROOT = (
+    "«import» — cora.app is the composition root: it constructs the adapters and the "
+    "plugins and injects them at startup"
+)
+
+
+def _route(
+    at: Plan, client: str, supplier: str
+) -> tuple[list[tuple[float, float]], tuple[float, float]]:
+    """The path one import is drawn along, and where its label sits. Every import has a
+    lane of its own, so no two are read as one line.
+    """
+    frames, boxes = at.frames, at.boxes
+    app, engine = boxes[APP], boxes[ENGINE]
+    if supplier == DOMAIN:
+        source = frames.get(client, boxes.get(client))
+        assert source is not None
+        share = {FRONTENDS: 0.5, APP: 0.5, ENGINE: 0.45, PLUGINS: 0.5}.get(client)
+        x = (
+            source.x + source.w * share
+            if share is not None
+            # The adapters' lane runs down the strip their frame keeps clear of the
+            # plugins one, so the arrow passes it instead of crossing it.
+            else (frames[PLUGINS].right + source.right) / 2
+        )
+        return [(x, source.bottom), (x, at.domain.y)], (x + 10, at.domain.y - 14)
+    if (client, supplier) == (FRONTENDS, APP):
+        y, left = app.mid_y, frames[FRONTENDS].right
+        return [(left, y), (app.x, y)], (_centred(left, app.x), y - 10)
+    if (client, supplier) == (APP, ENGINE):
+        y = app.mid_y
+        return [(app.right, y), (engine.x, y)], (_centred(app.right, engine.x), y - 10)
+    if (client, supplier) == (FRONTENDS, ENGINE):
+        y, left = app.bottom + 40, frames[FRONTENDS].right
+        return [(left, y), (engine.x, y)], (_centred(left, engine.x), y - 10)
+    if (client, supplier) == (APP, ADAPTERS):
+        note_y = MARGIN + 30
+        return (
+            [
+                (app.mid_x, app.y),
+                (app.mid_x, note_y),
+                (frames[ADAPTERS].mid_x, note_y),
+                (frames[ADAPTERS].mid_x, frames[ADAPTERS].y),
+            ],
+            (app.mid_x + 12, note_y - 10),
+        )
+    if (client, supplier) == (PLUGINS, ENGINE):
+        plugins = frames[PLUGINS]
+        y = plugins.bottom + 34
+        x = engine.x + engine.w * 0.2
+        return (
+            [
+                (plugins.x + 40, plugins.bottom),
+                (plugins.x + 40, y),
+                (x, y),
+                (x, engine.bottom),
+            ],
+            (x + 24, y - 10),
+        )
+    raise SystemExit(
+        f"the map has no lane for the import {client} → {supplier}: add one to `_route`"
+    )
+
+
+def _imports(at: Plan) -> list[str]:
+    drawn = []
+    for client, supplier in sorted(dependencies()):
+        points, (label_x, label_y) = _route(at, client, supplier)
+        label = COMPOSITION_ROOT if (client, supplier) == (APP, ADAPTERS) else IMPORT
+        drawn.append(_path(points, "imports"))
+        drawn.append(_text(label_x, label_y, label, "import-label", "start"))
+    return drawn
 
 
 def svg() -> str:
+    at = plan()
     bound = bindings()
-    parts = engine_parts()
-    pages = frontends()
-    plugged = _packages(PLUGINS)
-    adapters = [
-        (binding.port, binding.providers[0])
-        for binding in bound
-        if binding.package == ADAPTERS
-    ]
-
-    adapter_frame = _framed(RIGHT_X, TOP, RIGHT_W, len(adapters))
-    plugin_frame = _framed(RIGHT_X, adapter_frame.bottom + 36, RIGHT_W, len(plugged))
-    engine = Box(ENGINE_X, TOP, ENGINE_W, plugin_frame.bottom - TOP)
-    pitch = (engine.h - 56) / len(parts)
-    frontend_frame = _framed(LEFT_X, TOP, LEFT_W, len(pages))
-    app = Box(LEFT_X, frontend_frame.bottom + 96, LEFT_W, MEMBER)
-    lane = engine.bottom + 28
-    domain = Box(LEFT_X, lane + 32, WIDTH - 2 * LEFT_X, MEMBER)
-    height = domain.bottom + TOP
-
     label = (
-        f"cora as a UML component diagram: {len(pages)} frontends, an engine of "
-        f"{len(parts)} parts, {len(bound)} required interfaces wired to the components "
-        "that provide them, and the packages each one depends on. Generated by "
-        "scripts/gen_component_map.py."
+        f"cora as a UML component diagram: {len(frontends())} frontends, an engine of "
+        f"{len(at.parts)} parts, {len(bound)} required interfaces wired to the "
+        "components that provide them, and the packages each one imports. "
+        "Generated by scripts/gen_component_map.py."
     )
     out = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {WIDTH:g} {height:g}"'
-        f' width="{WIDTH:g}" height="{height:g}" role="img" aria-label="{label}">',
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {at.width:g}'
+        f' {at.height:g}" width="{at.width:g}" height="{at.height:g}" role="img"'
+        f' aria-label="{label}">',
         STYLE.strip("\n"),
         '  <defs><marker id="import" viewBox="0 0 10 10" refX="9" refY="5"'
         ' markerWidth="9" markerHeight="9" orient="auto-start-reverse">'
@@ -447,103 +750,41 @@ def svg() -> str:
         ' stroke-width="1.4"/></marker></defs>',
     ]
 
-    out += _component(engine, ENGINE, "engine")
-    for index, (role, kind) in enumerate(parts):
-        part = Box(
-            engine.x + 20, engine.y + 50 + index * pitch, engine.w - 40, pitch - 9
-        )
+    for name, frame in at.frames.items():
+        out += _frame(frame, name)
+    engine = at.boxes[ENGINE]
+    out += [
+        _rect(engine, "engine", 6.0),
+        _text(engine.x + 20, engine.y + 34, ENGINE, "name", "start"),
+        *_icon(engine, "glyph-engine"),
+    ]
+    for role, kind in engine_parts():
+        part = at.parts[role]
         out += [
             _rect(part, "part"),
-            _text(part.mid_x, part.mid_y + 4, f"{role}: {kind}", "part-name role"),
+            _text(
+                part.x + 16,
+                part.mid_y + 5,
+                f"{role}: {kind}",
+                "part-name role",
+                "start",
+            ),
         ]
+    for page in frontends():
+        out += _component(at.boxes[page], page)
+    out += _component(at.boxes[APP], APP)
+    out += _component(at.domain, DOMAIN)
 
-    out += _frame(frontend_frame, FRONTENDS)
-    for index, page in enumerate(pages):
-        out += _component(_member(frontend_frame, index), page)
-    out += _component(app, APP)
-    out += _component(domain, DOMAIN)
-
-    out += _frame(adapter_frame, ADAPTERS)
-    socket_x = (engine.right + RIGHT_X) / 2
-    for index, (port, provider) in enumerate(adapters):
-        member = _member(adapter_frame, index)
-        out += _component(member, provider)
-        out += _socket(socket_x, member.mid_y, port, engine.right)
-        out += _ball(socket_x, member.mid_y, member.x)
-
-    out += _frame(plugin_frame, PLUGINS)
-    members = [_member(plugin_frame, index) for index in range(len(plugged))]
-    for member, plugin in zip(members, plugged, strict=True):
-        out += _component(member, plugin)
-    shared = sum(member.mid_y for member in members) / len(members)
-    out += _socket(socket_x, shared, "Plugin", engine.right)
-    fork = socket_x + 44
-    out.append(_path([(socket_x - 4, shared), (fork, shared)], "wire"))
-    for member in members:
-        out += [
-            _path([(fork, shared), (fork, member.mid_y)], "wire"),
-            *_ball(member.x - 30, member.mid_y, member.x),
-            _path([(fork, member.mid_y), (member.x - 30, member.mid_y)], "wire"),
-        ]
-
-    routes = {
-        (FRONTENDS, ENGINE): [
-            (frontend_frame.right, frontend_frame.mid_y),
-            (engine.x, frontend_frame.mid_y),
-        ],
-        (FRONTENDS, APP): [
-            (frontend_frame.mid_x, frontend_frame.bottom),
-            (frontend_frame.mid_x, app.y),
-        ],
-        (FRONTENDS, DOMAIN): [
-            (frontend_frame.x, frontend_frame.bottom - 16),
-            (LEFT_X - 20, frontend_frame.bottom - 16),
-            (LEFT_X - 20, domain.mid_y),
-            (domain.x, domain.mid_y),
-        ],
-        (APP, ENGINE): [
-            (app.right, app.mid_y),
-            (engine.x - 36, app.mid_y),
-            (engine.x - 36, engine.mid_y + 60),
-            (engine.x, engine.mid_y + 60),
-        ],
-        (APP, ADAPTERS): [
-            (app.mid_x + 44, app.y),
-            (app.mid_x + 44, TOP - 30),
-            (adapter_frame.mid_x + 70, TOP - 30),
-            (adapter_frame.mid_x + 70, adapter_frame.y),
-        ],
-        (APP, DOMAIN): [
-            (app.mid_x, app.bottom),
-            (app.mid_x, domain.y),
-        ],
-        (ENGINE, DOMAIN): [
-            (engine.mid_x - 60, engine.bottom),
-            (engine.mid_x - 60, domain.y),
-        ],
-        (ADAPTERS, DOMAIN): [
-            (adapter_frame.right, adapter_frame.bottom - 16),
-            (WIDTH - 16, adapter_frame.bottom - 16),
-            (WIDTH - 16, domain.mid_y),
-            (domain.right, domain.mid_y),
-        ],
-        (PLUGINS, DOMAIN): [
-            (plugin_frame.mid_x, plugin_frame.bottom),
-            (plugin_frame.mid_x, domain.y),
-        ],
-        (PLUGINS, ENGINE): [
-            (plugin_frame.x, plugin_frame.bottom - 14),
-            (plugin_frame.x - 46, plugin_frame.bottom - 14),
-            (plugin_frame.x - 46, lane),
-            (engine.mid_x + 60, lane),
-            (engine.mid_x + 60, engine.bottom),
-        ],
-    }
-    edges = dependencies()
-    if unrouted := edges - routes.keys():
-        raise SystemExit(f"the source has a dependency the map cannot draw: {unrouted}")
-    for edge in sorted(edges):
-        out += _imports(routes[edge])
+    modules = declaring_modules()
+    for binding in bound:
+        for provider in binding.providers:
+            out += _component(at.boxes[provider], provider)
+    for binding in bound:
+        if binding.package == ADAPTERS:
+            out += _assembly(at, binding.port, binding.providers[0], modules)
+        else:
+            out += _plugin_assembly(at, binding.providers, modules)
+    out += _imports(at)
 
     out.append("</svg>")
     return "\n".join(out) + "\n"
