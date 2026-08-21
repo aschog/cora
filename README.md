@@ -33,38 +33,9 @@ feature-by-feature, story by story.
 ## The packages
 
 The app is the repository root; a `uv` workspace sharing the `cora` namespace. You install
-`cora` to use it and add a package to extend it — three kinds of package in all. See
-[`docs/big-picture.md`](docs/big-picture.md#the-distributions).
-
-| Package | Ships | Depends on |
-|---|---|---|
-| `cora` | `cora.domain` · `cora.ports` — the contract<br>`cora.engine` — the agent, the knowledge base, a turn's steps<br>`cora.adapters` — Chroma, OpenRouter, LangGraph, MiniLM<br>`cora.app` — the composition root and its configuration | its technologies, and no user interface |
-| `cora-plugin-security` | `cora.plugins.security` — the prompt-injection screen | `cora` |
-| `cora-plugin-fitness` | `cora.plugins.fitness` — the reference domain plugin | `cora` |
-| `cora-frontend-streamlit` | `cora.frontends.streamlit` — the app you run below | `cora` |
-| `cora-frontend-react` | `cora.frontends.react` — the same app over HTTP, drawn by a React page | `cora` |
-
-`cora.plugins.*` and `cora.frontends.*` are the extension points: another domain or a
-second user interface is a package to add, not a file to edit. A plugin need not be a
-domain — the prompt-injection screen contributes one validation rule and nothing else.
-
-cora carries no plugin and loads none: bare cora is a document-grounded assistant with no
-persona and no screen, and `CORA_PLUGINS` is how a deployment adds either.
-
-The tree says which is which by its position:
-
-```
-src/cora/                          domain  ports  engine  adapters  app
-plugins/fitness  plugins/security  one of many — the directory expects siblings
-frontends/streamlit  frontends/react
-```
-
-`src/` is the app; a directory beside it is an extension point, named in the plural for
-that reason. So `ls` is the shortest description of what can be extended.
-
-The layers inside `src/cora/` are modules, not distributions: nothing in the install stops
-`cora.engine` importing Chroma, so `tests/guards/test_architecture.py` walks the imports and
-fails the build if it does.
+`cora` to use it and add a package to extend it — a plugin or a frontend. What each one
+ships and where it lives: [`docs/reference/packages.md`](docs/reference/packages.md). Why
+the split falls there: [`docs/big-picture.md`](docs/big-picture.md#the-distributions).
 
 ## Setup
 
