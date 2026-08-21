@@ -15,7 +15,9 @@ plugins.
 - The docs as a site: `make docs` builds the two pages above plus a reference page for
   every module of `cora.domain`, `cora.ports`, `cora.engine` and `cora.app`, generated
   from the source by `scripts/gen_reference.py`; `make docs-serve` reads it with live
-  reload on http://127.0.0.1:8001, beside the app on 8000. Configured in `mkdocs.yml`, and it renders with no network.
+  reload on http://127.0.0.1:8001, beside the app on 8000. Configured in `mkdocs.yml`, and it renders with no network. `make diagram` redraws the
+  component map on the big-picture page from `cora.app.assembly`; the SVG is committed, and a
+  guard fails when it is behind the source.
 - Assignment brief: [`docs/sprints/4/assignment.md`](docs/sprints/4/assignment.md) —
   current sprint; sprint 3's brief, spec and test findings are in `docs/sprints/3/`
 

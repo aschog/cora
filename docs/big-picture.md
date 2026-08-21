@@ -7,32 +7,39 @@ the code was built, not how it works today.
 
 ## The map
 
-![cora as ports and adapters: the frontends drive the engine from the left, its nine ports
-bind a technology on the right, and plugins arrive from below.](assets/hexagon-map.svg)
+![cora as components: two frontends drive the engine, its nine ports each bind one
+adapter, and every component speaks cora.domain.](assets/component-map.svg)
 
-Read the map from the outside in. The outer hexagon is one installed deployment; the inner one
-is the engine and the ports on its edge. **Left** is who calls cora — a frontend, holding the
-engine's own classes, because cora has no driving port: a screen depends on `Agent` and
-`KnowledgeBase` directly. **Right** is what cora calls: every port on the engine's boundary
-has one adapter behind it, and the engine does not know which. **Below** is what a deployment
-adds, arriving through the one port a plugin fills. `cora.app` is the composition root: it
-builds the engine and binds each port once, at startup.
+A UML component diagram, generated from the source by `scripts/gen_component_map.py`:
+`cora.app`'s `assemble` says what the engine is made of and which slots it has, `build`
+says what fills each slot, and the drawing says nothing else. **Centre** is the engine and
+the parts `assemble` always builds. **Left** is who calls cora — a frontend depends on the
+`App` it is handed, because cora has no driving port: a screen reaches `Agent` and
+`KnowledgeBase` directly. **Right** is what cora calls: nine ports, one adapter behind
+each, and the engine does not know which. **Below** is `cora.domain`, which every other box
+imports: the value objects and the errors are the words all four groups speak. `cora.app` is
+the composition root — not drawn, because it is what the drawing is *read from*: it builds
+the engine and binds every port once, at startup.
 
 | Mark | Means |
 |---|---|
-| green box | A part of the engine. Plain Python, so a test can build it with fakes. |
-| grey box on the engine's edge | A port — a slot for one kind of technology. The nine ports are the only way in and out of the engine. |
-| orange box | A frontend. It calls the engine; nothing calls it. |
-| blue box | The technology behind a port. |
-| yellow box | A plugin: the domain, or a guard, that a deployment names. |
-| solid arrow | A call made while answering a request, or a binding made at startup. |
-| dashed arrow | The adapter behind a port. |
+| purple box | The engine, and inside it the parts `assemble` always builds. Plain Python, so a test can build each one with fakes. |
+| ball and socket | A port. The socket is the engine requiring an interface, the ball the component providing it; the label is the Protocol's name. |
+| grey box | A component outside the engine: a frontend, an adapter, a plugin, or the domain. |
+| dashed arrow | A dependency, pointing at what is depended on. |
 
-One arrow runs against the grain: `LangGraphRunner` drives the engine's steps, so the
+Three things to read carefully. The `Logging*` wrappers are absent because they are not parts
+of the engine but debug decorators around a port: they stand behind an `if` in `assemble`, and
+so behind none of these boxes. The `Memory` and `Conversations` sockets are drawn like the rest
+although either slot may be left empty — what an absent adapter costs is below, not in the
+picture. And the two plugins are what ships, not what runs: `build` fills that socket with
+whatever `CORA_PLUGINS` names, which is nothing by default.
+
+One dependency runs against the grain: `LangGraphRunner` drives the engine's steps, so the
 adapter supplies the graph and the engine supplies every step it walks.
 
-The map is an overview; the detail is in the tables below. `PluginSet`, `ToolRuntime` and the
-two tools the model may call are parts of the engine the map leaves out to stay readable.
+The map is an overview; the detail is in the tables below. `PluginSet` and the tools the model
+may call are parts of the engine the map leaves out to stay readable.
 
 **Ingestion**, the **plugin registry** and the **citation numbering** are real parts of the code.
 To keep the map simple, they are shown inside KnowledgeBase, the composition root, and the
@@ -48,8 +55,9 @@ a file format, one for what the agent keeps about the user, one for the text of 
 for the turns of a conversation, and one for the plugin. Seven of the nine are arguments to
 `assemble`, so a different technology goes in a slot without the engine or the composition root
 changing. The other two are not: the loader registry is fixed at the composition root, and a
-plugin arrives in the plugin set. `tests/guards/test_hexagon_map.py` reads the nine off
-`assemble` and fails if the map draws a different set.
+plugin arrives in the plugin set. `tests/guards/test_component_map.py` reads the nine off
+`assemble` and fails if the drawing shows another set — or if the committed file is not what
+the generator writes today.
 
 Memory is the one optional slot. Leave it out and the agent is offered no `remember` tool and
 told no rule about remembering — an app with no memory cannot quietly forget.

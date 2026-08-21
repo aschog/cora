@@ -5,7 +5,7 @@
 APP := frontends/streamlit/src/cora/frontends/streamlit/streamlit_app.py
 REACT := cora.frontends.react.server
 
-.PHONY: run run-env run-react run-env-react ui ui-build ui-test ui-test-browser docs docs-serve
+.PHONY: run run-env run-react run-env-react ui ui-build ui-test ui-test-browser docs docs-serve diagram
 
 # Reads OPENROUTER_API_KEY from the environment.
 run:
@@ -52,3 +52,9 @@ docs:
 # app must not need one of them stopped. `tests/guards/test_docs_site.py` holds that.
 docs-serve:
 	$(QUIET_FORK) uv run mkdocs serve --dev-addr 127.0.0.1:8001
+
+# The component map on `big-picture.md`, read off `cora.app.assembly` and written to
+# `docs/assets/`. The SVG is committed; `tests/guards/test_component_map.py` fails when it
+# is not what this target writes, so a port added without a redraw is a red test.
+diagram:
+	uv run python scripts/gen_component_map.py
