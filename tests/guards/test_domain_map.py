@@ -101,3 +101,13 @@ def test_the_map_takes_its_colours_from_the_reader() -> None:
 
     assert "prefers-color-scheme: dark" in page
     assert 'fill="white"' not in page
+
+
+def test_every_class_stands_in_exactly_one_column() -> None:
+    """The columns are the one thing here that is not read off the source, so they are
+    the one thing that can fall behind it: a class the table forgets would be drawn
+    nowhere, and a name it invents would silently draw nothing."""
+    columns = [name for _, members in generator.GROUPS for name in members]
+
+    assert sorted(columns) == sorted(set(columns)), "a class stands in two columns"
+    assert set(columns) == drawn_classes()

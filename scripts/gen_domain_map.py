@@ -220,44 +220,77 @@ ARROWS = {
     "aggregation": "dir=back, arrowtail=odiamond",
     "association": "arrowhead=vee",
 }
-FONT = "Helvetica"
-
-
+# Measured in Georgia, which is the widest of the serifs the stylesheet asks for: a
+# reader who has Charter instead gets the same boxes with a little more air in them,
+# never a line pushed through its own border.
+FONT = "Georgia"
 BREAK = '<BR ALIGN="LEFT"/>'
-# The two colours the component map reads its text in. Written into the DOT because a
-# run of text inside an HTML label carries no class of its own — `_classed` turns each
-# one back into the class the shared stylesheet names.
-STEREOTYPE_INK = "#5f6368"
-NAME_INK = "#14425f"
+
+# Every colour the drawing uses, and the class the stylesheet knows it by. A run of text
+# or a cell inside an HTML label carries no class of its own, so the colour is what
+# `_classed` reads to put one back — which is also why no two of these may be equal.
+INK = {
+    "name": "#1a1a1a",
+    "member": "#33312e",
+    "stereotype": "#8a857e",
+    "group": "#3f6d94",
+    "head": "#f5f4f1",
+    "frame": "#c9c6c1",
+    "accent": "#2b7fc4",
+    "accent-head": "#dceefb",
+    "accent-body": "#eff8fe",
+    "exception": "#9a3b3b",
+    "line": "#5f6368",
+}
+# The one shape the graph engine and the engine share is drawn as the exception it is.
+ACCENTED = "TypedDict"
 
 
-def _compartment(lines: tuple[str, ...]) -> str:
+def _compartment(lines: tuple[str, ...], fill: str) -> str:
     body = BREAK.join(lines)
-    return f'<TR><TD ALIGN="LEFT" BALIGN="LEFT" CELLPADDING="6">{body}{BREAK}</TD></TR>'
+    tint = f' BGCOLOR="{fill}"' if fill else ""
+    return (
+        f'<TR><TD ALIGN="LEFT" BALIGN="LEFT" CELLPADDING="7"{tint}>'
+        f'<FONT COLOR="{INK["member"]}">{body}{BREAK}</FONT></TD></TR>'
+    )
 
 
 def _label(klass: Klass) -> str:
-    """One class as the component map draws a component: the stereotype small and grey
-    over the name, then a rule under it for each compartment that has anything in it.
+    """One class in three compartments: the stereotype small and grey over the name on a
+    tinted head, then a rule above everything the class declares.
+
+    A `TypedDict` is drawn in the accent colour throughout. It is the one class here
+    that is not a value — the state a step returns keys of, and the shape the graph
+    engine merges — so the drawing says so before the stereotype is read.
     """
+    accented = klass.stereotype == ACCENTED
+    frame = INK["accent"] if accented else INK["frame"]
+    head = INK["accent-head"] if accented else INK["head"]
+    body = INK["accent-body"] if accented else ""
+    stereotype_ink = (
+        INK["exception"]
+        if klass.stereotype == "Exception"
+        else INK["accent"]
+        if accented
+        else INK["stereotype"]
+    )
     name = f"<I>{klass.name}</I>" if klass.abstract else klass.name
     heading = (
-        f'<FONT POINT-SIZE="11" COLOR="{STEREOTYPE_INK}">«{klass.stereotype}»</FONT>'
+        f'<FONT POINT-SIZE="10" COLOR="{stereotype_ink}">«{klass.stereotype}»</FONT>'
         "<BR/>"
         if klass.stereotype
         else ""
     )
     rows = [
-        f'<TR><TD CELLPADDING="7">{heading}'
-        f'<FONT COLOR="{NAME_INK}"><B>{name}</B></FONT></TD></TR>'
+        f'<TR><TD CELLPADDING="7" BGCOLOR="{head}">{heading}'
+        f'<FONT COLOR="{INK["name"]}"><B>{name}</B></FONT></TD></TR>'
     ]
     for lines in (klass.attributes, klass.operations):
         if lines:
-            rows.append("<HR/>" + _compartment(lines))
+            rows.append("<HR/>" + _compartment(lines, body))
     return (
-        '<<TABLE BORDER="0" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0">'
-        + "".join(rows)
-        + "</TABLE>>"
+        '<<TABLE BORDER="1" CELLBORDER="0" CELLSPACING="0" CELLPADDING="0" '
+        f'COLOR="{frame}">' + "".join(rows) + "</TABLE>>"
     )
 
 
@@ -273,61 +306,108 @@ def _edge(edge: Edge) -> str:
     return f'  "{owner}" -> "{other}" [{", ".join(marks)}];'
 
 
+# What each column of the drawing is for, and which classes answer to it. The one thing
+# here that is not read off the source: a reader groups by what a class is *for*, and
+# nothing in the code says that — `conversation.py` holds one class from two columns.
+# `tests/guards/test_domain_map.py` fails on a class this table forgets, so a domain
+# that grows cannot leave a column to be guessed at.
+GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
+    (
+        "What a turn cites",
+        ("Citable", "CitableHits", "Nothing", "Context"),
+    ),
+    (
+        "What a turn records",
+        (
+            "Turn",
+            "ChatResult",
+            "AgentState",
+            "Citation",
+            "TraceStep",
+            "ModelDecision",
+            "MemoryUnread",
+            "ToolUse",
+        ),
+    ),
+    (
+        "Records & pausing",
+        ("Session", "Chunk", "TurnPaused", "Pending", "Decision", "Option"),
+    ),
+)
+
+
 def dot() -> str:
     """The drawing as DOT: every whole above its parts, every parent above its children.
 
     Each edge is written from the end UML puts the diamond or the triangle on, so the
-    layout reads downwards — a turn's result at the top, the passages it cites below it.
+    layout reads downwards — a turn's result above the passages it cites — and every
+    class stands in the column that says what it is for.
     """
+    drawn = {klass.name: klass for klass in classes()}
     lines = [
         "digraph domain {",
         "  rankdir=TB;",
+        # Right angles, the way a class diagram is drawn by hand. graphviz warns that
+        # it does not place edge labels under this router; the roles here are short and
+        # land beside the line they belong to, which is what a reader needs of them.
+        "  splines=ortho;",
         '  charset="utf-8";',
-        f'  graph [fontname="{FONT}", fontsize=11, nodesep=0.5, ranksep=0.7];',
-        f'  node [shape=box, style="rounded", margin=0, fontname="{FONT}", '
-        "fontsize=12.5, penwidth=1.3];",
-        f'  edge [fontname="{FONT}", fontsize=11, labeldistance=1.6, '
-        "labelangle=18, penwidth=1.3];",
+        '  bgcolor="transparent";',
+        f'  graph [fontname="{FONT}", fontsize=10, nodesep=0.55, ranksep=0.75];',
+        f'  node [shape=plain, margin=0, fontname="{FONT}", fontsize=12.5];',
+        f'  edge [fontname="{FONT}", fontsize=10.5, color="{INK["line"]}", '
+        "labeldistance=1.6, labelangle=18, penwidth=1];",
     ]
-    for klass in classes():
-        lines.append(f'  "{klass.name}" [label={_label(klass)}, class="uml-class"];')
+    for at, (title, members) in enumerate(GROUPS):
+        lines += [
+            f"  subgraph cluster_{at} {{",
+            "    peripheries=0;",
+            "    labelloc=t;",
+            "    labeljust=l;",
+            f'    fontcolor="{INK["group"]}";',
+            f'    label="{title.upper()}";',
+        ]
+        lines += [
+            f'    "{name}" [label={_label(drawn[name])}, class="uml-class"];'
+            for name in members
+            if name in drawn
+        ]
+        lines.append("  }")
     lines += [_edge(edge) for edge in edges()]
     lines.append("}")
     return "\n".join(lines) + "\n"
 
 
-# The component map's own stylesheet, over graphviz's shapes: same typeface, same greys,
-# the same white box under the same 1.3px outline, and the same answer to a reader whose
-# system asks for a dark page. Sizes are left to the drawing, because graphviz measured
-# every box against them — a rule resizing the text would push it out of its own box.
+# The typeface, and the same drawing for a reader whose system asks for a dark page.
+# Every colour is on the shapes already, so this restates only what has to change —
+# and never a size, because graphviz measured every box against the ones it was given.
 STYLE = """<style>
-  text { font-family: -apple-system, "Segoe UI", Roboto, sans-serif; fill: #202124 }
-  .stereotype { fill: #5f6368 }
-  .name { font-weight: 600; fill: #14425f }
-  .uml-class path { fill: #ffffff; stroke: #5f6368; stroke-width: 1.3 }
-  .uml-class polygon { fill: #dadce0; stroke: #dadce0 }
-  .edge path { fill: none; stroke: #5f6368 }
-  .edge text { fill: #6b7280; font-style: italic }
-  .uml-specialization polygon,
-  .uml-aggregation polygon { fill: #ffffff; stroke: #5f6368 }
-  .uml-association polygon,
-  .uml-composition polygon { fill: #5f6368; stroke: #5f6368 }
+  text { font-family: Charter, Georgia, "Times New Roman", serif }
+  .group { letter-spacing: .12em }
+  .edge text { font-style: italic }
   @media (prefers-color-scheme: dark) {
-    text { fill: #e8eaed }
-    .stereotype { fill: #9aa0a6 }
-    .name { fill: #cfe6f7 }
-    .uml-class path { fill: #303134; stroke: #bdc1c6 }
-    .uml-class polygon { fill: #5f6368; stroke: #5f6368 }
+    .name { fill: #e8eaed }
+    .member { fill: #d2cec8 }
+    .stereotype { fill: #9c968e }
+    .group { fill: #7fb0d8 }
+    .head { fill: #2b2c2f }
+    .frame { stroke: #5f6368 }
+    .rule { fill: #5f6368; stroke: #5f6368 }
+    .accent { stroke: #6fb6ea }
+    .accent-rule { fill: #6fb6ea; stroke: #6fb6ea }
+    .accent-head { fill: #16354b }
+    .accent-body { fill: #101f2b }
+    .accent-ink { fill: #6fb6ea }
+    .exception { fill: #d98a8a }
     .edge path { stroke: #bdc1c6 }
     .edge text { fill: #9aa0a6 }
-    .uml-specialization polygon,
-    .uml-aggregation polygon { fill: #303134; stroke: #bdc1c6 }
-    .uml-association polygon,
-    .uml-composition polygon { fill: #bdc1c6; stroke: #bdc1c6 }
+    .edge polygon[fill="none"] { stroke: #bdc1c6 }
+    .edge polygon:not([fill="none"]) { fill: #bdc1c6; stroke: #bdc1c6 }
   }
 </style>"""
 DESCRIPTION = (
-    "The domain as a UML class diagram: the value objects a turn is made of, their "
+    "The domain as a UML class diagram in three columns — what a turn cites, what a "
+    "turn records, records and pausing: the value objects a turn is made of with their "
     "attributes and operations, a hollow triangle to each parent, a diamond on each "
     "whole that owns its parts, and a role and a multiplicity on every association. "
     "Generated by scripts/gen_domain_map.py."
@@ -335,10 +415,16 @@ DESCRIPTION = (
 # The white sheet graphviz lays everything on: dropped, so the page shows through.
 SHEET = re.compile(r'<polygon fill="white" stroke="none"[^/]*/>\n')
 OPENING = re.compile(r"(<svg\b[^>]*>\n)")
-# Each run of text inside a label, back to the class that colours it. graphviz writes
-# the colour the DOT asked for and no class at all, so the ink identifies the run.
-INK = ((STEREOTYPE_INK, "stereotype"), (NAME_INK, "name"))
-INKED = re.compile(r'(<text\b[^>]*?) fill="(#[0-9a-f]{6})"')
+# Every shape and every run of text, back to the class that names it. graphviz writes
+# the colour the DOT asked for and no class at all, so the colour is the only handle
+# there is — read off `fill` for what is painted and `stroke` for what is drawn.
+PAINTED = {ink: name for name, ink in INK.items()}
+# A rule and an outline are both drawn in the frame colour; what tells them apart is
+# that a rule is filled with it and an outline is not.
+STROKED = {INK["frame"]: "rule", INK["accent"]: "accent-rule"}
+OUTLINED = {INK["frame"]: "frame", INK["accent"]: "accent"}
+INKED = re.compile(r"<(text|polygon)\b[^>]*?>")
+ATTRIBUTE = re.compile(r'(fill|stroke)="([^"]+)"')
 # The XML prologue and graphviz's own notes about the run, dropped so the file opens on
 # the drawing the way the component map does.
 PROLOGUE = re.compile(r"\A.*?(?=<svg\b)", re.DOTALL)
@@ -355,12 +441,33 @@ def stamp(source: str) -> str:
     return hashlib.sha256(source.encode()).hexdigest()[:16]
 
 
-def _classed(drawn: str) -> str:
-    named = dict(INK)
+def _class_of(painted: str, stroked: str) -> str:
+    """What this shape is, read off the colours it was drawn in.
 
+    The accent ink names a colour rather than a part, so a run of text carrying it is
+    the accented class's own writing: `accent-ink`, which the dark page recolours with
+    the rest of that box.
+    """
+    if painted == INK["accent"] and not stroked:
+        return "accent-ink"
+    if painted in PAINTED and painted != stroked:
+        return PAINTED[painted]
+    if painted == stroked:
+        return STROKED.get(painted, "")
+    if painted == "none":
+        return OUTLINED.get(stroked, "")
+    return ""
+
+
+def _classed(drawn: str) -> str:
     def swap(found: re.Match[str]) -> str:
-        head, ink = found.group(1), found.group(2)
-        return f'{head} class="{named[ink]}"' if ink in named else found.group(0)
+        element = found.group(0)
+        attributes = dict(ATTRIBUTE.findall(element))
+        name = _class_of(attributes.get("fill", ""), attributes.get("stroke", ""))
+        if not name:
+            return element
+        closing = "/>" if element.endswith("/>") else ">"
+        return f'{element[: -len(closing)]} class="{name}"{closing}'
 
     return INKED.sub(swap, drawn)
 
