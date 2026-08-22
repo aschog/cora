@@ -467,6 +467,18 @@ def test_the_rules_say_what_an_empty_search_means_and_what_to_do_about_it() -> N
     assert "own knowledge" in rules
 
 
+def test_coras_own_opening_names_no_subject() -> None:
+    """A plugin is what gives cora a scope, so the sentence every brief opens with may
+    not take one: an app with no plugin is a general assistant, not a document assistant
+    that was handed nothing to read. Which tools to reach for, the documents among them,
+    is `AGENT_RULES`' business — and that is a rule about a tool, not an identity.
+    """
+    opening = CORA_PREAMBLE.lower()
+
+    assert "document" not in opening
+    assert "uploaded" not in opening
+
+
 def test_a_brief_with_no_plugin_section_is_coras_voice_alone() -> None:
     brief = _prepare(instructions="", memory=FakeMemory())({"question": "q"})["brief"]
 
