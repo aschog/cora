@@ -55,7 +55,7 @@ e.g. "How much protein should I eat?" or "What are common deadlift mistakes?".
 
 ## Where to go next
 
-- [A session end to end](../happy-path.md) — the same session as sequence diagrams,
+- [What happens when you ask](../happy-path.md) — the same session as sequence diagrams,
   read out of the code that runs it
-- [The map](../big-picture.md) — why cora is built this way
+- [What it is made of](../big-picture.md) — why cora is built this way
 - [Write a plugin](../how-to/write-a-plugin.md) — your own domain instead of the coach

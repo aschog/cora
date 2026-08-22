@@ -1,4 +1,4 @@
-# One session, drawn from the source
+# What happens when you ask
 
 Four drawings, each read out of the code it is about — `scripts/sequences.py` reads the
 sequence, `scripts/gen_session_maps.py` draws it. A message is a call the method makes, in

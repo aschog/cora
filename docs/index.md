@@ -14,10 +14,10 @@ The pages are sorted by what you came for.
 
 Why cora is built the way it is.
 
-- [The map](big-picture.md) — the engine, its nine ports, and what the tests pin down.
-  Start here.
-- [A session end to end](happy-path.md) — an upload, a turn, a round and a search, read
-  out of the methods that take them.
+- [What it is made of](big-picture.md) — the engine, its nine ports, and what the tests
+  pin down. Start here.
+- [What happens when you ask](happy-path.md) — an upload, a turn, a round and a search,
+  read out of the methods that take them.
 
 ## How-to
 

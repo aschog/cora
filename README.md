@@ -35,8 +35,9 @@ docs-serve` reads it on http://127.0.0.1:8001 with live reload, and it renders w
 network. Sorted by what you came for:
 
 - **Tutorial** — [your first session](docs/tutorial/first-session.md)
-- **Understand** — [the map](docs/big-picture.md), the engine and its nine ports · [a
-  session end to end](docs/happy-path.md), drawn out of the code that runs it
+- **Understand** — [what it is made of](docs/big-picture.md), the engine and its nine
+  ports · [what happens when you ask](docs/happy-path.md), drawn out of the code that
+  runs it
 - **How-to** — [write a plugin](docs/how-to/write-a-plugin.md) ·
   [add a file format](docs/how-to/add-a-file-format.md) ·
   [swap the technology behind a port](docs/how-to/swap-a-port.md) ·
@@ -70,8 +71,8 @@ feature-by-feature, story by story.
 
 The app is the repository root; a `uv` workspace sharing the `cora` namespace. You install
 `cora` to use it and add a package to extend it — a plugin or a frontend. What each one
-ships and where it lives: [`docs/reference/packages.md`](docs/reference/packages.md). Why
-the split falls there: [`docs/big-picture.md`](docs/big-picture.md#the-distributions).
+ships and where it lives: [`docs/reference/packages.md`](docs/reference/packages.md). Where
+the boundary is drawn: [`docs/big-picture.md`](docs/big-picture.md#the-map).
 
 ## Gates
 

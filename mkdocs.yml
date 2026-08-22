@@ -42,8 +42,8 @@ nav:
   - Tutorial:
       - Your first session: tutorial/first-session.md
   - Understand:
-      - The map: big-picture.md
-      - A session end to end: happy-path.md
+      - What it is made of: big-picture.md
+      - What happens when you ask: happy-path.md
   - How-to:
       - Write a plugin: how-to/write-a-plugin.md
       - Add a file format: how-to/add-a-file-format.md

@@ -1,4 +1,4 @@
-# Big picture
+# What it is made of
 
 The design is *hexagonal* — ports and adapters. The tests show how the code works;
 `docs/sprints/` shows how it was built.
