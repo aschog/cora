@@ -9,6 +9,7 @@ is what stops one of them drifting into a description of an older project.
 """
 
 import workspace
+from site_config import config
 
 README = workspace.ROOT / "README.md"
 FRONT_PAGE = workspace.ROOT / "docs" / "index.md"
@@ -31,6 +32,16 @@ def opening() -> str:
     return tagline().split(". ")[0]
 
 
+def test_there_is_a_paragraph_to_hold_the_copies_to() -> None:
+    """Everything below reads README's opening paragraph, so an empty one would satisfy
+    all of it and guard nothing — a blank line under the title is all it would take.
+    """
+    assert len(tagline().split()) >= 10, (
+        "README.md's second paragraph is not a description of cora"
+    )
+    assert opening() != tagline(), "the description is one sentence long"
+
+
 def test_the_docs_front_page_opens_with_the_readmes_own_words() -> None:
     assert tagline() in _flat(FRONT_PAGE.read_text()), (
         "docs/index.md describes cora differently from README.md"
@@ -45,6 +56,14 @@ def test_the_distribution_is_described_by_the_same_sentence() -> None:
     assert described.startswith(opening()), (
         "pyproject.toml's description does not open the way README.md does"
     )
+
+
+def test_every_built_page_carries_the_same_description() -> None:
+    """`site_description` is the `<meta>` every built page carries, so it is what a
+    reader is shown without opening one — and the copy that can drift without the old
+    words appearing anywhere a reader would see them.
+    """
+    assert str(config()["site_description"]) == opening()
 
 
 def test_the_briefing_says_the_same_thing() -> None:
