@@ -4,8 +4,8 @@ cora is an agent you chat with, and plugins give it a scope. It decides for itse
 turn needs.
 
 A plugin contributes a prompt, tools and rules of its own. The shipped ones are the
-reference pair — a fitness coach and a prompt-injection screen — and neither is loaded
-until `CORA_PLUGINS` names it; naming none is a working setup, and so is naming several.
+reference pair — a fitness coach and a prompt-injection screen — and the coach is a worked
+example of a domain.
 
 ## Quick start
 
