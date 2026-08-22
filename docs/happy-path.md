@@ -1,9 +1,8 @@
 # One session, drawn from the source
 
-Four drawings, each read out of the code it is about by `scripts/gen_session_maps.py`:
-a message is a call the method makes, in the order it makes them, and a branch or a loop
-in the source is a fragment on the page. `tests/guards/test_session_maps.py` fails when a
-drawing is behind what it was read from, or when it names a method nobody answers to.
+Four drawings, each read out of the code it is about — `scripts/sequences.py` reads the
+sequence, `scripts/gen_session_maps.py` draws it. A message is a call the method makes, in
+the order it makes them, and a branch or a loop in the source is a fragment on the page.
 
 That the code really runs this way is a test rather than a picture:
 `test_a_whole_session_uploads_asks_calculates_and_remembers` in
