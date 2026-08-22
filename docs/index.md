@@ -30,7 +30,7 @@ One task each, for when you are already working.
   Protocol, passed to `assemble`
 - [Run the React shell](how-to/run-the-react-shell.md) — the same app over HTTP, with a
   React page
-- [Run the tests](how-to/run-the-tests.md) — four tiers, and which of them costs money
+- [Run the tests](how-to/run-the-tests.md) — five tiers, and which of them costs money
 - [Watch a turn happen](how-to/watch-a-turn.md) — the trace, the port log, and the live
   session test
 

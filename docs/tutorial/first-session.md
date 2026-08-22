@@ -13,7 +13,7 @@ You need Python 3.12, [uv](https://docs.astral.sh/uv/), and an
 uv sync
 ```
 
-## 2. Start it with a domain
+## 2. Start it with plugins
 
 ```sh
 export OPENROUTER_API_KEY=sk-or-...        # required (https://openrouter.ai/keys)
@@ -22,7 +22,7 @@ make run                                   # or: make run-env, to read the key f
 ```
 
 cora loads no plugin unless asked, so the second line is what turns this from a bare
-document assistant into the coaching app with a prompt-injection screen. Drop it to see
+cora into the coaching app with a prompt-injection screen. Drop it to see
 what the box does on its own. `make run-env` reads its environment from `.env` instead,
 so put `CORA_PLUGINS` there too rather than exporting it.
 

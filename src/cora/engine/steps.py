@@ -122,7 +122,7 @@ class PrepareStep:
         }
 
     def _brief(self) -> tuple[str, bool]:
-        """Cora first, then the domains it was given, then the user's own notes.
+        """Cora first, then the scopes it was given, then the user's own notes.
 
         No memory in the slot means no remembering: the rule is left out with the tool
         it names, so the model is never told to call what it was not offered.

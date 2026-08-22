@@ -32,8 +32,8 @@ module-name = [
     "cora.app",
 ]
 
-# The app is the root. What sits beside it is what you may install *as well*: a domain
-# plugin and a frontend, each a directory named in the plural because it expects
+# The app is the root. What sits beside it is what you may install *as well*: a plugin
+# and a frontend, each a directory named in the plural because it expects
 # siblings. `ls` is the architecture diagram.
 [tool.uv.workspace]
 members = ["plugins/*", "frontends/*"]
@@ -126,15 +126,16 @@ convention = "google"
 # A test name carries the behaviour, and no page renders a test.
 "conftest.py" = ["D"]
 "tests/**" = ["D"]
-# The nav generator the docs build runs; it documents nothing but itself.
+# The nav generator the docs build runs, and the readers and generators `make
+# diagram` runs; each documents nothing but itself.
 "scripts/**" = ["D"]
 
 [tool.pytest.ini_options]
 # `tests/cora/` mirrors `src/cora/`; `acceptance/` holds the outer test per story and
 # `guards/` the ones whose subject is the repository rather than the app. A plugin and a
-# frontend keep theirs beside their own manifest. Only `tests/helpers/` goes on sys.path,
-# and only so the shared helpers import by name — importlib mode needs no test on the
-# path. Nothing in there may be named for a shipped module, or it joins that namespace
+# frontend keep theirs beside their own manifest. Only `tests/helpers/` and `scripts/` go on
+# sys.path — the shared helpers and the generators import by name, and importlib mode
+# needs no test on the path. Nothing in there may be named for a shipped module, or it joins that namespace
 # as its first portion; the mirror is safe precisely because it is not on the path.
 testpaths = ["tests", "plugins", "frontends"]
 pythonpath = ["tests/helpers", "scripts"]

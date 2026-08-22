@@ -23,7 +23,7 @@ make run                                   # or: make run-env, to read the key f
 `make run` wraps `uv run streamlit run` over the app's module path. The target exists so
 the command survives the next time a package moves — the path itself is one line, in the
 `Makefile`. cora loads no plugin unless asked, so the `CORA_PLUGINS` line is what turns
-this from a bare document assistant into the coaching app with a prompt-injection screen.
+this from a bare cora into the coaching app with a prompt-injection screen.
 
 Walked through, with what to expect at each step:
 [`docs/tutorial/first-session.md`](docs/tutorial/first-session.md).
@@ -54,9 +54,10 @@ network. Sorted by what you came for:
   [assignment brief](docs/sprints/4/assignment.md) it was built for; sprint 3's brief,
   spec and test findings are in `docs/sprints/3/`
 
-`make diagram` redraws both maps on the big-picture page — the component map from
-`cora.app.assembly`, the domain's classes through pyreverse and graphviz. The SVGs are
-committed, and a guard fails when one is behind the source.
+`make diagram` redraws all six — the component map from `cora.app.assembly`, the
+domain's classes through pyreverse and graphviz, and the four sequences on the
+walkthrough page out of the methods that take them. The SVGs are committed, and a guard
+fails when one is behind the source.
 
 ## Stack
 

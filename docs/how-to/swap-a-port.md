@@ -41,6 +41,6 @@ slot without the engine changing.
    own package. `tests/guards/test_architecture.py` walks every shipped file and fails
    the build if `cora.engine` imports a technology.
 
-The two ports that are not arguments are named at the composition root instead: the
-loader registry (see [add a file format](add-a-file-format.md)) and the plugin set (see
-[write a plugin](write-a-plugin.md)).
+The two that are not arguments arrive another way: the loader registry is fixed inside
+`assemble` (see [add a file format](add-a-file-format.md)), and a plugin comes in the
+plugin set, which *is* an argument (see [write a plugin](write-a-plugin.md)).

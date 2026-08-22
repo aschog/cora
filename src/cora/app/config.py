@@ -10,7 +10,7 @@ from cora.domain.errors import ConfigurationError
 DEFAULT_MODEL = "openai/gpt-4o-mini"
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_PLUGINS: tuple[str, ...] = ()
-"""A plugin is an extension, so cora starts with none: a domain, a guard or any other
+"""A plugin is an extension, so cora starts with none: a scope, a screen or any other
 bundle is named by the deployment that wants it."""
 DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8

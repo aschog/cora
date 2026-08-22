@@ -42,7 +42,7 @@ ui-test-browser:
 # mkdocs 1.6.1, pinned by uv.lock, and say so once here instead of in every log.
 QUIET_FORK := NO_MKDOCS_2_WARNING=true DISABLE_MKDOCS_2_WARNING=true
 
-# The docs site — the two narrative pages and a reference generated from the source.
+# The docs site — the written pages and a reference generated from the source.
 # `mkdocs.yml` configures it; --strict is what the integration tier runs, so a build that
 # passes here is the one CI checks.
 docs:

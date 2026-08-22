@@ -1,6 +1,6 @@
 # Run the tests
 
-Four tiers, cheapest first. The unit tier is the one that runs on every save.
+Five tiers, cheapest first. The unit tier is the one that runs on every save.
 
 ```sh
 uv run ptw .                  # test watch mode (unit tier, reruns on save)
@@ -36,5 +36,5 @@ stays out of CI.
 
 The pre-commit hook runs format check, lint, type check and unit tests;
 commit messages must follow [Conventional Commits](https://www.conventionalcommits.org).
-CI (GitHub Actions) runs those same gates on every push, plus two tiers the hook leaves
-out: the integration tests, and the React page's own.
+CI (GitHub Actions) runs those same gates on every push, plus three tiers the hook
+leaves out: the integration tests, the React page's own, and the browser one.
