@@ -187,6 +187,14 @@ docstring states what a *name* promises and never how a turn runs — the flows 
 `big-picture.md`'s and `happy-path.md`'s. Closes the prose half of the open feedback item on
 undocumented contracts.
 
+### [27. Every drawing is read out of the code it is about](story-27.md)
+
+The six pictures in the docs become generated, guarded SVGs, and the client-side renderer
+goes with the last hand-drawn one. This retires story 25's decision that a sequence cannot
+be generated: that holds of the import graph, not of the source — a method body is an
+ordered list of calls, and the runner declares the turn's own loop and routes. Cora's own
+description becomes one paragraph in `README.md` with a guard holding its copies to it.
+
 ## Not built this sprint
 
 Planned, cut once the bonus bar was cleared and the hours ran down. None of them is needed
