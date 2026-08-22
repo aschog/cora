@@ -25,6 +25,15 @@ theme:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
 
+# `--strict` fails on a page missing from the nav but says nothing about a link into one:
+# a heading that is trimmed away leaves every link to it pointing at nothing, logged at
+# INFO where no gate reads it. Three of them had been dead for a commit. With `anchors`
+# turned up to a warning, the strict build in `tests/guards/test_docs_site.py` is what
+# catches the next one.
+validation:
+  links:
+    anchors: warn
+
 nav:
   - Home: index.md
   - Tutorial:

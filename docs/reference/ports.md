@@ -1,9 +1,9 @@
 # The ports
 
 The nine ports are the only outward surface of the engine: each one's surface as the
-engine calls it, and what the shipped composition root binds it to at startup. Why there
-are nine and why one of them is a dataclass is on
-[the big picture](../big-picture.md#the-ports).
+engine calls it, and what the shipped composition root binds it to at startup. Which nine
+they are, and what the engine requires of each, is drawn on
+[the map](../big-picture.md#the-map).
 
 | Port | Surface | Bound at startup to |
 |---|---|---|

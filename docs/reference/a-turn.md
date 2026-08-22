@@ -1,7 +1,8 @@
 # A turn, step by step
 
-The two calls a frontend makes, and what each one does in order. Why a turn is
-shaped this way is on [the big picture](../big-picture.md#two-calls-in).
+The two calls a frontend makes, and what each one does in order. The shape they take is
+drawn on [a turn](../happy-path.md#a-turn-as-a-frontend-asks-for-one), and the round inside
+it on [the one after](../happy-path.md#a-round-as-the-graph-walks-it).
 
 **`agent.answer(question, thread_id) -> ChatResult`** — `engine/agent.py`, returning `domain/chat_result.py`
 

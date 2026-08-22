@@ -1,7 +1,7 @@
 # The packages
 
-Which distribution to install, by what you are writing. Why the split falls here is
-on [the big picture](../big-picture.md#the-distributions).
+Which distribution to install, by what you are writing. The boundary the split falls on
+is drawn on [the map](../big-picture.md#the-map).
 
 | If you are writing | You install | You do not get |
 |---|---|---|
