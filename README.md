@@ -1,11 +1,11 @@
 # cora
 
-A "chat with your documents" web app. Ask in your own words and the agent plans
-its own steps: it looks things up when a question needs your documents, runs the
-domain's tools, remembers what you tell it about yourself between sessions, and
-answers directly when none of that is needed. The core is domain-agnostic; domain
-specialisation (reference domain: fitness coach) is provided exclusively through
-plugins.
+cora is an agent you chat with, and plugins give it a scope. It decides for itself what a
+turn needs.
+
+A plugin contributes a prompt, tools and rules of its own. The shipped ones are the
+reference pair — a fitness coach and a prompt-injection screen — and neither is loaded
+until `CORA_PLUGINS` names it; naming none is a working setup, and so is naming several.
 
 ## Quick start
 

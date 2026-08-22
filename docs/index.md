@@ -1,8 +1,7 @@
 # cora
 
-A RAG chatbot grounded in your own documents: upload them, ask in your own words, and the
-agent decides what to look up, which of the domain's tools to run, and what to remember
-about you.
+cora is an agent you chat with, and plugins give it a scope. It decides for itself what a
+turn needs.
 
 The pages are sorted by what you came for.
 
