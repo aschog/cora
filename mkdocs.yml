@@ -25,8 +25,9 @@ theme:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
 
-# The diagrams are Mermaid fences in the narrative pages, drawn client-side from the
-# vendored copy below rather than from a CDN.
+# Every drawing in the docs is now a committed SVG generated from the source, so no page
+# holds a Mermaid fence. The extension and the vendored copy below stay wired up: a fence
+# added to a page has to render from here rather than from a CDN.
 markdown_extensions:
   - pymdownx.superfences:
       custom_fences:

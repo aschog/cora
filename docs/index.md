@@ -17,8 +17,8 @@ Why cora is built the way it is.
 
 - [The map](big-picture.md) — the engine, its nine ports, and what the tests pin down.
   Start here.
-- [A session end to end](happy-path.md) — one upload and three questions, drawn as they
-  happen.
+- [A session end to end](happy-path.md) — an upload, a turn, a round and a search, read
+  out of the methods that take them.
 
 ## How-to
 

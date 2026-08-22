@@ -36,7 +36,7 @@ network. Sorted by what you came for:
 
 - **Tutorial** — [your first session](docs/tutorial/first-session.md)
 - **Understand** — [the map](docs/big-picture.md), the engine and its nine ports · [a
-  session end to end](docs/happy-path.md), drawn from the live test that walks one
+  session end to end](docs/happy-path.md), drawn out of the code that runs it
 - **How-to** — [write a plugin](docs/how-to/write-a-plugin.md) ·
   [add a file format](docs/how-to/add-a-file-format.md) ·
   [swap the technology behind a port](docs/how-to/swap-a-port.md) ·

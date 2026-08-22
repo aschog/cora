@@ -23,11 +23,11 @@ the plugins and the frontends do not notice the change; the wrapper stands aroun
 and nothing reads it back. Both settings are in
 [the configuration reference](../reference/configuration.md).
 
-## Run the session the drawings come from
+## Run the session the drawings are about
 
-[A session end to end](../happy-path.md) is drawn from one test that walks an upload,
-three questions and a fact kept. It calls a real model, so it runs on the `llm` tier and
-costs what the model costs:
+[A session end to end](../happy-path.md) draws what the code does; this test is what
+shows it doing it — an upload, three questions and a fact kept. It calls a real model, so
+it runs on the `llm` tier and costs what the model costs:
 
 ```sh
 uv run --env-file .env pytest -m llm -k whole_session
