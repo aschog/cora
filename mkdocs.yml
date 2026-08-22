@@ -25,16 +25,6 @@ theme:
     - media: "(prefers-color-scheme: dark)"
       scheme: slate
 
-# Every drawing in the docs is now a committed SVG generated from the source, so no page
-# holds a Mermaid fence. The extension and the vendored copy below stay wired up: a fence
-# added to a page has to render from here rather than from a CDN.
-markdown_extensions:
-  - pymdownx.superfences:
-      custom_fences:
-        - name: mermaid
-          class: mermaid
-          format: !!python/name:pymdownx.superfences.fence_code_format
-
 nav:
   - Home: index.md
   - Tutorial:
@@ -91,18 +81,6 @@ plugins:
             # frozen dataclass has on the page.
             show_labels: true
             members_order: source
-
-# Loaded before Material looks for a diagram, so the global already exists and Material's
-# own `typeof mermaid == "undefined"` fallback — a fetch of mermaid@11 from unpkg — never
-# fires. The version is in the filename because it is the one the diagrams are drawn
-# against, and a silent bump is what this pins — the bundle's own version string is
-# checked against that name.
-#
-# Vendored from https://unpkg.com/mermaid@10.2.3/dist/mermaid.min.js
-# sha256 245a6d632e0acc9e4e40ff90f5fb9b35fddcc693cf9992aa50ea2fc8438d2ab4
-# Mermaid is MIT-licensed; the minified UMD bundle carries no header of its own.
-extra_javascript:
-  - assets/mermaid-10.2.3.min.js
 
 # Build history and a mockup are in docs/ without being pages of it.
 exclude_docs: |
