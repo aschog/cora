@@ -2,6 +2,8 @@ import ast
 from dataclasses import dataclass
 from pathlib import Path
 
+import reading
+
 ROOT = Path(__file__).parent.parent
 SRC = ROOT / "src"
 ASSEMBLY = SRC / "cora" / "app" / "assembly.py"
@@ -54,31 +56,10 @@ def _modules(name: str) -> list[Path]:
     ]
 
 
-def _parsed(path: Path) -> ast.Module:
-    return ast.parse(path.read_text())
-
-
-def _imported(tree: ast.Module) -> dict[str, str]:
-    return {
-        alias.asname or alias.name: node.module or ""
-        for node in ast.walk(tree)
-        if isinstance(node, ast.ImportFrom)
-        for alias in node.names
-    }
-
-
-def _function(tree: ast.Module, name: str) -> ast.FunctionDef:
-    return next(
-        node
-        for node in tree.body
-        if isinstance(node, ast.FunctionDef) and node.name == name
-    )
-
-
 def _protocols(path: Path) -> set[str]:
     return {
         node.name
-        for node in _parsed(path).body
+        for node in reading.parsed(path).body
         if isinstance(node, ast.ClassDef)
         and any(
             isinstance(base, ast.Name) and base.id == "Protocol" for base in node.bases
@@ -97,7 +78,7 @@ def declaring_modules() -> dict[str, str]:
     return {
         node.name: f"cora.ports.{path.stem}"
         for path in sorted(PORTS.glob("*.py"))
-        for node in _parsed(path).body
+        for node in reading.parsed(path).body
         if isinstance(node, ast.ClassDef)
     }
 
@@ -111,41 +92,12 @@ def _named(annotation: ast.expr | None) -> set[str]:
 def _slots(tree: ast.Module) -> list[tuple[str, str]]:
     ports = declared_ports()
     found = []
-    for argument in _function(tree, "assemble").args.kwonlyargs:
+    for argument in reading.function(tree, "assemble").args.kwonlyargs:
         for name in sorted(_named(argument.annotation)):
             drawn = AS_DRAWN.get(name, name)
             if name in ports or drawn in ports:
                 found.append((argument.arg, drawn))
     return found
-
-
-def _called(node: ast.expr) -> str | None:
-    if isinstance(node, ast.Call):
-        if isinstance(node.func, ast.Name):
-            if node.func.id == "partial" and node.args:
-                return _called(node.args[0])
-            return node.func.id
-        if isinstance(node.func, ast.Attribute) and isinstance(
-            node.func.value, ast.Name
-        ):
-            return node.func.value.id
-    if isinstance(node, ast.Name):
-        return node.id
-    if isinstance(node, ast.Attribute):
-        return _called(node.value)
-    return None
-
-
-def _locals(build: ast.FunctionDef) -> dict[str, str]:
-    bound = {}
-    for node in ast.walk(build):
-        if (
-            isinstance(node, ast.Assign)
-            and isinstance(node.targets[0], ast.Name)
-            and (filled := _called(node.value))
-        ):
-            bound[node.targets[0].id] = filled
-    return bound
 
 
 def _provider(name: str, imported: dict[str, str]) -> str:
@@ -160,18 +112,18 @@ def _provider(name: str, imported: dict[str, str]) -> str:
         return name
     returned = [
         made
-        for node in _parsed(source).body
+        for node in reading.parsed(source).body
         if isinstance(node, ast.FunctionDef) and node.name == name
         for statement in ast.walk(node)
         if isinstance(statement, ast.Return) and statement.value is not None
-        for made in (_called(statement.value),)
+        for made in (reading.called(statement.value),)
         if made
     ]
     return returned[0] if returned else name
 
 
 def _assembled(tree: ast.Module) -> dict[str, str]:
-    build = _function(tree, "build")
+    build = reading.function(tree, "build")
     call = next(
         node
         for node in ast.walk(build)
@@ -179,11 +131,11 @@ def _assembled(tree: ast.Module) -> dict[str, str]:
         and isinstance(node.func, ast.Name)
         and node.func.id == "assemble"
     )
-    resolved = _locals(build)
-    imported = _imported(tree)
+    resolved = reading.bound(build)
+    imported = reading.imported(tree)
     filled = {}
     for keyword in call.keywords:
-        if keyword.arg and (name := _called(keyword.value)):
+        if keyword.arg and (name := reading.called(keyword.value)):
             filled[keyword.arg] = _provider(resolved.get(name, name), imported)
     return filled
 
@@ -192,7 +144,7 @@ def _registry_module(tree: ast.Module) -> str:
     """The module the loader registry lives in. The loaders are functions and a function
     is no component, so the module that holds them is what provides `Loader`.
     """
-    return _imported(tree)["LOADERS"].rsplit(".", 1)[-1]
+    return reading.imported(tree)["LOADERS"].rsplit(".", 1)[-1]
 
 
 def _packages(name: str) -> tuple[str, ...]:
@@ -200,7 +152,7 @@ def _packages(name: str) -> tuple[str, ...]:
 
 
 def bindings() -> tuple[Binding, ...]:
-    tree = _parsed(ASSEMBLY)
+    tree = reading.parsed(ASSEMBLY)
     filled = _assembled(tree)
     bound = [
         Binding(port, (filled[slot],), ADAPTERS)
@@ -241,9 +193,9 @@ def engine_parts() -> tuple[tuple[str, str], ...]:
     """The parts `assemble` always builds, as `role: Type` in the order it reads them.
     The debug wrappers are not among them: they stand behind an `if`, around a port.
     """
-    tree = _parsed(ASSEMBLY)
-    imported = _imported(tree)
-    assemble = _function(tree, "assemble")
+    tree = reading.parsed(ASSEMBLY)
+    imported = reading.imported(tree)
+    assemble = reading.function(tree, "assemble")
     parents = _parents(assemble)
     found = []
     for statement in assemble.body:
@@ -269,7 +221,7 @@ def dependencies() -> frozenset[tuple[str, str]]:
     found = set()
     for client in TREES:
         for module in _modules(client):
-            for node in ast.walk(_parsed(module)):
+            for node in ast.walk(reading.parsed(module)):
                 if not isinstance(node, ast.ImportFrom) or not node.module:
                     continue
                 supplier = ".".join(node.module.split(".")[:2])

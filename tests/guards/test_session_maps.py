@@ -46,17 +46,80 @@ def test_the_upload_sequence_is_the_calls_add_file_makes_in_order() -> None:
 
 
 def test_the_upload_sequence_branches_where_the_method_does() -> None:
-    """The hash is asked first, so the drawing has both paths the source has — and the
-    branch that returns takes the rest of the method as its other operand. One fork,
-    because the repair's own is a guard clause: nothing is said on it.
+    """The hash is asked first, so the drawing has both paths the source has, and the
+    branch that returns takes the rest of the method as its other operand. Two forks,
+    one per `if`: the repair has its own, and a branch that says nothing keeps its place
+    in the one it belongs to rather than letting the other side read as unconditional.
     """
-    [fork] = fragments(generator.upload())
+    forks = fragments(generator.upload())
 
-    assert fork.operator == "alt"
-    assert [guard for guard, _ in fork.operands] == [
-        "retriever.contains(file_hash)",
-        "else",
+    assert [fork.operator for fork in forks] == ["alt", "alt"]
+    assert [[guard for guard, _ in fork.operands] for fork in forks] == [
+        ["retriever.contains(file_hash)", "else"],
+        ["documents.read(file_hash) is not None", "else"],
     ]
+
+
+def guarded(sequence: generator.Sequence) -> set[str]:
+    """Every message that stands inside some fragment, by its label.
+
+    Drawn flat, a message says it always happens. So what a fork can go wrong about is
+    not which branches it draws but which messages it leaves outside them.
+    """
+    found: set[str] = set()
+
+    def walk(lines: tuple[generator.Line, ...], under: bool) -> None:
+        for line in lines:
+            if isinstance(line, generator.Fragment):
+                for _, inner in line.operands:
+                    walk(inner, True)
+            elif under and isinstance(line, generator.Call):
+                found.add(line.label)
+
+    walk(sequence.lines, False)
+    return found
+
+
+def test_a_repair_only_reads_what_was_never_kept() -> None:
+    """`_repair` returns early when the text is already there, so the parse and the
+    write behind that branch are what the drawing has to put inside a fork: flat, they
+    say every duplicate upload re-reads the file and rewrites it.
+    """
+    kept = "documents.read(file_hash) is not None"
+    forks = [
+        fork
+        for fork in fragments(generator.upload())
+        if any(guard == kept for guard, _ in fork.operands)
+    ]
+
+    assert forks, "the drawing has no fork on whether the text was already kept"
+    said = {
+        line.label
+        for _, lines in forks[0].operands
+        for line in generator.flattened(lines)
+        if isinstance(line, generator.Call)
+    }
+    assert "ingest(data, filename, loaders)" in said
+    assert "keep(file_hash, text)" in said
+
+
+def test_a_paused_turn_is_not_drawn_being_recorded() -> None:
+    """`_turn` raises before it records, so recording stands behind the branch that
+    found nothing parked. Drawn flat it is the one thing a pause promises not to do."""
+    assert "record(thread_id, turn)" in guarded(generator.turn())
+
+
+def test_the_model_is_drawn_answering() -> None:
+    """A reply belongs to the call that was written outermost, which is the one whose
+    value the statement binds: `reply = chat_model.complete(_prompt(state), …)` fetches
+    the reply from the model, not from the step's own prompt."""
+    replies = {
+        (line.sender, line.label)
+        for line in generator.flattened(generator.round_taken().lines)
+        if isinstance(line, generator.Reply)
+    }
+
+    assert ("chat_model", "reply") in replies
 
 
 def test_a_lifeline_is_named_for_the_field_and_what_really_fills_it() -> None:
@@ -115,9 +178,12 @@ def test_a_reply_is_what_the_interface_says_it_answers_with() -> None:
 
 SVG = "{http://www.w3.org/2000/svg}"
 PAGE = workspace.ROOT / "docs" / "happy-path.md"
-# A message whose name is the participant's own is a call *of* it rather than a method
-# *on* it: a step is a `Step`, a tool is reached through the `run` slot that holds it.
-CALLED_AS_ITSELF = ("run", "__call__")
+MAP_PAGE = workspace.ROOT / "docs" / "big-picture.md"
+# Where a message names the participant itself, it is a call *of* it rather than a
+# method *on* it — a step is a `Step`, and its own role is what the graph calls it by.
+# `run` is not in the same class: it is the slot a `Tool` is reached through, so it is
+# exempt on the one lifeline that is a tool and nowhere else.
+CALLED_THROUGH_A_SLOT = {("search", "search_documents"): "run"}
 
 
 def _methods(kind: str) -> set[str] | None:
@@ -149,7 +215,16 @@ def test_every_message_names_a_method_the_receiver_really_has() -> None:
                 continue
             message = line.label.split("(")[0]
             declared = _methods(kinds.get(line.receiver, ""))
-            if declared is None or message in (line.receiver, *CALLED_AS_ITSELF):
+            if declared is None:
+                continue
+            through = CALLED_THROUGH_A_SLOT.get((sequence.name, line.receiver))
+            if message == through:
+                continue
+            if message == line.receiver:
+                assert "__call__" in declared, (
+                    f"{sequence.name}: {kinds[line.receiver]} is called by its own "
+                    "role but is not callable"
+                )
                 continue
             assert message in declared, (
                 f"{sequence.name}: {kinds[line.receiver]} has no {message}"
@@ -172,13 +247,17 @@ def test_the_round_draws_every_node_and_every_route_the_graph_declares() -> None
     assert {route for route, _ in plan.routes} <= guards
 
 
-def test_the_knowledge_base_is_still_what_stands_behind_the_search_tool() -> None:
-    """The one binding the drawing is told rather than reads: `assemble` hands the
-    knowledge base down two calls before it arrives as a `ContextSource`."""
-    behind = generator.BEHIND["ContextSource"]
-    promised = _methods("ContextSource") or set()
+def test_what_stands_behind_a_port_is_read_and_not_declared() -> None:
+    """`assemble` fills `ContextSource` inside itself, so the drawing reads which local
+    was handed to the function that offers the tools. Read rather than declared, a
+    wrapper put in front of the knowledge base would be drawn instead of it.
+    """
+    standing = generator.behind()
+    promised = _methods("ContextSource")
 
-    assert promised <= (_methods(behind) or set())
+    assert promised, "cora.ports.context_source declares no ContextSource"
+    assert standing["ContextSource"] == "KnowledgeBase"
+    assert promised <= (_methods(standing["ContextSource"]) or set())
 
 
 def test_a_tool_is_run_in_one_place_only() -> None:
@@ -213,12 +292,73 @@ def test_every_drawing_takes_its_colours_from_the_reader() -> None:
         assert 'fill="white"' not in page
 
 
-def test_the_page_shows_every_drawing_and_draws_nothing_by_hand() -> None:
+def _labels(path) -> list[tuple[str, float, float]]:  # type: ignore[no-untyped-def]
+    """Every message label, with the x it spans from and to."""
+    found = []
+    for text in ET.parse(path).getroot().iter(f"{SVG}text"):
+        styles = set((text.get("class") or "").split())
+        if not styles & {"said", "answer"}:
+            continue
+        span = drawings._wide(text.text or "", 12.5 if "said" in styles else 11.5)
+        middle = float(text.get("x") or 0)
+        start = middle - span / 2 if text.get("text-anchor") == "middle" else middle
+        found.append((text.text or "", start, start + span))
+    return found
+
+
+def test_no_label_is_drawn_off_the_page() -> None:
+    """A message an object sends itself is drawn to the right of its own lifeline, so on
+    the last lifeline the drawing has to be wider than its columns. Past the edge of the
+    viewBox a label is not narrow or ugly — it is simply not shown.
+    """
+    for path in drawings.written():
+        root = ET.parse(path).getroot()
+        edge = float((root.get("viewBox") or "0 0 0 0").split()[2])
+        for label, start, end in _labels(path):
+            assert start >= -1 and end <= edge + 1, (
+                f"{path.name}: '{label}' is drawn outside the page"
+            )
+
+
+def test_a_label_that_flies_over_a_lifeline_is_read_on_its_own_ground() -> None:
+    """Otherwise the lifeline is a dashed line struck through the middle of a word."""
+    for path in drawings.written():
+        root = ET.parse(path).getroot()
+        lifelines = {
+            round(float(line.get("d", "M 0 0").split()[1]), 1)
+            for line in root.iter(f"{SVG}path")
+            if "life" in (line.get("class") or "").split()
+        }
+        grounds = [
+            (
+                float(one.get("x") or 0),
+                float(one.get("x") or 0) + float(one.get("width") or 0),
+            )
+            for one in root.iter(f"{SVG}rect")
+            if "sheet" in (one.get("class") or "").split()
+        ]
+        for label, start, end in _labels(path):
+            crossed = [one for one in lifelines if start < one < end]
+            if not crossed:
+                continue
+            assert any(left <= start and end <= right for left, right in grounds), (
+                f"{path.name}: '{label}' is struck through by a lifeline"
+            )
+
+
+def test_the_page_shows_every_drawing_and_no_page_draws_by_hand() -> None:
+    """Nothing renders a fence any more — the extension that turned one into a diagram
+    went with the drawings it used to draw, so a fence added to either narrative page
+    would render as a block of text where a picture was meant.
+    """
     page = PAGE.read_text()
 
     for path in drawings.written():
         assert f"assets/{path.name}" in page, f"happy-path.md does not show {path.name}"
-    assert "```mermaid" not in page, "the page's pictures are generated from the source"
+    for written in (PAGE, MAP_PAGE):
+        assert "```mermaid" not in written.read_text(), (
+            f"{written.name} draws by hand, and nothing on this site renders a fence"
+        )
 
 
 def test_every_drawing_is_valid_xml_naming_what_it_shows() -> None:
@@ -226,4 +366,13 @@ def test_every_drawing_is_valid_xml_naming_what_it_shows() -> None:
         root = ET.parse(path).getroot()
 
         assert (root.get("aria-label") or "").startswith("A UML sequence diagram")
-        assert root.iter(f"{SVG}rect")
+        heads = [
+            rect
+            for rect in root.iter(f"{SVG}rect")
+            if "head" in (rect.get("class") or "").split()
+        ]
+        drawn = drawings.DRAWINGS[path.name]()
+        assert len(heads) == len(drawn.lifelines), (
+            f"{path.name} draws {len(heads)} participants for "
+            f"{len(drawn.lifelines)} lifelines"
+        )

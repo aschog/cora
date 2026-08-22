@@ -10,6 +10,7 @@
     .back { stroke: #6b7280; stroke-width: 1.1; fill: none;
             stroke-dasharray: 6 4; marker-end: url(#answered) }
     .said { font-size: 12.5px }
+    .sheet { fill: #f8f9fa; stroke: none }
     .answer { font-size: 11.5px; fill: #6b7280; font-style: italic }
     .frame { fill: none; stroke: #9aa0a6; stroke-width: 1.1 }
     .tab { fill: #f8f9fa; stroke: #9aa0a6; stroke-width: 1.1 }
@@ -23,6 +24,7 @@
       .head { fill: #10283a; stroke: #6fb6ea }
       .bar { fill: #303134; stroke: #6fb6ea }
       .send { stroke: #e8eaed }
+      .sheet { fill: #2b2c2f }
       .back { stroke: #bdc1c6 }
       .answer { fill: #bdc1c6 }
       .frame, .split { stroke: #bdc1c6 }
@@ -65,8 +67,10 @@
   <path d="M 641.725 206 L 442.9 206" class="back"/>
   <text x="542.312" y="199" class="answer" text-anchor="middle">[query_vector]</text>
   <path d="M 442.9 240 L 850.555 240" class="send"/>
+  <rect x="567.477" y="221" width="158.5" height="16" rx="2" class="sheet"/>
   <text x="646.727" y="233" class="said" text-anchor="middle">query(query_vector, k)</text>
   <path d="M 850.555 274 L 442.9 274" class="back"/>
+  <rect x="574.227" y="255" width="145" height="16" rx="2" class="sheet"/>
   <text x="646.727" y="267" class="answer" text-anchor="middle">list[RetrievedChunk]</text>
   <path d="M 432.9 308 L 263.8 308" class="back"/>
   <text x="348.35" y="301" class="answer" text-anchor="middle">list[RetrievedChunk]</text>

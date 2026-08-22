@@ -32,6 +32,7 @@ STYLE = """
     .back { stroke: #6b7280; stroke-width: 1.1; fill: none;
             stroke-dasharray: 6 4; marker-end: url(#answered) }
     .said { font-size: 12.5px }
+    .sheet { fill: #f8f9fa; stroke: none }
     .answer { font-size: 11.5px; fill: #6b7280; font-style: italic }
     .frame { fill: none; stroke: #9aa0a6; stroke-width: 1.1 }
     .tab { fill: #f8f9fa; stroke: #9aa0a6; stroke-width: 1.1 }
@@ -45,6 +46,7 @@ STYLE = """
       .head { fill: #10283a; stroke: #6fb6ea }
       .bar { fill: #303134; stroke: #6fb6ea }
       .send { stroke: #e8eaed }
+      .sheet { fill: #2b2c2f }
       .back { stroke: #bdc1c6 }
       .answer { fill: #bdc1c6 }
       .frame, .split { stroke: #bdc1c6 }
@@ -165,6 +167,20 @@ def _centres(sequence: Sequence, sent: list[Sent]) -> list[float]:
     return centres
 
 
+def _overhang(sequence: Sequence, sent: list[Sent]) -> float:
+    """How far past the last lifeline the drawing reaches.
+
+    A message an object sends itself is drawn to the right of its own lifeline, and on
+    the last one there is no next column to widen — so the room is taken off the edge of
+    the drawing instead, where otherwise the label would be clipped away.
+    """
+    last = len(sequence.lifelines) - 1
+    loops = [one for one in sent if one.frm == one.to == last]
+    if not loops:
+        return 0.0
+    return LOOP_W + 10 + max(_wide(one.label) for one in loops)
+
+
 def _bars(sent: list[Sent]) -> list[tuple[int, float, float]]:
     """Where each lifeline is busy: from the message that started it to the one that
     answered. A call the source never answers gets a stub — it says the message was
@@ -222,11 +238,21 @@ MARKERS = (
 
 
 def draw(sequence: Sequence) -> str:
-    """One sequence as UML draws one: lifelines, messages, and a frame per fragment."""
+    """One sequence as UML draws one: lifelines, messages, and a frame per fragment.
+
+    Raises:
+        SystemExit: The sequence has no participants, so there is nothing to draw and
+            no drawing to commit.
+    """
+    if not sequence.lifelines:
+        raise SystemExit(
+            f"the {sequence.name} sequence met no participants: the method it is read "
+            "from sends no message the drawing may show"
+        )
     sent, frames, bottom = _placed(sequence)
     centres = _centres(sequence, sent)
     heads = _head_widths(sequence)
-    width = centres[-1] + heads[-1] / 2 + MARGIN
+    width = centres[-1] + max(heads[-1] / 2, _overhang(sequence, sent)) + MARGIN
     out = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:g} {bottom:g}"'
         f' width="{width:g}" height="{bottom:g}" role="img"'
@@ -270,9 +296,27 @@ def _message(message: Sent, centres: list[float]) -> list[str]:
             _text(turn + LOOP_W + 10, message.y + 5, message.label, said, "start"),
         ]
     step = BAR_W / 2 if to > frm else -BAR_W / 2
+    middle = (frm + to) / 2
+    span = _wide(message.label)
+    crossed = [
+        centre
+        for index, centre in enumerate(centres)
+        if min(message.frm, message.to) < index < max(message.frm, message.to)
+        and middle - span / 2 - 4 <= centre <= middle + span / 2 + 4
+    ]
+    # A label long enough to reach past the lifelines it flies over is read on top of
+    # them, so it is given ground of its own — the alternative is a dashed line struck
+    # through the middle of a word. Only where it happens: a chip behind every label
+    # would be a box around text nothing runs through.
+    ground = (
+        [_rect(middle - span / 2 - 5, message.y - 19, span + 10, 16, "sheet", 2)]
+        if crossed
+        else []
+    )
     return [
         _path([(frm + step, message.y), (to - step, message.y)], style),
-        _text((frm + to) / 2, message.y - 7, message.label, said),
+        *ground,
+        _text(middle, message.y - 7, message.label, said),
     ]
 
 

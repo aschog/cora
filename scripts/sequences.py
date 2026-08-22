@@ -6,19 +6,27 @@ it did. Nothing here draws: `gen_session_maps.py` is what turns a `Sequence` int
 """
 
 import ast
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 import gen_component_map as components
+import reading
 
 ROOT = Path(__file__).parent.parent
 SRC = ROOT / "src"
 FRONTENDS = ROOT / "frontends"
 
-# How deep the drawing follows an object into its own work. A private method is no
-# participant — it is the object's own work, so its calls are drawn on the object's own
-# lifeline — and the cap is what keeps a cycle from being drawn forever.
-DEPTH = 3
+# What the reader cannot turn into a fragment. Drawn flat, each of these would say that
+# every arm of a `match`, or one pass of a `while`, is what always happens — a fork the
+# source has and the drawing denies. Better a red `make diagram` than a confident wrong
+# picture, so reaching one is a failure rather than a silence.
+CANNOT_DRAW = {
+    ast.Match: "a match",
+    ast.AsyncFor: "an async for",
+    ast.AsyncWith: "an async with",
+    ast.IfExp: "a conditional expression",
+}
 
 
 @dataclass(frozen=True)
@@ -88,10 +96,6 @@ def speaks(lines: tuple[Line, ...]) -> bool:
     return any(isinstance(line, Call) for line in flattened(lines))
 
 
-def _parsed(path: Path) -> ast.Module:
-    return ast.parse(path.read_text())
-
-
 def _module(dotted: str) -> Path:
     return SRC.joinpath(*dotted.split(".")).with_suffix(".py")
 
@@ -154,10 +158,6 @@ class Slot:
     kind: str
     declared_in: str = ""
 
-    @property
-    def drawn(self) -> str:
-        return providers().get(self.kind, self.kind)
-
 
 def _element(annotation: ast.expr) -> str:
     """What one of a container holds: a rule out of `tuple[ValidationRule, ...]`."""
@@ -182,7 +182,7 @@ def _returned(module: str, kind: str, method: str) -> str:
     if not path.exists():
         return ""
     try:
-        found = _method(_klass(_parsed(path), kind), method)
+        found = _method(_klass(reading.parsed(path), kind), method)
     except StopIteration:
         return ""
     return "" if found.returns is None else ast.unparse(found.returns)
@@ -214,11 +214,48 @@ def _label(call: ast.Call, method: str) -> str:
 
 ENGINE = SRC / "cora" / "engine"
 ENGINE_PACKAGE = "cora.engine"
-# The one binding no single file states: `assemble` hands `_offered_tools` the knowledge
-# base and `_offered_tools` hands `search_tool` a `ContextSource`, so the class behind
-# the tool's interface is three calls away from the annotation that names it. A guard
-# fails if `KnowledgeBase` stops answering for it.
-BEHIND = {"ContextSource": "KnowledgeBase"}
+
+
+def behind() -> dict[str, str]:
+    """Which class fills a port the composition root does not take as an argument.
+
+    `ContextSource` is one: it is filled inside `assemble`, where the knowledge base is
+    handed to the function that offers the tools. One hop is all it takes — the port is
+    named by the annotation on the parameter it arrives on, so what stands behind it is
+    the local that was passed there, and nothing has to be followed further.
+    """
+    tree = reading.parsed(_module(ASSEMBLY))
+    root = reading.function(tree, "assemble")
+    made = reading.bound(root)
+    found: dict[str, str] = {}
+    for call in _ordered(root):
+        if not isinstance(call.func, ast.Name):
+            continue
+        taken = next(
+            (
+                node
+                for node in tree.body
+                if isinstance(node, ast.FunctionDef) and node.name == call.func.id
+            ),
+            None,
+        )
+        if taken is None:
+            continue
+        params = [*taken.args.args, *taken.args.kwonlyargs]
+        paired: list[tuple[ast.arg, ast.expr]] = list(
+            zip(params, call.args, strict=False)
+        )
+        paired += [
+            (param, keyword.value)
+            for keyword in call.keywords
+            for param in params
+            if param.arg == keyword.arg
+        ]
+        for param, value in paired:
+            filling = made.get(value.id) if isinstance(value, ast.Name) else None
+            if param.annotation is not None and filling and filling[0].isupper():
+                found[_head(param.annotation)] = filling
+    return found
 
 
 def engine_classes() -> dict[str, str]:
@@ -230,7 +267,7 @@ def engine_classes() -> dict[str, str]:
     return {
         node.name: f"cora.engine.{path.stem}"
         for path in sorted(ENGINE.glob("*.py"))
-        for node in _parsed(path).body
+        for node in reading.parsed(path).body
         if isinstance(node, ast.ClassDef)
     }
 
@@ -239,31 +276,53 @@ def _port_modules() -> dict[str, str]:
     return {
         node.name: f"cora.ports.{path.stem}"
         for path in sorted((SRC / "cora" / "ports").glob("*.py"))
-        for node in _parsed(path).body
+        for node in reading.parsed(path).body
         if isinstance(node, ast.ClassDef)
     }
 
 
-def wired() -> dict[str, str]:
+def wired() -> dict[tuple[str, str], str]:
     """What the composition root drops into each slot it fills by name.
 
-    Some slots are told apart by their type and some only by their role: two of the
-    runner's are `Step`, and the tool runtime arrives as the `ToolExecutor` it answers
-    for. What fills them is a keyword in `assemble`, so that is where it is read.
+    Some slots are told apart by their type and some only by their role: the tool
+    runtime arrives as the `ToolExecutor` it answers for. Keyed by the class being
+    constructed as well as the keyword, because a role name is not unique across the
+    app — `tools` is a tuple of tools on one step and a step on the runner.
+
+    Raises:
+        SystemExit: One class is constructed twice with a keyword filled two ways, so
+            what stands behind that slot depends on which call the drawing meant.
     """
-    tree = _parsed(_module(ASSEMBLY))
-    found: dict[str, str] = {}
-    for call in _ordered(components._function(tree, "assemble")):
+    tree = reading.parsed(_module(ASSEMBLY))
+    found: dict[tuple[str, str], str] = {}
+    for call in _ordered(reading.function(tree, "assemble")):
+        built = reading.called(call)
+        if not built or not built[0].isupper():
+            continue
         for keyword in call.keywords:
-            filling = components._called(keyword.value)
-            if keyword.arg and filling and filling[0].isupper():
-                found[keyword.arg] = filling
+            filling = reading.called(keyword.value)
+            if not keyword.arg or not filling or not filling[0].isupper():
+                continue
+            slot = (built, keyword.arg)
+            if found.get(slot, filling) != filling:
+                raise SystemExit(
+                    f"the composition root fills {built}.{keyword.arg} with both "
+                    f"{found[slot]} and {filling}: the drawing cannot say which"
+                )
+            found[slot] = filling
     return found
 
 
-def drawn_kind(kind: str, role: str = "") -> str:
-    """What a slot really holds in a running app, by its role and then by its type."""
-    return wired().get(role) or providers().get(kind) or BEHIND.get(kind, kind)
+def drawn_kind(kind: str, role: str = "", inside: str = "") -> str:
+    """What a slot really holds in a running app.
+
+    By the role it is filled under where the class holding it says so, and by its type
+    otherwise. `inside` is that holder: without it only the type is asked, which is what
+    an object already known by its own class needs.
+    """
+    return (
+        wired().get((inside, role)) or providers().get(kind) or behind().get(kind, kind)
+    )
 
 
 PORTS_PACKAGE = "cora.ports"
@@ -302,6 +361,32 @@ def _iterated(node: ast.expr, held: dict[str, ast.expr], scope: dict[str, str]) 
     if isinstance(node, ast.Name):
         return scope.get(node.id, "")
     return ""
+
+
+def _refuse(node: ast.stmt, drawn: Callable[[ast.Call], object]) -> None:
+    """Stop where a statement holds a fork this reader cannot draw.
+
+    Only where a message would be lost inside it: a `match` over values nobody sends a
+    message about is nothing the drawing was going to show anyway.
+
+    Raises:
+        SystemExit: The statement holds a shape the reader has no fragment for.
+    """
+    for found in ast.walk(node):
+        named = CANNOT_DRAW.get(type(found))
+        if named is None or not any(drawn(call) for call in _ordered(found)):
+            continue
+        where = getattr(found, "lineno", node.lineno)
+        raise SystemExit(
+            f"gen_session_maps cannot draw {named} on line {where}: it is a fork, and "
+            "drawn flat every arm of it would read as unconditional. Give the reader a "
+            "fragment for it, or take the calls out of it."
+        )
+
+
+def _caught(handler: ast.ExceptHandler) -> str:
+    """The exception a handler answers for, as the guard on its `break`."""
+    return "" if handler.type is None else _argument(handler.type)
 
 
 def _stops(body: list[ast.stmt]) -> bool:
@@ -343,18 +428,27 @@ class Reading:
 
 
 def read(
-    dotted: str, kind: str, method: str, role: str, met: Reading, depth: int = 0
+    dotted: str,
+    kind: str,
+    method: str,
+    role: str,
+    met: Reading,
+    seen: frozenset[tuple[str, str]] = frozenset(),
 ) -> tuple[Line, ...]:
     """One method as the messages it sends, in the order the body sends them.
 
     A branch becomes an `alt` and a loop a `loop`, so what the drawing shows is what the
     code can do rather than one run of it. A call the object makes on itself is followed
-    into: a private method is the object's own work, not another participant.
+    into: a private method is the object's own work, not another participant. Following
+    stops only where it would come back to a method already being read — a depth cap
+    would drop whatever the last method said to anyone else, and say nothing about it.
     """
-    tree = _parsed(_module(dotted))
+    frame = (kind, method)
+    seen = seen | {frame}
+    tree = reading.parsed(_module(dotted))
     klass = _klass(tree, kind)
     body = _method(klass, method)
-    imported = components._imported(tree)
+    imported = reading.imported(tree)
     held = _annotations(klass)
     slots = {
         name: Slot(name, _head(annotation), imported.get(_head(annotation), ""))
@@ -403,18 +497,36 @@ def read(
                 return called.id, called.id
         return None
 
-    def emit(call: ast.Call, reply: str) -> list[Line]:
+    def drawn(call: ast.Call) -> tuple[str, str, str] | None:
+        """Who takes this call and what it is called, or nothing where it is not drawn.
+
+        Asked twice — once to find which call of a statement answers with its value,
+        once to draw it — so the answer is worked out in one place.
+        """
         found = receiver_of(call)
         if found is None:
-            return []
+            return None
         name, message = found
         slot = slots.get(name)
         typed = slot.kind if slot else scope.get(name, "")
-        drawn = drawn_kind(kind, role) if name == role else drawn_kind(typed, name)
+        stands = (
+            drawn_kind(kind, role)
+            if name == role
+            else drawn_kind(typed, name, inside=kind)
+        )
         where = slot.declared_in if slot else imported.get(name, "")
-        if name != role and not a_participant(drawn, where):
+        if name != role and not a_participant(stands, where):
+            return None
+        return name, message, stands
+
+    def emit(call: ast.Call, reply: str) -> list[Line]:
+        found = drawn(call)
+        if found is None:
             return []
-        met.met(name, drawn)
+        name, message, stands = found
+        slot = slots.get(name)
+        typed = slot.kind if slot else scope.get(name, "")
+        met.met(name, stands)
         lines: list[Line] = [Call(role, name, _label(call, message))]
         answered = "" if name == role else reply
         if answered == SIGNATURE:
@@ -423,29 +535,37 @@ def read(
                 if slot and slot.declared_in
                 else ""
             )
-        opened = drawn
-        if depth < DEPTH:
-            if name == role and message.startswith("_"):
-                lines.extend(read(dotted, kind, message, role, met, depth + 1))
-            elif opened in engine_classes() and opened != kind:
-                lines.extend(
-                    read(
-                        engine_classes()[opened], opened, message, name, met, depth + 1
-                    )
-                )
+        opened = stands
+        if name == role and message.startswith("_") and (kind, message) not in seen:
+            lines.extend(read(dotted, kind, message, role, met, seen))
+        elif (
+            opened in engine_classes()
+            and opened != kind
+            and (opened, message) not in seen
+        ):
+            inside = engine_classes()[opened]
+            lines.extend(read(inside, opened, message, name, met, seen))
         # After whatever the call set off, never before it: a reply closes a message.
         if answered:
             lines.append(Reply(name, role, answered))
         return lines
 
     def sent(node: ast.AST, reply: str) -> list[Line]:
-        """Every message one statement sends. What it answers with belongs to the first
-        of them: a statement binds one value, and the message that fetched it is the
-        one the value comes back along."""
+        """Every message one statement sends, and which of them answers with its value.
+
+        The outermost call is the one whose value the statement binds — the others are
+        the arguments it was given — so the reply belongs to that one. An object does
+        not answer itself, so where the outermost is a call on `self` the reply falls
+        back to the outermost that is not.
+        """
+        calls = [call for call in _ordered(node) if drawn(call)]
+        answering = next(
+            (call for call in reversed(calls) if (drawn(call) or ("", ""))[0] != role),
+            None,
+        )
         out: list[Line] = []
-        for call in _ordered(node):
-            found = emit(call, reply if not out else "")
-            out += found
+        for call in calls:
+            out += emit(call, reply if call is answering else "")
         return out
 
     def statement(node: ast.stmt) -> list[Line]:
@@ -467,15 +587,14 @@ def read(
                 out += tested(node.test)
                 taken = walk(node.body)
                 if _stops(node.body):
+                    # The branch leaves the method, so the rest of it is the other way
+                    # out. Both go inside the fork even when one of them says nothing:
+                    # a message drawn outside it would claim to happen either way, and
+                    # what stands behind a guard clause is exactly what does not.
                     rest = walk([*node.orelse, *statements[index + 1 :]])
-                    if speaks(taken):
-                        operands = ((_guard(node.test), taken), ("else", rest))
+                    operands = ((_guard(node.test), taken), ("else", rest))
+                    if any(speaks(inner) for _, inner in operands):
                         out.append(Fragment("alt", operands))
-                    else:
-                        # A branch nobody hears from is a guard clause, not a fork:
-                        # there is no interaction on it to draw, so the drawing carries
-                        # on the way that has one.
-                        out.extend(rest)
                     return tuple(out)
                 operands = ((_guard(node.test), taken),)
                 if node.orelse:
@@ -491,11 +610,22 @@ def read(
                 if speaks(inner):
                     out.append(Fragment("loop", ((_argument(node.iter), inner),)))
                 continue
+            if isinstance(node, ast.While):
+                inner = walk(node.body)
+                if speaks(inner):
+                    out.append(Fragment("loop", ((_guard(node.test), inner),)))
+                continue
             if isinstance(node, ast.Try):
                 out += walk(node.body)
+                # A handler is the path an exception takes, which is UML's `break`: the
+                # rest of the fragment it stands in is abandoned. Drawn flat it would be
+                # a message that arrives on every pass.
                 for handler in node.handlers:
-                    out += walk(handler.body)
+                    caught = walk(handler.body)
+                    if speaks(caught):
+                        out.append(Fragment("break", ((_caught(handler), caught),)))
                 continue
+            _refuse(node, drawn)
             out += statement(node)
         return tuple(out)
 
@@ -527,7 +657,7 @@ def callers_of(method: str, inside: str) -> str:
     found = {
         _dotted(path)
         for path in _sources()
-        for node in _ordered(_parsed(path))
+        for node in _ordered(reading.parsed(path))
         for named in (node.func, *node.args)
         if isinstance(named, ast.Attribute)
         and named.attr == method
@@ -545,7 +675,7 @@ def callers_of(method: str, inside: str) -> str:
 
 def _signature(dotted: str, kind: str, method: str) -> str:
     """A call as its own parameters name it, which is what the caller has to pass."""
-    body = _method(_klass(_parsed(_module(dotted)), kind), method)
+    body = _method(_klass(reading.parsed(_module(dotted)), kind), method)
     taken = [one.arg for one in (*body.args.args[1:], *body.args.kwonlyargs)]
     return f"{method}({', '.join(taken)})"
 
@@ -602,7 +732,7 @@ def tool_built_in(dotted: str) -> tuple[str, str]:
     Both off the one `Tool(...)` the module builds: the drawing's own claim — that
     asking for `search_documents` runs `DocumentSearch` — is what the source says here.
     """
-    tree = _parsed(_module(dotted))
+    tree = reading.parsed(_module(dotted))
     built = next(
         node
         for node in ast.walk(tree)
@@ -659,16 +789,16 @@ def graph_steps() -> dict[str, str]:
     passed under and by nothing else — a slot is told apart by its role here, where a
     port elsewhere is told apart by its type.
     """
-    tree = _parsed(_module(ASSEMBLY))
+    tree = reading.parsed(_module(ASSEMBLY))
     built = next(
         node
-        for node in ast.walk(components._function(tree, "assemble"))
+        for node in ast.walk(reading.function(tree, "assemble"))
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Name)
         and node.func.id == GRAPH
     )
     named = {
-        keyword.arg: components._called(keyword.value)
+        keyword.arg: reading.called(keyword.value)
         for keyword in built.keywords
         if keyword.arg
     }
@@ -686,7 +816,41 @@ class Routing:
     routes: tuple[tuple[str, str], ...]
 
     def after(self, node: str) -> str:
-        return next((there for here, there in self.edges if here == node), "")
+        """Where one node leads, of which there is exactly one.
+
+        Raises:
+            SystemExit: A node has two unconditional edges out of it. Which one the
+                drawing followed would then be arbitrary, and the other would be a path
+                the page denies exists.
+        """
+        out = [there for here, there in self.edges if here == node]
+        if len(out) > 1:
+            raise SystemExit(
+                f"the graph leads out of {node} to {' and '.join(out)}: a sequence can "
+                "follow one, so give the reader a fragment for the choice"
+            )
+        return out[0] if out else ""
+
+    @property
+    def leaves(self) -> str:
+        """The route that ends the turn — the one whose target is no node of the graph.
+
+        Raises:
+            SystemExit: The routes end the turn twice, or never. Either way the
+                condition the loop runs under is not a thing to be read off them.
+        """
+        out = [route for route, target in self.routes if target not in self.nodes]
+        if len(out) != 1:
+            raise SystemExit(
+                f"the graph's routes leave it {len(out)} ways ({', '.join(out)}): the "
+                "loop's condition is the one route that does not come back"
+            )
+        return out[0]
+
+    @property
+    def keeps_going(self) -> str:
+        """What the graph says a round is: every route but the one that leaves."""
+        return f'router(state) != "{self.leaves}"'
 
     def chain(self, start: str) -> tuple[str, ...]:
         """The nodes one route leads through before the decision is taken again."""
@@ -712,7 +876,7 @@ def _borrowed(imported: dict[str, str], name: str) -> tuple[ast.Module, ...]:
     module = imported.get(name, "")
     if not module.startswith("cora."):
         return ()
-    return (_parsed(_module(module)),)
+    return (reading.parsed(_module(module)),)
 
 
 def routing() -> Routing:
@@ -721,8 +885,8 @@ def routing() -> Routing:
     Nodes and edges are the runner's own statements — what it says the turn's shape is —
     so the drawing takes the shape from there rather than from any run of it.
     """
-    tree = _parsed(_module(RUNNER))
-    imported = components._imported(tree)
+    tree = reading.parsed(_module(RUNNER))
+    imported = reading.imported(tree)
     body = _method(_klass(tree, "LangGraphRunner"), "_graph")
     nodes: dict[str, str] = {}
     edges: list[tuple[str, str]] = []
@@ -765,9 +929,6 @@ def _role_of(node: ast.expr) -> str:
 
 
 GRAPH_PORT = "cora.ports.graph"
-KEEPS_GOING = 'router(state) != "done"'
-"""What the graph says a round is: every route but one leads back to the model, and the
-one that does not is the answer. The condition is the edge map read as a sentence."""
 
 
 def _step(plan: Routing, node: str, met: Reading, role: str) -> list[Line]:
@@ -778,7 +939,7 @@ def _step(plan: Routing, node: str, met: Reading, role: str) -> list[Line]:
     lines: list[Line] = [Call(role, slot, f"{slot}(state)")]
     where = engine_classes().get(kind)
     if where:
-        lines.extend(read(where, kind, "__call__", slot, met, 1))
+        lines.extend(read(where, kind, "__call__", slot, met))
     lines.append(Reply(slot, role, _returned(GRAPH_PORT, "Step", "__call__")))
     return lines
 
@@ -823,7 +984,7 @@ def round_taken() -> Sequence:
         lines=(
             Call("agent", role, _signature(GRAPH_PORT, "GraphRunner", "run")),
             *opening,
-            Fragment("loop", ((KEEPS_GOING, tuple(decided)),)),
+            Fragment("loop", ((plan.keeps_going, tuple(decided)),)),
             Reply(role, "agent", answered),
         ),
     )
