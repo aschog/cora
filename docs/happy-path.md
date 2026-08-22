@@ -1,109 +1,61 @@
-# One session, drawn from the test
+# One session, drawn from the source
 
-The pictures on this page are one test: `test_a_whole_session_uploads_asks_calculates_and_remembers`
-in `tests/acceptance/test_llm_acceptance.py`. It runs the shipped composition root against
-a real model, so every arrow below is a call that really happens on the `llm` tier —
-nothing here is drawn from a library's documentation or from how the code once worked.
+Four drawings, each read out of the code it is about by `scripts/gen_session_maps.py`:
+a message is a call the method makes, in the order it makes them, and a branch or a loop
+in the source is a fragment on the page. `tests/guards/test_session_maps.py` fails when a
+drawing is behind what it was read from, or when it names a method nobody answers to.
 
-Running it yourself is in [watch a turn happen](how-to/watch-a-turn.md).
+That the code really runs this way is a test rather than a picture:
+`test_a_whole_session_uploads_asks_calculates_and_remembers` in
+`tests/acceptance/test_llm_acceptance.py` drives the shipped composition root against a
+real model on the `llm` tier — a document in, an answer from it, a plugin's calculation,
+and a fact the user asked to be kept. Running it yourself is in
+[watch a turn happen](how-to/watch-a-turn.md).
 
-The session has four acts. A document goes in, a question is answered from it, a
-calculation goes to a plugin's tool, and a fact the user asks to be kept is kept.
+## A document goes in
 
-## Act 1 — a document goes in
+![A UML sequence diagram of an upload: cora.frontends calls add_file on the knowledge
+base, which asks the retriever whether it holds these bytes already, and then either
+repairs the text of an upload indexed before any text was kept, or ingests, embeds, keeps
+and indexes it.](assets/upload-map.svg)
 
-```mermaid
-sequenceDiagram
-  autonumber
-  actor You
-  participant UI
-  participant KnowledgeBase
-  participant ingest
-  participant Embedder
-  participant Chroma
-  participant Documents
+- The hash comes first, so the same bytes under a second filename cost nothing but the
+  lookup — and the branch it opens is the repair, not a shortcut: an upload indexed
+  before its text was kept is citable and unopenable until someone uploads it again.
+- `ingest` is where a file is rejected — wrong type, over 10 MB, empty after cleaning —
+  and where text becomes overlapping chunks. It raises before either write, so a
+  document that cannot be read leaves nothing behind.
 
-  You->>UI: pick protein.md in the uploader
-  UI->>KnowledgeBase: add_file(data, "protein.md")
-  KnowledgeBase->>Chroma: contains(sha256 of the bytes)
-  Chroma-->>KnowledgeBase: False
-  KnowledgeBase->>ingest: ingest(data, "protein.md", LOADERS)
-  ingest-->>KnowledgeBase: the cleaned text and one Chunk
-  KnowledgeBase->>Embedder: embed([chunk.text])
-  Embedder-->>KnowledgeBase: one vector
-  KnowledgeBase->>Documents: keep(file_hash, the cleaned text)
-  KnowledgeBase->>Chroma: add(chunks, vectors, file_hash)
-  KnowledgeBase-->>UI: 1
-  UI->>You: "Added protein.md — 1 chunk."
-  UI->>KnowledgeBase: list_sources()
-  KnowledgeBase-->>UI: ["protein.md"]
-```
+## A turn, as a frontend asks for one
 
-The hash comes first, so the same bytes under a second filename cost nothing but the
-lookup. `ingest` is where a file is rejected — wrong type, over 10 MB, empty after
-cleaning — and where text becomes overlapping chunks.
+![A UML sequence diagram of a turn: a frontend calls answer on the agent, the agent runs
+the thread on the graph runner, reports each new step to the caller as the states arrive,
+asks whether the turn stopped to ask, and records the turn before handing back a
+ChatResult.](assets/turn-map.svg)
 
-## Acts 2 to 4 — a turn
+- Only the question is seeded. The thread carries everything said before it, so a tenth
+  turn is opened with its question alone.
+- The steps are reported as the states arrive, which is what lets a page show the work in
+  progress rather than after it.
+- Recording is bookkeeping beside the answer: a store that went away loses the record,
+  never the reply.
 
-Every one of the three questions takes the same shape. The engine supplies the steps and
-the one decision; the adapter supplies the graph that walks them.
+## A round, as the graph walks it
 
-```mermaid
-sequenceDiagram
-  autonumber
-  actor You
-  participant UI
-  participant Agent
-  participant LangGraphRunner
-  participant PrepareStep
-  participant ModelStep
-  participant Router
-  participant ToolStep
-  participant OpenRouter
-  participant Memory
+![A UML sequence diagram of one turn inside the graph: the runner takes the prepare step,
+then loops over the model step and the router, and on the router's answer either runs the
+round's tools, stops to put a decision to the reader before running them, or leaves the
+loop with the answer.](assets/round-map.svg)
 
-  You->>UI: a question
-  UI->>Agent: answer(question, thread_id, on_step, on_text)
-  Agent->>LangGraphRunner: run({"question": …}, thread_id, on_text)
-  LangGraphRunner-->>Agent: the thread as the turn found it
-  LangGraphRunner->>PrepareStep: state
-  PrepareStep->>PrepareStep: every plugin rule over the question
-  PrepareStep->>Memory: recall()
-  Memory-->>PrepareStep: the facts kept about you
-  PrepareStep-->>LangGraphRunner: the question, and this turn's brief
+- Read off the nodes and edges `LangGraphRunner` declares, so the loop and the three
+  routes are the graph's own statement of what a turn is. The engine supplies the steps
+  and the one decision; the adapter supplies the graph that walks them.
+- The brief is written once, at the top of the turn, which is why the loop reads the
+  model and the router only.
+- Whether the documents are read is the model's decision, asked for in the brief and
+  enforced nowhere.
 
-  loop until the router says done
-    LangGraphRunner->>ModelStep: state, bound to this turn's on_text
-    ModelStep->>OpenRouter: complete(brief + transcript, tools, on_text)
-    loop as the reply is written
-      OpenRouter-->>UI: a piece of text, through on_text
-    end
-    OpenRouter-->>ModelStep: the whole reply: text, or tool calls
-    ModelStep-->>LangGraphRunner: assistant message + ModelDecision
-    Note over Agent,UI: each new trace step reaches on_step,<br/>so the page shows the work as it happens
-    LangGraphRunner->>Router: state
-    alt the reply asks for tools
-      Router-->>LangGraphRunner: "tools"
-      LangGraphRunner->>ToolStep: state
-      ToolStep->>ToolStep: ToolRuntime checks the arguments and runs the tool
-      ToolStep-->>LangGraphRunner: tool message + ToolUse
-    else the reply answers
-      Router-->>LangGraphRunner: "done"
-    end
-  end
-
-  LangGraphRunner-->>Agent: the finished state
-  Agent-->>UI: ChatResult(answer, citations, trace)
-  UI->>You: the answer with each [n] a button, and "How I got there"
-  UI->>Memory: recall()
-  Memory-->>UI: the panel's facts, this turn's included
-```
-
-The brief is written once per turn and the thread carries everything said before it, so a
-tenth turn is seeded with its question alone. The last two arrows are why the sidebar is
-drawn after the turn: a fact kept during the turn belongs in the panel that same run.
-
-## The three tools the session uses
+## The tool that reaches the documents
 
 `ToolStep` never knows which tool it ran. It asks `ToolRuntime` for the name the model
 gave, and hands back whatever came out — numbered `[n]` first if the result can cite
@@ -117,40 +69,27 @@ itself.
 
 Only the first of the three reaches the documents:
 
-```mermaid
-sequenceDiagram
-  autonumber
-  participant ToolStep
-  participant search_documents
-  participant KnowledgeBase
-  participant Embedder
-  participant Chroma
+![A UML sequence diagram of a document search: the tool runtime runs the tool, which asks
+its context source to search, and the knowledge base embeds the question with the same
+embedder the chunks went through and reads the nearest chunks out of the
+index.](assets/search-map.svg)
 
-  ToolStep->>search_documents: run(query="protein per kg of bodyweight")
-  search_documents->>KnowledgeBase: search(query, top_k)
-  KnowledgeBase->>Embedder: embed([query])
-  Embedder-->>KnowledgeBase: the query's vector
-  KnowledgeBase->>Chroma: query(vector, k)
-  Chroma-->>KnowledgeBase: the nearest chunks, with their origin
-  KnowledgeBase-->>search_documents: hits
-  search_documents-->>ToolStep: CitableHits
-  Note over ToolStep,search_documents: ToolStep numbers them [n] against the whole<br/>conversation's registry, then sends the text on as<br/>a tool message labelled untrusted document data
-```
+- `context_source` is the knowledge base itself: there is one way to search, and nothing
+  sits between the tool and the index the uploads were written to. Asking the question
+  several ways is the agent's job, and it shows as another pass through this drawing —
+  one search, one trace step.
+- `ToolStep` numbers the passages `[n]` against the whole conversation's registry, then
+  sends the text on as a tool message labelled untrusted document data.
 
-`KnowledgeBase` stands here because it *is* the `ContextSource` the tool holds: there is
-one way to search, and nothing sits between the tool and the index the uploads were
-written to. Asking the question several ways is the agent's job, and it shows as another
-pass through this same diagram — one search, one trace step.
+## What the drawings do not show
 
-## What the session does not show
+**Which way a decision goes.** A fragment says the code can go two ways, never which way
+it went. For the one that matters — whether a turn reads the documents at all — read
+`test_a_real_model_answers_from_the_documents_but_greets_without_them` in the acceptance
+file: a plain domain question and a greeting through one agent, where only the first comes
+back with sources.
 
-**A turn that answers without searching.** Every turn of this session calls a tool, and
-nothing searches on the model's behalf: whether the documents are read is the model's
-decision, asked for in the brief and enforced nowhere. To see that decision made both
-ways, read `test_a_real_model_answers_from_the_documents_but_greets_without_them` in the
-same file — a plain domain question and a greeting through one agent, where only the first
-comes back with sources.
-
-**Nothing fails.** Every friendly failure — a provider that is down, a tool that raises, a
-round budget spent, a store that cannot be reached — is covered at the unit and
-integration tiers, where a fake can be made to break on demand.
+**Failure.** Every friendly failure — a provider that is down, a tool that raises, a round
+budget spent, a store that cannot be reached — is covered at the unit and integration
+tiers, where a fake can be made to break on demand. A raise sends no message, so none of
+it is drawn here.
