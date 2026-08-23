@@ -41,13 +41,8 @@ network. Sorted by what you came for:
 - **How-to** — [write a plugin](docs/how-to/write-a-plugin.md) ·
   [run the React shell](docs/how-to/run-the-react-shell.md) ·
   [watch a turn happen](docs/how-to/watch-a-turn.md)
-- **Reference** — [configuration](docs/reference/configuration.md) ·
-  [the ports](docs/reference/ports.md) · [the components](docs/reference/components.md) ·
-  [a turn, step by step](docs/reference/a-turn.md) ·
-  [the packages](docs/reference/packages.md) ·
-  [the HTTP surface](docs/reference/http-api.md) · and a page per module of
-  `cora.domain`, `cora.ports`, `cora.engine` and `cora.app`, generated from the source by
-  `scripts/gen_reference.py`
+- **Reference** — a page per module of `cora.domain`, `cora.ports`, `cora.engine` and
+  `cora.app`, generated from the source by `scripts/gen_reference.py`
 - **Process** — [the TDD workflow](docs/workflow.md) this was built with, and the
   [assignment brief](docs/sprints/4/assignment.md) it was built for; sprint 3's brief,
   spec and test findings are in `docs/sprints/3/`
@@ -67,9 +62,8 @@ feature-by-feature, story by story.
 ## The packages
 
 The app is the repository root; a `uv` workspace sharing the `cora` namespace. You install
-`cora` to use it and add a package to extend it — a plugin or a frontend. What each one
-ships and where it lives: [`docs/reference/packages.md`](docs/reference/packages.md). Where
-the boundary is drawn: [`docs/big-picture.md`](docs/big-picture.md#the-map).
+`cora` to use it and add a package to extend it — a plugin or a frontend. Where the
+boundary is drawn: [`docs/big-picture.md`](docs/big-picture.md#the-map).
 
 ## Gates
 

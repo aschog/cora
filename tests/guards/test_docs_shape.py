@@ -14,12 +14,8 @@ from site_config import config, nav_pages
 
 DOCS = workspace.ROOT / "docs"
 EXPLANATION = ("big-picture.md", "happy-path.md")
-CONFIGURATION = DOCS / "reference" / "configuration.md"
 NOT_A_PAGE = ("sprints", "api")
 
-# A setting is a literal name in the source, and every one of them is a name a
-# deployment can set: `OPENROUTER_API_KEY` is read the same way `CORA_PORT` is.
-SETTING = re.compile(r'"((?:CORA|OPENROUTER)_[A-Z0-9_]+)"')
 # An instruction tells the reader to run something. Explanation names files and
 # settings; it does not hand out commands, and a command is what these read like. A
 # command in these pages is backticked or fenced, so the backtick is part of the
@@ -37,22 +33,6 @@ def _sources() -> list[pathlib.Path]:
         for path in sorted(root.rglob("*.py"))
         if "tests" not in path.parts and ".venv" not in path.parts
     ]
-
-
-def settings() -> set[str]:
-    return {name for path in _sources() for name in SETTING.findall(path.read_text())}
-
-
-def test_the_source_has_settings_to_find() -> None:
-    assert len(settings()) > 10, "the extractor found almost none — check the regex"
-
-
-def test_the_configuration_reference_names_every_setting_the_app_reads() -> None:
-    """A setting the source reads and the reference does not name is a setting nobody
-    outside the code knows about."""
-    page = CONFIGURATION.read_text()
-    missing = sorted(name for name in settings() if name not in page)
-    assert missing == [], "settings read from the environment but not documented"
 
 
 def test_an_explanation_page_gives_no_instructions() -> None:

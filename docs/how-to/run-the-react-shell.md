@@ -8,7 +8,5 @@ Vite serves the page on `5173`, proxying `/api` to the first. The server reads o
 `make ui` is the one that shows a source change as you save it — `make ui-build` is the
 same build on its own.
 
-The settings the shell reads — where the build is, which host and port to serve on — are
-in [the configuration reference](../reference/configuration.md); what its routes answer
-is in [the HTTP surface](../reference/http-api.md). A setting the shell cannot use is
-refused before anything is built, as one line on stderr and a non-zero exit.
+A setting the shell cannot use is refused before anything is built, as one line on
+stderr and a non-zero exit.

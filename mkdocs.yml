@@ -49,12 +49,6 @@ nav:
       - Run the React shell: how-to/run-the-react-shell.md
       - Watch a turn happen: how-to/watch-a-turn.md
   - Reference:
-      - Configuration: reference/configuration.md
-      - The ports: reference/ports.md
-      - The components: reference/components.md
-      - A turn, step by step: reference/a-turn.md
-      - The packages: reference/packages.md
-      - The HTTP surface: reference/http-api.md
       - Modules: api/
 
 # The single `api/` entry above resolves to every module. gen-files writes a page per

@@ -21,8 +21,7 @@ make run
 
 The lines go to `CORA_LOG_PATH` — `.cora/logs/cora.log` unless you moved it. The engine,
 the plugins and the frontends do not notice the change; the wrapper stands around a port
-and nothing reads it back. Both settings are in
-[the configuration reference](../reference/configuration.md).
+and nothing reads it back.
 
 ## Run the session the drawings are about
 
