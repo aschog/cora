@@ -39,10 +39,7 @@ network. Sorted by what you came for:
   ports · [what happens when you ask](docs/happy-path.md), drawn out of the code that
   runs it
 - **How-to** — [write a plugin](docs/how-to/write-a-plugin.md) ·
-  [add a file format](docs/how-to/add-a-file-format.md) ·
-  [swap the technology behind a port](docs/how-to/swap-a-port.md) ·
   [run the React shell](docs/how-to/run-the-react-shell.md) ·
-  [run the tests](docs/how-to/run-the-tests.md) ·
   [watch a turn happen](docs/how-to/watch-a-turn.md)
 - **Reference** — [configuration](docs/reference/configuration.md) ·
   [the ports](docs/reference/ports.md) · [the components](docs/reference/components.md) ·
@@ -83,6 +80,4 @@ uv run ruff format . && uv run ruff check . && uv run ty check
 ```
 
 The hook runs those four on commit and CI runs them on every push; commit messages
-follow [Conventional Commits](https://www.conventionalcommits.org). Every tier, what it
-costs, which need a browser and which CI adds:
-[`docs/how-to/run-the-tests.md`](docs/how-to/run-the-tests.md).
+follow [Conventional Commits](https://www.conventionalcommits.org).

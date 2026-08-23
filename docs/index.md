@@ -25,12 +25,8 @@ One task each, for when you are already working.
 
 - [Write a plugin](how-to/write-a-plugin.md) — a persona, tools and rules, as a package
   to install
-- [Add a file format](how-to/add-a-file-format.md) — a loader and a registry entry
-- [Swap the technology behind a port](how-to/swap-a-port.md) — a class that fits the
-  Protocol, passed to `assemble`
 - [Run the React shell](how-to/run-the-react-shell.md) — the same app over HTTP, with a
   React page
-- [Run the tests](how-to/run-the-tests.md) — five tiers, and which of them costs money
 - [Watch a turn happen](how-to/watch-a-turn.md) — the trace, the port log, and the live
   session test
 

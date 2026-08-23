@@ -8,10 +8,6 @@ Vite serves the page on `5173`, proxying `/api` to the first. The server reads o
 `make ui` is the one that shows a source change as you save it — `make ui-build` is the
 same build on its own.
 
-In that shell the answer appears as cora writes it, rather than all at once when the turn
-ends; a `[1]` becomes clickable once the turn lands and its citations are resolved. The
-Streamlit page waits for the finished turn, as it always did.
-
 The settings the shell reads — where the build is, which host and port to serve on — are
 in [the configuration reference](../reference/configuration.md); what its routes answer
 is in [the HTTP surface](../reference/http-api.md). A setting the shell cannot use is
