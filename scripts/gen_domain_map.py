@@ -173,8 +173,19 @@ def _referenced(kind: str, drawn: frozenset[str]) -> tuple[str, ...]:
     )
 
 
+# The order the drawing states its relationships in, strongest tie first. pyreverse
+# reports them in the order it read the modules, and that order is the filesystem's:
+# `os.walk` hands over one order on APFS and another on ext4, so a drawing that took its
+# own order from the reading would carry a different stamp on every machine.
+KINDS = ("specialization", "composition", "aggregation", "association")
+
+
+def _written(edge: Edge) -> tuple[int, str, str, str]:
+    return (KINDS.index(edge.kind), edge.owner, edge.other, edge.role)
+
+
 def edges() -> tuple[Edge, ...]:
-    """Every relationship the source declares, each drawn once.
+    """Every relationship the source declares, each drawn once, in a stated order.
 
     pyreverse reports the ones it can infer — a field annotated with a class it also
     drew. A field whose type is a container of one is an association too, and the
@@ -183,11 +194,8 @@ def edges() -> tuple[Edge, ...]:
     drawing = diagram()
     drawn = frozenset(entity.title for entity in drawing.classes())
     found: list[Edge] = []
-    for child, parent in sorted(
-        (rel.from_object.title, rel.to_object.title)
-        for rel in drawing.relationships.get("specialization", ())
-    ):
-        found.append(Edge("specialization", child, parent))
+    for rel in drawing.relationships.get("specialization", ()):
+        found.append(Edge("specialization", rel.from_object.title, rel.to_object.title))
     inferred = set()
     for kind in ("composition", "aggregation", "association"):
         for rel in drawing.relationships.get(kind, ()):
@@ -210,7 +218,7 @@ def edges() -> tuple[Edge, ...]:
                         _multiplicity(annotation),
                     )
                 )
-    return tuple(dict.fromkeys(found))
+    return tuple(sorted(dict.fromkeys(found), key=_written))
 
 
 # UML's own marks, kept out of the strings above so the drawing owns its notation.

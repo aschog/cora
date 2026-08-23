@@ -8,6 +8,10 @@ rendering needs graphviz, the checks do not.
 
 import ast
 import xml.etree.ElementTree as ET
+from collections.abc import Sequence
+
+import pytest
+from astroid import modutils
 
 import gen_domain_map as generator
 import workspace
@@ -111,3 +115,24 @@ def test_every_class_stands_in_exactly_one_column() -> None:
 
     assert sorted(columns) == sorted(set(columns)), "a class stands in two columns"
     assert set(columns) == drawn_classes()
+
+
+def test_the_drawing_does_not_depend_on_the_order_the_files_arrive_in(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """pyreverse walks the package with `os.walk`, so the modules arrive in whatever
+    order the filesystem hands them over in — one on APFS, another on ext4. Anything
+    the drawing takes from that order is a stamp that differs by machine, so a file
+    drawn here fails the check above on the runner.
+    """
+    as_found = generator.dot()
+    read = modutils.get_module_files
+
+    def backwards(
+        directory: str, blacklist: Sequence[str], list_all: bool = False
+    ) -> list[str]:
+        return sorted(read(directory, blacklist, list_all), reverse=True)
+
+    monkeypatch.setattr(modutils, "get_module_files", backwards)
+
+    assert generator.dot() == as_found

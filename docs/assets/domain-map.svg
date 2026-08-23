@@ -112,7 +112,7 @@
 <polygon  points="56.88,-41.5 56.88,-119.5 141.12,-119.5 141.12,-41.5 56.88,-41.5" class="frame"/>
 </g>
 <!-- CitableHits&#45;&gt;Nothing -->
-<g id="edge6" class="edge uml&#45;association">
+<g id="edge10" class="edge uml&#45;association">
 <title>CitableHits&#45;&gt;Nothing</title>
 <path   d="M99,-216.04C99,-216.04 99,-130.66 99,-130.66"/>
 <polygon   points="99,-120.66 103.5,-130.66 99,-124.45 99,-130.66 99,-130.66 99,-130.66 99,-124.45 94.5,-130.66 99,-120.66"/>
@@ -146,7 +146,7 @@
 <polygon  points="321.5,-210.25 321.5,-326.5 424.5,-326.5 424.5,-210.25 321.5,-210.25" class="frame"/>
 </g>
 <!-- Context&#45;&gt;Citation -->
-<g id="edge9" class="edge uml&#45;association">
+<g id="edge11" class="edge uml&#45;association">
 <title>Context&#45;&gt;Citation</title>
 <path   d="M255,-423.89C255,-370.07 255,-268 255,-268 255,-268 310.37,-268 310.37,-268"/>
 <polygon   points="320.37,-268 310.37,-272.5 316.59,-268 310.37,-268 310.37,-268 310.37,-268 316.59,-268 310.37,-263.5 320.37,-268"/>
@@ -176,7 +176,7 @@
 <polygon  points="329.62,-423.62 329.62,-488.88 418.38,-488.88 418.38,-423.62 329.62,-423.62" class="frame"/>
 </g>
 <!-- Turn&#45;&gt;ChatResult -->
-<g id="edge7" class="edge uml&#45;association">
+<g id="edge14" class="edge uml&#45;association">
 <title>Turn&#45;&gt;ChatResult</title>
 <path   d="M374,-611.83C374,-611.83 374,-499.97 374,-499.97"/>
 <polygon   points="374,-489.97 378.5,-499.97 374,-493.75 374,-499.97 374,-499.97 374,-499.97 374,-493.75 369.5,-499.97 374,-489.97"/>
@@ -184,7 +184,7 @@
 <text xml:space="preserve" text-anchor="middle" x="369.06" y="-499.62" font-family="Helvetica,sans-Serif" font-size="10.50">1</text>
 </g>
 <!-- ChatResult&#45;&gt;Citation -->
-<g id="edge10" class="edge uml&#45;association">
+<g id="edge8" class="edge uml&#45;association">
 <title>ChatResult&#45;&gt;Citation</title>
 <path   d="M374,-423.95C374,-423.95 374,-337.62 374,-337.62"/>
 <polygon   points="374,-327.62 378.5,-337.62 374,-331.4 374,-337.62 374,-337.62 374,-337.62 374,-331.4 369.5,-337.62 374,-327.62"/>
@@ -205,7 +205,7 @@
 <polygon  points="493,-223 493,-313.75 593,-313.75 593,-223 493,-223" class="frame"/>
 </g>
 <!-- ChatResult&#45;&gt;TraceStep -->
-<g id="edge11" class="edge uml&#45;association">
+<g id="edge9" class="edge uml&#45;association">
 <title>ChatResult&#45;&gt;TraceStep</title>
 <path   d="M418.35,-456C433.79,-456 447.33,-456 447.33,-456 447.33,-456 447.33,-284 447.33,-284 447.33,-284 481.99,-284 481.99,-284"/>
 <polygon   points="491.99,-284 481.99,-288.5 488.21,-284 481.99,-284 481.99,-284 481.99,-284 488.21,-284 481.99,-279.5 491.99,-284"/>
@@ -229,7 +229,7 @@
 <polygon  points="458.75,-391.75 458.75,-520.75 761.25,-520.75 761.25,-391.75 458.75,-391.75" class="accent"/>
 </g>
 <!-- AgentState&#45;&gt;Citation -->
-<g id="edge12" class="edge uml&#45;association">
+<g id="edge6" class="edge uml&#45;association">
 <title>AgentState&#45;&gt;Citation</title>
 <path   d="M477.81,-392.11C477.81,-356.78 477.81,-320 477.81,-320 477.81,-320 435.7,-320 435.7,-320"/>
 <polygon   points="425.7,-320 435.7,-315.5 429.49,-320 435.7,-320 435.7,-320 435.7,-320 429.49,-320 435.7,-324.5 425.7,-320"/>
@@ -237,7 +237,7 @@
 <text xml:space="preserve" text-anchor="middle" x="439.7" y="-320.59" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
 </g>
 <!-- AgentState&#45;&gt;TraceStep -->
-<g id="edge13" class="edge uml&#45;association">
+<g id="edge7" class="edge uml&#45;association">
 <title>AgentState&#45;&gt;TraceStep</title>
 <path   d="M543,-391.86C543,-391.86 543,-324.95 543,-324.95"/>
 <polygon   points="543,-314.95 547.5,-324.95 543,-318.73 543,-324.95 543,-324.95 543,-324.95 543,-318.73 538.5,-324.95 543,-314.95"/>
@@ -370,7 +370,7 @@
 <polygon  points="1089.25,-229.38 1089.25,-307.38 1184.75,-307.38 1184.75,-229.38 1089.25,-229.38" class="frame"/>
 </g>
 <!-- Pending&#45;&gt;Decision -->
-<g id="edge8" class="edge uml&#45;association">
+<g id="edge13" class="edge uml&#45;association">
 <title>Pending&#45;&gt;Decision</title>
 <path   d="M1140,-423.95C1140,-423.95 1140,-318.28 1140,-318.28"/>
 <polygon   points="1140,-308.28 1144.5,-318.28 1140,-312.06 1140,-318.28 1140,-318.28 1140,-318.28 1140,-312.06 1135.5,-318.28 1140,-308.28"/>
@@ -390,7 +390,7 @@
 <polygon  points="1099.38,-41.5 1099.38,-119.5 1174.62,-119.5 1174.62,-41.5 1099.38,-41.5" class="frame"/>
 </g>
 <!-- Decision&#45;&gt;Option -->
-<g id="edge14" class="edge uml&#45;association">
+<g id="edge12" class="edge uml&#45;association">
 <title>Decision&#45;&gt;Option</title>
 <path   d="M1137,-229.45C1137,-229.45 1137,-130.6 1137,-130.6"/>
 <polygon   points="1137,-120.6 1141.5,-130.6 1137,-124.38 1137,-130.6 1137,-130.6 1137,-130.6 1137,-124.38 1132.5,-130.6 1137,-120.6"/>
@@ -398,5 +398,5 @@
 <text xml:space="preserve" text-anchor="middle" x="1132.06" y="-130.24" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
 </g>
 </g>
-<!-- drawn by scripts/gen_domain_map.py from b9342378abd94ede -->
+<!-- drawn by scripts/gen_domain_map.py from 0d8bbd0526b63bb0 -->
 </svg>
