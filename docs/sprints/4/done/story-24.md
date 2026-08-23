@@ -140,5 +140,5 @@ real cascade, **(llm)** live model.
 
 #### Close
 
-- [ ] **(llm)** a real model, handed a fact recalled at three conflicting values, asks
+- [x] **(llm)** a real model, handed a fact recalled at three conflicting values, asks
       which one to use instead of picking — the honest proof that the pause is its decision
