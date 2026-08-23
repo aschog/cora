@@ -1,6 +1,5 @@
 import json
 import pathlib
-import re
 
 import pytest
 
@@ -70,17 +69,6 @@ def test_a_module_inside_a_public_subpackage_gets_one(src: pathlib.Path) -> None
 
 
 @pytest.mark.integration
-def test_the_reference_landing_page_lists_every_module(built: pathlib.Path) -> None:
-    listed = (built / "api" / "index.html").read_text()
-    missing = [
-        ".".join(parts)
-        for parts, _ in gen_reference.reference_pages(workspace.ROOT / "src")
-        if f'href="{"/".join(parts)}/"' not in listed
-    ]
-    assert missing == []
-
-
-@pytest.mark.integration
 def test_a_module_page_is_titled_by_its_dotted_name(built: pathlib.Path) -> None:
     page = built / "api" / "cora" / "domain" / "errors" / "index.html"
     assert "<title>cora.domain.errors - cora</title>" in page.read_text()
@@ -97,15 +85,3 @@ def test_search_names_every_module_by_its_dotted_name(built: pathlib.Path) -> No
         if ".".join(parts) not in titled
     ]
     assert missing == []
-
-
-@pytest.mark.integration
-def test_the_landing_page_and_the_nav_agree_on_one_order(built: pathlib.Path) -> None:
-    page = (built / "api" / "index.html").read_text()
-    split = page.index("md-content")
-    sidebar, article = page[:split], page[split:]
-    # The whole path: capturing only the segment after `cora/` collapsed both sides to
-    # four package names, so reversing the per-module sort left this green.
-    navigated = list(dict.fromkeys(re.findall(r'href="cora/([\w/]+)/', sidebar)))
-    listed = list(dict.fromkeys(re.findall(r'href="cora/([\w/]+)/', article)))
-    assert listed == navigated != []

@@ -3,10 +3,9 @@
 The site is sorted the way Diátaxis sorts documentation: the pages under Understand
 explain, the pages under How-to instruct, and the pages under Reference state facts. The
 guards here hold the two boundaries that go wrong on their own — an instruction written
-into an explanation, and a setting that exists in the source and nowhere on the site.
+into an explanation, and a written page in no section at all.
 """
 
-import pathlib
 import re
 
 import workspace
@@ -23,16 +22,6 @@ NOT_A_PAGE = ("sprints", "api")
 INSTRUCTION = re.compile(
     r"(`make [a-z]|`uv run|```(?:sh|bash)|\bexport |[A-Z][A-Z0-9_]{3,}=)"
 )
-
-
-def _sources() -> list[pathlib.Path]:
-    roots = [workspace.ROOT / "src", *(member for member in workspace.members())]
-    return [
-        path
-        for root in roots
-        for path in sorted(root.rglob("*.py"))
-        if "tests" not in path.parts and ".venv" not in path.parts
-    ]
 
 
 def test_an_explanation_page_gives_no_instructions() -> None:

@@ -50,11 +50,11 @@ nav:
       - Watch a turn happen: how-to/watch-a-turn.md
   - Reference: api/
 
-# The single `api/` entry above resolves to every module. gen-files writes a page per
-# module plus the api/index.md that lists them; literate-nav is what expands a directory
-# entry into pages at all, and it writes no nav file — with none to read it infers the
-# section from the generated files in path order, which is the order the landing page is
-# written in. So a module added later needs no edit here.
+# The single `api/` entry above resolves to every module. gen-files writes one page per
+# module and no index; literate-nav is what expands a directory entry into pages at all,
+# and it writes no nav file — with none to read it infers the section from the generated
+# files in path order, which is why `gen_reference.py` sorts them. So a module added
+# later needs no edit here.
 plugins:
   - search
   - gen-files:

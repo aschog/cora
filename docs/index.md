@@ -34,7 +34,8 @@ One task each, for when you are already working.
 
 The facts, as the source states them.
 
-- [`cora.domain`, `cora.ports`, `cora.engine` and `cora.app`](api/index.md) — generated
-  from the source, one page per module. These four are what anything outside the app
-  imports; `cora.adapters` is not here, because every class in it implements a port and
-  its pages would repeat `cora.ports`.
+- [`cora.domain`](api/cora/domain/index.md), [`cora.ports`](api/cora/ports/index.md),
+  [`cora.engine`](api/cora/engine/index.md) and [`cora.app`](api/cora/app/index.md) —
+  generated from the source, one page per module. These four are what anything outside
+  the app imports; `cora.adapters` is not here, because every class in it implements a
+  port and its pages would repeat `cora.ports`.
