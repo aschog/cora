@@ -30,28 +30,16 @@ so put `CORA_PLUGINS` there too rather than exporting it.
 
 Upload a document (txt/md/pdf) in the sidebar, then ask about it — answers cite
 the passages they used. Click a `[1]` in an answer and that document opens beside the
-chat with the cited passage highlighted; closing it gives the chat its full width back.
-The steps appear as cora takes them and stay with the answer under *How I got there*:
-what it decided, which tool it ran with which arguments, and what came back. A question
+chat with the cited passage highlighted.
+The steps appear as cora takes them under *How I got there*:
+what it decided, which tool it ran and what came back. A question
 that needs no documents is answered without searching them.
-
-Ask a question the documents can't answer and cora says so rather than filling the gap
-from what the model happens to know: with nothing uploaded it asks you for documents,
-and with documents that don't cover the question it says that instead. Small talk is
-still answered as small talk.
 
 Ask it to remember something — "remember that I train on Tuesdays and Thursdays",
 "I'm vegetarian, keep that in mind" — and it keeps that between sessions: the
 sidebar's *What I remember* lists every fact it holds, forgets one at a time, or
 forgets everything. It only remembers when you ask it to, never on its own judgement,
-and each save appears in the trace like any other tool call. The conversation itself
-lives as long as the browser session; what is remembered outlives it.
-
-## 4. Try it on the samples
-
-Sample documents for exercising the upload paths (txt, md, and pdf) live in
-`samples/`. Upload each one in the sidebar, then ask questions against them —
-e.g. "How much protein should I eat?" or "What are common deadlift mistakes?".
+and each save appears in the trace.
 
 ## Where to go next
 
