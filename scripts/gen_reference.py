@@ -35,7 +35,7 @@ def write(src: Path) -> None:
             print(f"---\ntitle: {dotted}\n---\n", file=out)
             print(f"::: {dotted}", file=out)
     with mkdocs_gen_files.open("api/index.md", "w") as out:
-        print("# Reference\n", file=out)
+        print("# The modules\n", file=out)
         print("One page per module of the four packages that anything", file=out)
         print("outside the app imports.\n", file=out)
         print("\n".join(listed), file=out)
