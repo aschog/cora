@@ -1,7 +1,8 @@
 # CLAUDE.md
 
-RAG chatbot grounded in your uploaded documents, with swappable domain plugins, shipped as
-the `cora` package (src layout).
+cora is an agent you chat with, and plugins give it a scope. Shipped as the `cora`
+package (src layout). That sentence is `README.md`'s opening, and a guard keeps every
+copy of it in step — so edit it there.
 
 @docs/workflow.md
 

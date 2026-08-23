@@ -151,7 +151,7 @@ the mark the page keeps for an outcome the reader did not ask for — which reve
 own decision, deliberately and on the record. A document added keeps the accent, so success
 does not arrive in an error's clothes.
 
-### [24. cora asks when it cannot tell](story-24.md)
+### [24. cora asks when it cannot tell](done/story-24.md) ✔
 
 Where memory holds one fact at two or more values and nothing says which is current, cora
 stops rather than guessing: the model calls a tool that raises the question in its own
@@ -161,7 +161,7 @@ marks can only ask *may I run this?*, and choosing between three remembered valu
 them read and ranked, which is the model's work. The card is the React page's; the widget
 page declines on the reader's behalf.
 
-### [25. One site — the map, the walkthrough and the reference](done/story-25.md)
+### [25. One site — the map, the walkthrough and the reference](done/story-25.md) ✔
 
 Two Diátaxis quadrants under one nav. `big-picture.md` and `happy-path.md` become pages of
 a site with their five Mermaid diagrams rendering — vendored and pinned, so it reads with
@@ -174,7 +174,7 @@ The ruff rule arrives in story 26, not here: Griffe renders signatures and field
 code, so the site merges as something you can open and the prose lands on pages already in
 place. Built and read locally, gated by an integration-marked guard; nothing is published.
 
-### [26. A public name says what it promises](story-26.md)
+### [26. A public name says what it promises](done/story-26.md) ✔
 
 The prose the reference renders. This retires the standing no-docstring rule for the four
 rendered packages — 174 docstrings in Google's sections, carrying only what an annotation
@@ -186,6 +186,14 @@ deleting a line from `per-file-ignores`, so that list is the backlog and no gate
 docstring states what a *name* promises and never how a turn runs — the flows are
 `big-picture.md`'s and `happy-path.md`'s. Closes the prose half of the open feedback item on
 undocumented contracts.
+
+### [27. Every drawing is read out of the code it is about](done/story-27.md) ✔
+
+The six pictures in the docs become generated, guarded SVGs, and the client-side renderer
+goes with the last hand-drawn one. This retires story 25's decision that a sequence cannot
+be generated: that holds of the import graph, not of the source — a method body is an
+ordered list of calls, and the runner declares the turn's own loop and routes. Cora's own
+description becomes one paragraph in `README.md` with a guard holding its copies to it.
 
 ## Not built this sprint
 
@@ -216,9 +224,9 @@ for a task requirement:
 |---|---|
 | 1 · Agent purpose | *Purpose* above; restated in `README.md` |
 | 2 · Core functionality | Stories 1, 3 — plan, tools, retrieval as a decision, memory |
-| 3 · User interface | **Streamlit** — story 2 (trace), story 3 (memory panel), plus upload, sources and chat in `README.md` § *Run the app*. **React** — story 16 (the cited passage, opened), story 17 (the shell over cora's own API), story 18 (leaving a conversation), story 19 (the answer as it is written), story 20 (nothing shown as an answer but the answer), story 21 (the reader's selection kept, an upload's outcome said), story 22 (the page spends its space on the reader's own work, and a quotation reads as one), story 23 (what an upload did, said beside the list it changed), with `make run-react` and the shell's own settings in `README.md` § *Run the app* |
+| 3 · User interface | **Streamlit** — story 2 (trace), story 3 (memory panel), plus upload, sources and chat walked through in `docs/tutorial/first-session.md`. **React** — story 16 (the cited passage, opened), story 17 (the shell over cora's own API), story 18 (leaving a conversation), story 19 (the answer as it is written), story 20 (nothing shown as an answer but the answer), story 21 (the reader's selection kept, an upload's outcome said), story 22 (the page spends its space on the reader's own work, and a quotation reads as one), story 23 (what an upload did, said beside the list it changed), with `make run-react` in `docs/how-to/run-the-react-shell.md` |
 | 4 · Technical implementation | *Architecture decision* above, plus the failure criteria carried by every story (below) |
-| 5 · Documentation | `README.md` setup and usage, worked examples of asking, remembering and small talk, decisions recorded here, `big-picture.md` drawn around the agent |
+| 5 · Documentation | Story 25 and story 27 — one site, sorted by what the reader came for: `README.md` as the front door, a walked-through first session, three how-tos, `big-picture.md` and `happy-path.md` drawn out of the code, and a reference generated from it. Decisions are recorded here |
 
 **Error handling is not its own story.** Every story carries its failure criterion:
 provider failure, tool crash and step-budget exhaustion each end as one friendly message

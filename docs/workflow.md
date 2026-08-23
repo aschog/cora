@@ -204,7 +204,7 @@ functional test goes green  →  feature done
       merge:
 
   ```bash
-  git tag -a v1.0.0 <commit> -m "Sprint 3 submission — cora RAG chatbot
+  git tag -a v1.0.0 <commit> -m "Sprint 3 submission — cora
 
   <one paragraph: what shipped, review date and outcome>"
   git push origin v1.0.0

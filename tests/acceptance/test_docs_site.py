@@ -1,5 +1,6 @@
 import os
 import pathlib
+import re
 import subprocess
 import sys
 
@@ -37,8 +38,9 @@ def _reference_page(built: pathlib.Path, dotted: str) -> pathlib.Path:
     return built.joinpath("api", *dotted.split(".")) / "index.html"
 
 
-def _fenced_diagrams(page: str) -> int:
-    return (workspace.ROOT / "docs" / f"{page}.md").read_text().count("```mermaid")
+def _drawings(page: str) -> set[str]:
+    written = (workspace.ROOT / "docs" / f"{page}.md").read_text()
+    return set(re.findall(r"\]\((assets/[^)]+)\)", written))
 
 
 def test_the_site_holds_the_narrative_pages_and_a_generated_page_per_rendered_module(
@@ -58,11 +60,9 @@ def test_the_site_holds_the_narrative_pages_and_a_generated_page_per_rendered_mo
         name for name in NARRATIVE if (built / name / "index.html").is_file()
     ] == list(NARRATIVE)
 
-    drawn = {
-        name: (built / name / "index.html").read_text().count('class="mermaid"')
-        for name in NARRATIVE
-    }
-    assert drawn == {name: _fenced_diagrams(name) for name in NARRATIVE}
+    for name in NARRATIVE:
+        assert _drawings(name), f"{name} shows no drawing"
+        assert all((built / asset).is_file() for asset in _drawings(name))
 
     modules = _rendered_modules()
     assert [

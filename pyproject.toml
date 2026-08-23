@@ -1,7 +1,9 @@
 [project]
 name = "cora"
 version = "0.1.0"
-description = "A RAG chatbot grounded in your uploaded documents: the contract, the use cases, the technologies they bind to, and the composition root over all three"
+# The clause before the colon is `README.md`'s opening sentence, pinned to it by
+# `tests/guards/test_tagline.py`: packaging metadata cannot read a file, so it is a copy.
+description = "cora is an agent you chat with, and plugins give it a scope: the contract, the use cases, the technologies they bind to, and the composition root over all three"
 requires-python = ">=3.12"
 dependencies = [
     "chromadb>=1.5,<2",
@@ -30,8 +32,8 @@ module-name = [
     "cora.app",
 ]
 
-# The app is the root. What sits beside it is what you may install *as well*: a domain
-# plugin and a frontend, each a directory named in the plural because it expects
+# The app is the root. What sits beside it is what you may install *as well*: a plugin
+# and a frontend, each a directory named in the plural because it expects
 # siblings. `ls` is the architecture diagram.
 [tool.uv.workspace]
 members = ["plugins/*", "frontends/*"]
@@ -55,6 +57,7 @@ dev = [
     "mkdocs-literate-nav>=0.6.3",
     "mkdocs-material>=9.7.7",
     "mkdocstrings[python]>=1.0.6",
+    "pylint>=4.0.7",
     "pytest>=9.1.1",
     "pytest-watcher>=0.6.3",
     "pyyaml>=6.0.3",
@@ -123,15 +126,16 @@ convention = "google"
 # A test name carries the behaviour, and no page renders a test.
 "conftest.py" = ["D"]
 "tests/**" = ["D"]
-# The nav generator the docs build runs; it documents nothing but itself.
+# The nav generator the docs build runs, and the readers and generators `make
+# diagram` runs; each documents nothing but itself.
 "scripts/**" = ["D"]
 
 [tool.pytest.ini_options]
 # `tests/cora/` mirrors `src/cora/`; `acceptance/` holds the outer test per story and
 # `guards/` the ones whose subject is the repository rather than the app. A plugin and a
-# frontend keep theirs beside their own manifest. Only `tests/helpers/` goes on sys.path,
-# and only so the shared helpers import by name — importlib mode needs no test on the
-# path. Nothing in there may be named for a shipped module, or it joins that namespace
+# frontend keep theirs beside their own manifest. Only `tests/helpers/` and `scripts/` go on
+# sys.path — the shared helpers and the generators import by name, and importlib mode
+# needs no test on the path. Nothing in there may be named for a shipped module, or it joins that namespace
 # as its first portion; the mirror is safe precisely because it is not on the path.
 testpaths = ["tests", "plugins", "frontends"]
 pythonpath = ["tests/helpers", "scripts"]

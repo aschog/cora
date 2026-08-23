@@ -23,6 +23,10 @@ PAGES = (
     "docs/big-picture.md",
     "docs/happy-path.md",
     "docs/workflow.md",
+    "docs/how-to/write-a-plugin.md",
+    "docs/how-to/watch-a-turn.md",
+    "docs/how-to/run-the-react-shell.md",
+    "docs/tutorial/first-session.md",
 )
 CONFIGS = (".streamlit/config.toml", "Makefile")
 SUFFIXES = (".py", ".md", ".toml", "/")

@@ -31,7 +31,7 @@ class Step(Protocol):
 Route = Callable[[AgentState], str]
 ModelFor = Callable[[TextSink], Step]
 """How a graph asks for the step that talks to the model: one per turn, bound to that
-turn's reader. The other two steps are the same for every turn and are handed over as
+turn's reader. The other steps are the same for every turn and are handed over as
 themselves; this one is not, because an app assembled once answers two readers at once
 and neither may be sent the other's text."""
 

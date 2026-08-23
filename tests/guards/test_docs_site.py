@@ -4,39 +4,15 @@ import subprocess
 from html.parser import HTMLParser
 
 import pytest
-import yaml
 
 import workspace
 from cora.frontends.react.server import DEFAULT_PORT
+from site_config import config as _config
+from site_config import nav_pages as _nav_pages
 
-CONFIG = workspace.ROOT / "mkdocs.yml"
 NARRATIVE = ("big-picture", "happy-path")
 NARRATIVE_PAGES = tuple(f"{name}.md" for name in NARRATIVE)
 NOT_THE_PRODUCT = ("sprints/", "cora_mockup.html", "workflow.md")
-
-
-class _Tolerant(yaml.SafeLoader):
-    """mkdocs writes `!!python/name:` tags that a safe loader refuses; the guards read
-    the config as data and never call what those tags name."""
-
-
-_Tolerant.add_multi_constructor(
-    "tag:yaml.org,2002:python/name:", lambda loader, suffix, node: suffix
-)
-
-
-def _config() -> dict[str, object]:
-    return yaml.load(CONFIG.read_text(), Loader=_Tolerant)
-
-
-def _nav_pages(entry: object) -> list[str]:
-    if isinstance(entry, str):
-        return [entry]
-    if isinstance(entry, dict):
-        return [page for value in entry.values() for page in _nav_pages(value)]
-    if isinstance(entry, list):
-        return [page for item in entry for page in _nav_pages(item)]
-    return []
 
 
 def test_both_narrative_pages_are_in_the_nav() -> None:
@@ -69,7 +45,6 @@ def test_the_nav_names_the_reference_once_and_never_a_module() -> None:
     assert [page for page in pages if page.startswith("api/") and page != "api/"] == []
 
 
-MERMAID = workspace.ROOT / "docs" / "assets" / "mermaid-10.2.3.min.js"
 REMOTE = re.compile(r"(?:https?:)?//[A-Za-z0-9.-]+")
 # `a` is a link the reader chooses to follow, not something the page loads.
 # `xmlns` names an XML namespace, which is not fetched either.
@@ -99,15 +74,6 @@ def _asset_urls(page: pathlib.Path) -> list[str]:
     return parser.remote
 
 
-def test_the_vendored_mermaid_is_the_version_the_diagrams_are_written_against() -> None:
-    assert MERMAID.is_file(), "the diagrams are written against Mermaid 10.2.3"
-    assert MERMAID.name in str(_config()["extra_javascript"])
-    pinned = MERMAID.name.removeprefix("mermaid-").removesuffix(".min.js")
-    assert f'"{pinned}"' in MERMAID.read_text(), (
-        "the filename pins the version, so the bundle has to say the same"
-    )
-
-
 @pytest.mark.integration
 def test_no_page_loads_an_asset_from_another_host(built: pathlib.Path) -> None:
     remote = {
@@ -119,34 +85,29 @@ def test_no_page_loads_an_asset_from_another_host(built: pathlib.Path) -> None:
     assert remote == set(), "the site has to render with the network off"
 
 
-@pytest.mark.integration
-def test_every_fenced_diagram_becomes_a_diagram_container(built: pathlib.Path) -> None:
-    drawn = {
-        name: (built / name / "index.html").read_text().count('class="mermaid"')
-        for name in NARRATIVE
-    }
-    fenced = {
-        name: (workspace.ROOT / "docs" / name)
-        .with_suffix(".md")
-        .read_text()
-        .count("```mermaid")
-        for name in NARRATIVE
-    }
-    assert drawn == fenced
+SHOWN = re.compile(r"\]\((assets/[^)]+)\)")
+
+
+def _shown(page: str) -> set[str]:
+    """Every drawing a narrative page puts on itself."""
+    return set(SHOWN.findall((workspace.ROOT / "docs" / f"{page}.md").read_text()))
 
 
 @pytest.mark.integration
-def test_every_page_with_a_diagram_loads_the_vendored_mermaid(
-    built: pathlib.Path,
-) -> None:
-    unvendored = [
-        name
-        for name in NARRATIVE
-        if MERMAID.name not in (built / name / "index.html").read_text()
+def test_every_drawing_a_page_shows_is_built_beside_it(built: pathlib.Path) -> None:
+    """The pictures are committed SVGs, so what a build can get wrong is leaving one
+    behind: a page whose drawing is a broken image reads as a page with no drawing.
+    """
+    shown = {name: _shown(name) for name in NARRATIVE}
+    assert all(shown.values()), "a narrative page with no drawing on it"
+
+    missing = [
+        asset
+        for assets in shown.values()
+        for asset in sorted(assets)
+        if not (built / asset).is_file()
     ]
-    assert unvendored == [], (
-        "without the global, Material fetches mermaid@11 from unpkg"
-    )
+    assert missing == [], f"the site does not ship {missing}"
 
 
 def _sections() -> dict[str, list[str]]:

@@ -5,7 +5,7 @@
 APP := frontends/streamlit/src/cora/frontends/streamlit/streamlit_app.py
 REACT := cora.frontends.react.server
 
-.PHONY: run run-env run-react run-env-react ui ui-build ui-test ui-test-browser docs docs-serve
+.PHONY: run run-env run-react run-env-react ui ui-build ui-test ui-test-browser docs docs-serve diagram
 
 # Reads OPENROUTER_API_KEY from the environment.
 run:
@@ -42,7 +42,7 @@ ui-test-browser:
 # mkdocs 1.6.1, pinned by uv.lock, and say so once here instead of in every log.
 QUIET_FORK := NO_MKDOCS_2_WARNING=true DISABLE_MKDOCS_2_WARNING=true
 
-# The docs site — the two narrative pages and a reference generated from the source.
+# The docs site — the written pages and a reference generated from the source.
 # `mkdocs.yml` configures it; --strict is what the integration tier runs, so a build that
 # passes here is the one CI checks.
 docs:
@@ -52,3 +52,16 @@ docs:
 # app must not need one of them stopped. `tests/guards/test_docs_site.py` holds that.
 docs-serve:
 	$(QUIET_FORK) uv run mkdocs serve --dev-addr 127.0.0.1:8001
+
+# Every drawing in the docs. The component map reads `cora.app.assembly` for what the
+# boxes and the connectors are and places them itself — that map has one fixed shape, so
+# there is no layout to search for. The domain map is read out of the classes by pyreverse
+# and laid out by graphviz, which this target needs installed. The session maps read one
+# method each, and the graph off the nodes the runner declares, and space themselves to
+# what is said on them. Every SVG is committed, and the guards beside them fail when a
+# committed file is behind the source, so a port, a class or a call added without a redraw
+# is a red test.
+diagram:
+	uv run python scripts/gen_component_map.py
+	uv run python scripts/gen_domain_map.py
+	uv run python scripts/gen_session_maps.py

@@ -1,4 +1,4 @@
-"""What a domain plugin contributes, and the shape of a tool call from end to end."""
+"""What a plugin contributes, and the shape of a tool call from end to end."""
 
 import json
 from collections.abc import Callable
@@ -86,7 +86,7 @@ class ValidationRule(Protocol):
 
 @dataclass(frozen=True, kw_only=True)
 class Plugin:
-    """A domain's contribution: what cora should know, and what it can do.
+    """One scope's contribution: what cora should know, and what it can do.
 
     Everything but `name` is optional — a plugin contributes whatever it has, and a
     bundle of rules alone is as legitimate as a bundle of tools. Keyword-only so that
