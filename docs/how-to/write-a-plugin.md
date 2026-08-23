@@ -18,9 +18,7 @@ cora imports no plugin of its own, so nothing here edits the engine.
    ```
 
    `name` heads the plugin's section of the brief. Everything else is optional — a
-   bundle of rules alone is as legitimate as a bundle of tools. Import from
-   `cora.ports` and `cora.domain` only; a plugin that imports the engine is refused by
-   `tests/guards/test_architecture.py`.
+   bundle of rules alone is as legitimate as a bundle of tools.
 
 3. **Add a tool, if it has one.** A `Tool` is a name, a description the model reads, a
    JSON Schema for its arguments, and something to call:
@@ -40,15 +38,8 @@ cora imports no plugin of its own, so nothing here edits the engine.
    )
    ```
 
-   The name is unique across every plugin loaded, and across cora's own
-   (`search_documents`, `remember`, `ask_user`) — a clash is refused at startup, not
-   at the call. Arguments are checked against the schema before `run` sees them, and
-   `run` must return something: a tool that ran and said nothing cannot be told from
-   one that failed.
-
 4. **Add a rule, if it screens questions.** A `ValidationRule` sees the question alone
-   and refuses it before the model is reached. `plugins/security` is one rule and
-   nothing else.
+   and refuses it before the model is reached.
 
 5. **Name it.** `CORA_PLUGINS` takes module paths separated by commas, in order:
 
@@ -56,6 +47,3 @@ cora imports no plugin of its own, so nothing here edits the engine.
    export CORA_PLUGINS=cora.plugins.security,cora.plugins.birds
    make run
    ```
-
-   The order is the order their sections and tools reach the model. A module named
-   twice, or two plugins offering one tool name, stops the app before it starts.
