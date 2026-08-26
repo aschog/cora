@@ -33,14 +33,14 @@ no exceptions:
 - **`scope=None`** is system-wide: always in the prompt, always callable, always enforced.
   The injection screen lives here, which is why no scope can switch it off.
 
-Three plugins ship: **security** (rules only, always on), **fitness** and **travel** (two
+Three plugins ship: **security** (rules only, `scope=None`), **fitness** and **travel** (two
 scopes). Two scopes, not one: a second one is the proof that a scope is a plugin and not a
 fork — it is written without touching the core — and it is what makes routing worth having,
 since one scope leaves nothing to choose between.
 
 **Target users.** People who extend the tools they work in. They want an agent pointed at
-their own field by a plugin they wrote and they use what they
-extend, which is why the stories below are written from the using side. That makes the plugin
+their own field by a plugin they wrote, and they use what they extend, which is why the
+stories below are written from the using side. That makes the plugin
 contract the product surface, and `docs/how-to/write-a-plugin.md` part of the product.
 
 ## Architecture decision (criterion 2 · learning application)
@@ -124,6 +124,7 @@ so that I can decide whether it is for me without reading the code.
 - **Given** `README.md` as the front door
 - **When** someone who has never seen cora reads its first screen
 - **Then** they can say what problem it solves, who it is for and how it works
+- **And** they can see what writing a scope of their own involves, and where the how-to is
 - **And** the showcase entry is linked near the top
 
 Written day one, before the code — the retrospective names cutting it last as the cause of
@@ -197,6 +198,14 @@ ships enough of it for routing to have somewhere to route.
 - **When** a plugin author follows it
 - **Then** it says what a scope is, what `scope=None` means, and which contributions are
   always on
+
+**Scenario:** a scope is a plugin, not a fork
+
+- **Given** the scope contract this story adds
+- **When** the travel plugin is added
+- **Then** it is a distribution and a name in `CORA_PLUGINS`, with no further change under
+  `src/cora/`
+- **And** a guard asserts that the core names no scope
 
 **Scenario:** a system-wide rule cannot be scoped away
 
@@ -294,6 +303,16 @@ so that I can judge the privacy cost before I upload anything.
   cannot do without approval, and where the answers can be wrong
 - **And** the claims match what the code does
 
+**Scenario:** what loading a plugin costs in trust
+
+- **Given** a reader deciding whether to load a plugin someone else wrote
+- **When** they look for what it may do
+- **Then** the page says a loaded plugin is trusted code — instructions the model follows,
+  tools it may call, rules that can refuse, and effects outside cora
+- **And** it names what cora enforces whatever a plugin does: the approval gate before an
+  effect, retrieved and fetched text handled as untrusted data, and the tool names a plugin
+  may not take
+
 ---
 
 ## Chores
@@ -312,7 +331,7 @@ Not stories — no failing test names them — but tracked, and each is a merge 
 
 | Criterion | Where |
 |---|---|
-| 1 · Outcome quality | *Purpose* above; stories 5 and 6 give the agent reach and consequence, story 3 gives it focus, story 1 says what it is for |
+| 1 · Outcome quality | *Purpose* above; stories 5 and 6 give the agent reach and consequence, story 3 gives it focus and makes a scope a plugin rather than a fork — the seam is the product surface — and story 1 says what it is for |
 | 2 · Learning application | *Architecture decision* above — LangGraph as a named workflow with an interrupt gate, Chroma for embeddings, OpenRouter behind the `ChatModel` port, an external API as a tool, rules and scopes as plugins |
 | 3 · Ethical considerations | Story 7, standing on sprint 4's injection screen and untrusted-data handling, and on story 6's approval gate |
 | 4 · Presentation | The six points: the problem (story 1), the architecture (stories 2–3), the data (story 4), evaluation (story 3's routing report), the hardest problem (stories 5–6), what is next (*Not in this sprint*) |
