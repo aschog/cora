@@ -47,13 +47,19 @@ contract the product surface, and `docs/how-to/write-a-plugin.md` part of the pr
 
 The agent stays on **LangGraph**, hexagonal: the domain holds the state shape, the engine
 holds the steps as plain functions, and only `adapters/langgraph_runner.py` imports the
-framework — the architecture guard enforces it. Four decisions are this sprint's.
+framework — the architecture guard enforces it. Five decisions are this sprint's.
 
 - **The turn becomes a named sequence, with the loop inside it.** Today `prepare → model ⇄
   tools` is one ReAct loop where a single model call decides everything. It becomes
-  *screen → route → work → answer*, each step with one responsibility and its own place in
-  the trace; the model keeps the decisions that are genuinely its own, inside the working
-  step. Stories 3 and 4.
+  *screen → route → focus → work → answer*, each step with one responsibility and its own
+  place in the trace; the model keeps the decisions that are genuinely its own, inside the
+  working step. Story 3 delivers *screen → work → answer*; story 4 inserts *route* and
+  *focus* between them.
+- **A scope's rules run after routing, the system's before it.** `screen` applies the
+  `scope=None` rules, so an injection is refused before any model call, including the
+  router's. `focus` is where a scope is entered — its instructions, its tools and its rules
+  arrive together — because which rules apply is not known until the scope is. Stories 3
+  and 4.
 - **A plugin's scope decides the lifetime of everything it contributes.** One field, one
   rule, no second plugin type: `security` is `scope=None` and therefore system-wide, a domain
   plugin names its scope and everything it brings lives exactly as long as that scope is
@@ -70,7 +76,7 @@ framework — the architecture guard enforces it. Four decisions are this sprint
 
 ### Shapes the stories must honour
 
-Four constraints, decided here because each one is a *shape* rather than a feature.
+Six constraints, decided here because each one is a *shape* rather than a feature.
 `AgentState` and the trace are enumerated in `CHECKPOINTED_DATA`, so they are serialised
 into every persisted thread: widening one later is a lock bump and a migration, while
 getting it right now costs nothing.
@@ -87,6 +93,16 @@ getting it right now costs nothing.
   below only holds if the seam survives: a tool that later runs a subgraph must be able to
   *show* its nested work, or cora's "watch what it did" claim goes shallow exactly where the
   interesting work is.
+- **A citation's source has kinds; it is not always a document.** Today a `Citation` is
+  offsets into stored text, and `Citation` is checkpointed. Story 6 cites a live service,
+  which has neither a document nor offsets. The type widens once, when story 6 lands, and it
+  widens to a source *with kinds* — a span of a stored document, a fetched result — so that
+  a third kind later is a new case rather than a new shape.
+- **The pin belongs to the conversation, not to the browser tab.** A pinned scope goes in
+  `AgentState` and is checkpointed, so reopening a thread reopens it in the scope it was
+  held in, and the trace can say which scope a turn ran in whether it was pinned or routed.
+  Session state in the frontend would lose it on reload and leave the thread's own record
+  incomplete.
 - **An approval is its own checkpointed type, bound to one call.** Sprint 4's `interrupt`
   carries a `Decision` of labelled options for "which fact is current". Squeezing "may I
   write this file" into that shape works for one effect and breaks on the second — two
@@ -170,8 +186,9 @@ the whole loop.
 
 - **Given** any question
 - **When** the turn runs
-- **Then** the trace names each step it took, in the order the workflow defines
-- **And** the rules run before the model is called at all
+- **Then** the trace names *screen*, *work* and *answer*, in that order — the three steps
+  this story leaves the turn with
+- **And** *screen* runs before the model is called at all
 - **And** a step's failure is reported as that step's, with the conversation intact
 
 **Scenario:** the model's freedom is bounded to one step
@@ -210,12 +227,21 @@ ships enough of it for routing to have somewhere to route.
 - **When** the turn runs
 - **Then** cora asks which scope was meant, and answers with the one I choose
 
+**Scenario:** the routing step is wired correctly
+
+- **Given** a scripted model that names a scope
+- **When** the turn runs
+- **Then** it runs in that scope, and the trace says so — asserted in the default tier,
+  where no model is called
+
 **Scenario:** routing is measured, not assumed
 
 - **Given** a recorded set of questions with the scope each belongs to
-- **When** the router is run over it
-- **Then** a report names how often it chose the right scope
-- **And** a drop below the recorded threshold fails
+- **When** the router is run over it against a real model, in the `llm` tier
+- **Then** a report names how often it chose the right scope, and a drop below the recorded
+  threshold fails that tier
+- **And** the number is quoted here when it is first measured, because the tier is hand-run
+  and costs money
 
 **Scenario:** the contract is documented as it now stands
 
@@ -244,6 +270,12 @@ ships enough of it for routing to have somewhere to route.
 - **When** a question arrives in a different scope
 - **Then** that rule does not run
 
+**Scenario:** the medical filter moves to where it always applies
+
+- **Given** the medical filter, today inside the fitness plugin
+- **When** a medical question is asked in the travel scope, or with nothing pinned
+- **Then** it is still refused, because the filter now ships in a `scope=None` plugin
+
 ### 5. A scope's documents are its own files
 
 As a person with material in more than one field,\
@@ -262,7 +294,7 @@ so that I can see what cora has, and a second field is a directory rather than a
 
 - **Given** documents in two scopes
 - **When** cora searches in one of them
-- **Then** only that scope's sources can be retrieved or cited
+- **Then** only the active scope's sources can be retrieved or cited
 - **And** `README.md` states the layout in a paragraph
 
 ### 6. cora reaches outside itself
@@ -310,7 +342,8 @@ so that nothing outside cora happens without me.
 
 - **Given** an approved effect that produces something — an itinerary, a training plan
 - **When** it completes
-- **Then** it exists as a file I keep, outside cora's own stores
+- **Then** it exists as a file under the output location the app is configured with, outside
+  cora's own stores, and `README.md` says where that is
 
 ### 8. What cora does with my data, said in one page
 
@@ -344,8 +377,8 @@ so that I can judge the privacy cost before I upload anything.
 
 Not stories — no failing test names them — but tracked, and each is a merge of its own.
 
-- **The test suite, 20/80** — find the fifth of the 1,247 tests carrying most of the
-  protection, extend only those, archive the rest under `tests/` and delete the archive
+- **The test suite, 20/80** — find the fifth of the suite carrying most of the protection
+  (counted after story 2, which takes the Streamlit tests with it), extend only those, archive the rest under `tests/` and delete the archive
   after submission. Membership is decided by what would go undetected, not by count.
 - **An architecture note for the React shell before story 4 touches it** — the scope pin is a
   new thing on the screen, and sprint 4 shipped that frontend with no such note and said so.
