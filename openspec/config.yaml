@@ -1,0 +1,105 @@
+schema: spec-driven
+
+context: |
+  cora is an agent you chat with, and plugins give it a scope. Shipped as the `cora`
+  package (src layout). A turn runs on LangGraph: the domain holds the state shape,
+  the engine holds the steps as plain functions, and an adapter wires them into a
+  graph — neither imports LangGraph, and an architecture guard enforces that.
+  `docs/big-picture.md` and `docs/happy-path.md` say how a turn runs.
+
+  Python, managed by uv. Every command runs through `uv run`; never `python` or
+  `pytest` directly. Dependencies go in with `uv add` / `uv add --dev`; the lockfile
+  is never hand-edited and pip is never used. Formatter, linter and docstring policy
+  are ruff, the type checker is ty, the test runner is pytest with tiered markers.
+
+  The process is `docs/workflow.md` — XP, outside-in, test-first. It is authoritative,
+  and OpenSpec artifacts serve it: a change is one story, and its `tasks.md` is a
+  Beck test list. Secrets live in environment variables only. Commits are plain
+  Conventional Commits with no attribution or co-author trailers.
+
+rules:
+  proposal:
+    - >-
+      Open with the story in the project's form — **As a** · **I want** · **So that**
+      — followed by its acceptance criteria as **Given** / **When** / **Then**.
+    - >-
+      One story per change. If it needs two stories, it is two changes.
+    - >-
+      Say what is out of scope. An assignment requirement that maps to no story is out
+      of scope and is named as such.
+    - >-
+      Design rationale does not belong here. It lives in design.md, the conversation,
+      the commit messages and the tests.
+  specs:
+    - >-
+      Write requirements as SHALL statements with concrete scenarios, observable from
+      outside the system through its public API.
+    - >-
+      A capability path names a behaviour of the product, not a module of the code.
+  design:
+    - >-
+      Architecture level only — patterns, components, ports, flows, and the trade-off
+      taken. No code, no signatures, no file-by-file plans.
+    - >-
+      Name the seam the change goes through. cora's north star is one abstraction open
+      for extension: add a class or a registry entry, never edit a switch.
+    - >-
+      Dense bullets, not essays. Roughly 85 lines is the ceiling.
+    - >-
+      Say which ports, guards or generated diagrams the change touches.
+  tasks:
+    - >-
+      **Every item is one failing test.** This overrides the default guidance — an item
+      is not a session of work, it is a test. If it cannot be phrased as "write a test
+      that shows X", it does not belong on the list: split it or drop it.
+    - >-
+      Item 1.1 is always the outer functional test, taken straight from the proposal's
+      acceptance criterion and marked `@pytest.mark.xfail(strict=True)` so CI stays
+      green while the change is in flight.
+    - >-
+      The last item is always dropping that marker and watching the outer test pass.
+    - >-
+      Tests drive behaviour through the public API with real objects and hand-written
+      fakes, and assert on resulting state — not on how collaborators were called.
+      Stubs are for true boundaries only: network, models, nondeterminism.
+    - >-
+      The list is living. Items get added as they surface, and a discovered item is not
+      a failure of the plan.
+    - >-
+      Refactoring, docs and generated artifacts are not items unless a test can fail for
+      them. Guards count: a guard is a test.
+
+operations:
+  apply:
+    guidance:
+      - >-
+        Work one item at a time and stop. Red — write the test and see it fail for the
+        right reason. Green — the minimal code that passes, whole suite green. Refactor
+        — clean code and tests, stay green. Then hand back.
+      - >-
+        A failing test is never the thing that gets fixed. Do not edit, weaken or delete
+        a red test to make the bar go green: the test is the spec, the production code
+        is what moves.
+      - >-
+        Never commit. Propose the Conventional Commit subject and wait for approval.
+        Commits on a branch are one line, with no body.
+      - >-
+        Never work on main. A change is applied on its own branch.
+      - >-
+        Don't narrate the diff — it gets read. Say only what the diff cannot show: a
+        decision, a surprise, anything urgent.
+      - >-
+        If an item reveals the design is wrong, stop and re-plan rather than improvising
+        off-list.
+  archive:
+    guidance:
+      - >-
+        Archive only once the outer functional test passes with its xfail marker gone,
+        the whole list is ticked, and format, lint, type check and the full suite are
+        green.
+      - >-
+        The change merges to main as one squashed atomic commit, and the branch is kept
+        as the record of the TDD trail.
+      - >-
+        Update the project docs the change touched before archiving — `README.md`,
+        `CLAUDE.md`, `docs/`.

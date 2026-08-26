@@ -24,3 +24,6 @@ e2e-artifacts/
 
 # The built docs site.
 site/
+
+# The editor's own workspace.
+.obsidian/
