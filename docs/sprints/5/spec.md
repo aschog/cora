@@ -1,52 +1,121 @@
 # Sprint 5 — the capstone
 
-The assignment (`assignment.md`) is open-ended: seven cases, and any alternative that
-meets the criteria. cora is carried forward, not restarted. This file cuts the capstone
-into stories with acceptance criteria and records which evaluation criterion each one
-answers. Anything that maps to no story here is out of scope.
+The assignment (`assignment.md`) is open-ended: seven cases, and any alternative that meets
+the criteria. cora is carried forward, not restarted. This file cuts the capstone into
+stories with acceptance criteria and records which evaluation criterion each one answers.
+Anything that maps to no story here is out of scope.
 
-The sprint's shape comes from two places that agreed with each other: the reviewer's
-write-up (`docs/sprints/4/review-feedback.md`) and the sprint-4 retrospective. Both said
-the single agent should be a sequence of steps; both said the README does not convey the
-idea. The tracked backlog is `sprint-5-feedback.md`.
+**Case 2 — an AI agent for task automation.** Case 1's retrieval is what cora does when it
+is given nothing else, not the point of it.
+
+The sprint answers one sentence from the review: *cora is not a real agentic application,
+it is more like agentic RAG.* That is a fair reading of what shipped. cora decides — whether
+to retrieve, how many rounds, which tool, when to stop and ask — but every tool it owns is
+another way of reading its own documents, so deciding well only ever produced a better
+answer, never an action. This sprint gives it reach and consequence, and a gate in front of
+both. The tracked backlog is `sprint-5-feedback.md`; the reviewer's write-up is
+`docs/sprints/4/review-feedback.md`.
 
 ## Purpose (criterion 1 · outcome quality)
 
-**Case 1 and case 2, taken together.** cora is a document-grounded knowledge assistant
-that works like an agent: point it at your own documents, ask in your own words, and it
-decides what the turn needs — looking things up, running the domain's tools, remembering
-you between sessions.
+**cora is an agent you chat with, and plugins give it a scope.** With no plugin loaded it
+runs a turn on its own: search its documents, remember what it is told, ask when it cannot
+tell, and answer grounded and cited. That much is agentic RAG, and it is the floor rather
+than the product.
 
-The domain is not in the agent. It comes from a plugin, and the shipped fitness coach is
-the worked example, not the product.
+A plugin contributes two different kinds of thing, and the difference is this sprint's
+central decision:
 
-**Target users:** people with a body of their own material and recurring questions over
-it. What the capstone adds is not a new capability but a *finished* one — an answer you
-can check, a store you can read, a number that says retrieval works, and a page that says
-what happens to your data.
+- **Rules are always on.** A rule can only ever refuse, so more of them is never less safe.
+  The injection screen is not something a scope can switch off.
+- **Instructions, tools and documents are scoped.** They are what focus *means*, so one
+  scope is active per turn — the user pins it, or cora routes to it — and the others are
+  not in the prompt at all.
+
+Three plugins ship: **security** (rules only, always on), **fitness** and **travel** (two
+scopes). Two are needed, not one: routing has nowhere to route with a single scope, and the
+extensibility claim is shown by the second, not asserted by the first.
+
+**Target users.** Two, and both are real: the person with a body of their own material and
+recurring questions over it, and the developer who wants an agent they can point at their
+own field by writing a plugin rather than a fork.
 
 ## Architecture decision (criterion 2 · learning application)
 
-The agent stays on **LangGraph**, hexagonal, with the domain holding the state shape and
-the engine holding the steps as plain functions. Two decisions are this sprint's:
+The agent stays on **LangGraph**, hexagonal: the domain holds the state shape, the engine
+holds the steps as plain functions, and only `adapters/langgraph_runner.py` imports the
+framework — the architecture guard enforces it. Four decisions are this sprint's.
 
-- **The turn becomes a named sequence of steps, not one model loop.** Today `prepare →
-  model ⇄ tools` is a ReAct loop where one model call decides everything; the reviewer's
-  point is that a workflow of steps with one responsibility each is less fragile and
-  easier to control. The model keeps the decisions that are genuinely its own — inside a
-  step, not over the whole turn. Story 2.
-- **One store for the raw text, not two.** Chroma keeps the embeddings; the cleaned text
-  a citation opens onto moves from `adapters/sqlite_documents.py` to one Markdown file per
-  source, behind the `Documents` port that already exists. Threads and remembered facts
-  stay in SQLite — they are not duplicated raw data. Stories 3 and 4.
+- **The turn becomes a named sequence, with the loop inside it.** Today `prepare → model ⇄
+  tools` is one ReAct loop where a single model call decides everything. It becomes
+  *screen → route → work → answer*, each step with one responsibility and its own place in
+  the trace; the model keeps the decisions that are genuinely its own, inside the working
+  step. Stories 2 and 3.
+- **Rules always on, capability scoped.** No second plugin type: `security` contributes only
+  rules and is therefore always in force by construction, while a scope's instructions and
+  tools enter the prompt only when that scope is active. One `Plugin` shape, two lifetimes
+  for its parts. Story 3.
+- **A scope owns its documents.** The cleaned text a citation opens onto moves from
+  `adapters/sqlite_documents.py` to one Markdown file per source, under a directory named
+  for its scope, behind the `Documents` port that already exists — which answers the
+  reviewer's two store findings together: the duplication goes, and a second domain's layout
+  becomes a directory anyone can read. Threads and remembered facts stay in SQLite; they are
+  not duplicated raw data. Memory stays system-wide — one person, both scopes. Story 4.
+- **An effect is gated by the interrupt that already exists.** Sprint 4 built `interrupt` so
+  cora could stop and ask which of two facts was current. A tool that changes something
+  outside cora stops the same way: it says what it is about to do and waits. Story 6.
+
+### Shapes the stories must honour
+
+Four constraints, decided here because each one is a *shape* rather than a feature.
+`AgentState` and the trace are enumerated in `CHECKPOINTED_DATA`, so they are serialised
+into every persisted thread: widening one later is a lock bump and a migration, while
+getting it right now costs nothing.
+
+- **Routing yields the active scope*s*, not the active scope.** One scope is the degenerate
+  case of a set. A question that spans two scopes is the obvious next ask, and with a set it
+  is a later routing rule; with a single value it is a change to the state shape, the prompt
+  assembly, the tool filter, the trace and every thread already stored.
+- **No plugin loaded *is* a scope.** cora with nothing loaded is agentic RAG over documents,
+  and those documents need a directory like any other scope's. A default scope gives one code
+  path and one layout rule; "unscoped documents" would give a switch, which is the thing the
+  project's north star forbids.
+- **The trace has room for a child step, though nothing nests yet.** The sub-agent deferral
+  below only holds if the seam survives: a tool that later runs a subgraph must be able to
+  *show* its nested work, or cora's "watch what it did" claim goes shallow exactly where the
+  interesting work is.
+- **A plugin declares its scope, and `None` means system-wide.** "Rules always on, capability
+  scoped" leaves no room for a system-wide *tool* — a web search, a calculator — useful in
+  every scope and belonging to none. One field with a default carries it: `scope=None` makes
+  a plugin's rules *and* tools always on, a named scope puts its instructions, tools and
+  corpus in play only while that scope is active, and rules are always on either way.
+  `security` is `scope=None` and behaves as it does today. No second plugin type, and the
+  prompt builder and tool filter each stay one path with a filter rather than a branch per
+  kind.
+- **An approval is its own checkpointed type, bound to one call.** Sprint 4's `interrupt`
+  carries a `Decision` of labelled options for "which fact is current". Squeezing "may I
+  write this file" into that shape works for one effect and breaks on the second — two
+  effects in one turn, or an argument the user wants to edit before approving, both need the
+  approval bound to a specific call.
+
+**One behaviour change this implies:** with rules always on, the fitness plugin's medical
+filter fires in the travel scope too. Defensible — medical caution is not field-specific —
+and no shipped rule refuses anything a second scope would need. If one ever does, a rule
+declares its scope and the contract widens then.
+
+**Not decided this sprint:** a sub-agent inside a scope. It needs no new port — `Tool.run`
+is a callable and cora never asks what is behind it — but for a plugin to *build* one it
+would have to be handed a bounded-loop factory at load time, which widens the plugin
+contract. The seam is named in the docs and left unbuilt; a LangGraph subgraph through the
+existing `GraphFor` port is where it would go, so the nested steps stay visible in the trace.
 
 ---
 
 ## Stories
 
-Numbered in merge order. Each becomes an OpenSpec change under `openspec/changes/`, and
-its text moves into that change's `proposal.md` when it is opened — this file then keeps
-the heading and the link.
+Numbered in merge order. Each becomes an OpenSpec change under `openspec/changes/`, and its
+text moves into that change's `proposal.md` when it is opened — this file then keeps the
+heading and the link.
 
 ### 1. A reader learns what cora is for before anything else
 
@@ -71,62 +140,143 @@ I want a turn to run as a sequence of steps with one responsibility each,\
 so that I can see where a turn is, control what each step may do, and test a step without
 the whole loop.
 
-**Scenario:** a question that needs documents
+**Scenario:** a turn walks its steps
 
-- **Given** a question that needs documents
+- **Given** any question
 - **When** the turn runs
 - **Then** the trace names each step it took, in the order the workflow defines
-- **And** a step's failure is contained and reported as that step's
-- **And** the model's freedom is bounded to the step it serves
+- **And** the rules run before the model is called at all
+- **And** a step's failure is reported as that step's, with the conversation intact
 
-**Scenario:** a question that needs none
+**Scenario:** the model's freedom is bounded to one step
 
-- **Given** a question that needs no documents
+- **Given** a question that needs several rounds of tools
 - **When** the turn runs
-- **Then** it skips the steps that would have fetched them
+- **Then** the rounds happen inside the working step and nowhere else
 
-### 3. The text behind a citation is a file I can open
+### 3. A scope focuses the turn
 
-As a user of cora,\
-I want the text my answer cites to live in a readable file per source,\
-so that I can open, inspect and delete it without a database.
+As a person using cora for one field at a time,\
+I want the scope to decide what cora is and what it can reach,\
+so that a fitness question is answered by a coach, and a travel tool cannot be picked by
+mistake.
+
+The pin is the React shell's only — Streamlit stays unpinned and always routes, which keeps
+the routing path exercised by a real frontend rather than by tests alone.
+
+**The travel plugin is not finished by this story.** It arrives here with its instructions and
+its corpus, gains its live-service tool in story 5 and its effectful tool in story 6. Story 3
+ships enough of it for routing to have somewhere to route.
+
+**Scenario:** the user pins a scope
+
+- **Given** two scopes are loaded and I pin one in the React shell
+- **When** I ask anything
+- **Then** only that scope's instructions and tools are in the prompt
+- **And** the other scope's tools are not offered at all
+
+**Scenario:** nothing pinned, so cora routes
+
+- **Given** two scopes are loaded and none is pinned
+- **When** I ask a question that belongs to one of them
+- **Then** the trace names the scope it routed to, and the turn runs in that scope
+- **And** the Streamlit app, which has no pin, reaches the same answer by routing
+
+**Scenario:** it asks rather than guessing
+
+- **Given** a question that fits both scopes or neither
+- **When** the turn runs
+- **Then** cora asks which scope was meant, and answers with the one I choose
+
+**Scenario:** routing is measured, not assumed
+
+- **Given** a recorded set of questions with the scope each belongs to
+- **When** the router is run over it
+- **Then** a report names how often it chose the right scope
+- **And** a drop below the recorded threshold fails
+
+**Scenario:** the contract is documented as it now stands
+
+- **Given** `docs/how-to/write-a-plugin.md`, which documents the contract this story changes
+- **When** a plugin author follows it
+- **Then** it says what a scope is, what `scope=None` means, and which contributions are
+  always on
+
+**Scenario:** a rule cannot be scoped away
+
+- **Given** the security plugin loaded beside two scopes
+- **When** an injection attempt arrives in any scope, or with none pinned
+- **Then** it is refused before the model is called
+
+### 4. A scope's documents are its own files
+
+As a person with material in more than one field,\
+I want each scope's documents kept as readable files under a place named for that scope,\
+so that I can see what cora has, and a second field is a directory rather than a redesign.
 
 **Scenario:** a citation opens onto a file
 
-- **Given** a document is ingested
+- **Given** a document ingested into a scope
 - **When** its cleaned text is kept
-- **Then** one Markdown file per source holds it, and a citation opens onto that file
+- **Then** one Markdown file per source holds it, under that scope's directory, and the
+  citation opens onto that file
 - **And** nothing duplicates the text a second time
 
-### 4. A second domain has an obvious place to live
+**Scenario:** a search sees one scope
 
-As a person setting cora up for their own field,\
-I want to see where a second domain's documents and index go,\
-so that adding one is a directory, not a redesign.
-
-**Scenario:** two domains, side by side
-
-- **Given** two domains configured
-- **When** documents are added to each
-- **Then** each domain's index and text sit under a place named for that domain
-- **And** neither reads the other's
+- **Given** documents in two scopes
+- **When** cora searches in one of them
+- **Then** only that scope's sources can be retrieved or cited
 - **And** `README.md` states the layout in a paragraph
 
-### 5. Retrieval has a number, not an impression
+### 5. cora reaches outside itself
 
-As a developer of cora,\
-I want a set of questions with the sources that should answer them,\
-so that a change to retrieval shows up as a number instead of a feeling.
+As a person asking about something my documents cannot know,\
+I want cora to call a live service and answer from what it gets back,\
+so that the answer is current instead of a polite refusal.
 
-**Scenario:** the evaluation set runs
+**Scenario:** a question that needs the outside world
 
-- **Given** an evaluation set of 10–20 questions with their expected sources
-- **When** it is run against an indexed corpus
-- **Then** a report names how often the expected source was retrieved, and how often the
-  answer cited it
-- **And** a drop below the recorded threshold fails
+- **Given** a scope with a tool onto a live external service
+- **When** I ask something that needs current information
+- **Then** cora calls the service, the trace names the call and what it returned, and the
+  answer cites it as a source
+- **And** the service's text is treated as untrusted data, exactly as a document's is
 
-### 6. What cora does with my data, said in one page
+**Scenario:** the service is down
+
+- **Given** the service fails or times out
+- **When** the turn runs
+- **Then** one friendly message says so, the conversation is intact, and nothing is
+  presented as an answer
+
+### 6. cora acts, but only when I say so
+
+As a person whose agent can change things,\
+I want to see what it is about to do and approve it first,\
+so that nothing outside cora happens without me.
+
+**Scenario:** an effect is proposed, approved, then happens
+
+- **Given** a scope with a tool that changes something outside cora
+- **When** the model asks to call it
+- **Then** cora shows what it will do and waits
+- **And** nothing changes until I approve
+- **And** after approval the effect happens and the trace records both
+
+**Scenario:** declining changes nothing
+
+- **Given** the same proposal
+- **When** I decline
+- **Then** nothing outside cora has changed, and the turn says what it did not do
+
+**Scenario:** the result is mine to keep
+
+- **Given** an approved effect that produces something — an itinerary, a training plan
+- **When** it completes
+- **Then** it exists as a file I keep, outside cora's own stores
+
+### 7. What cora does with my data, said in one page
 
 As a person uploading my own documents,\
 I want one page saying what leaves my machine, what is stored and what the model is told,\
@@ -136,26 +286,11 @@ so that I can judge the privacy cost before I upload anything.
 
 - **Given** the docs site
 - **When** a reader looks for the privacy and ethics page
-- **Then** it names every place data goes — the model provider, the local index, the local
-  text, remembered facts
-- **And** it says what the injection screen does and does not catch, and where the answers
-  can be wrong
+- **Then** it names every place data goes — the model provider, the external services story
+  5 adds, the local index, the local text, remembered facts
+- **And** it says what the injection screen does and does not catch, what an effect can and
+  cannot do without approval, and where the answers can be wrong
 - **And** the claims match what the code does
-
-### 7. I can remove a document
-
-As a user of cora,\
-I want to remove a document I uploaded,\
-so that an answer stops citing something I no longer want indexed.
-
-**Scenario:** a document leaves
-
-- **Given** an indexed document
-- **When** I remove it
-- **Then** its chunks leave the index, its text file is gone, and no later answer cites it
-- **And** the list says how many chunks each source contributes
-
-This is the tail: the story that drops first if the sprint runs short.
 
 ---
 
@@ -166,8 +301,8 @@ Not stories — no failing test names them — but tracked, and each is a merge 
 - **The test suite, 20/80** — find the fifth of the 1,247 tests carrying most of the
   protection, extend only those, archive the rest under `tests/` and delete the archive
   after submission. Membership is decided by what would go undetected, not by count.
-- **An architecture note for the frontend before story 7 touches it** — sprint 4 had none
-  and said so in its retrospective.
+- **An architecture note for the React shell before story 3 touches it** — the scope pin is a
+  new thing on the screen, and sprint 4 shipped that frontend with no such note and said so.
 - **The showcase entry**, uploaded before the review and kept current, with its link in
   `README.md` (story 1's criterion).
 
@@ -175,32 +310,39 @@ Not stories — no failing test names them — but tracked, and each is a merge 
 
 | Criterion | Where |
 |---|---|
-| 1 · Outcome quality | *Purpose* above; stories 2, 3, 7 make the working app checkable, and story 1 states what it is for |
-| 2 · Learning application | *Architecture decision* above — LangGraph as a workflow, Chroma for embeddings, OpenRouter behind the `ChatModel` port, prompt rules as plugins; story 5 measures the retrieval half |
-| 3 · Ethical considerations | Story 6, standing on sprint 4's injection screen and untrusted-document handling |
-| 4 · Presentation | Stories 1, 2 and 5 supply the six points: the problem, the architecture, the data, the measurement, the hardest problem, what is next |
+| 1 · Outcome quality | *Purpose* above; stories 5 and 6 give the agent reach and consequence, story 3 gives it focus, story 1 says what it is for |
+| 2 · Learning application | *Architecture decision* above — LangGraph as a named workflow with an interrupt gate, Chroma for embeddings, OpenRouter behind the `ChatModel` port, an external API as a tool, rules and scopes as plugins |
+| 3 · Ethical considerations | Story 7, standing on sprint 4's injection screen and untrusted-data handling, and on story 6's approval gate |
+| 4 · Presentation | The six points: the problem (story 1), the architecture (stories 2–3), the data (story 4), evaluation (story 3's routing report), the hardest problem (stories 5–6), what is next (*Not in this sprint*) |
 | 5 · Showcase submission | *Chores* — uploaded before the review, linked from `README.md` |
 
 ## Not in this sprint
 
 Recorded with a reason, tracked in `sprint-5-feedback.md`.
 
-- **Stronger injection rules and a scan of document text at ingest** — the screen is still
-  two regexes. Defence in depth behind a fix that already holds by construction; story 6
-  says what it does not catch rather than pretending it does.
+- **A sub-agent inside a scope** — research and booking are the two jobs that would earn one
+  (context isolation, permission isolation). It needs no new port, but it needs plugins to be
+  handed a bounded-loop factory, and that contract change is bigger than the capability. The
+  seam is documented; story 5's tool is where the first one would go.
+- **A goal that outlives a turn** — the fourth agentic axis, and the expensive one. cora's
+  checkpointer could hold an accumulating task, but nothing this sprint needs it.
+- **A retrieval evaluation set** — story 3 measures the router instead, which is what the new
+  headline turns on. Retrieval quality is unchanged this sprint, so a number for it would
+  measure sprint 4.
+- **Document removal** *(sprint-4 finding #8)* — carried again. Cheap once story 4 makes a
+  source a file, which is why it is the first thing to add if the sprint runs early.
+- **Stronger injection rules and a scan of document text at ingest** — the screen is still two
+  regexes. Story 7 says what it does not catch rather than implying it catches everything.
 - **The React page's heading outline and tab/panel wiring** — one coherent accessibility
-  story, not a piece of it done off-list. Deferred, not dropped.
-- **PostgreSQL + pgvector, second-stage reranking, richer chunk metadata** — deferred
-  again. Story 3 changes where the *text* lives, not the index; the evaluation set from
-  story 5 is what would justify the other two.
+  story, not a piece of it done off-list.
+- **PostgreSQL + pgvector, second-stage reranking, richer chunk metadata** — deferred again.
 
 ## Out of scope
 
 - **A hosted deployment.** The assignment asks for the showcase entry and a README link,
   never a running URL; `make run` and `make run-react` are how it is demonstrated.
-- **A second domain plugin.** Story 4 makes the *place* for one obvious; shipping one
-  proves nothing the seam does not already.
-- **Multi-modal input, code generation, parameter-tuning studies** — cases 4, 5 and 7 are
-  not the case this project answers.
-- **Authentication, multi-tenancy, cost dashboards.** cora runs on the machine of the
-  person whose documents it holds.
+- **A third scope.** Two prove routing and the seam; a third proves nothing further.
+- **Multi-modal input, code generation, parameter-tuning studies** — cases 4, 5 and 7 are not
+  the case this project answers.
+- **Authentication, multi-tenancy, cost dashboards.** cora runs on the machine of the person
+  whose documents it holds.
