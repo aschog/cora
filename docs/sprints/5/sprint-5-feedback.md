@@ -46,8 +46,10 @@ the cut in `spec.md`; an item with no story is deferred there, with its reason.
       fragile, more stable and easier to control. The retrospective records the same doubt
       held all sprint without acting on it, and the retro's action list makes it **the first
       story of the sprint**.
-      → **stories 3 and 4**. The turn becomes *screen → route → work → answer*, and the
-      routing step is what makes a scope mean something. First code of the sprint.
+      → **stories 3 and 4**. The turn becomes *screen → route → focus → work → answer*,
+      and the routing step is what makes a scope mean something. It lands third in the
+      merge order: the README is day one and story 2 unifies the frontend, so nothing
+      new is built for two screens.
 
 ## Retrospective actions
 
@@ -68,7 +70,8 @@ Restated from the sprint-4 retrospective (branch `retro/submission-retrospective
       → a **chore** in `spec.md`, not a story: no failing test names it.
 - [ ] **Break the one agent into a workflow** — first story of the sprint. Same item as the
       reviewer's fourth finding above; two routes reached it independently.
-      → **stories 3 and 4**.
+      → **stories 3 and 4**, third in the merge order — the reviewer's finding above says
+      why the README and the one-frontend story go ahead of it.
 - [ ] **README before the code** — the paragraph that conveys the idea gets written day one.
       → **story 1**.
 - [ ] **An architecture note for the frontend before its first story** — sprint 4 had none

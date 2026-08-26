@@ -73,8 +73,9 @@ framework — the architecture guard enforces it. Six decisions are this sprint'
   for its scope, behind the `Documents` port that already exists — and the index stops
   keeping a copy of chunk text, holding embeddings and offsets and reading the text back
   from the file. That answers the reviewer's two store findings together: the duplication
-  goes, and a second domain's layout becomes a directory anyone can read. Threads and remembered facts stay in SQLite; they are
-  not duplicated raw data. Memory stays system-wide — one person, both scopes. Story 6.
+  goes, and a second domain's layout becomes a directory anyone can read. Threads and
+  remembered facts stay in SQLite; they are not duplicated raw data. Memory stays
+  system-wide — one person, both scopes. Story 6.
 - **An effect is gated by the interrupt that already exists.** Sprint 4 built `interrupt` so
   cora could stop and ask which of two facts was current. A tool that changes something
   outside cora stops the same way: it says what it is about to do and waits. Story 8.
