@@ -30,7 +30,7 @@ the cut in `spec.md`; an item with no story is deferred there, with its reason.
       plain text. The reviewer's alternative, discussed in the review: one Markdown file per
       source document, addressed individually by the algorithm. Same capability, one store
       and a directory. A scratch note from the same week reached this independently.
-      → **story 5**. It is an adapter swap behind the `Documents` port, which already
+      → **story 6**. It is an adapter swap behind the `Documents` port, which already
       exists; `sqlite_conversations.py` and `sqlite_store_memory.py` are untouched.
 
 - [ ] **Multi-domain layout is unexplained** — with one domain the two stores work, but
@@ -38,7 +38,7 @@ the cut in `spec.md`; an item with no story is deferred there, with its reason.
       store with a namespace, or something else. The reviewer asks for this in `README.md`,
       not only in the design. cora's whole pitch is that the domain comes from a plugin, so
       this is the pitch's missing half.
-      → **stories 4 and 5**, in the code and in `README.md`. A scope owns its documents, so
+      → **stories 4 and 6**, in the code and in `README.md`. A scope owns its documents, so
       the layout is a directory per scope rather than a scheme to explain.
 
 - [ ] **One agent should be a sequence of steps** — a single agent receives and processes
@@ -95,7 +95,7 @@ Open when sprint 4 closed, still open now.
       document's text when it is added. Plugin composition is no longer the blocker: sprint 4
       made `CORA_PLUGINS` an ordered list and the guard ships as its own distribution. This is
       defence in depth behind the message-role fix, not a substitute for it.
-      → **not this sprint** (`spec.md`, *Not in this sprint*). Story 8 says what the screen
+      → **not this sprint** (`spec.md`, *Not in this sprint*). Story 9 says what the screen
       does not catch instead of implying it catches everything.
 - [ ] **Contracts at public boundaries** — a standing habit, not an increment: be ready to say
       what each public service accepts, returns and promises. **Unticked by design**; an empty
@@ -105,7 +105,7 @@ Open when sprint 4 closed, still open now.
       sources with no chunk count, no removal and no clear. Memory clearing shipped; document
       removal did not.
       → **not this sprint** (`spec.md`, *Not in this sprint*), carried again. Cheap once
-      story 5 makes a source a file, so it is the first thing added if the sprint runs early.
+      story 6 makes a source a file, so it is the first thing added if the sprint runs early.
 - [ ] **The page's heading outline and its tablist** — `SourcePanel`'s `<h2>` is the React
       page's only heading, and the `role="tab"` buttons have no `aria-controls` and no
       `role="tabpanel"` to point at. Referred back deliberately in sprint 4: the fix decides
@@ -122,7 +122,7 @@ Open when sprint 4 closed, still open now.
       this sprint, so a number for it would be measuring sprint 4.
 - [ ] **PostgreSQL + pgvector instead of Chroma** — an adapter swap behind the `Retriever`
       port. Cheap to do later; note that the reviewer's store finding above may decide it.
-      → **not this sprint**. Story 5 moves the text, not the index.
+      → **not this sprint**. Story 6 moves the text, not the index.
 - [ ] **Second-stage semantic reranking** — a wider candidate set through a cross-encoder
       before context selection.
       → **not this sprint**; retrieval quality is not this sprint's axis.
@@ -138,4 +138,4 @@ agentic RAG. It is not in the write-up above, and it is what the sprint now answ
 - [ ] **cora can decide but cannot act** — every tool it owns reads its own documents, so a
       well-planned turn only ever produced a better answer. Reach, consequence and a gate in
       front of both.
-      → **stories 6 and 7**, and it is the capstone's headline.
+      → **stories 7 and 8**, and it is the capstone's headline.
