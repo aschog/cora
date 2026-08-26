@@ -414,7 +414,7 @@ Not stories — no failing test names them — but tracked, and each is a merge 
 
 | Criterion | Where |
 |---|---|
-| 1 · Outcome quality | *Purpose* above; stories 7 and 8 give the agent reach and consequence, stories 4 and 5 give it focus and make a scope a plugin rather than a fork — the seam is the product surface — and story 1 says what it is for |
+| 1 · Outcome quality | *Purpose* above; stories 7 and 8 give the agent reach and consequence, stories 4 and 5 give it focus and make a scope a plugin rather than a fork — the seam is the product surface — story 1 says what it is for, and story 2 leaves one frontend to judge it by |
 | 2 · Learning application | *Architecture decision* above — LangGraph as a named workflow with an interrupt gate, Chroma for embeddings, OpenRouter behind the `ChatModel` port, an external API as a tool, rules and scopes as plugins |
 | 3 · Ethical considerations | Story 9, standing on sprint 4's injection screen and untrusted-data handling, and on story 8's approval gate |
 | 4 · Presentation | The six points: the problem (story 1), the architecture (stories 3–5), the data (story 6), evaluation (story 4's routing report), the hardest problem (stories 7–8), what is next (*Not in this sprint*) |
