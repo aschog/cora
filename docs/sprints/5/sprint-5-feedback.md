@@ -122,7 +122,8 @@ Open when sprint 4 closed, still open now.
       this sprint, so a number for it would be measuring sprint 4.
 - [ ] **PostgreSQL + pgvector instead of Chroma** — an adapter swap behind the `Retriever`
       port. Cheap to do later; note that the reviewer's store finding above may decide it.
-      → **not this sprint**. Story 6 moves the text, not the index.
+      → **not this sprint**. Story 6 empties the index of text — embeddings and offsets
+      stay — but the engine behind the `Retriever` port is unchanged.
 - [ ] **Second-stage semantic reranking** — a wider candidate set through a cross-encoder
       before context selection.
       → **not this sprint**; retrieval quality is not this sprint's axis.

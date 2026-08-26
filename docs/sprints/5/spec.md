@@ -70,9 +70,10 @@ framework — the architecture guard enforces it. Six decisions are this sprint'
   active. Stories 4 and 5.
 - **A scope owns its documents.** The cleaned text a citation opens onto moves from
   `adapters/sqlite_documents.py` to one Markdown file per source, under a directory named
-  for its scope, behind the `Documents` port that already exists — which answers the
-  reviewer's two store findings together: the duplication goes, and a second domain's layout
-  becomes a directory anyone can read. Threads and remembered facts stay in SQLite; they are
+  for its scope, behind the `Documents` port that already exists — and the index stops
+  keeping a copy of chunk text, holding embeddings and offsets and reading the text back
+  from the file. That answers the reviewer's two store findings together: the duplication
+  goes, and a second domain's layout becomes a directory anyone can read. Threads and remembered facts stay in SQLite; they are
   not duplicated raw data. Memory stays system-wide — one person, both scopes. Story 6.
 - **An effect is gated by the interrupt that already exists.** Sprint 4 built `interrupt` so
   cora could stop and ask which of two facts was current. A tool that changes something
@@ -81,9 +82,10 @@ framework — the architecture guard enforces it. Six decisions are this sprint'
 ### Shapes the stories must honour
 
 Seven constraints, decided here because each one is a *shape* rather than a feature.
-`AgentState` and the trace are enumerated in `CHECKPOINTED_DATA`, so they are serialised
-into every persisted thread: widening one later is a lock bump and a migration, while
-getting it right now costs nothing.
+`AgentState`'s types are enumerated in `CHECKPOINTED_DATA`, and the trace's step kinds
+join them in `checkpointed_types()`, so both are serialised into every persisted thread:
+widening one later is a lock bump and a migration, while getting it right now costs
+nothing.
 
 - **Routing yields the active scope*s*, not the active scope.** One scope is the degenerate
   case of a set. A question that spans two scopes is the obvious next ask, and with a set it
@@ -253,8 +255,8 @@ ships enough of it for routing to have somewhere to route.
 - **When** the router is run over it against a real model, in the `llm` tier
 - **Then** a report names how often it chose the right scope, and a drop below the recorded
   threshold fails that tier
-- **And** the number is quoted here when it is first measured, because the tier is hand-run
-  and costs money
+- **And** the number is quoted in the change's `proposal.md` when it is first measured,
+  because the tier is hand-run and costs money
 
 ### 5. A plugin declares its scope
 
@@ -308,7 +310,8 @@ so that I can see what cora has, and a second field is a directory rather than a
 - **When** its cleaned text is kept
 - **Then** one Markdown file per source holds it, under that scope's directory, and the
   citation opens onto that file
-- **And** nothing duplicates the text a second time
+- **And** nothing duplicates the text a second time — the index keeps embeddings and
+  offsets, and reads a chunk's text from the file
 
 **Scenario:** a search sees one scope
 
@@ -418,7 +421,9 @@ Not stories — no failing test names them — but tracked, and each is a merge 
 
 ## Not in this sprint
 
-Recorded with a reason, tracked in `sprint-5-feedback.md`.
+Recorded with a reason. The items carried from sprint 4 are tracked in
+`sprint-5-feedback.md`; the first two are this sprint's own deferrals, and this list is
+their record.
 
 - **A sub-agent inside a scope** — research and booking are the two jobs that would earn one
   (context isolation, permission isolation). It needs no new port, but it needs plugins to be
