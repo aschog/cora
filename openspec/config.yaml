@@ -20,8 +20,12 @@ context: |
 rules:
   proposal:
     - >-
-      Open with the story in the project's form — **As a** · **I want** · **So that**
-      — followed by its acceptance criteria as **Given** / **When** / **Then**.
+      Open with the story in the standard three lines — "As a <role>," / "I want
+      <capability>," / "so that <benefit>." — each on its own line, ended with a
+      backslash so it stays a line when rendered.
+    - >-
+      Follow it with the acceptance criteria as one or more **Scenario:** blocks, each a
+      short title and then **Given** / **When** / **Then** / **And** bullets.
     - >-
       One story per change. If it needs two stories, it is two changes.
     - >-

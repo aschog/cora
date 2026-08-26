@@ -50,76 +50,110 @@ the heading and the link.
 
 ### 1. A reader learns what cora is for before anything else
 
-> **As a** person who lands on the repository · **I want** the first screen to tell me
-> what problem this solves and for whom · **So that** I can decide whether it is for me
-> without reading the code
+As a person who lands on the repository,\
+I want the first screen to tell me what problem this solves and for whom,\
+so that I can decide whether it is for me without reading the code.
 
-**Given** `README.md` as the front door · **When** someone who has never seen cora reads
-its first screen · **Then** they can say what problem it solves, who it is for and how it
-works, and the showcase entry is linked near the top.
+**Scenario:** the front door explains itself
+
+- **Given** `README.md` as the front door
+- **When** someone who has never seen cora reads its first screen
+- **Then** they can say what problem it solves, who it is for and how it works
+- **And** the showcase entry is linked near the top
 
 Written day one, before the code — the retrospective names cutting it last as the cause of
 the reviewer seeing it.
 
 ### 2. The turn is a workflow of named steps
 
-> **As a** developer of cora · **I want** a turn to run as a sequence of steps with one
-> responsibility each · **So that** I can see where a turn is, control what each step may
-> do, and test a step without the whole loop
+As a developer of cora,\
+I want a turn to run as a sequence of steps with one responsibility each,\
+so that I can see where a turn is, control what each step may do, and test a step without
+the whole loop.
 
-**Given** a question that needs documents · **When** the turn runs · **Then** the trace
-names each step it took in the order the workflow defines, a step's failure is contained
-and reported as that step's, and the model's freedom is bounded to the step it serves ·
-**And** a turn that needs no documents skips the steps that would have fetched them.
+**Scenario:** a question that needs documents
+
+- **Given** a question that needs documents
+- **When** the turn runs
+- **Then** the trace names each step it took, in the order the workflow defines
+- **And** a step's failure is contained and reported as that step's
+- **And** the model's freedom is bounded to the step it serves
+
+**Scenario:** a question that needs none
+
+- **Given** a question that needs no documents
+- **When** the turn runs
+- **Then** it skips the steps that would have fetched them
 
 ### 3. The text behind a citation is a file I can open
 
-> **As a** user of cora · **I want** the text my answer cites to live in a readable file
-> per source · **So that** I can open, inspect and delete it without a database
+As a user of cora,\
+I want the text my answer cites to live in a readable file per source,\
+so that I can open, inspect and delete it without a database.
 
-**Given** a document is ingested · **When** its cleaned text is kept · **Then** one
-Markdown file per source holds it and a citation opens onto that file · **And** nothing
-duplicates the text a second time.
+**Scenario:** a citation opens onto a file
+
+- **Given** a document is ingested
+- **When** its cleaned text is kept
+- **Then** one Markdown file per source holds it, and a citation opens onto that file
+- **And** nothing duplicates the text a second time
 
 ### 4. A second domain has an obvious place to live
 
-> **As a** person setting cora up for their own field · **I want** to see where a second
-> domain's documents and index go · **So that** adding one is a directory, not a redesign
+As a person setting cora up for their own field,\
+I want to see where a second domain's documents and index go,\
+so that adding one is a directory, not a redesign.
 
-**Given** two domains configured · **When** documents are added to each · **Then** each
-domain's index and text sit under a place named for that domain, neither reads the
-other's, and `README.md` states the layout in a paragraph.
+**Scenario:** two domains, side by side
+
+- **Given** two domains configured
+- **When** documents are added to each
+- **Then** each domain's index and text sit under a place named for that domain
+- **And** neither reads the other's
+- **And** `README.md` states the layout in a paragraph
 
 ### 5. Retrieval has a number, not an impression
 
-> **As a** developer of cora · **I want** a set of questions with the sources that should
-> answer them · **So that** a change to retrieval shows up as a number instead of a
-> feeling
+As a developer of cora,\
+I want a set of questions with the sources that should answer them,\
+so that a change to retrieval shows up as a number instead of a feeling.
 
-**Given** an evaluation set of 10–20 questions with their expected sources · **When** it
-is run against an indexed corpus · **Then** a report names how often the expected source
-was retrieved and how often the answer cited it · **And** a drop below the recorded
-threshold fails.
+**Scenario:** the evaluation set runs
+
+- **Given** an evaluation set of 10–20 questions with their expected sources
+- **When** it is run against an indexed corpus
+- **Then** a report names how often the expected source was retrieved, and how often the
+  answer cited it
+- **And** a drop below the recorded threshold fails
 
 ### 6. What cora does with my data, said in one page
 
-> **As a** person uploading my own documents · **I want** one page saying what leaves my
-> machine, what is stored and what the model is told · **So that** I can judge the privacy
-> cost before I upload anything
+As a person uploading my own documents,\
+I want one page saying what leaves my machine, what is stored and what the model is told,\
+so that I can judge the privacy cost before I upload anything.
 
-**Given** the docs site · **When** a reader looks for the privacy and ethics page ·
-**Then** it names every place data goes (the model provider, the local index, the local
-text, remembered facts), what the injection screen does and does not catch, and where the
-answers can be wrong · **And** the claims match what the code does.
+**Scenario:** the privacy and ethics page
+
+- **Given** the docs site
+- **When** a reader looks for the privacy and ethics page
+- **Then** it names every place data goes — the model provider, the local index, the local
+  text, remembered facts
+- **And** it says what the injection screen does and does not catch, and where the answers
+  can be wrong
+- **And** the claims match what the code does
 
 ### 7. I can remove a document
 
-> **As a** user of cora · **I want** to remove a document I uploaded · **So that** an
-> answer stops citing something I no longer want indexed
+As a user of cora,\
+I want to remove a document I uploaded,\
+so that an answer stops citing something I no longer want indexed.
 
-**Given** an indexed document · **When** I remove it · **Then** its chunks leave the
-index, its text file is gone, and no later answer cites it · **And** the list says how
-many chunks each source contributes.
+**Scenario:** a document leaves
+
+- **Given** an indexed document
+- **When** I remove it
+- **Then** its chunks leave the index, its text file is gone, and no later answer cites it
+- **And** the list says how many chunks each source contributes
 
 This is the tail: the story that drops first if the sprint runs short.
 

@@ -32,7 +32,7 @@ openspec/
   config.yaml             this project's rules, read by every /opsx: command
   specs/                  what cora does today, one spec per capability
   changes/<name>/
-    proposal.md           the story — As a · I want · So that, with Given/When/Then
+    proposal.md           the story, as-a / I-want / so-that, with its scenarios
     design.md             the architecture-level how
     specs/                the delta this change makes to the specs above
     tasks.md              the test list: every item one failing test
@@ -68,11 +68,15 @@ openspec/
       criteria. Anything that maps to no story is out of scope. The criteria come
       *with* the story, not after it:
 
-  > **As a** researcher · **I want** to ask a question about my uploaded papers ·
-  > **So that** I get an answer with citations I can verify
+  > As a researcher,\
+  > I want to ask a question about my uploaded papers,\
+  > so that I get an answer with citations I can verify.
   >
-  > **Given** a paper on BM25 has been indexed · **When** I ask "How does BM25
-  > handle term saturation?" · **Then** I receive an answer citing that paper
+  > **Scenario:** a question answered from an indexed paper
+  >
+  > - **Given** a paper on BM25 has been indexed
+  > - **When** I ask "How does BM25 handle term saturation?"
+  > - **Then** I receive an answer citing that paper
 
 - [ ] **Day one — turn the last review's findings into a backlog**: each one becomes
       a tracked checklist item in `docs/sprints/<n>/sprint-<n>-feedback.md`, so feedback
