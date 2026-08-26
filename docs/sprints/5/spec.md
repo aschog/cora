@@ -20,25 +20,28 @@ both. The tracked backlog is `sprint-5-feedback.md`; the reviewer's write-up is
 
 **cora is an agent you chat with, and plugins give it a scope.** With no plugin loaded it
 runs a turn on its own: search its documents, remember what it is told, ask when it cannot
-tell, and answer grounded and cited. That much is agentic RAG, and it is the floor rather
-than the product.
+tell, and answer grounded and cited. That is where every turn starts, and a scope is what it
+becomes.
 
-A plugin contributes two different kinds of thing, and the difference is this sprint's
-central decision:
+**A plugin declares its scope, and that scope is the lifetime of everything it contributes**
+— instructions, tools, documents and rules alike. This sprint's central decision, and it has
+no exceptions:
 
-- **Rules are always on.** A rule can only ever refuse, so more of them is never less safe.
-  The injection screen is not something a scope can switch off.
-- **Instructions, tools and documents are scoped.** They are what focus *means*, so one
-  scope is active per turn — the user pins it, or cora routes to it — and the others are
-  not in the prompt at all.
+- **A named scope** is in play only while that scope is active. One scope is active per turn —
+  the user pins it, or cora routes to it — and the others are not in the prompt at all. That
+  is what focus *means*.
+- **`scope=None`** is system-wide: always in the prompt, always callable, always enforced.
+  The injection screen lives here, which is why no scope can switch it off.
 
 Three plugins ship: **security** (rules only, always on), **fitness** and **travel** (two
-scopes). Two are needed, not one: routing has nowhere to route with a single scope, and the
-extensibility claim is shown by the second, not asserted by the first.
+scopes). Two scopes, not one: a second one is the proof that a scope is a plugin and not a
+fork — it is written without touching the core — and it is what makes routing worth having,
+since one scope leaves nothing to choose between.
 
-**Target users.** Two, and both are real: the person with a body of their own material and
-recurring questions over it, and the developer who wants an agent they can point at their
-own field by writing a plugin rather than a fork.
+**Target users.** People who extend the tools they work in. They want an agent pointed at
+their own field by a plugin they wrote and they use what they
+extend, which is why the stories below are written from the using side. That makes the plugin
+contract the product surface, and `docs/how-to/write-a-plugin.md` part of the product.
 
 ## Architecture decision (criterion 2 · learning application)
 
@@ -51,10 +54,10 @@ framework — the architecture guard enforces it. Four decisions are this sprint
   *screen → route → work → answer*, each step with one responsibility and its own place in
   the trace; the model keeps the decisions that are genuinely its own, inside the working
   step. Stories 2 and 3.
-- **Rules always on, capability scoped.** No second plugin type: `security` contributes only
-  rules and is therefore always in force by construction, while a scope's instructions and
-  tools enter the prompt only when that scope is active. One `Plugin` shape, two lifetimes
-  for its parts. Story 3.
+- **A plugin's scope decides the lifetime of everything it contributes.** One field, one
+  rule, no second plugin type: `security` is `scope=None` and therefore system-wide, a domain
+  plugin names its scope and everything it brings lives exactly as long as that scope is
+  active. Story 3.
 - **A scope owns its documents.** The cleaned text a citation opens onto moves from
   `adapters/sqlite_documents.py` to one Markdown file per source, under a directory named
   for its scope, behind the `Documents` port that already exists — which answers the
@@ -84,24 +87,17 @@ getting it right now costs nothing.
   below only holds if the seam survives: a tool that later runs a subgraph must be able to
   *show* its nested work, or cora's "watch what it did" claim goes shallow exactly where the
   interesting work is.
-- **A plugin declares its scope, and `None` means system-wide.** "Rules always on, capability
-  scoped" leaves no room for a system-wide *tool* — a web search, a calculator — useful in
-  every scope and belonging to none. One field with a default carries it: `scope=None` makes
-  a plugin's rules *and* tools always on, a named scope puts its instructions, tools and
-  corpus in play only while that scope is active, and rules are always on either way.
-  `security` is `scope=None` and behaves as it does today. No second plugin type, and the
-  prompt builder and tool filter each stay one path with a filter rather than a branch per
-  kind.
 - **An approval is its own checkpointed type, bound to one call.** Sprint 4's `interrupt`
   carries a `Decision` of labelled options for "which fact is current". Squeezing "may I
   write this file" into that shape works for one effect and breaks on the second — two
   effects in one turn, or an argument the user wants to edit before approving, both need the
   approval bound to a specific call.
 
-**One behaviour change this implies:** with rules always on, the fitness plugin's medical
-filter fires in the travel scope too. Defensible — medical caution is not field-specific —
-and no shipped rule refuses anything a second scope would need. If one ever does, a rule
-declares its scope and the contract widens then.
+**One behaviour change this implies:** the fitness plugin's medical filter becomes
+fitness-only, so a medical question asked in the travel scope, or with nothing pinned, meets
+no filter. The rule is right and its *home* was wrong — a screen that must always apply
+belongs in a `scope=None` plugin beside the injection screen, not inside a domain. Story 3
+moves it there. Safety is not a domain concern.
 
 **Not decided this sprint:** a sub-agent inside a scope. It needs no new port — `Tool.run`
 is a callable and cora never asks what is behind it — but for a plugin to *build* one it
@@ -202,11 +198,17 @@ ships enough of it for routing to have somewhere to route.
 - **Then** it says what a scope is, what `scope=None` means, and which contributions are
   always on
 
-**Scenario:** a rule cannot be scoped away
+**Scenario:** a system-wide rule cannot be scoped away
 
-- **Given** the security plugin loaded beside two scopes
+- **Given** a `scope=None` plugin loaded beside two scopes
 - **When** an injection attempt arrives in any scope, or with none pinned
 - **Then** it is refused before the model is called
+
+**Scenario:** a scoped rule applies where it belongs
+
+- **Given** a rule contributed by a named scope
+- **When** a question arrives in a different scope
+- **Then** that rule does not run
 
 ### 4. A scope's documents are its own files
 
