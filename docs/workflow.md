@@ -10,16 +10,33 @@ AI is a pair partner, not an autopilot. Every phase should be an atomic commit.
 
 ## Where the docs live
 
+Two places, and the split is *when*. A sprint folder holds what a sprint was asked to
+do; `openspec/` holds what the product must do — the first is dated, the second is
+current.
+
 Everything about a sprint lives in `docs/sprints/<n>/`:
 
 ```
-docs/sprints/4/
+docs/sprints/5/
   assignment.md           the brief, verbatim
   spec.md                 the story cut, requirement coverage, out of scope
-  sprint-4-feedback.md    last review's findings, as a tracked backlog
-  story-01.md             one file per story: the story + its test list
-  done/                   story files whose test list is fully ticked
+  sprint-5-feedback.md    last review's findings, as a tracked backlog
+  review-feedback.md      the reviewer's write-up, verbatim — the record, not the backlog
   retrospective.md        written at sprint close
+```
+
+Everything about a story in flight lives in an OpenSpec change:
+
+```
+openspec/
+  config.yaml             this project's rules, read by every /opsx: command
+  specs/                  what cora does today, one spec per capability
+  changes/<name>/
+    proposal.md           the story, as-a / I-want / so-that, with its scenarios
+    design.md             the architecture-level how
+    specs/                the delta this change makes to the specs above
+    tasks.md              the test list: every item one failing test
+  changes/archive/        changes whose list is ticked and whose delta is synced
 ```
 
 - **Planning reads the current sprint only.** The folder of the sprint in flight is the
@@ -27,16 +44,22 @@ docs/sprints/4/
   how that code was *built*, not how it works today, so it is not consulted when
   planning. Only `workflow.md` and `big-picture.md` sit outside a sprint folder — they
   describe the project, not a sprint.
-- **`story-NN.md` is the planning artefact**: the story (*As a · I want · So that* with
-  its *Given/When/Then*) followed by a **test list**. `docs/sprints/4/done/story-01.md` is the
-  current reference shape — match it.
-- **A story lives in exactly one place.** When it gets its own `story-NN.md`, its text
-  moves there and `spec.md` keeps only its heading, linked to the story file, so the
-  story cut still reads in order and no criterion is stated twice.
+- **`openspec/specs/` is the exception, because it is not history.** It says what cora
+  does *today*, so it is always in scope: read it when planning, and every archive syncs
+  a change's delta into it. A sprint folder answers "what were we asked to build"; the
+  specs answer "what does it do".
+- **The change is the planning artefact** — `proposal.md`, `design.md`, the delta specs
+  and `tasks.md`, written by `/opsx:propose` and worked by `/opsx:apply`. It replaces
+  `story-NN.md`; the files in `docs/sprints/4/done/` are the record of how sprint 4 was
+  planned, not a template to copy.
+- **A story lives in exactly one place.** When it becomes a change, its text moves to
+  that change's `proposal.md` and `spec.md` keeps only its heading, linked to the change,
+  so the story cut still reads in order and no criterion is stated twice.
 - **The test list is Beck's, not a work breakdown** — every item is one failing test.
   It is expected to change as you go: add items as they surface, and if an item can't be
-  phrased as "write a test that shows X", it does not belong on the list.
-
+  phrased as "write a test that shows X", it does not belong on the list. OpenSpec's own
+  default is a list of session-sized chunks, so `openspec/config.yaml` overrides it in
+  writing — the rule is told to the tool, not remembered.
 ---
 
 ## Sprint preparation
@@ -45,18 +68,22 @@ docs/sprints/4/
       criteria. Anything that maps to no story is out of scope. The criteria come
       *with* the story, not after it:
 
-  > **As a** researcher · **I want** to ask a question about my uploaded papers ·
-  > **So that** I get an answer with citations I can verify
+  > As a researcher,\
+  > I want to ask a question about my uploaded papers,\
+  > so that I get an answer with citations I can verify.
   >
-  > **Given** a paper on BM25 has been indexed · **When** I ask "How does BM25
-  > handle term saturation?" · **Then** I receive an answer citing that paper
+  > **Scenario:** a question answered from an indexed paper
+  >
+  > - **Given** a paper on BM25 has been indexed
+  > - **When** I ask "How does BM25 handle term saturation?"
+  > - **Then** I receive an answer citing that paper
 
 - [ ] **Day one — turn the last review's findings into a backlog**: each one becomes
       a tracked checklist item in `docs/sprints/<n>/sprint-<n>-feedback.md`, so feedback
       is "tracked and ticked" instead of "in my head"
 
-- [ ] **Give each story in flight its own `story-NN.md`**, numbered in merge order, and
-      move it out of `spec.md` as you do
+- [ ] **Open a change for each story in flight** — `/opsx:propose`, kebab-case, opened
+      in merge order — and move the story out of `spec.md` as you do
 
 ---
 
@@ -71,6 +98,10 @@ docs/sprints/4/
 - [ ] Write `CLAUDE.md`: commands + architecture rules (business logic in pure,
       unit-testable modules; thin UI/shell on top)
 - [ ] Install AI **skills** matching the stack (toolchain plugins, framework docs)
+- [ ] Install the **spec-driven tooling**: `npm i -g @fission-ai/openspec@latest`, then
+      `openspec init --tools claude`, then write this project's rules into
+      `openspec/config.yaml` — the generated defaults are generic, and a rule the tool
+      cannot read is a rule that gets skipped. `openspec update` refreshes the commands
 - [ ] Define AI **subagents** in `.claude/agents/`:
   - [ ] `ai-architect` — turns requirements into plans; weighs trade-offs
   - [ ] `ai-code-reviewer` — reviews branch diffs for correctness, design, tests
@@ -83,7 +114,11 @@ docs/sprints/4/
 - [ ] Create a feature branch
 - [ ] **Research unknowns** with `ai-researcher` (libraries, APIs, prior art) —
       before planning, not during coding
-- [ ] Draft a plan with `ai-architect` from the story + research
+- [ ] **Weigh the options** with `/opsx:explore` when the approach is genuinely open;
+      skip it when it isn't
+- [ ] Draft the change with `/opsx:propose` — the story into `proposal.md`, the
+      architecture into `design.md`, the behaviour it adds as a delta on `openspec/specs/`.
+      `ai-architect` is the second opinion on the design, not a second document
 - [ ] **Write the outer functional test** — one failing test per slice, straight
       from the acceptance criterion. Written up front it catches design mistakes a
       retrofitted test can't, and it is what stops out-of-scope work: no story, no
@@ -92,10 +127,10 @@ docs/sprints/4/
 - [ ] **Refine the plan into a test list**: decompose it so that every item is
       one failing-test-sized increment — if it can't be phrased as "write a test
       that shows X", split it
-- [ ] Write the test list into the story's `docs/sprints/<n>/story-NN.md`, under the
-      story it serves, and commit it to the branch. The design rationale behind it does
-      **not** go in the file — it belongs in the conversation, the commit messages and
-      the tests
+- [ ] Write the test list into the change's `tasks.md` and commit the change folder to
+      the branch. The *shape* is argued in `design.md`; the rationale behind it — why
+      this way and not that — does **not** go in a file, it belongs in the conversation,
+      the commit messages and the tests
 
 ---
 
@@ -117,8 +152,8 @@ write failing functional test   ←── outer loop (feature)
 functional test goes green  →  feature done
 ```
 
-- [ ] Pick the next unchecked item from the story's test list in
-      `docs/sprints/<n>/story-NN.md`
+- [ ] Pick the next unchecked item from the change's `tasks.md` — `/opsx:apply` reads
+      it and takes one item at a time
 - [ ] **Red** — write a failing test; run it and *see it fail* for the right reason
 - [ ] **Green** — write the minimal code to make it pass; all tests green
 - [ ] **Refactor** — clean up code *and tests*; stay green
@@ -186,14 +221,16 @@ functional test goes green  →  feature done
 - [ ] **Run the feature for real** and check it against the Phase 1 acceptance
       criteria — green tests alone don't prove the feature works
 - [ ] Final sanity check: format, lint, type check, full test suite — and CI green
-- [ ] Every item in the story's test list ticked
+- [ ] Every item in the change's `tasks.md` ticked
 - [ ] Update project docs the feature touched (`README`, `CLAUDE.md`, `docs/`)
 - [ ] **Merge manually** into trunk as **one atomic commit** — squash the
       micro-commits so trunk history reads one green, self-contained commit
       per feature
 - [ ] **Keep the feature branch** (don't delete) — the micro-commit trail stays
       publicly visible as evidence of the TDD process
-- [ ] **A fully ticked `story-NN.md`** is moved into `docs/sprints/<n>/done/`
+- [ ] **Archive the change** with `/opsx:archive` — it syncs the delta into
+      `openspec/specs/`, so the specs describe the product again, and moves the folder
+      into `openspec/changes/archive/`
 
 ---
 
