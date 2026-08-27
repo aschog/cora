@@ -30,7 +30,7 @@ the cut in `spec.md`; an item with no story is deferred there, with its reason.
       plain text. The reviewer's alternative, discussed in the review: one Markdown file per
       source document, addressed individually by the algorithm. Same capability, one store
       and a directory. A scratch note from the same week reached this independently.
-      → **story 6**. It is an adapter swap behind the `Documents` port, which already
+      → **story 8**. It is an adapter swap behind the `Documents` port, which already
       exists; `sqlite_conversations.py` and `sqlite_store_memory.py` are untouched.
 
 - [ ] **Multi-domain layout is unexplained** — with one domain the two stores work, but
@@ -38,7 +38,7 @@ the cut in `spec.md`; an item with no story is deferred there, with its reason.
       store with a namespace, or something else. The reviewer asks for this in `README.md`,
       not only in the design. cora's whole pitch is that the domain comes from a plugin, so
       this is the pitch's missing half.
-      → **stories 4 and 6**, in the code and in `README.md`. A scope owns its documents, so
+      → **stories 6 and 8**, in the code and in `README.md`. A scope owns its documents, so
       the layout is a directory per scope rather than a scheme to explain.
 
 - [ ] **One agent should be a sequence of steps** — a single agent receives and processes
@@ -46,7 +46,7 @@ the cut in `spec.md`; an item with no story is deferred there, with its reason.
       fragile, more stable and easier to control. The retrospective records the same doubt
       held all sprint without acting on it, and the retro's action list makes it **the first
       story of the sprint**.
-      → **stories 3 and 4**. The turn becomes *screen → route → focus → work → answer*,
+      → **stories 3 and 6**. The turn becomes *screen → route → focus → work → answer*,
       and the routing step is what makes a scope mean something. It lands third in the
       merge order: the README is day one and story 2 unifies the frontend, so nothing
       new is built for two screens.
@@ -70,13 +70,13 @@ Restated from the sprint-4 retrospective (branch `retro/submission-retrospective
       → a **chore** in `spec.md`, not a story: no failing test names it.
 - [ ] **Break the one agent into a workflow** — first story of the sprint. Same item as the
       reviewer's fourth finding above; two routes reached it independently.
-      → **stories 3 and 4**, third in the merge order — the reviewer's finding above says
+      → **stories 3 and 6**, third in the merge order — the reviewer's finding above says
       why the README and the one-frontend story go ahead of it.
 - [ ] **README before the code** — the paragraph that conveys the idea gets written day one.
       → **story 1**.
 - [ ] **An architecture note for the frontend before its first story** — sprint 4 had none
       and said so.
-      → a **chore**, due before story 4 puts the scope pin on the screen.
+      → a **chore**, due before story 6 puts the scope pin on the screen.
 - [ ] **Reviewer feedback as a backlog on day one** — this file. The only action from the
       previous retro that visibly changed behaviour.
       → this file, written before the story cut.
@@ -108,7 +108,7 @@ Open when sprint 4 closed, still open now.
       sources with no chunk count, no removal and no clear. Memory clearing shipped; document
       removal did not.
       → **not this sprint** (`spec.md`, *Not in this sprint*), carried again. Cheap once
-      story 6 makes a source a file, so it is the first thing added if the sprint runs early.
+      story 8 makes a source a file, so it is the first thing added if the sprint runs early.
 - [ ] **The page's heading outline and its tablist** — `SourcePanel`'s `<h2>` is the React
       page's only heading, and the `role="tab"` buttons have no `aria-controls` and no
       `role="tabpanel"` to point at. Referred back deliberately in sprint 4: the fix decides
