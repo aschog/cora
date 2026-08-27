@@ -98,7 +98,7 @@ Open when sprint 4 closed, still open now.
       document's text when it is added. Plugin composition is no longer the blocker: sprint 4
       made `CORA_PLUGINS` an ordered list and the guard ships as its own distribution. This is
       defence in depth behind the message-role fix, not a substitute for it.
-      → **not this sprint** (`spec.md`, *Not in this sprint*). Story 9 says what the screen
+      → **not this sprint** (`spec.md`, *Not in this sprint*). Story 12 says what the screen
       does not catch instead of implying it catches everything.
 - [ ] **Contracts at public boundaries** — a standing habit, not an increment: be ready to say
       what each public service accepts, returns and promises. **Unticked by design**; an empty
@@ -121,11 +121,11 @@ Open when sprint 4 closed, still open now.
 - [ ] **RAG evaluation set** (10–20 questions with expected sources) — the most useful of the
       four, and the capstone is marked on evaluation: "how did you measure success" is one of
       the six presentation points.
-      → **not this sprint**. Story 4 measures the *router* instead — retrieval is unchanged
+      → **not this sprint**. Story 6 measures the *router* instead — retrieval is unchanged
       this sprint, so a number for it would be measuring sprint 4.
 - [ ] **PostgreSQL + pgvector instead of Chroma** — an adapter swap behind the `Retriever`
       port. Cheap to do later; note that the reviewer's store finding above may decide it.
-      → **not this sprint**. Story 6 empties the index of text — embeddings and offsets
+      → **not this sprint**. Story 8 empties the index of text — embeddings and offsets
       stay — but the engine behind the `Retriever` port is unchanged.
 - [ ] **Second-stage semantic reranking** — a wider candidate set through a cross-encoder
       before context selection.
@@ -142,4 +142,4 @@ agentic RAG. It is not in the write-up above, and it is what the sprint now answ
 - [ ] **cora can decide but cannot act** — every tool it owns reads its own documents, so a
       well-planned turn only ever produced a better answer. Reach, consequence and a gate in
       front of both.
-      → **stories 7 and 8**, and it is the capstone's headline.
+      → **stories 9, 10 and 11**, and it is the capstone's headline.
