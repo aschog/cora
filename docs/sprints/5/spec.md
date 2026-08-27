@@ -7,6 +7,53 @@ anything that maps to no story is out of scope. **Case 2 — an AI agent for tas
 automation**: case 1's retrieval is what cora does when given nothing else, not the point
 of it.
 
+## Vocabulary
+
+The nouns this file uses, each against the class that carries it. Paths are under
+`src/cora/`, and a term marked *new* is one this sprint adds.
+
+- **Thread** — `thread_id: str`, no class of its own: the key the checkpointer and
+  `ports.conversations.Conversations` both file a conversation under.
+- **Turn** — `domain.conversation.Turn`, a question and the `ChatResult` it produced;
+  `AgentState.turn_start` is where it begins in a thread already holding ten.
+- **State** — `domain.agent_state.AgentState`, what a turn accumulates and the checkpointer
+  serialises, so every key in it is a shape that costs a migration to widen.
+- **Brief** — `AgentState["brief"]`, the system message `engine.steps.PrepareStep` rebuilds
+  each turn and states once at the prompt's head.
+- **Step** — `ports.graph.Step` as the callable, `engine.steps.*` as the implementations —
+  one named part of a turn with a single responsibility.
+- **Trace** — `AgentState["trace"]`, a list of `domain.trace.TraceStep`: `ModelDecision`,
+  `ToolUse`, `MemoryUnread` today, nesting from story 10.
+- **Plugin** — `ports.plugin.Plugin`, a frozen record today; becomes `extend(cora: Host)` in
+  story 4.
+- **Host** *(new, story 4)* — the port a plugin is handed at load: cora's own parts, and the
+  calls that register.
+- **Registration** *(new, story 4)* — one thing a plugin contributed, carrying the scope it
+  lives in; replaces the four fields of `Plugin`.
+- **Scope** *(new, story 5)* — one field on a registration, naming the field a turn runs in
+  and the lifetime of everything registered under it; `None` means system-wide.
+- **Tool** — `ports.plugin.Tool`, asked for as a `ToolCall` and answered by a `ToolResult`.
+- **Rule** — `ports.plugin.ValidationRule`, refusing an input with `InputRejectedError`
+  before any model call.
+- **Handler** *(new, story 5)* — a registration subscribed to a step, returning an amendment
+  or a refusal; a rule and an instruction become two kinds of it.
+- **Effect** *(new, story 11)* — a tool call that changes something outside cora, and so
+  waits for approval before it runs.
+- **Approval** *(new, story 11)* — a yes or no bound to one proposed call, checkpointed;
+  distinct from `domain.decision.Decision`, which answers "which fact is current".
+- **Pause** — `domain.decision.Pending` raised as `TurnPaused`, a turn stopped mid-flight
+  with what it needs settled.
+- **Pin** *(new, story 6)* — a key in `AgentState` holding the scope a user fixed a thread
+  to, so it survives a reload.
+- **Citation** — `domain.citations.Citation`, offsets into stored text today, widening to a
+  source with kinds in story 9.
+- **Document** — one source behind `ports.documents.Documents`, chunked into
+  `domain.chunk.Chunk` and retrieved as `ports.retrieval.RetrievedChunk`.
+- **Memory** — `ports.memory.Memory`, holding `Fact`s about the person, system-wide across
+  every thread and scope.
+- **Session** — `domain.conversation.Session`, a row in `Conversations.sessions()`: a thread
+  id and the question that opened it.
+
 ## Purpose (criterion 1 · outcome quality)
 
 **cora is an agent you chat with, and everything it knows and can do arrives as a plugin.**
@@ -99,7 +146,7 @@ guard enforces it. Eight decisions, and the first three are the sprint.
   on the *tool-call* event, so the gate is the core using story 5's own mechanism. It is
   also the one thing deliberately baked in against the rule above, because cora's effects
   land in a field its user did not write code for, running a plugin they very likely did not
-  read: a plugin cannot unsubscribe it. Story 10.
+  read: a plugin cannot unsubscribe it. Story 11.
 
 ### Shapes the stories must honour
 
@@ -122,6 +169,10 @@ right now costs nothing.
   default scope gives one code path where "unscoped" would give a switch.
 - **The trace nests.** A plugin holding the model can run a loop of its own, and a tool that
   does must show its nested work, or "watch what it did" goes shallow where it matters most.
+- **A sub-agent may read, never act.** A delegated loop is offered read-only tools, so an
+  effect and a stop-to-ask stay in the outer turn where the gate already is. Without that
+  rule an interrupt has to travel up through a checkpointed inner loop and back down, which
+  is a harder problem than the capability is worth.
 - **A citation's source has kinds.** Story 9 cites a live service, which has no document and
   no offsets, so `Citation` widens once to a source with kinds — a stored span, a fetched
   result — and a third kind later is a new case rather than a new shape.
@@ -147,13 +198,13 @@ Numbered in merge order. Each becomes an OpenSpec change under `openspec/changes
 text moves into that change's `proposal.md` when it is opened — this file then keeps the
 heading and the link.
 
-Stories 4, 5 and 7 are the harness; 9 and 10 are the reach the review asked for; 1, 2 and 11
-are how it is read. **Eleven stories, and none of them is a candidate for a late cut.**
-Routing was the one considered — a pin alone proves a scope — and it stays: it carries
-criterion 4's evaluation number, and one scope leaves nothing to route between, so cutting it
-would take the measurement with it and leave the second scope proving only that a plugin
-loads. If the sprint runs long, the sprint runs long; what gives is argued then, against
-*Not in this sprint*, rather than decided here while it is cheap to be brave.
+Stories 4, 5 and 7 are the harness; 9, 10 and 11 are the reach the review asked for; 1, 2
+and 12 are how it is read. **Twelve stories, and none of them is a candidate for a late
+cut.** Routing was the one considered — a pin alone proves a scope — and it stays: it
+carries criterion 4's evaluation number, and one scope leaves nothing to route between, so
+cutting it would take the measurement with it. If the sprint runs long, the sprint runs
+long; what gives is argued then, against *Not in this sprint*, rather than decided here
+while it is cheap to be brave.
 
 ### 1. A reader learns what cora is for before anything else
 
@@ -350,7 +401,8 @@ so that a fitness question is answered by a coach, and a travel tool cannot be p
 mistake.
 
 **The travel plugin is not finished by this story.** It arrives here with its instructions
-and its corpus, gains its live-service tool in story 9 and its effectful tool in story 10.
+and its corpus, gains its live-service tool in story 9, its researcher in story 10 and its
+effectful tool in story 11.
 Story 6 ships enough of it for routing to have somewhere to route.
 
 **Scenario:** the user pins a scope
@@ -488,7 +540,50 @@ so that the answer is current instead of a polite refusal.
 - **Then** it gets the slice named for it, from the environment, and the key is in no log
   and no trace
 
-### 10. cora acts, but only when I say so
+### 10. cora sends a researcher and reads the report
+
+As a person asking something that takes several lookups,\
+I want cora to delegate the digging and come back with one answer,\
+so that a broad question is answered without the searching itself filling the conversation.
+
+**Scenario:** a broad question is researched, not answered in one pass
+
+- **Given** the travel scope, with its documents and the live-service tool story 9 added
+- **When** I ask something that needs several lookups — three days somewhere, what is open,
+  what the weather will be
+- **Then** a tool runs a bounded loop of its own and the answer rests on what it found
+- **And** the trace shows the researcher's steps nested under the call that started it
+- **And** the conversation carries the report, not every lookup that produced it
+
+**Scenario:** a researcher reads and does not act
+
+- **Given** a scope holding both the researcher and an effectful tool
+- **When** the researcher runs
+- **Then** only read-only tools are offered to it, and it can neither propose an effect nor
+  stop to ask
+- **And** a guard asserts that rule, because it is what keeps a nested turn from needing a
+  nested approval
+
+**Scenario:** the fan-out has a ceiling
+
+- **Given** a question that could be split many ways
+- **When** the researcher runs
+- **Then** it makes at most the configured number of rounds, and the report says so when it
+  stopped early rather than presenting a partial answer as a whole one
+
+**Scenario:** it is a plugin, not a feature
+
+- **Given** the researcher, working
+- **When** this story's diff is read
+- **Then** nothing under `src/cora/` was changed to allow it, beyond the shell learning to
+  draw a nested step
+
+It lands after story 9 because a researcher with nothing to research is a loop, and it is
+where story 4's claim stops being a test and becomes something a user watches. **The React
+shell learns to draw nesting here** — story 4 asserts nested steps exist in the trace and
+nobody draws them yet, which is this story's one cost outside the plugin.
+
+### 11. cora acts, but only when I say so
 
 As a person whose agent can change things,\
 I want to see what it is about to do and approve it first,\
@@ -522,7 +617,7 @@ so that nothing outside cora happens without me.
 - **Then** it exists as a file under the output location the app is configured with, outside
   cora's own stores, and `README.md` says where that is
 
-### 11. What cora does with my data, and what a plugin costs in trust
+### 12. What cora does with my data, and what a plugin costs in trust
 
 As a person uploading my own documents and loading someone else's plugin,\
 I want one page saying what leaves my machine, what is stored, what the model is told and
@@ -550,7 +645,7 @@ so that I can judge both costs before I take either.
   effect, retrieved and fetched text handled as untrusted data, output confined to the
   configured directory, and the tool names a plugin may not take
 - **And** it says what cora does *not* enforce: no sandbox, no network restriction, no
-  review of what a plugin's instructions tell the model ---
+  review of what a plugin's instructions tell the model
 
 ## Chores
 
@@ -570,28 +665,28 @@ Not stories — no failing test names them — but tracked, and each is a merge 
 
 | Criterion | Where |
 |---|---|
-| 1 · Outcome quality | *Purpose* above; stories 4, 5 and 7 make the plugin contract the product — a stranger can extend cora without forking it — stories 9 and 10 give the agent reach and consequence, story 6 gives it focus, story 1 says what it is for, and story 2 leaves one frontend to judge it by |
-| 2 · Learning application | *Architecture decision* above — LangGraph as a named workflow with subscribable steps and an interrupt gate, Chroma for embeddings, OpenRouter behind the `ChatModel` port, an external API as a tool, and a plugin system whose model is named prior art rather than invented |
-| 3 · Ethical considerations | Story 11, standing on sprint 4's injection screen and untrusted-data handling, on story 10's approval gate, and on story 5's rule that a system-wide screen cannot be scoped away |
-| 4 · Presentation | The six points: the problem (story 1), the architecture (stories 3–7), the data (story 8), evaluation (story 6's routing report), the hardest problem (stories 4–5, the contract inversion), what is next (*Not in this sprint*) |
+| 1 · Outcome quality | *Purpose* above; stories 4, 5 and 7 make the plugin contract the product — a stranger can extend cora without forking it — stories 9, 10 and 11 give the agent reach, delegation and consequence, story 6 gives it focus, story 1 says what it is for, and story 2 leaves one frontend to judge it by |
+| 2 · Learning application | *Architecture decision* above — LangGraph as a named workflow with subscribable steps and an interrupt gate, Chroma for embeddings, OpenRouter behind the `ChatModel` port, an external API as a tool, a delegated loop written as a plugin, and a plugin contract that is the sprint's own design work |
+| 3 · Ethical considerations | Story 12, standing on sprint 4's injection screen and untrusted-data handling, on story 11's approval gate, and on story 5's rule that a system-wide screen cannot be scoped away |
+| 4 · Presentation | The six points: the problem (story 1), the architecture (stories 3–7), the data (story 8), evaluation (story 6's routing report), the hardest problem (stories 4–5, the contract inversion, and story 10 standing on it), what is next (*Not in this sprint*) |
 | 5 · Showcase submission | *Chores* — uploaded before the review, linked from `README.md` |
 
 ## Not in this sprint
 
 Recorded with a reason. The items carried from sprint 4 are tracked in
-`sprint-5-feedback.md`; the first four are this sprint's own deferrals, and this list is
+`sprint-5-feedback.md`; the first three are this sprint's own deferrals, and this list is
 their record.
 
-- **A shipped sub-agent.** The contract no longer stands in the way — story 4 proves a
-  plugin can run a bounded loop of its own with no core change — so this stops being an
-  architecture deferral and becomes a plugin nobody has written yet. Research and booking
-  are the two jobs that would earn one; story 9's tool is where the first would go.
+- **A sub-agent that acts, or one that stops to ask.** Story 10's researcher reads and
+  reports; an inner loop that proposes an effect or asks a question needs an interrupt to
+  travel up through a checkpointed subgraph and back down, and that is a bigger problem than
+  the capability it buys. Booking is the job that would earn one.
 - **A plugin depending on another plugin, overriding another's tool, or ordering itself
   against one.** Load order is the only precedence there is, and it is the order the sources
   were read in. All three are real needs of a mature harness and none is needed by three
   plugins; each is additive on `Host` when it is.
 - **A sandbox, or any restriction on what a plugin's code may do.** A plugin runs with the
-  user's full permissions, which is true of every harness of this kind, and story 11 says so
+  user's full permissions, which is true of every harness of this kind, and story 12 says so
   rather than implying otherwise. A capability-restricted plugin is a project, not a story.
 - **Commands, shortcuts and screen elements from a plugin.** A plugin could reach the whole
   screen; this sprint's reach the turn. The frontend seam is not the one this sprint is
@@ -606,7 +701,7 @@ their record.
 - **Document removal** *(sprint-4 finding #8)* — carried again. Cheap once story 8 makes a
   source a file, which is why it is the first thing to add if the sprint runs early.
 - **Stronger injection rules and a scan of document text at ingest** — the screen is still
-  two regexes. Story 11 says what it does not catch rather than implying it catches
+  two regexes. Story 12 says what it does not catch rather than implying it catches
   everything.
 - **The React page's heading outline and tab/panel wiring** — one coherent accessibility
   story, not a piece of it done off-list.
