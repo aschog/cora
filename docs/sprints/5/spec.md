@@ -44,7 +44,9 @@ The nouns this file uses, each against the class that carries it. Paths are unde
 - **Pause** — `domain.decision.Pending` raised as `TurnPaused`, a turn stopped mid-flight
   with what it needs settled.
 - **Pin** *(new, story 6)* — a key in `AgentState` holding the scope a user fixed a thread
-  to, so it survives a reload.
+  to: set by the user and by nobody else, at whatever turn the conversation turns out to
+  have a field, and never set twice. It survives a reload, and it is what a routed scope is
+  not — a decision about the conversation rather than a reading of one question.
 - **Citation** — `domain.citations.Citation`, offsets into stored text today, widening to a
   source with kinds in story 9.
 - **Document** — one source behind `ports.documents.Documents`, chunked into
