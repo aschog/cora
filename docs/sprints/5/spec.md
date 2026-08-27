@@ -23,20 +23,22 @@ The nouns this file uses, each against the class that carries it. Paths are unde
 - **Step** — `ports.graph.Step` as the callable, `engine.steps.*` as the implementations —
   one named part of a turn with a single responsibility.
 - **Trace** — `AgentState["trace"]`, a list of `domain.trace.TraceStep`: `ModelDecision`,
-  `ToolUse`, `MemoryUnread` today, nesting from story 10.
+  `ToolUse`, `MemoryUnread` today, nesting from story 4 — drawn on the screen from
+  story 10.
 - **Plugin** — `ports.plugin.Plugin`, a frozen record today; becomes `extend(cora: Host)` in
   story 4.
 - **Host** *(new, story 4)* — the port a plugin is handed at load: cora's own parts, and the
   calls that register.
-- **Registration** *(new, story 4)* — one thing a plugin contributed, carrying the scope it
-  lives in; replaces the four fields of `Plugin`.
+- **Registration** *(new, story 4)* — one thing a plugin contributed, carrying — from
+  story 5 — the scope it lives in; replaces the four fields of `Plugin`.
 - **Scope** *(new, story 5)* — one field on a registration, naming the field a turn runs in
   and the lifetime of everything registered under it; `None` means system-wide.
 - **Tool** — `ports.plugin.Tool`, asked for as a `ToolCall` and answered by a `ToolResult`.
 - **Rule** — `ports.plugin.ValidationRule`, refusing an input with `InputRejectedError`
   before any model call.
 - **Handler** *(new, story 5)* — a registration subscribed to a step, returning an amendment
-  or a refusal; a rule and an instruction become two kinds of it.
+  or a refusal — never a pause, which is the gate's privilege alone; a rule and an
+  instruction become two kinds of it, an amender and an observer two more.
 - **Effect** *(new, story 11)* — a tool call that changes something outside cora, and so
   waits for approval before it runs.
 - **Approval** *(new, story 11)* — a yes or no bound to one proposed call, checkpointed;
@@ -83,9 +85,10 @@ a decision rather than left to be discovered.
 
 **cora ships pointed at fields that are not code** — a coach, a trip, a lab notebook — but
 nothing in the contract forbids the other subject, and that is the test of whether the
-contract is real: a tool that edits a file is a tool with an effect and passes the same
-gate, and a shell is another frontend over the same `Agent`. Both are later sprints; if
-either turns out to need a core change, the contract was wrong.
+contract is real: a tool that edits a file is a tool with an effect, and the gate's shape
+must not foreclose it — real code work proposes many effects in one turn, so approving it
+is a wider approval, not a core change. A shell is another frontend over the same `Agent`.
+Both are later sprints; if either turns out to need a core change, the contract was wrong.
 
 **Three plugins ship**: **security** (rules only, system-wide), **fitness** and **travel**.
 Two scopes, not one — the second proves a scope is a plugin and not a fork, and one scope
@@ -94,8 +97,9 @@ leaves routing nothing to choose between.
 ## Architecture decision (criterion 2 · learning application)
 
 LangGraph, hexagonal: the domain holds the state shape, the engine holds the steps as plain
-functions, and only `adapters/langgraph_runner.py` imports the framework — the architecture
-guard enforces it. Eight decisions, and the first three are the sprint.
+functions, and technology binds only in the adapters — the domain, ports, engine and app
+import none of it, and the architecture guard enforces that split per layer. Eight
+decisions, and the first three are the sprint.
 
 - **A plugin is handed cora; it does not fill in a form.** `PLUGIN = Plugin(name,
   instructions, tools, validation_rules)` is a frozen record, so a fifth kind of
@@ -107,8 +111,11 @@ guard enforces it. Eight decisions, and the first three are the sprint.
 - **The four fields were three hooks all along.** A rule fires before a turn starts,
   instructions before the model is called, tools are a registry the model reads — moments,
   hard-coded because there was one of each. Story 3 names the steps, story 5 gives them
-  subscribers, and cora's own screen and approval gate become subscribers too: a mechanism
-  the core does not itself eat is one nobody can trust. Story 5.
+  subscribers, and cora's own screen becomes a subscriber too: a mechanism the core does
+  not itself eat is one nobody can trust. Handlers compose in a stated order — cora's
+  screen first, then plugins as loaded — and amendments chain, each seeing what the one
+  before it returned; the gate stands after them all, a step of its own rather than a
+  handler. Story 5.
 
 - **The contract is versioned and small, because it is now someone else's.**
   `cora.ports.plugin` and `Host` are public; everything else may move. A plugin may declare
@@ -116,11 +123,11 @@ guard enforces it. Eight decisions, and the first three are the sprint.
   rather than an `AttributeError` mid-turn. Cheapest to write now, most expensive to
   retrofit after someone has published against it. Story 7.
 
-- **A plugin comes from anywhere, and cora says what it loaded.** Three sources in
-  precedence order: `CORA_PLUGINS`, entry points in the `cora.plugins` group, and a `.py`
-  file in `~/.cora/plugins/` or `./.cora/plugins/`. Beside them, a listing of what is
-  loaded, from where, and what each contributed — without it, two plugins in disagreement is
-  an unanswerable question. Story 7.
+- **A plugin is installed, not forked — and cora says what it loaded.** Two sources in
+  precedence order: `CORA_PLUGINS`, and a `.py` file in `./.cora/plugins/` — entry-point
+  discovery waits for the sprint that has an external author. Beside them, a listing of
+  what is loaded, from where, and what each contributed — without it, two plugins in
+  disagreement is an unanswerable question. Story 7.
 
 - **The turn is a named sequence with the loop inside it.** `prepare → model ⇄ tools`
   becomes *screen → route → focus → work → answer*, each step with one responsibility, its
@@ -144,11 +151,13 @@ guard enforces it. Eight decisions, and the first three are the sprint.
   scopes. Story 8.
 
 - **An effect is gated by the interrupt that already exists, and the gate is the core's.** A
-  tool that changes something outside cora says what it is about to do and waits — a handler
-  on the *tool-call* event, so the gate is the core using story 5's own mechanism. It is
-  also the one thing deliberately baked in against the rule above, because cora's effects
-  land in a field its user did not write code for, running a plugin they very likely did not
-  read: a plugin cannot unsubscribe it. Story 11.
+  tool that changes something outside cora says what it is about to do and waits. The gate
+  stands at the *tool-call* point but is not a handler: it pauses the turn, which no plugin
+  may do, so it is a privileged core step — and it settles every approval *ahead* of the
+  round's execution, the same move the ask step already makes, because a resumed step
+  replays from its first line and an effect must never run twice. It is deliberately baked
+  in, because cora's effects land in a field its user did not write code for, running a
+  plugin they very likely did not read: a plugin cannot unsubscribe it. Story 11.
 
 ### Shapes the stories must honour
 
@@ -162,8 +171,10 @@ right now costs nothing.
 - **A handler returns a decision; it never mutates.** Frozen values in, a refusal or an
   amendment out. A hook that can write the state is a hole in the hexagon, and a handler
   that returns stays testable as a function.
-- **A failing handler fails closed for a rule, open for an observer.** A refusing rule that
-  raises must not become an accepted input. Either way the trace names the plugin.
+- **A failing handler fails closed for a rule, open for an observer — and an amender that
+  raises is dropped like an observer.** A refusing rule that raises must not become an
+  accepted input; a lost amendment must not become a lost turn. Either way the trace names
+  the plugin.
 - **Routing yields the active scope*s*.** One scope is the degenerate case of a set; with a
   single value, a question spanning two becomes a change to the state shape, the prompt, the
   tool filter, the trace and every stored thread.
@@ -180,25 +191,30 @@ right now costs nothing.
   result — and a third kind later is a new case rather than a new shape.
 - **The pin belongs to the conversation.** It goes in `AgentState` and is checkpointed, so a
   reopened thread reopens in its scope; frontend session state would lose it on reload.
-- **A turn may stop more than once.** `ASKS_PER_TURN = 1` sized the recursion limit, and a
-  turn can now stop to ask which scope *and* to approve each of two effects. Resize as the
-  stops are added, or a legitimate turn trips the runaway guard.
+- **A turn may stop more than once, and every stop comes before the round runs.**
+  `ASKS_PER_TURN = 1` sized the recursion limit, and a turn can now stop to ask which scope
+  *and* to approve each of two effects — resize as the stops are added, or a legitimate
+  turn trips the runaway guard. And because a resumed step replays from its first line, a
+  stop in the middle of a half-run round would re-run what already ran: approvals are
+  settled ahead of execution, never mid-round.
 - **An approval is its own checkpointed type, bound to one call.** Sprint 4's `Decision`
   works for one effect and breaks on the second, or on an argument the user wants to edit
   before approving.
 
 **Nothing is carried over.** No migration in either direction: a store written before this
-sprint is deleted and re-ingested, and the three plugins are rewritten to the new contract
-with no shim keeping the old shape alive. These shapes are decided for what comes *after*
-this sprint, not to protect what came before it.
+sprint is deleted and re-ingested, and the two existing plugins are rewritten to the new
+contract with no shim keeping the old shape alive — the travel plugin is born to it in
+story 6. These shapes are decided for what comes *after* this sprint, not to protect what
+came before it.
 
 ---
 
 ## Stories
 
-Numbered in merge order. Each becomes an OpenSpec change under `openspec/changes/`, and its
-text moves into that change's `proposal.md` when it is opened — this file then keeps the
-heading and the link.
+Numbered in merge order, with one exception: story 8 merges after story 11, so the reach
+the review asked for is never queued behind storage polish.
+Each becomes an OpenSpec change under `openspec/changes/`, and its text moves into that
+change's `proposal.md` when it is opened — this file then keeps the heading and the link.
 
 Stories 4, 5 and 7 are the harness; 9, 10 and 11 are the reach the review asked for; 1, 2
 and 12 are how it is read. **Twelve stories, and none of them is a candidate for a late
@@ -231,7 +247,7 @@ so that I can decide whether it is for me without reading the code.
   - **no sandbox around a plugin** — a plugin is code you chose to install, like any package
     you `uv add`, and saying so plainly is safer than a gate that implies a containment cora
     does not have
-  - **no registry to browse** — entry points and a folder are discovery; somewhere to find
+  - **no registry to browse** — a named module and a folder are discovery; somewhere to find
     other people's plugins is a website, and there are no other people yet
   - **no subject but the two shipped** — a subject *is* a plugin, so a third proves nothing
     the second did not
@@ -318,7 +334,8 @@ so that what I can contribute is not limited to the fields someone else thought 
 - **When** it is loaded
 - **Then** what it registered is what cora offers — its tools callable, its instructions in
   the brief, its rules screening input
-- **And** the three shipped plugins are written this way, with no record left behind
+- **And** the two plugins that exist — security and fitness — are written this way, with no
+  record left behind; travel is born to this contract in story 6
 
 **Scenario:** a plugin uses cora's own parts
 
@@ -364,6 +381,13 @@ back — without asking for a new field.
 - **When** a turn runs in its scope
 - **Then** what it returned is in the brief, and the trace attributes it to that plugin
 
+**Scenario:** two handlers amend the same step
+
+- **Given** two plugins subscribing before the model is called
+- **When** a turn runs where both apply
+- **Then** the amendments chain in load order — the second sees what the first returned —
+  and the trace attributes each to its plugin
+
 **Scenario:** a handler refuses a call before it runs
 
 - **Given** a plugin subscribing to the tool-call event and refusing one
@@ -373,7 +397,7 @@ back — without asking for a new field.
 **Scenario:** a system-wide rule cannot be scoped away
 
 - **Given** a system-wide plugin loaded beside two scopes
-- **When** an injection attempt arrives in any scope, or with none pinned
+- **When** an injection attempt arrives in any scope, or with no scope active
 - **Then** it is refused before the model is called
 
 **Scenario:** a scoped handler applies where it belongs
@@ -385,15 +409,18 @@ back — without asking for a new field.
 **Scenario:** the medical filter moves to where it always applies
 
 - **Given** the medical filter, today inside the fitness plugin
-- **When** a medical question is asked in the travel scope, or with nothing pinned
+- **When** a medical question is asked outside the fitness scope, or with no scope active
 - **Then** it is still refused, because the filter now ships system-wide
 
 **Scenario:** a failing handler fails the right way
 
-- **Given** a rule that raises and an observer that raises
+- **Given** a rule that raises, an amender that raises and an observer that raises
 - **When** a turn runs
-- **Then** the rule's turn is refused, the observer's turn completes without it, and the
-  trace names the plugin in both cases
+- **Then** the rule's turn is refused, the amender's and the observer's turns complete
+  without them, and the trace names the plugin in every case
+
+Until story 6 adds routing and the pin, the active scope in these scenarios is supplied by
+the caller — how a real turn acquires one is story 6's to answer.
 
 ### 6. A scope focuses the turn
 
@@ -445,9 +472,16 @@ Story 6 ships enough of it for routing to have somewhere to route.
 
 **Scenario:** it asks rather than guessing
 
-- **Given** a question that fits both scopes or neither
+- **Given** a question that fits both scopes
 - **When** the turn runs
 - **Then** cora asks which scope was meant, and answers with the one I choose
+
+**Scenario:** a question that fits no scope is answered plainly
+
+- **Given** two scopes are loaded and a question belongs to neither
+- **When** the turn runs
+- **Then** cora answers it in the default scope, with only the system-wide instructions and
+  tools, and the trace says so
 
 **Scenario:** the routing step is wired correctly
 
@@ -458,30 +492,30 @@ Story 6 ships enough of it for routing to have somewhere to route.
 
 **Scenario:** routing is measured, not assumed
 
-- **Given** a recorded set of questions with the scope each belongs to
+- **Given** a recorded set of questions with the scope each belongs to — isolated questions
+  and threaded follow-ups both, because an unpinned thread routes every turn
 - **When** the router is run over it against a real model, in the `llm` tier
 - **Then** a report names how often it chose the right scope, and a drop below the recorded
   threshold fails that tier
 - **And** the number is quoted in the change's `proposal.md` when it is first measured,
   because the tier is hand-run and costs money
 
-### 7. A plugin comes from anywhere, and cora says what it loaded
+### 7. A plugin is installed, not forked, and cora says what it loaded
 
 As someone who wrote a plugin for my own field,\
 I want to install it or drop it in a folder and have cora find it,\
 so that using it does not mean forking cora.
 
-**Scenario:** an installed distribution announces itself
+**Scenario:** a named module is enough
 
-- **Given** a plugin packaged as its own distribution, built outside this repository and
-  installed into the environment
-- **When** cora starts with nothing named in `CORA_PLUGINS`
-- **Then** it is loaded, because it declared an entry point in the `cora.plugins` group
+- **Given** a plugin module named in `CORA_PLUGINS`, its code living outside this repository
+- **When** cora starts
+- **Then** it is loaded
 - **And** nothing under `src/cora/` names it
 
 **Scenario:** a file is enough
 
-- **Given** a single `.py` file in `~/.cora/plugins/` or `./.cora/plugins/`
+- **Given** a single `.py` file in `./.cora/plugins/`
 - **When** cora starts
 - **Then** it is loaded with no packaging at all, and the listing says where it came from
 
@@ -491,6 +525,8 @@ so that using it does not mean forking cora.
 - **When** I ask cora what it has
 - **Then** each one is listed with its source, its scope, its tools, its rules and the steps
   it subscribes to
+- **And** every system-wide registration is flagged as such — a tool callable in every
+  scope is a visible act, not a quiet field
 - **And** the same listing is on the screen, not only in a terminal
 
 **Scenario:** the contract has a version and says so
@@ -498,8 +534,8 @@ so that using it does not mean forking cora.
 - **Given** a plugin declaring a contract version cora does not support
 - **When** it is loaded
 - **Then** the refusal says which version it wants and which cora offers
-- **And** `docs/how-to/write-a-plugin.md` names what is public, what may move, and what a
-  change to the public part obliges cora to do
+- **And** `docs/how-to/write-a-plugin.md` names what is public and what may move — a
+  compatibility policy waits for the first author it would bind
 
 **Scenario:** a plugin is a distribution, not a fork
 
@@ -530,6 +566,16 @@ so that I can see what cora has, and a second field is a directory rather than a
 - **Then** only the active scope's sources can be retrieved or cited
 - **And** `README.md` states the layout in a paragraph
 
+**Scenario:** an upload with no scope has a home
+
+- **Given** a document uploaded with no scope chosen
+- **When** it is ingested
+- **Then** it lands in the default scope's directory, and an unscoped search can retrieve
+  it — the default scope is a scope like any other
+
+It merges after story 11: nothing in stories 9–11 reads these files, so the reach never
+waits on this polish.
+
 ### 9. cora reaches outside itself
 
 As a person asking about something my documents cannot know,\
@@ -558,6 +604,9 @@ so that the answer is current instead of a polite refusal.
 - **Then** it gets the slice named for it, from the environment, and the key is in no log
   and no trace
 
+The travel plugin needs an HTTP client, so the architecture guard's technology allow-list
+for the plugins widens by that one name — a guard edit this story owns, made in the open.
+
 ### 10. cora sends a researcher and reads the report
 
 As a person asking something that takes several lookups,\
@@ -575,7 +624,9 @@ so that a broad question is answered without the searching itself filling the co
 
 **Scenario:** a researcher reads and does not act
 
-- **Given** a scope holding both the researcher and an effectful tool
+- **Given** a scope holding both the researcher and a tool marked as an effect — the mark
+  is just a field on a registration; story 11 builds its gate, and travel's real effect
+  arrives with it
 - **When** the researcher runs
 - **Then** only read-only tools are offered to it, and it can neither propose an effect nor
   stop to ask
@@ -605,7 +656,7 @@ nobody draws them yet, which is this story's one cost outside the plugin.
 
 As a person whose agent can change things,\
 I want to see what it is about to do and approve it first,\
-so that nothing outside cora happens without me.
+so that no effect cora is asked for happens without me.
 
 **Scenario:** an effect is proposed, approved, then happens
 
@@ -614,6 +665,13 @@ so that nothing outside cora happens without me.
 - **Then** cora shows what it will do and waits
 - **And** nothing changes until I approve
 - **And** after approval the effect happens and the trace records both
+
+**Scenario:** two effects in one turn, and nothing runs twice
+
+- **Given** a turn in which the model proposes two effects
+- **When** I approve the first and then the second
+- **Then** each ran exactly once — the approvals were settled before the round executed, so
+  resuming never replays an effect that already ran
 
 **Scenario:** declining changes nothing
 
@@ -625,8 +683,10 @@ so that nothing outside cora happens without me.
 
 - **Given** a plugin that marks a tool as having an effect
 - **When** that tool is called
-- **Then** the gate runs because cora subscribes to the tool-call event, and a plugin cannot
-  unsubscribe it
+- **Then** the gate runs — a privileged core step at the tool-call point that a plugin can
+  neither unsubscribe nor imitate, since no handler may pause a turn
+- **And** the gate covers what is declared to cora: a plugin's own code running past it is
+  the trust decision story 12 names, not a hole in the gate
 
 **Scenario:** the result is mine to keep
 
@@ -692,8 +752,8 @@ Not stories — no failing test names them — but tracked, and each is a merge 
 ## Not in this sprint
 
 Recorded with a reason. The items carried from sprint 4 are tracked in
-`sprint-5-feedback.md`; the first three are this sprint's own deferrals, and this list is
-their record.
+`sprint-5-feedback.md`; the rest are this sprint's own deferrals, and this list is their
+record.
 
 - **A sub-agent that acts, or one that stops to ask.** Story 10's researcher reads and
   reports; an inner loop that proposes an effect or asks a question needs an interrupt to
@@ -703,6 +763,14 @@ their record.
   against one.** Load order is the only precedence there is, and it is the order the sources
   were read in. All three are real needs of a mature harness and none is needed by three
   plugins; each is additive on `Host` when it is.
+- **Entry-point discovery.** A plugin distribution announcing itself through a
+  `cora.plugins` group serves an author who does not exist yet; `CORA_PLUGINS` and the
+  plugins folder already load code from outside the repository. Additive on the loader the
+  day an external author appears.
+- **Splitting what a scope fuses.** One scope field decides what cora is told, what it may
+  call and what it may read, in lockstep; a turn that wants one scope's documents without
+  its persona and tools cannot say so. Splitting read-scope from act-scope is a later
+  axis, and the set-shaped routing is the escape hatch until then.
 - **A sandbox, or any restriction on what a plugin's code may do.** A plugin runs with the
   user's full permissions, which is true of every harness of this kind, and story 12 says so
   rather than implying otherwise. A capability-restricted plugin is a project, not a story.
@@ -736,7 +804,7 @@ their record.
 - **A hosted deployment.** The assignment asks for the showcase entry and a README link,
   never a running URL; `make run` is how it is demonstrated.
 - **A third scope.** Two prove routing and the seam; a third proves nothing further.
-- **A plugin registry or directory.** Entry points and a folder are discovery; a place to
+- **A plugin registry or directory.** A named module and a folder are discovery; a place to
   browse other people's plugins is a website, and there are no other people yet.
 - **Multi-modal input, code generation, parameter-tuning studies** — cases 4, 5 and 7 are
   not the case this project answers.
