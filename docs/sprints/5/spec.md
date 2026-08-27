@@ -211,16 +211,18 @@ came before it.
 
 ## Stories
 
-Numbered in merge order, with one exception: story 8 merges after story 11, so the reach
-the review asked for is never queued behind storage polish.
+Numbered in merge order, with two exceptions: story 8 merges after story 11, so the reach
+the review asked for is never queued behind storage polish, and story 2's removal merges
+last of all, only if time remains — a frozen second frontend costs nothing while it waits.
 Each becomes an OpenSpec change under `openspec/changes/`, and its text moves into that
 change's `proposal.md` when it is opened — this file then keeps the heading and the link.
 
 Stories 4, 5 and 7 are the harness; 9, 10 and 11 are the reach the review asked for; 1, 2
-and 12 are how it is read. **Twelve stories, and none of them is a candidate for a late
-cut.** Routing was the one considered — a pin alone proves a scope — and it stays: it
-carries criterion 4's evaluation number, and one scope leaves nothing to route between, so
-cutting it would take the measurement with it. If the sprint runs long, the sprint runs
+and 12 are how it is read. **Twelve stories, and only story 2's removal is allowed to
+give** — the freeze it opens with is what makes the deletion safe to postpone. Routing was
+the other cut considered — a pin alone proves a scope — and it stays: it carries criterion
+4's evaluation number, and one scope leaves nothing to route between, so cutting it would
+take the measurement with it. If the sprint runs long, the sprint runs
 long; what gives is argued then, against *Not in this sprint*, rather than decided here
 while it is cheap to be brave.
 
@@ -267,35 +269,50 @@ Written day one, before the code — the retrospective names cutting it last as 
 the reviewer seeing it. The sentence is rewritten here and the rest of the README follows
 the sprint, since stories 4 to 7 change what there is to describe.
 
-### 2. cora has one frontend
+### 2. cora has one frontend that grows
 
 As someone who runs cora,\
-I want one frontend rather than two,\
+I want everything new on the screen to land in one frontend,\
 so that a change to the screen is made once and the other one cannot fall behind.
 
-**Scenario:** the Streamlit app is gone
+**The Streamlit app is frozen, not deleted.** From day one it and its tests are extended by
+nothing: the pin, the plugin listing, the nested trace and the approval gate land in the
+React shell alone. The deletion merges last of all, and only if the sprint has time left —
+a frozen frontend costs nothing while it waits.
+
+**Scenario:** the freeze holds
+
+- **Given** the Streamlit app and its tests as sprint 4 left them
+- **When** this sprint puts something new on the screen — the pin, the listing, the nested
+  trace, the approval gate
+- **Then** it lands in the React shell alone, and the Streamlit app and its tests end the
+  sprint as they began it
+- **And** `make run` starts the React shell
+
+**Scenario:** the docs describe the frontend that grows
+
+- **Given** `README.md` and the tutorial
+- **When** a reader follows the quick start
+- **Then** every command they are given is one the repository has, and the screen they are
+  sent to is the React shell
+
+**Scenario:** the Streamlit app is gone *(time permitting, the sprint's last merge)*
 
 - **Given** the repository
 - **When** its frontends are listed
 - **Then** the React shell is the only one, and a guard asserts that nothing imports
   Streamlit
-- **And** `make run` starts that shell
 
-**Scenario:** what the acceptance tier proved is still proved
+**Scenario:** what the acceptance tier proved is still proved *(with the removal)*
 
 - **Given** the acceptance tests that drove the app through Streamlit's `AppTest`
 - **When** the app is removed
 - **Then** each behaviour they covered is asserted through the React shell's API instead, or
   named as deliberately dropped in the change's proposal and in `sprint-5-feedback.md`
 
-**Scenario:** the docs describe what exists
-
-- **Given** `README.md` and the tutorial
-- **When** a reader follows the quick start
-- **Then** every command they are given is one the repository has
-
-It comes second so that no later story pays the two-frontend tax: stories 6, 7 and 10 all
-put something new on the screen.
+The freeze is position two's job, stated before stories 6, 7 and 10 put anything on a
+screen. If the sprint runs long, cora ships with a frozen second frontend and
+`sprint-5-feedback.md` carries the removal forward.
 
 ### 3. The turn is a workflow of named steps
 
@@ -729,10 +746,11 @@ so that I can judge both costs before I take either.
 
 Not stories — no failing test names them — but tracked, and each is a merge of its own.
 
-- **The test suite, 20/80** — find the fifth of the suite carrying most of the protection,
-  counted after story 2 takes the Streamlit tests with it. Extend only those, archive the
-  rest under `tests/` and delete the archive after submission. Membership is decided by what
-  would go undetected, not by count.
+- **The test suite, 20/80** — find the fifth of the suite carrying most of the protection.
+  The frozen Streamlit tests are archive by definition — story 2 extends them by nothing —
+  so they are set aside first, whether or not the removal lands. Extend only what remains,
+  archive the rest under `tests/` and delete the archive after submission. Membership is
+  decided by what would go undetected, not by count.
 - **An architecture note for the React shell before story 6 touches it** — the scope pin and
   the plugin listing are both new things on the screen, and sprint 4 shipped that frontend
   with no such note and said so.
@@ -743,7 +761,7 @@ Not stories — no failing test names them — but tracked, and each is a merge 
 
 | Criterion | Where |
 |---|---|
-| 1 · Outcome quality | *Purpose* above; stories 4, 5 and 7 make the plugin contract the product — a stranger can extend cora without forking it — stories 9, 10 and 11 give the agent reach, delegation and consequence, story 6 gives it focus, story 1 says what it is for, and story 2 leaves one frontend to judge it by |
+| 1 · Outcome quality | *Purpose* above; stories 4, 5 and 7 make the plugin contract the product — a stranger can extend cora without forking it — stories 9, 10 and 11 give the agent reach, delegation and consequence, story 6 gives it focus, story 1 says what it is for, and story 2 keeps one frontend growing so there is one to judge it by |
 | 2 · Learning application | *Architecture decision* above — LangGraph as a named workflow with subscribable steps and an interrupt gate, Chroma for embeddings, OpenRouter behind the `ChatModel` port, an external API as a tool, a delegated loop written as a plugin, and a plugin contract that is the sprint's own design work |
 | 3 · Ethical considerations | Story 12, standing on sprint 4's injection screen and untrusted-data handling, on story 11's approval gate, and on story 5's rule that a system-wide screen cannot be scoped away |
 | 4 · Presentation | The six points: the problem (story 1), the architecture (stories 3–7), the data (story 8), evaluation (story 6's routing report), the hardest problem (stories 4–5, the contract inversion, and story 10 standing on it), what is next (*Not in this sprint*) |
