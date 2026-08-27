@@ -413,17 +413,33 @@ Story 6 ships enough of it for routing to have somewhere to route.
   system-wide ones
 - **And** the other scope's tools are not offered at all
 
+**Scenario:** a conversation is pinned once, and mid-flight
+
+- **Given** an unscoped conversation that has turned out to be about one field
+- **When** I pin that scope
+- **Then** every later turn runs in it, and the pin cannot be changed — a second field is a
+  second conversation, which is the cost of a pin that a thread can be trusted to keep
+
+**Scenario:** the pin binds what comes next, not what came before
+
+- **Given** turns that ran unscoped, before the pin
+- **When** I reopen the thread
+- **Then** they read as they ran, and nothing is re-answered in the scope pinned after them
+
 **Scenario:** the pin survives the browser
 
 - **Given** a thread pinned to a scope
 - **When** I reload the page and reopen it
 - **Then** it is still in that scope, because the pin is in the thread's own state
 
-**Scenario:** nothing pinned, so cora routes
+**Scenario:** nothing pinned, so cora routes — every turn
 
 - **Given** two scopes are loaded and none is pinned
 - **When** I ask a question that belongs to one of them
 - **Then** the trace names the scope it routed to, and the turn runs in that scope
+- **And** the next question is routed again from scratch, so an unpinned thread can answer
+  one turn in each scope — routing is a reading of the question, not a decision about the
+  conversation, and only a pin decides that
 
 **Scenario:** it asks rather than guessing
 
