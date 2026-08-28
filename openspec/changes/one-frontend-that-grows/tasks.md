@@ -17,7 +17,7 @@ that needs them, because no test can fail for prose.
       driven through the shell's API over one memory store
 - [x] 2.2 Write a test that shows clearing memory empties the store and the next brief,
       driven the same way
-- [ ] 2.3 Write a test that shows a turn's steps reach the page with their tool arguments
+- [x] 2.3 Write a test that shows a turn's steps reach the page with their tool arguments
       and their results, read off the frames the shell streams
 - [ ] 2.4 Port the live whole-session test — upload, ask, calculate, remember — to the
       shell's API, on the `llm` tier
