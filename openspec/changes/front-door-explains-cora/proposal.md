@@ -9,9 +9,8 @@ the paragraph on day one, before the code. This change is that day.
 
 - The one-sentence description becomes *cora is an agent you chat with, and everything it
   knows and can do arrives as a plugin.*
-- `README.md`'s first screen answers four questions above the quick start — what cora is
-  for, how a turn works, what writing a plugin involves, and what cora deliberately does
-  not have — and links the showcase entry near the top.
+- `README.md`'s first screen says what cora is for and how a turn works, above the quick
+  start, and links the showcase entry near the top and the plugin how-to below it.
 - No spec delta: the subject is a written page, and a `.md` file is held by a person
   reading it rather than by a test. `skip_specs: true`, and the story and its criteria
   stay in `docs/sprints/5/spec.md`.
