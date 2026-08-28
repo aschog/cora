@@ -13,9 +13,9 @@ that needs them, because no test can fail for prose.
 
 ## 2. What the removed app proved, over the shell's API
 
-- [ ] 2.1 Write a test that shows a fact told in one session briefs the model in the next,
+- [x] 2.1 Write a test that shows a fact told in one session briefs the model in the next,
       driven through the shell's API over one memory store
-- [ ] 2.2 Write a test that shows clearing memory empties the store and the next brief,
+- [x] 2.2 Write a test that shows clearing memory empties the store and the next brief,
       driven the same way
 - [ ] 2.3 Write a test that shows a turn's steps reach the page with their tool arguments
       and their results, read off the frames the shell streams
