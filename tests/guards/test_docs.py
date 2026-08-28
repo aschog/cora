@@ -96,8 +96,8 @@ def test_a_config_is_read_for_the_paths_its_comments_write_like_prose() -> None:
     is claimed from its start: what follows a slash is a segment, not a second claim."""
     claims = _claims()
 
-    assert ("Makefile", "tests/guards/test_docs.py") in claims
-    assert ("Makefile", "guards/test_docs.py") not in claims
+    assert ("Makefile", "tests/guards/test_docs_site.py") in claims
+    assert ("Makefile", "guards/test_docs_site.py") not in claims
 
 
 def test_a_path_is_claimed_from_its_dot_as_readily_as_from_a_letter() -> None:

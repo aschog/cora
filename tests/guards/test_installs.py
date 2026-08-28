@@ -42,7 +42,7 @@ def _resolved(dist: str) -> set[str]:
     where it already is.
     """
     tree = _uv("tree", "--package", dist, "--no-dev", "--frozen", "--offline").stdout
-    resolved = set(re.findall(r"([A-Za-z0-9][A-Za-z0-9._-]*) v\d", tree))
+    resolved = set(re.findall(r"([A-Za-z0-9][A-Za-z0-9._-]*)(?:\[[^\]]*\])? v\d", tree))
     assert dist in resolved, (
         f"uv resolved no {dist} — a name nothing ships prints an empty tree and "
         "exits 0, so every claim made about it would hold of nothing"
@@ -59,14 +59,17 @@ def test_a_name_the_workspace_does_not_ship_is_an_error() -> None:
         _resolved("cora-plugin-nonesuch")
 
 
+SERVES_A_PAGE = frozenset({"starlette", "streamlit"})
+"""The frameworks a frontend is written against. `uvicorn` is deliberately not among
+them: chromadb resolves it whatever cora does, so its presence says nothing about the
+app owning an interface, and a rule naming it would be false the day it was written."""
+
+
 def test_the_app_resolves_without_any_user_interface() -> None:
     """What makes a second frontend possible, stated so it can fail — transitively,
     where the manifest sees one edge: a command-line or HTTP shell installs `cora` and
-    gets the wiring without a web toolkit."""
-    toolkits = workspace.toolkits()
-
-    assert toolkits, "no frontend declares a toolkit — the rule would hold of nothing"
-    assert not _resolved("cora") & toolkits
+    gets the wiring without the framework a page is written against."""
+    assert not _resolved("cora") & SERVES_A_PAGE
 
 
 def test_nothing_in_the_workspace_resolves_a_second_frontend() -> None:

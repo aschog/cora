@@ -52,7 +52,8 @@ def test_the_trace_shows_each_step_with_its_tool_arguments_and_result() -> None:
             page.post("/api/ask", json={"question": QUESTION, "thread_id": "t1"}).text
         )
 
-    turn = streamed[-1][1]
+    name, turn = streamed[-1]
+    assert name == "turn", f"the turn did not finish: {streamed[-1]}"
     assert turn["answer"] == ANSWER
     said = "\n".join(f"{step['summary']}\n{step['detail']}" for step in turn["trace"])
     assert f"Decided to call {SEARCH_TOOL_NAME}" in said

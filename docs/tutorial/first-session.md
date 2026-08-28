@@ -4,13 +4,15 @@ Half an hour, one document, and a model you pay for by the token. By the end you
 have uploaded a document, had it answered from, followed a citation back to the passage
 it came from, and asked cora to remember something about you.
 
-You need Python 3.12, [uv](https://docs.astral.sh/uv/), and an
+You need Python 3.12, [uv](https://docs.astral.sh/uv/), Node 22 — the page is built
+from source, and neither the build nor its dependencies are committed — and an
 [OpenRouter key](https://openrouter.ai/keys).
 
 ## 1. Install
 
 ```sh
 uv sync
+npm ci --prefix frontends/react/ui
 ```
 
 ## 2. Start it with plugins

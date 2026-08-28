@@ -7,6 +7,10 @@
 the shell you typed in, which is how the live test tier is run too. Put `CORA_PLUGINS`
 there as well, or cora starts with none.
 
+Both need Node 22 and the page's dependencies — `npm ci --prefix frontends/react/ui`,
+once per clone. Neither the dependencies nor the build is committed, so without that
+first step it is the build that fails rather than the server.
+
 ## Working on the page
 
 The server reads only the build at `frontends/react/ui/dist`, so a source change is

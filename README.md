@@ -37,11 +37,12 @@ Step by step, with a worked example: [write a plugin](docs/how-to/write-a-plugin
 
 ## Quick start
 
-Python 3.12, [uv](https://docs.astral.sh/uv/), and an
-[OpenRouter key](https://openrouter.ai/keys):
+Python 3.12, [uv](https://docs.astral.sh/uv/), Node 22 — the page is built from
+source — and an [OpenRouter key](https://openrouter.ai/keys):
 
 ```sh
 uv sync                                    # install the environment
+npm ci --prefix frontends/react/ui         # and the page's
 git config core.hooksPath .githooks        # enable pre-commit + commit-msg hooks
 export OPENROUTER_API_KEY=sk-or-...
 export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness

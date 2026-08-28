@@ -37,10 +37,12 @@ SMALL_TALK = "Hi there!"
 
 
 def _live_config(store: Path) -> Config:
-    """Both stores are redirected, documents and memory alike: an acceptance run that
-    remembered things would write into whatever the developer is actually using. The
-    domain is named here rather than taken from the default set, which ships the guard
-    alone — a training question needs a plugin that claims training as its subject."""
+    """Every store is redirected — documents, memory and conversations alike: an
+    acceptance run that remembered things would otherwise write into whatever the
+    developer is actually using, and the conversation path is the checkpointer's too, so
+    a thread would carry yesterday's run into today's. The domain is named here rather
+    than taken from the default set, which ships the guard alone — a training question
+    needs a plugin that claims training as its subject."""
     if not os.environ.get("OPENROUTER_API_KEY"):
         pytest.skip("OPENROUTER_API_KEY is not set; the llm tier needs a real key")
     return dataclasses.replace(
@@ -49,6 +51,7 @@ def _live_config(store: Path) -> Config:
         db_path=str(store / "chroma"),
         memory_path=str(store / "memory.sqlite"),
         documents_path=str(store / "documents.sqlite"),
+        conversations_path=str(store / "conversations.sqlite"),
     )
 
 

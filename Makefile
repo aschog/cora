@@ -1,6 +1,5 @@
 # Shortcuts for the commands whose paths are long enough to get retyped wrong. Everything
-# here is a thin wrapper over `uv run` — the real definitions are in pyproject.toml, and
-# `tests/guards/test_docs.py` checks that the path below still exists.
+# here is a thin wrapper over `uv run` — the real definitions are in pyproject.toml.
 
 REACT := cora.frontends.react.server
 

@@ -4,6 +4,7 @@ import importlib
 import inspect
 import pathlib
 import pkgutil
+import subprocess
 import sys
 import typing
 from importlib.metadata import packages_distributions
@@ -76,22 +77,23 @@ LAYER_ROOTS = (
 )
 CORE_FILES = sorted(file for root in PURE_ROOTS for file in root.rglob("*.py"))
 PACKAGE_FILES = sorted(file for root in LAYER_ROOTS for file in root.rglob("*.py"))
-SKIPPED_TREES = frozenset({"node_modules", "__pycache__", "dist", "build"})
-"""What the repository holds without having written: an installed environment, a build,
-a cache. Hidden directories go with them, which is how `.venv` is excluded without
-being named."""
 
 
 def _repository_files() -> list[pathlib.Path]:
-    """Every Python file the repository wrote — the packages, the tests, the tooling."""
-    return sorted(
-        path
-        for path in workspace.ROOT.rglob("*.py")
-        if not any(
-            part in SKIPPED_TREES or part.startswith(".")
-            for part in path.relative_to(workspace.ROOT).parts
-        )
+    """Every Python file the repository wrote — the packages, the tests, the tooling.
+
+    Asked of git rather than of a walk with a skip list. A walk has to name what to
+    leave out, and the first version left out every directory whose name began with a
+    dot to be rid of `.venv` — which took `.github/` and `.claude/` with it, the very
+    tooling the rule below claims to cover. What is tracked is what was written."""
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--", "*.py"],
+        capture_output=True,
+        check=True,
+        cwd=workspace.ROOT,
+        text=True,
     )
+    return sorted(workspace.ROOT / name for name in listed.stdout.split("\0") if name)
 
 
 REPOSITORY_FILES = _repository_files()
@@ -271,17 +273,17 @@ def test_the_pure_modules_are_discovered() -> None:
 
 
 def test_the_repository_walk_reads_the_tree_it_claims_to() -> None:
-    """A rule over "every file" is only as true as the walk under it: one that returned
-    nothing would assert nothing, and read as a clean bar rather than an empty one. The
-    four kinds it claims are named here, and the two trees it must not read with them —
-    an installed environment holds the very import the bar above forbids."""
+    """A rule over "every file" is only as true as the listing under it: one that came
+    back empty would assert nothing and read as a clean bar rather than an empty one.
+    The four kinds it claims are named here, and the two trees it must not reach — an
+    installed environment holds the very import the bar above forbids."""
     found = {str(path.relative_to(workspace.ROOT)) for path in REPOSITORY_FILES}
 
     assert "conftest.py" in found, "the root's own files"
     assert "src/cora/app/assembly.py" in found, "the packages"
     assert "tests/guards/test_architecture.py" in found, "the tests"
     assert "scripts/gen_component_map.py" in found, "the tooling"
-    assert not [path for path in found if path.startswith(".")], "a hidden tree"
+    assert not [path for path in found if path.startswith(".venv/")], "an environment"
     assert not [path for path in found if "node_modules/" in path], "an installed tree"
 
 

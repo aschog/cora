@@ -39,10 +39,11 @@ def _app(path: pathlib.Path, chat_model: ChatModel) -> App:
     )
 
 
-def _asked(app: App, question: str) -> TestClient:
+def _asked(app: App, question: str) -> None:
+    """One turn against an app that is then thrown away. Nothing is handed back: the
+    client's portal closes with the block, so a returned one raises on first use."""
     with TestClient(api(app)) as page:
         page.post("/api/ask", json={"question": question, "thread_id": "t1"})
-        return page
 
 
 def _remembered(page: TestClient) -> list[str]:
