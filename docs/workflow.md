@@ -32,9 +32,9 @@ openspec/
   config.yaml             this project's rules, read by every /opsx: command
   specs/                  what cora does today, one spec per capability
   changes/<name>/
-    proposal.md           the story, as-a / I-want / so-that, with its scenarios
+    proposal.md           why, what changes, impact — and nothing else
     design.md             the architecture-level how
-    specs/                the delta this change makes to the specs above
+    specs/                the story and its criteria, as a delta on the specs above
     tasks.md              the test list: every item one failing test
   changes/archive/        changes whose list is ticked and whose delta is synced
 ```
@@ -52,9 +52,11 @@ openspec/
   and `tasks.md`, written by `/opsx:propose` and worked by `/opsx:apply`. It replaces
   `story-NN.md`; the files in `docs/sprints/4/done/` are the record of how sprint 4 was
   planned, not a template to copy.
-- **A story lives in exactly one place.** When it becomes a change, its text moves to
-  that change's `proposal.md` and `spec.md` keeps only its heading, linked to the change,
-  so the story cut still reads in order and no criterion is stated twice.
+- **A story lives in exactly one place — the change's delta spec.** Its three lines head
+  that file, above the Purpose, and its acceptance criteria are the requirements below.
+  `proposal.md` carries why / what changes / impact and points at it; the sprint's
+  `spec.md` keeps only the story's heading, linked to the change. So the story cut still
+  reads in order and no criterion is stated twice.
 - **The test list is Beck's, not a work breakdown** — every item is one failing test.
   It is expected to change as you go: add items as they surface, and if an item can't be
   phrased as "write a test that shows X", it does not belong on the list. OpenSpec's own
@@ -116,9 +118,10 @@ openspec/
       before planning, not during coding
 - [ ] **Weigh the options** with `/opsx:explore` when the approach is genuinely open;
       skip it when it isn't
-- [ ] Draft the change with `/opsx:propose` — the story into `proposal.md`, the
-      architecture into `design.md`, the behaviour it adds as a delta on `openspec/specs/`.
-      `ai-architect` is the second opinion on the design, not a second document
+- [ ] Draft the change with `/opsx:propose` — the story and its criteria as a delta on
+      `openspec/specs/`, the architecture into `design.md`, and why / what changes /
+      impact into `proposal.md`. `ai-architect` is the second opinion on the design, not
+      a second document
 - [ ] **Write the outer functional test** — one failing test per slice, straight
       from the acceptance criterion. Written up front it catches design mistakes a
       retrofitted test can't, and it is what stops out-of-scope work: no story, no

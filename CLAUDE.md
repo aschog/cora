@@ -21,10 +21,11 @@ relevant.
 - **Commits** — plain Conventional Commits; no attribution trailers or co-author lines.
 - **Answers** — brief by default; expand only when asked.
 - **Plans** — planning is spec-driven, through OpenSpec. A story becomes a change under
-  `openspec/changes/`: the story in `proposal.md`, the architecture in `design.md`, the
-  behaviour it adds as a delta on `openspec/specs/`, and a **test list** in `tasks.md`
-  where every item is one failing test. `openspec/config.yaml` holds the rules the
-  `/opsx:` commands must follow, so edit it there rather than restating them. The
+  `openspec/changes/`: the story and its criteria as a delta on `openspec/specs/`, the
+  architecture in `design.md`, why / what changes / impact in `proposal.md`, and a **test
+  list** in `tasks.md` where every item is one failing test. `openspec/config.yaml` holds
+  the rules the `/opsx:` commands must follow, so edit it there rather than restating them.
+  The
   sprint folder (`docs/sprints/<n>/`) keeps the brief, the story cut and the feedback
   backlog; `openspec/specs/` says what cora does today and is always in scope. Earlier
   sprint folders — and `docs/sprints/4/done/`, which holds the `story-NN.md` files this
