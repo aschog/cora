@@ -1,12 +1,15 @@
-"""The commands the repository gives, checked against the commands it has.
+"""Two ways a reader ends up typing a command that does not work, each made to fail
+here rather than in their terminal.
 
-A page names a target and the `Makefile` names the module, so a start command survives a
-package moving. That only holds while the target the page names exists — and while the
-one target that starts cora starts the frontend cora has.
+The first is a page telling them to run `make something` that the `Makefile` no longer
+defines — a target renamed or dropped, and the page left behind saying the old name.
+The second is `make run` starting anything but the React shell: a second frontend, or
+the shell without the page built in front of it, which serves the previous build and
+reads as a caching bug.
 
-What a page *says* is not the subject here: prose is held by a person reading it. A
-target's existence is a fact about the tree, which is the same thing `test_docs.py`
-checks of a path.
+Neither is a test of what a page *says* — `CLAUDE.md` bars those, and prose is held by
+a person reading it. Whether a target exists is a fact about the tree, the same kind of
+claim `test_docs.py` makes about a path.
 """
 
 import pathlib

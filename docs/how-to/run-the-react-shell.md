@@ -3,6 +3,10 @@
 `make run` builds the page and serves it with the API from one process on
 `127.0.0.1:8000`. That is cora — there is no second screen to choose between.
 
+`make run-env` is the same command reading its environment from `.env` instead of from
+the shell you typed in, which is how the live test tier is run too. Put `CORA_PLUGINS`
+there as well, or cora starts with none.
+
 ## Working on the page
 
 The server reads only the build at `frontends/react/ui/dist`, so a source change is

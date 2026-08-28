@@ -50,9 +50,10 @@ make run                                   # or: make run-env, to read the key f
 
 `make run` builds the page and serves it with the API from one process on
 `127.0.0.1:8000`. The target exists so the command survives the next time a package
-moves — the module it names is one line, in the `Makefile`. cora loads no plugin unless
-asked, so the `CORA_PLUGINS` line is what turns this from a bare cora into the coaching
-app with a prompt-injection screen.
+moves — the module it names is one line, in the `Makefile`. `make run-env` is the same
+thing reading its environment from `.env`, so both exports below go in that file
+instead. cora loads no plugin unless asked, so the `CORA_PLUGINS` line is what turns
+this from a bare cora into the coaching app with a prompt-injection screen.
 
 Walked through, with what to expect at each step:
 [`docs/tutorial/first-session.md`](docs/tutorial/first-session.md).
