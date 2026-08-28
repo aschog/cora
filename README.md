@@ -12,8 +12,7 @@ An agent that is good at your subject usually means somebody built an app for th
 subject. cora turns that around: the agent is the part that stays, and the subject is the
 part you write — a fitness coach, a trip, a lab notebook. It is for people who extend the
 tools they already work in, and would rather point an agent at their own field than wait
-for someone to ship one for it. That makes the plugin contract the product surface, not
-an extension point bolted to the side of one.
+for someone to ship one for it.
 
 ## How it works
 
@@ -34,27 +33,7 @@ told, asks when it cannot tell, and cites what it used.
 
 ## Writing your own plugin
 
-A package with one module in it. You declare what it contributes — a name, instructions,
-any tools, any rules — and name the module in `CORA_PLUGINS`; a tool is a name, a
-description the model reads, a JSON Schema for its arguments and a function to call.
-cora imports no plugin of its own, so nothing you write edits the engine, and a plugin
-that brings only rules is as legitimate as one that brings only tools. Step by step, with
-a worked example: [write a plugin](docs/how-to/write-a-plugin.md).
-
-## What cora does not have
-
-Chosen, not missing — the reason stands beside each, so you can disagree with the reason
-rather than guess at the gap.
-
-- **no sandbox around a plugin** — a plugin is code you chose to install, like any package
-  you `uv add`, and saying so plainly is safer than a gate that implies a containment cora
-  does not have
-- **no registry to browse** — a named module and a folder are discovery; somewhere to find
-  other people's plugins is a website, and there are no other people yet
-- **no subject but the two shipped** — a subject *is* a plugin, so a third proves nothing
-  the second did not
-- **no goal that outlives a turn** — cora answers and stops; a task that accumulates is
-  the next axis, not this one
+Step by step, with a worked example: [write a plugin](docs/how-to/write-a-plugin.md).
 
 ## Quick start
 
