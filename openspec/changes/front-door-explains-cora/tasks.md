@@ -4,7 +4,7 @@ another file.
 
 ## 1. The outer test
 
-- [ ] 1.1 Write the outer test — the front door's first screen carries all six parts: the
+- [x] 1.1 Write the outer test — the front door's first screen carries all six parts: the
       problem, who it is for, how a turn works, what writing a plugin involves with its
       how-to linked, the absences block, and the showcase link. Mark it
       `@pytest.mark.xfail(strict=True)`; see it fail for the right reason and leave it red
