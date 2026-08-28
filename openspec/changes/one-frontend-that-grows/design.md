@@ -33,19 +33,16 @@ What the four AppTest files and the live tier held, and where each behaviour end
 - **The `Makefile` is the one place a start command is written.** A page names a target,
   the target names the module. That indirection already exists — the README says the
   target survives a package move — so re-aiming one recipe re-aims every page quoting it.
-- **The guards read the tree, not the pages' prose.** `CLAUDE.md` forbids a test whose
-  subject is what a written page says. A target's existence is a fact about the tree, in
-  the same family as `test_docs.py`'s path claims.
+- **The `Makefile` itself is unguarded, decided in review.** A guard over it was written
+  and removed: parsing the file and scanning the pages for `make <target>` cost ninety
+  lines to assert what running the thing shows. `test_docs.py` still holds the paths the
+  pages claim.
 - **The import bar already exists, scoped.** `test_architecture.py` has `_imports_streamlit`
   and asserts it stays inside the shell. The predicate stays and the scope widens to the
   whole tree — a rule that reads "nowhere" rather than "not there".
 
 ## Components
 
-- `tests/guards/test_commands.py` *(new)* — the `run` recipe names the React server, no
-  recipe invokes Streamlit, `run` builds the page first, and every `make <target>` a
-  documented page gives is a target the `Makefile` defines. The page list is
-  `test_docs.py`'s `PAGES`, imported rather than copied.
 - `tests/guards/test_architecture.py` — `test_streamlit_stays_inside_the_ui_shell` becomes
   the repository-wide bar, and `UI_ROOT` and the per-package allowance go with the member.
 - `tests/guards/test_packaging.py`, `test_installs.py`, `test_smoke.py`, `test_docs.py` —
