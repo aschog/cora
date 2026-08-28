@@ -3,9 +3,9 @@
 # ui-tier is the React page's own toolchain: it needs node, which is why it runs here
 # rather than in the hook every commit pays for.
 # integration-tier runs the tests the hook skips — they need real Chroma, a downloaded
-# embedding model, Streamlit and a strict docs build, so they are too slow for every commit
-# but are the only cover for the UI-to-engine wiring, for what the built wheels actually
-# contain, and for the docs site.
+# embedding model, the shell's API and a strict docs build, so they are too slow for every
+# commit but are the only cover for the UI-to-engine wiring, for what the built wheels
+# actually contain, and for the docs site.
 name: CI
 
 on: [push]

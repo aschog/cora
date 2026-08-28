@@ -1,29 +1,21 @@
 # Shortcuts for the commands whose paths are long enough to get retyped wrong. Everything
-# here is a thin wrapper over `uv run` — the real definitions are in pyproject.toml, and
-# `tests/guards/test_docs.py` checks that the path below still exists.
+# here is a thin wrapper over `uv run` — the real definitions are in pyproject.toml.
 
-APP := frontends/streamlit/src/cora/frontends/streamlit/streamlit_app.py
 REACT := cora.frontends.react.server
 
-.PHONY: run run-env run-react run-env-react ui ui-build ui-test ui-test-browser docs docs-serve diagram
+.PHONY: run run-env ui ui-build ui-test ui-test-browser docs docs-serve diagram
 
-# Reads OPENROUTER_API_KEY from the environment.
-run:
-	uv run streamlit run $(APP)
-
-# Reads it from .env instead, which is how the live tier is run too.
-run-env:
-	uv run --env-file .env streamlit run $(APP)
-
-# The React shell. `ui` is the page in dev — Vite on 5173, proxying /api to the server
-# below; `run-react` is the one process that serves both, and it builds first because the
-# server only ever reads `ui/dist` — without this a source change is invisible on the page.
-run-react: ui-build
+# cora, as one process serving the page and the API on 127.0.0.1:8000. It builds first
+# because the server only ever reads `ui/dist` — without that a source change is
+# invisible on the page. Reads OPENROUTER_API_KEY from the environment.
+run: ui-build
 	uv run python -m $(REACT)
 
-run-env-react: ui-build
+# Reads it from .env instead, which is how the live tier is run too.
+run-env: ui-build
 	uv run --env-file .env python -m $(REACT)
 
+# The page on its own, for working on it: Vite on 5173, proxying /api to `make run`.
 ui:
 	cd frontends/react/ui && npm run dev
 

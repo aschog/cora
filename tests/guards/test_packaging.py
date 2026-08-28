@@ -72,10 +72,22 @@ def test_the_workspace_holds_the_app_and_its_extension_points() -> None:
     assert {workspace.location(m): workspace.distribution(m) for m in MEMBERS} == {
         ".": "cora",
         "frontends/react": "cora-frontend-react",
-        "frontends/streamlit": "cora-frontend-streamlit",
         "plugins/fitness": "cora-plugin-fitness",
         "plugins/security": "cora-plugin-security",
     }
+
+
+def test_the_workspace_ships_one_frontend() -> None:
+    """A frontend is a member beside the app, so "cora has one screen" is a claim about
+    the member list: a second one is a second directory here, whether or not anything
+    points at it."""
+    frontends = sorted(
+        workspace.location(member)
+        for member in MEMBERS
+        if workspace.location(member).startswith("frontends/")
+    )
+
+    assert frontends == ["frontends/react"]
 
 
 @pytest.mark.parametrize("member", MEMBERS, ids=IDS)
@@ -115,7 +127,10 @@ def test_no_module_sits_outside_what_its_manifest_names(member: pathlib.Path) ->
 def test_the_app_owns_no_user_interface() -> None:
     """What makes a second frontend possible, stated so it can fail: a command-line or
     HTTP shell installs `cora` and gets the wiring without a web toolkit."""
-    assert "streamlit" not in workspace.requirements(workspace.ROOT)
+    toolkits = workspace.toolkits()
+
+    assert toolkits, "no frontend declares a toolkit — the rule would hold of nothing"
+    assert not workspace.requirements(workspace.ROOT) & toolkits
 
 
 def test_the_app_carries_no_plugin_and_names_none() -> None:
@@ -155,7 +170,6 @@ def test_a_plugin_needs_the_app_and_nothing_else(plugin: str) -> None:
 @pytest.mark.parametrize(
     ("frontend", "toolkit"),
     [
-        ("streamlit", {"streamlit", "markdown-it-py"}),
         ("react", {"starlette", "uvicorn", "python-multipart"}),
     ],
     ids=lambda value: value if isinstance(value, str) else "",

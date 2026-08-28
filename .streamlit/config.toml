@@ -1,4 +1,0 @@
-[server]
-# Match the ingestion cap (DEFAULT_MAX_BYTES in src/cora/engine/ingestion.py)
-# so the uploader advertises and enforces the same 10 MB limit it will accept.
-maxUploadSize = 10

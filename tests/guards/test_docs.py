@@ -28,7 +28,8 @@ PAGES = (
     "docs/how-to/run-the-react-shell.md",
     "docs/tutorial/first-session.md",
 )
-CONFIGS = (".streamlit/config.toml", "Makefile")
+
+CONFIGS = ("Makefile",)
 SUFFIXES = (".py", ".md", ".toml", "/")
 
 LOCATION = r"(?:\.{1,2}/)*\.?[A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+"
@@ -85,7 +86,7 @@ def test_a_reference_is_resolved_against_the_packages() -> None:
     """`domain/chunk.py` is a location even though no such path exists from the root:
     the docs name modules the way an import does, from `cora/` down."""
     assert _resolves("domain/chunk.py")
-    assert _resolves("frontends/streamlit/")
+    assert _resolves("frontends/react/")
     assert not _resolves("domain/no_such_module.py")
 
 
@@ -95,17 +96,17 @@ def test_a_config_is_read_for_the_paths_its_comments_write_like_prose() -> None:
     is claimed from its start: what follows a slash is a segment, not a second claim."""
     claims = _claims()
 
-    assert ("Makefile", "tests/guards/test_docs.py") in claims
-    assert ("Makefile", "guards/test_docs.py") not in claims
+    assert ("Makefile", "tests/guards/test_docs_site.py") in claims
+    assert ("Makefile", "guards/test_docs_site.py") not in claims
 
 
 def test_a_path_is_claimed_from_its_dot_as_readily_as_from_a_letter() -> None:
-    """A leading dot is part of the name, not punctuation in front of it: `.streamlit/`
+    """A leading dot is part of the name, not punctuation in front of it: `.githooks/`
     is a directory and `./docs/` is the same directory as `docs/`. Reading past the dot
     would claim a fragment the tree does not have, and skipping the token would leave a
     stale path unchecked — the two ways this guard can be wrong about one character."""
-    assert _references("the cap is in `.streamlit/config.toml`.", CONFIG_PATTERNS) == {
-        ".streamlit/config.toml"
+    assert _references("the hooks are in `.githooks/`.", CONFIG_PATTERNS) == {
+        ".githooks/"
     }
     assert _references("see ./docs/big-picture.md", CONFIG_PATTERNS) == {
         "./docs/big-picture.md"

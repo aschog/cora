@@ -4,10 +4,9 @@ Three ways to see what cora did, from the cheapest to the most real.
 
 ## Read the trace on the page
 
-Every turn carries its trace, and both frontends show it — the Streamlit page under
-*How I got there*, the React one under its *STEPS* tab: what the model decided, which
-tool ran with which arguments, and what came back, including a call that failed. Nothing
-to switch on.
+Every turn carries its trace, and the page draws it under its *STEPS* tab: what the
+model decided, which tool ran with which arguments, and what came back, including a call
+that failed. Nothing to switch on.
 
 ## Log what crosses a port
 

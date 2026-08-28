@@ -42,7 +42,7 @@ def _resolved(dist: str) -> set[str]:
     where it already is.
     """
     tree = _uv("tree", "--package", dist, "--no-dev", "--frozen", "--offline").stdout
-    resolved = set(re.findall(r"([A-Za-z0-9][A-Za-z0-9._-]*) v\d", tree))
+    resolved = set(re.findall(r"([A-Za-z0-9][A-Za-z0-9._-]*)(?:\[[^\]]*\])? v\d", tree))
     assert dist in resolved, (
         f"uv resolved no {dist} — a name nothing ships prints an empty tree and "
         "exits 0, so every claim made about it would hold of nothing"
@@ -59,11 +59,30 @@ def test_a_name_the_workspace_does_not_ship_is_an_error() -> None:
         _resolved("cora-plugin-nonesuch")
 
 
+SERVES_A_PAGE = frozenset({"starlette", "streamlit"})
+"""The frameworks a frontend is written against. `uvicorn` is deliberately not among
+them: chromadb resolves it whatever cora does, so its presence says nothing about the
+app owning an interface, and a rule naming it would be false the day it was written."""
+
+
 def test_the_app_resolves_without_any_user_interface() -> None:
     """What makes a second frontend possible, stated so it can fail — transitively,
     where the manifest sees one edge: a command-line or HTTP shell installs `cora` and
-    gets the wiring without a web toolkit."""
-    assert "streamlit" not in _resolved("cora")
+    gets the wiring without the framework a page is written against."""
+    assert not _resolved("cora") & SERVES_A_PAGE
+
+
+def test_nothing_in_the_workspace_resolves_a_second_frontend() -> None:
+    """The bar over the whole tree rather than over `cora` alone: the app resolving no
+    web toolkit says nothing about a member that ships one, and a frontend nobody runs
+    still lands in the lockfile every developer syncs."""
+    reaching = sorted(
+        distribution
+        for member in workspace.members()
+        if "streamlit" in _resolved(distribution := workspace.distribution(member))
+    )
+
+    assert reaching == [], f"these still bring Streamlit in: {reaching}"
 
 
 def test_a_plugin_resolves_the_app_and_stops() -> None:

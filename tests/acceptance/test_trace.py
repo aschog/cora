@@ -1,14 +1,17 @@
+"""What a turn did, read off the wire the page reads it from."""
+
 import pytest
-from streamlit.testing.v1 import AppTest
+from starlette.testclient import TestClient
 
 from app_builder import assembled, indexed
-from apptest import page_text
 from cora.app.assembly import App
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.frontends.react.api import api
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import ToolCall
-from fakes import ScriptedChatModel, add_tool
+from fakes import FakeConversations, FakeMemory, ScriptedChatModel, add_tool
 from fixture_plugins import make_plugin
+from sse import frames
 
 SEED_DOC = ("note.md", b"protein builds muscle")
 QUESTION = "What do my notes say about protein, and what is 20 + 22?"
@@ -32,32 +35,33 @@ def _app() -> App:
                 ]
             ),
             plugin=make_plugin(tools=(add_tool(),)),
+            memory=FakeMemory(),
+            conversations=FakeConversations(),
         ),
         SEED_DOC,
     )
 
 
-def _page(app) -> None:  # AppTest re-executes this without the module's globals
-    from cora.frontends.streamlit.chat import render
-
-    render(app)
-
-
 @pytest.mark.integration
 def test_the_trace_shows_each_step_with_its_tool_arguments_and_result() -> None:
-    at = AppTest.from_function(_page, args=(_app(),)).run()
+    """One turn that searches, calculates and then answers, with every step it took on
+    the wire — what it decided, the call it made with the arguments it made it with, and
+    what came back."""
+    with TestClient(api(_app())) as page:
+        streamed = frames(
+            page.post("/api/ask", json={"question": QUESTION, "thread_id": "t1"}).text
+        )
 
-    at.chat_input[0].set_value(QUESTION).run()
-
-    assert not at.exception
-    assert ANSWER in page_text(at)
-
-    [trace] = at.status
-    assert trace.label == "How I got there"
-    steps = "\n".join(c.value for c in trace.code)
-    assert f"Decided to call {SEARCH_TOOL_NAME}" in steps
-    assert f'{SEARCH_TOOL_NAME}(query="protein")' in steps
-    assert "1 passage from note.md" in steps
-    assert "add(a=20, b=22)" in steps
-    assert "42" in steps
-    assert "Decided no tool was needed" in steps
+    name, turn = streamed[-1]
+    assert name == "turn", f"the turn did not finish: {streamed[-1]}"
+    assert turn["answer"] == ANSWER
+    said = "\n".join(f"{step['summary']}\n{step['detail']}" for step in turn["trace"])
+    assert f"Decided to call {SEARCH_TOOL_NAME}" in said
+    assert f'{SEARCH_TOOL_NAME}(query="protein")' in said
+    assert "1 passage from note.md" in said
+    assert "add(a=20, b=22)" in said
+    assert "42" in said
+    assert "Decided no tool was needed" in said
+    assert "[1] note.md: protein builds muscle" in said, (
+        "the passage the search returned is what the step's detail is for"
+    )

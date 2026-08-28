@@ -42,13 +42,11 @@ members = ["plugins/*", "frontends/*"]
 cora = { workspace = true }
 cora-plugin-fitness = { workspace = true }
 cora-plugin-security = { workspace = true }
-cora-frontend-streamlit = { workspace = true }
 cora-frontend-react = { workspace = true }
 
 [dependency-groups]
 dev = [
     "cora-frontend-react",
-    "cora-frontend-streamlit",
     "cora-plugin-fitness",
     "cora-plugin-security",
     "httpx>=0.28.1",
@@ -72,7 +70,6 @@ root = [
     "src",
     "scripts",
     "frontends/react/src",
-    "frontends/streamlit/src",
     "plugins/fitness/src",
     "plugins/security/src",
     "tests/helpers",
@@ -83,7 +80,6 @@ src = [
     "src",
     "scripts",
     "frontends/react/src",
-    "frontends/streamlit/src",
     "plugins/fitness/src",
     "plugins/security/src",
     "tests/helpers",
@@ -148,7 +144,7 @@ filterwarnings = [
     "ignore:Using .httpx. with .starlette.testclient. is deprecated:UserWarning",
 ]
 markers = [
-    "integration: touches real infrastructure (Chroma, embedding model, Streamlit, a docs build); run in CI",
+    "integration: touches real infrastructure (Chroma, the embedding model, the shell's API, a docs build); run in CI",
     "llm: real OpenRouter round-trip through the assembled app; manual acceptance only, never in CI",
 ]
 

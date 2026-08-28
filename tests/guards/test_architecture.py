@@ -4,6 +4,7 @@ import importlib
 import inspect
 import pathlib
 import pkgutil
+import subprocess
 import sys
 import typing
 from importlib.metadata import packages_distributions
@@ -15,7 +16,7 @@ import cora.adapters
 import cora.app
 import cora.domain
 import cora.engine
-import cora.frontends.streamlit
+import cora.frontends.react
 import cora.plugins
 import cora.ports
 import workspace
@@ -76,7 +77,26 @@ LAYER_ROOTS = (
 )
 CORE_FILES = sorted(file for root in PURE_ROOTS for file in root.rglob("*.py"))
 PACKAGE_FILES = sorted(file for root in LAYER_ROOTS for file in root.rglob("*.py"))
-UI_ROOT = _root(cora.frontends.streamlit)
+
+
+def _repository_files() -> list[pathlib.Path]:
+    """Every Python file the repository wrote — the packages, the tests, the tooling.
+
+    Asked of git rather than of a walk with a skip list. A walk has to name what to
+    leave out, and the first version left out every directory whose name began with a
+    dot to be rid of `.venv` — which took `.github/` and `.claude/` with it, the very
+    tooling the rule below claims to cover. What is tracked is what was written."""
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--", "*.py"],
+        capture_output=True,
+        check=True,
+        cwd=workspace.ROOT,
+        text=True,
+    )
+    return sorted(workspace.ROOT / name for name in listed.stdout.split("\0") if name)
+
+
+REPOSITORY_FILES = _repository_files()
 
 # What each layer may not reach for, and the reason it may not. One table rather than a
 # test per layer: a rule added here is enforced over every file of that layer, and the
@@ -154,7 +174,6 @@ TECHNOLOGY_ALLOWED: dict[str, frozenset[str]] = {
 # "a frontend may import whatever any frontend imports" — which is how a widget shell
 # quietly grows an HTTP server, declared in no manifest and caught by no gate.
 FRONTEND_TOOLKITS: dict[str, frozenset[str]] = {
-    "streamlit": frozenset({"streamlit", "markdown_it"}),
     "react": frozenset({"starlette", "uvicorn", "python_multipart"}),
 }
 TECHNOLOGY_CASES = [
@@ -253,15 +272,32 @@ def test_the_pure_modules_are_discovered() -> None:
     assert CORE_FILES, "no pure modules discovered — the walker is misconfigured"
 
 
-@pytest.mark.parametrize(
-    "path",
-    [p for p in PACKAGE_FILES if not p.is_relative_to(UI_ROOT)],
-    ids=lambda p: str(_shipped_as(p)),
-)
-def test_streamlit_stays_inside_the_ui_shell(path: pathlib.Path) -> None:
-    assert not _imports_streamlit(path), (
-        f"{_shipped_as(path)} imports streamlit outside cora/frontends/streamlit"
+def test_the_repository_walk_reads_the_tree_it_claims_to() -> None:
+    """A rule over "every file" is only as true as the listing under it: one that came
+    back empty would assert nothing and read as a clean bar rather than an empty one.
+    The four kinds it claims are named here, and the two trees it must not reach — an
+    installed environment holds the very import the bar above forbids."""
+    found = {str(path.relative_to(workspace.ROOT)) for path in REPOSITORY_FILES}
+
+    assert "conftest.py" in found, "the root's own files"
+    assert "src/cora/app/assembly.py" in found, "the packages"
+    assert "tests/guards/test_architecture.py" in found, "the tests"
+    assert "scripts/gen_component_map.py" in found, "the tooling"
+    assert not [path for path in found if path.startswith(".venv/")], "an environment"
+    assert not [path for path in found if "node_modules/" in path], "an installed tree"
+
+
+def test_nothing_in_the_repository_imports_streamlit() -> None:
+    """The whole tree, not the shipped layers alone: cora has one frontend, and a
+    dependency nobody may reach for is only gone once the tests and the tooling have
+    stopped reaching for it too."""
+    reaching = sorted(
+        str(path.relative_to(workspace.ROOT))
+        for path in REPOSITORY_FILES
+        if _imports_streamlit(path)
     )
+
+    assert reaching == [], "\n".join(["these still import streamlit:", *reaching])
 
 
 @pytest.mark.parametrize("path", PACKAGE_FILES, ids=lambda p: str(_shipped_as(p)))
@@ -409,18 +445,18 @@ def test_every_frontend_declares_the_toolkit_it_draws_or_serves_with() -> None:
     assert shipped == FRONTEND_TOOLKITS.keys()
 
 
-def test_a_frontend_may_not_reach_for_another_frontends_toolkit(
+def test_a_frontend_may_not_reach_for_a_toolkit_it_was_not_given(
     tmp_path: pathlib.Path,
 ) -> None:
-    """The rule the map states, made false-able: the widget shell importing the HTTP
-    server is exactly as wrong as the engine importing either."""
+    """The rule the map states, made false-able: a frontend reaching for a technology
+    its own entry does not name is exactly as wrong as the engine importing one. With
+    one frontend left the neighbour it would borrow from is hypothetical, so what is
+    planted is the reach rather than the second shell."""
+    drawn = ast.parse("import streamlit\n")
     served = ast.parse("import starlette.applications\n")
-    widgets = _planted(tmp_path, "streamlit", "shell.py")
     http = _planted(tmp_path, "react", "api.py")
 
-    assert _technologies_bound("the frontends", widgets, served) == [
-        "starlette.applications"
-    ]
+    assert _technologies_bound("the frontends", http, drawn) == ["streamlit"]
     assert _technologies_bound("the frontends", http, served) == []
 
 
