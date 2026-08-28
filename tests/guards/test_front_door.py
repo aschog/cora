@@ -11,6 +11,8 @@ never wording: a rewrite of the prose has to be free, and a part going missing m
 be.
 """
 
+import re
+
 import pytest
 
 import workspace
@@ -60,6 +62,25 @@ def test_the_front_door_explains_itself() -> None:
     assert missing == [], "the first screen is missing: " + ", ".join(missing)
 
 
+BULLET = re.compile(r"^- \*\*(?P<thing>[^*]+)\*\*(?P<reason>.*)$")
+
+
+def absences(block: str) -> list[tuple[str, str]]:
+    """Each item of an absences block as the thing and the reason standing beside it. A
+    reason wraps onto the lines under its bullet, so those are folded back in before it
+    is judged; an item with nothing after its bold lead-in comes back with an empty one,
+    which is the whole point of reading them apart."""
+    found: list[tuple[str, str]] = []
+    for line in block.splitlines():
+        bullet = BULLET.match(line.strip())
+        if bullet:
+            found.append((bullet["thing"], bullet["reason"].lstrip(" —-")))
+        elif found and line.startswith("  "):
+            thing, reason = found[-1]
+            found[-1] = (thing, (reason + " " + line.strip()).strip())
+    return found
+
+
 def test_the_first_screen_says_what_the_problem_is_and_how_a_turn_runs() -> None:
     """The two a reader needs before deciding: what cora is for, and enough of how it
     works to believe it. Both stand above the quick start, so neither is read after the
@@ -84,3 +105,18 @@ def test_the_first_screen_says_what_writing_a_plugin_involves() -> None:
         "the how-to is linked but not summarised"
     )
     assert HOW_TO in screen[EXTENDING], "the section does not link the how-to"
+
+
+def test_every_absence_carries_its_reason() -> None:
+    """What cora deliberately lacks, said as a decision. A bare list of absences reads
+    as a list of gaps — the reason beside each is what makes it a boundary, so an item
+    without one is not the block this asks for."""
+    screen = sections()
+
+    assert ABSENCES in screen, f"the first screen has no {ABSENCES}"
+    listed = absences(screen[ABSENCES])
+    assert len(listed) >= 4, "the block names fewer absences than the story does"
+    bare = [thing for thing, reason in listed if len(reason.split()) < 5]
+    assert bare == [], "absences listed without a reason beside them: " + ", ".join(
+        bare
+    )

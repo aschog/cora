@@ -39,6 +39,21 @@ cora imports no plugin of its own, so nothing you write edits the engine, and a 
 that brings only rules is as legitimate as one that brings only tools. Step by step, with
 a worked example: [write a plugin](docs/how-to/write-a-plugin.md).
 
+## What cora does not have
+
+Chosen, not missing — the reason stands beside each, so you can disagree with the reason
+rather than guess at the gap.
+
+- **no sandbox around a plugin** — a plugin is code you chose to install, like any package
+  you `uv add`, and saying so plainly is safer than a gate that implies a containment cora
+  does not have
+- **no registry to browse** — a named module and a folder are discovery; somewhere to find
+  other people's plugins is a website, and there are no other people yet
+- **no subject but the two shipped** — a subject *is* a plugin, so a third proves nothing
+  the second did not
+- **no goal that outlives a turn** — cora answers and stops; a task that accumulates is
+  the next axis, not this one
+
 ## Quick start
 
 Python 3.12, [uv](https://docs.astral.sh/uv/), and an

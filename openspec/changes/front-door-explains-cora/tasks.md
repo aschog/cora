@@ -22,7 +22,7 @@ another file.
       a turn works — the core and what a plugin contributes — above the quick start
 - [x] 3.2 Write a test that shows the front door says what writing a plugin involves and
       links `docs/how-to/write-a-plugin.md` above the quick start
-- [ ] 3.3 Write a test that shows the front door carries a block of what cora does not
+- [x] 3.3 Write a test that shows the front door carries a block of what cora does not
       have, and that every item in it carries its reason beside it
 - [ ] 3.4 Write a test that shows the guard rejects a bare absence — an item with a bold
       lead-in and nothing after the dash fails, so 3.3 cannot pass vacuously
