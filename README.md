@@ -4,6 +4,8 @@ cora is an agent you chat with, and everything it knows and can do arrives as a 
 The core runs a turn and screens what comes in; a plugin gives it a field, tools and rules
 of its own. With nothing loaded it still answers.
 
+On the showcase: [showcase.turingcollege.com](https://showcase.turingcollege.com/).
+
 ## What it is for
 
 An agent that is good at your subject usually means somebody built an app for that

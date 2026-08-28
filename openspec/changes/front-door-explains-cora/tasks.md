@@ -26,9 +26,9 @@ another file.
       have, and that every item in it carries its reason beside it
 - [x] 3.4 Write a test that shows the guard rejects a bare absence — an item with a bold
       lead-in and nothing after the dash fails, so 3.3 cannot pass vacuously
-- [ ] 3.5 Write a test that shows the front door links `showcase.turingcollege.com`, and
+- [x] 3.5 Write a test that shows the front door links `showcase.turingcollege.com`, and
       that the link is above the quick start rather than anywhere in the file
 
 ## 4. Done
 
-- [ ] 4.1 Drop the `xfail` marker from 1.1 and watch the outer test pass
+- [x] 4.1 Drop the `xfail` marker from 1.1 and watch the outer test pass

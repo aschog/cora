@@ -13,8 +13,6 @@ be.
 
 import re
 
-import pytest
-
 import workspace
 
 README = workspace.ROOT / "README.md"
@@ -47,7 +45,6 @@ def sections() -> dict[str, str]:
     return found
 
 
-@pytest.mark.xfail(strict=True, reason="story 1: the first screen is not written yet")
 def test_the_front_door_explains_itself() -> None:
     """The acceptance criterion, as one test: a stranger reading only this much can say
     what cora is for, how it works, what extending it involves and what it will not do —
@@ -141,3 +138,14 @@ def test_a_bare_absence_comes_back_bare() -> None:
         "no registry to browse",
     ]
     assert listed[1][1] == "", "the parser invented a reason the page does not carry"
+
+
+def test_the_showcase_entry_is_linked_before_the_quick_start() -> None:
+    """The entry is what a reviewer opens first, so a link below the install steps is a
+    link nobody reaches. The landmark is asserted with it: with no quick start to cut
+    at, the first screen would be the whole file and "near the top" would mean nothing.
+    """
+    assert QUICK_START in README.read_text(), "nothing to cut the first screen at"
+    assert SHOWCASE in first_screen(), (
+        "the showcase is not linked above the quick start"
+    )
