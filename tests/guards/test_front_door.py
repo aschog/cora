@@ -71,3 +71,16 @@ def test_the_first_screen_says_what_the_problem_is_and_how_a_turn_runs() -> None
         assert len(screen[part].split()) >= 40, (
             f"{part} is a heading with nothing under it"
         )
+
+
+def test_the_first_screen_says_what_writing_a_plugin_involves() -> None:
+    """The contract is the product, so the reader deciding whether cora fits their field
+    is the reader this section is for. A link on its own would send them away to find
+    out; what it takes has to be answerable here."""
+    screen = sections()
+
+    assert EXTENDING in screen, f"the first screen has no {EXTENDING}"
+    assert len(screen[EXTENDING].split()) >= 40, (
+        "the how-to is linked but not summarised"
+    )
+    assert HOW_TO in screen[EXTENDING], "the section does not link the how-to"

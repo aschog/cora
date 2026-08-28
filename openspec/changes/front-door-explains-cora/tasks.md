@@ -20,7 +20,7 @@ another file.
 
 - [x] 3.1 Write a test that shows the front door states the problem, who it is for, and how
       a turn works — the core and what a plugin contributes — above the quick start
-- [ ] 3.2 Write a test that shows the front door says what writing a plugin involves and
+- [x] 3.2 Write a test that shows the front door says what writing a plugin involves and
       links `docs/how-to/write-a-plugin.md` above the quick start
 - [ ] 3.3 Write a test that shows the front door carries a block of what cora does not
       have, and that every item in it carries its reason beside it

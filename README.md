@@ -10,8 +10,8 @@ An agent that is good at your subject usually means somebody built an app for th
 subject. cora turns that around: the agent is the part that stays, and the subject is the
 part you write — a fitness coach, a trip, a lab notebook. It is for people who extend the
 tools they already work in, and would rather point an agent at their own field than wait
-for someone to ship one for it. That makes the plugin contract the product, and
-[writing one](docs/how-to/write-a-plugin.md) the thing to read next.
+for someone to ship one for it. That makes the plugin contract the product surface, not
+an extension point bolted to the side of one.
 
 ## How it works
 
@@ -29,6 +29,15 @@ A plugin contributes three things, and may bring only one of them:
 
 With none loaded cora still answers: it searches its documents, remembers what it is
 told, asks when it cannot tell, and cites what it used.
+
+## Writing your own plugin
+
+A package with one module in it. You declare what it contributes — a name, instructions,
+any tools, any rules — and name the module in `CORA_PLUGINS`; a tool is a name, a
+description the model reads, a JSON Schema for its arguments and a function to call.
+cora imports no plugin of its own, so nothing you write edits the engine, and a plugin
+that brings only rules is as legitimate as one that brings only tools. Step by step, with
+a worked example: [write a plugin](docs/how-to/write-a-plugin.md).
 
 ## Quick start
 
