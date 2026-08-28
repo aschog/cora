@@ -9,7 +9,7 @@ import cora.adapters
 import cora.app
 import cora.domain
 import cora.engine
-import cora.frontends.streamlit
+import cora.frontends.react
 import cora.plugins.fitness
 import cora.plugins.security
 import cora.ports
@@ -52,7 +52,7 @@ def test_each_layer_is_carried_by_the_member_that_ships_it() -> None:
             cora.app,
             cora.plugins.fitness,
             cora.plugins.security,
-            cora.frontends.streamlit,
+            cora.frontends.react,
         )
     }
 
@@ -64,5 +64,5 @@ def test_each_layer_is_carried_by_the_member_that_ships_it() -> None:
         "cora.app": ".",
         "cora.plugins.fitness": "plugins/fitness",
         "cora.plugins.security": "plugins/security",
-        "cora.frontends.streamlit": "frontends/streamlit",
+        "cora.frontends.react": "frontends/react",
     }

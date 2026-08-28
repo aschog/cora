@@ -47,11 +47,11 @@ that needs them, because no test can fail for prose.
 
 ## 4. The member is gone
 
-- [ ] 4.1 Write a test that shows the workspace ships one frontend member, and it is the
+- [x] 4.1 Write a test that shows the workspace ships one frontend member, and it is the
       React one
-- [ ] 4.2 Write a test that shows no package in the workspace resolves Streamlit as a
+- [x] 4.2 Write a test that shows no package in the workspace resolves Streamlit as a
       dependency — the bar is the whole tree, not `cora` alone
 
 ## 5. Done
 
-- [ ] 5.1 Drop 1.1's `xfail` marker and watch the outer test pass
+- [x] 5.1 Drop 1.1's `xfail` marker and watch the outer test pass

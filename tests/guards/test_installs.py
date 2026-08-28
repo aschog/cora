@@ -66,6 +66,19 @@ def test_the_app_resolves_without_any_user_interface() -> None:
     assert "streamlit" not in _resolved("cora")
 
 
+def test_nothing_in_the_workspace_resolves_a_second_frontend() -> None:
+    """The bar over the whole tree rather than over `cora` alone: the app resolving no
+    web toolkit says nothing about a member that ships one, and a frontend nobody runs
+    still lands in the lockfile every developer syncs."""
+    reaching = sorted(
+        distribution
+        for member in workspace.members()
+        if "streamlit" in _resolved(distribution := workspace.distribution(member))
+    )
+
+    assert reaching == [], f"these still bring Streamlit in: {reaching}"
+
+
 def test_a_plugin_resolves_the_app_and_stops() -> None:
     """A plugin takes nothing of its own — no toolkit, no second technology. Equality,
     not a superset: a plugin that grew a direct dependency of its own is exactly what
