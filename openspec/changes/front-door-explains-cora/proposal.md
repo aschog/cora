@@ -9,12 +9,18 @@ the paragraph on day one, before the code. This change is that day.
 
 - The one-sentence description becomes *cora is an agent you chat with, and everything it
   knows and can do arrives as a plugin.*
-- New capability `front-door`, in `specs/front-door/spec.md`: what a reader is told before
-  they read any code, and the guard that holds it there.
+- `README.md`'s first screen answers four questions above the quick start — what cora is
+  for, how a turn works, what writing a plugin involves, and what cora deliberately does
+  not have — and links the showcase entry near the top.
+- No spec delta: the subject is a written page, and a `.md` file is held by a person
+  reading it rather than by a test. `skip_specs: true`, and the story and its criteria
+  stay in `docs/sprints/5/spec.md`.
 
 ## Impact
 
 - `README.md` — rewritten above the quick start.
-- `docs/index.md`, `pyproject.toml`, `mkdocs.yml`, `CLAUDE.md` — the one sentence, held in
-  step by `tests/guards/test_tagline.py`.
-- `tests/guards/` — one new guard over the shape of the first screen.
+- `docs/index.md`, `pyproject.toml`, `mkdocs.yml`, `CLAUDE.md` — the one sentence.
+- `tests/guards/` — `test_tagline.py` and `test_docs_shape.py` removed; they held written
+  pages to a shape, which is now against the rule in `CLAUDE.md`. `test_docs.py` stays: it
+  checks whether what a page claims is true, not what the page says.
+- No `src/` change, no dependency change, no runtime behaviour change.
