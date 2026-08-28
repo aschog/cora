@@ -211,20 +211,21 @@ came before it.
 
 ## Stories
 
-Numbered in merge order, with two exceptions: story 8 merges after story 11, so the reach
-the review asked for is never queued behind storage polish, and story 2's removal merges
-last of all, only if time remains — a frozen second frontend costs nothing while it waits.
-Each becomes an OpenSpec change under `openspec/changes/`, and its text moves into that
-change's `proposal.md` when it is opened — this file then keeps the heading and the link.
+Numbered in merge order, with one exception: story 8 merges after story 11, so the reach
+the review asked for is never queued behind storage polish. Each becomes an OpenSpec
+change under `openspec/changes/`, and the story moves into that change's delta spec when
+it is opened — this file then keeps the heading and the link.
 
-Stories 4, 5 and 7 are the harness; 9, 10 and 11 are the reach the review asked for; 1, 2
-and 12 are how it is read. **Twelve stories, and only story 2's removal is allowed to
-give** — the freeze it opens with is what makes the deletion safe to postpone. Routing was
-the other cut considered — a pin alone proves a scope — and it stays: it carries criterion
-4's evaluation number, and one scope leaves nothing to route between, so cutting it would
-take the measurement with it. If the sprint runs long, the sprint runs
-long; what gives is argued then, against *Not in this sprint*, rather than decided here
-while it is cheap to be brave.
+Stories 4, 5 and 7 are the harness, 9, 10 and 11 are the reach the review asked for, and
+1, 2 and 12 are how it is read. **Twelve stories, and none of them is designated as the
+one that gives.** Story 2's removal was, while it was a freeze that could wait. Deleting
+the second frontend outright in position two spends that slack early, and buys back every
+core change of stories 4 and 5 that would have had to keep a dead app compiling. Routing
+was the other cut considered — a pin alone proves a scope — and it stays: it carries
+criterion 4's evaluation number, and one scope leaves nothing to route between, so cutting
+it would take the measurement with it. If the sprint runs long, the sprint runs long, and
+what gives is argued then against *Not in this sprint* rather than decided here while it
+is cheap to be brave.
 
 ### 1. A reader learns what cora is for before anything else
 
@@ -257,48 +258,15 @@ sentence is rewritten there and the rest of the README follows the sprint, since
 
 ### 2. cora has one frontend that grows
 
-As someone who runs cora,\
-I want everything new on the screen to land in one frontend,\
-so that a change to the screen is made once and the other one cannot fall behind.
+The story and its criteria are in `openspec/changes/one-frontend-that-grows/`, whose delta
+spec heads them. It is position two because everything this sprint puts on a screen — the
+pin, the plugin listing, the nested trace, the approval gate — lands after it, in the one
+frontend that is left.
 
-**The Streamlit app is frozen, not deleted.** From day one it and its tests are extended by
-nothing: the pin, the plugin listing, the nested trace and the approval gate land in the
-React shell alone. The deletion merges last of all, and only if the sprint has time left —
-a frozen frontend costs nothing while it waits.
-
-**Scenario:** the freeze holds
-
-- **Given** the Streamlit app and its tests as sprint 4 left them
-- **When** this sprint puts something new on the screen — the pin, the listing, the nested
-  trace, the approval gate
-- **Then** it lands in the React shell alone, and the Streamlit app and its tests end the
-  sprint as they began it
-- **And** `make run` starts the React shell
-
-**Scenario:** the docs describe the frontend that grows
-
-- **Given** `README.md` and the tutorial
-- **When** a reader follows the quick start
-- **Then** every command they are given is one the repository has, and the screen they are
-  sent to is the React shell
-
-**Scenario:** the Streamlit app is gone *(time permitting, the sprint's last merge)*
-
-- **Given** the repository
-- **When** its frontends are listed
-- **Then** the React shell is the only one, and a guard asserts that nothing imports
-  Streamlit
-
-**Scenario:** what the acceptance tier proved is still proved *(with the removal)*
-
-- **Given** the acceptance tests that drove the app through Streamlit's `AppTest`
-- **When** the app is removed
-- **Then** each behaviour they covered is asserted through the React shell's API instead, or
-  named as deliberately dropped in the change's proposal and in `sprint-5-feedback.md`
-
-The freeze is position two's job, stated before stories 6, 7 and 10 put anything on a
-screen. If the sprint runs long, cora ships with a frozen second frontend and
-`sprint-5-feedback.md` carries the removal forward.
+The Streamlit app is deleted, not frozen: the app, its tests, its workspace member and its
+dependency. What it proved is asserted through the React shell's API before any of it
+goes, and what is deliberately dropped with it is named in that change's proposal and in
+`sprint-5-feedback.md`.
 
 ### 3. The turn is a workflow of named steps
 
