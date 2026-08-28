@@ -77,6 +77,25 @@ LAYER_ROOTS = (
 CORE_FILES = sorted(file for root in PURE_ROOTS for file in root.rglob("*.py"))
 PACKAGE_FILES = sorted(file for root in LAYER_ROOTS for file in root.rglob("*.py"))
 UI_ROOT = _root(cora.frontends.streamlit)
+SKIPPED_TREES = frozenset({"node_modules", "__pycache__", "dist", "build"})
+"""What the repository holds without having written: an installed environment, a build,
+a cache. Hidden directories go with them, which is how `.venv` is excluded without
+being named."""
+
+
+def _repository_files() -> list[pathlib.Path]:
+    """Every Python file the repository wrote — the packages, the tests, the tooling."""
+    return sorted(
+        path
+        for path in workspace.ROOT.rglob("*.py")
+        if not any(
+            part in SKIPPED_TREES or part.startswith(".")
+            for part in path.relative_to(workspace.ROOT).parts
+        )
+    )
+
+
+REPOSITORY_FILES = _repository_files()
 
 # What each layer may not reach for, and the reason it may not. One table rather than a
 # test per layer: a rule added here is enforced over every file of that layer, and the
@@ -262,6 +281,20 @@ def test_streamlit_stays_inside_the_ui_shell(path: pathlib.Path) -> None:
     assert not _imports_streamlit(path), (
         f"{_shipped_as(path)} imports streamlit outside cora/frontends/streamlit"
     )
+
+
+@pytest.mark.xfail(strict=True, reason="the Streamlit app is still in the tree")
+def test_nothing_in_the_repository_imports_streamlit() -> None:
+    """The whole tree, not the shipped layers alone: cora has one frontend, and a
+    dependency nobody may reach for is only gone once the tests and the tooling have
+    stopped reaching for it too."""
+    reaching = sorted(
+        str(path.relative_to(workspace.ROOT))
+        for path in REPOSITORY_FILES
+        if _imports_streamlit(path)
+    )
+
+    assert reaching == [], "\n".join(["these still import streamlit:", *reaching])
 
 
 @pytest.mark.parametrize("path", PACKAGE_FILES, ids=lambda p: str(_shipped_as(p)))
