@@ -34,6 +34,18 @@ def members() -> list[pathlib.Path]:
     ]
 
 
+def toolkits() -> set[str]:
+    """What the frontends take beyond the app itself. Derived rather than listed, so
+    the rule that the app owns no interface covers whatever the next frontend draws or
+    serves with without anyone remembering to add it."""
+    return {
+        requirement
+        for member in members()
+        if location(member).startswith("frontends/")
+        for requirement in requirements(member)
+    } - {"cora"}
+
+
 def location(member: pathlib.Path) -> str:
     """A member as the docs and the failure messages name it: `.` for the app."""
     return str(member.relative_to(ROOT)) or "."

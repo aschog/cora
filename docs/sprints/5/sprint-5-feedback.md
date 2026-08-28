@@ -143,3 +143,18 @@ agentic RAG. It is not in the write-up above, and it is what the sprint now answ
       well-planned turn only ever produced a better answer. Reach, consequence and a gate in
       front of both.
       → **stories 9, 10 and 11**, and it is the capstone's headline.
+
+## Dropped with the Streamlit frontend
+
+Story 2's criterion: what the removed app's tests proved is asserted through the React
+shell's API, or named as deliberately dropped. Ported — a fact told in one session
+briefing the model in the next, clearing memory emptying the next brief, a turn's steps
+carrying their tool arguments and results, and all six live-tier tests. Dropped:
+
+- [x] **Assertions about a Streamlit widget** — the `open_citation` session-state key a
+      click wrote, the tab list read off `at.tabs`, the column weights proving which rail
+      was wider. Each described how one frontend was built rather than something cora
+      does, and the React page's own tests make their own claims about its own shape.
+- [x] **The `AppTest` harness itself** — `tests/helpers/apptest.py`, which read a custom
+      component's mounted HTML because AppTest could not see inside one. The shell's API
+      hands the same facts over as JSON, so nothing replaces it.

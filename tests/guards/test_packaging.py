@@ -127,7 +127,10 @@ def test_no_module_sits_outside_what_its_manifest_names(member: pathlib.Path) ->
 def test_the_app_owns_no_user_interface() -> None:
     """What makes a second frontend possible, stated so it can fail: a command-line or
     HTTP shell installs `cora` and gets the wiring without a web toolkit."""
-    assert "streamlit" not in workspace.requirements(workspace.ROOT)
+    toolkits = workspace.toolkits()
+
+    assert toolkits, "no frontend declares a toolkit — the rule would hold of nothing"
+    assert not workspace.requirements(workspace.ROOT) & toolkits
 
 
 def test_the_app_carries_no_plugin_and_names_none() -> None:

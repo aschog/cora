@@ -701,10 +701,10 @@ so that I can judge both costs before I take either.
 Not stories — no failing test names them — but tracked, and each is a merge of its own.
 
 - **The test suite, 20/80** — find the fifth of the suite carrying most of the protection.
-  The frozen Streamlit tests are archive by definition — story 2 extends them by nothing —
-  so they are set aside first, whether or not the removal lands. Extend only what remains,
-  archive the rest under `tests/` and delete the archive after submission. Membership is
-  decided by what would go undetected, not by count.
+  Story 2 took the Streamlit suite out of the question by deleting it, so what is weighed
+  is what is left. Extend only what earns it, archive the rest under `tests/` and delete
+  the archive after submission. Membership is decided by what would go undetected, not by
+  count.
 - **An architecture note for the React shell before story 6 touches it** — the scope pin and
   the plugin listing are both new things on the screen, and sprint 4 shipped that frontend
   with no such note and said so.

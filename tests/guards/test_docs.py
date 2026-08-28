@@ -89,12 +89,12 @@ def test_a_config_is_read_for_the_paths_its_comments_write_like_prose() -> None:
 
 
 def test_a_path_is_claimed_from_its_dot_as_readily_as_from_a_letter() -> None:
-    """A leading dot is part of the name, not punctuation in front of it: `.streamlit/`
+    """A leading dot is part of the name, not punctuation in front of it: `.githooks/`
     is a directory and `./docs/` is the same directory as `docs/`. Reading past the dot
     would claim a fragment the tree does not have, and skipping the token would leave a
     stale path unchecked — the two ways this guard can be wrong about one character."""
-    assert _references("the cap is in `.streamlit/config.toml`.", CONFIG_PATTERNS) == {
-        ".streamlit/config.toml"
+    assert _references("the hooks are in `.githooks/`.", CONFIG_PATTERNS) == {
+        ".githooks/"
     }
     assert _references("see ./docs/big-picture.md", CONFIG_PATTERNS) == {
         "./docs/big-picture.md"

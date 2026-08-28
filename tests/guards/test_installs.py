@@ -63,7 +63,10 @@ def test_the_app_resolves_without_any_user_interface() -> None:
     """What makes a second frontend possible, stated so it can fail — transitively,
     where the manifest sees one edge: a command-line or HTTP shell installs `cora` and
     gets the wiring without a web toolkit."""
-    assert "streamlit" not in _resolved("cora")
+    toolkits = workspace.toolkits()
+
+    assert toolkits, "no frontend declares a toolkit — the rule would hold of nothing"
+    assert not _resolved("cora") & toolkits
 
 
 def test_nothing_in_the_workspace_resolves_a_second_frontend() -> None:
