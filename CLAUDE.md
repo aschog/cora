@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-cora is an agent you chat with, and plugins give it a scope. Shipped as the `cora`
-package (src layout). That sentence is `README.md`'s opening, and a guard keeps every
-copy of it in step — so edit it there.
+cora is an agent you chat with, and everything it knows and can do arrives as a plugin.
+Shipped as the `cora` package (src layout). That sentence is `README.md`'s opening, and a
+guard keeps every copy of it in step — so edit it there.
 
 @docs/workflow.md
 

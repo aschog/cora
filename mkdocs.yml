@@ -11,7 +11,7 @@ site_name: cora
 # The sentence README.md opens with, pinned to it by tests/guards/test_tagline.py: it
 # is the description every built page carries, so it is what a reader is shown without
 # opening anything.
-site_description: cora is an agent you chat with, and plugins give it a scope
+site_description: cora is an agent you chat with, and everything it knows and can do arrives as a plugin
 docs_dir: docs
 use_directory_urls: true
 

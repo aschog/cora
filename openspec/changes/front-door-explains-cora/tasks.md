@@ -11,7 +11,7 @@ another file.
 
 ## 2. The sentence, and the copies that follow it
 
-- [ ] 2.1 Change `README.md`'s opening sentence to the sprint's *Purpose* sentence and run
+- [x] 2.1 Change `README.md`'s opening sentence to the sprint's *Purpose* sentence and run
       `tests/guards/test_tagline.py` — the test that fails is the existing one, naming
       `docs/index.md`, `pyproject.toml`, `mkdocs.yml` and `CLAUDE.md` as copies left
       behind. Green when all four carry the new wording

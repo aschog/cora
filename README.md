@@ -1,11 +1,8 @@
 # cora
 
-cora is an agent you chat with, and plugins give it a scope. It decides for itself what a
-turn needs.
-
-A plugin contributes a prompt, tools and rules of its own. The shipped ones are the
-reference pair — a fitness coach and a prompt-injection screen — and the coach is a worked
-example of a domain.
+cora is an agent you chat with, and everything it knows and can do arrives as a plugin.
+The core runs a turn and screens what comes in; a plugin gives it a field, tools and rules
+of its own. With nothing loaded it still answers.
 
 ## Quick start
 
