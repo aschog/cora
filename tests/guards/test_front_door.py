@@ -31,6 +31,20 @@ def first_screen() -> str:
     return README.read_text().split(QUICK_START)[0]
 
 
+def sections() -> dict[str, str]:
+    """The first screen's headings, each against the text under it. A part that is a
+    heading and nothing else is not a part, so the body is what gets asserted on."""
+    found: dict[str, str] = {}
+    heading = ""
+    for line in first_screen().splitlines():
+        if line.startswith("## "):
+            heading = line.rstrip()
+            found[heading] = ""
+        elif heading:
+            found[heading] += line + "\n"
+    return found
+
+
 @pytest.mark.xfail(strict=True, reason="story 1: the first screen is not written yet")
 def test_the_front_door_explains_itself() -> None:
     """The acceptance criterion, as one test: a stranger reading only this much can say
@@ -44,3 +58,16 @@ def test_the_front_door_explains_itself() -> None:
         if part not in screen
     ]
     assert missing == [], "the first screen is missing: " + ", ".join(missing)
+
+
+def test_the_first_screen_says_what_the_problem_is_and_how_a_turn_runs() -> None:
+    """The two a reader needs before deciding: what cora is for, and enough of how it
+    works to believe it. Both stand above the quick start, so neither is read after the
+    decision to install has already been made."""
+    screen = sections()
+
+    for part in (PURPOSE, MECHANISM):
+        assert part in screen, f"the first screen has no {part}"
+        assert len(screen[part].split()) >= 40, (
+            f"{part} is a heading with nothing under it"
+        )

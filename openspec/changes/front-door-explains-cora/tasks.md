@@ -18,7 +18,7 @@ another file.
 
 ## 3. The first screen, one part at a time
 
-- [ ] 3.1 Write a test that shows the front door states the problem, who it is for, and how
+- [x] 3.1 Write a test that shows the front door states the problem, who it is for, and how
       a turn works — the core and what a plugin contributes — above the quick start
 - [ ] 3.2 Write a test that shows the front door says what writing a plugin involves and
       links `docs/how-to/write-a-plugin.md` above the quick start
