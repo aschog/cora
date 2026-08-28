@@ -24,7 +24,7 @@ another file.
       links `docs/how-to/write-a-plugin.md` above the quick start
 - [x] 3.3 Write a test that shows the front door carries a block of what cora does not
       have, and that every item in it carries its reason beside it
-- [ ] 3.4 Write a test that shows the guard rejects a bare absence — an item with a bold
+- [x] 3.4 Write a test that shows the guard rejects a bare absence — an item with a bold
       lead-in and nothing after the dash fails, so 3.3 cannot pass vacuously
 - [ ] 3.5 Write a test that shows the front door links `showcase.turingcollege.com`, and
       that the link is above the quick start rather than anywhere in the file

@@ -120,3 +120,24 @@ def test_every_absence_carries_its_reason() -> None:
     assert bare == [], "absences listed without a reason beside them: " + ", ".join(
         bare
     )
+
+
+def test_a_bare_absence_comes_back_bare() -> None:
+    """The mutation this exists for: a parser that supplies a reason where the page has
+    none would let the block above pass while reading as a list of gaps. An item with
+    nothing after its bold lead-in has to survive as nothing."""
+    block = "\n".join(
+        (
+            "- **no sandbox around a plugin** — a plugin is code you chose to install,",
+            "  which is safer said plainly than implied by a gate",
+            "- **no registry to browse**",
+        )
+    )
+
+    listed = absences(block)
+
+    assert [thing for thing, _ in listed] == [
+        "no sandbox around a plugin",
+        "no registry to browse",
+    ]
+    assert listed[1][1] == "", "the parser invented a reason the page does not carry"
