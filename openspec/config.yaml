@@ -20,21 +20,25 @@ context: |
 rules:
   proposal:
     - >-
-      Open with the story in the standard three lines — "As a <role>," / "I want
-      <capability>," / "so that <benefit>." — each on its own line, ended with a
-      backslash so it stays a line when rendered.
+      Three sections and nothing else: **Why** — the problem, in a paragraph; **What
+      Changes** — what will be different, including the capabilities it adds or modifies;
+      **Impact** — the code, docs, dependencies and guards it touches, and what it leaves
+      alone.
     - >-
-      Follow it with the acceptance criteria as one or more **Scenario:** blocks, each a
-      short title and then **Given** / **When** / **Then** / **And** bullets.
+      The story and its acceptance criteria are not here. They live once, in the delta
+      spec. Neither is the design rationale, which lives in design.md, the conversation,
+      the commit messages and the tests.
     - >-
       One story per change. If it needs two stories, it is two changes.
-    - >-
-      Say what is out of scope. An assignment requirement that maps to no story is out
-      of scope and is named as such.
-    - >-
-      Design rationale does not belong here. It lives in design.md, the conversation,
-      the commit messages and the tests.
   specs:
+    - >-
+      The delta spec is where the story lives. Head it with the story in the standard
+      three lines — "As a <role>," / "I want <capability>," / "so that <benefit>." — each
+      on its own line, ended with a backslash, above the Purpose.
+    - >-
+      Its requirements are the acceptance criteria, in the product's voice rather than
+      the sprint's. Material the story produces — text to be written, a list to be shown
+      — belongs in the requirement that asks for it, so the change carries it once.
     - >-
       Write requirements as SHALL statements with concrete scenarios, observable from
       outside the system through its public API.
