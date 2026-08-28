@@ -7,7 +7,7 @@ that needs them, because no test can fail for prose.
 - [x] 1.1 **Outer.** Write a test that shows nothing in the repository imports Streamlit —
       not the packages, not the tests, not the tooling. Mark it
       `@pytest.mark.xfail(strict=True)`
-- [ ] 1.2 *(discovered at 1.1)* Write a test that shows the repository walk finds the
+- [x] 1.2 *(discovered at 1.1)* Write a test that shows the repository walk finds the
       tree it claims to read — a walker returning nothing would let 1.1 pass on an empty
       list the day its marker comes off
 

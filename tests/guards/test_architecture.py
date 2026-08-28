@@ -283,6 +283,21 @@ def test_streamlit_stays_inside_the_ui_shell(path: pathlib.Path) -> None:
     )
 
 
+def test_the_repository_walk_reads_the_tree_it_claims_to() -> None:
+    """A rule over "every file" is only as true as the walk under it: one that returned
+    nothing would assert nothing, and read as a clean bar rather than an empty one. The
+    four kinds it claims are named here, and the two trees it must not read with them —
+    an installed environment holds the very import the bar above forbids."""
+    found = {str(path.relative_to(workspace.ROOT)) for path in REPOSITORY_FILES}
+
+    assert "conftest.py" in found, "the root's own files"
+    assert "src/cora/app/assembly.py" in found, "the packages"
+    assert "tests/guards/test_architecture.py" in found, "the tests"
+    assert "scripts/gen_component_map.py" in found, "the tooling"
+    assert not [path for path in found if path.startswith(".")], "a hidden tree"
+    assert not [path for path in found if "node_modules/" in path], "an installed tree"
+
+
 @pytest.mark.xfail(strict=True, reason="the Streamlit app is still in the tree")
 def test_nothing_in_the_repository_imports_streamlit() -> None:
     """The whole tree, not the shipped layers alone: cora has one frontend, and a
