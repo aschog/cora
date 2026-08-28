@@ -48,10 +48,11 @@ export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness
 make run                                   # or: make run-env, to read the key from .env
 ```
 
-`make run` wraps `uv run streamlit run` over the app's module path. The target exists so
-the command survives the next time a package moves — the path itself is one line, in the
-`Makefile`. cora loads no plugin unless asked, so the `CORA_PLUGINS` line is what turns
-this from a bare cora into the coaching app with a prompt-injection screen.
+`make run` builds the page and serves it with the API from one process on
+`127.0.0.1:8000`. The target exists so the command survives the next time a package
+moves — the module it names is one line, in the `Makefile`. cora loads no plugin unless
+asked, so the `CORA_PLUGINS` line is what turns this from a bare cora into the coaching
+app with a prompt-injection screen.
 
 Walked through, with what to expect at each step:
 [`docs/tutorial/first-session.md`](docs/tutorial/first-session.md).
@@ -83,7 +84,7 @@ fails when one is behind the source.
 ## Stack
 
 Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangGraph · LangChain over
-OpenRouter · Chroma · sentence-transformers · Streamlit · React over Starlette —
+OpenRouter · Chroma · sentence-transformers · React over Starlette —
 with ruff, ty and pytest as quality gates. Runtime dependencies are added
 feature-by-feature, story by story.
 

@@ -28,17 +28,15 @@ so put `CORA_PLUGINS` there too rather than exporting it.
 
 ## 3. Ask it something
 
-Upload a document (txt/md/pdf) in the sidebar, then ask about it — answers cite
-the passages they used. Click a `[1]` in an answer and that document opens beside the
-chat with the cited passage highlighted.
-The steps appear as cora takes them under *How I got there*:
-what it decided, which tool it ran and what came back. A question
-that needs no documents is answered without searching them.
+Upload a document (txt/md/pdf) in the documents rail on the left, then ask about it —
+answers cite the passages they used. Click a `[1]` in an answer and that document opens
+with the cited passage highlighted. The steps appear as cora takes them, under the
+*STEPS* tab on the right: what it decided, which tool it ran and what came back. A
+question that needs no documents is answered without searching them.
 
 Ask it to remember something — "remember that I train on Tuesdays and Thursdays",
-"I'm vegetarian, keep that in mind" — and it keeps that between sessions: the
-sidebar's *What I remember* lists every fact it holds, forgets one at a time, or
-forgets everything. It only remembers when you ask it to, never on its own judgement,
+"I'm vegetarian, keep that in mind" — and it keeps that between sessions: the *MEMORY*
+tab lists every fact it holds, forgets one at a time, or forgets everything. It only remembers when you ask it to, never on its own judgement,
 and each save appears in the trace.
 
 ## Where to go next

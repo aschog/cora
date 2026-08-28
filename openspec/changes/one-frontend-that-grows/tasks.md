@@ -33,16 +33,16 @@ that needs them, because no test can fail for prose.
 
 ## 3. One start command
 
-- [ ] 3.1 Write a test that shows the `run` recipe names `cora.frontends.react.server`
-- [ ] 3.2 Write a test that shows the `Makefile` reader finds the recipes it is given — a
+- [x] 3.1 Write a test that shows the `run` recipe names `cora.frontends.react.server`
+- [x] 3.2 Write a test that shows the `Makefile` reader finds the recipes it is given — a
       target the file defines is found with its lines, and an invented one is not
-- [ ] 3.3 Write a test that shows no recipe in the `Makefile` invokes Streamlit
-- [ ] 3.4 Write a test that shows `run` builds the page before it serves it
-- [ ] 3.5 Write a test that shows every `make <target>` a documented page hands a reader is
+- [x] 3.3 Write a test that shows no recipe in the `Makefile` invokes Streamlit
+- [x] 3.4 Write a test that shows `run` builds the page before it serves it
+- [x] 3.5 Write a test that shows every `make <target>` a documented page hands a reader is
       a target the `Makefile` defines — over `test_docs.py`'s page list, imported
-- [ ] 3.6 Write a test that shows the check fails, naming the page and the target, when a
+- [x] 3.6 Write a test that shows the check fails, naming the page and the target, when a
       page gives a target the `Makefile` does not define
-- [ ] 3.7 Write a test that shows the extractor reads a target out of a fenced command
+- [x] 3.7 Write a test that shows the extractor reads a target out of a fenced command
       block and does not claim one out of prose that merely says the word make
 
 ## 4. The member is gone
