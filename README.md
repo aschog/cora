@@ -1,11 +1,39 @@
 # cora
 
-cora is an agent you chat with, and plugins give it a scope. It decides for itself what a
-turn needs.
+cora is an agent you chat with, and everything it knows and can do arrives as a plugin.
+The core runs a turn and screens what comes in; a plugin gives it a field, tools and rules
+of its own. With nothing loaded it still answers.
 
-A plugin contributes a prompt, tools and rules of its own. The shipped ones are the
-reference pair — a fitness coach and a prompt-injection screen — and the coach is a worked
-example of a domain.
+On the showcase: [showcase.turingcollege.com](https://showcase.turingcollege.com/).
+
+## What it is for
+
+An agent that is good at your subject usually means somebody built an app for that
+subject. cora turns that around: the agent is the part that stays, and the subject is the
+part you write — a fitness coach, a trip, a lab notebook. It is for people who extend the
+tools they already work in, and would rather point an agent at their own field than wait
+for someone to ship one for it.
+
+## How it works
+
+You ask; cora works out what the question needs. It builds a brief from the plugins that
+are loaded, lets the model call the tools they contribute — searching the documents you
+uploaded, recalling what you told it before — and answers with citations you can follow
+back to the passage they came from. Every decision it made and every tool it called is on
+the trace, so a turn is read back rather than guessed at.
+
+A plugin contributes three things, and may bring only one of them:
+
+- **what cora can do** — a tool, named and given a schema, that the model may call
+- **what cora is** — instructions heading its section of the brief
+- **what cora will not accept** — a rule that refuses an input before any model runs
+
+With none loaded cora still answers: it searches its documents, remembers what it is
+told, asks when it cannot tell, and cites what it used.
+
+## Writing your own plugin
+
+Step by step, with a worked example: [write a plugin](docs/how-to/write-a-plugin.md).
 
 ## Quick start
 

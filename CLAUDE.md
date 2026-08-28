@@ -1,8 +1,8 @@
 # CLAUDE.md
 
-cora is an agent you chat with, and plugins give it a scope. Shipped as the `cora`
-package (src layout). That sentence is `README.md`'s opening, and a guard keeps every
-copy of it in step — so edit it there.
+cora is an agent you chat with, and everything it knows and can do arrives as a plugin.
+Shipped as the `cora` package (src layout). That sentence is `README.md`'s opening, and a
+guard keeps every copy of it in step — so edit it there.
 
 @docs/workflow.md
 
@@ -17,6 +17,10 @@ relevant.
   plan, it doesn't replace it.
 - **Tooling** — run everything through `uv run`; never call `python`/`pytest` directly.
   Add dependencies with `uv add` / `uv add --dev`; never edit the lockfile or use pip.
+- **Docs are not test-backed** — a `.md` file is prose, and prose is held by a person
+  reading it, not by a guard asserting its headings, its sections or its wording. A page
+  that goes wrong is caught in review, and a test that pins the shape of a page mostly
+  pins the writer's hands. Write no test whose subject is what a written page says.
 - **Secrets** — environment variables only; never logged, never committed.
 - **Commits** — plain Conventional Commits; no attribution trailers or co-author lines.
 - **Answers** — brief by default; expand only when asked.

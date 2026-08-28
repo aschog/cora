@@ -62,6 +62,12 @@ openspec/
   phrased as "write a test that shows X", it does not belong on the list. OpenSpec's own
   default is a list of session-sized chunks, so `openspec/config.yaml` overrides it in
   writing — the rule is told to the tool, not remembered.
+- **Test-first is for code under `src/`.** A story whose subject is a written page has no
+  test list and no outer test: a `.md` file is prose, held by a person reading it rather
+  than by a guard asserting its headings and sections, and `CLAUDE.md` carries that rule.
+  Such a change is done when the page reads right, judged in the Phase 3 review against
+  the story's criteria. Everything below — the outer test, the double loop, the marker —
+  describes a change that ships code.
 ---
 
 ## Sprint preparation
@@ -125,8 +131,9 @@ openspec/
 - [ ] **Write the outer functional test** — one failing test per slice, straight
       from the acceptance criterion. Written up front it catches design mistakes a
       retrofitted test can't, and it is what stops out-of-scope work: no story, no
-      outer test, no code. Mark it `@pytest.mark.xfail(strict=True)` (or a `wip`
-      marker) so CI stays green while the slice is in progress
+      outer test, no code under `src/`. Mark it `@pytest.mark.xfail(strict=True)` (or a
+      `wip` marker) so CI stays green while the slice is in progress. A docs-only story
+      skips this and the two items under it, and skips Phase 2 with them
 - [ ] **Refine the plan into a test list**: decompose it so that every item is
       one failing-test-sized increment — if it can't be phrased as "write a test
       that shows X", split it
@@ -224,7 +231,7 @@ functional test goes green  →  feature done
 - [ ] **Run the feature for real** and check it against the Phase 1 acceptance
       criteria — green tests alone don't prove the feature works
 - [ ] Final sanity check: format, lint, type check, full test suite — and CI green
-- [ ] Every item in the change's `tasks.md` ticked
+- [ ] Every item in the change's `tasks.md` ticked — a docs-only change has none
 - [ ] Update project docs the feature touched (`README`, `CLAUDE.md`, `docs/`)
 - [ ] **Merge manually** into trunk as **one atomic commit** — squash the
       micro-commits so trunk history reads one green, self-contained commit

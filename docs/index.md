@@ -1,7 +1,8 @@
 # cora
 
-cora is an agent you chat with, and plugins give it a scope. It decides for itself what a
-turn needs.
+cora is an agent you chat with, and everything it knows and can do arrives as a plugin.
+The core runs a turn and screens what comes in; a plugin gives it a field, tools and rules
+of its own. With nothing loaded it still answers.
 
 The pages are sorted by what you came for.
 

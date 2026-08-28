@@ -237,37 +237,23 @@ so that I can decide whether it is for me without reading the code.
 - **Given** `README.md` as the front door
 - **When** someone who has never seen cora reads its first screen
 - **Then** they can say what problem it solves, who it is for and how it works
-- **And** they can see what writing a plugin of their own involves, and where the how-to is
 - **And** the showcase entry is linked near the top
-
-**Scenario:** what cora does not have, said on purpose
-
-- **Given** the README's first screen
-- **When** a reader looks for what is missing
-- **Then** a short block names it as chosen, with the reason standing beside each rather
-  than after the list:
-  - **no sandbox around a plugin** — a plugin is code you chose to install, like any package
-    you `uv add`, and saying so plainly is safer than a gate that implies a containment cora
-    does not have
-  - **no registry to browse** — a named module and a folder are discovery; somewhere to find
-    other people's plugins is a website, and there are no other people yet
-  - **no subject but the two shipped** — a subject *is* a plugin, so a third proves nothing
-    the second did not
-  - **no goal that outlives a turn** — cora answers and stops; a task that accumulates is
-    the next axis, not this one
-- **And** it reads as a boundary rather than an apology, which is what stops a reader
-  mistaking a decision for a gap
 
 **Scenario:** the one sentence says what cora now is
 
-- **Given** the tagline guard, which holds `README.md`, `docs/index.md`, `pyproject.toml`,
-  `mkdocs.yml` and `CLAUDE.md` to one sentence
-- **When** the sentence changes to the *Purpose* section's
-- **Then** every copy changes with it and the guard stays green
+- **Given** `README.md`, `docs/index.md`, `pyproject.toml`, `mkdocs.yml` and `CLAUDE.md`,
+  which each carry the sentence
+- **When** it changes to the *Purpose* section's
+- **Then** every copy changes with it
 
-Written day one, before the code — the retrospective names cutting it last as the cause of
-the reviewer seeing it. The sentence is rewritten here and the rest of the README follows
-the sprint, since stories 4 to 7 change what there is to describe.
+Two criteria were struck in review: what writing a plugin of your own involves, which
+belongs in `docs/how-to/write-a-plugin.md` and is linked from the front door rather than
+repeated on it, and the block of chosen absences, which the front door no longer carries.
+
+The change is `openspec/changes/front-door-explains-cora/`. Written day one, before the
+code: the retrospective names cutting it last as the cause of the reviewer seeing it. The
+sentence is rewritten there and the rest of the README follows the sprint, since stories
+4 to 7 change what there is to describe.
 
 ### 2. cora has one frontend that grows
 

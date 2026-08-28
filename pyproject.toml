@@ -3,7 +3,7 @@ name = "cora"
 version = "0.1.0"
 # The clause before the colon is `README.md`'s opening sentence, pinned to it by
 # `tests/guards/test_tagline.py`: packaging metadata cannot read a file, so it is a copy.
-description = "cora is an agent you chat with, and plugins give it a scope: the contract, the use cases, the technologies they bind to, and the composition root over all three"
+description = "cora is an agent you chat with, and everything it knows and can do arrives as a plugin: the contract, the use cases, the technologies they bind to, and the composition root over all three"
 requires-python = ">=3.12"
 dependencies = [
     "chromadb>=1.5,<2",
