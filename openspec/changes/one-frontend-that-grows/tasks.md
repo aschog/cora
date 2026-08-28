@@ -19,16 +19,16 @@ that needs them, because no test can fail for prose.
       driven the same way
 - [x] 2.3 Write a test that shows a turn's steps reach the page with their tool arguments
       and their results, read off the frames the shell streams
-- [ ] 2.4 Port the live whole-session test — upload, ask, calculate, remember — to the
+- [x] 2.4 Port the live whole-session test — upload, ask, calculate, remember — to the
       shell's API, on the `llm` tier
-- [ ] 2.5 Port the live test that a real model answers from the documents but greets
+- [x] 2.5 Port the live test that a real model answers from the documents but greets
       without them
-- [ ] 2.6 Port the live test that a real model asks for documents rather than answering
+- [x] 2.6 Port the live test that a real model asks for documents rather than answering
       without them
-- [ ] 2.7 Port the live test that a real model keeps what it is told and uses it next
+- [x] 2.7 Port the live test that a real model keeps what it is told and uses it next
       session
-- [ ] 2.8 Port the live test that a real model cites a passage the reader can open
-- [ ] 2.9 Port the live test that a real model asks which value to use instead of picking
+- [x] 2.8 Port the live test that a real model cites a passage the reader can open
+- [x] 2.9 Port the live test that a real model asks which value to use instead of picking
       one
 
 ## 3. One start command
