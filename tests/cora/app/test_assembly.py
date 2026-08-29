@@ -27,7 +27,7 @@ from cora.engine.plugin_registry import load_plugin, load_plugins
 from cora.engine.plugin_set import PluginSet
 from cora.engine.port_logging import LoggingEmbedder, LoggingRetriever
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
-from cora.engine.steps import ModelStep, PrepareStep, Router
+from cora.engine.steps import ModelStep, Router, ScreenStep
 from cora.ports.chat_model import ModelReply, unheard
 from cora.ports.plugin import Plugin, ToolCall
 from cora.ports.retrieval import RetrievedChunk
@@ -608,7 +608,7 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
     assert isinstance(app, App)
     runner = app.agent.runner
     assert isinstance(runner, LangGraphRunner)
-    assert isinstance(runner.prepare, PrepareStep)
+    assert isinstance(runner.prepare, ScreenStep)
     assert plugin.instructions in runner.prepare.instructions
     assert isinstance(runner.router, Router)
     assert runner.router.max_tool_rounds == 4

@@ -134,8 +134,8 @@ class Named:
 
 
 @dataclass(frozen=True)
-class PrepareStep:
-    """The step that opens a turn.
+class ScreenStep:
+    """The step that admits a question, and then opens the turn on it.
 
     Holds what does not change between turns — the rules, the plugins' instructions,
     the memory slot — and reads the rest off the state it is handed.

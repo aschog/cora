@@ -54,7 +54,7 @@
   <rect x="520.02" y="188" width="239.75" height="46" rx="3" class="part"/>
   <text x="536.02" y="216" class="part-name role" text-anchor="start">knowledge_base: KnowledgeBase</text>
   <rect x="520.02" y="274" width="239.75" height="46" rx="3" class="part"/>
-  <text x="536.02" y="302" class="part-name role" text-anchor="start">prepare: PrepareStep</text>
+  <text x="536.02" y="302" class="part-name role" text-anchor="start">prepare: ScreenStep</text>
   <rect x="520.02" y="360" width="239.75" height="46" rx="3" class="part"/>
   <text x="536.02" y="388" class="part-name role" text-anchor="start">model: ModelStep</text>
   <rect x="520.02" y="446" width="239.75" height="46" rx="3" class="part"/>

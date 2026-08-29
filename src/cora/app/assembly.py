@@ -24,7 +24,7 @@ from cora.engine.port_logging import (
     LoggingRetriever,
 )
 from cora.engine.retrieval_tool import search_tool
-from cora.engine.steps import AskStep, ModelStep, PrepareStep, Router, ToolStep
+from cora.engine.steps import AskStep, ModelStep, Router, ScreenStep, ToolStep
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
@@ -100,7 +100,7 @@ def assemble(
     )
     tools = _offered_tools(plugins, knowledge_base, top_k, memory)
     runner = graph(
-        prepare=PrepareStep(
+        prepare=ScreenStep(
             rules=plugins.rules,
             instructions=plugins.instructions,
             memory=memory,

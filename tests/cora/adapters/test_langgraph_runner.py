@@ -33,8 +33,8 @@ from cora.engine.steps import (
     NOTHING_CHOSEN,
     AskStep,
     ModelStep,
-    PrepareStep,
     Router,
+    ScreenStep,
     ToolStep,
 )
 from cora.engine.tool_runtime import ToolRuntime
@@ -268,7 +268,7 @@ class _AlwaysCalling:
 
 def _real_runner(model: ChatModel, rounds: int) -> LangGraphRunner:
     return LangGraphRunner(
-        prepare=PrepareStep(
+        prepare=ScreenStep(
             rules=(EmptyInputRule(),),
             instructions="SYS",
         ),

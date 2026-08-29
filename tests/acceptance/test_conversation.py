@@ -209,7 +209,7 @@ def test_an_answer_belongs_to_the_turn_that_asked_for_it() -> None:
     """`answer` is a per-turn key on a thread that keeps everything. A regression test
     rather than a guard, and deliberately so: a final reply is one with no tool calls,
     so the router only reaches `done` after this turn has written its own answer. The
-    reset in `PrepareStep` is belt and braces, pinned by the unit assertion on what
+    reset in `ScreenStep` is belt and braces, pinned by the unit assertion on what
     that step returns."""
     model = ScriptedChatModel(
         [ModelReply(text="1.6 g per kg."), ModelReply(text="Five grams.")]
