@@ -5,15 +5,21 @@
 # the source: it is the module pages and nothing written by hand. README.md is the front
 # door and links here rather than repeating any of it. docs/workflow.md documents the
 # process rather than the product, so it is not a page here.
-# `tests/guards/test_docs_shape.py` holds the boundary that slips on its own: an
-# instruction written into an explanation.
 site_name: cora
-# The sentence README.md opens with, pinned to it by tests/guards/test_tagline.py: it
-# is the description every built page carries, so it is what a reader is shown without
-# opening anything.
-site_description: cora is an agent you chat with, and everything it knows and can do arrives as a plugin
+# `site_description` is not written here. It is the sentence README.md opens with — the
+# description every built page carries — and `scripts/site_description.py` reads it off
+# that file at build time, because YAML cannot.
+hooks:
+  - scripts/site_description.py
 docs_dir: docs
 use_directory_urls: true
+
+# docs/index.md opens with README.md's opening, included rather than copied: what cora
+# is is written in the front door and nowhere else.
+markdown_extensions:
+  - pymdownx.snippets:
+      base_path: ["."]
+      check_paths: true
 
 theme:
   name: material
