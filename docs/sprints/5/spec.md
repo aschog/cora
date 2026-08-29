@@ -270,28 +270,13 @@ goes, and what is deliberately dropped with it is named in that change's proposa
 
 ### 3. The turn is a workflow of named steps
 
-As a developer of cora,\
-I want a turn to run as a sequence of steps with one responsibility each,\
-so that I can see where a turn is, control what each step may do, and test a step without
-the whole loop.
+The story and its criteria are in `openspec/changes/turn-of-named-steps/`, whose delta
+spec heads them. The steps are named here and made subscribable in story 5: naming them
+first means the event list is a description of something that exists rather than a guess
+at one.
 
-**Scenario:** a turn walks its steps
-
-- **Given** any question
-- **When** the turn runs
-- **Then** the trace names *screen*, *work* and *answer*, in that order — the three steps
-  this story leaves the turn with
-- **And** *screen* runs before the model is called at all
-- **And** a step's failure is reported as that step's, with the conversation intact
-
-**Scenario:** the model's freedom is bounded to one step
-
-- **Given** a question that needs several rounds of tools
-- **When** the turn runs
-- **Then** the rounds happen inside the working step and nowhere else
-
-The steps are named here and made subscribable in story 5. Naming them first means the event
-list is a description of something that exists rather than a guess at one.
+It leaves the turn with three — *screen*, *work* and *answer* — and story 6 inserts
+*route* and *focus* between the first two.
 
 ### 4. A plugin is handed cora, not a form to fill in
 
