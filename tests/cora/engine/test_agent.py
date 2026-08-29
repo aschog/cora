@@ -6,8 +6,13 @@ from cora.domain.agent_state import AgentState
 from cora.domain.citations import Citation
 from cora.domain.conversation import Turn
 from cora.domain.decision import Decision, Option, Pending, TurnPaused
-from cora.domain.errors import GraphRunError, LlmError, NothingToResumeError
-from cora.domain.trace import ModelDecision, ToolUse, TraceStep
+from cora.domain.errors import (
+    GraphRunError,
+    InputRejectedError,
+    LlmError,
+    NothingToResumeError,
+)
+from cora.domain.trace import ModelDecision, StepEntered, ToolUse, TraceStep
 from cora.engine.agent import Agent
 from cora.ports.chat_model import Piece, TextSink, Written, unheard
 from fakes import FailingConversations, FakeConversations
@@ -347,3 +352,41 @@ def test_resuming_a_thread_that_is_waiting_on_nothing_is_refused() -> None:
 
 def test_a_thread_that_never_stopped_is_waiting_on_nothing() -> None:
     assert Agent(_StubRunner({"answer": "done"})).pending(THREAD) is None
+
+
+def test_a_failure_from_inside_a_step_is_named_by_the_step_the_turn_was_in() -> None:
+    """A step names its own failures, but the rounds inside *work* are the loop's own
+    steps and name none. Where the turn had got to is what the trace says, so that is
+    what a failure out of the loop is reported under."""
+    runner = _StubRunner(
+        {"trace": [StepEntered("screen")]},
+        {"trace": [StepEntered("screen"), StepEntered("work")]},
+        then=LlmError(),
+    )
+
+    with pytest.raises(LlmError) as unreachable:
+        Agent(runner).answer("q", THREAD)
+
+    assert unreachable.value.step == "work"
+
+
+def test_a_failure_that_already_names_its_step_keeps_that_name() -> None:
+    refused = InputRejectedError("Ask me something.")
+    refused.step = "screen"
+    runner = _StubRunner({"trace": [StepEntered("screen")]}, then=refused)
+
+    with pytest.raises(InputRejectedError) as raised:
+        Agent(runner).answer("   ", THREAD)
+
+    assert raised.value.step == "screen"
+
+
+def test_a_failure_before_any_step_was_entered_names_none() -> None:
+    """Nothing to name it after, and inventing one would say the turn reached a step
+    it never did."""
+    runner = _StubRunner({"trace": []}, then=LlmError())
+
+    with pytest.raises(LlmError) as unreachable:
+        Agent(runner).answer("q", THREAD)
+
+    assert unreachable.value.step == ""

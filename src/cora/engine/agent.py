@@ -9,8 +9,13 @@ from cora.domain.chat_result import ChatResult
 from cora.domain.citations import cited
 from cora.domain.conversation import Turn
 from cora.domain.decision import Pending, TurnPaused
-from cora.domain.errors import AdapterError, GraphRunError, NothingToResumeError
-from cora.domain.trace import TraceStep
+from cora.domain.errors import (
+    AdapterError,
+    CoreError,
+    GraphRunError,
+    NothingToResumeError,
+)
+from cora.domain.trace import StepEntered, TraceStep
 from cora.ports.chat_model import TextSink, unheard
 from cora.ports.conversations import Conversations
 from cora.ports.graph import GraphRunner
@@ -20,6 +25,18 @@ log = logging.getLogger(__name__)
 
 def _ignore(step: TraceStep) -> None:
     pass
+
+
+def _entered(steps: list[TraceStep]) -> str:
+    """The step the turn had reached, read off the markers in its trace.
+
+    A step names the failures raised inside it, but the rounds of the loop are steps
+    of their own and name none. Where the turn had got to is what the trace says, and
+    it is how a failure out of the loop is reported under the step containing it.
+    """
+    return next(
+        (step.step for step in reversed(steps) if isinstance(step, StepEntered)), ""
+    )
 
 
 @dataclass(frozen=True)
@@ -119,16 +136,22 @@ class Agent:
         found: AgentState | None = None
         final: AgentState = {}
         started = reported = 0
-        for state in states:
-            if found is None:
-                found = state
-                started = reported = len(state.get("trace", ()))
-                continue
-            final = state
-            steps = state.get("trace", [])
-            for step in steps[reported:]:
-                on_step(step)
-            reported = len(steps)
+        where = ""
+        try:
+            for state in states:
+                if found is None:
+                    found = state
+                    started = reported = len(state.get("trace", ()))
+                    continue
+                final = state
+                steps = state.get("trace", [])
+                for step in steps[reported:]:
+                    on_step(step)
+                reported = len(steps)
+                where = _entered(steps) or where
+        except CoreError as failed:
+            failed.step = failed.step or where
+            raise
         waiting = self.runner.pending(thread_id)
         if waiting is not None:
             raise TurnPaused(waiting)

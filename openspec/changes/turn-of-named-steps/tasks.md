@@ -28,24 +28,24 @@ against it.
 
 ## 4. The turn as two graphs
 
-- [ ] 4.1 Write a test that shows the runner walks screen → work → answer, yielding a
+- [x] 4.1 Write a test that shows the runner walks screen → work → answer, yielding a
       state per step
-- [ ] 4.2 Write a test that shows every round falls inside the working step's marker
-- [ ] 4.3 Write a test that shows neither the screening nor the answering step takes a
+- [x] 4.2 Write a test that shows every round falls inside the working step's marker
+- [x] 4.3 Write a test that shows neither the screening nor the answering step takes a
       round
-- [ ] 4.4 Write a test that shows the transcript holds one copy of the question and each
+- [x] 4.4 Write a test that shows the transcript holds one copy of the question and each
       message
-- [ ] 4.5 Write a test that shows a turn parks from inside the working step, visible on
+- [x] 4.5 Write a test that shows a turn parks from inside the working step, visible on
       the thread
-- [ ] 4.6 Write a test that shows a resumed turn does not re-run the tool that ran before
+- [x] 4.6 Write a test that shows a resumed turn does not re-run the tool that ran before
       it stopped
-- [ ] 4.7 Write a test that shows a caller sees a round's decision before the turn has
+- [x] 4.7 Write a test that shows a caller sees a round's decision before the turn has
       finished
-- [ ] 4.8 Write a test that shows a spent budget trips the core's limit, not the
+- [x] 4.8 Write a test that shows a spent budget trips the core's limit, not the
       recursion guard
-- [ ] 4.9 Write a test that shows a thread whose turn failed part-way answers the next
+- [x] 4.9 Write a test that shows a thread whose turn failed part-way answers the next
       question
-- [ ] 4.10 Write a test that shows what was said before the failure is still on the
+- [x] 4.10 Write a test that shows what was said before the failure is still on the
       thread
 
 ## 5. The sequence is the extension point

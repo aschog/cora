@@ -1,4 +1,5 @@
 import threading
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -57,7 +58,7 @@ from cora.ports.chat_model import (
 )
 from cora.ports.graph import Loop, ModelFor, NamedStep, Step
 from cora.ports.plugin import Tool, ToolCall
-from fakes import FailingChatModel, add_tool
+from fakes import FailingChatModel, ScriptedChatModel, add_tool
 
 ROUNDS = 8
 
@@ -240,8 +241,8 @@ def test_an_answer_ends_the_turn_with_no_third_node_to_visit() -> None:
     assert final["answer"] == "off the cuff"
 
 
-def test_a_step_is_seen_before_the_run_is_over() -> None:
-    """Pull states until the first round's work shows up: the second round must
+def test_a_caller_sees_a_rounds_decision_before_the_turn_has_finished() -> None:
+    """Pull states until the first round's decision shows up: the second round must
     not have run yet, or the caller is being handed a finished run."""
     completions: list[str] = []
 
@@ -249,11 +250,14 @@ def test_a_step_is_seen_before_the_run_is_over() -> None:
         completions.append(f"round {len(completions) + 1}")
         if _answered(state):
             return {"messages": _said("assistant", "done")}
-        return {"messages": _asked_for_a_tool("asking")}
+        return {
+            "messages": _asked_for_a_tool("asking"),
+            "trace": [ModelDecision(detail="asking", tools=("add",))],
+        }
 
     states = _runner(model=_always(model)).run({"question": "q"}, THREAD)
     for state in states:
-        if _answered(state):
+        if any(isinstance(step, ModelDecision) for step in state.get("trace", ())):
             break
 
     assert completions == ["round 1"]
@@ -744,3 +748,181 @@ def test_a_turn_that_keeps_asking_is_stopped_by_the_round_budget() -> None:
         list(runner.resume("77 kg", THREAD))
 
     assert rounds == 2, "exactly the rounds the budget allows, and no more"
+
+
+# ── the walk itself ──
+
+
+def _adds(call_id: str) -> ModelReply:
+    return ModelReply(
+        tool_calls=(ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id=call_id),)
+    )
+
+
+def _entered(state: AgentState) -> list[str]:
+    """The steps this state says the turn has been in, in the order it entered them."""
+    return [
+        step.step for step in state.get("trace", ()) if isinstance(step, StepEntered)
+    ]
+
+
+def test_a_turn_walks_screen_then_work_then_answer_a_state_at_a_time() -> None:
+    """The story's whole claim, off a real walk: three named steps, in that order, and
+    a state handed back as each of them is taken."""
+    runner = _real_runner(ScriptedChatModel([ModelReply(text="ok")]), rounds=ROUNDS)
+
+    walked = [_entered(state) for state in runner.run({"question": "q"}, THREAD)]
+
+    assert walked == [
+        [],  # the thread as the turn found it
+        [SCREEN],
+        [SCREEN, WORK],
+        [SCREEN, WORK],  # the round, which is the loop's and not a step of its own
+        [SCREEN, WORK, ANSWER],
+    ]
+
+
+def test_every_round_falls_inside_the_working_step() -> None:
+    model = ScriptedChatModel([_adds("c1"), _adds("c2"), ModelReply(text="3 and 3.")])
+
+    final = _final(_real_runner(model, rounds=ROUNDS), {"question": "add 1 and 2"})
+
+    trace = final["trace"]
+    rounds = [
+        at for at, step in enumerate(trace) if isinstance(step, ModelDecision | ToolUse)
+    ]
+    assert len(rounds) == 5, "three decisions and the two calls they asked for"
+    assert trace.index(StepEntered(WORK)) < min(rounds)
+    assert max(rounds) < trace.index(StepEntered(ANSWER))
+
+
+def test_the_steps_either_side_of_the_rounds_take_none() -> None:
+    """Screening and answering read the state; neither reaches the model, so a turn
+    costs exactly the rounds the loop spent."""
+    model = ScriptedChatModel([_adds("c1"), ModelReply(text="3.")])
+
+    final = _final(_real_runner(model, rounds=ROUNDS), {"question": "add 1 and 2"})
+
+    assert model.completions == 2
+    assert [message.role for message in final["messages"]] == [
+        "user",
+        "assistant",
+        "tool",
+        "assistant",
+    ]
+    assert final["answer"] == "3."
+
+
+def test_the_transcript_holds_one_copy_of_the_question_and_of_each_message() -> None:
+    """The walk accumulates as the thread does, and nothing on it is replayed: a second
+    turn finds the first exactly once."""
+    model = ScriptedChatModel(
+        [_adds("c1"), ModelReply(text="3."), ModelReply(text="Still 3.")]
+    )
+    runner = _real_runner(model, rounds=ROUNDS)
+
+    _final(runner, {"question": "add 1 and 2"})
+    final = _final(runner, {"question": "and again?"})
+
+    assert [(m.role, m.content) for m in final["messages"]] == [
+        ("user", "add 1 and 2"),
+        ("assistant", ""),
+        ("tool", "3"),
+        ("assistant", "3."),
+        ("user", "and again?"),
+        ("assistant", "Still 3."),
+    ]
+
+
+def test_a_turn_parks_from_inside_the_working_step() -> None:
+    """Where the pause happens is what makes it *work*'s: the turn is in that step when
+    it stops, and the thread says so while it waits."""
+    runner = _stopping()
+
+    states = list(runner.run({"question": WANTED}, THREAD))
+
+    assert runner.pending(THREAD) is not None
+    assert _entered(states[-1]) == [SCREEN, WORK], "parked in the working step"
+
+
+def test_a_resumed_turn_does_not_run_the_tool_that_ran_before_it_stopped() -> None:
+    """A resumed node is replayed from its first line, so a round that had already run
+    a tool must not run it again on the way back."""
+    ran: list[str] = []
+
+    def counted(a: int, b: int) -> int:
+        ran.append("add")
+        return a + b
+
+    counting = replace(add_tool(), run=counted)
+
+    def model(state: AgentState) -> AgentState:
+        rounds = sum(
+            1 for message in state.get("messages", ()) if message.role == "assistant"
+        )
+        if rounds == 0:
+            return {"messages": _asked_for_a_tool("first, the tool")}
+        if rounds == 1:
+            return _asks_then_answers({})
+        return {"messages": _said("assistant", "done")}
+
+    runner = _runner(
+        model=_always(model),
+        tools=ToolStep(ToolRuntime(tools=(counting,))),
+        ask=AskStep(pause=interrupting),
+    )
+    list(runner.run({"question": WANTED}, THREAD))
+
+    assert ran == ["add"], "the pause came after the tool of the first round"
+
+    final = list(runner.resume("75 kg", THREAD))[-1]
+
+    assert ran == ["add"], "and the resumed turn did not run it a second time"
+    assert final["answer"] == "done"
+
+
+class _BreaksOnTheSecondRound:
+    """A model that reaches a tool and then cannot be reached itself: the shape of a
+    turn that fails with a round already spent."""
+
+    def __init__(self) -> None:
+        self.completions = 0
+
+    def complete(
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
+    ) -> ModelReply:
+        self.completions += 1
+        if self.completions == 1:
+            return _adds("c1")
+        if self.completions == 2:
+            raise LlmError()
+        return ModelReply(text="Three.")
+
+
+def test_a_thread_whose_turn_failed_part_way_answers_the_next_question() -> None:
+    """A failed turn is not a broken thread: the next question is answered on it."""
+    runner = _real_runner(_BreaksOnTheSecondRound(), rounds=ROUNDS)
+
+    with pytest.raises(LlmError):
+        _final(runner, {"question": "add 1 and 2"})
+
+    assert _final(runner, {"question": "what was that?"})["answer"] == "Three."
+
+
+def test_what_was_said_before_a_failure_is_still_on_the_thread() -> None:
+    """Every step that finished is checkpointed as it finishes, so the round the turn
+    did spend is on the thread the next question is asked of."""
+    runner = _real_runner(_BreaksOnTheSecondRound(), rounds=ROUNDS)
+
+    with pytest.raises(LlmError):
+        _final(runner, {"question": "add 1 and 2"})
+    final = _final(runner, {"question": "what was that?"})
+
+    assert [(m.role, m.content) for m in final["messages"]][:3] == [
+        ("user", "add 1 and 2"),
+        ("assistant", ""),
+        ("tool", "3"),
+    ]
