@@ -12,6 +12,9 @@ context: |
   is never hand-edited and pip is never used. Formatter, linter and docstring policy
   are ruff, the type checker is ty, the test runner is pytest with tiered markers.
 
+  Sentences run 10 to 15 words on average. Twenty words is the hard cap. This holds
+  for every artifact: proposal, design, tasks and delta specs.
+
   The process is `docs/workflow.md` — XP, outside-in, test-first. It is authoritative,
   and OpenSpec artifacts serve it: a change is one story, and its `tasks.md` is a
   Beck test list. Secrets live in environment variables only. Commits are plain
@@ -20,7 +23,7 @@ context: |
 rules:
   proposal:
     - >-
-      Three sections and nothing else: **Why** — the problem, in a paragraph; **What
+      Three sections and nothing else: **Why** — the problem, in one sentence; **What
       Changes** — what will be different, including the capabilities it adds or modifies;
       **Impact** — the code, docs, dependencies and guards it touches, and what it leaves
       alone.
@@ -30,6 +33,13 @@ rules:
       the commit messages and the tests.
     - >-
       One story per change. If it needs two stories, it is two changes.
+    - >-
+      One sentence of prose, one line per item. Why is a single sentence, every bullet
+      under What Changes and Impact is a single line, and an item wanting a second
+      sentence belongs in design.md instead. Roughly 35 lines is the ceiling.
+    - >-
+      An Impact bullet reads `path — what happens to it`, with paths that share a fate
+      on one line, and the last one names what the change leaves alone.
   specs:
     - >-
       The delta spec is where the story lives. Head it with the story in the standard
@@ -52,7 +62,9 @@ rules:
       Name the seam the change goes through. cora's north star is one abstraction open
       for extension: add a class or a registry entry, never edit a switch.
     - >-
-      Dense bullets, not essays. Roughly 85 lines is the ceiling.
+      One sentence per item. Context is a single sentence, every bullet under a heading
+      is a single sentence, and dense bullets replace essays. Roughly 85 lines is the
+      ceiling.
     - >-
       Say which ports, guards or generated diagrams the change touches.
   tasks:
@@ -76,6 +88,9 @@ rules:
     - >-
       Refactoring, docs and generated artifacts are not items unless a test can fail for
       them. Guards count: a guard is a test.
+    - >-
+      One sentence per item. A note above a group is a single sentence, and an item is a
+      single sentence naming the test it asks for.
 
 operations:
   apply:
