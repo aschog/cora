@@ -213,8 +213,10 @@ came before it.
 
 Numbered in merge order, with one exception: story 8 merges after story 11, so the reach
 the review asked for is never queued behind storage polish. Each becomes an OpenSpec
-change under `openspec/changes/`, and the story moves into that change's delta spec when
-it is opened — this file then keeps the heading and the link.
+change under `openspec/changes/`, and the story moves into it when it is opened — into
+the change's delta spec, or into its proposal where the subject is a written page and
+there is no delta. It goes from this file as it does, heading and all: what is left below
+is the stories no change holds yet, which is why the numbering starts where it does.
 
 Stories 4, 5 and 7 are the harness, 9, 10 and 11 are the reach the review asked for, and
 1, 2 and 12 are how it is read. **Twelve stories, and none of them is designated as the
@@ -226,47 +228,6 @@ criterion 4's evaluation number, and one scope leaves nothing to route between, 
 it would take the measurement with it. If the sprint runs long, the sprint runs long, and
 what gives is argued then against *Not in this sprint* rather than decided here while it
 is cheap to be brave.
-
-### 1. A reader learns what cora is for before anything else
-
-As a person who lands on the repository,\
-I want the first screen to tell me what problem this solves and for whom,\
-so that I can decide whether it is for me without reading the code.
-
-**Scenario:** the front door explains itself
-
-- **Given** `README.md` as the front door
-- **When** someone who has never seen cora reads its first screen
-- **Then** they can say what problem it solves, who it is for and how it works
-- **And** the showcase entry is linked near the top
-
-**Scenario:** the one sentence says what cora now is
-
-- **Given** `README.md`, `docs/index.md`, `pyproject.toml`, `mkdocs.yml` and `CLAUDE.md`,
-  which each carry the sentence
-- **When** it changes to the *Purpose* section's
-- **Then** every copy changes with it
-
-Two criteria were struck in review: what writing a plugin of your own involves, which
-belongs in `docs/how-to/write-a-plugin.md` and is linked from the front door rather than
-repeated on it, and the block of chosen absences, which the front door no longer carries.
-
-The change is `openspec/changes/front-door-explains-cora/`. Written day one, before the
-code: the retrospective names cutting it last as the cause of the reviewer seeing it. The
-sentence is rewritten there and the rest of the README follows the sprint, since stories
-4 to 7 change what there is to describe.
-
-### 2. cora has one frontend that grows
-
-The story and its criteria are in `openspec/changes/one-frontend-that-grows/`, whose delta
-spec heads them. It is position two because everything this sprint puts on a screen — the
-pin, the plugin listing, the nested trace, the approval gate — lands after it, in the one
-frontend that is left.
-
-The Streamlit app is deleted, not frozen: the app, its tests, its workspace member and its
-dependency. What it proved is asserted through the React shell's API before any of it
-goes, and what is deliberately dropped with it is named in that change's proposal and in
-`sprint-5-feedback.md`.
 
 ### 3. The turn is a workflow of named steps
 

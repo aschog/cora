@@ -19,7 +19,8 @@ Everything about a sprint lives in `docs/sprints/<n>/`:
 ```
 docs/sprints/5/
   assignment.md           the brief, verbatim
-  spec.md                 the story cut, requirement coverage, out of scope
+  spec.md                 the story cut, requirement coverage, out of scope — minus
+                          every story a change has been opened for
   sprint-5-feedback.md    last review's findings, as a tracked backlog
   review-feedback.md      the reviewer's write-up, verbatim — the record, not the backlog
 ```
@@ -62,7 +63,12 @@ openspec/
       is "tracked and ticked" instead of "in my head"
 
 - [ ] **Open a change for each story in flight** — `/opsx:propose`, kebab-case, opened
-      in merge order — and move the story out of `spec.md` as you do
+      in merge order — and **move the story out of `spec.md` as you do**: it goes to the
+      change's delta spec, which every change has, whether it ships code or a written
+      page. It leaves `spec.md` entirely — not a heading, not a link, not a summary.
+      A story is in one file, and the file is the change's;
+      `spec.md` is the cut of what has *not* been opened yet, so its numbering thins as
+      the sprint runs and the changes are where the sprint reads back from
 
 ---
 

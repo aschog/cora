@@ -21,8 +21,9 @@ rules:
       alone.
     - >-
       The story and its acceptance criteria are not here. They live once, in the delta
-      spec. Neither is the design rationale, which lives in design.md, the conversation,
-      the commit messages and the tests.
+      spec — every change has one, and a change is out of the sprint's spec.md the moment
+      it is opened. Neither is the design rationale, which lives in design.md, the
+      conversation, the commit messages and the tests.
     - >-
       One story per change. If it needs two stories, it is two changes.
   specs:
@@ -36,13 +37,10 @@ rules:
       — belongs in the requirement that asks for it, so the change carries it once.
     - >-
       Write requirements as SHALL statements with concrete scenarios, observable from
-      outside the system through its public API.
+      outside the system — through its public API, or by reading the page when the
+      capability is what cora says about itself.
     - >-
       A capability path names a behaviour of the product, not a module of the code.
-    - >-
-      A change whose subject is a written page has no delta spec: set `skip_specs: true`
-      in its `.openspec.yaml` and leave the story in the sprint's spec.md. A delta says
-      what the product does, and a page's wording is not that.
     - >-
       Main specs grow one archive at a time. Write a delta only for what this change
       touches, and never back-fill a spec for code the change leaves alone — a
