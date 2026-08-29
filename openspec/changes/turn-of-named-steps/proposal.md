@@ -20,9 +20,9 @@ need one.
 - `src/cora/engine/steps.py` — screening, answering and one wrapper that names a step
 - `src/cora/domain/trace.py` — one new kind, the step a turn entered
 - `src/cora/domain/errors.py` — a `CoreError` says which step it came out of
-- `src/cora/adapters/langgraph_runner.py` — three outer steps, an inner loop, resized limit
+- `src/cora/adapters/langgraph_runner.py` — a graph built from the sequence, resized limit
 - `src/cora/app/assembly.py` — wires the sequence
-- `scripts/sequences.py` — the graph reader follows two builders now
+- `scripts/sequences.py` — the graph reader takes the walk from the composition root
 - `docs/assets/round-map.svg`, `turn-map.svg` — redrawn
 - `docs/big-picture.md`, `docs/happy-path.md`, `docs/how-to/watch-a-turn.md` — the steps
 - Left alone: the pause contract, `AgentState`, what the model is told, every other adapter

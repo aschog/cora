@@ -3,7 +3,7 @@ against it.
 
 ## 1. The outer test
 
-- [ ] 1.1 **Outer.** Write a test that shows a turn names *screen*, *work* and *answer*,
+- [x] 1.1 **Outer.** Write a test that shows a turn names *screen*, *work* and *answer*,
       in order, through `Agent.answer`. Mark it `@pytest.mark.xfail(strict=True)`
 
 ## 2. A step has a name
@@ -52,8 +52,8 @@ against it.
 
 - [ ] 5.1 Write a test that shows story 6's added step is walked in its place, with the
       runner unchanged
-- [ ] 5.2 Write a test that shows the graph reader behind the session maps finds both
-      graphs
+- [ ] 5.2 Write a test that shows the graph reader behind the session maps finds the
+      walk and the loop inside it
 
 ## 6. The marker comes off
 
