@@ -1,4 +1,4 @@
-from cora.domain.trace import ModelDecision, ToolUse
+from cora.domain.trace import ModelDecision, StepEntered, ToolUse
 
 
 def test_a_decision_names_the_tools_it_asked_for() -> None:
@@ -40,3 +40,7 @@ def test_a_failed_tool_use_is_marked_and_carries_the_error() -> None:
 
     assert use.failed
     assert use.summary == "add(a=1) → invalid arguments"
+
+
+def test_a_step_the_turn_entered_is_named_by_the_step() -> None:
+    assert StepEntered("screen").summary == "Started to screen"

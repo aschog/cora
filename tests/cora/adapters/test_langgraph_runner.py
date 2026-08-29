@@ -1,12 +1,14 @@
 import threading
+from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
 from cora.adapters.langgraph_runner import (
+    HEADROOM,
     LangGraphRunner,
-    Step,
     checkpointed_types,
     interrupting,
     langgraph_for,
@@ -24,17 +26,23 @@ from cora.domain.errors import (
 from cora.domain.trace import (
     MemoryUnread,
     ModelDecision,
+    StepEntered,
     ToolUse,
     TraceStep,
     step_kinds,
 )
 from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.steps import (
+    ANSWER,
     NOTHING_CHOSEN,
+    SCREEN,
+    WORK,
+    AnswerStep,
     AskStep,
     ModelStep,
-    PrepareStep,
+    Named,
     Router,
+    ScreenStep,
     ToolStep,
 )
 from cora.engine.tool_runtime import ToolRuntime
@@ -49,9 +57,9 @@ from cora.ports.chat_model import (
     Written,
     unheard,
 )
-from cora.ports.graph import ModelFor
+from cora.ports.graph import Loop, ModelFor, NamedStep, Step
 from cora.ports.plugin import Tool, ToolCall
-from fakes import FailingChatModel, add_tool
+from fakes import FailingChatModel, ScriptedChatModel, add_tool
 
 ROUNDS = 8
 
@@ -89,7 +97,7 @@ def _asked_for_a_tool(content: str) -> list[Message]:
     return [Message(role="assistant", content=content, tool_calls=(call,))]
 
 
-def _prepare(state: AgentState) -> AgentState:
+def _screen(state: AgentState) -> AgentState:
     return {
         "messages": _said("user", state["question"]),
         "turn_start": len(state.get("messages", ())),
@@ -111,9 +119,36 @@ def _nothing(state: AgentState) -> AgentState:
     return {}
 
 
+STEPS = 3
+"""What a turn walks besides its rounds: it screens, it works, and it answers."""
+
+
+def _walk(
+    model: ModelFor,
+    *,
+    screen: Step = _screen,
+    tools: Step = _ran,
+    ask: Step = _nothing,
+    rounds: int = ROUNDS,
+    after: tuple[NamedStep, ...] = (Named(ANSWER, AnswerStep()),),
+) -> dict[str, Any]:
+    """The named steps of a turn, with a fake in each place a test wants to watch."""
+    return {
+        "before": (Named(SCREEN, screen),),
+        "loop": Loop(
+            marker=Named(WORK),
+            model=model,
+            tools=tools,
+            ask=ask,
+            router=Router(max_tool_rounds=rounds),
+        ),
+        "after": after,
+    }
+
+
 def _runner(
     *,
-    prepare: Step = _prepare,
+    screen: Step = _screen,
     model: ModelFor,
     tools: Step = _ran,
     ask: Step = _nothing,
@@ -121,51 +156,38 @@ def _runner(
     recursion_limit: int | None = None,
 ) -> LangGraphRunner:
     return LangGraphRunner(
-        prepare=prepare,
-        model=model,
-        tools=tools,
-        ask=ask,
-        router=Router(max_tool_rounds=rounds),
-        recursion_limit=recursion_limit or recursion_limit_for(rounds),
+        **_walk(model, screen=screen, tools=tools, ask=ask, rounds=rounds),
+        recursion_limit=recursion_limit or recursion_limit_for(rounds, steps=STEPS),
     )
 
 
-def test_the_graph_is_built_from_the_steps_of_a_turn_alone() -> None:
+def test_the_graph_is_built_from_the_walk_of_a_turn_alone() -> None:
     """`langgraph_for` is the `GraphFor` slot, so what it accepts is the port itself: a
-    step the port does not name is not something a composition root can hand it."""
-    assert isinstance(
-        langgraph_for(
-            prepare=_prepare,
-            model=_always(_replies),
-            tools=_ran,
-            router=Router(max_tool_rounds=8),
-            max_tool_rounds=8,
-        ),
-        LangGraphRunner,
-    )
+    turn is handed over as its walk, and nothing else is something a composition root
+    can hand it."""
+    walk = _walk(_always(_replies))
+
+    assert isinstance(langgraph_for(**walk, max_tool_rounds=8), LangGraphRunner)
 
     with pytest.raises(TypeError):
         langgraph_for(
-            prepare=_prepare,
-            model=_always(_replies),
-            tools=_ran,
+            **walk,
             ground=_ran,  # ty: ignore[unknown-argument]
-            router=Router(max_tool_rounds=8),
             max_tool_rounds=8,
         )
 
 
-def test_run_walks_prepare_then_model_then_tools_then_model() -> None:
+def test_run_walks_screen_then_model_then_tools_then_model() -> None:
     visited: list[str] = []
 
-    def prepare(state: AgentState) -> AgentState:
-        visited.append("prepare")
-        return _prepare(state)
+    def screening(state: AgentState) -> AgentState:
+        visited.append(SCREEN)
+        return _screen(state)
 
     def model(state: AgentState) -> AgentState:
         visited.append("model")
         if _answered(state):
-            return {"messages": _said("assistant", "done"), "answer": "d"}
+            return {"messages": _said("assistant", "done")}
         return {"messages": _asked_for_a_tool("asking")}
 
     def tools(state: AgentState) -> AgentState:
@@ -173,17 +195,17 @@ def test_run_walks_prepare_then_model_then_tools_then_model() -> None:
         return {"messages": _said("tool", "ran")}
 
     final = _final(
-        _runner(prepare=prepare, model=_always(model), tools=tools), {"question": "q"}
+        _runner(screen=screening, model=_always(model), tools=tools), {"question": "q"}
     )
 
-    assert visited == ["prepare", "model", "tools", "model"]
-    assert final["answer"] == "d"
+    assert visited == [SCREEN, "model", "tools", "model"]
+    assert final["answer"] == "done"
 
 
 def test_the_returned_state_accumulated_every_partial() -> None:
     def model(state: AgentState) -> AgentState:
         if _answered(state):
-            return {"messages": _said("assistant", "done"), "answer": "d"}
+            return {"messages": _said("assistant", "done")}
         return {"messages": _asked_for_a_tool("asking")}
 
     def tools(state: AgentState) -> AgentState:
@@ -196,27 +218,34 @@ def test_the_returned_state_accumulated_every_partial() -> None:
     final = _final(_runner(model=_always(model), tools=tools), {"question": "q"})
 
     assert [m.content for m in final["messages"]] == ["q", "asking", "ran", "done"]
-    assert final["trace"] == [ToolUse(name="search_documents", outcome="1 passage")]
+    assert final["trace"] == [
+        StepEntered(SCREEN),
+        StepEntered(WORK),
+        ToolUse(name="search_documents", outcome="1 passage"),
+        StepEntered(ANSWER),
+    ]
     assert final["citations"] == [NOTE]
 
 
-def test_an_answer_ends_the_turn_with_no_third_node_to_visit() -> None:
-    """The graph is prepare, model and tools: a final reply is the end of the walk,
-    whatever the answer rested on."""
+def test_an_answer_ends_the_rounds_and_the_walk_goes_on() -> None:
+    """A final reply is the end of the *rounds*, whatever the answer rested on: the
+    turn leaves the loop for the step that settles what the user reads, and stops
+    there."""
     visited: list[str] = []
 
     def model(state: AgentState) -> AgentState:
         visited.append("model")
-        return {"messages": _said("assistant", "off the cuff"), "answer": "off"}
+        return {"messages": _said("assistant", "off the cuff")}
 
     final = _final(_runner(model=_always(model)), {"question": "q"})
 
-    assert visited == ["model"]
-    assert final["answer"] == "off"
+    assert visited == ["model"], "one round, and nothing sent it back for another"
+    assert _entered(final) == [SCREEN, WORK, ANSWER]
+    assert final["answer"] == "off the cuff"
 
 
-def test_a_step_is_seen_before_the_run_is_over() -> None:
-    """Pull states until the first round's work shows up: the second round must
+def test_a_caller_sees_a_rounds_decision_before_the_turn_has_finished() -> None:
+    """Pull states until the first round's decision shows up: the second round must
     not have run yet, or the caller is being handed a finished run."""
     completions: list[str] = []
 
@@ -224,11 +253,14 @@ def test_a_step_is_seen_before_the_run_is_over() -> None:
         completions.append(f"round {len(completions) + 1}")
         if _answered(state):
             return {"messages": _said("assistant", "done")}
-        return {"messages": _asked_for_a_tool("asking")}
+        return {
+            "messages": _asked_for_a_tool("asking"),
+            "trace": [ModelDecision(detail="asking", tools=("add",))],
+        }
 
     states = _runner(model=_always(model)).run({"question": "q"}, THREAD)
     for state in states:
-        if _answered(state):
+        if any(isinstance(step, ModelDecision) for step in state.get("trace", ())):
             break
 
     assert completions == ["round 1"]
@@ -267,17 +299,22 @@ class _AlwaysCalling:
 
 
 def _real_runner(model: ChatModel, rounds: int) -> LangGraphRunner:
+    """The walk as the composition root wires it, with a real model behind it."""
     return LangGraphRunner(
-        prepare=PrepareStep(
-            rules=(EmptyInputRule(),),
-            instructions="SYS",
+        before=(
+            Named(SCREEN, ScreenStep(rules=(EmptyInputRule(),), instructions="SYS")),
         ),
-        model=ModelStep(
-            chat_model=model, tools=(add_tool(),), max_history_turns=20
-        ).writing_to,
-        tools=ToolStep(ToolRuntime(tools=(add_tool(),))),
-        router=Router(max_tool_rounds=rounds),
-        recursion_limit=recursion_limit_for(rounds),
+        loop=Loop(
+            marker=Named(WORK),
+            model=ModelStep(
+                chat_model=model, tools=(add_tool(),), max_history_turns=20
+            ).writing_to,
+            tools=ToolStep(ToolRuntime(tools=(add_tool(),))),
+            router=Router(max_tool_rounds=rounds),
+            ask=AskStep(),
+        ),
+        after=(Named(ANSWER, AnswerStep()),),
+        recursion_limit=recursion_limit_for(rounds, steps=STEPS),
     )
 
 
@@ -294,7 +331,7 @@ def test_the_round_budget_fires_before_the_graphs_own_limit(rounds: int) -> None
     assert exc_info.value.__cause__ is None
 
 
-def test_an_input_rejection_from_prepare_travels_out_unwrapped() -> None:
+def test_an_input_rejection_from_screen_travels_out_unwrapped() -> None:
     with pytest.raises(InputRejectedError):
         _final(_real_runner(_AlwaysCalling(), rounds=3), {"question": "   "})
 
@@ -350,10 +387,15 @@ def test_the_first_state_yielded_is_the_thread_as_the_turn_found_it() -> None:
     found = states[0]
     assert found["question"] == "second"
     assert [m.content for m in found["messages"]] == ["first", "ok"], (
-        "the first yield must predate this turn's prepare"
+        "the first yield must predate this turn's screening"
     )
-    assert found["trace"] == [_A_STEP], "and carry only the earlier turn's steps"
-    assert len(states[-1]["trace"]) == 2
+    assert found["trace"] == [
+        StepEntered(SCREEN),
+        StepEntered(WORK),
+        _A_STEP,
+        StepEntered(ANSWER),
+    ], "and carry only the earlier turn's steps"
+    assert len(states[-1]["trace"]) == 8, "and the second turn adds its own four"
 
 
 def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
@@ -379,7 +421,7 @@ def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
 
     def tracing(state: AgentState) -> AgentState:
         if _answered(state):
-            return {"messages": _said("assistant", "done"), "answer": "done"}
+            return {"messages": _said("assistant", "done")}
         return {
             "messages": _asked_for_a_tool("ok"),
             "trace": list(every_kind),
@@ -395,7 +437,8 @@ def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
     assert final["messages"][1].tool_calls[0].name == "add"
     assert final["citations"] == [NOTE, NOTE]
 
-    replayed = final["trace"][: len(every_kind)]
+    walked = [step for step in final["trace"] if not isinstance(step, StepEntered)]
+    replayed = walked[: len(every_kind)]
     assert [type(step) for step in replayed] == [type(step) for step in every_kind]
     assert [step.summary for step in replayed] == [step.summary for step in every_kind]
     assert [step.failed for step in replayed] == [step.failed for step in every_kind]
@@ -412,6 +455,7 @@ def test_the_allowlist_covers_every_kind_of_step_a_trace_can_hold() -> None:
             f"{kind.__name__} can be in a trace but not in a checkpoint"
         )
     assert {kind.__name__ for kind in step_kinds()} >= {
+        "StepEntered",
         "ModelDecision",
         "MemoryUnread",
         "ToolUse",
@@ -447,25 +491,15 @@ def test_a_thread_resumed_in_a_second_runner_carries_what_the_model_was_told(
 
     def remembering(state: AgentState) -> AgentState:
         seen.append([message.content for message in state.get("messages", ())])
-        return {"messages": _said("assistant", "answered"), "answer": "answered"}
+        return {"messages": _said("assistant", "answered")}
 
     first = langgraph_for(
-        prepare=_prepare,
-        model=_always(remembering),
-        tools=_ran,
-        router=Router(max_tool_rounds=ROUNDS),
-        max_tool_rounds=ROUNDS,
-        checkpoints_at=path,
+        **_walk(_always(remembering)), max_tool_rounds=ROUNDS, checkpoints_at=path
     )
     list(first.run({"question": "How much protein?"}, THREAD))
 
     second = langgraph_for(
-        prepare=_prepare,
-        model=_always(remembering),
-        tools=_ran,
-        router=Router(max_tool_rounds=ROUNDS),
-        max_tool_rounds=ROUNDS,
-        checkpoints_at=path,
+        **_walk(_always(remembering)), max_tool_rounds=ROUNDS, checkpoints_at=path
     )
     list(second.run({"question": "And creatine?"}, THREAD))
 
@@ -477,13 +511,7 @@ def test_a_thread_resumed_in_a_second_runner_carries_what_the_model_was_told(
 def test_a_runner_told_no_path_keeps_its_thread_in_memory() -> None:
     """The default is unchanged: a deployment that names no file gets a thread that
     lives as long as the process, as every test here relies on."""
-    runner = langgraph_for(
-        prepare=_prepare,
-        model=_always(_replies),
-        tools=_ran,
-        router=Router(max_tool_rounds=ROUNDS),
-        max_tool_rounds=ROUNDS,
-    )
+    runner = langgraph_for(**_walk(_always(_replies)), max_tool_rounds=ROUNDS)
 
     assert isinstance(runner, LangGraphRunner)
     assert isinstance(runner.checkpointer, InMemorySaver)
@@ -498,7 +526,7 @@ def _writing(*pieces: str) -> ModelFor:
             for piece in pieces:
                 on_text(Piece(piece))
             written = "".join(pieces)
-            return {"messages": _said("assistant", written), "answer": written}
+            return {"messages": _said("assistant", written)}
 
         return step
 
@@ -528,7 +556,7 @@ def _writing_its_question(both: threading.Barrier) -> ModelFor:
             both.wait()
             on_text(Piece(f"{asked} last"))
             written = f"{asked} first{asked} last"
-            return {"messages": _said("assistant", written), "answer": written}
+            return {"messages": _said("assistant", written)}
 
         return step
 
@@ -601,7 +629,7 @@ WANTED = "What is my BMR?"
 
 def _asks_then_answers(state: AgentState) -> AgentState:
     if _answered(state):
-        return {"messages": _said("assistant", "done"), "answer": "done"}
+        return {"messages": _said("assistant", "done")}
     call = ToolCall(
         name=ASK_TOOL_NAME,
         arguments={
@@ -725,3 +753,307 @@ def test_a_turn_that_keeps_asking_is_stopped_by_the_round_budget() -> None:
         list(runner.resume("77 kg", THREAD))
 
     assert rounds == 2, "exactly the rounds the budget allows, and no more"
+
+
+# ── the walk itself ──
+
+
+def _adds(call_id: str) -> ModelReply:
+    return ModelReply(
+        tool_calls=(ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id=call_id),)
+    )
+
+
+def _entered(state: AgentState) -> list[str]:
+    """The steps this state says the turn has been in, in the order it entered them."""
+    return [
+        step.step for step in state.get("trace", ()) if isinstance(step, StepEntered)
+    ]
+
+
+def test_a_turn_walks_screen_then_work_then_answer_a_state_at_a_time() -> None:
+    """The story's whole claim, off a real walk: three named steps, in that order, and
+    a state handed back as each of them is taken."""
+    runner = _real_runner(ScriptedChatModel([ModelReply(text="ok")]), rounds=ROUNDS)
+
+    walked = [_entered(state) for state in runner.run({"question": "q"}, THREAD)]
+
+    assert walked == [
+        [],  # the thread as the turn found it
+        [SCREEN],
+        [SCREEN, WORK],
+        [SCREEN, WORK],  # the round, which is the loop's and not a step of its own
+        [SCREEN, WORK, ANSWER],
+    ]
+
+
+def test_every_round_falls_inside_the_working_step() -> None:
+    model = ScriptedChatModel([_adds("c1"), _adds("c2"), ModelReply(text="3 and 3.")])
+
+    final = _final(_real_runner(model, rounds=ROUNDS), {"question": "add 1 and 2"})
+
+    trace = final["trace"]
+    rounds = [
+        at for at, step in enumerate(trace) if isinstance(step, ModelDecision | ToolUse)
+    ]
+    assert len(rounds) == 5, "three decisions and the two calls they asked for"
+    assert trace.index(StepEntered(WORK)) < min(rounds)
+    assert max(rounds) < trace.index(StepEntered(ANSWER))
+
+
+def test_the_steps_either_side_of_the_rounds_take_none() -> None:
+    """Screening and answering read the state; neither reaches the model, so a turn
+    costs exactly the rounds the loop spent."""
+    model = ScriptedChatModel([_adds("c1"), ModelReply(text="3.")])
+
+    final = _final(_real_runner(model, rounds=ROUNDS), {"question": "add 1 and 2"})
+
+    assert model.completions == 2
+    assert [message.role for message in final["messages"]] == [
+        "user",
+        "assistant",
+        "tool",
+        "assistant",
+    ]
+    assert final["answer"] == "3."
+
+
+def test_the_transcript_holds_one_copy_of_the_question_and_of_each_message() -> None:
+    """The walk accumulates as the thread does, and nothing on it is replayed: a second
+    turn finds the first exactly once."""
+    model = ScriptedChatModel(
+        [_adds("c1"), ModelReply(text="3."), ModelReply(text="Still 3.")]
+    )
+    runner = _real_runner(model, rounds=ROUNDS)
+
+    _final(runner, {"question": "add 1 and 2"})
+    final = _final(runner, {"question": "and again?"})
+
+    assert [(m.role, m.content) for m in final["messages"]] == [
+        ("user", "add 1 and 2"),
+        ("assistant", ""),
+        ("tool", "3"),
+        ("assistant", "3."),
+        ("user", "and again?"),
+        ("assistant", "Still 3."),
+    ]
+
+
+def test_a_turn_parks_from_inside_the_working_step() -> None:
+    """Where the pause happens is what makes it *work*'s: the turn is in that step when
+    it stops, and the thread says so while it waits."""
+    runner = _stopping()
+
+    states = list(runner.run({"question": WANTED}, THREAD))
+
+    assert runner.pending(THREAD) is not None
+    assert _entered(states[-1]) == [SCREEN, WORK], "parked in the working step"
+
+
+def test_a_resumed_turn_does_not_run_the_tool_that_ran_before_it_stopped() -> None:
+    """A resumed node is replayed from its first line, so a round that had already run
+    a tool must not run it again on the way back."""
+    ran: list[str] = []
+
+    def counted(a: int, b: int) -> int:
+        ran.append("add")
+        return a + b
+
+    counting = replace(add_tool(), run=counted)
+
+    def model(state: AgentState) -> AgentState:
+        rounds = sum(
+            1 for message in state.get("messages", ()) if message.role == "assistant"
+        )
+        if rounds == 0:
+            return {"messages": _asked_for_a_tool("first, the tool")}
+        if rounds == 1:
+            return _asks_then_answers({})
+        return {"messages": _said("assistant", "done")}
+
+    runner = _runner(
+        model=_always(model),
+        tools=ToolStep(ToolRuntime(tools=(counting,))),
+        ask=AskStep(pause=interrupting),
+    )
+    list(runner.run({"question": WANTED}, THREAD))
+
+    assert ran == ["add"], "the pause came after the tool of the first round"
+
+    final = list(runner.resume("75 kg", THREAD))[-1]
+
+    assert ran == ["add"], "and the resumed turn did not run it a second time"
+    assert final["answer"] == "done"
+
+
+class _BreaksOnTheSecondRound:
+    """A model that reaches a tool and then cannot be reached itself: the shape of a
+    turn that fails with a round already spent."""
+
+    def __init__(self) -> None:
+        self.completions = 0
+
+    def complete(
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
+    ) -> ModelReply:
+        self.completions += 1
+        if self.completions == 1:
+            return _adds("c1")
+        if self.completions == 2:
+            raise LlmError()
+        return ModelReply(text="Three.")
+
+
+def test_a_thread_whose_turn_failed_part_way_answers_the_next_question() -> None:
+    """A failed turn is not a broken thread: the next question is answered on it."""
+    runner = _real_runner(_BreaksOnTheSecondRound(), rounds=ROUNDS)
+
+    with pytest.raises(LlmError):
+        _final(runner, {"question": "add 1 and 2"})
+
+    assert _final(runner, {"question": "what was that?"})["answer"] == "Three."
+
+
+def test_what_was_said_before_a_failure_is_still_on_the_thread() -> None:
+    """Every step that finished is checkpointed as it finishes, so the round the turn
+    did spend is on the thread the next question is asked of."""
+    runner = _real_runner(_BreaksOnTheSecondRound(), rounds=ROUNDS)
+
+    with pytest.raises(LlmError):
+        _final(runner, {"question": "add 1 and 2"})
+    final = _final(runner, {"question": "what was that?"})
+
+    assert [(m.role, m.content) for m in final["messages"]][:3] == [
+        ("user", "add 1 and 2"),
+        ("assistant", ""),
+        ("tool", "3"),
+    ]
+
+
+ROUTE = "route"
+
+
+def test_a_step_added_to_the_walk_is_walked_in_its_place() -> None:
+    """Where a turn grows: story 6 puts *route* and *focus* before the rounds, and the
+    runner learns nothing — it walks the sequence it was handed."""
+    walked: list[str] = []
+
+    def routing(state: AgentState) -> AgentState:
+        walked.append(ROUTE)
+        return {}
+
+    walk = _walk(_always(_replies))
+    walk["before"] = (*walk["before"], Named(ROUTE, routing))
+    runner = langgraph_for(**walk, max_tool_rounds=ROUNDS)
+    assert isinstance(runner, LangGraphRunner)
+
+    final = _final(runner, {"question": "q"})
+
+    assert walked == [ROUTE]
+    assert _entered(final) == [SCREEN, ROUTE, WORK, ANSWER]
+
+
+def _spent(state: AgentState) -> int:
+    """Rounds this turn has taken, counted as the router counts them."""
+    return sum(
+        1
+        for message in tuple(state.get("messages", ()))[state.get("turn_start", 0) :]
+        if message.role == "assistant"
+    )
+
+
+def _asks_then_spends(rounds: int) -> Step:
+    """A turn of every superstep it is allowed: it stops to ask on its first round,
+    calls a tool on each round after that, and answers on the last one it may spend."""
+
+    def model(state: AgentState) -> AgentState:
+        spent = _spent(state)
+        if spent + 1 >= rounds:
+            return {"messages": _said("assistant", "done")}
+        if spent == 0:
+            return _asks_then_answers({})
+        return {"messages": _asked_for_a_tool("again")}
+
+    return model
+
+
+def _spends(rounds: int) -> Step:
+    """A turn that never pauses and spends every round it has, answering on the last:
+    the longest single walk of the graph, which is what the limit has to allow."""
+
+    def model(state: AgentState) -> AgentState:
+        if _spent(state) + 1 >= rounds:
+            return {"messages": _said("assistant", "done")}
+        return {"messages": _asked_for_a_tool("again")}
+
+    return model
+
+
+@pytest.mark.parametrize("rounds", [1, 2, 3, 8])
+@pytest.mark.parametrize("grown", [(), (Named(ROUTE, _nothing),)])
+def test_the_longest_walk_a_budget_allows_still_answers(
+    rounds: int, grown: tuple[NamedStep, ...]
+) -> None:
+    """The limit is sized from the walk and spent one `run` at a time, so the longest
+    single walk is what it has to be tested against: every round, and every named step
+    either side of them. Walked at the sizing *minus* its declared slack, so a term left
+    out of the formula fails here rather than being absorbed. A walk grown by a step is
+    sized for that step too, which is what story 6 will lean on."""
+    walk = _walk(_always(_spends(rounds)), rounds=rounds)
+    walk["before"] = (*walk["before"], *grown)
+    sized = langgraph_for(**walk, max_tool_rounds=rounds)
+    assert isinstance(sized, LangGraphRunner)
+    tight = replace(sized, recursion_limit=sized.recursion_limit - HEADROOM)
+
+    assert _final(tight, {"question": "q"})["answer"] == "done"
+
+
+def test_a_turn_that_asks_and_then_overspends_trips_the_core_s_limit() -> None:
+    """And the other side of the same sizing: what stops a turn that will not finish is
+    the round budget, whose message asks for a rephrasing, and never the graph's own
+    guard, which would arrive as a `GraphRecursionError` nobody worded."""
+    runner = langgraph_for(
+        **_walk(
+            _always(_asks_then_spends(ROUNDS + 2)),
+            ask=AskStep(pause=interrupting),
+            rounds=ROUNDS,
+        ),
+        max_tool_rounds=ROUNDS,
+    )
+
+    list(runner.run({"question": WANTED}, THREAD))
+
+    with pytest.raises(ToolLoopLimitError) as spent:
+        list(runner.resume("77 kg", THREAD))
+
+    assert spent.value.__cause__ is None
+
+
+def test_a_walk_with_nothing_after_the_rounds_ends_when_they_do() -> None:
+    """The port lets `after` be empty, so the loop leaves the graph rather than a step.
+    That the walk still finishes is what the runner owes; that such a turn has no answer
+    to give is the agent's to say, and it says so with a `GraphRunError`."""
+    walk = _walk(_always(_replies))
+    walk["after"] = ()
+    runner = langgraph_for(**walk, max_tool_rounds=ROUNDS)
+    assert isinstance(runner, LangGraphRunner)
+
+    final = _final(runner, {"question": "q"})
+
+    assert _entered(final) == [SCREEN, WORK]
+    assert final["answer"] == "", "and nothing settled one"
+
+
+def test_a_resumed_turn_writes_the_working_step_s_marker_only_once() -> None:
+    """The marker is a checkpointed node's contribution, and a checkpointed node does
+    not run again on the way back. Written twice, the page would show the turn entering
+    the same step twice with nothing else to say it went wrong."""
+    runner = _stopping()
+    list(runner.run({"question": WANTED}, THREAD))
+
+    final = list(runner.resume("75 kg", THREAD))[-1]
+
+    assert _entered(final) == [SCREEN, WORK, ANSWER]

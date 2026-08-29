@@ -27,7 +27,15 @@ from cora.engine.plugin_registry import load_plugin, load_plugins
 from cora.engine.plugin_set import PluginSet
 from cora.engine.port_logging import LoggingEmbedder, LoggingRetriever
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
-from cora.engine.steps import ModelStep, PrepareStep, Router
+from cora.engine.steps import (
+    ANSWER,
+    SCREEN,
+    WORK,
+    ModelStep,
+    Named,
+    Router,
+    ScreenStep,
+)
 from cora.ports.chat_model import ModelReply, unheard
 from cora.ports.plugin import Plugin, ToolCall
 from cora.ports.retrieval import RetrievedChunk
@@ -417,7 +425,7 @@ def test_the_search_tool_reads_the_knowledge_base_itself() -> None:
     runner = app.agent.runner
     assert isinstance(runner, LangGraphRunner)
     # The slot holds a step per turn rather than the step itself; either has the tools.
-    step = runner.model(unheard)
+    step = runner.loop.model(unheard)
     assert isinstance(step, ModelStep)
     search = next(tool for tool in step.tools if tool.name == SEARCH_TOOL_NAME)
 
@@ -600,6 +608,14 @@ def test_build_leaves_the_ports_bare_without_debug(
     assert clean_cora_logger.handlers == []
 
 
+def _screening(runner: LangGraphRunner) -> ScreenStep:
+    """The step a turn opens with, off the walk the runner was handed."""
+    [named] = runner.before
+    assert isinstance(named, Named)
+    assert isinstance(named.take, ScreenStep)
+    return named.take
+
+
 @pytest.mark.integration
 def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
     app = build(_config(tmp_path))
@@ -608,11 +624,11 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
     assert isinstance(app, App)
     runner = app.agent.runner
     assert isinstance(runner, LangGraphRunner)
-    assert isinstance(runner.prepare, PrepareStep)
-    assert plugin.instructions in runner.prepare.instructions
-    assert isinstance(runner.router, Router)
-    assert runner.router.max_tool_rounds == 4
-    step = runner.model(unheard)
+    screening = _screening(runner)
+    assert plugin.instructions in screening.instructions
+    assert isinstance(runner.loop.router, Router)
+    assert runner.loop.router.max_tool_rounds == 4
+    step = runner.loop.model(unheard)
     assert isinstance(step, ModelStep)
     assert step.max_history_turns == 6
     offered = {tool.name for tool in step.tools}
@@ -622,7 +638,7 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
         ASK_TOOL_NAME,
         *(tool.name for tool in plugin.tools),
     }
-    assert app.memory is runner.prepare.memory, (
+    assert app.memory is screening.memory, (
         "one memory, so what the tool writes is what the brief reads"
     )
     assert any(tmp_path.iterdir()), "the store must land under the configured path"
@@ -643,7 +659,7 @@ def test_build_hands_the_configured_budgets_to_the_model(tmp_path: Path) -> None
 
     runner = app.agent.runner
     assert isinstance(runner, LangGraphRunner)
-    step = runner.model(unheard)
+    step = runner.loop.model(unheard)
     assert isinstance(step, ModelStep)
     chat_model = step.chat_model
     assert isinstance(chat_model, OpenRouterChatModel)
@@ -659,24 +675,26 @@ def test_the_graph_is_a_slot_like_every_other_port() -> None:
     asked: dict[str, Any] = {}
 
     class _OneStepRunner:
-        def __init__(self, prepare: Any, model: Any) -> None:
-            self._prepare = prepare
-            self._model = model
+        def __init__(self, before: Any, loop: Any, after: Any) -> None:
+            self.walked = (*before, loop.marker, *after)
+            self._loop = loop
             self.thread_id: str | None = None
 
         def run(self, state: Any, thread_id: str, on_text: Any = unheard) -> Any:
             self.thread_id = thread_id
             yield dict(state)  # the thread as this turn found it
-            prepared = {**state, **self._prepare(state)}
-            replied = {**prepared, **self._model(on_text)(prepared)}
-            yield replied
+            walked = dict(state)
+            for step in (*self.walked[:-1], self._loop.model(on_text)):
+                walked = {**walked, **step(walked)}
+            walked = {**walked, **self.walked[-1](walked)}
+            yield walked
 
         def pending(self, thread_id: str) -> None:
             return None
 
-    def _graph_for(*, prepare: Any, model: Any, **rest: Any) -> Any:
+    def _graph_for(*, before: Any, loop: Any, after: Any, **rest: Any) -> Any:
         asked.update(rest)
-        return _OneStepRunner(prepare, model)
+        return _OneStepRunner(before, loop, after)
 
     app = _assemble(
         make_plugin(),
@@ -688,11 +706,11 @@ def test_the_graph_is_a_slot_like_every_other_port() -> None:
     assert isinstance(runner, _OneStepRunner)
     assert app.agent.answer("hi", THREAD).answer == "from the injected graph"
     assert runner.thread_id == THREAD
-    assert asked["max_tool_rounds"] == 8
-    assert isinstance(asked["router"], Router)
-    assert set(asked) == {"tools", "ask", "router", "max_tool_rounds"}, (
-        "the slot is asked for the steps of a turn and nothing else"
+    assert [step.step for step in runner.walked] == [SCREEN, WORK, ANSWER]
+    assert set(asked) == {"max_tool_rounds"}, (
+        "the slot is asked for the walk of a turn and its budget, and nothing else"
     )
+    assert asked["max_tool_rounds"] == 8
 
 
 @pytest.mark.integration

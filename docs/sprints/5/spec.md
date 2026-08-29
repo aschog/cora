@@ -18,13 +18,13 @@ The nouns this file uses, each against the class that carries it. Paths are unde
   `AgentState.turn_start` is where it begins in a thread already holding ten.
 - **State** — `domain.agent_state.AgentState`, what a turn accumulates and the checkpointer
   serialises, so every key in it is a shape that costs a migration to widen.
-- **Brief** — `AgentState["brief"]`, the system message `engine.steps.PrepareStep` rebuilds
+- **Brief** — `AgentState["brief"]`, the system message `engine.steps.ScreenStep` rebuilds
   each turn and states once at the prompt's head.
 - **Step** — `ports.graph.Step` as the callable, `engine.steps.*` as the implementations —
   one named part of a turn with a single responsibility.
-- **Trace** — `AgentState["trace"]`, a list of `domain.trace.TraceStep`: `ModelDecision`,
-  `ToolUse`, `MemoryUnread` today, nesting from story 4 — drawn on the screen from
-  story 10.
+- **Trace** — `AgentState["trace"]`, a list of `domain.trace.TraceStep`: `StepEntered`,
+  `ModelDecision`, `ToolUse`, `MemoryUnread` today, nesting from story 4 — drawn on the
+  screen from story 10.
 - **Plugin** — `ports.plugin.Plugin`, a frozen record today; becomes `extend(cora: Host)` in
   story 4.
 - **Host** *(new, story 4)* — the port a plugin is handed at load: cora's own parts, and the
@@ -192,9 +192,11 @@ right now costs nothing.
 - **The pin belongs to the conversation.** It goes in `AgentState` and is checkpointed, so a
   reopened thread reopens in its scope; frontend session state would lose it on reload.
 - **A turn may stop more than once, and every stop comes before the round runs.**
-  `ASKS_PER_TURN = 1` sized the recursion limit, and a turn can now stop to ask which scope
-  *and* to approve each of two effects — resize as the stops are added, or a legitimate
-  turn trips the runaway guard. And because a resumed step replays from its first line, a
+  The recursion limit needs no resizing for a stop: it is spent one `run` at a time, and a
+  stop ends the run it was in, so the resumed one pays for none of the steps before the
+  loop — measured, a stopping walk is always cheaper than one that never stops. What does
+  need sizing is a walk with more *steps* in it, which `recursion_limit_for` already takes.
+  And because a resumed step replays from its first line, a
   stop in the middle of a half-run round would re-run what already ran: approvals are
   settled ahead of execution, never mid-round.
 - **An approval is its own checkpointed type, bound to one call.** Sprint 4's `Decision`
@@ -228,31 +230,6 @@ criterion 4's evaluation number, and one scope leaves nothing to route between, 
 it would take the measurement with it. If the sprint runs long, the sprint runs long, and
 what gives is argued then against *Not in this sprint* rather than decided here while it
 is cheap to be brave.
-
-### 3. The turn is a workflow of named steps
-
-As a developer of cora,\
-I want a turn to run as a sequence of steps with one responsibility each,\
-so that I can see where a turn is, control what each step may do, and test a step without
-the whole loop.
-
-**Scenario:** a turn walks its steps
-
-- **Given** any question
-- **When** the turn runs
-- **Then** the trace names *screen*, *work* and *answer*, in that order — the three steps
-  this story leaves the turn with
-- **And** *screen* runs before the model is called at all
-- **And** a step's failure is reported as that step's, with the conversation intact
-
-**Scenario:** the model's freedom is bounded to one step
-
-- **Given** a question that needs several rounds of tools
-- **When** the turn runs
-- **Then** the rounds happen inside the working step and nowhere else
-
-The steps are named here and made subscribable in story 5. Naming them first means the event
-list is a description of something that exists rather than a guess at one.
 
 ### 4. A plugin is handed cora, not a form to fill in
 

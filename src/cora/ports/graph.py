@@ -1,6 +1,7 @@
 """How a turn is walked: the steps, the routing between them, and who drives it."""
 
 from collections.abc import Callable, Iterator
+from dataclasses import dataclass
 from typing import Protocol
 
 from cora.domain.agent_state import AgentState
@@ -25,6 +26,24 @@ class Step(Protocol):
         Never the whole state: the accumulating keys are appended to by whatever drives
         the graph, so a step that handed its inputs back would double them.
         """
+        ...
+
+
+class NamedStep(Protocol):
+    """A step under the name of the place a turn is in while it takes that step.
+
+    The name is what a turn can be reported as being *in*: it heads that step's trace
+    and it names the step a failure came out of. Which is why a graph is handed these
+    rather than bare steps — a node has to be called something, and this is the name.
+    """
+
+    @property
+    def step(self) -> str:
+        """The step's name, and the name of the node that runs it."""
+        ...
+
+    def __call__(self, state: AgentState) -> AgentState:
+        """As `Step`: the keys this step contributed, and no others."""
         ...
 
 
@@ -91,33 +110,50 @@ class GraphRunner(Protocol):
         ...
 
 
+@dataclass(frozen=True)
+class Loop:
+    """The rounds of a turn, and the parts that take one.
+
+    Named apart from the steps around it because it alone has a router and it alone may
+    stop to ask. `marker` is the step the rounds fall inside: it runs once, contributes
+    the name of the place the turn is in, and leaves the round to the model. `ask` is
+    handed over like the rest: an app that offers no decision says so with a step that
+    puts none, rather than with a slot left empty.
+    """
+
+    marker: NamedStep
+    model: ModelFor
+    tools: Step
+    router: Route
+    ask: Step
+
+
 class GraphFor(Protocol):
     """How a composition root asks for a runner.
 
-    It has the steps and the router already; the round budget is passed because a graph
-    engine may need to size a limit of its own from it. Which engine walks them is the
-    slot's to decide, like every other port — without this the graph was the one slot
-    the wiring hard-coded.
+    The turn is handed over as a sequence — what runs before the rounds, the rounds,
+    and what runs after them — so a step added to a turn is added there and not here.
+    The round budget is passed because a graph engine may need to size a limit of its
+    own from it. Which engine walks the sequence is the slot's to decide, like every
+    other port.
     """
 
     def __call__(
         self,
         *,
-        prepare: Step,
-        model: ModelFor,
-        tools: Step,
-        ask: Step,
-        router: Route,
+        before: tuple[NamedStep, ...],
+        loop: Loop,
+        after: tuple[NamedStep, ...],
         max_tool_rounds: int,
     ) -> GraphRunner:
-        """Build a runner over these steps.
+        """Build a runner over this walk.
 
         Args:
-            prepare: Opens a turn — the brief, the rules, the question.
-            model: Asked once per turn for the step bound to that turn's reader.
-            tools: Runs the calls a round asked for.
-            ask: Stops the turn to put a decision to the user.
-            router: Reads a state and names what comes next: `DONE`, `TOOLS` or `ASK`.
+            before: The steps a turn takes before its first round, in order.
+            loop: The rounds, and what takes one.
+            after: The steps a turn takes once the rounds are done, in order. The last
+                of them settles the answer; a walk that settles none walks and finishes
+                but cannot answer a turn.
             max_tool_rounds: How many rounds of tools a turn may spend.
         """
         ...

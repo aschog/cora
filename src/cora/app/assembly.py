@@ -24,14 +24,25 @@ from cora.engine.port_logging import (
     LoggingRetriever,
 )
 from cora.engine.retrieval_tool import search_tool
-from cora.engine.steps import AskStep, ModelStep, PrepareStep, Router, ToolStep
+from cora.engine.steps import (
+    ANSWER,
+    SCREEN,
+    WORK,
+    AnswerStep,
+    AskStep,
+    ModelStep,
+    Named,
+    Router,
+    ScreenStep,
+    ToolStep,
+)
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
 from cora.ports.conversations import Conversations
 from cora.ports.documents import Documents
 from cora.ports.embedding import Embedder
-from cora.ports.graph import GraphFor
+from cora.ports.graph import GraphFor, Loop
 from cora.ports.memory import Memory
 from cora.ports.plugin import Tool
 from cora.ports.retrieval import Retriever
@@ -100,17 +111,26 @@ def assemble(
     )
     tools = _offered_tools(plugins, knowledge_base, top_k, memory)
     runner = graph(
-        prepare=PrepareStep(
-            rules=plugins.rules,
-            instructions=plugins.instructions,
-            memory=memory,
+        before=(
+            Named(
+                SCREEN,
+                ScreenStep(
+                    rules=plugins.rules,
+                    instructions=plugins.instructions,
+                    memory=memory,
+                ),
+            ),
         ),
-        model=ModelStep(
-            chat_model=chat_model, tools=tools, max_history_turns=history_turns
-        ).writing_to,
-        tools=ToolStep(tool_runtime=ToolRuntime(tools=tools)),
-        ask=AskStep(pause=interrupting),
-        router=Router(max_tool_rounds=max_tool_rounds),
+        loop=Loop(
+            marker=Named(WORK),
+            model=ModelStep(
+                chat_model=chat_model, tools=tools, max_history_turns=history_turns
+            ).writing_to,
+            tools=ToolStep(tool_runtime=ToolRuntime(tools=tools)),
+            ask=AskStep(pause=interrupting),
+            router=Router(max_tool_rounds=max_tool_rounds),
+        ),
+        after=(Named(ANSWER, AnswerStep()),),
         max_tool_rounds=max_tool_rounds,
     )
     return App(

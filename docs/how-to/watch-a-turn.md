@@ -4,9 +4,12 @@ Three ways to see what cora did, from the cheapest to the most real.
 
 ## Read the trace on the page
 
-Every turn carries its trace, and the page draws it under its *STEPS* tab: what the
-model decided, which tool ran with which arguments, and what came back, including a call
-that failed. Nothing to switch on.
+Every turn carries its trace, and the page draws it under its *STEPS* tab. It opens with
+the step the turn is in — *screen*, then *work*, then *answer* — and after *work* come
+the rounds it spent: what the model decided, which tool ran with which arguments, and
+what came back, including a call that failed. So a trace says where a turn got to as
+well as what it did, and a turn that stopped part-way says which step it stopped in.
+Nothing to switch on.
 
 ## Log what crosses a port
 

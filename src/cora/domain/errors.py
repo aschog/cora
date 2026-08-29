@@ -8,12 +8,17 @@ from collections.abc import Iterable
 
 
 class CoreError(Exception):
-    """Base error for all application failures."""
+    """Base error for all application failures.
+
+    `step` is the step of a turn the failure came out of, filled in by whoever named
+    that step and empty everywhere else — a failure outside a turn belongs to no step.
+    """
 
     def __init__(self, user_message: str) -> None:
         """Carry the sentence the user is shown; there is no second, internal one."""
         super().__init__(user_message)
         self.user_message = user_message
+        self.step = ""
 
 
 class IngestionError(CoreError):
@@ -205,12 +210,13 @@ class ConversationStoreError(AdapterError):
 
 
 class GraphRunError(AdapterError):
-    """A runner walked no step at all.
+    """A turn came back with no answer: the walk took no step, or settled nothing.
 
-    The run cannot be reported on, and a blank answer would read like a successful turn.
+    Either way there is nothing to report, and a blank answer would read like a
+    successful turn — and be recorded as one.
     """
 
-    message = "The assistant could not start. Please try again."
+    message = "The assistant could not answer that. Please try again."
 
 
 class NothingToResumeError(CoreError):

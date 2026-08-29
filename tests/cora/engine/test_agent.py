@@ -6,8 +6,13 @@ from cora.domain.agent_state import AgentState
 from cora.domain.citations import Citation
 from cora.domain.conversation import Turn
 from cora.domain.decision import Decision, Option, Pending, TurnPaused
-from cora.domain.errors import GraphRunError, LlmError, NothingToResumeError
-from cora.domain.trace import ModelDecision, ToolUse, TraceStep
+from cora.domain.errors import (
+    GraphRunError,
+    InputRejectedError,
+    LlmError,
+    NothingToResumeError,
+)
+from cora.domain.trace import ModelDecision, StepEntered, ToolUse, TraceStep
 from cora.engine.agent import Agent
 from cora.ports.chat_model import Piece, TextSink, Written, unheard
 from fakes import FailingConversations, FakeConversations
@@ -347,3 +352,63 @@ def test_resuming_a_thread_that_is_waiting_on_nothing_is_refused() -> None:
 
 def test_a_thread_that_never_stopped_is_waiting_on_nothing() -> None:
     assert Agent(_StubRunner({"answer": "done"})).pending(THREAD) is None
+
+
+def test_a_failure_from_inside_a_step_is_named_by_the_step_the_turn_was_in() -> None:
+    """A step names its own failures, but the rounds inside *work* are the loop's own
+    steps and name none. Where the turn had got to is what the trace says, so that is
+    what a failure out of the loop is reported under."""
+    runner = _StubRunner(
+        {"trace": [StepEntered("screen")]},
+        {"trace": [StepEntered("screen"), StepEntered("work")]},
+        then=LlmError(),
+    )
+
+    with pytest.raises(LlmError) as unreachable:
+        Agent(runner).answer("q", THREAD)
+
+    assert unreachable.value.step == "work"
+
+
+def test_a_failure_that_already_names_its_step_keeps_that_name() -> None:
+    refused = InputRejectedError("Ask me something.")
+    refused.step = "screen"
+    runner = _StubRunner({"trace": [StepEntered("screen")]}, then=refused)
+
+    with pytest.raises(InputRejectedError) as raised:
+        Agent(runner).answer("   ", THREAD)
+
+    assert raised.value.step == "screen"
+
+
+def test_a_failure_before_any_step_was_entered_names_none() -> None:
+    """Nothing to name it after, and inventing one would say the turn reached a step
+    it never did."""
+    runner = _StubRunner({"trace": []}, then=LlmError())
+
+    with pytest.raises(LlmError) as unreachable:
+        Agent(runner).answer("q", THREAD)
+
+    assert unreachable.value.step == ""
+
+
+def test_an_answer_of_whitespace_is_no_more_an_answer_than_none() -> None:
+    """The chat model refuses a reply that says nothing, and the turn is held to the
+    same bar: what would reach the page is a blank bubble either way."""
+    with pytest.raises(GraphRunError):
+        Agent(_StubRunner({"answer": "  \n "})).answer("q", THREAD)
+
+
+def test_a_walk_that_settled_no_answer_is_a_failure_not_a_blank_one() -> None:
+    """Settling the answer is a step of the walk, and a walk without that step answers
+    with nothing at all. A blank answer reads like a successful turn and is recorded as
+    one, which is the failure `GraphRunError` exists for."""
+    conversations = FakeConversations()
+    agent = Agent(
+        runner=_StubRunner({"trace": [ANSWERED]}), conversations=conversations
+    )
+
+    with pytest.raises(GraphRunError):
+        agent.answer("How much protein?", THREAD)
+
+    assert conversations.turns(THREAD) == (), "and nothing was kept to come back to"

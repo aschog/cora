@@ -189,7 +189,12 @@ def test_the_trace_a_turn_returns_is_that_turns_alone() -> None:
     app.agent.answer("How much protein?", THREAD)
     greeting = app.agent.answer("Hi!", THREAD)
 
-    assert len(greeting.trace) == 1
+    assert [step.summary for step in greeting.trace] == [
+        "Started to screen",
+        "Started to work",
+        "Decided no tool was needed",
+        "Started to answer",
+    ], "the turn before it searched, and none of that is this turn's"
 
 
 @pytest.mark.integration
@@ -209,7 +214,7 @@ def test_an_answer_belongs_to_the_turn_that_asked_for_it() -> None:
     """`answer` is a per-turn key on a thread that keeps everything. A regression test
     rather than a guard, and deliberately so: a final reply is one with no tool calls,
     so the router only reaches `done` after this turn has written its own answer. The
-    reset in `PrepareStep` is belt and braces, pinned by the unit assertion on what
+    reset in `ScreenStep` is belt and braces, pinned by the unit assertion on what
     that step returns."""
     model = ScriptedChatModel(
         [ModelReply(text="1.6 g per kg."), ModelReply(text="Five grams.")]
