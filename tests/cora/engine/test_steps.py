@@ -1084,3 +1084,22 @@ def test_no_round_settles_the_answer_by_being_the_last_one() -> None:
 
     assert "answer" not in final
     assert "answer" not in calling
+
+
+def test_a_turn_that_reached_no_round_settles_nothing_of_the_one_before_it() -> None:
+    """The thread carries every turn it has had, so settling from the last thing anyone
+    said would answer this question with the last question's answer. A turn that reached
+    no round of its own has no answer to give, which is what the agent reads as one.
+    """
+    settled = AnswerStep()(
+        {
+            "messages": [
+                Message(role="user", content="How much protein?"),
+                Message(role="assistant", content="1.6 g per kg."),
+                Message(role="user", content="And creatine?"),
+            ],
+            "turn_start": 2,
+        }
+    )
+
+    assert settled == {"answer": ""}
