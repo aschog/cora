@@ -26,7 +26,7 @@ against it.
       that ended
 - [x] 3.4 Write a test that shows a state short of the answering step carries no answer
 
-## 4. The turn as two graphs
+## 4. The turn as one walk
 
 - [x] 4.1 Write a test that shows the runner walks screen → work → answer, yielding a
       state per step
@@ -50,9 +50,9 @@ against it.
 
 ## 5. The sequence is the extension point
 
-- [ ] 5.1 Write a test that shows story 6's added step is walked in its place, with the
+- [x] 5.1 Write a test that shows story 6's added step is walked in its place, with the
       runner unchanged
-- [ ] 5.2 Write a test that shows the graph reader behind the session maps finds the
+- [x] 5.2 Write a test that shows the graph reader behind the session maps finds the
       walk and the loop inside it
 
 ## 6. The marker comes off

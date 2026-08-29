@@ -782,27 +782,81 @@ BUILDER = "builder"
 GRAPH = "graph"
 
 
-def graph_steps() -> dict[str, str]:
-    """What the composition root drops into each of the runner's slots.
+STEPS = "cora.engine.steps"
 
-    Every one of them is typed `Step`, so what fills one is known by the name it is
-    passed under and by nothing else — a slot is told apart by its role here, where a
-    port elsewhere is told apart by its type.
+
+@dataclass(frozen=True)
+class Walk:
+    """The turn as the composition root hands it over.
+
+    `before` and `after` are the named steps either side of the rounds, each read as the
+    name it is walked under and the class that takes it. `marker` is the step the rounds
+    fall inside, which takes nothing: it says where the turn is and leaves the round to
+    the loop.
     """
+
+    before: tuple[tuple[str, str], ...]
+    marker: str
+    loop: dict[str, str]
+    after: tuple[tuple[str, str], ...]
+
+
+def _handed_over() -> ast.Call:
+    """The call the composition root builds the runner with."""
     tree = reading.parsed(_module(ASSEMBLY))
-    built = next(
+    return next(
         node
         for node in ast.walk(reading.function(tree, "assemble"))
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Name)
         and node.func.id == GRAPH
     )
-    named = {
-        keyword.arg: reading.called(keyword.value)
-        for keyword in built.keywords
-        if keyword.arg
+
+
+def _named_step(node: ast.expr) -> tuple[str, str]:
+    """One `Named(...)` as the name it is walked under and the class it takes.
+
+    Raises:
+        SystemExit: A step the walk names some other way. The drawing would then have a
+            participant it cannot label, which is worse than stopping here.
+    """
+    if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+        raise SystemExit(f"a step of the walk is not a named one: {ast.dump(node)}")
+    tree = reading.parsed(_module(STEPS))
+    name = _value(tree, {}, _named(node.args[0]))
+    taken = reading.called(node.args[1]) if len(node.args) > 1 else ""
+    return name, taken or node.func.id
+
+
+def _sequence(node: ast.expr) -> tuple[tuple[str, str], ...]:
+    assert isinstance(node, ast.Tuple)
+    return tuple(_named_step(element) for element in node.elts)
+
+
+def walked() -> Walk:
+    """The walk of a turn, read off the composition root.
+
+    The steps are named where they are wired, which is the one place that says what a
+    turn is made of — the runner is handed a sequence and walks whatever is in it, so
+    reading them off the runner would find a loop over a tuple and no names at all.
+    """
+    handed = {
+        keyword.arg: keyword.value for keyword in _handed_over().keywords if keyword.arg
     }
-    return {role: kind for role, kind in named.items() if kind and kind[0].isupper()}
+    loop = handed["loop"]
+    assert isinstance(loop, ast.Call)
+    parts = {keyword.arg: keyword.value for keyword in loop.keywords if keyword.arg}
+    marker, _ = _named_step(parts.pop("marker"))
+    return Walk(
+        before=_sequence(handed["before"]),
+        marker=marker,
+        loop={
+            role: kind
+            for role, value in parts.items()
+            if (kind := reading.called(value)) and kind[0].isupper()
+        },
+        after=_sequence(handed["after"]),
+    )
 
 
 @dataclass(frozen=True)
@@ -903,9 +957,12 @@ def routing() -> Routing:
         if not isinstance(held, ast.Name) or held.id != BUILDER:
             continue
         if call.func.attr == "add_node":
-            nodes[named(call.args[0])] = _role_of(call.args[1])
+            if node := named(call.args[0]):
+                nodes[node] = _role_of(call.args[1])
         elif call.func.attr == "add_edge":
-            edges.append((named(call.args[0]), named(call.args[1])))
+            here, there = named(call.args[0]), named(call.args[1])
+            if here and there:
+                edges.append((here, there))
         elif call.func.attr == "add_conditional_edges":
             at = named(call.args[0])
             router = _role_of(call.args[1])
@@ -931,35 +988,40 @@ def _role_of(node: ast.expr) -> str:
 GRAPH_PORT = "cora.ports.graph"
 
 
-def _step(plan: Routing, node: str, met: Reading, role: str) -> list[Line]:
-    """One node of the graph: the step it runs, and what that step does."""
-    slot = plan.nodes[node]
-    kind = graph_steps()[slot]
-    met.met(slot, kind)
-    lines: list[Line] = [Call(role, slot, f"{slot}(state)")]
+def _step(
+    name: str, kind: str, met: Reading, role: str, *, into: bool = True
+) -> list[Line]:
+    """One step of the walk: the name it is taken under, and what it does.
+
+    `into` is false for the step that only says where the turn is: it takes nothing, so
+    there is nothing to follow it into.
+    """
+    met.met(name, kind)
+    lines: list[Line] = [Call(role, name, f"{name}(state)")]
     where = engine_classes().get(kind)
-    if where:
-        lines.extend(read(where, kind, "__call__", slot, met))
-    lines.append(Reply(slot, role, _returned(GRAPH_PORT, "Step", "__call__")))
+    if where and into:
+        lines.extend(read(where, kind, "__call__", name, met))
+    lines.append(Reply(name, role, _returned(GRAPH_PORT, "Step", "__call__")))
     return lines
 
 
 def round_taken() -> Sequence:
-    """A turn as the graph walks it, off the nodes and edges the runner declares."""
+    """A turn as it is walked: the steps the composition root named, and between them
+    the rounds, off the nodes and edges the runner declares."""
     plan = routing()
+    walk = walked()
     met = Reading({})
     role = "runner"
     met.met("agent", "Agent")
     met.met(role, providers()["GraphRunner"])
 
-    opening: list[Line] = []
-    node = plan.after("START")
-    while node and node != plan.at:
-        opening.extend(_step(plan, node, met, role))
-        node = plan.after(node)
+    opening: list[Line] = [
+        line for name, kind in walk.before for line in _step(name, kind, met, role)
+    ]
+    opening.extend(_step(walk.marker, "Named", met, role, into=False))
 
-    decided: list[Line] = [*_step(plan, plan.at, met, role)]
-    met.met(plan.router, graph_steps()[plan.router])
+    decided: list[Line] = [*_step(plan.at, walk.loop[plan.at], met, role)]
+    met.met(plan.router, walk.loop[plan.router])
     decided.append(Call(role, plan.router, f"{plan.router}(state)"))
     decided.append(
         Reply(plan.router, role, " | ".join(route for route, _ in plan.routes))
@@ -969,14 +1031,17 @@ def round_taken() -> Sequence:
             route,
             tuple(
                 line
-                for step in plan.chain(target)
-                for line in _step(plan, step, met, role)
+                for node in plan.chain(target)
+                for line in _step(node, walk.loop[plan.nodes[node]], met, role)
             ),
         )
         for route, target in plan.routes
     )
     decided.append(Fragment("alt", operands))
 
+    closing: list[Line] = [
+        line for name, kind in walk.after for line in _step(name, kind, met, role)
+    ]
     answered = _returned(GRAPH_PORT, "GraphRunner", "run")
     return Sequence(
         name="round",
@@ -985,6 +1050,7 @@ def round_taken() -> Sequence:
             Call("agent", role, _signature(GRAPH_PORT, "GraphRunner", "run")),
             *opening,
             Fragment("loop", ((plan.keeps_going, tuple(decided)),)),
+            *closing,
             Reply(role, "agent", answered),
         ),
     )

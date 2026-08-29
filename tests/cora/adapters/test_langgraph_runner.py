@@ -926,3 +926,27 @@ def test_what_was_said_before_a_failure_is_still_on_the_thread() -> None:
         ("assistant", ""),
         ("tool", "3"),
     ]
+
+
+ROUTE = "route"
+
+
+def test_a_step_added_to_the_walk_is_walked_in_its_place() -> None:
+    """Where a turn grows: story 6 puts *route* and *focus* before the rounds, and the
+    runner learns nothing — it walks the sequence it was handed."""
+    walked: list[str] = []
+
+    def routing(state: AgentState) -> AgentState:
+        walked.append(ROUTE)
+        return {}
+
+    walk = _walk(_always(_replies))
+    walk["before"] = (*walk["before"], Named(ROUTE, routing))
+    runner = LangGraphRunner(
+        **walk, recursion_limit=recursion_limit_for(ROUNDS, steps=STEPS + 1)
+    )
+
+    final = _final(runner, {"question": "q"})
+
+    assert walked == [ROUTE]
+    assert _entered(final) == [SCREEN, ROUTE, WORK, ANSWER]
