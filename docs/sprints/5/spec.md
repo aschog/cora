@@ -18,13 +18,13 @@ The nouns this file uses, each against the class that carries it. Paths are unde
   `AgentState.turn_start` is where it begins in a thread already holding ten.
 - **State** — `domain.agent_state.AgentState`, what a turn accumulates and the checkpointer
   serialises, so every key in it is a shape that costs a migration to widen.
-- **Brief** — `AgentState["brief"]`, the system message `engine.steps.PrepareStep` rebuilds
+- **Brief** — `AgentState["brief"]`, the system message `engine.steps.ScreenStep` rebuilds
   each turn and states once at the prompt's head.
 - **Step** — `ports.graph.Step` as the callable, `engine.steps.*` as the implementations —
   one named part of a turn with a single responsibility.
-- **Trace** — `AgentState["trace"]`, a list of `domain.trace.TraceStep`: `ModelDecision`,
-  `ToolUse`, `MemoryUnread` today, nesting from story 4 — drawn on the screen from
-  story 10.
+- **Trace** — `AgentState["trace"]`, a list of `domain.trace.TraceStep`: `StepEntered`,
+  `ModelDecision`, `ToolUse`, `MemoryUnread` today, nesting from story 4 — drawn on the
+  screen from story 10.
 - **Plugin** — `ports.plugin.Plugin`, a frozen record today; becomes `extend(cora: Host)` in
   story 4.
 - **Host** *(new, story 4)* — the port a plugin is handed at load: cora's own parts, and the

@@ -179,8 +179,8 @@ def test_the_graph_is_built_from_the_walk_of_a_turn_alone() -> None:
 def test_run_walks_screen_then_model_then_tools_then_model() -> None:
     visited: list[str] = []
 
-    def prepare(state: AgentState) -> AgentState:
-        visited.append("prepare")
+    def screening(state: AgentState) -> AgentState:
+        visited.append(SCREEN)
         return _screen(state)
 
     def model(state: AgentState) -> AgentState:
@@ -194,10 +194,10 @@ def test_run_walks_screen_then_model_then_tools_then_model() -> None:
         return {"messages": _said("tool", "ran")}
 
     final = _final(
-        _runner(screen=prepare, model=_always(model), tools=tools), {"question": "q"}
+        _runner(screen=screening, model=_always(model), tools=tools), {"question": "q"}
     )
 
-    assert visited == ["prepare", "model", "tools", "model"]
+    assert visited == [SCREEN, "model", "tools", "model"]
     assert final["answer"] == "done"
 
 
@@ -226,9 +226,10 @@ def test_the_returned_state_accumulated_every_partial() -> None:
     assert final["citations"] == [NOTE]
 
 
-def test_an_answer_ends_the_turn_with_no_third_node_to_visit() -> None:
-    """The graph is prepare, model and tools: a final reply is the end of the walk,
-    whatever the answer rested on."""
+def test_an_answer_ends_the_rounds_and_the_walk_goes_on() -> None:
+    """A final reply is the end of the *rounds*, whatever the answer rested on: the
+    turn leaves the loop for the step that settles what the user reads, and stops
+    there."""
     visited: list[str] = []
 
     def model(state: AgentState) -> AgentState:
@@ -237,7 +238,8 @@ def test_an_answer_ends_the_turn_with_no_third_node_to_visit() -> None:
 
     final = _final(_runner(model=_always(model)), {"question": "q"})
 
-    assert visited == ["model"]
+    assert visited == ["model"], "one round, and nothing sent it back for another"
+    assert _entered(final) == [SCREEN, WORK, ANSWER]
     assert final["answer"] == "off the cuff"
 
 
@@ -452,6 +454,7 @@ def test_the_allowlist_covers_every_kind_of_step_a_trace_can_hold() -> None:
             f"{kind.__name__} can be in a trace but not in a checkpoint"
         )
     assert {kind.__name__ for kind in step_kinds()} >= {
+        "StepEntered",
         "ModelDecision",
         "MemoryUnread",
         "ToolUse",
@@ -1029,3 +1032,15 @@ def test_a_walk_with_nothing_after_the_rounds_ends_when_they_do() -> None:
 
     assert _entered(final) == [SCREEN, WORK]
     assert final["answer"] == "", "and nothing settled one"
+
+
+def test_a_resumed_turn_writes_the_working_step_s_marker_only_once() -> None:
+    """The marker is a checkpointed node's contribution, and a checkpointed node does
+    not run again on the way back. Written twice, the page would show the turn entering
+    the same step twice with nothing else to say it went wrong."""
+    runner = _stopping()
+    list(runner.run({"question": WANTED}, THREAD))
+
+    final = list(runner.resume("75 kg", THREAD))[-1]
+
+    assert _entered(final) == [SCREEN, WORK, ANSWER]

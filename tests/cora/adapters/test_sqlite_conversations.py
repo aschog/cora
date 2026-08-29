@@ -7,7 +7,7 @@ from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
 from cora.domain.errors import ConversationStoreError
-from cora.domain.trace import MemoryUnread, ModelDecision, ToolUse
+from cora.domain.trace import MemoryUnread, ModelDecision, StepEntered, ToolUse
 
 THREAD = "9f1c0f7a-0d5e-4a3a-9d0f-1b2c3d4e5f60"
 ASKED = "How much protein should I eat?"
@@ -121,6 +121,8 @@ TRACED = Turn(
         answer="Your notes say 1.6 g per kg [1].",
         citations=(CITATION,),
         trace=(
+            StepEntered("screen"),
+            StepEntered("work"),
             ModelDecision(tools=("search_documents",)),
             ToolUse(
                 name="search_documents",
@@ -128,6 +130,7 @@ TRACED = Turn(
                 outcome="1 passage",
                 detail="[1] protein.md: aim for 1.6 g",
             ),
+            StepEntered("answer"),
         ),
     ),
 )

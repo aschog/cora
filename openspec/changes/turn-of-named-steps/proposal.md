@@ -24,5 +24,5 @@ need one.
 - `src/cora/app/assembly.py` — wires the sequence
 - `scripts/sequences.py` — the graph reader takes the walk from the composition root
 - `docs/assets/round-map.svg`, `turn-map.svg` — redrawn
-- `docs/big-picture.md`, `docs/happy-path.md`, `docs/how-to/watch-a-turn.md` — the steps
+- `docs/happy-path.md`, `docs/how-to/watch-a-turn.md` — the steps a turn walks
 - Left alone: the pause contract, `AgentState`, what the model is told, every other adapter
