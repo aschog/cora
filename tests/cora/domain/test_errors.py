@@ -81,3 +81,7 @@ def test_input_rejection_carries_the_rule_supplied_message() -> None:
 
     assert issubclass(InputRejectedError, CoreError)
     assert error.user_message == "Please ask a health professional about medication."
+
+
+def test_an_error_names_no_step_until_a_step_is_named() -> None:
+    assert CoreError("Something went wrong. Please try again.").step == ""

@@ -8,12 +8,17 @@ from collections.abc import Iterable
 
 
 class CoreError(Exception):
-    """Base error for all application failures."""
+    """Base error for all application failures.
+
+    `step` is the step of a turn the failure came out of, filled in by whoever named
+    that step and empty everywhere else — a failure outside a turn belongs to no step.
+    """
 
     def __init__(self, user_message: str) -> None:
         """Carry the sentence the user is shown; there is no second, internal one."""
         super().__init__(user_message)
         self.user_message = user_message
+        self.step = ""
 
 
 class IngestionError(CoreError):

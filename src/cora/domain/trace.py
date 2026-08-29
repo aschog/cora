@@ -70,6 +70,22 @@ class ModelDecision(TraceStep):
 
 
 @dataclass(frozen=True)
+class StepEntered(TraceStep):
+    """The turn entered a step, and is now in it.
+
+    Where a turn is rather than what it did: the marker a step contributes before
+    anything it goes on to do, so the steps that follow read as that step's.
+    """
+
+    step: str
+
+    @property
+    def summary(self) -> str:
+        """The step by name, which every step of a turn is a verb for."""
+        return f"Started to {self.step}"
+
+
+@dataclass(frozen=True)
 class MemoryUnread(TraceStep):
     """The turn could not read what cora remembers, and answered without it."""
 

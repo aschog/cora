@@ -334,6 +334,7 @@ GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "AgentState",
             "Citation",
             "TraceStep",
+            "StepEntered",
             "ModelDecision",
             "MemoryUnread",
             "ToolUse",

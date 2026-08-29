@@ -13,7 +13,7 @@ from cora.domain.errors import (
     MemoryStoreError,
     ToolLoopLimitError,
 )
-from cora.domain.trace import ModelDecision, ToolUse
+from cora.domain.trace import ModelDecision, StepEntered, ToolUse
 from cora.engine.ask_tool import ASK_TOOL_NAME, ASKED_ALREADY, ask_tool
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
@@ -27,6 +27,7 @@ from cora.engine.steps import (
     REMEMBERED_HEADING,
     AskStep,
     ModelStep,
+    Named,
     PrepareStep,
     Router,
     ToolStep,
@@ -34,7 +35,7 @@ from cora.engine.steps import (
 from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import EmptyInputRule
 from cora.ports.chat_model import Aside, Message, ModelReply, Piece, Written
-from cora.ports.graph import ASK, DONE, TOOLS
+from cora.ports.graph import ASK, DONE, TOOLS, Step
 from cora.ports.memory import Memory
 from cora.ports.plugin import Tool, ToolCall
 from cora.ports.retrieval import RetrievedChunk
@@ -957,3 +958,66 @@ def test_a_label_nobody_offered_counts_as_choosing_nothing() -> None:
 
     [message] = partial["messages"]
     assert message.content == NOTHING_CHOSEN
+
+
+def _contributing(contributed: AgentState) -> Step:
+    def step(state: AgentState) -> AgentState:
+        return contributed
+
+    return step
+
+
+def test_a_named_step_marks_the_trace_with_its_name_before_what_it_did() -> None:
+    named = Named("screen", _contributing({"trace": [ModelDecision()], "answer": "ok"}))
+
+    contributed = named({"question": "q"})
+
+    assert contributed["trace"] == [StepEntered("screen"), ModelDecision()]
+    assert contributed["answer"] == "ok", "the step's own keys travel out untouched"
+
+
+def test_a_step_named_with_nothing_to_do_contributes_the_marker_alone() -> None:
+    """What *work* is: the rounds are the loop's, and the step says where they fall."""
+    assert Named("work")({"question": "q"}) == {"trace": [StepEntered("work")]}
+
+
+def _failing(error: Exception) -> Step:
+    def step(state: AgentState) -> AgentState:
+        raise error
+
+    return step
+
+
+REFUSED = "Ask me something and I'll answer it."
+
+
+def test_a_core_error_out_of_a_named_step_is_that_step_s() -> None:
+    named = Named("screen", _failing(InputRejectedError(REFUSED)))
+
+    with pytest.raises(InputRejectedError) as refused:
+        named({"question": "   "})
+
+    assert refused.value.step == "screen"
+
+
+def test_naming_the_step_leaves_the_sentence_the_user_reads_alone() -> None:
+    """The name is for the trace and the log, never for the sentence the user reads."""
+    named = Named("screen", _failing(InputRejectedError(REFUSED)))
+
+    with pytest.raises(InputRejectedError) as refused:
+        named({"question": "   "})
+
+    assert refused.value.user_message == REFUSED
+    assert str(refused.value) == REFUSED
+
+
+def test_an_exception_that_is_not_cora_s_comes_out_of_a_named_step_untouched() -> None:
+    """A bug is not a step's news to name, and swallowing one would hide it."""
+    bug = ZeroDivisionError("division by zero")
+    named = Named("work", _failing(bug))
+
+    with pytest.raises(ZeroDivisionError) as raised:
+        named({"question": "q"})
+
+    assert raised.value is bug
+    assert not hasattr(bug, "step")

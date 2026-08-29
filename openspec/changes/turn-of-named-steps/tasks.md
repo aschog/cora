@@ -8,12 +8,12 @@ against it.
 
 ## 2. A step has a name
 
-- [ ] 2.1 Write a test that shows a named step contributes a trace step carrying its
+- [x] 2.1 Write a test that shows a named step contributes a trace step carrying its
       name first
-- [ ] 2.2 Write a test that shows a `CoreError` from a named step carries that step's
+- [x] 2.2 Write a test that shows a `CoreError` from a named step carries that step's
       name
-- [ ] 2.3 Write a test that shows the sentence a user reads is unchanged by that name
-- [ ] 2.4 Write a test that shows a foreign exception leaves a named step untagged and
+- [x] 2.3 Write a test that shows the sentence a user reads is unchanged by that name
+- [x] 2.4 Write a test that shows a foreign exception leaves a named step untagged and
       unswallowed
 
 ## 3. What each step is responsible for
