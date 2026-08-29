@@ -198,7 +198,8 @@ class LangGraphRunner:
         builder.add_edge(TOOLS, MODEL)
         for here, there in pairwise(self.after):
             builder.add_edge(here.step, there.step)
-        builder.add_edge(walked[-1].step, END)
+        if self.after:
+            builder.add_edge(self.after[-1].step, END)
         return builder.compile(checkpointer=self.checkpointer)
 
     @property

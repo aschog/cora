@@ -47,15 +47,6 @@ class NamedStep(Protocol):
         ...
 
 
-def unasked(state: AgentState) -> AgentState:
-    """The ask slot of an app that offers no way to stop and ask.
-
-    It answers nothing, which is what a deployment that never offers the tool looks
-    like — `unheard` is the same courtesy for the reader nobody is writing to.
-    """
-    return {}
-
-
 Route = Callable[[AgentState], str]
 ModelFor = Callable[[TextSink], Step]
 """How a graph asks for the step that talks to the model: one per turn, bound to that
@@ -125,14 +116,16 @@ class Loop:
 
     Named apart from the steps around it because it alone has a router and it alone may
     stop to ask. `marker` is the step the rounds fall inside: it runs once, contributes
-    the name of the place the turn is in, and leaves the round to the model.
+    the name of the place the turn is in, and leaves the round to the model. `ask` is
+    handed over like the rest: an app that offers no decision says so with a step that
+    puts none, rather than with a slot left empty.
     """
 
     marker: NamedStep
     model: ModelFor
     tools: Step
     router: Route
-    ask: Step = unasked
+    ask: Step
 
 
 class GraphFor(Protocol):

@@ -1103,3 +1103,14 @@ def test_a_turn_that_reached_no_round_settles_nothing_of_the_one_before_it() -> 
     )
 
     assert settled == {"answer": ""}
+
+
+def test_the_step_a_failure_first_came_out_of_is_the_one_it_keeps() -> None:
+    """A step inside a step is story 4's shape. The inner one is where the failure
+    happened, and the outer one is not a better answer to where."""
+    inner = Named("focus", _failing(InputRejectedError(REFUSED)))
+
+    with pytest.raises(InputRejectedError) as refused:
+        Named("screen", inner)({"question": "q"})
+
+    assert refused.value.step == "focus"

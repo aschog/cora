@@ -118,13 +118,15 @@ class Named:
         """Take the step, with its marker ahead of whatever it contributed.
 
         Raises:
-            CoreError: Whatever the step raised, under this step's name. Anything else
-                is a bug rather than a turn going wrong, and travels out untouched.
+            CoreError: Whatever the step raised, under this step's name — unless it
+                came out of a step of its own and is already named, because the first
+                name is the nearest one to where it happened. Anything else is a bug
+                rather than a turn going wrong, and travels out untouched.
         """
         try:
             contributed = self.take(state)
         except CoreError as failed:
-            failed.step = self.step
+            failed.step = failed.step or self.step
             raise
         trace: list[TraceStep] = [
             StepEntered(self.step),

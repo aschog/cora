@@ -308,6 +308,7 @@ def _real_runner(model: ChatModel, rounds: int) -> LangGraphRunner:
             ).writing_to,
             tools=ToolStep(ToolRuntime(tools=(add_tool(),))),
             router=Router(max_tool_rounds=rounds),
+            ask=AskStep(),
         ),
         after=(Named(ANSWER, AnswerStep()),),
         recursion_limit=recursion_limit_for(rounds, steps=STEPS),
@@ -1014,3 +1015,17 @@ def test_a_turn_that_asks_and_then_overspends_trips_the_core_s_limit() -> None:
         list(runner.resume("77 kg", THREAD))
 
     assert spent.value.__cause__ is None
+
+
+def test_a_walk_with_nothing_after_the_rounds_ends_when_they_do() -> None:
+    """The port lets `after` be empty, so the loop leaves the graph rather than a step.
+    What such a walk settles is its own business; that it finishes is the runner's."""
+    walk = _walk(_always(_replies))
+    walk["after"] = ()
+    runner = langgraph_for(**walk, max_tool_rounds=ROUNDS)
+    assert isinstance(runner, LangGraphRunner)
+
+    final = _final(runner, {"question": "q"})
+
+    assert _entered(final) == [SCREEN, WORK]
+    assert final["answer"] == "", "and nothing settled one"
