@@ -3,8 +3,6 @@
 Four slots today, and any reshaping keeps LangGraph's per-node checkpointing, which
 story 11's gate leans on.
 
-See `proposal.md` — Why.
-
 ## Goals / Non-Goals
 
 **Goals** — three named steps, one responsibility and one trace entry each; the loop

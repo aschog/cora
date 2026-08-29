@@ -3,8 +3,6 @@
 None of `prepare → model ⇄ tools` is a place a turn can be *in*, and stories 5 and 6
 need one.
 
-The story and its criteria: `specs/conversation/spec.md`.
-
 ## What Changes
 
 - The turn becomes `screen → work → answer`, one responsibility each
