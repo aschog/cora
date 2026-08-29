@@ -34,16 +34,18 @@ DECLINED = "\x00declined"
 resume LangGraph accepts — it reads as an empty command — so a decline has to carry a
 value of its own, and this one is not a label any model could have written."""
 HEADROOM = 2
-"""Supersteps to spare, over what the longest walk of a turn was measured to cost.
+"""Supersteps to spare, over the limit the longest walk of a turn was measured to need.
 
 The limit is spent one `run` at a time, so the longest walk is a turn that never pauses
 and spends every round: each named step once, then a model call and its tools per round.
-That is `SUPERSTEPS_PER_ROUND * rounds + steps`, measured across budgets 1 to 12 and a
-grown walk, and the test walks it at the sizing *minus* this slack — so the terms are
-pinned and only the slack is free. Slack at all because how LangGraph counts a superstep
-is its business rather than a contract, and the cost of being one out is a legitimate
-turn reported as a runaway one. A pause cannot be the longest walk: it ends the run it
-was in, and the resumed one pays for none of the steps before the loop."""
+The limit such a walk needs is `SUPERSTEPS_PER_ROUND * rounds + steps`, one more than
+it spends, measured across budgets 1 to 12 and grown walks. The test walks it at the
+sizing *minus* this slack, which is that measured limit exactly, so every term of the
+formula is pinned from below and only the slack is free. Slack at all because how
+LangGraph counts a superstep is its business rather than a contract, and the cost of
+being one out is a legitimate turn reported as a runaway one. A pause cannot be the
+longest walk: it ends the run it was in, and the resumed one pays for none of the steps
+before the loop."""
 CHECKPOINTED_DATA = (
     ("cora.ports.chat_model", "Message"),
     ("cora.ports.plugin", "ToolCall"),

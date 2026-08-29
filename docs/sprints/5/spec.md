@@ -192,9 +192,11 @@ right now costs nothing.
 - **The pin belongs to the conversation.** It goes in `AgentState` and is checkpointed, so a
   reopened thread reopens in its scope; frontend session state would lose it on reload.
 - **A turn may stop more than once, and every stop comes before the round runs.**
-  `ASKS_PER_TURN = 1` sized the recursion limit, and a turn can now stop to ask which scope
-  *and* to approve each of two effects — resize as the stops are added, or a legitimate
-  turn trips the runaway guard. And because a resumed step replays from its first line, a
+  The recursion limit needs no resizing for a stop: it is spent one `run` at a time, and a
+  stop ends the run it was in, so the resumed one pays for none of the steps before the
+  loop — measured, a stopping walk is always cheaper than one that never stops. What does
+  need sizing is a walk with more *steps* in it, which `recursion_limit_for` already takes.
+  And because a resumed step replays from its first line, a
   stop in the middle of a half-run round would re-run what already ran: approvals are
   settled ahead of execution, never mid-round.
 - **An approval is its own checkpointed type, bound to one call.** Sprint 4's `Decision`

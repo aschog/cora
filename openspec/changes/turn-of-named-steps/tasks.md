@@ -73,3 +73,4 @@ against it.
       keeps
 - [x] 7.6 Write a test that shows a resumed turn writes the working step's marker once
 - [x] 7.7 Write a test that shows a walk with nothing after the rounds still finishes
+- [x] 7.8 Write a test that shows an answer of whitespace is no more an answer than none
