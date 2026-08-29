@@ -225,10 +225,11 @@ class ModelStep:
     def __call__(self, state: AgentState) -> AgentState:
         """Ask the model for one round and record what it said.
 
-        A round that asks for no tool sets the turn's answer; a round that asks for one
-        sets none, and its prose is kept as the decision's detail rather than as
-        anything the user is owed. What the model wrote reaches the reader as it is
-        written either way, so a round of thinking is closed with an `Aside`.
+        A round settles nothing: it says what it decided, and `AnswerStep` reads the
+        round the turn ended on. The prose of a round that asked for a tool is kept as
+        that decision's detail rather than as anything the user is owed. What the model
+        wrote reaches the reader as it is written either way, so a round of thinking is
+        closed with an `Aside`.
 
         Raises:
             LlmError: The model gave back nothing usable. The turn ends: half an answer
@@ -244,10 +245,7 @@ class ModelStep:
             detail="" if reply.is_final else reply.text,
             tools=tuple(call.name for call in reply.tool_calls),
         )
-        partial: AgentState = {"messages": [appended], "trace": [decision]}
-        if reply.is_final:
-            partial["answer"] = reply.text
-        return partial
+        return {"messages": [appended], "trace": [decision]}
 
     def _prompt(self, state: AgentState) -> tuple[Message, ...]:
         return prompt_from(
@@ -256,6 +254,26 @@ class ModelStep:
             turn_start=state.get("turn_start", 0),
             max_history_turns=self.max_history_turns,
         )
+
+
+@dataclass(frozen=True)
+class AnswerStep:
+    """The step that settles what the user reads, once and at the end.
+
+    The round the turn ended on is the answer; the rounds before it asked for tools,
+    and what they wrote was thinking. Story 9's live sources compose here.
+    """
+
+    def __call__(self, state: AgentState) -> AgentState:
+        """Settle the answer from the last round of this turn.
+
+        A turn that reached no round at all answers with nothing, which is what a
+        state short of a model reply honestly holds.
+        """
+        rounds = [
+            message for message in _this_turn(state) if message.role == "assistant"
+        ]
+        return {"answer": rounds[-1].content if rounds else ""}
 
 
 @dataclass(frozen=True)

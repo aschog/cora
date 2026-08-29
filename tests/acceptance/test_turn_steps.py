@@ -18,9 +18,6 @@ def _walked(result: ChatResult) -> list[str]:
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(
-    strict=True, reason="a turn is four slots today, and none is a place"
-)
 def test_a_turn_names_the_steps_it_walked() -> None:
     """A turn the user can be told the shape of: admitted, worked, then answered."""
     app = assembled(chat_model=ScriptedChatModel([ModelReply(text="ok")]))

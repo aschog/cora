@@ -25,6 +25,7 @@ from cora.engine.steps import (
     MEMORY_RULE,
     NOTHING_CHOSEN,
     REMEMBERED_HEADING,
+    AnswerStep,
     AskStep,
     ModelStep,
     Named,
@@ -36,7 +37,7 @@ from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import EmptyInputRule
 from cora.ports.chat_model import Aside, Message, ModelReply, Piece, Written
 from cora.ports.graph import ASK, DONE, TOOLS, Step
-from cora.ports.memory import Memory
+from cora.ports.memory import Fact, Memory
 from cora.ports.plugin import Tool, ToolCall
 from cora.ports.retrieval import RetrievedChunk
 from fakes import (
@@ -317,14 +318,6 @@ def test_a_tool_calling_reply_keeps_its_calls_ahead_of_the_rounds_tool_messages(
     transcript = [*asked["messages"], *from_tools["messages"]]
     assert [m.role for m in transcript] == ["user", "assistant", "tool"]
     assert transcript[1].tool_calls == (_add_call("c1"),)
-
-
-def test_a_final_reply_sets_the_answer_and_a_tool_calling_one_does_not() -> None:
-    final = _model_step(ModelReply(text="The sum is 3."))(_asking())
-    calling = _model_step(ModelReply(tool_calls=(_add_call("c1"),)))(_asking())
-
-    assert final["answer"] == "The sum is 3."
-    assert "answer" not in calling
 
 
 def test_a_tool_calling_reply_is_traced_as_the_decision_it_was() -> None:
@@ -675,7 +668,6 @@ def test_the_sink_changes_nothing_about_the_state_the_step_returns() -> None:
 
     partial = step(_asking())
 
-    assert partial["answer"] == "The sum is 3."
     [reply] = partial["messages"]
     assert reply.content == "The sum is 3."
 
@@ -683,7 +675,8 @@ def test_the_sink_changes_nothing_about_the_state_the_step_returns() -> None:
 def test_a_step_given_no_sink_answers_as_it_always_did() -> None:
     step = _model_step(ModelReply(text="The sum is 3."))
 
-    assert step(_asking())["answer"] == "The sum is 3."
+    [reply] = step(_asking())["messages"]
+    assert reply.content == "The sum is 3."
 
 
 def test_a_round_that_ends_in_a_tool_call_tells_the_sink_the_writing_was_an_aside() -> (
@@ -1019,3 +1012,75 @@ def test_an_exception_that_is_not_cora_s_comes_out_of_a_named_step_untouched() -
 
     assert raised.value is bug
     assert not hasattr(bug, "step")
+
+
+class _CountingMemory(FakeMemory):
+    """A memory that says how often it was read, which is what the brief costs."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.recalls = 0
+
+    def recall(self) -> tuple[Fact, ...]:
+        self.recalls += 1
+        return super().recall()
+
+
+def test_a_refused_question_costs_the_thread_nothing_at_all() -> None:
+    """The rules run first, so a refusal is not a turn that started and stopped: no
+    message is written, no brief is built, and the model is two steps away."""
+
+    class _Refuses:
+        def apply(self, user_input: str) -> None:
+            raise InputRejectedError("Ask me something I can answer.")
+
+    memory = _CountingMemory()
+    step = replace(_screen(memory=memory), rules=(_Refuses(),))
+
+    with pytest.raises(InputRejectedError):
+        step({"question": "anything", "messages": [Message(role="user", content="x")]})
+
+    assert memory.recalls == 0, "the brief is built after the question is admitted"
+
+
+def test_the_screening_step_opens_the_turn_it_admitted() -> None:
+    """One step's whole job: the question on the transcript, the two marks that say
+    where this turn begins, the brief it is answered under, and last turn's answer gone.
+    """
+    said = [
+        Message(role="user", content="earlier"),
+        Message(role="assistant", content="quite"),
+    ]
+
+    partial = _screen()({"question": "q", "messages": said, "trace": [ModelDecision()]})
+
+    assert partial["messages"] == [Message(role="user", content="q")]
+    assert (partial["turn_start"], partial["trace_start"]) == (2, 1)
+    assert partial["brief"].startswith(CORA_PREAMBLE)
+    assert partial["answer"] == ""
+
+
+def test_the_answering_step_settles_the_answer_the_last_round_reached() -> None:
+    settled = AnswerStep()(
+        {
+            "messages": [
+                Message(role="user", content="q"),
+                Message(role="assistant", content="Let me add those."),
+                Message(role="tool", content="3", tool_call_id="c1"),
+                Message(role="assistant", content="The sum is 3."),
+            ],
+            "turn_start": 0,
+        }
+    )
+
+    assert settled == {"answer": "The sum is 3."}
+
+
+def test_no_round_settles_the_answer_by_being_the_last_one() -> None:
+    """What `answer` is for: a state short of that step carries no answer, however the
+    round it stopped at ended."""
+    final = _model_step(ModelReply(text="The sum is 3."))(_asking())
+    calling = _model_step(ModelReply(tool_calls=(_add_call("c1"),)))(_asking())
+
+    assert "answer" not in final
+    assert "answer" not in calling

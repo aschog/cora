@@ -18,13 +18,13 @@ against it.
 
 ## 3. What each step is responsible for
 
-- [ ] 3.1 Write a test that shows the screening step refuses before the thread is
+- [x] 3.1 Write a test that shows the screening step refuses before the thread is
       written or the model called
-- [ ] 3.2 Write a test that shows the screening step opens the turn: transcript, marks
+- [x] 3.2 Write a test that shows the screening step opens the turn: transcript, marks
       and brief
-- [ ] 3.3 Write a test that shows the answering step settles the answer from the round
+- [x] 3.3 Write a test that shows the answering step settles the answer from the round
       that ended
-- [ ] 3.4 Write a test that shows a state short of the answering step carries no answer
+- [x] 3.4 Write a test that shows a state short of the answering step carries no answer
 
 ## 4. The turn as two graphs
 
@@ -57,4 +57,4 @@ against it.
 
 ## 6. The marker comes off
 
-- [ ] 6.1 Drop 1.1's `xfail` marker and watch the outer test pass
+- [x] 6.1 Drop 1.1's `xfail` marker and watch the outer test pass

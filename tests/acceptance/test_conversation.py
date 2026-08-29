@@ -189,7 +189,12 @@ def test_the_trace_a_turn_returns_is_that_turns_alone() -> None:
     app.agent.answer("How much protein?", THREAD)
     greeting = app.agent.answer("Hi!", THREAD)
 
-    assert len(greeting.trace) == 1
+    assert [step.summary for step in greeting.trace] == [
+        "Started to screen",
+        "Started to work",
+        "Decided no tool was needed",
+        "Started to answer",
+    ], "the turn before it searched, and none of that is this turn's"
 
 
 @pytest.mark.integration

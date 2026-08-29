@@ -2,6 +2,7 @@ import pathlib
 import sqlite3
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from itertools import pairwise
 from typing import Any
 
 from langgraph.checkpoint.base import BaseCheckpointSaver
@@ -17,9 +18,15 @@ from cora.domain.decision import Decision, Pending
 from cora.domain.errors import NothingToResumeError, ToolLoopLimitError
 from cora.domain.trace import step_kinds
 from cora.ports.chat_model import TextSink, unheard
-from cora.ports.graph import ASK, DONE, TOOLS, GraphRunner, ModelFor, Route, Step
+from cora.ports.graph import (
+    ASK,
+    DONE,
+    TOOLS,
+    GraphRunner,
+    Loop,
+    NamedStep,
+)
 
-PREPARE = "prepare"
 MODEL = "model"
 SUPERSTEPS_PER_ROUND = 2
 DECLINED = "\x00declined"
@@ -69,11 +76,17 @@ def _saver_at(path: str) -> SqliteSaver:
     return saver
 
 
-def recursion_limit_for(max_tool_rounds: int) -> int:
-    """Wide enough that the core's round budget always trips first: preparing
-    costs one superstep, then each round costs a model call and its tools, and one
-    round of the turn may stop to ask."""
-    return SUPERSTEPS_PER_ROUND * max_tool_rounds + 2 + ASKS_PER_TURN
+def recursion_limit_for(max_tool_rounds: int, steps: int) -> int:
+    """Wide enough that the core's round budget always trips first.
+
+    Each named step outside the rounds costs a superstep of its own, then each round
+    costs a model call and its tools, and one round of the turn may stop to ask.
+
+    Args:
+        max_tool_rounds: How many rounds of tools a turn may spend.
+        steps: How many named steps the turn walks besides the rounds.
+    """
+    return SUPERSTEPS_PER_ROUND * max_tool_rounds + steps + ASKS_PER_TURN + 1
 
 
 def interrupting(decision: Decision) -> str | None:
@@ -86,12 +99,6 @@ def interrupting(decision: Decision) -> str | None:
     return chosen
 
 
-def _unasked(state: AgentState) -> AgentState:
-    """The ask node of a graph that was given no way to stop. It answers nothing,
-    which is what a deployment that never offers the tool looks like."""
-    return {}
-
-
 @dataclass(frozen=True)
 class LangGraphRunner:
     """The checkpointer is the runner's own: which technology remembers a thread is a
@@ -100,12 +107,10 @@ class LangGraphRunner:
     a deployment that names a file gets one that outlives the process, so a question
     asked on a resumed thread is asked of a model that saw the exchange before it."""
 
-    prepare: Step
-    model: ModelFor
-    tools: Step
-    router: Route
+    before: tuple[NamedStep, ...]
+    loop: Loop
+    after: tuple[NamedStep, ...]
     recursion_limit: int
-    ask: Step = _unasked
     checkpointer: BaseCheckpointSaver = field(default_factory=_saver)
 
     def run(
@@ -160,43 +165,60 @@ class LangGraphRunner:
     def _graph(self, on_text: TextSink) -> Any:
         """Built per run, which is what lets the model node be this turn's: the sink
         belongs to the reader waiting on it, and a graph shared between turns could
-        only hold one of them."""
+        only hold one of them.
+
+        The walk is the sequence it was handed, so a turn that grew a step is a graph
+        with a node more and this method unchanged. The rounds are the one part of it
+        with a shape of their own: the model decides, and the router sends the turn to
+        the tools, to the reader, or on to whatever the walk does next.
+        """
         # ty does not see __required_keys__ on a TypedDict class, so it cannot
         # tell that AgentState satisfies LangGraph's state-schema bound.
         builder = StateGraph(AgentState)  # ty: ignore[invalid-argument-type]
-        builder.add_node(PREPARE, self.prepare)
-        builder.add_node(MODEL, self.model(on_text))
-        builder.add_node(TOOLS, self.tools)
-        builder.add_node(ASK, self.ask)
-        builder.add_edge(START, PREPARE)
-        builder.add_edge(PREPARE, MODEL)
+        walked = (*self.before, self.loop.marker, *self.after)
+        for step in walked:
+            builder.add_node(step.step, step)
+        builder.add_node(MODEL, self.loop.model(on_text))
+        builder.add_node(TOOLS, self.loop.tools)
+        builder.add_node(ASK, self.loop.ask)
+        opening = (*self.before, self.loop.marker)
+        builder.add_edge(START, opening[0].step)
+        for here, there in pairwise(opening):
+            builder.add_edge(here.step, there.step)
+        builder.add_edge(self.loop.marker.step, MODEL)
         builder.add_conditional_edges(
-            MODEL, self.router, {DONE: END, TOOLS: TOOLS, ASK: ASK}
+            MODEL, self.loop.router, {DONE: self._done, TOOLS: TOOLS, ASK: ASK}
         )
         builder.add_edge(ASK, TOOLS)
         builder.add_edge(TOOLS, MODEL)
+        for here, there in pairwise(self.after):
+            builder.add_edge(here.step, there.step)
+        builder.add_edge(walked[-1].step, END)
         return builder.compile(checkpointer=self.checkpointer)
+
+    @property
+    def _done(self) -> str:
+        """Where a turn goes when the rounds are over: on with the walk, or out."""
+        return self.after[0].step if self.after else END
 
 
 def langgraph_for(
     *,
-    prepare: Step,
-    model: ModelFor,
-    tools: Step,
-    router: Route,
+    before: tuple[NamedStep, ...],
+    loop: Loop,
+    after: tuple[NamedStep, ...],
     max_tool_rounds: int,
-    ask: Step = _unasked,
     checkpoints_at: str | None = None,
 ) -> GraphRunner:
     """`checkpoints_at` is this binding's own, not the `GraphFor` port's: where a thread
     is kept is a fact about LangGraph and sqlite, and a composition root binds it here
     rather than the port learning that threads live in files."""
     return LangGraphRunner(
-        prepare=prepare,
-        model=model,
-        tools=tools,
-        ask=ask,
-        router=router,
-        recursion_limit=recursion_limit_for(max_tool_rounds),
+        before=before,
+        loop=loop,
+        after=after,
+        recursion_limit=recursion_limit_for(
+            max_tool_rounds, steps=len(before) + len(after) + 1
+        ),
         checkpointer=_saver() if checkpoints_at is None else _saver_at(checkpoints_at),
     )
