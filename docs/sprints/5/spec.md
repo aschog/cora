@@ -231,45 +231,6 @@ it would take the measurement with it. If the sprint runs long, the sprint runs 
 what gives is argued then against *Not in this sprint* rather than decided here while it
 is cheap to be brave.
 
-### 4. A plugin is handed cora, not a form to fill in
-
-As someone writing a plugin,\
-I want cora to hand me what it has and let me register what I have,\
-so that what I can contribute is not limited to the fields someone else thought of.
-
-**Scenario:** a plugin registers rather than declares
-
-- **Given** a module defining `extend(cora)` instead of a `PLUGIN` record
-- **When** it is loaded
-- **Then** what it registered is what cora offers — its tools callable, its instructions in
-  the brief, its rules screening input
-- **And** the two plugins that exist — security and fitness — are written this way, with no
-  record left behind; travel is born to this contract in story 6
-
-**Scenario:** a plugin uses cora's own parts
-
-- **Given** a plugin that wants to search, remember, or call the model itself
-- **When** it is loaded
-- **Then** the host it was handed gives it each of those, and the plugin's own log lines and
-  configuration are named for it
-
-**Scenario:** the sub-agent needs no core change
-
-- **Given** a test plugin that registers a tool running its own bounded model loop
-- **When** the model calls that tool
-- **Then** it runs, its nested steps appear in the trace as children of the call, and
-  nothing under `src/cora/` was changed to allow it
-
-**Scenario:** a bad plugin is refused where it can be seen
-
-- **Given** a module with no `extend`, one that raises while registering, or one registering
-  a tool name that is cora's own
-- **When** cora starts
-- **Then** the refusal names that module and what is wrong with it
-
-This story is the sprint's hinge, and it lands before the scope story because scope is a
-property of a registration and there are no registrations until now.
-
 ### 5. A plugin can take part in the turn
 
 As someone writing a plugin,\
