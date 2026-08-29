@@ -390,3 +390,18 @@ def test_a_failure_before_any_step_was_entered_names_none() -> None:
         Agent(runner).answer("q", THREAD)
 
     assert unreachable.value.step == ""
+
+
+def test_a_walk_that_settled_no_answer_is_a_failure_not_a_blank_one() -> None:
+    """Settling the answer is a step of the walk, and a walk without that step answers
+    with nothing at all. A blank answer reads like a successful turn and is recorded as
+    one, which is the failure `GraphRunError` exists for."""
+    conversations = FakeConversations()
+    agent = Agent(
+        runner=_StubRunner({"trace": [ANSWERED]}), conversations=conversations
+    )
+
+    with pytest.raises(GraphRunError):
+        agent.answer("How much protein?", THREAD)
+
+    assert conversations.turns(THREAD) == (), "and nothing was kept to come back to"

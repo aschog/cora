@@ -82,7 +82,9 @@ class Agent:
             TurnPaused: The turn stopped to ask. There is no answer yet, and `resume` is
                 what finishes it.
             InputRejectedError: A rule refused the question.
-            AdapterError: Something outside cora failed mid-turn.
+            GraphRunError: The walk came back with no answer to give.
+            AdapterError: Something outside cora failed mid-turn. A failure raised
+                inside a step carries that step's name.
         """
         return self._turn(
             self.runner.run({"question": question}, thread_id, on_text),
@@ -155,9 +157,9 @@ class Agent:
         waiting = self.runner.pending(thread_id)
         if waiting is not None:
             raise TurnPaused(waiting)
-        if not final:
-            raise GraphRunError
         answer = final.get("answer", "")
+        if not answer:
+            raise GraphRunError
         result = ChatResult(
             answer=answer,
             citations=cited(answer, tuple(final.get("citations", ()))),

@@ -210,12 +210,13 @@ class ConversationStoreError(AdapterError):
 
 
 class GraphRunError(AdapterError):
-    """A runner walked no step at all.
+    """A turn came back with no answer: the walk took no step, or settled nothing.
 
-    The run cannot be reported on, and a blank answer would read like a successful turn.
+    Either way there is nothing to report, and a blank answer would read like a
+    successful turn — and be recorded as one.
     """
 
-    message = "The assistant could not start. Please try again."
+    message = "The assistant could not answer that. Please try again."
 
 
 class NothingToResumeError(CoreError):
