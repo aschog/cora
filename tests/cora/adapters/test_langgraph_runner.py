@@ -942,11 +942,75 @@ def test_a_step_added_to_the_walk_is_walked_in_its_place() -> None:
 
     walk = _walk(_always(_replies))
     walk["before"] = (*walk["before"], Named(ROUTE, routing))
-    runner = LangGraphRunner(
-        **walk, recursion_limit=recursion_limit_for(ROUNDS, steps=STEPS + 1)
-    )
+    runner = langgraph_for(**walk, max_tool_rounds=ROUNDS)
+    assert isinstance(runner, LangGraphRunner)
 
     final = _final(runner, {"question": "q"})
 
     assert walked == [ROUTE]
     assert _entered(final) == [SCREEN, ROUTE, WORK, ANSWER]
+
+
+def _spent(state: AgentState) -> int:
+    """Rounds this turn has taken, counted as the router counts them."""
+    return sum(
+        1
+        for message in tuple(state.get("messages", ()))[state.get("turn_start", 0) :]
+        if message.role == "assistant"
+    )
+
+
+def _asks_then_spends(rounds: int) -> Step:
+    """A turn of every superstep it is allowed: it stops to ask on its first round,
+    calls a tool on each round after that, and answers on the last one it may spend."""
+
+    def model(state: AgentState) -> AgentState:
+        spent = _spent(state)
+        if spent + 1 >= rounds:
+            return {"messages": _said("assistant", "done")}
+        if spent == 0:
+            return _asks_then_answers({})
+        return {"messages": _asked_for_a_tool("again")}
+
+    return model
+
+
+@pytest.mark.parametrize("rounds", [2, 3, 8])
+def test_the_longest_turn_a_budget_allows_still_answers(rounds: int) -> None:
+    """The limit is sized from the walk, so the walk is what it has to be tested
+    against: a turn that stops to ask and then spends every round it has must not read
+    as a runaway one."""
+    runner = langgraph_for(
+        **_walk(
+            _always(_asks_then_spends(rounds)),
+            ask=AskStep(pause=interrupting),
+            rounds=rounds,
+        ),
+        max_tool_rounds=rounds,
+    )
+
+    list(runner.run({"question": WANTED}, THREAD))
+    final = list(runner.resume("77 kg", THREAD))[-1]
+
+    assert final["answer"] == "done"
+
+
+def test_a_turn_that_asks_and_then_overspends_trips_the_core_s_limit() -> None:
+    """And the other side of the same sizing: what stops a turn that will not finish is
+    the round budget, whose message asks for a rephrasing, and never the graph's own
+    guard, which would arrive as a `GraphRecursionError` nobody worded."""
+    runner = langgraph_for(
+        **_walk(
+            _always(_asks_then_spends(ROUNDS + 2)),
+            ask=AskStep(pause=interrupting),
+            rounds=ROUNDS,
+        ),
+        max_tool_rounds=ROUNDS,
+    )
+
+    list(runner.run({"question": WANTED}, THREAD))
+
+    with pytest.raises(ToolLoopLimitError) as spent:
+        list(runner.resume("77 kg", THREAD))
+
+    assert spent.value.__cause__ is None

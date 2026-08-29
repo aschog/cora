@@ -37,6 +37,11 @@ ASKS_PER_TURN = 1
 """A turn may stop to ask once, and the pause costs a superstep of its own. Counted
 into the limit because a question raised early would otherwise make a legitimate turn
 look like a runaway one."""
+HEADROOM = 1
+"""One superstep more than the longest turn a budget allows, which is what
+`test_the_longest_turn_a_budget_allows_still_answers` walks. Deliberate slack: how
+LangGraph counts a replayed node is its business and not a contract, and the cost of
+being one out is a legitimate turn reported as a runaway one."""
 CHECKPOINTED_DATA = (
     ("cora.ports.chat_model", "Message"),
     ("cora.ports.plugin", "ToolCall"),
@@ -86,7 +91,7 @@ def recursion_limit_for(max_tool_rounds: int, steps: int) -> int:
         max_tool_rounds: How many rounds of tools a turn may spend.
         steps: How many named steps the turn walks besides the rounds.
     """
-    return SUPERSTEPS_PER_ROUND * max_tool_rounds + steps + ASKS_PER_TURN + 1
+    return SUPERSTEPS_PER_ROUND * max_tool_rounds + steps + ASKS_PER_TURN + HEADROOM
 
 
 def interrupting(decision: Decision) -> str | None:
