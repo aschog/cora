@@ -1,21 +1,16 @@
 schema: spec-driven
 
 context: |
-  cora is an agent you chat with, and plugins give it a scope. Shipped as the `cora`
-  package (src layout). A turn runs on LangGraph: the domain holds the state shape,
-  the engine holds the steps as plain functions, and an adapter wires them into a
-  graph — neither imports LangGraph, and an architecture guard enforces that.
-  `docs/big-picture.md` and `docs/happy-path.md` say how a turn runs.
+  What cora is, `README.md` says. What it is made of, `docs/big-picture.md` and
+  `docs/happy-path.md` say. The house rules — uv for every command, secrets in the
+  environment, plain Conventional Commits — are `CLAUDE.md`, and the process is
+  `docs/workflow.md`, which is authoritative. Open them; this file repeats none of it.
 
-  Python, managed by uv. Every command runs through `uv run`; never `python` or
-  `pytest` directly. Dependencies go in with `uv add` / `uv add --dev`; the lockfile
-  is never hand-edited and pip is never used. Formatter, linter and docstring policy
-  are ruff, the type checker is ty, the test runner is pytest with tiered markers.
-
-  The process is `docs/workflow.md` — XP, outside-in, test-first. It is authoritative,
-  and OpenSpec artifacts serve it: a change is one story, and its `tasks.md` is a
-  Beck test list. Secrets live in environment variables only. Commits are plain
-  Conventional Commits with no attribution or co-author trailers.
+  What it does say, because nothing else does: a turn runs on LangGraph, but the domain
+  holds the state shape and the engine holds the steps as plain functions — neither
+  imports LangGraph, an adapter wires them into a graph, and an architecture guard
+  enforces that. OpenSpec artifacts serve the workflow: a change is one story, and its
+  `tasks.md` is a Beck test list.
 
 rules:
   proposal:
@@ -44,6 +39,14 @@ rules:
       outside the system through its public API.
     - >-
       A capability path names a behaviour of the product, not a module of the code.
+    - >-
+      A change whose subject is a written page has no delta spec: set `skip_specs: true`
+      in its `.openspec.yaml` and leave the story in the sprint's spec.md. A delta says
+      what the product does, and a page's wording is not that.
+    - >-
+      Main specs grow one archive at a time. Write a delta only for what this change
+      touches, and never back-fill a spec for code the change leaves alone — a
+      capability with no spec yet is the tool working, not a gap to close.
   design:
     - >-
       Architecture level only — patterns, components, ports, flows, and the trade-off

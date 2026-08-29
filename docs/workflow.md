@@ -22,7 +22,6 @@ docs/sprints/5/
   spec.md                 the story cut, requirement coverage, out of scope
   sprint-5-feedback.md    last review's findings, as a tracked backlog
   review-feedback.md      the reviewer's write-up, verbatim — the record, not the backlog
-  retrospective.md        written at sprint close
 ```
 
 Everything about a story in flight lives in an OpenSpec change:
@@ -39,35 +38,7 @@ openspec/
   changes/archive/        changes whose list is ticked and whose delta is synced
 ```
 
-- **Planning reads the current sprint only.** The folder of the sprint in flight is the
-  whole input. Earlier sprint folders are history: `docs/sprints/3/plans/done/` records
-  how that code was *built*, not how it works today, so it is not consulted when
-  planning. Only `workflow.md` and `big-picture.md` sit outside a sprint folder — they
-  describe the project, not a sprint.
-- **`openspec/specs/` is the exception, because it is not history.** It says what cora
-  does *today*, so it is always in scope: read it when planning, and every archive syncs
-  a change's delta into it. A sprint folder answers "what were we asked to build"; the
-  specs answer "what does it do".
-- **The change is the planning artefact** — `proposal.md`, `design.md`, the delta specs
-  and `tasks.md`, written by `/opsx:propose` and worked by `/opsx:apply`. It replaces
-  `story-NN.md`; the files in `docs/sprints/4/done/` are the record of how sprint 4 was
-  planned, not a template to copy.
-- **A story lives in exactly one place — the change's delta spec.** Its three lines head
-  that file, above the Purpose, and its acceptance criteria are the requirements below.
-  `proposal.md` carries why / what changes / impact and points at it; the sprint's
-  `spec.md` keeps only the story's heading, linked to the change. So the story cut still
-  reads in order and no criterion is stated twice.
-- **The test list is Beck's, not a work breakdown** — every item is one failing test.
-  It is expected to change as you go: add items as they surface, and if an item can't be
-  phrased as "write a test that shows X", it does not belong on the list. OpenSpec's own
-  default is a list of session-sized chunks, so `openspec/config.yaml` overrides it in
-  writing — the rule is told to the tool, not remembered.
-- **Test-first is for code under `src/`.** A story whose subject is a written page has no
-  test list and no outer test: a `.md` file is prose, held by a person reading it rather
-  than by a guard asserting its headings and sections, and `CLAUDE.md` carries that rule.
-  Such a change is done when the page reads right, judged in the Phase 3 review against
-  the story's criteria. Everything below — the outer test, the double loop, the marker —
-  describes a change that ships code.
+
 ---
 
 ## Sprint preparation

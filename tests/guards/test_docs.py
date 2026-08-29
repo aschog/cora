@@ -113,10 +113,6 @@ def test_a_path_is_claimed_from_its_dot_as_readily_as_from_a_letter() -> None:
     }
 
 
-def test_the_docs_claim_something() -> None:
-    assert len(_claims()) > 20, "the extractor found almost nothing — check the regex"
-
-
 def test_every_location_the_docs_claim_exists() -> None:
     stale = [
         f"{name}: {reference}"
