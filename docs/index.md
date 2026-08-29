@@ -1,8 +1,6 @@
 # cora
 
-cora is an agent you chat with, and everything it knows and can do arrives as a plugin.
-The core runs a turn and screens what comes in; a plugin gives it a field, tools and rules
-of its own. With nothing loaded it still answers.
+--8<-- "README.md:what-cora-is"
 
 The pages are sorted by what you came for.
 

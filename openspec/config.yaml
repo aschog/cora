@@ -1,21 +1,16 @@
 schema: spec-driven
 
 context: |
-  cora is an agent you chat with, and plugins give it a scope. Shipped as the `cora`
-  package (src layout). A turn runs on LangGraph: the domain holds the state shape,
-  the engine holds the steps as plain functions, and an adapter wires them into a
-  graph — neither imports LangGraph, and an architecture guard enforces that.
-  `docs/big-picture.md` and `docs/happy-path.md` say how a turn runs.
+  What cora is, `README.md` says. What it is made of, `docs/big-picture.md` and
+  `docs/happy-path.md` say. The house rules — uv for every command, secrets in the
+  environment, plain Conventional Commits — are `CLAUDE.md`, and the process is
+  `docs/workflow.md`, which is authoritative. Open them; this file repeats none of it.
 
-  Python, managed by uv. Every command runs through `uv run`; never `python` or
-  `pytest` directly. Dependencies go in with `uv add` / `uv add --dev`; the lockfile
-  is never hand-edited and pip is never used. Formatter, linter and docstring policy
-  are ruff, the type checker is ty, the test runner is pytest with tiered markers.
-
-  The process is `docs/workflow.md` — XP, outside-in, test-first. It is authoritative,
-  and OpenSpec artifacts serve it: a change is one story, and its `tasks.md` is a
-  Beck test list. Secrets live in environment variables only. Commits are plain
-  Conventional Commits with no attribution or co-author trailers.
+  What it does say, because nothing else does: a turn runs on LangGraph, but the domain
+  holds the state shape and the engine holds the steps as plain functions — neither
+  imports LangGraph, an adapter wires them into a graph, and an architecture guard
+  enforces that. OpenSpec artifacts serve the workflow: a change is one story, and its
+  `tasks.md` is a Beck test list.
 
 rules:
   proposal:
@@ -26,8 +21,9 @@ rules:
       alone.
     - >-
       The story and its acceptance criteria are not here. They live once, in the delta
-      spec. Neither is the design rationale, which lives in design.md, the conversation,
-      the commit messages and the tests.
+      spec — every change has one, and a change is out of the sprint's spec.md the moment
+      it is opened. Neither is the design rationale, which lives in design.md, the
+      conversation, the commit messages and the tests.
     - >-
       One story per change. If it needs two stories, it is two changes.
   specs:
@@ -41,9 +37,14 @@ rules:
       — belongs in the requirement that asks for it, so the change carries it once.
     - >-
       Write requirements as SHALL statements with concrete scenarios, observable from
-      outside the system through its public API.
+      outside the system — through its public API, or by reading the page when the
+      capability is what cora says about itself.
     - >-
       A capability path names a behaviour of the product, not a module of the code.
+    - >-
+      Main specs grow one archive at a time. Write a delta only for what this change
+      touches, and never back-fill a spec for code the change leaves alone — a
+      capability with no spec yet is the tool working, not a gap to close.
   design:
     - >-
       Architecture level only — patterns, components, ports, flows, and the trade-off
