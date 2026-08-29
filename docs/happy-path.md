@@ -16,10 +16,14 @@ ChatResult.](assets/turn-map.svg)
 
 ## A round, as the graph walks it
 
-![A UML sequence diagram of one turn inside the graph: the runner takes the prepare step,
-then loops over the model step and the router, and on the router's answer either runs the
-round's tools, stops to put a decision to the reader before running them, or leaves the
-loop with the answer.](assets/round-map.svg)
+A turn walks named steps: *screen* admits the question and opens the turn, *work* is
+where the rounds are spent, and *answer* settles what the user reads. The steps are named
+where they are wired, so a turn that grows one grows it there.
+
+![A UML sequence diagram of one turn inside the graph: the runner takes the screen step
+and then the work step, loops over the model step and the router, and on the router's
+answer either runs the round's tools, stops to put a decision to the reader before
+running them, or leaves the loop for the answer step.](assets/round-map.svg)
 
 ## The tool that reaches the documents
 
