@@ -392,6 +392,13 @@ def test_a_failure_before_any_step_was_entered_names_none() -> None:
     assert unreachable.value.step == ""
 
 
+def test_an_answer_of_whitespace_is_no_more_an_answer_than_none() -> None:
+    """The chat model refuses a reply that says nothing, and the turn is held to the
+    same bar: what would reach the page is a blank bubble either way."""
+    with pytest.raises(GraphRunError):
+        Agent(_StubRunner({"answer": "  \n "})).answer("q", THREAD)
+
+
 def test_a_walk_that_settled_no_answer_is_a_failure_not_a_blank_one() -> None:
     """Settling the answer is a step of the walk, and a walk without that step answers
     with nothing at all. A blank answer reads like a successful turn and is recorded as

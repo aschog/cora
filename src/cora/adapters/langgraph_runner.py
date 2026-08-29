@@ -33,15 +33,17 @@ DECLINED = "\x00declined"
 """How choosing nothing travels back into the run. `Command(resume=None)` is not a
 resume LangGraph accepts — it reads as an empty command — so a decline has to carry a
 value of its own, and this one is not a label any model could have written."""
-ASKS_PER_TURN = 1
-"""A turn may stop to ask once, and the pause costs a superstep of its own. Counted
-into the limit because a question raised early would otherwise make a legitimate turn
-look like a runaway one."""
-HEADROOM = 1
-"""One superstep more than the longest turn a budget allows, which is what
-`test_the_longest_turn_a_budget_allows_still_answers` walks. Deliberate slack: how
-LangGraph counts a replayed node is its business and not a contract, and the cost of
-being one out is a legitimate turn reported as a runaway one."""
+HEADROOM = 2
+"""Supersteps to spare, over what the longest walk of a turn was measured to cost.
+
+The limit is spent one `run` at a time, so the longest walk is a turn that never pauses
+and spends every round: each named step once, then a model call and its tools per round.
+That is `SUPERSTEPS_PER_ROUND * rounds + steps`, measured across budgets 1 to 12 and a
+grown walk, and the test walks it at the sizing *minus* this slack — so the terms are
+pinned and only the slack is free. Slack at all because how LangGraph counts a superstep
+is its business rather than a contract, and the cost of being one out is a legitimate
+turn reported as a runaway one. A pause cannot be the longest walk: it ends the run it
+was in, and the resumed one pays for none of the steps before the loop."""
 CHECKPOINTED_DATA = (
     ("cora.ports.chat_model", "Message"),
     ("cora.ports.plugin", "ToolCall"),
@@ -84,14 +86,14 @@ def _saver_at(path: str) -> SqliteSaver:
 def recursion_limit_for(max_tool_rounds: int, steps: int) -> int:
     """Wide enough that the core's round budget always trips first.
 
-    Each named step outside the rounds costs a superstep of its own, then each round
-    costs a model call and its tools, and one round of the turn may stop to ask.
+    Each named step outside the rounds costs a superstep of its own, and each round
+    costs a model call and its tools. `HEADROOM` says what is left over.
 
     Args:
         max_tool_rounds: How many rounds of tools a turn may spend.
         steps: How many named steps the turn walks besides the rounds.
     """
-    return SUPERSTEPS_PER_ROUND * max_tool_rounds + steps + ASKS_PER_TURN + HEADROOM
+    return SUPERSTEPS_PER_ROUND * max_tool_rounds + steps + HEADROOM
 
 
 def interrupting(decision: Decision) -> str | None:

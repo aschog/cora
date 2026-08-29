@@ -7,6 +7,7 @@ import pytest
 from langgraph.checkpoint.memory import InMemorySaver
 
 from cora.adapters.langgraph_runner import (
+    HEADROOM,
     LangGraphRunner,
     checkpointed_types,
     interrupting,
@@ -979,24 +980,35 @@ def _asks_then_spends(rounds: int) -> Step:
     return model
 
 
-@pytest.mark.parametrize("rounds", [2, 3, 8])
-def test_the_longest_turn_a_budget_allows_still_answers(rounds: int) -> None:
-    """The limit is sized from the walk, so the walk is what it has to be tested
-    against: a turn that stops to ask and then spends every round it has must not read
-    as a runaway one."""
-    runner = langgraph_for(
-        **_walk(
-            _always(_asks_then_spends(rounds)),
-            ask=AskStep(pause=interrupting),
-            rounds=rounds,
-        ),
-        max_tool_rounds=rounds,
-    )
+def _spends(rounds: int) -> Step:
+    """A turn that never pauses and spends every round it has, answering on the last:
+    the longest single walk of the graph, which is what the limit has to allow."""
 
-    list(runner.run({"question": WANTED}, THREAD))
-    final = list(runner.resume("77 kg", THREAD))[-1]
+    def model(state: AgentState) -> AgentState:
+        if _spent(state) + 1 >= rounds:
+            return {"messages": _said("assistant", "done")}
+        return {"messages": _asked_for_a_tool("again")}
 
-    assert final["answer"] == "done"
+    return model
+
+
+@pytest.mark.parametrize("rounds", [1, 2, 3, 8])
+@pytest.mark.parametrize("grown", [(), (Named(ROUTE, _nothing),)])
+def test_the_longest_walk_a_budget_allows_still_answers(
+    rounds: int, grown: tuple[NamedStep, ...]
+) -> None:
+    """The limit is sized from the walk and spent one `run` at a time, so the longest
+    single walk is what it has to be tested against: every round, and every named step
+    either side of them. Walked at the sizing *minus* its declared slack, so a term left
+    out of the formula fails here rather than being absorbed. A walk grown by a step is
+    sized for that step too, which is what story 6 will lean on."""
+    walk = _walk(_always(_spends(rounds)), rounds=rounds)
+    walk["before"] = (*walk["before"], *grown)
+    sized = langgraph_for(**walk, max_tool_rounds=rounds)
+    assert isinstance(sized, LangGraphRunner)
+    tight = replace(sized, recursion_limit=sized.recursion_limit - HEADROOM)
+
+    assert _final(tight, {"question": "q"})["answer"] == "done"
 
 
 def test_a_turn_that_asks_and_then_overspends_trips_the_core_s_limit() -> None:
@@ -1022,7 +1034,8 @@ def test_a_turn_that_asks_and_then_overspends_trips_the_core_s_limit() -> None:
 
 def test_a_walk_with_nothing_after_the_rounds_ends_when_they_do() -> None:
     """The port lets `after` be empty, so the loop leaves the graph rather than a step.
-    What such a walk settles is its own business; that it finishes is the runner's."""
+    That the walk still finishes is what the runner owes; that such a turn has no answer
+    to give is the agent's to say, and it says so with a `GraphRunError`."""
     walk = _walk(_always(_replies))
     walk["after"] = ()
     runner = langgraph_for(**walk, max_tool_rounds=ROUNDS)

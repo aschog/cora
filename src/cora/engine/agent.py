@@ -108,6 +108,9 @@ class Agent:
 
         Raises:
             NothingToResumeError: This thread is not waiting on a decision.
+            TurnPaused: The rest of the turn stopped to ask again.
+            GraphRunError: The walk came back with no answer to give.
+            AdapterError: As in `answer` — the rest of a turn fails the same ways.
         """
         waiting = self.runner.pending(thread_id)
         if waiting is None:
@@ -154,11 +157,13 @@ class Agent:
         except CoreError as failed:
             failed.step = failed.step or where
             raise
+        # Whatever follows is the turn's own judgement of the walk rather than a step's,
+        # so it is raised out here, under no step's name.
         waiting = self.runner.pending(thread_id)
         if waiting is not None:
             raise TurnPaused(waiting)
         answer = final.get("answer", "")
-        if not answer:
+        if not answer.strip():
             raise GraphRunError
         result = ChatResult(
             answer=answer,

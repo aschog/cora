@@ -58,3 +58,18 @@ against it.
 ## 6. The marker comes off
 
 - [x] 6.1 Drop 1.1's `xfail` marker and watch the outer test pass
+
+## 7. What the review asked for
+
+- [x] 7.1 Write a test that shows a walk settling no answer is a failure, not a blank
+      answer
+- [x] 7.2 Write a test that shows the answering step reads this turn, and settles
+      nothing without a round of its own
+- [x] 7.3 Write a test that shows the longest walk a budget allows still answers, at the
+      sizing minus its slack
+- [x] 7.4 Write a test that shows a turn that asks and then overspends trips the core's
+      limit
+- [x] 7.5 Write a test that shows the step a failure first came out of is the one it
+      keeps
+- [x] 7.6 Write a test that shows a resumed turn writes the working step's marker once
+- [x] 7.7 Write a test that shows a walk with nothing after the rounds still finishes

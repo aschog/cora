@@ -151,7 +151,9 @@ class GraphFor(Protocol):
         Args:
             before: The steps a turn takes before its first round, in order.
             loop: The rounds, and what takes one.
-            after: The steps a turn takes once the rounds are done, in order.
+            after: The steps a turn takes once the rounds are done, in order. The last
+                of them settles the answer; a walk that settles none walks and finishes
+                but cannot answer a turn.
             max_tool_rounds: How many rounds of tools a turn may spend.
         """
         ...
