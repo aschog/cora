@@ -31,8 +31,9 @@ TREES = {
 # interface a reader of the map is looking for.
 AS_DRAWN = {"GraphFor": "GraphRunner"}
 # Two slots the engine talks through that are not arguments to `assemble`: the loader
-# registry is fixed at the composition root, and a plugin arrives in the plugin set.
-BESIDE_THE_SIGNATURE = ("Loader", "Plugin")
+# registry is fixed at the composition root, and a plugin arrives as a module that
+# registers what it has.
+BESIDE_THE_SIGNATURE = ("Loader", "Extension")
 
 
 @dataclass(frozen=True)
@@ -161,7 +162,7 @@ def bindings() -> tuple[Binding, ...]:
     ]
     beside = {
         "Loader": Binding("Loader", (_registry_module(tree),), ADAPTERS),
-        "Plugin": Binding("Plugin", _packages(PLUGINS), PLUGINS),
+        "Extension": Binding("Extension", _packages(PLUGINS), PLUGINS),
     }
     return tuple(bound) + tuple(beside[port] for port in BESIDE_THE_SIGNATURE)
 
@@ -585,7 +586,7 @@ def _plugin_assembly(
         _path([(drop_x, engine.bottom), (drop_x, fan_y), (fan_x - CUP, fan_y)], "wire"),
         _cup(fan_x, fan_y),
         *_interface_name(
-            fan_x - CUP - 120, fan_y, modules["Plugin"], "Plugin", "[0..*]"
+            fan_x - CUP - 120, fan_y, modules["Extension"], "Extension", "[0..*]"
         ),
     ]
     for box in boxes:

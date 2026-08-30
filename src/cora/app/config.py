@@ -180,3 +180,29 @@ def int_setting(env: Mapping[str, str], key: str, default: int, *, minimum: int)
     if value < minimum:
         raise ConfigurationError(f"{key} must be {minimum} or more, but got {value}.")
     return value
+
+
+def plugin_settings(
+    modules: tuple[str, ...], env: Mapping[str, str] | None = None
+) -> dict[str, dict[str, str]]:
+    """What each plugin may read as its own settings, keyed by module path.
+
+    A plugin's variables are the ones named for it — `CORA_FITNESS_UNITS` reaches the
+    module whose last segment is `fitness`, as `units`. Named for the plugin so a
+    deployment can see whose setting it is setting, and read here rather than by the
+    plugin so that reading the environment stays the composition root's job.
+
+    Args:
+        modules: The plugin modules a deployment named.
+        env: Where to read from. The process environment unless a caller says otherwise.
+    """
+    environ = os.environ if env is None else env
+    found: dict[str, dict[str, str]] = {}
+    for module in modules:
+        prefix = f"CORA_{module.rsplit('.', 1)[-1].upper()}_"
+        found[module] = {
+            key[len(prefix) :].lower(): value
+            for key, value in environ.items()
+            if key.startswith(prefix)
+        }
+    return found

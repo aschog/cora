@@ -11,8 +11,12 @@ from cora.domain.prose import listed
 class TraceStep(ABC):
     """One thing the turn did, worded for the user rather than for a log.
 
-    A step fills `detail` and `failed` in as fields when it has them to give.
+    A step fills `detail`, `failed` and `steps` in as fields when it has them to give.
+    `steps` is what happened *inside* this one, which only a step that ran something
+    else has: a trace is a tree, and most of it is one level deep.
     """
+
+    steps: tuple["TraceStep", ...] = ()
 
     @property
     @abstractmethod
@@ -104,8 +108,9 @@ class MemoryUnread(TraceStep):
 class ToolUse(TraceStep):
     """One tool call and what came back from it.
 
-    `outcome` is the one line the user reads; `detail` is what the tool returned, and
-    for a failed call it is the refusal rather than the payload.
+    `outcome` is the one line the user reads, and `detail` is what the tool returned —
+    for a failed call the refusal rather than the payload. `steps` is what the tool did
+    inside the call, which is empty unless the tool ran a loop of its own.
     """
 
     name: str
@@ -113,6 +118,7 @@ class ToolUse(TraceStep):
     outcome: str = ""
     detail: str = ""
     failed: bool = False
+    steps: tuple[TraceStep, ...] = ()
 
     @property
     def summary(self) -> str:

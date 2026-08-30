@@ -1,31 +1,16 @@
 import pytest
 
-from cora.domain.errors import PluginLoadError
+from cora.domain.errors import ConfigurationError, PluginLoadError
 from cora.engine.plugin_registry import load_plugin, load_plugins
 
 
-def test_resolving_a_name_returns_the_module_level_plugin_bundle() -> None:
-    plugin = load_plugin("fixture_plugins.valid")
+def test_loading_a_plugin_hands_back_the_module_and_its_extend() -> None:
+    """Loading imports and checks the module. What the plugin contributes is registered
+    later, against a host, because a host is made of an assembled app's own parts."""
+    loaded = load_plugin("fixture_plugins.valid")
 
-    assert plugin.instructions == "You are a test plugin."
-    assert [tool.name for tool in plugin.tools] == ["one", "two", "three"]
-
-
-def test_a_bundle_of_rules_alone_loads() -> None:
-    """What makes a guard plugin possible: it offers the model nothing and only
-    turns input down."""
-    plugin = load_plugin("fixture_plugins.rules_only")
-
-    assert plugin.tools == ()
-    assert len(plugin.validation_rules) == 1
-    assert plugin.instructions == ""
-
-
-def test_a_bundle_of_tools_alone_loads() -> None:
-    plugin = load_plugin("fixture_plugins.tools_only")
-
-    assert plugin.instructions == ""
-    assert [tool.name for tool in plugin.tools] == ["one", "two", "three"]
+    assert loaded.module == "fixture_plugins.valid"
+    assert callable(loaded.extend)
 
 
 def test_missing_plugin_module_raises_typed_error() -> None:
@@ -52,18 +37,14 @@ def test_plugin_module_raising_during_import_surfaces_as_typed_error() -> None:
     assert isinstance(excinfo.value.__cause__, RuntimeError)
 
 
-BAD_PLUGIN_FIXTURES = [
-    ("no_bundle", "defines no PLUGIN"),
-    ("wrong_type", "not a Plugin bundle"),
-    ("blank_name", "name is blank"),
-    ("duplicate_names", "share the same name"),
-    ("non_callable_run", "no callable run"),
-    ("bad_schema", "invalid parameter schema"),
+NOT_A_PLUGIN = [
+    ("no_extend", "defines no extend"),
+    ("wrong_type", "extend is not callable"),
 ]
 
 
-@pytest.mark.parametrize(("fixture", "reason"), BAD_PLUGIN_FIXTURES)
-def test_bad_plugin_bundle_raises_typed_error_naming_the_failure(
+@pytest.mark.parametrize(("fixture", "reason"), NOT_A_PLUGIN)
+def test_a_module_that_is_not_a_plugin_is_refused_by_name(
     fixture: str, reason: str
 ) -> None:
     module_path = f"fixture_plugins.{fixture}"
@@ -87,3 +68,13 @@ def test_one_bad_module_in_a_list_names_that_module_not_the_list() -> None:
 
     assert "fixture_plugins.no_such_module" in excinfo.value.user_message
     assert "fixture_plugins.valid" not in excinfo.value.user_message
+
+
+def test_one_module_named_twice_is_a_config_error() -> None:
+    """Otherwise a tool-name collision reads as a plugin colliding with itself, and the
+    user is told nothing about what they actually typed."""
+    with pytest.raises(ConfigurationError) as excinfo:
+        load_plugins(["fixture_plugins.valid", "fixture_plugins.valid"])
+
+    assert "fixture_plugins.valid" in excinfo.value.user_message
+    assert "twice" in excinfo.value.user_message

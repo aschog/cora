@@ -1,5 +1,6 @@
 from cora.domain.errors import InputRejectedError
-from cora.ports.plugin import Plugin, Tool, ValidationRule
+from cora.ports.host import Extension, Host
+from cora.ports.plugin import Tool, ValidationRule
 
 REFUSAL = "The test plugin refused that."
 
@@ -40,13 +41,30 @@ def make_plugin(
     instructions: str = "You are a test plugin.",
     tools: tuple[Tool, ...] | None = None,
     validation_rules: tuple[ValidationRule, ...] = (),
-) -> Plugin:
-    """`tools=None` asks for the three default tools; `tools=()` for none."""
-    if tools is None:
-        tools = (make_tool("one"), make_tool("two"), make_tool("three"))
-    return Plugin(
-        name=name,
-        instructions=instructions,
-        tools=tools,
-        validation_rules=validation_rules,
+    module: str = "fixture_plugins.valid",
+) -> Extension:
+    """One plugin as a test wants it: `tools=None` asks for the three default tools,
+    `tools=()` for none. `name` is what the module is called rather than a field, so a
+    heading in the brief still says which plugin wrote a section."""
+    offered = (
+        (make_tool("one"), make_tool("two"), make_tool("three"))
+        if tools is None
+        else tools
+    )
+
+    def extend(cora: Host) -> None:
+        if instructions.strip():
+            cora.register_instructions(instructions)
+        for tool in offered:
+            cora.register_tool(
+                name=tool.name,
+                description=tool.description,
+                parameter_schema=tool.parameter_schema,
+                run=tool.run,
+            )
+        for rule in validation_rules:
+            cora.register_rule(rule)
+
+    return Extension(
+        module=module if name == "test" else f"fixture_plugins.{name}", extend=extend
     )

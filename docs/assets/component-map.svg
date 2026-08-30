@@ -199,9 +199,9 @@
   <rect x="691.645" y="851" width="10" height="10" class="socket-port"/>
   <path d="M 696.645 856 L 696.645 988 L 886.77 988" class="wire"/>
   <path d="M 897.77 977 A 11 11 0 0 0 897.77 999" class="socket"/>
-  <text x="766.77" y="962" class="stereotype" text-anchor="start">cora.ports.plugin</text>
-  <text x="766.77" y="978" class="port" text-anchor="start">Plugin</text>
-  <text x="820.01" y="978" class="multiplicity" text-anchor="start">[0..*]</text>
+  <text x="766.77" y="962" class="stereotype" text-anchor="start">cora.ports.host</text>
+  <text x="766.77" y="978" class="port" text-anchor="start">Extension</text>
+  <text x="842.63" y="978" class="multiplicity" text-anchor="start">[0..*]</text>
   <path d="M 897.77 988 L 1060.77 942" class="wire"/>
   <circle cx="1067.77" cy="942" r="7" class="ball"/>
   <path d="M 1074.77 942 L 1097.77 942" class="wire"/>

@@ -1,6 +1,6 @@
 from cora.plugins.fitness.safety import MedicalSafetyRule
 from cora.plugins.fitness.tools import TOOLS
-from cora.ports.plugin import Plugin
+from cora.ports.host import Host
 
 INSTRUCTIONS = """\
 Answer training and nutrition questions as a knowledgeable, evidence-based coach:
@@ -17,9 +17,15 @@ clearly, practically, and from the user's own documents.
   plan with their doctor. Do not refuse the question, and do not treat the condition.
 """
 
-PLUGIN = Plugin(
-    name="Fitness coaching",
-    instructions=INSTRUCTIONS,
-    tools=TOOLS,
-    validation_rules=(MedicalSafetyRule(),),
-)
+
+def extend(cora: Host) -> None:
+    """Coaching: what to answer as, the calculators to answer with, and one refusal."""
+    cora.register_instructions(INSTRUCTIONS)
+    for tool in TOOLS:
+        cora.register_tool(
+            name=tool.name,
+            description=tool.description,
+            parameter_schema=tool.parameter_schema,
+            run=tool.run,
+        )
+    cora.register_rule(MedicalSafetyRule())

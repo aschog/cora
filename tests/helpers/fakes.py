@@ -12,9 +12,17 @@ from cora.domain.errors import (
     DocumentStoreError,
     MemoryStoreError,
 )
-from cora.ports.chat_model import Message, ModelReply, Piece, TextSink, unheard
+from cora.engine.host import PluginHost
+from cora.ports.chat_model import (
+    ChatModel,
+    Message,
+    ModelReply,
+    Piece,
+    TextSink,
+    unheard,
+)
 from cora.ports.loading import Loaders
-from cora.ports.memory import Fact
+from cora.ports.memory import Fact, Memory
 from cora.ports.plugin import Tool
 from cora.ports.retrieval import RetrievedChunk
 
@@ -340,3 +348,25 @@ class UnopenableSessions:
 
     def sessions(self) -> tuple[Session, ...]:
         return self.listing.sessions()
+
+
+def host_for(
+    module: str = "fixture_plugins.valid",
+    *,
+    documents: FakeContextSource | None = None,
+    model: ChatModel | None = None,
+    memory: Memory | None = None,
+    settings: dict[str, str] | None = None,
+) -> PluginHost:
+    """A host a test can hand a plugin, with fakes behind cora's own parts.
+
+    The real host rather than a stand-in for it: what a plugin registers, and what it
+    is refused for registering, are the host's own rules.
+    """
+    return PluginHost(
+        module=module,
+        documents=documents or FakeContextSource(),
+        model=model or ScriptedChatModel([ModelReply(text="ok")]),
+        memory=memory,
+        settings=settings or {},
+    )

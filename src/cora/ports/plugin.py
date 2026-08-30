@@ -1,4 +1,4 @@
-"""What a plugin contributes, and the shape of a tool call from end to end."""
+"""What a tool is, and the shape of a tool call from end to end."""
 
 import json
 from collections.abc import Callable
@@ -82,23 +82,3 @@ class ValidationRule(Protocol):
                 user, so it says what to do about it.
         """
         ...
-
-
-@dataclass(frozen=True, kw_only=True)
-class Plugin:
-    """One scope's contribution: what cora should know, and what it can do.
-
-    Everything but `name` is optional — a plugin contributes whatever it has, and a
-    bundle of rules alone is as legitimate as a bundle of tools. Keyword-only so that
-    declaration order is not API: a fifth kind of contribution is then a field with a
-    default, not a break.
-
-    `name` heads the plugin's section of the brief. `instructions` is that section —
-    cora writes the preamble around it, so a plugin states its own business and no
-    two plugins argue about what cora is.
-    """
-
-    name: str
-    instructions: str = ""
-    tools: tuple[Tool, ...] = ()
-    validation_rules: tuple[ValidationRule, ...] = ()

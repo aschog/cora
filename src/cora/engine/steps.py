@@ -17,6 +17,7 @@ from cora.domain.trace import (
 from cora.domain.transcript import prompt_from
 from cora.engine.ask_tool import ASK_TOOL_NAME, decision_from
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
+from cora.engine.nesting import collecting
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import Aside, ChatModel, Message, TextSink, unheard
 from cora.ports.graph import ASK, DONE, TOOLS, Step
@@ -294,13 +295,16 @@ class ToolStep:
 
         A call already settled is not run again: an `ask_user` the round asked for was
         answered by `AskStep`, and a resumed turn arrives here with that one spoken for.
+        A tool that ran work of its own — a plugin delegating to the model — reports it
+        while the call runs, and it is kept under that call rather than beside it.
         """
         known = tuple(state.get("citations", ()))
         messages: list[Message] = []
         trace: list[TraceStep] = []
         added: list[Citation] = []
         for call in _requested_calls(state):
-            result = self.tool_runtime.execute(call)
+            with collecting() as inside:
+                result = self.tool_runtime.execute(call)
             citable = result.payload if isinstance(result.payload, Citable) else None
             outcome = result.render()
             if citable is not None:
@@ -316,6 +320,7 @@ class ToolStep:
                     outcome=outcome,
                     detail=result.render(),
                     failed=result.error is not None,
+                    steps=tuple(inside),
                 )
             )
         return {"messages": messages, "trace": trace, "citations": added}

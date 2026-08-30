@@ -4,11 +4,10 @@ import and which therefore may not depend on the composition root."""
 from typing import Any
 
 from cora.app.assembly import App, assemble
-from cora.engine.plugin_set import PluginSet
 from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.documents import Documents
 from cora.ports.embedding import Embedder
-from cora.ports.plugin import Plugin
+from cora.ports.host import Extension
 from cora.ports.retrieval import Retriever
 from fakes import FakeDocuments, FakeEmbedder, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin
@@ -22,14 +21,14 @@ def assembled(
     embedder: Embedder | None = None,
     retriever: Retriever | None = None,
     documents: Documents | None = None,
-    plugin: Plugin | None = None,
-    plugins: PluginSet | None = None,
+    plugin: Extension | None = None,
+    plugins: tuple[Extension, ...] | None = None,
     **overrides: Any,
 ) -> App:
-    """`plugin` is the one-plugin shorthand most tests want; `plugins` takes a whole
-    composed set, and `PluginSet()` asks for bare cora."""
+    """`plugin` is the one-plugin shorthand most tests want. `plugins` takes the whole
+    list, and an empty one asks for bare cora."""
     if plugins is None:
-        plugins = PluginSet(((FIXTURE_MODULE, plugin or make_plugin()),))
+        plugins = (plugin or make_plugin(),)
     return assemble(
         chat_model=chat_model or ScriptedChatModel([ModelReply(text="ok")]),
         embedder=embedder or FakeEmbedder(),

@@ -1,20 +1,16 @@
 import pytest
 
 from cora.domain.errors import ConfigurationError, InputRejectedError
-from cora.engine.plugin_set import CORA_RULES, RESERVED_TOOL_NAMES, PluginSet
-from fixture_plugins import make_plugin, make_tool
+from cora.engine.plugin_set import CORA_RULES, RESERVED_TOOL_NAMES, Registry
+from cora.ports.host import INSTRUCTIONS, RULE, TOOL, Registration
+from fixture_plugins import make_tool
 
 FITNESS = "cora.plugins.fitness"
 SECURITY = "cora.plugins.security"
 
 
-def test_a_composed_set_names_no_domain() -> None:
-    coach = make_plugin(name="Coach", tools=())
-    guard = make_plugin(name="Guard", tools=())
-
-    composed = PluginSet(((FITNESS, coach), (SECURITY, guard)))
-
-    assert not hasattr(composed, "scope")
+def _registered(module: str, kind: str, value: object) -> Registration:
+    return Registration(module=module, kind=kind, value=value)
 
 
 class _Refuses:
@@ -25,41 +21,56 @@ class _Refuses:
         raise InputRejectedError(self.message)
 
 
-def test_an_empty_set_offers_no_tools_and_only_coras_rules() -> None:
-    empty = PluginSet()
+def test_an_empty_registry_offers_no_tools_and_only_coras_rules() -> None:
+    empty = Registry()
 
     assert empty.tools == ()
     assert empty.rules == CORA_RULES
+    assert empty.modules == ()
 
 
-def test_the_offered_tools_run_in_config_order() -> None:
-    first = make_plugin(tools=(make_tool("bmi"),))
-    second = make_plugin(tools=(make_tool("tdee"), make_tool("macros")))
+def test_the_registered_tools_are_offered_in_registration_order() -> None:
+    registry = Registry(
+        (
+            _registered(FITNESS, TOOL, make_tool("bmi")),
+            _registered(SECURITY, TOOL, make_tool("tdee")),
+            _registered(SECURITY, TOOL, make_tool("macros")),
+        )
+    )
 
-    composed = PluginSet(((FITNESS, first), (SECURITY, second)))
-
-    assert [tool.name for tool in composed.tools] == ["bmi", "tdee", "macros"]
+    assert [tool.name for tool in registry.tools] == ["bmi", "tdee", "macros"]
 
 
-def test_coras_rules_run_ahead_of_every_plugins_in_config_order() -> None:
+def test_coras_rules_run_ahead_of_every_registered_one_in_order() -> None:
     guard, domain = _Refuses("first"), _Refuses("second")
-    first = make_plugin(tools=(), validation_rules=(guard,))
-    second = make_plugin(tools=(), validation_rules=(domain,))
 
-    composed = PluginSet(((SECURITY, first), (FITNESS, second)))
+    registry = Registry(
+        (_registered(SECURITY, RULE, guard), _registered(FITNESS, RULE, domain))
+    )
 
-    assert composed.rules == (*CORA_RULES, guard, domain)
+    assert registry.rules == (*CORA_RULES, guard, domain)
 
 
-def test_two_plugins_offering_one_tool_name_is_a_config_error() -> None:
+def test_a_module_that_registered_anything_is_named_once() -> None:
+    """What the log line says was loaded: the modules, in the order they first
+    registered, however many things each of them registered."""
+    registry = Registry(
+        (
+            _registered(FITNESS, TOOL, make_tool("bmi")),
+            _registered(FITNESS, RULE, _Refuses("no")),
+            _registered(SECURITY, RULE, _Refuses("no")),
+        )
+    )
+
+    assert registry.modules == (FITNESS, SECURITY)
+
+
+def test_two_plugins_registering_one_tool_name_is_a_config_error() -> None:
     clash = make_tool("bmi")
 
     with pytest.raises(ConfigurationError) as excinfo:
-        PluginSet(
-            (
-                (FITNESS, make_plugin(tools=(clash,))),
-                (SECURITY, make_plugin(tools=(clash,))),
-            )
+        Registry(
+            (_registered(FITNESS, TOOL, clash), _registered(SECURITY, TOOL, clash))
         )
 
     message = excinfo.value.user_message
@@ -71,34 +82,28 @@ def test_two_plugins_offering_one_tool_name_is_a_config_error() -> None:
 @pytest.mark.parametrize("reserved", sorted(RESERVED_TOOL_NAMES))
 def test_a_plugin_taking_a_name_of_coras_own_is_a_config_error(reserved: str) -> None:
     with pytest.raises(ConfigurationError) as excinfo:
-        PluginSet(((FITNESS, make_plugin(tools=(make_tool(reserved),))),))
+        Registry((_registered(FITNESS, TOOL, make_tool(reserved)),))
 
     assert FITNESS in excinfo.value.user_message
     assert reserved in excinfo.value.user_message
 
 
-def test_one_module_listed_twice_is_a_config_error() -> None:
-    """Otherwise the tool-name collision reads as a plugin colliding with itself, and
-    the user is told nothing about what they actually typed."""
-    with pytest.raises(ConfigurationError) as excinfo:
-        PluginSet(((FITNESS, make_plugin()), (FITNESS, make_plugin())))
+def test_two_plugins_are_two_sections_headed_by_their_modules() -> None:
+    """A section says which plugin wrote it, and cora heads it rather than the plugin:
+    no plugin can put another's name on its own instructions."""
+    registry = Registry(
+        (
+            _registered(FITNESS, INSTRUCTIONS, "Be a coach."),
+            _registered(SECURITY, INSTRUCTIONS, "Be careful."),
+        )
+    )
 
-    assert FITNESS in excinfo.value.user_message
-    assert "twice" in excinfo.value.user_message
+    written = registry.instructions
 
-
-def test_two_plugins_are_two_sections_under_their_names_in_config_order() -> None:
-    coach = make_plugin(name="Fitness coaching", instructions="Be a coach.", tools=())
-    guard = make_plugin(name="Safety", instructions="Be careful.", tools=())
-
-    composed = PluginSet(((FITNESS, coach), (SECURITY, guard))).instructions
-
-    assert composed.index("Fitness coaching") < composed.index("Safety")
-    assert "Be a coach." in composed
-    assert "Be careful." in composed
+    assert written.index("Fitness") < written.index("Security")
+    assert "Be a coach." in written
+    assert "Be careful." in written
 
 
-def test_a_plugin_with_nothing_to_say_adds_no_section() -> None:
-    silent = make_plugin(name="Silent", instructions="", tools=())
-
-    assert PluginSet(((SECURITY, silent),)).instructions == ""
+def test_a_plugin_that_registered_nothing_to_say_adds_no_section() -> None:
+    assert Registry((_registered(SECURITY, INSTRUCTIONS, "  "),)).instructions == ""
