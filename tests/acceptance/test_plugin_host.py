@@ -2,9 +2,10 @@
 
 import pytest
 
-from app_builder import assembled
+from app_builder import assembled, indexed
 from cora.domain.errors import InputRejectedError
 from cora.engine.plugin_registry import load_plugins
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import ToolCall
 from fakes import ScriptedChatModel
@@ -43,3 +44,72 @@ def test_a_plugin_registers_a_tool_an_instruction_and_a_rule() -> None:
         app.agent.answer("SAY HELLO", THREAD)
 
     assert shouted.value.user_message == REFUSAL
+
+
+SUB_AGENT = "fixture_plugins.sub_agent"
+NOTES = ("notes.md", b"squats stall on sleep, not on volume")
+
+
+def _calling_research(question: str) -> ModelReply:
+    return ModelReply(
+        tool_calls=(
+            ToolCall(name="research", arguments={"question": question}, call_id="c1"),
+        )
+    )
+
+
+def _searching(query: str) -> ModelReply:
+    return ModelReply(
+        tool_calls=(
+            ToolCall(name=SEARCH_TOOL_NAME, arguments={"query": query}, call_id="s1"),
+        )
+    )
+
+
+@pytest.mark.integration
+def test_a_plugins_tool_runs_a_turn_of_its_own_under_the_call_that_ran_it() -> None:
+    """A sub-agent, written as a plugin and allowed by nothing in cora: the tool the
+    model called ran a loop with the model itself, and what that loop did hangs under
+    the call rather than beside it."""
+    model = ScriptedChatModel(
+        [
+            _calling_research("why do squats stall?"),
+            _searching("squats"),
+            ModelReply(text="Sleep, not volume."),
+            ModelReply(text="Your notes say sleep, not volume."),
+        ]
+    )
+    app = indexed(assembled(chat_model=model, plugins=load_plugins([SUB_AGENT])), NOTES)
+
+    answered = app.agent.answer("Why do my squats stall?", THREAD)
+
+    assert answered.answer == "Your notes say sleep, not volume."
+    [call] = [step for step in answered.trace if step.summary.startswith("research(")]
+    assert [step.summary for step in call.steps] == [
+        f"Decided to call {SEARCH_TOOL_NAME}",
+        f'{SEARCH_TOOL_NAME}(query="squats") → 1 passage from notes.md',
+        "Decided no tool was needed",
+    ], "the loop's steps are the call's children, in the order it took them"
+    assert all(not step.steps for step in call.steps), "and one level is enough here"
+
+
+@pytest.mark.integration
+def test_a_delegated_loop_that_overspends_costs_the_call_and_not_the_turn() -> None:
+    """The budget a plugin's loop spends is its own: a loop that will not finish fails
+    its call, the model is told so, and the turn answers anyway."""
+    model = ScriptedChatModel(
+        [
+            _calling_research("why do squats stall?"),
+            _searching("squats"),
+            _searching("squats again"),
+            _searching("squats once more"),
+            ModelReply(text="I could not look that up, but sleep matters."),
+        ]
+    )
+    app = indexed(assembled(chat_model=model, plugins=load_plugins([SUB_AGENT])), NOTES)
+
+    answered = app.agent.answer("Why do my squats stall?", THREAD)
+
+    assert answered.answer == "I could not look that up, but sleep matters."
+    [call] = [step for step in answered.trace if step.summary.startswith("research(")]
+    assert call.failed, "the call carries the loop's give-up"

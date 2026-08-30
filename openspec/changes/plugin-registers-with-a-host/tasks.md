@@ -34,18 +34,18 @@ it.
       reason
 - [x] 4.3 Write a test that shows a tool name cora offers itself refused by name
 - [x] 4.4 Write a test that shows one name registered by two plugins refused, naming both
-- [ ] 4.5 Write a test that shows a registration refused before any turn runs
+- [x] 4.5 Write a test that shows a registration refused before any turn runs
 
 ## 5. A tool that runs a turn of its own
 
-- [ ] 5.1 Write a test that shows a fixture plugin's tool running a bounded loop with the
+- [x] 5.1 Write a test that shows a fixture plugin's tool running a bounded loop with the
       model
-- [ ] 5.2 Write a test that shows that loop's steps in the trace as children of the call
-- [ ] 5.3 Write a test that shows the loop offered only tools that read
-- [ ] 5.4 Write a test that shows the loop's budget is its own, and the turn's is untouched
-- [ ] 5.5 Write a test that shows a nested step surviving a checkpoint and the conversation
+- [x] 5.2 Write a test that shows that loop's steps in the trace as children of the call
+- [x] 5.3 Write a test that shows the loop offered only tools that read
+- [x] 5.4 Write a test that shows the loop's budget is its own, and the turn's is untouched
+- [x] 5.5 Write a test that shows a nested step surviving a checkpoint and the conversation
       store
-- [ ] 5.6 Write a guard that shows the sub-agent fixture needs nothing under `src/cora/`
+- [x] 5.6 Write a guard that shows the sub-agent fixture needs nothing under `src/cora/`
       changed
 
 ## 6. The plugins cora ships
@@ -53,8 +53,8 @@ it.
 - [x] 6.1 Write a test that shows the fitness plugin registering its tools, instructions
       and rule
 - [x] 6.2 Write a test that shows the security plugin registering its rule alone
-- [ ] 6.3 Write a guard that shows no module in the repository defines a `PLUGIN` record
+- [x] 6.3 Write a guard that shows no module in the repository defines a `PLUGIN` record
 
 ## 7. The marker comes off
 
-- [ ] 7.1 Drop 1.1's `xfail` marker and watch the outer test pass
+- [x] 7.1 Drop 1.1's `xfail` marker and watch the outer test pass

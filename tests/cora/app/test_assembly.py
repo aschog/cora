@@ -17,7 +17,9 @@ from cora.domain.chat_result import ChatResult
 from cora.domain.conversation import Turn
 from cora.domain.decision import TurnPaused
 from cora.domain.errors import (
+    ConfigurationError,
     InputRejectedError,
+    PluginLoadError,
     ToolLoopLimitError,
 )
 from cora.domain.trace import ToolUse
@@ -834,3 +836,24 @@ def test_nothing_is_written_while_the_turn_is_still_waiting() -> None:
 
     assert memory.writes == 0
     assert memory.recall() == ()
+
+
+def test_a_plugin_that_raises_while_registering_is_refused_by_name() -> None:
+    """Registering happens as the app is put together, so a plugin that falls over is
+    a refusal at startup rather than a turn that fails once someone has asked."""
+    with pytest.raises(PluginLoadError) as refused:
+        assembled(plugins=load_plugins(["fixture_plugins.raises_while_registering"]))
+
+    assert "fixture_plugins.raises_while_registering" in refused.value.user_message
+    assert "while registering" in refused.value.user_message
+
+
+def test_what_a_plugin_registers_is_refused_before_a_turn_can_run() -> None:
+    """A tool cora already offers is a collision the deployment has to fix, and it is
+    found while assembling — nothing is answerable until it is."""
+    clashing = make_plugin(tools=(make_tool(SEARCH_TOOL_NAME),))
+
+    with pytest.raises(ConfigurationError) as refused:
+        assembled(plugins=(clashing,))
+
+    assert SEARCH_TOOL_NAME in refused.value.user_message

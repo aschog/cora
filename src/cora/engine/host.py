@@ -7,6 +7,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator, SchemaError
 
+from cora.domain.citations import Citable
 from cora.domain.errors import PluginLoadError, ToolLoopLimitError
 from cora.domain.trace import ModelDecision, ToolUse
 from cora.engine.nesting import took
@@ -16,7 +17,7 @@ from cora.ports.chat_model import ChatModel, Message
 from cora.ports.context_source import ContextSource
 from cora.ports.host import INSTRUCTIONS, RULE, TOOL, Registration
 from cora.ports.memory import Memory
-from cora.ports.plugin import Tool, ValidationRule
+from cora.ports.plugin import Tool, ToolResult, ValidationRule
 
 DELEGATE_BRIEF = (
     "You are answering one question on behalf of an assistant, using the tools you are "
@@ -134,21 +135,18 @@ class PluginHost:
             )
             for call in reply.tool_calls:
                 result = runtime.execute(call)
+                read, outcome = _read(result)
                 took(
                     ToolUse(
                         name=call.name,
                         arguments=call.arguments,
-                        outcome=result.render(),
-                        detail=result.render(),
+                        outcome=outcome,
+                        detail=read,
                         failed=result.error is not None,
                     )
                 )
                 said.append(
-                    Message(
-                        role="tool",
-                        content=result.render(),
-                        tool_call_id=result.call_id,
-                    )
+                    Message(role="tool", content=read, tool_call_id=result.call_id)
                 )
         raise ToolLoopLimitError
 
@@ -162,3 +160,15 @@ class PluginHost:
 
     def _record(self, kind: str, value: Any) -> None:
         self.registered.append(Registration(module=self.module, kind=kind, value=value))
+
+
+def _read(result: ToolResult) -> tuple[str, str]:
+    """What the loop is told, and the one line its step is shown as.
+
+    Passages reach a delegated loop as text rather than as numbered citations: the
+    numbers belong to the turn, and a loop that reads is not what a turn cites. Story 9
+    is where a delegated source earns a number of its own.
+    """
+    if not isinstance(result.payload, Citable):
+        return result.render(), result.render()
+    return result.payload.register(()).text, result.payload.summary

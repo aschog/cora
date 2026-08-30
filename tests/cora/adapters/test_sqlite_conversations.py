@@ -160,3 +160,29 @@ def test_a_kind_of_step_the_store_never_heard_of_still_round_trips(
     store.record(THREAD, turn)
 
     assert store.turns(THREAD) == (turn,)
+
+
+def test_a_step_that_carries_children_keeps_them(tmp_path: Path) -> None:
+    """What a plugin's tool did inside a call is part of that call, so a conversation
+    reopened shows the same tree it showed when the turn was answered."""
+    store = _store(tmp_path)
+    nested = Turn(
+        question=ASKED,
+        result=ChatResult(
+            answer="Sleep, not volume.",
+            trace=(
+                ToolUse(
+                    name="research",
+                    arguments={"question": "why?"},
+                    outcome="answered",
+                    steps=(ModelDecision(tools=("search_documents",)),),
+                ),
+            ),
+        ),
+    )
+
+    store.record(THREAD, nested)
+
+    [kept] = store.turns(THREAD)
+    [call] = kept.result.trace
+    assert [step.summary for step in call.steps] == ["Decided to call search_documents"]
