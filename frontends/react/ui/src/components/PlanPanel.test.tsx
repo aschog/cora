@@ -45,3 +45,26 @@ test('the steps are numbered as the turn took them', () => {
   const numbers = container.querySelectorAll('.plan-step-n')
   expect([...numbers].map((node) => node.textContent)).toEqual(['1', '2'])
 })
+
+test('a detail the line above already reads out is not drawn twice', () => {
+  const call: Step = { ...step('add(a=1, b=2) → 3'), detail: '3' }
+
+  const { container } = render(<PlanPanel steps={[call]} />)
+  fireEvent.click(screen.getByText(call.summary))
+
+  expect(container.querySelector('.plan-result')).toBeNull()
+})
+
+test('a detail that says more than the line above is drawn', () => {
+  const call: Step = {
+    ...step('search_documents(query="squats") → 1 passage from notes.md'),
+    detail: '[1] notes.md: squats stall on sleep',
+  }
+
+  const { container } = render(<PlanPanel steps={[call]} />)
+  fireEvent.click(screen.getByText(call.summary))
+
+  expect(container.querySelector('.plan-result')?.textContent).toBe(
+    '[1] notes.md: squats stall on sleep',
+  )
+})
