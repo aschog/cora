@@ -142,3 +142,28 @@ def test_a_delegated_loop_cites_no_number_the_turn_did_not_hand_out() -> None:
     assert "[1]" not in call.detail, (
         "what the loop answered carries no number of its own"
     )
+
+
+@pytest.mark.integration
+def test_what_a_delegated_loop_answered_reaches_the_turn_labelled() -> None:
+    """The hop the label has to survive. A sub-agent's answer is prose, not passages,
+    but it was built out of the user's documents — so an instruction planted in one
+    reaches the turn's own model as untrusted material rather than as a tool's word."""
+    model = ScriptedChatModel(
+        [
+            _calling_research("why do squats stall?"),
+            _searching("squats"),
+            ModelReply(text="Sleep, not volume."),
+            ModelReply(text="Your notes say sleep."),
+        ]
+    )
+    app = indexed(assembled(chat_model=model, plugins=load_plugins([SUB_AGENT])), NOTES)
+
+    app.agent.answer("Why do my squats stall?", THREAD)
+
+    briefed = model.last_messages
+    assert briefed is not None
+    [told] = [message for message in briefed if message.role == "tool"]
+    assert "untrusted" in told.content.lower()
+    assert "instructions" in told.content.lower()
+    assert told.content.endswith("Sleep, not volume.")

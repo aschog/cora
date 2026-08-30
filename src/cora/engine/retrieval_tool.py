@@ -22,6 +22,15 @@ SEARCH_TOOL_DESCRIPTION = (
     "numbered so the answer can cite it. Call this whenever the answer should "
     "rest on what the documents say."
 )
+UNCITED_SEARCH_DESCRIPTION = (
+    "Search the user's own documents and return the passages that match, each headed "
+    "by the document it came from. Call this whenever the answer should rest on what "
+    "the documents say, and name the document rather than numbering it."
+)
+"""The same tool as a reader that hands out no numbers is offered it. A delegated loop
+is shown passages by document, so a description promising numbers would promise it
+something it never receives — and the brief telling it not to cite would then be
+arguing with the tool in front of it."""
 
 
 @dataclass(frozen=True)
@@ -38,11 +47,18 @@ class DocumentSearch:
         )
 
 
-def search_tool(context_source: ContextSource, top_k: int) -> Tool:
-    """The `search_documents` tool as the model is offered it."""
+def search_tool(
+    context_source: ContextSource, top_k: int, *, cites: bool = True
+) -> Tool:
+    """The `search_documents` tool as the model is offered it.
+
+    Args:
+        cites: Whether this reader may hand out numbers. A reader that may not is told
+            so by the description, because that is where it looks before calling.
+    """
     return Tool(
         name=SEARCH_TOOL_NAME,
-        description=SEARCH_TOOL_DESCRIPTION,
+        description=SEARCH_TOOL_DESCRIPTION if cites else UNCITED_SEARCH_DESCRIPTION,
         parameter_schema={
             "type": "object",
             "properties": {

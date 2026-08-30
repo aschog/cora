@@ -365,7 +365,7 @@ def host_for(
     """
     return PluginHost(
         module=module,
-        documents=documents or FakeContextSource(),
+        index=documents or FakeContextSource(),
         model=model or ScriptedChatModel([ModelReply(text="ok")]),
         memory=memory,
         settings=settings or {},

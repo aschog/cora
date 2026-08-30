@@ -10,7 +10,9 @@ from cora.app.config import (
     DEFAULT_MAX_TOOL_ROUNDS,
     DEFAULT_TOP_K,
     Config,
-    plugin_settings,
+)
+from cora.app.config import (
+    plugin_settings as read_plugin_settings,
 )
 from cora.app.log_config import enable_debug_logs
 from cora.domain.errors import PluginLoadError
@@ -96,8 +98,8 @@ def assemble(
         documents: Where the text a citation opens onto is kept.
         plugins: The plugin modules cora was asked for, already imported. Each is
             handed a host of its own and registers what it has.
-        plugin_settings: What each plugin module may read as its own settings, keyed by
-            module path. A deployment fills this from the environment.
+        plugin_settings: What each plugin module may read as its own settings, keyed
+            by module path. A deployment fills this from the environment.
         memory: What cora keeps about the user. Without it, no `remember` tool is
             offered at all.
         conversations: Where turns are recorded. Without it, a turn is answered and
@@ -115,6 +117,7 @@ def assemble(
     knowledge_base = KnowledgeBase(
         embedder=embedder, retriever=retriever, loaders=LOADERS, documents=documents
     )
+    _announce(plugins)
     registry = _registered(
         plugins,
         documents=knowledge_base,
@@ -123,7 +126,7 @@ def assemble(
         settings=plugin_settings or {},
         top_k=top_k,
     )
-    _announce(plugins, registry)
+    _warn_unscreened(registry)
     tools = _offered_tools(registry, knowledge_base, top_k, memory)
     runner = graph(
         before=(
@@ -156,18 +159,26 @@ def assemble(
     )
 
 
-def _announce(plugins: tuple[Extension, ...], registry: Registry) -> None:
-    """Say in the log what loaded, and warn when nothing screens the user's input.
+def _announce(plugins: tuple[Extension, ...]) -> None:
+    """Say in the log what loaded, before any of it is asked to register.
+
+    Ahead of registering rather than after it, so a plugin that fails to register is
+    read against the list it was named in — an operator debugging a refusal is owed
+    what else was loaded. What loaded is what the deployment named, not what
+    registered: a plugin that registered nothing is the one they most need to see.
+    """
+    if plugins:
+        log.info("plugins loaded: %s", ", ".join(plugin.module for plugin in plugins))
+
+
+def _warn_unscreened(registry: Registry) -> None:
+    """Warn when nothing a plugin registered screens the user's input.
 
     A screened app and an unscreened one are otherwise indistinguishable once running,
     so an unscreened one is a warning: it is the level that reaches the user without
     `CORA_DEBUG`, where the `cora` logger carries no handler. A plugin may register
-    only tools, so what is announced is the screen, not the count. What loaded is what
-    the deployment named, not what registered: a plugin that registered nothing is the
-    one an operator most needs to see.
+    only tools, so what is announced is the screen, not the count.
     """
-    if plugins:
-        log.info("plugins loaded: %s", ", ".join(plugin.module for plugin in plugins))
     if len(registry.rules) == len(CORA_RULES):
         log.warning("no plugin screens what the user types")
 
@@ -195,7 +206,7 @@ def _registered(
     for plugin in plugins:
         host = PluginHost(
             module=plugin.module,
-            documents=documents,
+            index=documents,
             model=model,
             memory=memory,
             settings=settings.get(plugin.module, {}),
@@ -270,7 +281,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         retriever=retriever,
         documents=SqliteDocuments.at(config.documents_path),
         plugins=load_plugins(config.plugin_modules),
-        plugin_settings=plugin_settings(config.plugin_modules),
+        plugin_settings=read_plugin_settings(config.plugin_modules),
         memory=SqliteStoreMemory.at(config.memory_path),
         conversations=SqliteConversations.at(config.conversations_path),
         graph=partial(langgraph_for, checkpoints_at=config.conversations_path),

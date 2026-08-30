@@ -62,7 +62,12 @@ class Host(Protocol):
 
     @property
     def documents(self) -> ContextSource:
-        """What the user uploaded, searchable as cora's own tool searches it."""
+        """What the user uploaded, searchable as cora's own tool searches it.
+
+        The index the uploads went into, not a copy of it. Searching it says so: what a
+        plugin answers a call with after reading a passage reaches the model behind the
+        same untrusted label the passage itself would have.
+        """
         ...
 
     @property
@@ -91,7 +96,8 @@ class Host(Protocol):
         The loop is offered the tools given plus cora's document search, and none of
         cora's own tools that write or stop the turn: an effect and a stop-to-ask
         belong in the turn around it, where the gate is. Its steps are reported under
-        the call that ran it, and what it answers carries no citation of its own.
+        the call that ran it, and what it answers carries no citation of its own — and
+        reaches the turn labelled untrusted, because the documents went into it.
 
         Args:
             task: What the loop is being asked to do, as its first message.
@@ -100,7 +106,9 @@ class Host(Protocol):
                 ignored in a loop delegated from another.
 
         Raises:
-            ToolLoopLimitError: The loop spent its rounds without reaching an answer.
+            ToolRefusal: The loop spent its rounds without reaching an answer, or a
+                tool passed in takes the name cora's own search has. Either way the
+                call fails and the turn around it answers anyway.
             LlmError: The model gave back nothing usable.
         """
         ...
