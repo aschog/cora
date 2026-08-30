@@ -26,7 +26,7 @@ def test_an_empty_registry_offers_no_tools_and_only_coras_rules() -> None:
 
     assert empty.tools == ()
     assert empty.rules == CORA_RULES
-    assert empty.modules == ()
+    assert empty.instructions == ""
 
 
 def test_the_registered_tools_are_offered_in_registration_order() -> None:
@@ -49,20 +49,6 @@ def test_coras_rules_run_ahead_of_every_registered_one_in_order() -> None:
     )
 
     assert registry.rules == (*CORA_RULES, guard, domain)
-
-
-def test_a_module_that_registered_anything_is_named_once() -> None:
-    """What the log line says was loaded: the modules, in the order they first
-    registered, however many things each of them registered."""
-    registry = Registry(
-        (
-            _registered(FITNESS, TOOL, make_tool("bmi")),
-            _registered(FITNESS, RULE, _Refuses("no")),
-            _registered(SECURITY, RULE, _Refuses("no")),
-        )
-    )
-
-    assert registry.modules == (FITNESS, SECURITY)
 
 
 def test_two_plugins_registering_one_tool_name_is_a_config_error() -> None:

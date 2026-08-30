@@ -905,3 +905,36 @@ def test_a_plugin_that_registers_nothing_is_still_announced(
 
     logged = [record.getMessage() for record in caplog.records]
     assert "plugins loaded: fixture_plugins.registers_nothing" in logged
+
+
+def test_a_plugin_of_rules_alone_assembles_and_screens() -> None:
+    """A plugin brings what it has. The screen that ships with cora registers a rule and
+    nothing else, so refusing that shape would refuse the plugin a deployment is most
+    likely to load beside a domain one."""
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    app = assembled(
+        chat_model=model, plugins=load_plugins(["fixture_plugins.rules_only"])
+    )
+
+    with pytest.raises(InputRejectedError):
+        app.agent.answer("anything at all", "t1")
+
+    assert model.last_tools is None, "the rule refused before a round was asked for"
+
+
+def test_a_plugin_of_tools_alone_assembles_and_says_nothing_about_cora() -> None:
+    """The other half of the same point: a plugin with no rule and no instructions is a
+    plugin, and what it offers reaches the model without a section of the brief."""
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    app = assembled(
+        chat_model=model, plugins=load_plugins(["fixture_plugins.tools_only"])
+    )
+
+    app.agent.answer("anything at all", "t1")
+
+    assert model.last_tools is not None
+    assert [tool.name for tool in model.last_tools][-3:] == ["one", "two", "three"]
+    assert model.last_messages is not None
+    assert "##" not in model.last_messages[0].content, (
+        "a plugin with nothing to say gets no heading"
+    )

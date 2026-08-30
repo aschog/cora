@@ -50,15 +50,6 @@ class Registry:
         self._reject_one_name_registered_twice()
 
     @property
-    def modules(self) -> tuple[str, ...]:
-        """Every module that registered anything, in the order it first did."""
-        found: list[str] = []
-        for entry in self.entries:
-            if entry.module not in found:
-                found.append(entry.module)
-        return tuple(found)
-
-    @property
     def tools(self) -> tuple[Tool, ...]:
         """Every tool registered, in the order it was registered."""
         return tuple(entry.value for entry in self._of(TOOL))

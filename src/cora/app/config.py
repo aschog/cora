@@ -204,8 +204,11 @@ def plugin_settings(
 
     A plugin whose name is the tail of another's prefix can be handed a variable meant
     for that one — `CORA_PLUGIN_FITNESS_UNITS_X` reaches both `fitness` and
-    `fitness_units`. Both are plugins, so nothing of cora's is exposed, and loading
-    already refuses two plugins named alike.
+    `fitness_units`, as `units_x` and as `x`. Loading refuses two plugins named *alike*,
+    which is not this: these are two names, and one is a prefix of the other. Left as it
+    is because both are plugins the same deployment named, so nothing of cora's leaks
+    and nothing crosses a trust boundary — a plugin reads a setting meant for its
+    neighbour, which is the deployment's own business to sort out by renaming.
     """
     environ = os.environ if env is None else env
     found: dict[str, dict[str, str]] = {}
