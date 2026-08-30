@@ -1,8 +1,11 @@
-As someone writing a plugin,\
-I want cora to hand me what it has and let me register what I have,\
-so that what I can contribute is not limited to the fields someone else thought of.
+# plugins Specification
 
-## ADDED Requirements
+## Purpose
+
+How everything cora knows and can do arrives: a module is handed cora, registers what it
+has, and is refused by name when it cannot be had.
+
+## Requirements
 
 ### Requirement: A plugin registers what it has
 
@@ -106,3 +109,27 @@ end alike are each refused.
 - **GIVEN** two modules whose paths end in the same name
 - **WHEN** cora starts
 - **THEN** it refuses, naming both and the name they share
+
+### Requirement: What a plugin read for cora is labelled untrusted
+
+The system SHALL label as untrusted whatever reaches a model out of the user's documents.
+This SHALL hold for the passages a plugin's own loop read, for what that loop answered
+after reading them, and for a plugin that searched the documents itself.
+
+#### Scenario: A delegated loop reads its passages behind the label
+
+- **GIVEN** a loop that searched the user's documents
+- **WHEN** it is shown what the search found
+- **THEN** the passages arrive labelled untrusted, as a turn's own search labels them
+
+#### Scenario: What a loop answered reaches the turn labelled
+
+- **GIVEN** a tool whose loop read the documents and answered in its own words
+- **WHEN** the turn's model is told what that tool returned
+- **THEN** the answer arrives labelled untrusted, though it carries no passage
+
+#### Scenario: A plugin that searches for itself says so
+
+- **GIVEN** a plugin whose tool searches the documents without delegating
+- **WHEN** the turn's model is told what that tool returned
+- **THEN** the answer arrives labelled untrusted
