@@ -385,6 +385,23 @@ def test_stripping_a_number_a_loop_invented_leaves_the_rest_as_written() -> None
     assert answered == "Two points:\nsleep\nvolume"
 
 
+def test_an_answer_that_cited_nothing_comes_back_exactly_as_written() -> None:
+    """Only a line a number came out of is tidied. An indented list, a fenced block or
+    an aligned table is what the loop wrote, and the outer model reads it as written."""
+    written = "- a\n  - a1\n    - a2\n\n```py\ndef f():\n    return 1\n```"
+    model = _answering(ModelReply(text=written))
+
+    assert host_for(MODULE, model=model).delegate("Show me.") == written
+
+
+def test_only_the_line_a_number_left_is_closed_up() -> None:
+    model = _answering(ModelReply(text="  sleep [1] matters\n    and so does food"))
+
+    answered = host_for(MODULE, model=model).delegate("Why?")
+
+    assert answered == "  sleep matters\n    and so does food"
+
+
 def test_a_loop_and_everything_it_delegates_share_one_allowance() -> None:
     """Nesting is not a way to ask again: a loop that delegates again spends the pot the
     outermost one opened, so one tool call costs what the host allows however deep the

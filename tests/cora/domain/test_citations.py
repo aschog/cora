@@ -3,6 +3,7 @@ from dataclasses import replace
 from cora.domain.chunk import Chunk
 from cora.domain.citations import (
     NO_MATCHES,
+    NOTHING_FOUND,
     CitableHits,
     Citation,
     Nothing,
@@ -200,3 +201,24 @@ def test_an_empty_result_is_not_a_pair_of_strings() -> None:
     nothing = Nothing(told="the store is empty", shown="No documents uploaded yet.")
 
     assert nothing != ("the store is empty", "No documents uploaded yet.")
+
+
+def test_a_payload_renders_itself_for_a_reader_that_cannot_cite() -> None:
+    """A delegated loop hands out no numbers, so it is shown the material with its
+    source named and no `[n]` of cora's in front of it."""
+    hits = CitableHits([_hit("plan.md", "Steps:\nwarm up\nsquat")])
+
+    assert hits.unnumbered() == "plan.md: Steps:\nwarm up\nsquat"
+
+
+def test_a_passage_keeps_the_numbers_the_user_wrote_in_it() -> None:
+    """The one that would have bitten: a document whose own steps are numbered `[1]`,
+    `[2]` reaches a delegated loop as the user wrote it. Cora numbers its citations; it
+    does not renumber the user's documents, and it does not take their numbers away."""
+    hits = CitableHits([_hit("plan.md", "Steps:\n[1] warm up\n[2] squat")])
+
+    assert hits.unnumbered() == "plan.md: Steps:\n[1] warm up\n[2] squat"
+
+
+def test_a_payload_with_nothing_found_says_so_to_a_reader_that_cannot_cite() -> None:
+    assert CitableHits([]).unnumbered() == NOTHING_FOUND.told

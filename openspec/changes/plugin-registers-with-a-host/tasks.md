@@ -84,4 +84,7 @@ it.
 - [x] 8.12 Write a test that shows a loop and everything it delegates sharing one
       allowance
 - [x] 8.13 Write a test that shows two modules named alike at the end refused at loading
+- [x] 8.14 Write a test that shows a payload rendering itself for a reader that cannot
+      cite, with the user's own numbering intact
+- [x] 8.15 Write a test that shows an answer that cited nothing coming back as written
 

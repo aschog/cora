@@ -96,7 +96,8 @@ class Host(Protocol):
         Args:
             task: What the loop is being asked to do, as its first message.
             tools: What it may call, on top of searching the documents.
-            rounds: How many rounds of tools it may spend, capped by the host.
+            rounds: How many rounds of tools it may spend, capped by the host and
+                ignored in a loop delegated from another.
 
         Raises:
             ToolLoopLimitError: The loop spent its rounds without reaching an answer.

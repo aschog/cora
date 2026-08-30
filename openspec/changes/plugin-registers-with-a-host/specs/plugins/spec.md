@@ -68,11 +68,20 @@ call that ran it, and SHALL require no change of its own to allow it.
 - **WHEN** the trace of that turn is read
 - **THEN** the loop's steps are children of the call, in the order they were taken
 
+#### Scenario: What a loop read is named rather than numbered
+
+- **GIVEN** a loop that searched the user's documents
+- **WHEN** it answers
+- **THEN** it was shown each passage under its document's name, as the document was
+  written
+- **AND** what it answered carries no citation number of its own
+
 ### Requirement: A plugin cora cannot have is refused by name
 
 The system SHALL refuse a plugin it cannot load, and the refusal SHALL name the module
 and what is wrong with it. A module defining no `extend`, one that raises while
-registering, and one registering a name cora has already taken are each refused.
+registering, one registering a name cora has already taken, and two modules whose names
+end alike are each refused.
 
 #### Scenario: A module that does not register is refused
 
@@ -91,3 +100,9 @@ registering, and one registering a name cora has already taken are each refused.
 - **GIVEN** a module registering a tool under a name cora offers itself
 - **WHEN** cora starts
 - **THEN** it refuses, naming that module and the name it may not take
+
+#### Scenario: Two plugins that cannot be told apart are refused
+
+- **GIVEN** two modules whose paths end in the same name
+- **WHEN** cora starts
+- **THEN** it refuses, naming both and the name they share

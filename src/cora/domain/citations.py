@@ -160,6 +160,16 @@ class Citable(ABC):
         """Render this payload as a numbered block, continuing from `known`."""
         ...
 
+    @abstractmethod
+    def unnumbered(self) -> str:
+        """This material for a reader that hands out no numbers, its source named.
+
+        A delegated loop reads what a search found but cites nothing, so it is shown
+        `document: text` rather than a numbered block — and taking cora's numbers off
+        the block afterwards would take the user's own numbering with them.
+        """
+        ...
+
     @property
     @abstractmethod
     def summary(self) -> str:
@@ -179,6 +189,12 @@ class CitableHits(Citable):
     def register(self, known: tuple[Citation, ...]) -> Context:
         """The hits as a numbered block, or this search's own word for nothing."""
         return build_context_block(self.hits, known, self.nothing)
+
+    def unnumbered(self) -> str:
+        """The hits by document, as they were written, or the word for nothing."""
+        if not self.hits:
+            return self.nothing.told
+        return "\n".join(f"{hit.chunk.source}: {hit.chunk.text}" for hit in self.hits)
 
     @property
     def summary(self) -> str:

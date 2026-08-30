@@ -40,18 +40,21 @@ would make depth a way of asking for more — four levels of five rounds is a th
 model calls from one tool call. The outermost loop opens the pot and everything inside
 it spends the same one, so a tool call costs what the host allows however deep the
 plugin goes."""
-UNNUMBERED = re.compile(rf"^{CITATION_RUN.pattern}\s", re.M)
-"""What a passage's number is taken off with before a delegated loop reads it, leaving
-`document: text`. The numbers are the turn's to hand out, so a loop is not shown one it
-cannot use — it attributes by naming the document, and that prose survives."""
 UNCITED = re.compile(CITATION_RUN.pattern)
 """What a delegated loop's answer is stripped of, should it write a number anyway.
 Stricter than the rule the page draws buttons by: the page leaves a number the turn
 never handed out as plain text, while here any bracketed number goes, because a loop has
 none to give. The lines around it are left as the loop wrote them."""
-TIGHTENED = ((re.compile(r"[ \t]{2,}"), " "), (re.compile(r"[ \t]+([.,;:])"), r"\1"))
+OPENED_WITH = re.compile(rf"^([ \t]*){CITATION_RUN.pattern}[ \t]*")
+"""A number the line opened with, and the space it left behind. Whatever indentation
+stood in front of it is the loop's own and is handed back untouched."""
+TIGHTENED = (
+    (re.compile(r"(?<=\S)[ \t]{2,}"), " "),
+    (re.compile(r"[ \t]+([.,;:])"), r"\1"),
+)
 """The residue of taking a number out mid-sentence: two spaces where one belongs, or a
-space before the stop that followed the number."""
+space before the stop that followed the number. Never leading whitespace, which is the
+loop's own indentation and none of cora's business."""
 
 
 @dataclass
@@ -133,7 +136,8 @@ class PluginHost:
             task: What the loop is being asked to do, as its first message.
             tools: What it may call, on top of searching the documents.
             rounds: How many rounds of tools it may spend, up to
-                `MAX_DELEGATED_ROUNDS`.
+                `MAX_DELEGATED_ROUNDS`. Ignored in a loop delegated from another,
+                which spends what the outermost one opened.
 
         Raises:
             ToolLoopLimitError: The loop spent its rounds without reaching an answer.
@@ -166,7 +170,7 @@ class PluginHost:
                 )
             )
             if reply.is_final:
-                return _unnumbered(reply.text)
+                return _uncited(reply.text)
             said.append(
                 Message(
                     role="assistant", content=reply.text, tool_calls=reply.tool_calls
@@ -217,20 +221,33 @@ def _read(result: ToolResult) -> tuple[str, str]:
     """
     if not isinstance(result.payload, Citable):
         return result.render(), result.render()
-    block = result.payload.register(())
-    return UNNUMBERED.sub("", block.text), result.payload.summary
+    return result.payload.unnumbered(), result.payload.summary
 
 
-def _unnumbered(said: str) -> str:
+def _uncited(said: str) -> str:
     """What a delegated loop answered, with any number it wrote taken out.
 
-    The lines it wrote stay its lines: only the run and the space that a number left
-    behind are closed up, so a list or a paragraph break survives.
+    Only a line a number came out of is touched, and only to close the gap it left: the
+    indentation, the blank lines and the fenced blocks the loop wrote are what the outer
+    model reads and what the reader opens under the call.
     """
-    written = UNCITED.sub("", said)
+    return "\n".join(_closed_up(line) for line in said.splitlines())
+
+
+def _closed_up(line: str) -> str:
+    """One line with its citations removed, and the space they left closed up.
+
+    A number the line opened with takes the space after it, so `[1] sleep` reads
+    `sleep`; the indentation in front of it is the loop's own and stays. A number
+    mid-sentence leaves the two spaces around it as one.
+    """
+    written = OPENED_WITH.sub(r"\1", line)
+    written = UNCITED.sub("", written)
+    if written == line:
+        return line
     for pattern, replacement in TIGHTENED:
         written = pattern.sub(replacement, written)
-    return "\n".join(line.strip() for line in written.splitlines()).strip()
+    return written.rstrip() if written.strip() else ""
 
 
 @contextmanager
@@ -238,14 +255,16 @@ def _spending(rounds: int) -> Iterator[list[int]]:
     """The rounds this delegation may spend: a pot of its own, or the one already open.
 
     A nested loop joins the pot the loop above it opened, so depth spends the same
-    allowance rather than a fresh one.
+    allowance rather than a fresh one — and its own `rounds` is not honoured, because
+    the outermost loop is what asked for the pot.
     """
     open_pot = _allowance.get()
     if open_pot is not None:
         yield open_pot
         return
-    token = _allowance.set([min(rounds, MAX_DELEGATED_ROUNDS) + 1])
+    pot = [min(rounds, MAX_DELEGATED_ROUNDS) + 1]
+    token = _allowance.set(pot)
     try:
-        yield _allowance.get() or [0]
+        yield pot
     finally:
         _allowance.reset(token)
