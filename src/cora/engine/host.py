@@ -1,16 +1,17 @@
 """Cora as one plugin is handed it, and where what that plugin registers is kept."""
 
 import logging
+import re
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
 from jsonschema import Draft202012Validator, SchemaError
 
-from cora.domain.citations import Citable
+from cora.domain.citations import CITATION_RUN, Citable
 from cora.domain.errors import PluginLoadError, ToolLoopLimitError
 from cora.domain.trace import ModelDecision, ToolUse
-from cora.engine.nesting import took
+from cora.engine.nesting import collecting, took
 from cora.engine.retrieval_tool import search_tool
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import ChatModel, Message
@@ -23,10 +24,14 @@ DELEGATE_BRIEF = (
     "You are answering one question on behalf of an assistant, using the tools you are "
     "offered. Be brief and concrete, and answer from what the tools return."
 )
-MAY_NOT_DELEGATE = ("remember", "ask_user")
-"""A delegated loop reads and never acts, so the tools that write what cora keeps or
-stop the turn to ask are not offered to one. The turn around it is where an effect
-belongs, and it is where the gate already is."""
+MAX_DELEGATED_ROUNDS = 5
+"""The most rounds a delegated loop may spend, whatever it asks for. The budget is the
+host's rather than the plugin's: one tool call that asked for ten thousand rounds would
+spend a deployment's bill, and a turn may make one such call per round of its own."""
+UNCITED = re.compile(rf"\s*{CITATION_RUN.pattern}")
+"""What a delegated loop's answer is stripped of, by the rule the page draws buttons
+with. The numbers belong to the turn, and a loop handing itself `[1]` would collide with
+the `[1]` the reader has already been shown — pointing a button at another document."""
 
 
 @dataclass
@@ -99,26 +104,29 @@ class PluginHost:
     def delegate(self, task: str, tools: tuple[Tool, ...] = (), rounds: int = 3) -> str:
         """Run a bounded loop of the model's own, and answer with what it wrote.
 
-        Offered the tools given plus cora's document search, and never one that writes
-        or stops to ask. Every round is reported to the call this ran inside, so a
-        reader sees the loop's work under the tool that ran it.
+        Offered the tools given plus cora's document search, and none of cora's own
+        tools that write or stop the turn. Every round is reported to the call this ran
+        inside, so a reader sees the loop's work under the tool that ran it. What comes
+        back cites nothing: the numbers a reader can click belong to the turn.
 
         Args:
             task: What the loop is being asked to do, as its first message.
             tools: What it may call, on top of searching the documents.
-            rounds: How many rounds of tools it may spend.
+            rounds: How many rounds of tools it may spend, up to
+                `MAX_DELEGATED_ROUNDS`.
 
         Raises:
             ToolLoopLimitError: The loop spent its rounds without reaching an answer.
             LlmError: The model gave back nothing usable.
         """
         offered = self._offered(tools)
+        spend = min(rounds, MAX_DELEGATED_ROUNDS)
         runtime = ToolRuntime(tools=offered)
         said: list[Message] = [
             Message(role="system", content=DELEGATE_BRIEF),
             Message(role="user", content=task),
         ]
-        for _ in range(rounds + 1):
+        for _ in range(spend + 1):
             reply = self.model.complete(tuple(said), offered)
             took(
                 ModelDecision(
@@ -127,14 +135,15 @@ class PluginHost:
                 )
             )
             if reply.is_final:
-                return reply.text
+                return UNCITED.sub("", reply.text).strip()
             said.append(
                 Message(
                     role="assistant", content=reply.text, tool_calls=reply.tool_calls
                 )
             )
             for call in reply.tool_calls:
-                result = runtime.execute(call)
+                with collecting() as inside:
+                    result = runtime.execute(call)
                 read, outcome = _read(result)
                 took(
                     ToolUse(
@@ -143,6 +152,7 @@ class PluginHost:
                         outcome=outcome,
                         detail=read,
                         failed=result.error is not None,
+                        steps=tuple(inside),
                     )
                 )
                 said.append(
@@ -151,9 +161,13 @@ class PluginHost:
         raise ToolLoopLimitError
 
     def _offered(self, tools: tuple[Tool, ...]) -> tuple[Tool, ...]:
-        """What a delegated loop may call: reading tools, cora's search among them."""
-        asked = tuple(tool for tool in tools if tool.name not in MAY_NOT_DELEGATE)
-        return (search_tool(self.documents, self.top_k), *asked)
+        """What a delegated loop may call.
+
+        Cora's document search, and what the plugin passed. None of cora's own writing
+        or stopping tools is in that set — not because they are filtered out, but
+        because they are never put in.
+        """
+        return (search_tool(self.documents, self.top_k), *tools)
 
     def _registered_tools(self) -> tuple[Tool, ...]:
         return tuple(entry.value for entry in self.registered if entry.kind == TOOL)

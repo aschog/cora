@@ -26,21 +26,18 @@ def citation(citation: Citation) -> dict[str, Any]:
     }
 
 
-def step(step: TraceStep) -> dict[str, Any]:
+def step(taken: TraceStep) -> dict[str, Any]:
     """Five keys whatever kind of step arrived, so the panel draws one thing. A kind the
     engine grows next carries the first three off the base class and claims no origin,
-    rather than needing this module to have heard of it. `steps` is what a step did
+    rather than needing this module to have heard of it. `steps` is what the step did
     inside itself — empty for all but a tool that ran work of its own."""
     return {
-        "summary": step.summary,
-        "detail": step.detail,
-        "failed": step.failed,
-        "origin": _origin(step),
-        "steps": [inside(child) for child in step.steps],
+        "summary": taken.summary,
+        "detail": taken.detail,
+        "failed": taken.failed,
+        "origin": _origin(taken),
+        "steps": [step(child) for child in taken.steps],
     }
-
-
-inside = step
 
 
 def _origin(step: TraceStep) -> str:

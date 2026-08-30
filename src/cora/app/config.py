@@ -182,27 +182,55 @@ def int_setting(env: Mapping[str, str], key: str, default: int, *, minimum: int)
     return value
 
 
+PLUGIN_PREFIX = "CORA_PLUGIN_"
+"""Where a plugin's settings live, kept clear of cora's own `CORA_` variables: a plugin
+whose module ended in `log` would otherwise read `CORA_LOG_PATH` and be handed the path
+to the user's log file."""
+
+
 def plugin_settings(
     modules: tuple[str, ...], env: Mapping[str, str] | None = None
 ) -> dict[str, dict[str, str]]:
     """What each plugin may read as its own settings, keyed by module path.
 
-    A plugin's variables are the ones named for it — `CORA_FITNESS_UNITS` reaches the
-    module whose last segment is `fitness`, as `units`. Named for the plugin so a
+    A plugin's variables are the ones named for it — `CORA_PLUGIN_FITNESS_UNITS` reaches
+    the module whose last segment is `fitness`, as `units`. Named for the plugin so a
     deployment can see whose setting it is setting, and read here rather than by the
     plugin so that reading the environment stays the composition root's job.
 
     Args:
         modules: The plugin modules a deployment named.
         env: Where to read from. The process environment unless a caller says otherwise.
+
+    Raises:
+        ConfigurationError: Two plugins share a last segment, so they would share one
+            namespace with no way to tell whose setting is whose.
     """
     environ = os.environ if env is None else env
+    _reject_a_shared_namespace(modules)
     found: dict[str, dict[str, str]] = {}
     for module in modules:
-        prefix = f"CORA_{module.rsplit('.', 1)[-1].upper()}_"
+        prefix = f"{PLUGIN_PREFIX}{_segment(module).upper()}_"
         found[module] = {
             key[len(prefix) :].lower(): value
             for key, value in environ.items()
             if key.startswith(prefix)
         }
     return found
+
+
+def _segment(module: str) -> str:
+    return module.rsplit(".", 1)[-1]
+
+
+def _reject_a_shared_namespace(modules: tuple[str, ...]) -> None:
+    named: dict[str, str] = {}
+    for module in modules:
+        first = named.get(_segment(module))
+        if first is not None:
+            raise ConfigurationError(
+                f"'{first}' and '{module}' are both named "
+                f"'{_segment(module)}', so their settings and their instructions "
+                "cannot be told apart. Rename one."
+            )
+        named[_segment(module)] = module

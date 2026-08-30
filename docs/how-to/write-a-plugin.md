@@ -53,7 +53,9 @@ cora imports no plugin of its own, so nothing here edits the engine.
        cora.log.info("bird watching is on, in %s", units)
    ```
 
-   `CORA_BIRDS_UNITS=imperial` reaches `cora.plugins.birds` as `units`.
+   `CORA_PLUGIN_BIRDS_UNITS=imperial` reaches `cora.plugins.birds` as `units`. Cora's
+   own `CORA_` variables are a separate namespace, and two plugins whose module paths
+   end in the same segment are refused rather than sharing one.
 
 5. **Let a tool run a turn of its own.** `cora.delegate` runs a bounded loop with the
    model, offered the tools you pass it and cora's document search:
@@ -63,9 +65,12 @@ cora imports no plugin of its own, so nothing here edits the engine.
        return cora.delegate(question, rounds=2)
    ```
 
-   Such a loop reads and never acts: a tool that writes or stops to ask the user is not
-   offered to it, and its budget is its own rather than the turn's. What it did is shown
-   under the call that ran it.
+   The loop is offered your tools and cora's document search, and none of cora's own
+   tools that write or stop the turn — an effect and a stop-to-ask belong in the turn,
+   where the gate is. It is bounded rather than sandboxed: a tool *you* pass it is a tool
+   it can call, and `rounds` is capped by the host whatever you ask for. Its budget is its
+   own rather than the turn's, and what it did is shown under the call that ran it. What
+   it answers carries no `[n]`: citation numbers belong to the turn.
 
 6. **Name it.** `CORA_PLUGINS` takes module paths separated by commas, in order:
 

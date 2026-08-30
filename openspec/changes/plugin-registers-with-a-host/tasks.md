@@ -63,4 +63,17 @@ it.
 
 - [x] 8.1 Write a test that shows what a tool did inside its call reaching the page's
       wire as that call's own steps
+- [x] 8.2 Write a test that shows a delegated loop's answer citing no number the turn
+      handed out
+- [x] 8.3 Write a test that shows a tool delegating inside a delegated loop keeping its
+      own steps
+- [x] 8.4 Write a test that shows a loop spending no more rounds than the host allows
+- [x] 8.5 Write a test that shows what a plugin was holding staying out of the refusal
+      the user reads
+- [x] 8.6 Write a test that shows a plugin registering what it may not refused from the
+      module path a deployment types
+- [x] 8.7 Write a test that shows a plugin that registered nothing still announced
+- [x] 8.8 Write tests that show a plugin reading the settings named for it, none of
+      cora's own, and two plugins named alike refused
+- [x] 8.9 Write a test that shows the page drawing what a step did inside it
 

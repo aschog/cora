@@ -113,3 +113,32 @@ def test_a_delegated_loop_that_overspends_costs_the_call_and_not_the_turn() -> N
     assert answered.answer == "I could not look that up, but sleep matters."
     [call] = [step for step in answered.trace if step.summary.startswith("research(")]
     assert call.failed, "the call carries the loop's give-up"
+
+
+@pytest.mark.integration
+def test_a_delegated_loop_cites_no_number_the_turn_did_not_hand_out() -> None:
+    """The turn searched and was handed `[1]` for one document. A loop numbering its own
+    passages would hand out a second `[1]`, and the page would draw the reader a button
+    onto the document the turn cited rather than the one the loop read."""
+    model = ScriptedChatModel(
+        [
+            _searching("diet"),
+            _calling_research("why do squats stall?"),
+            _searching("squats"),
+            ModelReply(text="Sleep, not volume [1]."),
+            ModelReply(text="Protein is 1.6 g per kg [1], and squats stall on sleep."),
+        ]
+    )
+    app = indexed(
+        assembled(chat_model=model, plugins=load_plugins([SUB_AGENT])),
+        ("diet.md", b"aim for 1.6 g of protein per kg"),
+        NOTES,
+    )
+
+    answered = app.agent.answer("Protein, and why do squats stall?", THREAD)
+
+    assert [(c.number, c.document) for c in answered.citations] == [(1, "diet.md")]
+    [call] = [step for step in answered.trace if step.summary.startswith("research(")]
+    assert "[1]" not in call.detail, (
+        "what the loop answered carries no number of its own"
+    )

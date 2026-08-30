@@ -18,7 +18,7 @@ the named steps.
 
 **The host is a port, and `extend` is the whole contract.**
 
-- `Host` is a Protocol in `cora.ports.plugin`, and the composition root satisfies it.
+- `Host` is a Protocol in `cora.ports.host`, and the composition root satisfies it.
 - A plugin module defines `extend(cora: Host)` and calls what it needs, returning
   nothing.
 - Returning a record would put the shape back — a plugin may only register what a host
@@ -49,9 +49,11 @@ the named steps.
 
 - The host runs a bounded loop over a tool set the plugin passes, and answers with its
   text.
-- The set is filtered: a tool that writes or stops is refused a sub-agent, as the shapes
-  say.
-- The budget is the host's, so a plugin cannot spend a turn's rounds by asking for more.
+- The set is cora's search plus what the plugin passed, so none of cora's writing or
+  stopping tools is in it.
+- Bounded rather than sandboxed: a tool the plugin passes is one the plugin already has.
+- The budget is the host's, capped whatever the plugin asks for, and the turn's own is
+  untouched.
 - Nothing under `src/cora/` is edited to support one: the acid test is a fixture plugin.
 
 **The trace nests where the work nested.**
@@ -63,10 +65,10 @@ the named steps.
 
 **A refusal names the module, as loading already does.**
 
-- No `extend`, a raise inside it, a taken name — each is a `PluginLoadError` naming the
-  module.
-- Registration happens at load, so a refusal arrives before a turn rather than during
-  one.
+- No `extend`, a raise inside it, a name this plugin took twice — each is a
+  `PluginLoadError` naming the module.
+- A name another plugin or cora already offers is a `ConfigurationError` naming both.
+- Registration happens as the app is assembled, so a refusal arrives before any turn.
 - A name is taken if cora offers it or another plugin registered it first, as today.
 
 ## Risks / Trade-offs
@@ -75,8 +77,8 @@ the named steps.
   deployment named, and the host is the only thing it is handed.
 - **`extend` runs arbitrary code at load** → so did importing it, and the refusal names
   the module.
-- **A kind as a field invites a switch at the fold** → written once, and guarded by a
-  test that every kind reaches the engine.
+- **A kind as a field invites a switch at the fold** → three folds written once in
+  `Registry`, and a fourth kind needs a fourth, which is the trade taken.
 - **A nested trace widens what is checkpointed and stored** → both find kinds rather
   than listing them, and both are tested against one they have not seen.
 - **Both shipped plugins are rewritten with no shim** → they live in this repository,

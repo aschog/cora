@@ -37,15 +37,14 @@ def make_tool(name: str) -> Tool:
 
 
 def make_plugin(
-    name: str = "test",
+    name: str = "valid",
     instructions: str = "You are a test plugin.",
     tools: tuple[Tool, ...] | None = None,
     validation_rules: tuple[ValidationRule, ...] = (),
-    module: str = "fixture_plugins.valid",
 ) -> Extension:
     """One plugin as a test wants it: `tools=None` asks for the three default tools,
-    `tools=()` for none. `name` is what the module is called rather than a field, so a
-    heading in the brief still says which plugin wrote a section."""
+    and `tools=()` for none. `name` is the module's last segment, which is what heads
+    its section of the brief and what its settings are named for."""
     offered = (
         (make_tool("one"), make_tool("two"), make_tool("three"))
         if tools is None
@@ -65,6 +64,4 @@ def make_plugin(
         for rule in validation_rules:
             cora.register_rule(rule)
 
-    return Extension(
-        module=module if name == "test" else f"fixture_plugins.{name}", extend=extend
-    )
+    return Extension(module=f"fixture_plugins.{name}", extend=extend)

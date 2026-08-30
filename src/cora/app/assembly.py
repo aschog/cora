@@ -123,7 +123,7 @@ def assemble(
         settings=plugin_settings or {},
         top_k=top_k,
     )
-    _announce(registry)
+    _announce(plugins, registry)
     tools = _offered_tools(registry, knowledge_base, top_k, memory)
     runner = graph(
         before=(
@@ -156,16 +156,18 @@ def assemble(
     )
 
 
-def _announce(registry: Registry) -> None:
-    """Say in the log what registered, and warn when nothing screens the user's input.
+def _announce(plugins: tuple[Extension, ...], registry: Registry) -> None:
+    """Say in the log what loaded, and warn when nothing screens the user's input.
 
     A screened app and an unscreened one are otherwise indistinguishable once running,
     so an unscreened one is a warning: it is the level that reaches the user without
     `CORA_DEBUG`, where the `cora` logger carries no handler. A plugin may register
-    only tools, so what is announced is the screen, not the count.
+    only tools, so what is announced is the screen, not the count. What loaded is what
+    the deployment named, not what registered: a plugin that registered nothing is the
+    one an operator most needs to see.
     """
-    if registry.modules:
-        log.info("plugins loaded: %s", ", ".join(registry.modules))
+    if plugins:
+        log.info("plugins loaded: %s", ", ".join(plugin.module for plugin in plugins))
     if len(registry.rules) == len(CORA_RULES):
         log.warning("no plugin screens what the user types")
 
@@ -205,7 +207,8 @@ def _registered(
             raise
         except Exception as failed:
             raise PluginLoadError(
-                plugin.module, f"the plugin failed while registering: {failed}"
+                plugin.module,
+                f"the plugin raised {type(failed).__name__} while registering",
             ) from failed
         entries.extend(host.registered)
     return Registry(tuple(entries))

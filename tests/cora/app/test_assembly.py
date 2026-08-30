@@ -857,3 +857,51 @@ def test_what_a_plugin_registers_is_refused_before_a_turn_can_run() -> None:
         assembled(plugins=(clashing,))
 
     assert SEARCH_TOOL_NAME in refused.value.user_message
+
+
+def test_what_a_plugin_was_holding_when_it_fell_over_stays_out_of_the_message() -> None:
+    """The kind of failure, never its text: a plugin's exception could be carrying a
+    key or a URL it was reaching for, and this message is one the user reads."""
+    with pytest.raises(PluginLoadError) as refused:
+        assembled(plugins=load_plugins(["fixture_plugins.raises_while_registering"]))
+
+    said = refused.value.user_message
+    assert "RuntimeError" in said
+    assert "fell over while registering" not in said
+
+
+REFUSED_AT_STARTUP = [
+    ("blank_tool_name", "no name"),
+    ("duplicate_names", "registered twice"),
+    ("non_callable_run", "callable"),
+    ("bad_schema", "invalid parameter schema"),
+]
+
+
+@pytest.mark.parametrize(("fixture", "reason"), REFUSED_AT_STARTUP)
+def test_a_plugin_registering_what_it_may_not_is_refused_by_name(
+    fixture: str, reason: str
+) -> None:
+    """Walked from the module path a deployment types, through loading and registering:
+    the refusal a host raises reaches the operator as the host worded it, rather than
+    wrapped in a second sentence about registering."""
+    module = f"fixture_plugins.{fixture}"
+
+    with pytest.raises(PluginLoadError) as refused:
+        assembled(plugins=load_plugins([module]))
+
+    assert module in refused.value.user_message
+    assert reason in refused.value.user_message
+    assert "while registering" not in refused.value.user_message
+
+
+def test_a_plugin_that_registers_nothing_is_still_announced(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """What was loaded is what the deployment named. A module that registered nothing is
+    the one an operator most needs to see in the log, because nothing else shows it."""
+    with caplog.at_level(logging.INFO, logger="cora"):
+        assembled(plugins=load_plugins(["fixture_plugins.registers_nothing"]))
+
+    logged = [record.getMessage() for record in caplog.records]
+    assert "plugins loaded: fixture_plugins.registers_nothing" in logged

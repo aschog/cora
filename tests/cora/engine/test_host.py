@@ -1,17 +1,18 @@
 """What a plugin is handed, what it may register, and what it is refused for."""
 
 import logging
-from dataclasses import replace
 
 import pytest
 
-from cora.domain.errors import PluginLoadError
-from cora.engine.host import DELEGATE_BRIEF, MAY_NOT_DELEGATE
+from cora.domain.errors import PluginLoadError, ToolLoopLimitError
+from cora.engine.ask_tool import ASK_TOOL_NAME
+from cora.engine.host import DELEGATE_BRIEF, MAX_DELEGATED_ROUNDS
+from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.nesting import collecting
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ModelReply
 from cora.ports.host import INSTRUCTIONS, RULE, TOOL
-from cora.ports.plugin import ToolCall
+from cora.ports.plugin import Tool, ToolCall
 from fakes import FakeContextSource, FakeMemory, ScriptedChatModel, add_tool, host_for
 from fixture_plugins import RefusesContaining
 
@@ -218,19 +219,18 @@ def test_a_delegated_loop_is_offered_the_tools_the_plugin_passed() -> None:
     assert [tool.name for tool in model.last_tools] == [SEARCH_TOOL_NAME, "add"]
 
 
-@pytest.mark.parametrize("acting", MAY_NOT_DELEGATE)
-def test_a_delegated_loop_is_never_offered_a_tool_that_acts(acting: str) -> None:
-    """A delegated loop reads and never acts: an effect and a stop-to-ask belong in the
-    turn around it, which is where the gate already is."""
+def test_a_delegated_loop_is_never_offered_a_tool_of_coras_that_acts() -> None:
+    """A delegated loop reads. Cora's own writing and stopping tools are not in the set
+    it is offered — by construction, since the set is search plus what the plugin
+    passed — so an effect and a stop-to-ask stay in the turn, where the gate is."""
     model = _answering(ModelReply(text="Two."))
-    passed = add_tool()
 
-    host_for(MODULE, model=model).delegate(
-        "Do it.", tools=(passed, replace(passed, name=acting))
-    )
+    host_for(MODULE, model=model).delegate("Do it.", tools=(add_tool(),))
 
     assert model.last_tools is not None
-    assert acting not in [tool.name for tool in model.last_tools]
+    offered = [tool.name for tool in model.last_tools]
+    assert REMEMBER_TOOL_NAME not in offered
+    assert ASK_TOOL_NAME not in offered
 
 
 def test_a_delegated_loop_runs_the_tools_it_asked_for() -> None:
@@ -265,3 +265,68 @@ def test_a_delegated_loop_reports_its_steps_to_the_call_it_ran_inside() -> None:
         "add(a=1, b=1) → 2",
         "Decided no tool was needed",
     ]
+
+
+def test_a_delegated_loops_answer_cites_no_number_of_its_own() -> None:
+    """The numbers belong to the turn. A loop that handed itself `[1]` would collide
+    with the `[1]` the turn already gave the reader, and the page would draw a button
+    onto the wrong document."""
+    model = _answering(ModelReply(text="Sleep, not volume [1]."))
+
+    answered = host_for(MODULE, model=model).delegate("Why do squats stall?")
+
+    assert answered == "Sleep, not volume."
+
+
+def test_a_tool_run_inside_a_delegated_loop_keeps_its_own_steps() -> None:
+    """A loop that calls a tool which delegates again: what the inner loop did belongs
+    under the call that ran it, at whatever depth, and never beside it."""
+    inner = ScriptedChatModel([ModelReply(text="the inner answer")])
+    outer = ScriptedChatModel(
+        [
+            ModelReply(
+                tool_calls=(ToolCall(name="ask_again", arguments={}, call_id="c1"),)
+            ),
+            ModelReply(text="the outer answer"),
+        ]
+    )
+    inner_host = host_for(MODULE, model=inner)
+    again = Tool(
+        name="ask_again",
+        description="Ask the model again.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: inner_host.delegate("and again?"),
+    )
+
+    with collecting() as taken:
+        host_for(MODULE, model=outer).delegate("Ask.", tools=(again,))
+
+    [call] = [step for step in taken if step.summary.startswith("ask_again(")]
+    assert [step.summary for step in call.steps] == ["Decided no tool was needed"]
+    assert [step.summary for step in taken] == [
+        "Decided to call ask_again",
+        "ask_again() → the inner answer",
+        "Decided no tool was needed",
+    ]
+
+
+def test_a_loop_may_not_spend_more_rounds_than_the_host_allows() -> None:
+    """The budget is the host's: a plugin asking for ten thousand rounds gets the
+    ceiling, so one tool call cannot spend a deployment's model bill."""
+    model = ScriptedChatModel(
+        [
+            ModelReply(
+                tool_calls=(
+                    ToolCall(name="add", arguments={"a": 1, "b": 1}, call_id="c1"),
+                )
+            )
+        ]
+        * (MAX_DELEGATED_ROUNDS + 1)
+    )
+
+    with pytest.raises(ToolLoopLimitError):
+        host_for(MODULE, model=model).delegate(
+            "Loop forever.", tools=(add_tool(),), rounds=10_000
+        )
+
+    assert model.completions == MAX_DELEGATED_ROUNDS + 1

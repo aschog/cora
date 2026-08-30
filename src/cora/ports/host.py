@@ -88,17 +88,18 @@ class Host(Protocol):
     def delegate(self, task: str, tools: tuple[Tool, ...] = (), rounds: int = 3) -> str:
         """Run a bounded loop of the model's own, and answer with what it wrote.
 
-        The loop is offered the tools given plus cora's document search, and never a
-        tool that writes or stops to ask: a delegated loop reads, and the turn around
-        it is where an effect belongs. Its steps are reported under the call that ran
-        it.
+        The loop is offered the tools given plus cora's document search, and none of
+        cora's own tools that write or stop the turn: an effect and a stop-to-ask
+        belong in the turn around it, where the gate is. Its steps are reported under
+        the call that ran it, and what it answers carries no citation of its own.
 
         Args:
             task: What the loop is being asked to do, as its first message.
             tools: What it may call, on top of searching the documents.
-            rounds: How many rounds of tools it may spend.
+            rounds: How many rounds of tools it may spend, capped by the host.
 
         Raises:
+            ToolLoopLimitError: The loop spent its rounds without reaching an answer.
             LlmError: The model gave back nothing usable.
         """
         ...

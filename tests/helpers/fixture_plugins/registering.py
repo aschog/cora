@@ -1,12 +1,7 @@
-"""A plugin written to the contract this change introduces: it registers what it has.
-
-Kept beside the record-shaped fixtures rather than replacing one, so the suite can watch
-both contracts until the record is gone.
-"""
-
-from typing import Any
+"""A plugin that registers all three kinds of contribution, for the outer test."""
 
 from cora.domain.errors import InputRejectedError
+from cora.ports.host import Host
 
 INSTRUCTIONS = "You are the registering test plugin. Echo what the user asks you to."
 REFUSAL = "The registering plugin will not answer shouting."
@@ -23,7 +18,7 @@ class RefusesShouting:
             raise InputRejectedError(REFUSAL)
 
 
-def extend(cora: Any) -> None:
+def extend(cora: Host) -> None:
     cora.register_instructions(INSTRUCTIONS)
     cora.register_tool(
         name=ECHO,

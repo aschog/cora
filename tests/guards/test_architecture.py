@@ -655,7 +655,7 @@ def test_a_value_in_the_domain_is_a_frozen_dataclass(kind: type) -> None:
     )
 
 
-SHIPPED = pathlib.Path("src") / "cora"
+SHIPPED = workspace.ROOT / "src" / "cora"
 
 
 def test_no_shipped_file_names_a_plugin() -> None:
@@ -666,7 +666,7 @@ def test_no_shipped_file_names_a_plugin() -> None:
     named = sorted(
         str(path.relative_to(workspace.ROOT))
         for path in REPOSITORY_FILES
-        if SHIPPED in path.parents and _names_a_plugin(path)
+        if path.is_relative_to(SHIPPED) and _names_a_plugin(path)
     )
 
     assert named == [], "\n".join(["these name a plugin:", *named])

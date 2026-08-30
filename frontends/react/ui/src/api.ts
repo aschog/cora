@@ -12,6 +12,8 @@ export type Step = {
   failed: boolean
   /** 'core tool' or 'plugin tool'; empty when the step called none. */
   origin: string
+  /** What the step did inside itself — a plugin's tool that ran a turn of its own. */
+  steps: Step[]
 }
 
 export type Result = { answer: string; citations: Citation[]; trace: Step[] }
