@@ -1,14 +1,10 @@
-from cora.ports.plugin import Tool
-from fixture_plugins import make_plugin, make_tool
+from cora.ports.host import Host
 
-PLUGIN = make_plugin(
-    tools=(
-        make_tool("one"),
-        Tool(
-            name="two",
-            description="The two tool.",
-            parameter_schema={"type": "object", "properties": {}},
-            run="not callable",  # ty: ignore[invalid-argument-type]
-        ),
-    ),
-)
+
+def extend(cora: Host) -> None:
+    cora.register_tool(
+        name="two",
+        description="The two tool.",
+        parameter_schema={"type": "object", "properties": {}},
+        run="not callable",  # ty: ignore[invalid-argument-type]
+    )

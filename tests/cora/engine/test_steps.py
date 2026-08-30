@@ -16,6 +16,7 @@ from cora.domain.errors import (
 from cora.domain.trace import ModelDecision, StepEntered, ToolUse
 from cora.engine.ask_tool import ASK_TOOL_NAME, ASKED_ALREADY, ask_tool
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
+from cora.engine.nesting import read_untrusted
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.engine.steps import (
     AGENT_RULES,
@@ -73,6 +74,22 @@ def _searcher(*hits: RetrievedChunk, name: str = SEARCH_TOOL_NAME):
 
 
 NOTE = Citation(number=1, document="note.md", start=0, end=len("protein builds muscle"))
+
+
+def _reading_documents(name: str = "research") -> Tool:
+    """A tool that reads the user's documents somewhere inside its call, as a plugin's
+    delegated loop does, and answers in prose of its own."""
+
+    def run() -> str:
+        read_untrusted()
+        return "notes say sleep"
+
+    return Tool(
+        name=name,
+        description="Look it up.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=run,
+    )
 
 
 def _add_call(call_id: str, a: int = 1, b: int = 2) -> ToolCall:
@@ -156,6 +173,34 @@ def test_the_model_gets_the_passages_labelled_as_untrusted_data() -> None:
     assert "instructions" in notice.lower()
     assert body in message.content
     assert "untrusted" not in used.detail.lower()
+
+
+def test_a_call_that_read_documents_inside_it_is_fed_back_labelled() -> None:
+    """A plugin's tool that ran a loop of its own answers in prose rather than in
+    passages, but the prose was built out of the user's documents. Labelling only what
+    arrives as a passage would let a tool launder an injected instruction into text the
+    model reads as its own."""
+    step = ToolStep(ToolRuntime(tools=(_reading_documents(),)))
+
+    partial = step(_asked(ToolCall(name="research", arguments={}, call_id="c1")))
+
+    [message] = partial["messages"]
+    [used] = partial["trace"]
+    assert "untrusted" in message.content.lower()
+    assert "instructions" in message.content.lower()
+    assert message.content.endswith("notes say sleep")
+    assert "untrusted" not in used.detail.lower(), "the reader is shown the answer"
+
+
+def test_a_call_that_read_nothing_is_fed_back_as_it_renders() -> None:
+    """The label is what a call earned, not what every call carries: a calculator that
+    never touched a document is not dressed up as document data."""
+    step = ToolStep(ToolRuntime(tools=(add_tool(),)))
+
+    partial = step(_asked(_add_call("c1")))
+
+    [message] = partial["messages"]
+    assert "untrusted" not in message.content.lower()
 
 
 def test_passages_are_labelled_even_when_they_add_no_new_source() -> None:

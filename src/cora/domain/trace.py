@@ -3,7 +3,8 @@
 import json
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
+from functools import cache
+from typing import Any, get_origin, get_type_hints
 
 from cora.domain.prose import listed
 
@@ -11,8 +12,29 @@ from cora.domain.prose import listed
 class TraceStep(ABC):
     """One thing the turn did, worded for the user rather than for a log.
 
-    A step fills `detail` and `failed` in as fields when it has them to give.
+    A step fills `detail`, `failed` and `steps` in as fields when it has them to give.
+    `steps` is what happened *inside* this one, which only a step that ran something
+    else has: a trace is a tree, and most of it is one level deep.
+
+    A kind that needs a `__post_init__` of its own calls `super().__post_init__()`, or
+    it stops holding the tuples it declares once a turn has been through a checkpoint.
     """
+
+    steps: tuple["TraceStep", ...] = ()
+
+    def __post_init__(self) -> None:
+        """Hold the tuples this kind declares, whatever it was handed.
+
+        A step travels through a checkpoint and through the conversation store as data,
+        and comes back as keyword arguments. JSON has one sequence, so a field declared
+        a tuple returns a list, and a step would quietly stop being equal to the step
+        that was recorded. Read off the kind's own declaration here, once, rather than
+        at each door — both doors are reading the same declaration anyway.
+        """
+        for name in _tuple_fields(type(self)):
+            held = getattr(self, name)
+            if isinstance(held, list):
+                object.__setattr__(self, name, tuple(held))
 
     @property
     @abstractmethod
@@ -32,6 +54,22 @@ class TraceStep(ABC):
         A failed step is still shown: a turn that answered around a failure says so.
         """
         return False
+
+
+@cache
+def _tuple_fields(kind: type["TraceStep"]) -> tuple[str, ...]:
+    """Which of a kind's fields are declared tuples, worked out once per kind.
+
+    Keyed by the class, which the cache then holds: the kinds are a fixed set declared
+    in this module, so nothing accumulates. A kind declared inside a test would be held
+    for the process and go on being found by `step_kinds`, which is a reason to declare
+    them here rather than a reason not to cache.
+    """
+    return tuple(
+        name
+        for name, declared in get_type_hints(kind).items()
+        if get_origin(declared) is tuple
+    )
 
 
 def step_kinds() -> tuple[type[TraceStep], ...]:
@@ -104,8 +142,9 @@ class MemoryUnread(TraceStep):
 class ToolUse(TraceStep):
     """One tool call and what came back from it.
 
-    `outcome` is the one line the user reads; `detail` is what the tool returned, and
-    for a failed call it is the refusal rather than the payload.
+    `outcome` is the one line the user reads, and `detail` is what the tool returned —
+    for a failed call the refusal rather than the payload. `steps` is what the tool did
+    inside the call, which is empty unless the tool ran a loop of its own.
     """
 
     name: str
@@ -113,6 +152,7 @@ class ToolUse(TraceStep):
     outcome: str = ""
     detail: str = ""
     failed: bool = False
+    steps: tuple[TraceStep, ...] = ()
 
     @property
     def summary(self) -> str:

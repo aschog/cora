@@ -11,7 +11,7 @@ DEFAULT_MODEL = "openai/gpt-4o-mini"
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_PLUGINS: tuple[str, ...] = ()
 """A plugin is an extension, so cora starts with none: a scope, a screen or any other
-bundle is named by the deployment that wants it."""
+plugin is named by the deployment that wants it."""
 DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
 DEFAULT_MAX_OUTPUT_TOKENS = 8192
@@ -180,3 +180,47 @@ def int_setting(env: Mapping[str, str], key: str, default: int, *, minimum: int)
     if value < minimum:
         raise ConfigurationError(f"{key} must be {minimum} or more, but got {value}.")
     return value
+
+
+PLUGIN_PREFIX = "CORA_PLUGIN_"
+"""Where a plugin's settings live, kept clear of cora's own `CORA_` variables: a plugin
+whose module ended in `log` would otherwise read `CORA_LOG_PATH` and be handed the path
+to the user's log file."""
+
+
+def plugin_settings(
+    modules: tuple[str, ...], env: Mapping[str, str] | None = None
+) -> dict[str, dict[str, str]]:
+    """What each plugin may read as its own settings, keyed by module path.
+
+    A plugin's variables are the ones named for it — `CORA_PLUGIN_FITNESS_UNITS` reaches
+    the module whose last segment is `fitness`, as `units`. Named for the plugin so a
+    deployment can see whose setting it is setting, and read here rather than by the
+    plugin so that reading the environment stays the composition root's job.
+
+    Args:
+        modules: The plugin modules a deployment named.
+        env: Where to read from. The process environment unless a caller says otherwise.
+
+    A plugin whose name is the tail of another's prefix can be handed a variable meant
+    for that one — `CORA_PLUGIN_FITNESS_UNITS_X` reaches both `fitness` and
+    `fitness_units`, as `units_x` and as `x`. Loading refuses two plugins named *alike*,
+    which is not this: these are two names, and one is a prefix of the other. Left as it
+    is because both are plugins the same deployment named, so nothing of cora's leaks
+    and nothing crosses a trust boundary — a plugin reads a setting meant for its
+    neighbour, which is the deployment's own business to sort out by renaming.
+    """
+    environ = os.environ if env is None else env
+    found: dict[str, dict[str, str]] = {}
+    for module in modules:
+        prefix = f"{PLUGIN_PREFIX}{_segment(module).upper()}_"
+        found[module] = {
+            key[len(prefix) :].lower(): value
+            for key, value in environ.items()
+            if key.startswith(prefix)
+        }
+    return found
+
+
+def _segment(module: str) -> str:
+    return module.rsplit(".", 1)[-1]

@@ -4,6 +4,7 @@ import importlib
 import inspect
 import pathlib
 import pkgutil
+import re
 import subprocess
 import sys
 import typing
@@ -652,3 +653,45 @@ def test_a_value_in_the_domain_is_a_frozen_dataclass(kind: type) -> None:
     assert _is_frozen_dataclass(kind) or _states_a_shape(kind), (
         f"{named} carries data without being a frozen dataclass"
     )
+
+
+SHIPPED = workspace.ROOT / "src" / "cora"
+
+
+def test_no_shipped_file_names_a_plugin() -> None:
+    """Cora offers a host, and a plugin registers against it, so nothing under
+    `src/cora/` knows any plugin by name — not the two that ship, and not the sub-agent
+    fixture that proves the point.
+
+    What this proves is that the mechanism is general, not that it cost no code: the
+    host, `delegate` and a step's own steps were all written under `src/cora/` so that a
+    sub-agent could be written outside it. The claim is that the *next* plugin needs
+    none of that again, and naming none of them is how that is checked.
+    """
+    named = sorted(
+        str(path.relative_to(workspace.ROOT))
+        for path in REPOSITORY_FILES
+        if path.is_relative_to(SHIPPED) and _names_a_plugin(path)
+    )
+
+    assert named == [], "\n".join(["these name a plugin:", *named])
+
+
+def _names_a_plugin(path: pathlib.Path) -> bool:
+    said = path.read_text()
+    return any(
+        named in said
+        for named in ("cora.plugins.", "fixture_plugins", "sub_agent", "PLUGIN =")
+    )
+
+
+def test_no_module_in_the_repository_declares_a_plugin_record() -> None:
+    """The record is gone rather than deprecated: a module still declaring one would
+    load and contribute nothing, which is worse than being refused."""
+    declaring = sorted(
+        str(path.relative_to(workspace.ROOT))
+        for path in REPOSITORY_FILES
+        if re.search(r"^PLUGIN\s*=", path.read_text(), re.M)
+    )
+
+    assert declaring == [], "\n".join(["these declare a PLUGIN record:", *declaring])

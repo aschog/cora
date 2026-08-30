@@ -11,13 +11,18 @@ from cora.app.config import (
     DEFAULT_TOP_K,
     Config,
 )
+from cora.app.config import (
+    plugin_settings as read_plugin_settings,
+)
 from cora.app.log_config import enable_debug_logs
+from cora.domain.errors import PluginLoadError
 from cora.engine.agent import Agent
 from cora.engine.ask_tool import ask_tool
+from cora.engine.host import PluginHost
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.memory_tool import remember_tool
 from cora.engine.plugin_registry import load_plugins
-from cora.engine.plugin_set import PluginSet
+from cora.engine.plugin_set import CORA_RULES, Registry
 from cora.engine.port_logging import (
     LoggingChatModel,
     LoggingEmbedder,
@@ -43,6 +48,7 @@ from cora.ports.conversations import Conversations
 from cora.ports.documents import Documents
 from cora.ports.embedding import Embedder
 from cora.ports.graph import GraphFor, Loop
+from cora.ports.host import Extension
 from cora.ports.memory import Memory
 from cora.ports.plugin import Tool
 from cora.ports.retrieval import Retriever
@@ -72,7 +78,8 @@ def assemble(
     embedder: Embedder,
     retriever: Retriever,
     documents: Documents,
-    plugins: PluginSet,
+    plugins: tuple[Extension, ...] = (),
+    plugin_settings: dict[str, dict[str, str]] | None = None,
     memory: Memory | None = None,
     conversations: Conversations | None = None,
     top_k: int = DEFAULT_TOP_K,
@@ -89,8 +96,10 @@ def assemble(
             neither side is comparable.
         retriever: The index the chunks go into.
         documents: Where the text a citation opens onto is kept.
-        plugins: The bundles cora was asked for. Already valid: a set that could not
-            be composed was refused when it was built.
+        plugins: The plugin modules cora was asked for, already imported. Each is
+            handed a host of its own and registers what it has.
+        plugin_settings: What each plugin module may read as its own settings, keyed
+            by module path. A deployment fills this from the environment.
         memory: What cora keeps about the user. Without it, no `remember` tool is
             offered at all.
         conversations: Where turns are recorded. Without it, a turn is answered and
@@ -101,7 +110,6 @@ def assemble(
         graph: Which engine walks the steps; LangGraph unless a test says otherwise.
         debug: Wraps the three outward ports in logging ones.
     """
-    _announce(plugins)
     if debug:
         chat_model = LoggingChatModel(chat_model)
         embedder = LoggingEmbedder(embedder)
@@ -109,14 +117,24 @@ def assemble(
     knowledge_base = KnowledgeBase(
         embedder=embedder, retriever=retriever, loaders=LOADERS, documents=documents
     )
-    tools = _offered_tools(plugins, knowledge_base, top_k, memory)
+    _announce(plugins)
+    registry = _registered(
+        plugins,
+        documents=knowledge_base,
+        model=chat_model,
+        memory=memory,
+        settings=plugin_settings or {},
+        top_k=top_k,
+    )
+    _warn_unscreened(registry)
+    tools = _offered_tools(registry, knowledge_base, top_k, memory)
     runner = graph(
         before=(
             Named(
                 SCREEN,
                 ScreenStep(
-                    rules=plugins.rules,
-                    instructions=plugins.instructions,
+                    rules=registry.rules,
+                    instructions=registry.instructions,
                     memory=memory,
                 ),
             ),
@@ -141,24 +159,74 @@ def assemble(
     )
 
 
-def _announce(plugins: PluginSet) -> None:
-    """Say in the log what was loaded, and warn when nothing screens the user's input.
+def _announce(plugins: tuple[Extension, ...]) -> None:
+    """Say in the log what loaded, before any of it is asked to register.
+
+    Ahead of registering rather than after it, so a plugin that fails to register is
+    read against the list it was named in — an operator debugging a refusal is owed
+    what else was loaded. What loaded is what the deployment named, not what
+    registered: a plugin that registered nothing is the one they most need to see.
+    """
+    if plugins:
+        log.info("plugins loaded: %s", ", ".join(plugin.module for plugin in plugins))
+
+
+def _warn_unscreened(registry: Registry) -> None:
+    """Warn when nothing a plugin registered screens the user's input.
 
     A screened app and an unscreened one are otherwise indistinguishable once running,
     so an unscreened one is a warning: it is the level that reaches the user without
-    `CORA_DEBUG`, where the `cora` logger carries no handler. A bundle may contribute
+    `CORA_DEBUG`, where the `cora` logger carries no handler. A plugin may register
     only tools, so what is announced is the screen, not the count.
     """
-    if plugins.entries:
-        log.info(
-            "plugins loaded: %s", ", ".join(module for module, _ in plugins.entries)
-        )
-    if not any(plugin.validation_rules for _, plugin in plugins.entries):
+    if len(registry.rules) == len(CORA_RULES):
         log.warning("no plugin screens what the user types")
 
 
+def _registered(
+    plugins: tuple[Extension, ...],
+    *,
+    documents: ContextSource,
+    model: ChatModel,
+    memory: Memory | None,
+    settings: dict[str, dict[str, str]],
+    top_k: int,
+) -> Registry:
+    """Hand each plugin a host of its own, and keep what it registered.
+
+    Registering is what loading could not do: a host is made of the parts assembled
+    here, so `extend` is called now rather than when the module was imported.
+
+    Raises:
+        PluginLoadError: A plugin raised while registering. The module is named, and
+            the turn it would have served never starts.
+        ConfigurationError: What they registered cannot be composed.
+    """
+    entries = []
+    for plugin in plugins:
+        host = PluginHost(
+            module=plugin.module,
+            index=documents,
+            model=model,
+            memory=memory,
+            settings=settings.get(plugin.module, {}),
+            top_k=top_k,
+        )
+        try:
+            plugin.extend(host)
+        except PluginLoadError:
+            raise
+        except Exception as failed:
+            raise PluginLoadError(
+                plugin.module,
+                f"the plugin raised {type(failed).__name__} while registering",
+            ) from failed
+        entries.extend(host.registered)
+    return Registry(tuple(entries))
+
+
 def _offered_tools(
-    plugins: PluginSet,
+    registry: Registry,
     context_source: ContextSource,
     top_k: int,
     memory: Memory | None,
@@ -173,7 +241,7 @@ def _offered_tools(
         search_tool(context_source, top_k),
         *remembering,
         ask_tool(),
-        *plugins.tools,
+        *registry.tools,
     )
 
 
@@ -213,6 +281,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         retriever=retriever,
         documents=SqliteDocuments.at(config.documents_path),
         plugins=load_plugins(config.plugin_modules),
+        plugin_settings=read_plugin_settings(config.plugin_modules),
         memory=SqliteStoreMemory.at(config.memory_path),
         conversations=SqliteConversations.at(config.conversations_path),
         graph=partial(langgraph_for, checkpoints_at=config.conversations_path),

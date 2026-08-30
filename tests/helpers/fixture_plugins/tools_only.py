@@ -1,3 +1,3 @@
 from fixture_plugins import make_plugin
 
-PLUGIN = make_plugin(instructions="")
+extend = make_plugin(instructions="").extend

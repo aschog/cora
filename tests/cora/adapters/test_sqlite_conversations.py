@@ -1,3 +1,5 @@
+import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -160,3 +162,68 @@ def test_a_kind_of_step_the_store_never_heard_of_still_round_trips(
     store.record(THREAD, turn)
 
     assert store.turns(THREAD) == (turn,)
+
+
+def test_a_step_that_carries_children_keeps_them(tmp_path: Path) -> None:
+    """What a plugin's tool did inside a call is part of that call, so a conversation
+    reopened shows the same tree it showed when the turn was answered."""
+    store = _store(tmp_path)
+    nested = Turn(
+        question=ASKED,
+        result=ChatResult(
+            answer="Sleep, not volume.",
+            trace=(
+                ToolUse(
+                    name="research",
+                    arguments={"question": "why?"},
+                    outcome="answered",
+                    steps=(ModelDecision(tools=("search_documents",)),),
+                ),
+            ),
+        ),
+    )
+
+    store.record(THREAD, nested)
+
+    [kept] = store.turns(THREAD)
+    [call] = kept.result.trace
+    assert [step.summary for step in call.steps] == ["Decided to call search_documents"]
+
+
+def test_a_turn_written_before_the_trace_was_a_tree_reads_back(tmp_path: Path) -> None:
+    """A store on disk outlives the release that wrote it. A row from before steps
+    carried steps of their own has no `steps` key at all, and has to come back as a turn
+    rather than as a `TypeError` the reader meets on opening an old conversation."""
+    store = _store(tmp_path)
+    before = {
+        "question": ASKED,
+        "answer": "1.6 g per kg.",
+        "citations": [],
+        "trace": [
+            {"kind": "StepEntered", "fields": {"step": "screen"}},
+            {
+                "kind": "ToolUse",
+                "fields": {
+                    "name": "search_documents",
+                    "arguments": {"query": "protein"},
+                    "outcome": "1 passage from diet.md",
+                    "detail": "[1] diet.md: 1.6 g per kg",
+                    "failed": False,
+                },
+            },
+        ],
+    }
+    with sqlite3.connect(str(tmp_path / "conversations.sqlite")) as connection:
+        connection.execute(
+            "insert into turns (thread, turn) values (?, ?)",
+            (THREAD, json.dumps(before)),
+        )
+
+    [read] = store.turns(THREAD)
+
+    assert read.question == ASKED
+    assert [step.summary for step in read.result.trace] == [
+        "Started to screen",
+        'search_documents(query="protein") → 1 passage from diet.md',
+    ]
+    assert all(step.steps == () for step in read.result.trace)

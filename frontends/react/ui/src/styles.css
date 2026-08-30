@@ -612,6 +612,12 @@ button {
   border-radius: 10px;
 }
 
+.plan-inside {
+  margin: 0 0 var(--s2) calc(1.4em + var(--s2));
+  padding-left: var(--s2);
+  border-left: 2px solid var(--n400);
+}
+
 .plan-result {
   margin-top: var(--s1);
   font-size: 12.5px;

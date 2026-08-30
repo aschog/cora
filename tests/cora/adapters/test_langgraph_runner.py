@@ -1057,3 +1057,31 @@ def test_a_resumed_turn_writes_the_working_step_s_marker_only_once() -> None:
     final = list(runner.resume("75 kg", THREAD))[-1]
 
     assert _entered(final) == [SCREEN, WORK, ANSWER]
+
+
+def test_a_nested_step_survives_a_checkpoint_as_the_children_it_had() -> None:
+    """A trace is a tree once a plugin's tool runs work of its own, and the thread has
+    to hand that tree back: the checkpoint finds trace kinds rather than listing them,
+    and a child is one of the kinds it finds."""
+    nested = ToolUse(
+        name="research",
+        arguments={"question": "why?"},
+        outcome="answered",
+        steps=(ModelDecision(detail="looking", tools=("add",)), _A_STEP),
+    )
+
+    def tracing(state: AgentState) -> AgentState:
+        return {"messages": _said("assistant", "ok"), "trace": [nested]}
+
+    runner = _runner(model=_always(tracing))
+    _final(runner, {"question": "first"})
+
+    final = _final(runner, {"question": "second"})
+
+    [replayed] = [
+        step
+        for step in final["trace"][:4]
+        if isinstance(step, ToolUse) and step.name == "research"
+    ]
+    assert replayed == nested, "the same step, not one that merely reads alike"
+    assert replayed.steps == (ModelDecision(detail="looking", tools=("add",)), _A_STEP)

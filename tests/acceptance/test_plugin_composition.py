@@ -6,7 +6,6 @@ import pytest
 from app_builder import assembled, indexed
 from cora.domain.errors import InputRejectedError
 from cora.engine.plugin_registry import load_plugins
-from cora.engine.plugin_set import PluginSet
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.steps import CORA_PREAMBLE
 from cora.ports.chat_model import ModelReply
@@ -62,9 +61,7 @@ def test_the_same_cora_with_no_plugins_is_a_plain_assistant() -> None:
     is."""
     model = ScriptedChatModel([ModelReply(text=OFF_THE_CUFF)])
     retriever = CountingRetriever()
-    app = indexed(
-        assembled(chat_model=model, retriever=retriever, plugins=PluginSet()), PROTEIN
-    )
+    app = indexed(assembled(chat_model=model, retriever=retriever, plugins=()), PROTEIN)
 
     answered = app.agent.answer(TRAINING, THREAD)
 
@@ -77,7 +74,7 @@ def test_the_same_cora_with_no_plugins_is_a_plain_assistant() -> None:
 @pytest.mark.integration
 def test_bare_coras_brief_names_no_domain_and_refuses_nothing() -> None:
     model = ScriptedChatModel([ModelReply(text=OFF_THE_CUFF), ModelReply(text="ok")])
-    app = assembled(chat_model=model, plugins=PluginSet())
+    app = assembled(chat_model=model, plugins=())
 
     app.agent.answer(DIAGNOSIS, THREAD)
 

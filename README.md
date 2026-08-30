@@ -58,6 +58,10 @@ thing reading its environment from `.env`, so both exports below go in that file
 instead. cora loads no plugin unless asked, so the `CORA_PLUGINS` line is what turns
 this from a bare cora into the coaching app with a prompt-injection screen.
 
+A plugin reads its own settings from the environment, under its own name:
+`CORA_PLUGIN_FITNESS_UNITS=imperial` reaches `cora.plugins.fitness` as `units`. Cora's
+own `CORA_` variables are a separate namespace, so no plugin can read them.
+
 Walked through, with what to expect at each step:
 [`docs/tutorial/first-session.md`](docs/tutorial/first-session.md).
 

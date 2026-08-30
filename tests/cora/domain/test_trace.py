@@ -44,3 +44,27 @@ def test_a_failed_tool_use_is_marked_and_carries_the_error() -> None:
 
 def test_a_step_the_turn_entered_is_named_by_the_step() -> None:
     assert StepEntered("screen").summary == "Started to screen"
+
+
+def test_a_step_read_back_from_data_holds_the_tuples_it_declares() -> None:
+    """JSON has one sequence, and both doors a step travels through — the checkpoint and
+    the conversation store — hand its fields back as keyword arguments. A step that came
+    back holding lists would stop being equal to the step that was recorded, and the
+    trace a resumed turn compares against would never match."""
+    restored = ToolUse(
+        name="research",
+        arguments={"q": 1},
+        outcome="ok",
+        steps=[ModelDecision(detail="looking", tools=["add"])],  # ty: ignore[invalid-argument-type]
+    )
+
+    assert restored == ToolUse(
+        name="research",
+        arguments={"q": 1},
+        outcome="ok",
+        steps=(ModelDecision(detail="looking", tools=("add",)),),
+    )
+    assert isinstance(restored.steps, tuple)
+    [inside] = restored.steps
+    assert isinstance(inside, ModelDecision)
+    assert isinstance(inside.tools, tuple)

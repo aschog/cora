@@ -1,7 +1,7 @@
 [project]
 name = "cora-plugin-fitness"
 version = "0.1.0"
-description = "cora's reference domain plugin: a fitness coach. Uses the contract alone — `cora.domain` and `cora.ports`, no engine, no adapter"
+description = "cora's reference domain plugin: a fitness coach. The package uses the contract alone — `cora.domain` and `cora.ports`, no engine, no adapter; its suite builds a real host to register against"
 requires-python = ">=3.12"
 dependencies = [
     "cora",

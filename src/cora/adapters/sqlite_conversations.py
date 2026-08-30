@@ -12,6 +12,9 @@ from cora.domain.conversation import Session, Turn
 from cora.domain.errors import ConversationStoreError
 from cora.domain.trace import TraceStep, step_kinds
 
+STEPS = "steps"
+"""The field a step keeps its own steps in, which is the one that nests."""
+
 SCHEMA = (
     "create table if not exists turns ("
     "id integer primary key autoincrement, thread text not null, turn text not null)"
@@ -83,12 +86,7 @@ def _as_data(turn: Turn) -> dict[str, Any]:
         "question": turn.question,
         "answer": turn.result.answer,
         "citations": [asdict(citation) for citation in turn.result.citations],
-        "trace": [
-            # Every kind of step is a frozen dataclass; `TraceStep` itself is the ABC
-            # they share, which ty cannot read as a dataclass instance.
-            {"kind": type(step).__name__, "fields": asdict(step)}  # ty: ignore[invalid-argument-type]
-            for step in turn.result.trace
-        ],
+        "trace": [_as_step(step) for step in turn.result.trace],
     }
 
 
@@ -103,16 +101,37 @@ def _from_data(data: dict[str, Any]) -> Turn:
     )
 
 
+def _as_step(step: TraceStep) -> dict[str, Any]:
+    """One step as data, with the steps taken inside it kept as steps.
+
+    `asdict` would flatten a child into a bare dict and lose which kind it was, so the
+    children are written as this function writes any step: tagged with their kind.
+    """
+    # Every kind of step is a frozen dataclass; `TraceStep` itself is the ABC they
+    # share, which ty cannot read as a dataclass instance.
+    fields = asdict(step)  # ty: ignore[invalid-argument-type]
+    if step.steps:
+        fields[STEPS] = [_as_step(child) for child in step.steps]
+    return {"kind": type(step).__name__, "fields": fields}
+
+
 def _step(data: dict[str, Any]) -> TraceStep:
     """JSON has one sequence and a dataclass may want a tuple, so what a field is
-    restored as is read off the kind's own declaration rather than guessed."""
+    restored as is read off the kind's own declaration rather than guessed. The steps
+    taken inside a step are restored as steps, however deep they go."""
     kind = {step.__name__: step for step in step_kinds()}[data["kind"]]
     declared = get_type_hints(kind)
     return kind(
         **{
-            name: tuple(value)
-            if isinstance(value, list) and get_origin(declared.get(name)) is tuple
-            else value
+            name: _restored(name, value, declared)
             for name, value in data["fields"].items()
         }
     )
+
+
+def _restored(name: str, value: Any, declared: dict[str, Any]) -> Any:
+    if name == STEPS:
+        return tuple(_step(child) for child in value)
+    if isinstance(value, list) and get_origin(declared.get(name)) is tuple:
+        return tuple(value)
+    return value

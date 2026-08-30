@@ -1,40 +1,41 @@
-"""Loading the plugins a deployment named, and refusing the ones it cannot have."""
+"""Loading the plugin modules a deployment named, and refusing the ones it cannot."""
 
 import importlib
 from collections.abc import Iterable
 
-from jsonschema import Draft202012Validator, SchemaError
+from cora.domain.errors import ConfigurationError, PluginLoadError
+from cora.ports.host import Extension
 
-from cora.domain.errors import PluginLoadError
-from cora.engine.plugin_set import PluginSet
-from cora.ports.plugin import Plugin
+EXTEND = "extend"
 
 
-def load_plugins(module_paths: Iterable[str]) -> PluginSet:
-    """Load every named plugin, in the order it was named.
+def load_plugins(module_paths: Iterable[str]) -> tuple[Extension, ...]:
+    """Import every named plugin, in the order it was named.
 
-    Each module is named in its own refusal, so one bad entry in a list of three points
-    at itself rather than at the list.
+    Importing is all that happens here: what a plugin contributes is registered later,
+    against a host, because a host is made of parts an assembled app holds. Each module
+    is named in its own refusal, so one bad entry in a list of three points at itself.
 
     Raises:
-        PluginLoadError: One of the modules could not be loaded.
-        ConfigurationError: The modules load but the set they make cannot be composed —
-            a module named twice, or two plugins offering one tool name.
+        PluginLoadError: A module is missing, failed to import, or defines no `extend`.
+        ConfigurationError: The same module was named twice, or two modules end in the
+            same name and so cannot be told apart.
     """
-    return PluginSet(tuple((path, load_plugin(path)) for path in module_paths))
+    named = tuple(module_paths)
+    _reject_a_module_named_twice(named)
+    _reject_two_named_alike(named)
+    return tuple(load_plugin(path) for path in named)
 
 
-def load_plugin(module_path: str) -> Plugin:
-    """The `PLUGIN` bundle a module contributes, checked before it is trusted.
+def load_plugin(module_path: str) -> Extension:
+    """One plugin module, checked as far as importing can check it.
 
     A plugin is arbitrary code cora was told to import, so every assumption about the
-    bundle is stated as a refusal here rather than met later as an attribute error.
+    module is stated as a refusal here rather than met later as an attribute error.
 
     Raises:
-        PluginLoadError: The module is missing, failed to import, defines no `PLUGIN`,
-            or defines one that is not usable — a blank name, two tools sharing a name,
-            a tool that cannot be called, or a parameter schema that is not valid JSON
-            Schema.
+        PluginLoadError: The module is missing, failed to import, defines no `extend`,
+            or defines one that cannot be called.
     """
     try:
         module = importlib.import_module(module_path)
@@ -50,29 +51,37 @@ def load_plugin(module_path: str) -> Plugin:
         raise PluginLoadError(
             module_path, "the plugin module failed to import"
         ) from exc
-    if not hasattr(module, "PLUGIN"):
-        raise PluginLoadError(module_path, "the module defines no PLUGIN bundle")
-    bundle = module.PLUGIN
-    if not isinstance(bundle, Plugin):
-        raise PluginLoadError(module_path, "PLUGIN is not a Plugin bundle")
-    _validate_bundle(module_path, bundle)
-    return bundle
+    extend = getattr(module, EXTEND, None)
+    if extend is None:
+        raise PluginLoadError(module_path, "the module defines no extend(cora)")
+    if not callable(extend):
+        raise PluginLoadError(module_path, "the module's extend is not callable")
+    return Extension(module=module_path, extend=extend)
 
 
-def _validate_bundle(module_path: str, bundle: Plugin) -> None:
-    if not bundle.name.strip():
-        raise PluginLoadError(module_path, "the plugin name is blank")
-    names = [tool.name for tool in bundle.tools]
-    if len(set(names)) != len(names):
-        raise PluginLoadError(module_path, "two tools share the same name")
-    for tool in bundle.tools:
-        if not callable(tool.run):
-            raise PluginLoadError(
-                module_path, f"tool '{tool.name}' has no callable run"
+def _reject_a_module_named_twice(named: tuple[str, ...]) -> None:
+    seen: set[str] = set()
+    for module in named:
+        if module in seen:
+            raise ConfigurationError(
+                f"'{module}' is listed twice. Name each plugin once."
             )
-        try:
-            Draft202012Validator.check_schema(tool.parameter_schema)
-        except SchemaError as exc:
-            raise PluginLoadError(
-                module_path, f"tool '{tool.name}' has an invalid parameter schema"
-            ) from exc
+        seen.add(module)
+
+
+def _reject_two_named_alike(named: tuple[str, ...]) -> None:
+    """Refuse two plugins whose module paths end in the same name.
+
+    A name is what tells two plugins apart: it heads their sections of the brief, and
+    their settings are named for it.
+    """
+    seen: dict[str, str] = {}
+    for module in named:
+        last = module.rsplit(".", 1)[-1]
+        first = seen.get(last)
+        if first is not None:
+            raise ConfigurationError(
+                f"'{first}' and '{module}' are both named '{last}', so their "
+                "instructions and their settings cannot be told apart. Rename one."
+            )
+        seen[last] = module

@@ -7,4 +7,4 @@ class _Refuses:
         raise InputRejectedError("not on my watch")
 
 
-PLUGIN = make_plugin(instructions="", tools=(), validation_rules=(_Refuses(),))
+extend = make_plugin(instructions="", tools=(), validation_rules=(_Refuses(),)).extend

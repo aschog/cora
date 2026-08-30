@@ -76,10 +76,11 @@ def test_a_tool_step_renders_summary_detail_and_failure() -> None:
         "detail": "…",
         "failed": False,
         "origin": "core tool",
+        "steps": [],
     }
 
 
-def test_every_kind_of_step_renders_the_same_three_keys() -> None:
+def test_every_kind_of_step_renders_the_same_keys() -> None:
     """The page draws one kind of step, so a kind added to the engine arrives in the
     shape the panel already knows."""
     decision = payloads.step(ModelDecision(detail="thinking", tools=("search",)))
@@ -89,7 +90,24 @@ def test_every_kind_of_step_renders_the_same_three_keys() -> None:
         "detail": "thinking",
         "failed": False,
         "origin": "",
+        "steps": [],
     }
+
+
+def test_what_a_tool_did_inside_its_call_travels_as_the_call_s_own_steps() -> None:
+    """A plugin's tool may run a turn of its own, and the wire carries that work under
+    the call rather than losing it on the way to the page."""
+    call = payloads.step(
+        ToolUse(
+            name="research",
+            outcome="answered",
+            steps=(ModelDecision(tools=("search_documents",)),),
+        )
+    )
+
+    assert [inside["summary"] for inside in call["steps"]] == [
+        "Decided to call search_documents"
+    ]
 
 
 def test_a_result_is_the_answer_its_citations_and_its_trace() -> None:
@@ -116,6 +134,7 @@ def test_a_result_is_the_answer_its_citations_and_its_trace() -> None:
                 "detail": "",
                 "failed": False,
                 "origin": "",
+                "steps": [],
             }
         ],
     }
