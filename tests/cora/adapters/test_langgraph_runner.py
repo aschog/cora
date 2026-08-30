@@ -389,11 +389,11 @@ def test_the_first_state_yielded_is_the_thread_as_the_turn_found_it() -> None:
     assert [m.content for m in found["messages"]] == ["first", "ok"], (
         "the first yield must predate this turn's screening"
     )
-    assert [step.summary for step in found["trace"]] == [
-        StepEntered(SCREEN).summary,
-        StepEntered(WORK).summary,
-        _A_STEP.summary,
-        StepEntered(ANSWER).summary,
+    assert found["trace"] == [
+        StepEntered(SCREEN),
+        StepEntered(WORK),
+        _A_STEP,
+        StepEntered(ANSWER),
     ], "and carry only the earlier turn's steps"
     assert len(states[-1]["trace"]) == 8, "and the second turn adds its own four"
 
@@ -1083,7 +1083,5 @@ def test_a_nested_step_survives_a_checkpoint_as_the_children_it_had() -> None:
         for step in final["trace"][:4]
         if isinstance(step, ToolUse) and step.name == "research"
     ]
-    assert [step.summary for step in replayed.steps] == [
-        "Decided to call add",
-        _A_STEP.summary,
-    ]
+    assert replayed == nested, "the same step, not one that merely reads alike"
+    assert replayed.steps == (ModelDecision(detail="looking", tools=("add",)), _A_STEP)
