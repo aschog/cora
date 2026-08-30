@@ -5,22 +5,22 @@ before it changes the plugin.
 
 ## Goals / Non-Goals
 
-**Goals** — a plugin registers against a host and is limited by what cora *has*, not by
-what a record declares; one registry the listing, the collision check and the trace all
-read; a tool that runs its own loop, with its steps shown under the call.
+**Goals** — a plugin registers against a host, limited by what cora *has* rather than by
+what a record declares. One registry, read by the listing, the collision check and the
+trace alike. A tool that runs a loop of its own, with its steps shown under the call.
 
-**Non-Goals** — the scope rule that reads a registration (story 6); handlers taking part
-in a turn (story 5); markers becoming parents of the steps inside them, the rest of the
-nesting shape; any change to `AgentState`, the pause contract or the named steps.
+**Non-Goals** — the scope rule that reads a registration, which is story 6. Handlers
+taking part in a turn, which is story 5. Markers becoming parents of the steps inside
+them, the rest of the nesting shape. Any change to `AgentState`, the pause contract or
+the named steps.
 
 ## Decisions
 
 **The host is a port, and `extend` is the whole contract.**
 
-- `Host` is a Protocol in `cora.ports.plugin`; the composition root is what satisfies
-  it.
-- A plugin module defines `extend(cora: Host)` and calls what it needs; nothing is
-  returned.
+- `Host` is a Protocol in `cora.ports.plugin`, and the composition root satisfies it.
+- A plugin module defines `extend(cora: Host)` and calls what it needs, returning
+  nothing.
 - Returning a record would put the shape back — a plugin may only register what a host
   offers.
 - The seam is the host: a fifth kind of contribution is a method on it, not a field

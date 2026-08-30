@@ -5,14 +5,14 @@ someone else thought of.
 
 ## What Changes
 
-- A plugin defines `extend(cora)` and registers what it has; the `Plugin` record goes
+- A plugin defines `extend(cora)` and registers what it has, and the `Plugin` record goes
 - **BREAKING** — no shim: the two shipped plugins are rewritten to the new contract
 - The host hands a plugin cora's own parts: search, memory, the model, a log, its settings
 - Registrations are one list, so the listing, the collision check and the trace read once
 - A registered tool may run a bounded loop of its own, offered read-only tools
 - The steps that loop takes appear in the trace as children of the call that ran it
 - A module with no `extend`, one that raises, or one taking a taken name is refused by name
-- One new capability, `plugins`; no `AgentState` key added or widened
+- One new capability, `plugins`, and no `AgentState` key added or widened
 
 ## Impact
 
