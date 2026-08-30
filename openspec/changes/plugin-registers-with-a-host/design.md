@@ -56,7 +56,13 @@ the named steps.
   loop nested under it, so depth is not a way of asking for more.
 - A loop is shown passages by document rather than by number: the numbers are the turn's
   to hand out, and story 9 is where a delegated source earns one.
-- Nothing under `src/cora/` is edited to support one: the acid test is a fixture plugin.
+- Nothing under `src/cora/` names one: the acid test is a fixture plugin, written
+  against the host like any other. The host, `delegate` and a step's own steps are
+  written under `src/cora/` *so that* it can be — what the guard holds is that the next
+  plugin needs none of that written again.
+- A plugin's section of the brief is headed by its module's last segment rather than by
+  a name it chose: `## Fitness`, not `## Fitness coaching`. A shorter heading is the
+  price of no plugin being able to put another's name on its own instructions.
 
 **The trace nests where the work nested.**
 

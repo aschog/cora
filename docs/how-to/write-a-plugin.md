@@ -61,16 +61,24 @@ cora imports no plugin of its own, so nothing here edits the engine.
    model, offered the tools you pass it and cora's document search:
 
    ```python
-   def research(question: str) -> str:
-       return cora.delegate(question, rounds=2)
+   def extend(cora: Host) -> None:
+       def research(question: str) -> str:
+           return cora.delegate(question, rounds=2)
+
+       cora.register_tool(name="research", description=..., parameter_schema=..., run=research)
    ```
+
+   The tool closes over the host it was registered against, which is how it still has a
+   cora to delegate to by the time the model calls it.
 
    The loop is offered your tools and cora's document search, and none of cora's own
    tools that write or stop the turn — an effect and a stop-to-ask belong in the turn,
    where the gate is. It is bounded rather than sandboxed: a tool *you* pass it is a tool
-   it can call, and `rounds` is capped by the host whatever you ask for. Its budget is its
-   own rather than the turn's, and what it did is shown under the call that ran it. What
-   it answers carries no `[n]`: citation numbers belong to the turn.
+   it can call, and `rounds` is capped by the host whatever you ask for. The cap is per
+   call, so a turn that makes several spends several caps. What it did is shown under the
+   call that ran it, and what it answers carries no `[n]` — citation numbers belong to the
+   turn. Because it read the user's documents, its answer reaches cora's own model
+   labelled untrusted, the same as a passage would.
 
 6. **Name it.** `CORA_PLUGINS` takes module paths separated by commas, in order:
 

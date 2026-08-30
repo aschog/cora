@@ -659,9 +659,14 @@ SHIPPED = workspace.ROOT / "src" / "cora"
 
 
 def test_no_shipped_file_names_a_plugin() -> None:
-    """What "a plugin needs no core change" means as a check: cora offers a host, and
-    a plugin registers against it, so nothing under `src/cora/` knows any plugin by
-    name — not the two that ship, and not the sub-agent fixture that proves the point.
+    """Cora offers a host, and a plugin registers against it, so nothing under
+    `src/cora/` knows any plugin by name — not the two that ship, and not the sub-agent
+    fixture that proves the point.
+
+    What this proves is that the mechanism is general, not that it cost no code: the
+    host, `delegate` and a step's own steps were all written under `src/cora/` so that a
+    sub-agent could be written outside it. The claim is that the *next* plugin needs
+    none of that again, and naming none of them is how that is checked.
     """
     named = sorted(
         str(path.relative_to(workspace.ROOT))
