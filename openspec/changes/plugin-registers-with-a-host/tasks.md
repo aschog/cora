@@ -58,3 +58,9 @@ it.
 ## 7. The marker comes off
 
 - [x] 7.1 Drop 1.1's `xfail` marker and watch the outer test pass
+
+## 8. What the build turned up
+
+- [x] 8.1 Write a test that shows what a tool did inside its call reaching the page's
+      wire as that call's own steps
+
