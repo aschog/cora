@@ -41,7 +41,8 @@ it.
 - [x] 5.1 Write a test that shows a fixture plugin's tool running a bounded loop with the
       model
 - [x] 5.2 Write a test that shows that loop's steps in the trace as children of the call
-- [x] 5.3 Write a test that shows the loop offered only tools that read
+- [x] 5.3 Write a test that shows the loop offered no tool of cora's that writes or
+      stops the turn
 - [x] 5.4 Write a test that shows the loop's budget is its own, and the turn's is untouched
 - [x] 5.5 Write a test that shows a nested step surviving a checkpoint and the conversation
       store
@@ -76,4 +77,11 @@ it.
 - [x] 8.8 Write tests that show a plugin reading the settings named for it, none of
       cora's own, and two plugins named alike refused
 - [x] 8.9 Write a test that shows the page drawing what a step did inside it
+- [x] 8.10 Write a test that shows a delegated loop reading its passages by document
+      rather than by number
+- [x] 8.11 Write a test that shows a number a loop invented stripped and its lines left
+      alone
+- [x] 8.12 Write a test that shows a loop and everything it delegates sharing one
+      allowance
+- [x] 8.13 Write a test that shows two modules named alike at the end refused at loading
 

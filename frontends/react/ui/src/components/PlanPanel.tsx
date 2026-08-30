@@ -2,8 +2,10 @@ import { useState } from 'react'
 import type { Step } from '../api'
 
 /** The trace as the panel draws it. A step that ran work of its own — a plugin's tool
- *  that delegated to the model — opens onto that work, drawn by this same panel one
- *  level in, so a reader sees what a call did rather than only that it was made. */
+ *  that delegated to the model — opens onto that work, drawn by this same panel to
+ *  whatever depth the work went, so a reader sees what a call did rather than only that
+ *  it was made. Children render only while their row is open, so depth costs clicks
+ *  rather than render. */
 export default function PlanPanel({ steps }: { steps: Step[] }) {
   const [open, setOpen] = useState<number | null>(null)
 
@@ -29,7 +31,7 @@ export default function PlanPanel({ steps }: { steps: Step[] }) {
             </div>
           )}
           {open === n && step.steps?.length > 0 && (
-            <div className="plan-inside">
+            <div className="plan-inside" role="group" aria-label={`inside ${step.summary}`}>
               <PlanPanel steps={step.steps} />
             </div>
           )}

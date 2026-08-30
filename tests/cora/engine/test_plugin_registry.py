@@ -78,3 +78,14 @@ def test_one_module_named_twice_is_a_config_error() -> None:
 
     assert "fixture_plugins.valid" in excinfo.value.user_message
     assert "twice" in excinfo.value.user_message
+
+
+def test_two_modules_named_alike_at_the_end_are_refused() -> None:
+    """A name is what tells two plugins apart: it heads their sections of the brief and
+    it names their settings. Two `fitness` plugins would share both."""
+    with pytest.raises(ConfigurationError) as refused:
+        load_plugins(["acme.plugins.valid", "fixture_plugins.valid"])
+
+    assert "acme.plugins.valid" in refused.value.user_message
+    assert "fixture_plugins.valid" in refused.value.user_message
+    assert "Rename one" in refused.value.user_message

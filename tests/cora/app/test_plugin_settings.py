@@ -1,9 +1,6 @@
 """What a plugin may read as its own settings, and what it may never read."""
 
-import pytest
-
 from cora.app.config import PLUGIN_PREFIX, plugin_settings
-from cora.domain.errors import ConfigurationError
 
 FITNESS = "cora.plugins.fitness"
 BIRDS = "acme.plugins.birds"
@@ -41,16 +38,6 @@ def test_a_plugin_reads_none_of_coras_own_configuration() -> None:
     )
 
     assert settings == {"acme.plugins.log": {}}
-
-
-def test_two_plugins_named_the_same_at_the_end_are_refused() -> None:
-    """They would share one namespace with no way to separate them, and their sections
-    of the brief would be headed identically."""
-    with pytest.raises(ConfigurationError) as refused:
-        plugin_settings(("acme.plugins.fitness", FITNESS), {})
-
-    assert "acme.plugins.fitness" in refused.value.user_message
-    assert FITNESS in refused.value.user_message
 
 
 def test_a_plugin_with_nothing_set_reads_nothing() -> None:

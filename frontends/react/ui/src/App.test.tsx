@@ -8,18 +8,21 @@ import App from './App'
  * trace, with nothing streamed and nothing observed.
  */
 const LIVE = [
-  { summary: 'Reading your documents', detail: '', failed: false, origin: '' },
+  { summary: 'Reading your documents', detail: '', failed: false, origin: '', steps: [] },
   {
     summary: 'Weighing the last 21 days',
     detail: 'training_log',
     failed: false,
     origin: 'plugin tool',
+    steps: [],
   },
 ]
 const TURN = {
   answer: 'Sleep, not volume [1].',
   citations: [{ number: 1, document: 'notes.md', start: 0, end: 6, upload: 'u1' }],
-  trace: [{ summary: 'Wrote the answer', detail: '', failed: false, origin: '' }],
+  trace: [
+    { summary: 'Wrote the answer', detail: '', failed: false, origin: '', steps: [] },
+  ],
 }
 
 const frame = (event: string, data: unknown) =>

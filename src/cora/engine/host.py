@@ -2,7 +2,9 @@
 
 import logging
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
+from contextlib import contextmanager
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -22,16 +24,34 @@ from cora.ports.plugin import Tool, ToolResult, ValidationRule
 
 DELEGATE_BRIEF = (
     "You are answering one question on behalf of an assistant, using the tools you are "
-    "offered. Be brief and concrete, and answer from what the tools return."
+    "offered. Be brief and concrete, and answer from what the tools return. Name the "
+    "document a fact came from in your own words — never write a citation number, "
+    "because the numbers belong to the assistant and not to you."
 )
 MAX_DELEGATED_ROUNDS = 5
 """The most rounds a delegated loop may spend, whatever it asks for. The budget is the
 host's rather than the plugin's: one tool call that asked for ten thousand rounds would
 spend a deployment's bill, and a turn may make one such call per round of its own."""
-UNCITED = re.compile(rf"\s*{CITATION_RUN.pattern}")
-"""What a delegated loop's answer is stripped of, by the rule the page draws buttons
-with. The numbers belong to the turn, and a loop handing itself `[1]` would collide with
-the `[1]` the reader has already been shown — pointing a button at another document."""
+_allowance: ContextVar[list[int] | None] = ContextVar("_allowance", default=None)
+"""What is left of the rounds this delegation may spend, shared by every loop under it.
+
+A delegated loop may call a tool that delegates again, and a fresh budget per level
+would make depth a way of asking for more — four levels of five rounds is a thousand
+model calls from one tool call. The outermost loop opens the pot and everything inside
+it spends the same one, so a tool call costs what the host allows however deep the
+plugin goes."""
+UNNUMBERED = re.compile(rf"^{CITATION_RUN.pattern}\s", re.M)
+"""What a passage's number is taken off with before a delegated loop reads it, leaving
+`document: text`. The numbers are the turn's to hand out, so a loop is not shown one it
+cannot use — it attributes by naming the document, and that prose survives."""
+UNCITED = re.compile(CITATION_RUN.pattern)
+"""What a delegated loop's answer is stripped of, should it write a number anyway.
+Stricter than the rule the page draws buttons by: the page leaves a number the turn
+never handed out as plain text, while here any bracketed number goes, because a loop has
+none to give. The lines around it are left as the loop wrote them."""
+TIGHTENED = ((re.compile(r"[ \t]{2,}"), " "), (re.compile(r"[ \t]+([.,;:])"), r"\1"))
+"""The residue of taking a number out mid-sentence: two spaces where one belongs, or a
+space before the stop that followed the number."""
 
 
 @dataclass
@@ -120,13 +140,24 @@ class PluginHost:
             LlmError: The model gave back nothing usable.
         """
         offered = self._offered(tools)
-        spend = min(rounds, MAX_DELEGATED_ROUNDS)
         runtime = ToolRuntime(tools=offered)
         said: list[Message] = [
             Message(role="system", content=DELEGATE_BRIEF),
             Message(role="user", content=task),
         ]
-        for _ in range(spend + 1):
+        with _spending(rounds) as left:
+            return self._rounds(said, offered, runtime, left)
+
+    def _rounds(
+        self,
+        said: list[Message],
+        offered: tuple[Tool, ...],
+        runtime: ToolRuntime,
+        left: list[int],
+    ) -> str:
+        """One delegated loop, spending the allowance the outermost one opened."""
+        while left[0] > 0:
+            left[0] -= 1
             reply = self.model.complete(tuple(said), offered)
             took(
                 ModelDecision(
@@ -135,7 +166,7 @@ class PluginHost:
                 )
             )
             if reply.is_final:
-                return UNCITED.sub("", reply.text).strip()
+                return _unnumbered(reply.text)
             said.append(
                 Message(
                     role="assistant", content=reply.text, tool_calls=reply.tool_calls
@@ -179,10 +210,42 @@ class PluginHost:
 def _read(result: ToolResult) -> tuple[str, str]:
     """What the loop is told, and the one line its step is shown as.
 
-    Passages reach a delegated loop as text rather than as numbered citations: the
-    numbers belong to the turn, and a loop that reads is not what a turn cites. Story 9
-    is where a delegated source earns a number of its own.
+    Passages reach a delegated loop by document name rather than by number: the numbers
+    belong to the turn, and a loop that reads is not what a turn cites. So the loop can
+    still say where a fact came from, and the turn can pass that on. Story 9 is where a
+    delegated source earns a number of its own.
     """
     if not isinstance(result.payload, Citable):
         return result.render(), result.render()
-    return result.payload.register(()).text, result.payload.summary
+    block = result.payload.register(())
+    return UNNUMBERED.sub("", block.text), result.payload.summary
+
+
+def _unnumbered(said: str) -> str:
+    """What a delegated loop answered, with any number it wrote taken out.
+
+    The lines it wrote stay its lines: only the run and the space that a number left
+    behind are closed up, so a list or a paragraph break survives.
+    """
+    written = UNCITED.sub("", said)
+    for pattern, replacement in TIGHTENED:
+        written = pattern.sub(replacement, written)
+    return "\n".join(line.strip() for line in written.splitlines()).strip()
+
+
+@contextmanager
+def _spending(rounds: int) -> Iterator[list[int]]:
+    """The rounds this delegation may spend: a pot of its own, or the one already open.
+
+    A nested loop joins the pot the loop above it opened, so depth spends the same
+    allowance rather than a fresh one.
+    """
+    open_pot = _allowance.get()
+    if open_pot is not None:
+        yield open_pot
+        return
+    token = _allowance.set([min(rounds, MAX_DELEGATED_ROUNDS) + 1])
+    try:
+        yield _allowance.get() or [0]
+    finally:
+        _allowance.reset(token)

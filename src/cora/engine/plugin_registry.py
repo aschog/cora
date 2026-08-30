@@ -18,10 +18,12 @@ def load_plugins(module_paths: Iterable[str]) -> tuple[Extension, ...]:
 
     Raises:
         PluginLoadError: A module is missing, failed to import, or defines no `extend`.
-        ConfigurationError: The same module was named twice.
+        ConfigurationError: The same module was named twice, or two modules end in the
+            same name and so cannot be told apart.
     """
     named = tuple(module_paths)
     _reject_a_module_named_twice(named)
+    _reject_two_named_alike(named)
     return tuple(load_plugin(path) for path in named)
 
 
@@ -65,3 +67,21 @@ def _reject_a_module_named_twice(named: tuple[str, ...]) -> None:
                 f"'{module}' is listed twice. Name each plugin once."
             )
         seen.add(module)
+
+
+def _reject_two_named_alike(named: tuple[str, ...]) -> None:
+    """Refuse two plugins whose module paths end in the same name.
+
+    A name is what tells two plugins apart: it heads their sections of the brief, and
+    their settings are named for it.
+    """
+    seen: dict[str, str] = {}
+    for module in named:
+        last = module.rsplit(".", 1)[-1]
+        first = seen.get(last)
+        if first is not None:
+            raise ConfigurationError(
+                f"'{first}' and '{module}' are both named '{last}', so their "
+                "instructions and their settings cannot be told apart. Rename one."
+            )
+        seen[last] = module

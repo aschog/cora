@@ -202,12 +202,12 @@ def plugin_settings(
         modules: The plugin modules a deployment named.
         env: Where to read from. The process environment unless a caller says otherwise.
 
-    Raises:
-        ConfigurationError: Two plugins share a last segment, so they would share one
-            namespace with no way to tell whose setting is whose.
+    A plugin whose name is the tail of another's prefix can be handed a variable meant
+    for that one — `CORA_PLUGIN_FITNESS_UNITS_X` reaches both `fitness` and
+    `fitness_units`. Both are plugins, so nothing of cora's is exposed, and loading
+    already refuses two plugins named alike.
     """
     environ = os.environ if env is None else env
-    _reject_a_shared_namespace(modules)
     found: dict[str, dict[str, str]] = {}
     for module in modules:
         prefix = f"{PLUGIN_PREFIX}{_segment(module).upper()}_"
@@ -221,16 +221,3 @@ def plugin_settings(
 
 def _segment(module: str) -> str:
     return module.rsplit(".", 1)[-1]
-
-
-def _reject_a_shared_namespace(modules: tuple[str, ...]) -> None:
-    named: dict[str, str] = {}
-    for module in modules:
-        first = named.get(_segment(module))
-        if first is not None:
-            raise ConfigurationError(
-                f"'{first}' and '{module}' are both named "
-                f"'{_segment(module)}', so their settings and their instructions "
-                "cannot be told apart. Rename one."
-            )
-        named[_segment(module)] = module

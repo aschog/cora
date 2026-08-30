@@ -52,8 +52,10 @@ the named steps.
 - The set is cora's search plus what the plugin passed, so none of cora's writing or
   stopping tools is in it.
 - Bounded rather than sandboxed: a tool the plugin passes is one the plugin already has.
-- The budget is the host's, capped whatever the plugin asks for, and the turn's own is
-  untouched.
+- The budget is the host's, capped whatever the plugin asks for, and shared by every
+  loop nested under it, so depth is not a way of asking for more.
+- A loop is shown passages by document rather than by number: the numbers are the turn's
+  to hand out, and story 9 is where a delegated source earns one.
 - Nothing under `src/cora/` is edited to support one: the acid test is a fixture plugin.
 
 **The trace nests where the work nested.**

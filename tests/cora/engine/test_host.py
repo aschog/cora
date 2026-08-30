@@ -4,15 +4,17 @@ import logging
 
 import pytest
 
+from cora.domain.chunk import Chunk
 from cora.domain.errors import PluginLoadError, ToolLoopLimitError
 from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.host import DELEGATE_BRIEF, MAX_DELEGATED_ROUNDS
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.nesting import collecting
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
-from cora.ports.chat_model import ModelReply
+from cora.ports.chat_model import Message, ModelReply, TextSink, unheard
 from cora.ports.host import INSTRUCTIONS, RULE, TOOL
 from cora.ports.plugin import Tool, ToolCall
+from cora.ports.retrieval import RetrievedChunk
 from fakes import FakeContextSource, FakeMemory, ScriptedChatModel, add_tool, host_for
 from fixture_plugins import RefusesContaining
 
@@ -330,3 +332,103 @@ def test_a_loop_may_not_spend_more_rounds_than_the_host_allows() -> None:
         )
 
     assert model.completions == MAX_DELEGATED_ROUNDS + 1
+
+
+def test_a_delegated_loop_reads_its_passages_by_document_rather_than_by_number() -> (
+    None
+):
+    """The numbers are the turn's to hand out, so a loop is not shown them at all — it
+    is shown which document each passage came from, and can say so in prose that
+    survives the answer coming back."""
+    documents = FakeContextSource(
+        results=[
+            RetrievedChunk(
+                chunk=Chunk(
+                    text="squats stall on sleep",
+                    source="notes.md",
+                    index=0,
+                    offset=0,
+                ),
+                score=1.0,
+            )
+        ]
+    )
+    model = _answering(
+        ModelReply(
+            tool_calls=(
+                ToolCall(
+                    name=SEARCH_TOOL_NAME,
+                    arguments={"query": "squats"},
+                    call_id="s1",
+                ),
+            )
+        ),
+        ModelReply(text="notes.md says squats stall on sleep."),
+    )
+
+    answered = host_for(MODULE, documents=documents, model=model).delegate("Why?")
+
+    assert model.last_messages is not None
+    read = model.last_messages[-1].content
+    assert "notes.md: squats stall on sleep" in read
+    assert "[1]" not in read, "a number the loop cannot hand out is not shown to it"
+    assert answered == "notes.md says squats stall on sleep."
+
+
+def test_stripping_a_number_a_loop_invented_leaves_the_rest_as_written() -> None:
+    """Belt and braces over the reading above: a loop that writes a number anyway loses
+    it, and loses nothing else — the lines it wrote stay the lines it wrote."""
+    model = _answering(ModelReply(text="Two points:\n[1] sleep\n[2] volume"))
+
+    answered = host_for(MODULE, model=model).delegate("List them.")
+
+    assert answered == "Two points:\nsleep\nvolume"
+
+
+def test_a_loop_and_everything_it_delegates_share_one_allowance() -> None:
+    """Nesting is not a way to ask again: a loop that delegates again spends the pot the
+    outermost one opened, so one tool call costs what the host allows however deep the
+    plugin goes."""
+    calls: list[str] = []
+    inner_host = host_for(MODULE, model=_endlessly(calls, "inner"))
+    deeper = Tool(
+        name="deeper",
+        description="Ask again, one level down.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: inner_host.delegate("deeper?"),
+    )
+
+    with pytest.raises(ToolLoopLimitError):
+        host_for(MODULE, model=_endlessly(calls, "outer")).delegate(
+            "Go.", tools=(deeper,)
+        )
+
+    assert len(calls) <= MAX_DELEGATED_ROUNDS + 1, (
+        f"one allowance across every level, and {len(calls)} rounds were spent"
+    )
+
+
+class _Endless:
+    """A model that always asks for one more tool call, so only a budget stops it."""
+
+    def __init__(self, calls: list[str], name: str, tool: str) -> None:
+        self.calls = calls
+        self.name = name
+        self.tool = tool
+
+    def complete(
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
+    ) -> ModelReply:
+        self.calls.append(self.name)
+        return ModelReply(
+            tool_calls=(
+                ToolCall(name=self.tool, arguments={}, call_id=f"c{len(self.calls)}"),
+            )
+        )
+
+
+def _endlessly(calls: list[str], name: str) -> _Endless:
+    return _Endless(calls, name, tool="deeper" if name == "outer" else "nothing")

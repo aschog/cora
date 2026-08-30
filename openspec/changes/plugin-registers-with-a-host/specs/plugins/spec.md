@@ -44,15 +44,24 @@ named for the plugin rather than for cora.
 
 ### Requirement: A registered tool may run a turn of its own
 
-A tool SHALL be able to run its own bounded loop with the model, offered tools that only
-read. The system SHALL report the steps of that loop as children of the call that ran
-it, and SHALL require no change of its own to allow it.
+A tool SHALL be able to run its own bounded loop with the model, offered cora's document
+search and the tools the plugin passed it. The system SHALL offer such a loop none of its
+own tools that write or stop a turn, and SHALL bound what one loop and everything it
+delegates may spend. The system SHALL report the steps of that loop as children of the
+call that ran it, and SHALL require no change of its own to allow it.
 
 #### Scenario: A tool runs its own bounded loop
 
 - **GIVEN** a plugin registering a tool that runs a model loop of its own
 - **WHEN** the model calls that tool
 - **THEN** the tool runs, and the turn is answered
+- **AND** the loop is offered no tool of cora's that writes or stops the turn
+
+#### Scenario: A loop spends what the host allows and no more
+
+- **GIVEN** a loop asking for more rounds than the host allows, at any depth
+- **WHEN** it runs
+- **THEN** it is stopped at the host's allowance, and the turn's own is untouched
 
 #### Scenario: The loop's steps are shown under the call
 
