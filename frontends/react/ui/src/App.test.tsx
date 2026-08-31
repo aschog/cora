@@ -2758,10 +2758,11 @@ test('a scope read that failed leaves the pin the page already knows about', asy
   let reachable = true
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (path: string, init?: RequestInit) => {
+    vi.fn(async (path: string) => {
       if (path === '/api/ask') return answering()
       if (path.endsWith('/scope')) {
-        if (!reachable) return { ok: false, status: 503, json: async () => ({}) } as Response
+        if (!reachable)
+          return { ok: false, status: 503, json: async () => ({}) } as Response
         return { ok: true, json: async () => ({ pin: 'fitness' }) } as unknown as Response
       }
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
