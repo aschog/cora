@@ -20,6 +20,12 @@ A turn walks named steps: *screen* admits the question and opens the turn, *work
 where the rounds are spent, and *answer* settles what the user reads. The steps are named
 where they are wired, so a turn that grows one grows it there.
 
+Four points inside that walk are open to a plugin — the question being screened, the
+brief being settled, a tool call about to run, a tool result coming back. A handler
+subscribed to one is handed a frozen value and answers with a refusal, an amendment or
+nothing. What a return means at each point is `cora.engine.events`, and the trace names
+the plugin behind every one of them. Cora's own screening goes through the same door.
+
 ![A UML sequence diagram of one turn inside the graph: the runner takes the screen step
 and then the work step, loops over the model step and the router, and on the router's
 answer either runs the round's tools, stops to put a decision to the reader before

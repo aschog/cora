@@ -34,11 +34,12 @@ The nouns this file uses, each against the class that carries it. Paths are unde
 - **Scope** *(new, story 5)* — one field on a registration, naming the field a turn runs in
   and the lifetime of everything registered under it; `None` means system-wide.
 - **Tool** — `ports.plugin.Tool`, asked for as a `ToolCall` and answered by a `ToolResult`.
-- **Rule** — `ports.plugin.ValidationRule`, refusing an input with `InputRejectedError`
-  before any model call.
-- **Handler** *(new, story 5)* — a registration subscribed to a step, returning an amendment
-  or a refusal — never a pause, which is the gate's privilege alone; a rule and an
-  instruction become two kinds of it, an amender and an observer two more.
+- **Rule** — was `ports.plugin.ValidationRule`; gone in story 5, where screening became a
+  handler on the *screen* event and cora's own rules became system-wide subscribers.
+- **Handler** *(new, story 5)* — a registration subscribed to a named point in the turn,
+  returning an amendment or a refusal — never a pause, which is the gate's privilege
+  alone. Instructions stayed a registration: they are a string, and the brief's headings
+  are composed from them.
 - **Effect** *(new, story 11)* — a tool call that changes something outside cora, and so
   waits for approval before it runs.
 - **Approval** *(new, story 11)* — a yes or no bound to one proposed call, checkpointed;

@@ -2,8 +2,8 @@
 
 <!-- --8<-- [start:what-cora-is] -->
 cora is an agent you chat with, and everything it knows and can do arrives as a plugin.
-The core runs a turn and screens what comes in; a plugin gives it a field, tools and rules
-of its own. With nothing loaded it still answers.
+The core runs a turn and screens what comes in; a plugin gives it a field, tools and a
+hand in the turn itself. With nothing loaded it still answers.
 <!-- --8<-- [end:what-cora-is] -->
 
 On the showcase: [showcase.turingcollege.com](https://showcase.turingcollege.com/).
@@ -28,7 +28,8 @@ A plugin contributes three things, and may bring only one of them:
 
 - **what cora can do** — a tool, named and given a schema, that the model may call
 - **what cora is** — instructions heading its section of the brief
-- **what cora will not accept** — a rule that refuses an input before any model runs
+- **what cora does as a turn runs** — a handler at a named point in it: refusing the
+  question, amending the brief, refusing one tool call, wrapping what a tool returned
 
 With none loaded cora still answers: it searches its documents, remembers what it is
 told, asks when it cannot tell, and cites what it used.
