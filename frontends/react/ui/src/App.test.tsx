@@ -86,6 +86,7 @@ const served: Record<string, unknown> = {
         { kind: 'handler', name: 'screen', scope: null },
       ],
     },
+    { name: 'quiet', source: '/tmp/quiet.py', scopes: [], contributions: [] },
   ],
   '/api/scopes': { available: ['fitness', 'travel'], default: 'cora' },
   '/api/memory': [{ key: 'f1', text: 'No burpees.' }],
@@ -138,6 +139,7 @@ test('the plan fills while the turn runs, then the answer lands with its citatio
   expect(screen.getByText('bmr')).toBeTruthy()
   expect(screen.getByText('screen')).toBeTruthy()
   expect(screen.getByText('system-wide')).toBeTruthy()
+  expect(screen.getByText('registers nothing')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {

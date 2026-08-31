@@ -30,8 +30,11 @@ def test_plugin_with_missing_dependency_is_reported_as_failed_import() -> None:
     with pytest.raises(PluginLoadError) as excinfo:
         load_plugin("fixture_plugins.missing_dependency")
 
-    assert "failed to import" in excinfo.value.user_message
-    assert "was not found" not in excinfo.value.user_message
+    assert "ModuleNotFoundError while importing" in excinfo.value.user_message
+    assert "was not found" not in excinfo.value.user_message, (
+        "the plugin is there; what it imports is not, and the two refusals are "
+        "different sentences because they are different things to fix"
+    )
 
 
 def test_plugin_module_raising_during_import_surfaces_as_typed_error() -> None:
@@ -206,6 +209,25 @@ def test_a_dropped_file_may_write_ordinary_python(tmp_path: pathlib.Path) -> Non
     (loaded,) = load_plugins([], folder=tmp_path)
 
     assert loaded.module == "field_notes"
+
+
+NOT_A_NAME = ["acme.birds.py", "field-notes.py", "2birds.py"]
+
+
+@pytest.mark.parametrize("filename", NOT_A_NAME)
+def test_a_dropped_file_whose_stem_is_not_a_name_is_refused(
+    tmp_path: pathlib.Path, filename: str
+) -> None:
+    """A plugin's name has to be one: it heads a section of the brief and it spells a
+    variable in the environment. `acme.birds.py` would be read as `birds` by everything
+    downstream and as `acme.birds` by the check meant to stop two of them, and
+    `field-notes.py` asks for a `CORA_PLUGIN_FIELD-NOTES_` no shell will set."""
+    _drop(tmp_path, filename)
+
+    with pytest.raises(ConfigurationError) as refused:
+        load_plugins([], folder=tmp_path)
+
+    assert filename in refused.value.user_message
 
 
 def test_a_plugin_may_not_take_coras_own_name(tmp_path: pathlib.Path) -> None:

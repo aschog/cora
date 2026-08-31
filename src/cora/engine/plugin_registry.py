@@ -27,9 +27,10 @@ change what `import json` means anywhere.
 """
 
 SUFFIX = ".py"
-PRIVATE = "_"
-"""A file the folder does not offer as a plugin: `__init__.py`, and anything an author
-named as private. Everything else in there was dropped in to be loaded."""
+SKIPPED = ("_", ".")
+"""How a file in the folder says it is not a plugin: `__init__.py` and anything an
+author named as private, and anything hidden — a volume that has been near a Mac keeps
+`._name.py` beside every file, and one of those refuses the whole deployment."""
 
 
 def load_plugins(
@@ -54,6 +55,7 @@ def load_plugins(
     named = tuple(module_paths)
     dropped = _files_in(folder)
     _reject_a_module_named_twice(named)
+    _reject_a_stem_that_is_not_a_name(dropped)
     _reject_two_named_alike(named, dropped)
     return (
         *(load_plugin(path) for path in named),
@@ -80,11 +82,13 @@ def load_plugin(module_path: str) -> Extension:
                 module_path, "the plugin module was not found"
             ) from exc
         raise PluginLoadError(
-            module_path, "the plugin module failed to import"
+            module_path,
+            f"the plugin module raised {type(exc).__name__} while importing",
         ) from exc
     except Exception as exc:
         raise PluginLoadError(
-            module_path, "the plugin module failed to import"
+            module_path,
+            f"the plugin module raised {type(exc).__name__} while importing",
         ) from exc
     return _extension(module, name=module_path, source=module_path)
 
@@ -107,15 +111,25 @@ def load_file(path: pathlib.Path) -> Extension:
     if spec is None or spec.loader is None:
         raise PluginLoadError(source, "the file could not be read as a plugin")
     module = importlib.util.module_from_spec(spec)
+    # Put back rather than deleted, so a file that fails leaves whatever was under its
+    # name before it exactly as it found it.
+    displaced = sys.modules.get(spec.name)
     sys.modules[spec.name] = module
     try:
         spec.loader.exec_module(module)
     except Exception as exc:
-        del sys.modules[spec.name]
+        _restore(spec.name, displaced)
         raise PluginLoadError(
             source, f"the plugin file raised {type(exc).__name__} while importing"
         ) from exc
     return _extension(module, name=path.stem, source=source)
+
+
+def _restore(name: str, displaced: ModuleType | None) -> None:
+    if displaced is None:
+        sys.modules.pop(name, None)
+    else:
+        sys.modules[name] = displaced
 
 
 def _files_in(folder: pathlib.Path | None) -> tuple[pathlib.Path, ...]:
@@ -126,7 +140,7 @@ def _files_in(folder: pathlib.Path | None) -> tuple[pathlib.Path, ...]:
         sorted(
             path
             for path in folder.glob(f"*{SUFFIX}")
-            if path.is_file() and not path.name.startswith(PRIVATE)
+            if path.is_file() and not path.name.startswith(SKIPPED)
         )
     )
 
@@ -150,6 +164,26 @@ def _extension(module: ModuleType, *, name: str, source: str) -> Extension:
     if not callable(extend):
         raise PluginLoadError(source, "the module's extend is not callable")
     return Extension(module=name, extend=extend, source=source)
+
+
+def _reject_a_stem_that_is_not_a_name(dropped: tuple[pathlib.Path, ...]) -> None:
+    """Refuse a file whose stem cannot serve as the plugin's name.
+
+    Four things are named by it, and two of them cannot carry an arbitrary string: the
+    settings prefix has to be spellable in a shell, and `name_of` reads everything after
+    the last dot — so `acme.birds.py` would be `birds` to every reader and `acme.birds`
+    to the check meant to stop a second `birds`.
+
+    Raises:
+        ConfigurationError: The stem is not an identifier.
+    """
+    for path in dropped:
+        if not path.stem.isidentifier():
+            raise ConfigurationError(
+                f"'{path.name}' cannot name a plugin: a name heads a section of the "
+                "brief and spells a variable in the environment, so it has to be a "
+                "plain identifier. Rename the file."
+            )
 
 
 def _reject_a_module_named_twice(named: tuple[str, ...]) -> None:

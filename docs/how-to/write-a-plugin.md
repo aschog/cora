@@ -177,9 +177,14 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    ```
 
    A dropped file is named for itself — `field_notes.py` is the `field_notes` plugin,
-   which heads its section of the brief and names its settings. The folder is read in
-   name order after the modules `CORA_PLUGINS` names, because load order is the only
-   precedence there is. `CORA_PLUGINS_PATH` moves the folder.
+   which heads its section of the brief and names its settings. The name has to be a
+   plain identifier, because it also spells a variable in the environment. The folder is
+   read in name order after the modules `CORA_PLUGINS` names, because load order is the
+   only precedence there is, and `CORA_PLUGINS_PATH` moves the folder.
+
+   A dropped plugin is *one* file: it may import anything installed, but it cannot
+   import a neighbour in the folder or use a relative import. A plugin that has grown
+   past one file is a package, which is step 1.
 
 10. **See what loaded.** `make plugins` prints every plugin under where it came from,
     with what each registered and the scope it applies in — and a registration carrying

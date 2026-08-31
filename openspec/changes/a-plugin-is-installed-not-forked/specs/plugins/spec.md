@@ -117,8 +117,9 @@ SHALL be readable as one such distribution and nothing more.
 The system SHALL refuse a plugin it cannot load, and the refusal SHALL name the plugin
 and what is wrong with it. A module defining no `extend`, one that raises while
 registering, one registering a name cora has already taken, and two plugins whose names
-end alike are each refused. A file in the plugins folder SHALL be refused the same way,
-under the name it was read from.
+end alike are each refused. A plugin SHALL be refused a name cora keeps for its own,
+and a file whose stem is not a plain identifier SHALL be refused for that. Every refusal
+SHALL name the plugin as it was found — a module by its path, a file by its own.
 
 #### Scenario: A module that does not register is refused
 
@@ -143,6 +144,18 @@ under the name it was read from.
 - **GIVEN** two plugins whose names end alike, from either source
 - **WHEN** cora starts
 - **THEN** it refuses, naming both and the name they share
+
+#### Scenario: A name cora keeps for itself is refused
+
+- **GIVEN** a plugin whose name is the one cora registers its own contributions under
+- **WHEN** cora starts
+- **THEN** it refuses, naming that plugin
+
+#### Scenario: A name that is not a name is refused
+
+- **GIVEN** a file in the plugins folder whose stem is not a plain identifier
+- **WHEN** cora starts
+- **THEN** it refuses, naming that file
 
 #### Scenario: A file that cannot be read is refused by its filename
 

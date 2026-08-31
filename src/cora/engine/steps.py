@@ -200,7 +200,7 @@ class ScreenStep:
         Raises:
             InputRejectedError: A handler refused the question, or broke screening it.
                 Nothing was written, the message is the one the user reads, and the
-                steps taken are carried on the refusal.
+                steps taken travel on the refusal.
         """
         question = state["question"]
         trace: list[TraceStep] = []
@@ -689,7 +689,7 @@ def _remembered(facts: tuple[Fact, ...]) -> tuple[str, ...]:
     """The user's own notes as a section of the brief, or no section at all.
 
     Kept user input, so it is labelled as such and stated after the rules — the same
-    reason retrieved passages arrive in a `tool` message behind a notice.
+    reason retrieved passages travel in a `tool` message behind a notice.
     """
     if not facts:
         return ()

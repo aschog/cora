@@ -6,7 +6,9 @@ are one path — a contract version cora does not offer is refused *before* `ext
 so 4.1 and 4.2 are the same assertion, and 4.3 is what every existing fixture proves by
 declaring nothing. 5.5 falls out of the listing being driven by the plugins given, and
 8.2 is a test of its own because a parametrisation that read no scopes would pass by
-covering nothing.
+covering nothing. 8.3 is the layer guard and the travel plugin's own suite, both
+pre-existing, and 8.4 was a no-op: no port was added, and the component map is drawn
+from the bindings rather than from what `assemble` holds.
 
 ## 1. The outer test
 
@@ -103,3 +105,14 @@ covering nothing.
 - [x] 10.7 Write a test that shows a plugin refused for taking cora's own name
 - [x] 10.8 Change the guard to read its scopes off the workspace's manifests rather than
       off the installed `cora.plugins` namespace
+
+## 11. What the second review found
+
+- [x] 11.1 Write a test that shows a dropped file whose stem is not a plain identifier
+      refused, naming the file
+- [x] 11.2 Write a test that shows a dropped plugin failing to register refused by the
+      path it was read from
+- [x] 11.3 Write a test that shows the scope guard reading a name and not an English word
+- [x] 11.4 Pin the plugins folder under each `build` test's own directory, so the suite
+      never reads or runs what an operator dropped in the real one
+- [x] 11.5 Write a test that shows the menu saying so for a plugin that registered nothing

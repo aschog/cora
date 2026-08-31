@@ -527,6 +527,10 @@ def _config(db_path: Path, *, debug: bool = False) -> Config:
         documents_path=str(db_path / "documents.sqlite"),
         conversations_path=str(db_path / "conversations.sqlite"),
         log_path=str(db_path / "logs" / "cora.log"),
+        # Pinned under the test's own directory, because the default is the folder the
+        # docs tell an operator to drop plugins into — a suite reading that one runs
+        # whatever the developer left there, and fails on it.
+        plugins_path=str(db_path / "plugins"),
         debug=debug,
     )
 
@@ -535,24 +539,7 @@ def _config(db_path: Path, *, debug: bool = False) -> Config:
 def test_build_starts_with_an_empty_store(tmp_path: Path) -> None:
     """The documents are the user's: a fresh install knows nothing until one is
     uploaded."""
-    config = Config(
-        api_key="k",
-        model="openai/gpt-4o-mini",
-        base_url="https://openrouter.ai/api/v1",
-        plugin_modules=("fixture_plugins.valid",),
-        top_k=3,
-        max_tool_rounds=4,
-        history_turns=6,
-        max_output_tokens=1024,
-        request_timeout_seconds=30,
-        reasoning_effort="low",
-        db_path=str(tmp_path),
-        memory_path=str(tmp_path / "memory.sqlite"),
-        documents_path=str(tmp_path / "documents.sqlite"),
-        conversations_path=str(tmp_path / "conversations.sqlite"),
-    )
-
-    app = build(config)
+    app = build(_config(tmp_path))
 
     assert app.knowledge_base.list_sources() == []
 
@@ -590,6 +577,25 @@ def test_build_loads_the_plugins_folder_and_names_a_dropped_plugin_its_settings(
     assert sorted(listed) == ["field_notes", "valid"]
     offered = listed["field_notes"].of(TOOL)
     assert [each.name for each in offered] == ["count_imperial"]
+
+
+def test_a_dropped_plugin_that_fails_to_register_is_refused_by_its_path() -> None:
+    """A refusal quotes where the plugin came from, and a file came from a file: its
+    stem is what cora calls it, and not what anyone would go looking for."""
+    raising = Extension(
+        module="field_notes",
+        extend=_raising,
+        source="/tmp/notes/field_notes.py",
+    )
+
+    with pytest.raises(PluginLoadError) as refused:
+        assembled(plugins=(raising,))
+
+    assert "/tmp/notes/field_notes.py" in refused.value.user_message
+
+
+def _raising(cora: object) -> None:
+    raise ValueError("nothing this says reaches the user")
 
 
 @pytest.mark.integration

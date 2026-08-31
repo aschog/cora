@@ -240,7 +240,7 @@ def _registered(
             raise
         except Exception as failed:
             raise PluginLoadError(
-                plugin.module,
+                plugin.source,
                 f"the plugin raised {type(failed).__name__} while registering",
             ) from failed
         entries.extend(host.registered)

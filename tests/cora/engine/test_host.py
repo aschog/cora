@@ -222,7 +222,7 @@ def test_a_plugins_log_is_named_for_the_plugin() -> None:
     """So a line in the log says which plugin wrote it, without the plugin saying so."""
     host = host_for("acme.plugins.birds")
 
-    assert host.log.name.endswith("birds")
+    assert host.log.name == "cora.plugin.birds"
     assert isinstance(host.log, logging.Logger)
 
 

@@ -78,8 +78,8 @@ give that field something to answer from.
 A plugin does not have to be installed. Drop a single `.py` file into `./.cora/plugins/`
 and cora loads it with no packaging at all, named for the file — the folder is read in
 name order after the modules `CORA_PLUGINS` names, and `CORA_PLUGINS_PATH` moves it. It
-is read relative to where cora was started, and every file in it is code cora runs, so
-the log says which folder it read.
+is read relative to where cora was started, and every file in it is code cora runs —
+`CORA_DEBUG` logs which folder that was.
 `make plugins` prints what loaded: every plugin under where it came from, with its tools,
 its instructions and the points in a turn it subscribed to, and anything registered
 without a scope marked `system-wide`. The same listing is behind the plug icon on the

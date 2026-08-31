@@ -67,10 +67,11 @@ class Subscription:
 class Registration:
     """One thing a plugin registered, and the module that registered it.
 
-    The module is what a refusal quotes back, because it is what the deployment typed.
-    `value` is read according to `kind`, in the one place that turns registrations into
-    what a turn takes. `scope` is where it applies: a name the turn has to be running
-    under, or `None` for everywhere — and nothing a scope can switch off.
+    The module is what a plugin is known by — what the deployment typed, or the stem
+    of a file dropped in the plugins folder. `value` is read according to `kind`, in
+    the one place that turns registrations into what a turn takes. `scope` is where it
+    applies: a name the turn has to be running under, or `None` for everywhere — and
+    nothing a scope can switch off.
     """
 
     module: str
