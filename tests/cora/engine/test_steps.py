@@ -17,6 +17,7 @@ from cora.domain.trace import ModelDecision, StepEntered, ToolUse
 from cora.engine.ask_tool import ASK_TOOL_NAME, ASKED_ALREADY, ask_tool
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.nesting import read_untrusted
+from cora.engine.plugin_set import Registry
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.engine.steps import (
     AGENT_RULES,
@@ -35,9 +36,18 @@ from cora.engine.steps import (
     ToolStep,
 )
 from cora.engine.tool_runtime import ToolRuntime
-from cora.engine.validation import EmptyInputRule
+from cora.engine.validation import CORA, refuse_nothing_to_answer
 from cora.ports.chat_model import Aside, Message, ModelReply, Piece, Written
 from cora.ports.graph import ASK, DONE, TOOLS, Step
+from cora.ports.host import (
+    BRIEFING,
+    HANDLER,
+    INSTRUCTIONS,
+    SCREENING,
+    Handler,
+    Registration,
+    Subscription,
+)
 from cora.ports.memory import Fact, Memory
 from cora.ports.plugin import Tool, ToolCall
 from cora.ports.retrieval import RetrievedChunk
@@ -400,20 +410,40 @@ def test_an_llm_error_from_the_chat_model_propagates_unchanged() -> None:
     assert exc_info.value is error
 
 
-def _screen(instructions: str = "SYS", memory: Memory | None = None) -> ScreenStep:
-    return ScreenStep(
-        rules=(EmptyInputRule(),),
-        instructions=instructions,
-        memory=memory or FakeMemory(),
+MODULE = "fixture_plugins.valid"
+
+
+def _subscribed(event: str, handle: Handler, module: str = MODULE) -> Registration:
+    return Registration(
+        module=module, kind=HANDLER, value=Subscription(event=event, handle=handle)
     )
 
 
-class _RecordingRule:
-    def __init__(self) -> None:
-        self.seen: str | None = None
+def _registry(
+    instructions: str = "SYS",
+    screens: tuple[Handler, ...] = (),
+    briefs: tuple[Handler, ...] = (),
+) -> Registry:
+    """Cora's own screen first, as an assembled app registers it, then the plugin's."""
+    return Registry(
+        (
+            _subscribed(SCREENING, refuse_nothing_to_answer, CORA),
+            *(_subscribed(SCREENING, screen) for screen in screens),
+            *(_subscribed(BRIEFING, brief) for brief in briefs),
+            Registration(module=MODULE, kind=INSTRUCTIONS, value=instructions),
+        )
+    )
 
-    def apply(self, user_input: str) -> None:
-        self.seen = user_input
+
+def _screen(instructions: str = "SYS", memory: Memory | None = None) -> ScreenStep:
+    return ScreenStep(registry=_registry(instructions), memory=memory or FakeMemory())
+
+
+def _refuses(message: str) -> Handler:
+    def screen(question: str) -> str:
+        return message
+
+    return screen
 
 
 def test_an_invalid_question_is_rejected() -> None:
@@ -423,18 +453,12 @@ def test_an_invalid_question_is_rejected() -> None:
         step({"question": "   "})
 
 
-def test_the_first_rule_to_refuse_in_order_is_the_message_the_user_reads() -> None:
-    """Every loaded plugin's rules run in the order the plugins were named, so which
-    refusal a user sees is decided by the set, not by the rules racing."""
-
-    class _Refuses:
-        def __init__(self, message: str) -> None:
-            self.message = message
-
-        def apply(self, user_input: str) -> None:
-            raise InputRejectedError(self.message)
-
-    step = replace(_screen(), rules=(_Refuses("first"), _Refuses("second")))
+def test_the_first_handler_to_refuse_in_order_is_what_the_user_reads() -> None:
+    """Every loaded plugin's screen runs in the order the plugins were named, so which
+    refusal a user sees is decided by the set, not by the handlers racing."""
+    step = replace(
+        _screen(), registry=_registry(screens=(_refuses("first"), _refuses("second")))
+    )
 
     with pytest.raises(InputRejectedError) as excinfo:
         step({"question": "anything"})
@@ -442,13 +466,59 @@ def test_the_first_rule_to_refuse_in_order_is_the_message_the_user_reads() -> No
     assert excinfo.value.user_message == "first"
 
 
-def test_every_rule_sees_the_question_alone() -> None:
-    rule = _RecordingRule()
-    step = replace(_screen(), rules=(rule,))
+def test_every_handler_sees_the_question_alone() -> None:
+    seen: list[str] = []
+    step = replace(_screen(), registry=_registry(screens=(seen.append,)))
 
     step({"question": "What about protein?"})
 
-    assert rule.seen == "What about protein?"
+    assert seen == ["What about protein?"]
+
+
+def test_a_screening_handler_that_raises_refuses_the_turn_and_is_named() -> None:
+    """A broken rule must not admit an input. The turn ends before a state carries any
+    trace out, so what says which plugin refused travels on the refusal itself."""
+
+    def broken(question: str) -> str:
+        raise RuntimeError("the secret is hunter2")
+
+    step = replace(_screen(), registry=_registry(screens=(broken,)))
+
+    with pytest.raises(InputRejectedError) as refused:
+        step({"question": "anything"})
+
+    [named] = [step for step in refused.value.trace if MODULE in step.summary]
+    assert named.failed
+    assert "RuntimeError" in named.detail
+    assert "hunter2" not in named.detail + refused.value.user_message
+
+
+def test_a_brief_handler_that_raises_is_dropped_and_the_turn_carries_on() -> None:
+    """A lost amendment is not a lost turn: the brief is what it was, and the trace says
+    which plugin failed to change it."""
+
+    def broken(brief: str) -> str:
+        raise RuntimeError("nope")
+
+    step = replace(_screen(), registry=_registry(briefs=(broken,)))
+
+    partial = step({"question": "q"})
+
+    assert "SYS" in partial["brief"]
+    [named] = [step for step in partial["trace"] if MODULE in step.summary]
+    assert named.failed
+
+
+def test_what_a_brief_handler_returned_is_what_the_model_reads() -> None:
+    step = replace(
+        _screen(),
+        registry=_registry(briefs=(lambda brief: f"{brief}\n\nAlso: be brief.",)),
+    )
+
+    partial = step({"question": "q"})
+
+    assert partial["brief"].endswith("Also: be brief.")
+    assert "SYS" in partial["brief"], "the amendment was handed the brief as it stood"
 
 
 def test_the_step_appends_the_validated_question_and_nothing_else() -> None:
@@ -1072,15 +1142,14 @@ class _CountingMemory(FakeMemory):
 
 
 def test_a_refused_question_costs_the_thread_nothing_at_all() -> None:
-    """The rules run first, so a refusal is not a turn that started and stopped: no
+    """The screen runs first, so a refusal is not a turn that started and stopped: no
     message is written, no brief is built, and the model is two steps away."""
 
-    class _Refuses:
-        def apply(self, user_input: str) -> None:
-            raise InputRejectedError("Ask me something I can answer.")
-
     memory = _CountingMemory()
-    step = replace(_screen(memory=memory), rules=(_Refuses(),))
+    step = replace(
+        _screen(memory=memory),
+        registry=_registry(screens=(_refuses("Ask me something I can answer."),)),
+    )
 
     with pytest.raises(InputRejectedError):
         step({"question": "anything", "messages": [Message(role="user", content="x")]})

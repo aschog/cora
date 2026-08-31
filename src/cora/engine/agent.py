@@ -56,6 +56,7 @@ class Agent:
         thread_id: str,
         on_step: Callable[[TraceStep], None] = _ignore,
         on_text: TextSink = unheard,
+        scopes: tuple[str, ...] = (),
     ) -> ChatResult:
         """One turn on a named thread, which is where the conversation now lives.
 
@@ -74,6 +75,9 @@ class Agent:
                 read off the states coming out. Nothing about the result changes. Only
                 the last round of a turn is the answer, so a round that ends in a tool
                 call closes with an `Aside`.
+            scopes: What this turn runs under — which of the plugins' scoped
+                registrations apply to it. Given none, a turn takes what is
+                system-wide, which is every registration a plugin made without a scope.
 
         Returns:
             The answer, the citations it rests on, and this turn's steps.
@@ -87,7 +91,9 @@ class Agent:
                 inside a step carries that step's name.
         """
         return self._turn(
-            self.runner.run({"question": question}, thread_id, on_text),
+            self.runner.run(
+                {"question": question, "scopes": list(scopes)}, thread_id, on_text
+            ),
             question,
             thread_id,
             on_step,

@@ -1,7 +1,6 @@
 """A plugin that registers all three kinds of contribution, for the outer test."""
 
-from cora.domain.errors import InputRejectedError
-from cora.ports.host import Host
+from cora.ports.host import SCREENING, Host
 
 INSTRUCTIONS = "You are the registering test plugin. Echo what the user asks you to."
 REFUSAL = "The registering plugin will not answer shouting."
@@ -12,10 +11,8 @@ def echo(word: str) -> str:
     return word
 
 
-class RefusesShouting:
-    def apply(self, user_input: str) -> None:
-        if user_input.isupper():
-            raise InputRejectedError(REFUSAL)
+def refuse_shouting(question: str) -> str | None:
+    return REFUSAL if question.isupper() else None
 
 
 def extend(cora: Host) -> None:
@@ -30,4 +27,4 @@ def extend(cora: Host) -> None:
         },
         run=echo,
     )
-    cora.register_rule(RefusesShouting())
+    cora.register_handler(event=SCREENING, handle=refuse_shouting)

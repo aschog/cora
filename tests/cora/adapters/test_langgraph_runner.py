@@ -32,6 +32,7 @@ from cora.domain.trace import (
     step_kinds,
 )
 from cora.engine.ask_tool import ASK_TOOL_NAME
+from cora.engine.plugin_set import Registry
 from cora.engine.steps import (
     ANSWER,
     NOTHING_CHOSEN,
@@ -46,7 +47,7 @@ from cora.engine.steps import (
     ToolStep,
 )
 from cora.engine.tool_runtime import ToolRuntime
-from cora.engine.validation import EmptyInputRule
+from cora.engine.validation import CORA, refuse_nothing_to_answer
 from cora.ports.chat_model import (
     ChatModel,
     Message,
@@ -58,6 +59,13 @@ from cora.ports.chat_model import (
     unheard,
 )
 from cora.ports.graph import Loop, ModelFor, NamedStep, Step
+from cora.ports.host import (
+    HANDLER,
+    INSTRUCTIONS,
+    SCREENING,
+    Registration,
+    Subscription,
+)
 from cora.ports.plugin import Tool, ToolCall
 from fakes import FailingChatModel, ScriptedChatModel, add_tool
 
@@ -298,12 +306,26 @@ class _AlwaysCalling:
         )
 
 
+def _screening() -> Registry:
+    """Cora's own screen and a plugin's instructions, as an assembled app wires them."""
+    return Registry(
+        (
+            Registration(
+                module=CORA,
+                kind=HANDLER,
+                value=Subscription(event=SCREENING, handle=refuse_nothing_to_answer),
+            ),
+            Registration(
+                module="fixture_plugins.valid", kind=INSTRUCTIONS, value="SYS"
+            ),
+        )
+    )
+
+
 def _real_runner(model: ChatModel, rounds: int) -> LangGraphRunner:
     """The walk as the composition root wires it, with a real model behind it."""
     return LangGraphRunner(
-        before=(
-            Named(SCREEN, ScreenStep(rules=(EmptyInputRule(),), instructions="SYS")),
-        ),
+        before=(Named(SCREEN, ScreenStep(registry=_screening())),),
         loop=Loop(
             marker=Named(WORK),
             model=ModelStep(

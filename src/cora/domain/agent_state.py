@@ -21,6 +21,10 @@ class AgentState(TypedDict, total=False):
     can carry over. `trace_start` is the same mark in the trace, and it is what lets a
     turn picked up after a pause still report every step it took, including the ones
     taken before it stopped.
+
+    `scopes` is what the turn is running under: which of the registrations the plugins
+    made apply to it. Seeded when the turn opens and checkpointed with the rest, so a
+    turn resumed after a pause is the same turn it was.
     """
 
     question: str
@@ -29,5 +33,6 @@ class AgentState(TypedDict, total=False):
     citations: Annotated[list[Citation], operator.add]
     turn_start: int
     trace_start: int
+    scopes: list[str]
     brief: str
     answer: str

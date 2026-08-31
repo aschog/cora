@@ -15,11 +15,11 @@ from cora.engine.retrieval_tool import (
     UNCITED_SEARCH_DESCRIPTION,
 )
 from cora.ports.chat_model import Message, ModelReply, TextSink, unheard
-from cora.ports.host import INSTRUCTIONS, RULE, TOOL
+from cora.ports.host import HANDLER, INSTRUCTIONS, SCREENING, TOOL
 from cora.ports.plugin import Tool, ToolCall, ToolRefusal
 from cora.ports.retrieval import RetrievedChunk
 from fakes import FakeContextSource, FakeMemory, ScriptedChatModel, add_tool, host_for
-from fixture_plugins import RefusesContaining
+from fixture_plugins import refuses_containing
 
 MODULE = "fixture_plugins.valid"
 
@@ -52,29 +52,30 @@ def test_a_registered_tool_is_kept_as_the_tool_the_model_is_offered() -> None:
     assert entry.value.run(word="hi") == "hi"
 
 
-def test_a_rule_that_cannot_screen_is_refused_by_module() -> None:
-    """A rule is called once a turn starts, so a rule that cannot be called is a 500 in
+def test_a_handler_that_cannot_be_called_is_refused_by_module() -> None:
+    """A handler runs once a turn is under way, so one that cannot be called is a 500 in
     the middle of a question rather than a refusal at startup. Registering is where a
     deployment can still do something about it."""
     host = host_for(MODULE)
 
     with pytest.raises(PluginLoadError) as refused:
-        host.register_rule(object())  # ty: ignore[invalid-argument-type]
+        host.register_handler(event=SCREENING, handle=object())  # ty: ignore[invalid-argument-type]
 
     assert MODULE in refused.value.user_message
     assert host.registered == []
 
 
-def test_a_rule_class_registered_instead_of_an_instance_is_refused() -> None:
-    """The likeliest way to get this wrong. A class has an `apply`, so a check that only
-    asks whether one can be called would pass it and then fail a turn later on the
-    `self` that was never bound."""
+def test_a_subscription_to_a_point_in_the_turn_cora_has_not_got_is_refused() -> None:
+    """By name, and naming the module: a plugin asking for an event cora does not have
+    is a deployment reading a contract cora no longer offers."""
     host = host_for(MODULE)
 
     with pytest.raises(PluginLoadError) as refused:
-        host.register_rule(RefusesContaining)  # ty: ignore[invalid-argument-type]
+        host.register_handler(event="after_the_answer", handle=lambda value: None)
 
     assert MODULE in refused.value.user_message
+    assert "after_the_answer" in refused.value.user_message
+    assert host.registered == []
 
 
 def test_instructions_that_are_not_a_string_are_refused_by_module() -> None:
@@ -87,17 +88,28 @@ def test_instructions_that_are_not_a_string_are_refused_by_module() -> None:
     assert host.registered == []
 
 
-def test_a_registered_rule_and_instructions_are_kept_in_the_order_registered() -> None:
+def test_a_subscription_and_instructions_are_kept_in_the_order_registered() -> None:
     host = host_for(MODULE)
-    rule = RefusesContaining("no")
+    screen = refuses_containing("no")
 
     host.register_instructions("Be brief.")
-    host.register_rule(rule)
+    host.register_handler(event=SCREENING, handle=screen)
 
-    assert [(entry.kind, entry.value) for entry in host.registered] == [
-        (INSTRUCTIONS, "Be brief."),
-        (RULE, rule),
-    ]
+    kept = [(entry.kind, entry.scope) for entry in host.registered]
+    assert kept == [(INSTRUCTIONS, None), (HANDLER, None)]
+    subscribed = host.registered[1].value
+    assert (subscribed.event, subscribed.handle) == (SCREENING, screen)
+
+
+def test_a_registration_keeps_the_scope_it_was_made_under() -> None:
+    """One plugin under two lifetimes: what a scope switches off, and what it cannot."""
+    host = host_for(MODULE)
+
+    host.register_instructions("Be a coach.", scope="fitness")
+    _register_echo(host)
+    host.register_handler(event=SCREENING, handle=refuses_containing("no"))
+
+    assert [entry.scope for entry in host.registered] == ["fitness", None, None]
 
 
 def test_every_registration_carries_the_module_that_made_it() -> None:

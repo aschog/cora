@@ -8,14 +8,41 @@ from typing import Any, Protocol
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
 from cora.ports.memory import Memory
-from cora.ports.plugin import Tool, ValidationRule
+from cora.ports.plugin import Tool
 
 TOOL = "tool"
-RULE = "rule"
+HANDLER = "handler"
 INSTRUCTIONS = "instructions"
 """What a plugin can register. A kind is a field rather than a class, so the listing,
 the collision check and the log line are each written once over one list — and a fifth
 kind is a method on `Host` and an entry here, not a shape anyone has to widen."""
+
+SCREENING = "screen"
+BRIEFING = "brief"
+CALLING = "tool_call"
+RETURNING = "tool_result"
+"""The points in a turn a handler can be subscribed to, under the names a plugin writes:
+the question being screened, the brief being settled, a tool call about to run, and a
+tool result coming back. A name is contract, which is why it is here; what a handler's
+return *means* at each is `cora.engine.events`, which is not."""
+
+Handler = Callable[[Any], Any]
+"""What a handler is: one frozen value in, and one decision out.
+
+Answering with `None` is answering with nothing, and changes nothing. What else may be
+answered depends on the event — a refusal where an event refuses, an amendment where it
+amends — and what is handed in is that event's value: the question, the brief, a
+`ToolCall`, a `ToolResult`. A handler is never handed the turn's state, and nothing it
+returns reaches the state except through the event it answered.
+"""
+
+
+@dataclass(frozen=True)
+class Subscription:
+    """One handler, and the point in the turn it was subscribed to."""
+
+    event: str
+    handle: Handler
 
 
 @dataclass(frozen=True)
@@ -24,12 +51,14 @@ class Registration:
 
     The module is what a refusal quotes back, because it is what the deployment typed.
     `value` is read according to `kind`, in the one place that turns registrations into
-    what a turn takes.
+    what a turn takes. `scope` is where it applies: a name the turn has to be running
+    under, or `None` for everywhere — and nothing a scope can switch off.
     """
 
     module: str
     kind: str
     value: Any
+    scope: str | None = None
 
 
 class Host(Protocol):
@@ -48,16 +77,36 @@ class Host(Protocol):
         description: str,
         parameter_schema: dict[str, Any],
         run: Callable[..., Any],
+        scope: str | None = None,
     ) -> None:
-        """Offer the model one more thing it can do, as `Tool` describes one."""
+        """Offer the model one more thing it can do, as `Tool` describes one.
+
+        Args:
+            scope: Where it is offered. `None` offers it in every turn.
+        """
         ...
 
-    def register_rule(self, rule: ValidationRule) -> None:
-        """Screen what the user types, before a turn starts."""
+    def register_handler(
+        self, *, event: str, handle: Handler, scope: str | None = None
+    ) -> None:
+        """Take part in the turn at one of the points this module names.
+
+        Args:
+            event: One of `SCREENING`, `BRIEFING`, `CALLING`, `RETURNING`.
+            handle: What runs there, as `Handler` describes one.
+            scope: Where it runs. `None` runs it in every turn, and no scope can
+                switch that off — which is what screening for injection needs.
+        """
         ...
 
-    def register_instructions(self, instructions: str) -> None:
-        """Say what this plugin is for, as a section of the model's brief."""
+    def register_instructions(
+        self, instructions: str, scope: str | None = None
+    ) -> None:
+        """Say what this plugin is for, as a section of the model's brief.
+
+        Args:
+            scope: Where the section appears. `None` puts it in every brief.
+        """
         ...
 
     @property

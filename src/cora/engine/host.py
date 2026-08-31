@@ -12,15 +12,23 @@ from jsonschema import Draft202012Validator, SchemaError
 
 from cora.domain.citations import Citable
 from cora.domain.errors import PluginLoadError
+from cora.engine.events import EVENTS
 from cora.engine.nesting import collecting, read_untrusted, took
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.engine.rounds import Read, decided, told, used
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import ChatModel, Message
 from cora.ports.context_source import ContextSource
-from cora.ports.host import INSTRUCTIONS, RULE, TOOL, Registration
+from cora.ports.host import (
+    HANDLER,
+    INSTRUCTIONS,
+    TOOL,
+    Handler,
+    Registration,
+    Subscription,
+)
 from cora.ports.memory import Memory
-from cora.ports.plugin import Tool, ToolRefusal, ToolResult, ValidationRule
+from cora.ports.plugin import Tool, ToolRefusal, ToolResult
 from cora.ports.retrieval import RetrievedChunk
 
 DELEGATE_BRIEF = (
@@ -113,6 +121,7 @@ class PluginHost:
         description: str,
         parameter_schema: dict[str, Any],
         run: Callable[..., Any],
+        scope: str | None = None,
     ) -> None:
         """Offer the model one more thing it can do.
 
@@ -141,23 +150,32 @@ class PluginHost:
                 parameter_schema=parameter_schema,
                 run=run,
             ),
+            scope,
         )
 
-    def register_rule(self, rule: ValidationRule) -> None:
-        """Screen what the user types, before a turn starts.
+    def register_handler(
+        self, *, event: str, handle: Handler, scope: str | None = None
+    ) -> None:
+        """Take part in the turn at one of the points `cora.ports.host` names.
 
         Raises:
-            PluginLoadError: The rule cannot screen anything — including a rule class
-                registered in place of an instance, whose `apply` is callable and whose
-                `self` is not bound. A rule runs once a turn has started, so an unusable
-                one left to be found there is a question dying halfway through rather
-                than a deployment refused at startup.
+            PluginLoadError: Cora has no such event, or the handler cannot be called.
+                Both are refused at startup: a handler runs once a turn is under way,
+                and one left to be found there is a question dying halfway through.
         """
-        if isinstance(rule, type) or not callable(getattr(rule, "apply", None)):
-            raise PluginLoadError(self.module, "a rule was registered with no apply")
-        self._record(RULE, rule)
+        if event not in EVENTS:
+            raise PluginLoadError(
+                self.module, f"there is no '{event}' point in a turn to subscribe to"
+            )
+        if not callable(handle):
+            raise PluginLoadError(
+                self.module, f"the handler for '{event}' cannot be called"
+            )
+        self._record(HANDLER, Subscription(event=event, handle=handle), scope)
 
-    def register_instructions(self, instructions: str) -> None:
+    def register_instructions(
+        self, instructions: str, scope: str | None = None
+    ) -> None:
         """Say what this plugin is for, as a section of the model's brief.
 
         Raises:
@@ -166,7 +184,7 @@ class PluginHost:
         """
         if not isinstance(instructions, str):
             raise PluginLoadError(self.module, "instructions must be a string")
-        self._record(INSTRUCTIONS, instructions)
+        self._record(INSTRUCTIONS, instructions, scope)
 
     def delegate(self, task: str, tools: tuple[Tool, ...] = (), rounds: int = 3) -> str:
         """Run a bounded loop of the model's own, and answer with what it wrote.
@@ -257,8 +275,10 @@ class PluginHost:
     def _registered_tools(self) -> tuple[Tool, ...]:
         return tuple(entry.value for entry in self.registered if entry.kind == TOOL)
 
-    def _record(self, kind: str, value: Any) -> None:
-        self.registered.append(Registration(module=self.module, kind=kind, value=value))
+    def _record(self, kind: str, value: Any, scope: str | None = None) -> None:
+        self.registered.append(
+            Registration(module=self.module, kind=kind, value=value, scope=scope)
+        )
 
 
 @dataclass(frozen=True)

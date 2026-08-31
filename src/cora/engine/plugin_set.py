@@ -1,4 +1,4 @@
-"""What the plugins registered, as one list — and what they may not register."""
+"""What the plugins registered, as one list — and what of it a turn takes."""
 
 from dataclasses import dataclass
 
@@ -6,16 +6,9 @@ from cora.domain.errors import ConfigurationError
 from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
-from cora.engine.validation import MAX_INPUT_CHARS, EmptyInputRule, MaxLengthRule
-from cora.ports.host import INSTRUCTIONS, RULE, TOOL, Registration
-from cora.ports.plugin import Tool, ValidationRule
-
-CORA_RULES: tuple[ValidationRule, ...] = (
-    EmptyInputRule(),
-    MaxLengthRule(MAX_INPUT_CHARS),
-)
-"""What cora asks of any input, whatever it was asked to be. Screening for injection is
-not here: it is a plugin, and so something a deployment adds."""
+from cora.engine.validation import CORA
+from cora.ports.host import HANDLER, INSTRUCTIONS, SCREENING, TOOL, Registration
+from cora.ports.plugin import Tool
 
 RESERVED_TOOL_NAMES = {
     SEARCH_TOOL_NAME: "document search",
@@ -24,14 +17,25 @@ RESERVED_TOOL_NAMES = {
 }
 
 
+def applies(entry: Registration, scopes: frozenset[str]) -> bool:
+    """Whether a registration takes part in a turn running under these scopes.
+
+    One filter for handlers, tools and instructions alike: a registration carrying no
+    scope applies everywhere, and one carrying a name applies where that name is
+    active. "Cannot be scoped away" is this and nothing else — a system-wide screen is
+    unremovable because no scope is ever asked about it.
+    """
+    return entry.scope is None or entry.scope in scopes
+
+
 @dataclass(frozen=True)
 class Registry:
-    """Everything the plugins registered, in the order they registered it.
+    """Everything registered, in the order it was registered — cora's own included.
 
     One list rather than one field per kind: the listing, the collision check and the
     log line are each written once, and a fifth kind of contribution adds an entry
     rather than widening a shape. Each entry carries the module that made it, because
-    that is what a refusal quotes back to the deployment.
+    that is what a refusal quotes back to the deployment, and the scope it applies in.
 
     Every refusal a *combination* can earn is raised here, at construction: the
     composition root wires an already-valid registry.
@@ -49,23 +53,12 @@ class Registry:
         self._reject_a_name_of_coras_own()
         self._reject_one_name_registered_twice()
 
-    @property
-    def tools(self) -> tuple[Tool, ...]:
-        """Every tool registered, in the order it was registered."""
-        return tuple(entry.value for entry in self._of(TOOL))
+    def tools(self, scopes: frozenset[str] = frozenset()) -> tuple[Tool, ...]:
+        """Every tool that applies to a turn under these scopes, as registered."""
+        return tuple(entry.value for entry in self._of(TOOL) if applies(entry, scopes))
 
-    @property
-    def rules(self) -> tuple[ValidationRule, ...]:
-        """Cora's own rules first, then the registered ones in registration order.
-
-        The order is the order they run in, and cora's come first so a plugin's rule is
-        never handed something cora would have refused outright.
-        """
-        return CORA_RULES + tuple(entry.value for entry in self._of(RULE))
-
-    @property
-    def instructions(self) -> str:
-        """One section per module that registered any, headed by the module's own name.
+    def instructions(self, scopes: frozenset[str] = frozenset()) -> str:
+        """One section per module that registered any that applies, under its own name.
 
         Headed by cora rather than by the plugin: a section says which plugin wrote it,
         and no plugin can put another's name on its own instructions.
@@ -73,7 +66,28 @@ class Registry:
         return "\n\n".join(
             f"## {_heading(entry.module)}\n{entry.value.strip()}"
             for entry in self._of(INSTRUCTIONS)
-            if entry.value.strip()
+            if applies(entry, scopes) and entry.value.strip()
+        )
+
+    def handlers(
+        self, event: str, scopes: frozenset[str] = frozenset()
+    ) -> tuple[Registration, ...]:
+        """What is subscribed to one event and applies here, in the order it ran in.
+
+        Registration order, which is load order, which is cora's own first: a plugin's
+        screen is never handed a question cora would have refused outright.
+        """
+        return tuple(
+            entry
+            for entry in self._of(HANDLER)
+            if entry.value.event == event and applies(entry, scopes)
+        )
+
+    def screened_by_a_plugin(self) -> bool:
+        """Whether anything but cora itself screens what the user types."""
+        return any(
+            entry.value.event == SCREENING and entry.module != CORA
+            for entry in self._of(HANDLER)
         )
 
     def _of(self, kind: str) -> tuple[Registration, ...]:
