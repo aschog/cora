@@ -143,14 +143,12 @@ def assemble(
             Named(SCREEN, ScreenStep(registry=registry)),
             Named(
                 ROUTE,
-                RouteStep(
-                    chat_model=chat_model,
-                    available=scopes,
-                    registry=registry,
-                    pause=interrupting,
-                ),
+                RouteStep(chat_model=chat_model, available=scopes, registry=registry),
             ),
-            Named(FOCUS, FocusStep(registry=registry, memory=memory)),
+            Named(
+                FOCUS,
+                FocusStep(registry=registry, memory=memory, pause=interrupting),
+            ),
         ),
         loop=Loop(
             marker=Named(WORK),

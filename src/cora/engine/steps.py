@@ -220,27 +220,37 @@ class ScreenStep:
 
 
 def _focused(scopes: tuple[str, ...], how: str) -> AgentState:
-    """The scopes a turn runs under, and the one line saying where they came from."""
+    """The scopes a turn runs under, and the one line saying where they came from.
+
+    `candidates` is emptied by every settling, so a turn that had to ask leaves nothing
+    behind for the next turn on the thread to be asked about again.
+    """
     return {
         "scopes": list(scopes),
+        "candidates": [],
         "trace": [ScopeSettled(scope=", ".join(scopes), how=how)],
     }
 
 
 @dataclass(frozen=True)
 class RouteStep:
-    """The step that settles which field the turn is answered in.
+    """The step that reads which field the turn belongs to.
 
     Four ways in, tried in that order: the conversation's pin, the scopes one caller
     named, the single field a deployment offers, and the question itself read by the
     model. Every one of them ends in the same key, so nothing downstream knows which it
     was — only the trace does.
+
+    A question the model reads as belonging to two fields settles nothing here: it
+    leaves the fields it named, and *focus* is where the reader is asked which was
+    meant. That split is not tidiness — a step that stops is replayed from its first
+    line when it is picked up, and a question read a second time can be read
+    differently, which would answer in a field the reader did not choose.
     """
 
     chat_model: ChatModel | None = None
     available: tuple[str, ...] = ()
     registry: Registry = field(default_factory=Registry)
-    pause: Pause = declined
 
     def __call__(self, state: AgentState) -> AgentState:
         """Settle the turn's scopes, and say in one step how they were settled."""
@@ -249,6 +259,8 @@ class RouteStep:
             return _focused((pinned,), PINNED)
         named = tuple(state.get("scopes", ()))
         if named:
+            # Trusted as given: the caller here is a frontend or a test, never the
+            # reader, and a scope no registration is under simply reaches nothing.
             return _focused(named, NAMED)
         if len(self.available) == 1:
             return _focused((self.available[0],), ONLY_FIELD)
@@ -261,7 +273,7 @@ class RouteStep:
 
         A question belonging to none is answered plainly, and so is one the model could
         not be asked about: routing that fails leaves a turn less focused, never
-        unanswered.
+        unanswered. One that belongs to two is left for *focus* to put to the reader.
         """
         if self.chat_model is None:
             return _focused((DEFAULT_SCOPE,), NO_FIELD_LOADED)
@@ -274,28 +286,7 @@ class RouteStep:
             return _focused((DEFAULT_SCOPE,), BELONGS_TO_NONE)
         if len(candidates) == 1:
             return _focused(candidates, ROUTED)
-        return self._asked(candidates)
-
-    def _asked(self, candidates: tuple[str, ...]) -> AgentState:
-        """Put the fork to the user rather than picking one of two fields for them.
-
-        The stop is the step's own rather than the round's `ask_user`: the scope has to
-        be settled before the brief is written, which is two steps before the model is
-        offered a tool at all.
-        """
-        chosen = self.pause(
-            Decision(
-                question=WHICH_FIELD,
-                options=tuple(
-                    Option(label=scope, note=self.registry.outline(scope))
-                    for scope in candidates
-                ),
-                decline=NEITHER_FIELD,
-            )
-        )
-        if chosen in candidates:
-            return _focused((str(chosen),), CHOSEN)
-        return _focused((DEFAULT_SCOPE,), NOTHING_CHOSEN_FIELD)
+        return {"scopes": [], "candidates": list(candidates)}
 
     def _named(self, said: str) -> tuple[str, ...]:
         """The available scopes the reply names, in the order it named them.
@@ -325,19 +316,50 @@ class RouteStep:
 
 @dataclass(frozen=True)
 class FocusStep:
-    """The step that states what cora is, under the scope the turn settled on.
+    """The step that states what cora is, under the scope the turn is answered in.
 
     Holds what does not change between turns — what the plugins registered and the
-    memory slot — and reads the scopes off the state the routing step left behind.
+    memory slot — and reads the scopes off the state the routing step left behind. It is
+    also the one step that stops to ask which field was meant, because it is the last
+    place a scope can be settled and the first where nothing costly has run yet: a
+    stopped step is replayed from its first line, and everything before the stop here is
+    a read of state the step before it already committed.
     """
 
     registry: Registry = field(default_factory=Registry)
     memory: Memory | None = None
+    pause: Pause = declined
 
     def __call__(self, state: AgentState) -> AgentState:
         """Restate the brief for this turn, under this turn's scopes and no others."""
-        trace: list[TraceStep] = []
-        return {"brief": self._brief(scoped(state), trace), "trace": trace}
+        contested = tuple(state.get("candidates", ()))
+        settled: AgentState = {}
+        if contested and not scoped(state):
+            settled = self._asked(contested)
+        scopes = frozenset(settled.get("scopes", ())) or scoped(state)
+        trace: list[TraceStep] = list(settled.get("trace", ()))
+        return {**settled, "brief": self._brief(scopes, trace), "trace": trace}
+
+    def _asked(self, contested: tuple[str, ...]) -> AgentState:
+        """Put the fork to the reader rather than picking one of two fields for them.
+
+        The stop is this step's own rather than the round's `ask_user`: the scope has to
+        be settled before the brief is written, which is a step before the model is
+        offered a tool at all.
+        """
+        chosen = self.pause(
+            Decision(
+                question=WHICH_FIELD,
+                options=tuple(
+                    Option(label=scope, note=self.registry.outline(scope))
+                    for scope in contested
+                ),
+                decline=NEITHER_FIELD,
+            )
+        )
+        if chosen in contested:
+            return _focused((str(chosen),), CHOSEN)
+        return _focused((DEFAULT_SCOPE,), NOTHING_CHOSEN_FIELD)
 
     def _brief(self, scopes: frozenset[str], trace: list[TraceStep]) -> str:
         """Cora first, then the scopes it was given, then the user's own notes.

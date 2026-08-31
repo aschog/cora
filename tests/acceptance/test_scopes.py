@@ -162,12 +162,9 @@ def test_an_unpinned_thread_is_read_afresh_every_turn() -> None:
 def test_a_question_that_fits_two_fields_is_put_to_the_user() -> None:
     """Guessing between two fields answers half the readers wrongly, and the fork is one
     the reader settles in a sentence. The stop comes before the brief is written, so the
-    turn resumes as a turn of the field they chose."""
-    app, model = _two_scopes(
-        _answer("fitness, travel"),
-        _answer("fitness, travel"),
-        _answer("Walk it in a day."),
-    )
+    turn resumes as a turn of the field they chose — and the question is read once,
+    because the reading is a step behind the stop rather than in front of it."""
+    app, model = _two_scopes(_answer("fitness, travel"), _answer("Walk it in a day."))
 
     with pytest.raises(TurnPaused) as stopped:
         app.agent.answer("What should I take on a walking holiday?", THREAD)
@@ -185,12 +182,24 @@ def test_a_question_that_fits_two_fields_is_put_to_the_user() -> None:
 
 
 @pytest.mark.integration
+def test_the_field_the_reader_chose_survives_the_step_being_replayed() -> None:
+    """A resumed step runs again from its first line, so the question must not be read
+    again on the way back: a second reading landing on one field would answer in it and
+    throw the reader's choice away — and the trace would say the question was read."""
+    app, model = _two_scopes(_answer("fitness, travel"), _answer("Book it early."))
+
+    with pytest.raises(TurnPaused):
+        app.agent.answer("What should I take on a walking holiday?", THREAD)
+    resumed = app.agent.resume(TRAVEL, THREAD)
+
+    assert resumed.answer == "Book it early."
+    assert _focus(resumed) == ScopeSettled(scope=TRAVEL, how=CHOSEN)
+    assert model.completions == 2, "the question is read once, not once per resume"
+
+
+@pytest.mark.integration
 def test_choosing_no_field_answers_the_question_plainly() -> None:
-    app, model = _two_scopes(
-        _answer("fitness, travel"),
-        _answer("fitness, travel"),
-        _answer("Plainly, then."),
-    )
+    app, model = _two_scopes(_answer("fitness, travel"), _answer("Plainly, then."))
 
     with pytest.raises(TurnPaused):
         app.agent.answer("What should I take on a walking holiday?", THREAD)
