@@ -159,3 +159,17 @@ def test_a_turn_resumed_after_a_pause_is_running_under_the_same_scopes() -> None
 
     assert resumed.answer == "At 75 kg, aim for 120 g."
     assert BMI in _offered(model), "the resumed round is still a coach's"
+
+
+@pytest.mark.integration
+def test_the_deployments_own_scopes_are_what_a_turn_runs_under() -> None:
+    """Until a turn can be routed into a scope of its own, what this cora is for is the
+    deployment's to say: `CORA_SCOPES=fitness` beside the plugin is what makes the
+    running app a coaching one, and no caller has to remember it."""
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    app = assembled(chat_model=model, plugins=load_plugins(BOTH), scopes=COACHING)
+
+    app.agent.answer(PROTEIN, THREAD)
+
+    assert "## Fitness" in _briefed(model)
+    assert BMI in _offered(model)

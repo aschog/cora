@@ -49,15 +49,19 @@ npm ci --prefix frontends/react/ui         # and the page's
 git config core.hooksPath .githooks        # enable pre-commit + commit-msg hooks
 export OPENROUTER_API_KEY=sk-or-...
 export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness
+export CORA_SCOPES=fitness
 make run                                   # or: make run-env, to read the key from .env
 ```
 
 `make run` builds the page and serves it with the API from one process on
 `127.0.0.1:8000`. The target exists so the command survives the next time a package
 moves — the module it names is one line, in the `Makefile`. `make run-env` is the same
-thing reading its environment from `.env`, so both exports below go in that file
+thing reading its environment from `.env`, so the exports above go in that file
 instead. cora loads no plugin unless asked, so the `CORA_PLUGINS` line is what turns
-this from a bare cora into the coaching app with a prompt-injection screen.
+this from a bare cora into the coaching app with a prompt-injection screen. `CORA_SCOPES`
+says which of those plugins' scoped contributions a turn runs under: the coaching persona
+and its calculators are the fitness scope's, while its medical filter and the injection
+screen are system-wide and hold whatever a turn is running as.
 
 A plugin reads its own settings from the environment, under its own name:
 `CORA_PLUGIN_FITNESS_UNITS=imperial` reaches `cora.plugins.fitness` as `units`. Cora's

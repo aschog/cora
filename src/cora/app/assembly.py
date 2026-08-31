@@ -82,6 +82,7 @@ def assemble(
     documents: Documents,
     plugins: tuple[Extension, ...] = (),
     plugin_settings: dict[str, dict[str, str]] | None = None,
+    scopes: tuple[str, ...] = (),
     memory: Memory | None = None,
     conversations: Conversations | None = None,
     top_k: int = DEFAULT_TOP_K,
@@ -102,6 +103,8 @@ def assemble(
             handed a host of its own and registers what it has.
         plugin_settings: What each plugin module may read as its own settings, keyed
             by module path. A deployment fills this from the environment.
+        scopes: What a turn runs under unless its caller says otherwise — which of the
+            plugins' scoped registrations this deployment is for.
         memory: What cora keeps about the user. Without it, no `remember` tool is
             offered at all.
         conversations: Where turns are recorded. Without it, a turn is answered and
@@ -151,7 +154,7 @@ def assemble(
         max_tool_rounds=max_tool_rounds,
     )
     return App(
-        agent=Agent(runner=runner, conversations=conversations),
+        agent=Agent(runner=runner, conversations=conversations, scopes=scopes),
         knowledge_base=knowledge_base,
         memory=memory,
         conversations=conversations,
@@ -280,6 +283,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         documents=SqliteDocuments.at(config.documents_path),
         plugins=load_plugins(config.plugin_modules),
         plugin_settings=read_plugin_settings(config.plugin_modules),
+        scopes=config.scopes,
         memory=SqliteStoreMemory.at(config.memory_path),
         conversations=SqliteConversations.at(config.conversations_path),
         graph=partial(langgraph_for, checkpoints_at=config.conversations_path),

@@ -45,10 +45,15 @@ class Agent:
 
     Without a `conversations` slot a turn is answered and not kept: the record is
     bookkeeping beside the answer, never a condition of it.
+
+    `scopes` is what a turn runs under when the caller names none — the deployment's
+    answer to "what is this cora for", until a turn can be routed into a scope of its
+    own. A caller that names its own is answered under those instead.
     """
 
     runner: GraphRunner
     conversations: Conversations | None = None
+    scopes: tuple[str, ...] = ()
 
     def answer(
         self,
@@ -76,8 +81,8 @@ class Agent:
                 the last round of a turn is the answer, so a round that ends in a tool
                 call closes with an `Aside`.
             scopes: What this turn runs under — which of the plugins' scoped
-                registrations apply to it. Given none, a turn takes what is
-                system-wide, which is every registration a plugin made without a scope.
+                registrations apply to it. Given none, the deployment's own `scopes`
+                stand, and a deployment that named none runs what is system-wide.
 
         Returns:
             The answer, the citations it rests on, and this turn's steps.
@@ -92,7 +97,9 @@ class Agent:
         """
         return self._turn(
             self.runner.run(
-                {"question": question, "scopes": list(scopes)}, thread_id, on_text
+                {"question": question, "scopes": list(scopes or self.scopes)},
+                thread_id,
+                on_text,
             ),
             question,
             thread_id,

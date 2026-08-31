@@ -12,6 +12,10 @@ DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_PLUGINS: tuple[str, ...] = ()
 """A plugin is an extension, so cora starts with none: a scope, a screen or any other
 plugin is named by the deployment that wants it."""
+DEFAULT_SCOPES: tuple[str, ...] = ()
+"""What a turn runs under where the deployment named nothing: only what is system-wide,
+which is a bare cora with whatever screens a plugin registered for every turn. Named
+here until a turn can be routed into a scope of its own."""
 DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
 DEFAULT_MAX_OUTPUT_TOKENS = 8192
@@ -59,6 +63,7 @@ class Config:
     request_timeout_seconds: int
     reasoning_effort: str
     db_path: str
+    scopes: tuple[str, ...] = DEFAULT_SCOPES
     memory_path: str = DEFAULT_MEMORY_PATH
     documents_path: str = DEFAULT_DOCUMENTS_PATH
     conversations_path: str = DEFAULT_CONVERSATIONS_PATH
@@ -88,6 +93,7 @@ class Config:
             model=_model(env),
             base_url=_named(env, "OPENROUTER_BASE_URL", DEFAULT_BASE_URL),
             plugin_modules=_plugin_modules(env),
+            scopes=_named_list(env, "CORA_SCOPES", DEFAULT_SCOPES),
             top_k=int_setting(env, "CORA_TOP_K", DEFAULT_TOP_K, minimum=1),
             max_tool_rounds=int_setting(
                 env, "CORA_MAX_TOOL_ROUNDS", DEFAULT_MAX_TOOL_ROUNDS, minimum=1
@@ -147,10 +153,16 @@ def _named(env: Mapping[str, str], key: str, default: str) -> str:
 
 
 def _plugin_modules(env: Mapping[str, str]) -> tuple[str, ...]:
-    if "CORA_PLUGINS" not in env:
-        return DEFAULT_PLUGINS
-    named = env["CORA_PLUGINS"].split(",")
-    return tuple(module.strip() for module in named if module.strip())
+    return _named_list(env, "CORA_PLUGINS", DEFAULT_PLUGINS)
+
+
+def _named_list(
+    env: Mapping[str, str], key: str, default: tuple[str, ...]
+) -> tuple[str, ...]:
+    """A comma-separated setting, in the order it was written, blanks dropped."""
+    if key not in env:
+        return default
+    return tuple(named.strip() for named in env[key].split(",") if named.strip())
 
 
 def _bool(env: Mapping[str, str], key: str) -> bool:
