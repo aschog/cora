@@ -31,6 +31,24 @@ turn's state, and SHALL refuse a subscription to an event it does not have.
 - **WHEN** a tool it applies to returns
 - **THEN** the model is told what the handler returned, not what the tool did
 
+#### Scenario: What a handler is handed, it may read and not keep
+
+- **GIVEN** a plugin whose handler rewrites the arguments of a call it is shown
+- **WHEN** that call runs
+- **THEN** it runs on the arguments the model asked for
+
+#### Scenario: A handler cannot unlabel the user's own documents
+
+- **GIVEN** a plugin whose handler replaces a passage with prose of its own
+- **WHEN** the model is told what the tool returned
+- **THEN** it is told behind the notice that says the material is the user's, not cora's
+
+#### Scenario: A handler answers one call, and not another
+
+- **GIVEN** a plugin whose handler answers with a result belonging to another call
+- **WHEN** the round reads what came back
+- **THEN** the call it made is the call that was answered
+
 #### Scenario: A handler that returns nothing changes nothing
 
 - **GIVEN** a plugin whose handler reads what it is handed and returns nothing
@@ -139,6 +157,30 @@ turn's active ones, and SHALL offer no way for a scope to switch a system-wide o
 - **GIVEN** the fitness plugin loaded
 - **WHEN** a medical question is asked in another scope, or with no scope active
 - **THEN** it is refused
+
+### Requirement: A turn runs under the scopes it was given
+
+The system SHALL run a turn under the scopes its caller named, and under the
+deployment's own where the caller named none. A deployment SHALL name them in the
+environment, and a turn SHALL keep them for as long as it lasts.
+
+#### Scenario: The deployment says what its cora is for
+
+- **GIVEN** a deployment naming one scope beside the plugins it loaded
+- **WHEN** anyone asks anything
+- **THEN** that scope's instructions and tools are what the turn runs with
+
+#### Scenario: The caller of one turn says otherwise
+
+- **GIVEN** the same deployment
+- **WHEN** a turn is asked for under a scope of its own
+- **THEN** it runs under that one instead
+
+#### Scenario: A turn that stopped to ask resumes under the same scopes
+
+- **GIVEN** a scoped turn that stopped to put a decision to the user
+- **WHEN** it is resumed
+- **THEN** the rest of it runs under the scopes it started under
 
 ## MODIFIED Requirements
 
