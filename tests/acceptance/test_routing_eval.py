@@ -55,9 +55,12 @@ RECORDED: tuple[tuple[str, str], ...] = (
 removed after a bad run would make the number say what the set was chosen to say."""
 
 THRESHOLD = 0.75
-"""The share the router has to reach. Recorded from the first measured run and raised
-only against a measurement — a threshold set above what was ever observed fails the tier
-on the model rather than on a regression."""
+"""The share the router has to reach.
+
+Not yet measured: this is a floor to run the set against, replaced by the first real
+number the tier reports. Raised only against a measurement — a threshold set above what
+was ever observed fails the tier on the model rather than on a regression.
+"""
 
 
 def _router(store: Path) -> RouteStep:
