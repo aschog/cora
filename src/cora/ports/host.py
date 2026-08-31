@@ -17,6 +17,15 @@ INSTRUCTIONS = "instructions"
 the collision check and the log line are each written once over one list — and a fifth
 kind is a method on `Host` and an entry here, not a shape anyone has to widen."""
 
+DEFAULT_SCOPE = "cora"
+"""The field a turn belonging to none of the loaded ones runs in.
+
+A name rather than an empty set, so a turn can always say which scope it ran under and
+a scope always has somewhere to keep its documents. Nothing cora ships registers under
+it: it is what a bare cora is, and a plugin that registers here says "in every field,
+and in none".
+"""
+
 SCREENING = "screen"
 BRIEFING = "brief"
 CALLING = "tool_call"

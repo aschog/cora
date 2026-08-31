@@ -9,18 +9,20 @@ a loop the reader stops being able to follow.
 import pytest
 
 import sequences
-from cora.engine.steps import ANSWER, SCREEN, WORK
+from cora.engine.steps import ANSWER, FOCUS, ROUTE, SCREEN, WORK
 from cora.ports.graph import ASK, DONE, TOOLS
 
 
 def test_the_reader_finds_the_named_steps_of_a_turn_off_the_composition_root() -> None:
     walk = sequences.walked()
 
-    assert [name for name, _ in walk.before] == [SCREEN]
+    assert [name for name, _ in walk.before] == [SCREEN, ROUTE, FOCUS]
     assert walk.marker == WORK
     assert [name for name, _ in walk.after] == [ANSWER]
     assert [kind for _, kind in (*walk.before, *walk.after)] == [
         "ScreenStep",
+        "RouteStep",
+        "FocusStep",
         "AnswerStep",
     ]
     assert walk.loop == {

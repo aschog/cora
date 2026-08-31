@@ -155,6 +155,12 @@ class LangGraphRunner:
             return None
         return Pending(asked=parked.values.get("question", ""), decision=decision)
 
+    def pinned(self, thread_id: str) -> str | None:
+        """The thread's pin, read off the checkpoint. A thread nobody has asked
+        anything on has no checkpoint at all, and so no pin."""
+        held = self._graph(unheard).get_state(self._config(thread_id)).values.get("pin")
+        return held or None
+
     def _streamed(
         self, opening: Any, thread_id: str, on_text: TextSink
     ) -> Iterator[AgentState]:

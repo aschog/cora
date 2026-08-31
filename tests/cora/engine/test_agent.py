@@ -38,6 +38,7 @@ class _StubRunner:
         writes: tuple[str, ...] = (),
         waiting: Pending | None = None,
         after: tuple[AgentState, ...] = (),
+        pin: str | None = None,
     ) -> None:
         self.found = found or {}
         self.states = states
@@ -45,6 +46,7 @@ class _StubRunner:
         self.writes = writes
         self.waiting = waiting
         self.after = after
+        self.pin = pin
         self.seeded: AgentState | None = None
         self.thread_id: str | None = None
         self.chosen: str | None = None
@@ -74,6 +76,9 @@ class _StubRunner:
 
     def pending(self, thread_id: str) -> Pending | None:
         return self.waiting
+
+    def pinned(self, thread_id: str) -> str | None:
+        return self.pin
 
 
 def _traced(*steps: TraceStep) -> AgentState:

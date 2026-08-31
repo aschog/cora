@@ -9,7 +9,9 @@ from cora.domain.chunk import Chunk
 from cora.domain.citations import CitableHits
 from cora.domain.errors import ToolLoopLimitError
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.engine.steps import NO_FIELD_LOADED
 from cora.ports.chat_model import ChatModel, Message, ModelReply, TextSink, unheard
+from cora.ports.host import DEFAULT_SCOPE
 from cora.ports.plugin import Tool, ToolCall
 from cora.ports.retrieval import RetrievedChunk
 from fakes import ScriptedChatModel
@@ -191,6 +193,9 @@ def test_the_trace_a_turn_returns_is_that_turns_alone() -> None:
 
     assert [step.summary for step in greeting.trace] == [
         "Started to screen",
+        "Started to route",
+        f"Focused on {DEFAULT_SCOPE} — {NO_FIELD_LOADED}",
+        "Started to focus",
         "Started to work",
         "Decided no tool was needed",
         "Started to answer",

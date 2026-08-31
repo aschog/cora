@@ -69,6 +69,21 @@ class Registry:
             if applies(entry, scopes) and entry.value.strip()
         )
 
+    def outline(self, scope: str) -> str:
+        """One line saying what a scope is for, taken off its own instructions.
+
+        What a router is given to choose between, and what an option on the card that
+        asks the user says under the name. The first line a plugin wrote, because a
+        persona opens by saying what it answers — and a scope nobody wrote instructions
+        for is described by its name alone.
+        """
+        for entry in self._of(INSTRUCTIONS):
+            if entry.scope == scope:
+                first = entry.value.strip().splitlines()
+                if first and first[0].strip():
+                    return first[0].strip()
+        return ""
+
     def handlers(
         self, event: str, scopes: frozenset[str] = frozenset()
     ) -> tuple[Registration, ...]:

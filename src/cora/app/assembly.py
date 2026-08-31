@@ -31,13 +31,17 @@ from cora.engine.port_logging import (
 from cora.engine.retrieval_tool import search_tool
 from cora.engine.steps import (
     ANSWER,
+    FOCUS,
+    ROUTE,
     SCREEN,
     WORK,
     AnswerStep,
     AskStep,
+    FocusStep,
     ModelStep,
     Named,
     Router,
+    RouteStep,
     ScreenStep,
     ToolStep,
 )
@@ -103,8 +107,9 @@ def assemble(
             handed a host of its own and registers what it has.
         plugin_settings: What each plugin module may read as its own settings, keyed
             by module path. A deployment fills this from the environment.
-        scopes: What a turn runs under unless its caller says otherwise — which of the
-            plugins' scoped registrations this deployment is for.
+        scopes: The fields a turn may run under — which of the plugins' scoped
+            registrations this deployment offers. Naming one leaves the routing step
+            nothing to choose between; naming two is what it chooses between.
         memory: What cora keeps about the user. Without it, no `remember` tool is
             offered at all.
         conversations: Where turns are recorded. Without it, a turn is answered and
@@ -134,7 +139,19 @@ def assemble(
     _warn_unscreened(registry)
     tools = _coras_own_tools(knowledge_base, top_k, memory)
     runner = graph(
-        before=(Named(SCREEN, ScreenStep(registry=registry, memory=memory)),),
+        before=(
+            Named(SCREEN, ScreenStep(registry=registry)),
+            Named(
+                ROUTE,
+                RouteStep(
+                    chat_model=chat_model,
+                    available=scopes,
+                    registry=registry,
+                    pause=interrupting,
+                ),
+            ),
+            Named(FOCUS, FocusStep(registry=registry, memory=memory)),
+        ),
         loop=Loop(
             marker=Named(WORK),
             model=ModelStep(
@@ -154,7 +171,7 @@ def assemble(
         max_tool_rounds=max_tool_rounds,
     )
     return App(
-        agent=Agent(runner=runner, conversations=conversations, scopes=scopes),
+        agent=Agent(runner=runner, conversations=conversations),
         knowledge_base=knowledge_base,
         memory=memory,
         conversations=conversations,

@@ -14,6 +14,7 @@ from cora.domain.errors import (
     CoreError,
     GraphRunError,
     NothingToResumeError,
+    ScopePinnedError,
 )
 from cora.domain.trace import StepEntered, TraceStep
 from cora.ports.chat_model import TextSink, unheard
@@ -46,14 +47,14 @@ class Agent:
     Without a `conversations` slot a turn is answered and not kept: the record is
     bookkeeping beside the answer, never a condition of it.
 
-    `scopes` is what a turn runs under when the caller names none — the deployment's
-    answer to "what is this cora for", until a turn can be routed into a scope of its
-    own. A caller that names its own is answered under those instead.
+    What a turn runs under is the turn's own business rather than this class's: the
+    routing step settles it from the conversation's pin, the caller's own scopes or the
+    question itself. All this holds is the one rule about a pin that has to stand
+    before a turn is started — that it is never moved.
     """
 
     runner: GraphRunner
     conversations: Conversations | None = None
-    scopes: tuple[str, ...] = ()
 
     def answer(
         self,
@@ -62,6 +63,7 @@ class Agent:
         on_step: Callable[[TraceStep], None] = _ignore,
         on_text: TextSink = unheard,
         scopes: tuple[str, ...] = (),
+        pin: str | None = None,
     ) -> ChatResult:
         """One turn on a named thread, which is where the conversation now lives.
 
@@ -81,8 +83,10 @@ class Agent:
                 the last round of a turn is the answer, so a round that ends in a tool
                 call closes with an `Aside`.
             scopes: What this turn runs under — which of the plugins' scoped
-                registrations apply to it. Given none, the deployment's own `scopes`
-                stand, and a deployment that named none runs what is system-wide.
+                registrations apply to it. Given none, the turn routes itself.
+            pin: The scope to fix this conversation to, from this turn on. Sent again
+                on every later turn by a caller that holds one; the same one costs
+                nothing, and a different one is refused.
 
         Returns:
             The answer, the citations it rests on, and this turn's steps.
@@ -91,19 +95,19 @@ class Agent:
             TurnPaused: The turn stopped to ask. There is no answer yet, and `resume` is
                 what finishes it.
             InputRejectedError: A rule refused the question.
+            ScopePinnedError: This conversation is already pinned to another scope.
             GraphRunError: The walk came back with no answer to give.
             AdapterError: Something outside cora failed mid-turn. A failure raised
                 inside a step carries that step's name.
         """
+        seeded: AgentState = {"question": question, "scopes": list(scopes)}
+        if pin is not None:
+            held = self.pinned(thread_id)
+            if held is not None and held != pin:
+                raise ScopePinnedError(held)
+            seeded["pin"] = pin
         return self._turn(
-            self.runner.run(
-                {"question": question, "scopes": list(scopes or self.scopes)},
-                thread_id,
-                on_text,
-            ),
-            question,
-            thread_id,
-            on_step,
+            self.runner.run(seeded, thread_id, on_text), question, thread_id, on_step
         )
 
     def resume(
@@ -143,6 +147,14 @@ class Agent:
         has an answer.
         """
         return self.runner.pending(thread_id)
+
+    def pinned(self, thread_id: str) -> str | None:
+        """The scope this conversation was fixed to, or nothing.
+
+        What a page reopening a thread draws before anything is asked on it, and what
+        makes a second pin refusable rather than silently ignored.
+        """
+        return self.runner.pinned(thread_id)
 
     def _turn(
         self,

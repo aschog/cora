@@ -124,6 +124,25 @@ class StepEntered(TraceStep):
 
 
 @dataclass(frozen=True)
+class ScopeSettled(TraceStep):
+    """The turn settled which field it was answering in, and how it settled it.
+
+    `how` is the reading rather than the reason: pinned, named, routed, chosen or fallen
+    back to. A reader who is answered by the wrong specialist has one line to look at,
+    and it says whether the conversation decided that or the question did.
+    """
+
+    scope: str = ""
+    how: str = ""
+    detail: str = ""
+
+    @property
+    def summary(self) -> str:
+        """The scope the turn ran in, and where that came from."""
+        return f"Focused on {self.scope} — {self.how}"
+
+
+@dataclass(frozen=True)
 class MemoryUnread(TraceStep):
     """The turn could not read what cora remembers, and answered without it."""
 

@@ -79,6 +79,9 @@ def test_the_steps_arrive_as_they_are_taken_and_the_answer_last() -> None:
 
     assert [name for name, _ in streamed] == [
         "step",  # screen
+        "step",  # route
+        "step",  # the scope it settled on
+        "step",  # focus
         "step",  # work
         "step",  # the round that searched
         "step",  # what the search found
@@ -126,6 +129,9 @@ def test_a_turn_that_fails_reports_after_the_steps_it_already_took() -> None:
 
     assert [name for name, _ in streamed] == [
         "step",  # screen
+        "step",  # route
+        "step",  # the scope it settled on
+        "step",  # focus
         "step",  # work
         "step",  # the round that searched
         "step",  # what the search found
@@ -136,13 +142,20 @@ def test_a_turn_that_fails_reports_after_the_steps_it_already_took() -> None:
 
 def test_a_turn_that_fails_before_any_round_still_closes_the_stream() -> None:
     """A page waiting on an open connection is a page that never says what went
-    wrong. The turn had reached its second step, so the page holds those two and the
-    error after them."""
+    wrong. The turn had walked as far as its first round, so the page holds those steps
+    and the error after them."""
     app = assembled(chat_model=FailingChatModel(LlmError()))
 
     streamed = asking(app)
 
-    assert [name for name, _ in streamed] == ["step", "step", "error"]
+    assert [name for name, _ in streamed] == [
+        "step",  # screen
+        "step",  # route
+        "step",  # the scope it settled on
+        "step",  # focus
+        "step",  # work
+        "error",
+    ]
 
 
 class BreaksInAWayNobodyModelled:
@@ -178,7 +191,7 @@ def test_a_failure_nobody_modelled_still_says_the_turn_went_wrong() -> None:
     exception's text is for the log, not for the screen."""
     streamed = asking(assembled(chat_model=BreaksInAWayNobodyModelled()))
 
-    assert [name for name, _ in streamed] == ["step", "step", "error"]
+    assert [name for name, _ in streamed][-1] == "error"
     said = streamed[-1][1]["error"]
     assert "range" not in said and "KeyError" not in said
     assert said
@@ -526,6 +539,9 @@ def test_a_turn_answered_in_one_round_sends_no_aside() -> None:
 
     assert [name for name, _ in asking(app)] == [
         "step",  # screen
+        "step",  # route
+        "step",  # the scope it settled on
+        "step",  # focus
         "step",  # work
         "text",
         "text",
@@ -557,7 +573,15 @@ def test_a_turn_that_fails_after_writing_ends_with_the_error() -> None:
 
     streamed = asking(app)
 
-    assert [name for name, _ in streamed] == ["step", "step", "text", "error"]
+    assert [name for name, _ in streamed] == [
+        "step",  # screen
+        "step",  # route
+        "step",  # the scope it settled on
+        "step",  # focus
+        "step",  # work
+        "text",
+        "error",
+    ]
     assert streamed[-1][1]["error"] == LlmError().user_message
 
 

@@ -53,26 +53,30 @@
   <rect x="749.77" y="138" width="8" height="4" class="glyph-engine"/>
   <rect x="520.02" y="188" width="239.75" height="46" rx="3" class="part"/>
   <text x="536.02" y="216" class="part-name role" text-anchor="start">knowledge_base: KnowledgeBase</text>
-  <rect x="520.02" y="297.455" width="239.75" height="46" rx="3" class="part"/>
-  <text x="536.02" y="325.455" class="part-name role" text-anchor="start">before: Named</text>
-  <rect x="520.02" y="297.455" width="239.75" height="46" rx="3" class="part"/>
-  <text x="536.02" y="325.455" class="part-name role" text-anchor="start">before: ScreenStep</text>
-  <rect x="520.02" y="352.182" width="239.75" height="46" rx="3" class="part"/>
-  <text x="536.02" y="380.182" class="part-name role" text-anchor="start">marker: Named</text>
-  <rect x="520.02" y="406.909" width="239.75" height="46" rx="3" class="part"/>
-  <text x="536.02" y="434.909" class="part-name role" text-anchor="start">model: ModelStep</text>
-  <rect x="520.02" y="461.636" width="239.75" height="46" rx="3" class="part"/>
-  <text x="536.02" y="489.636" class="part-name role" text-anchor="start">tools: ToolStep</text>
-  <rect x="520.02" y="516.364" width="239.75" height="46" rx="3" class="part"/>
-  <text x="536.02" y="544.364" class="part-name role" text-anchor="start">tool_runtime: ToolRuntime</text>
-  <rect x="520.02" y="571.091" width="239.75" height="46" rx="3" class="part"/>
-  <text x="536.02" y="599.091" class="part-name role" text-anchor="start">ask: AskStep</text>
-  <rect x="520.02" y="625.818" width="239.75" height="46" rx="3" class="part"/>
-  <text x="536.02" y="653.818" class="part-name role" text-anchor="start">router: Router</text>
-  <rect x="520.02" y="735.273" width="239.75" height="46" rx="3" class="part"/>
-  <text x="536.02" y="763.273" class="part-name role" text-anchor="start">after: Named</text>
-  <rect x="520.02" y="735.273" width="239.75" height="46" rx="3" class="part"/>
-  <text x="536.02" y="763.273" class="part-name role" text-anchor="start">after: AnswerStep</text>
+  <rect x="520.02" y="373.231" width="239.75" height="46" rx="3" class="part"/>
+  <text x="536.02" y="401.231" class="part-name role" text-anchor="start">before: Named</text>
+  <rect x="520.02" y="373.231" width="239.75" height="46" rx="3" class="part"/>
+  <text x="536.02" y="401.231" class="part-name role" text-anchor="start">before: ScreenStep</text>
+  <rect x="520.02" y="373.231" width="239.75" height="46" rx="3" class="part"/>
+  <text x="536.02" y="401.231" class="part-name role" text-anchor="start">before: RouteStep</text>
+  <rect x="520.02" y="373.231" width="239.75" height="46" rx="3" class="part"/>
+  <text x="536.02" y="401.231" class="part-name role" text-anchor="start">before: FocusStep</text>
+  <rect x="520.02" y="419.538" width="239.75" height="46" rx="3" class="part"/>
+  <text x="536.02" y="447.538" class="part-name role" text-anchor="start">marker: Named</text>
+  <rect x="520.02" y="465.846" width="239.75" height="46" rx="3" class="part"/>
+  <text x="536.02" y="493.846" class="part-name role" text-anchor="start">model: ModelStep</text>
+  <rect x="520.02" y="512.154" width="239.75" height="46" rx="3" class="part"/>
+  <text x="536.02" y="540.154" class="part-name role" text-anchor="start">tools: ToolStep</text>
+  <rect x="520.02" y="558.462" width="239.75" height="46" rx="3" class="part"/>
+  <text x="536.02" y="586.462" class="part-name role" text-anchor="start">tool_runtime: ToolRuntime</text>
+  <rect x="520.02" y="604.769" width="239.75" height="46" rx="3" class="part"/>
+  <text x="536.02" y="632.769" class="part-name role" text-anchor="start">ask: AskStep</text>
+  <rect x="520.02" y="651.077" width="239.75" height="46" rx="3" class="part"/>
+  <text x="536.02" y="679.077" class="part-name role" text-anchor="start">router: Router</text>
+  <rect x="520.02" y="743.692" width="239.75" height="46" rx="3" class="part"/>
+  <text x="536.02" y="771.692" class="part-name role" text-anchor="start">after: Named</text>
+  <rect x="520.02" y="743.692" width="239.75" height="46" rx="3" class="part"/>
+  <text x="536.02" y="771.692" class="part-name role" text-anchor="start">after: AnswerStep</text>
   <rect x="520.02" y="790" width="239.75" height="46" rx="3" class="part"/>
   <text x="536.02" y="818" class="part-name role" text-anchor="start">agent: Agent</text>
   <rect x="40" y="473" width="133.7" height="52" rx="3" class="outer"/>

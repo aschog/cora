@@ -98,6 +98,22 @@ class InputRejectedError(CoreError):
     pass
 
 
+class ScopePinnedError(CoreError):
+    """A conversation pinned to one field was asked to be pinned to another.
+
+    A pin is what lets a thread be trusted to stay in its field, so it is set once and
+    never moved: a second field is a second conversation.
+    """
+
+    def __init__(self, pinned: str) -> None:
+        """Name the scope the conversation is already in, which is the way out."""
+        super().__init__(
+            f"This conversation is pinned to {pinned}. Start a new one for another "
+            f"field."
+        )
+        self.pinned = pinned
+
+
 class ConfigurationError(CoreError):
     """A setting is missing or unusable, so the app cannot be assembled."""
 

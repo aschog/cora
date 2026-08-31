@@ -31,12 +31,12 @@ def _walked(result: ChatResult) -> list[str]:
 
 @pytest.mark.integration
 def test_a_turn_names_the_steps_it_walked() -> None:
-    """A turn the user can be told the shape of: admitted, worked, then answered."""
+    """A turn the user can be told the shape of: admitted, focused, worked, answered."""
     app = assembled(chat_model=ScriptedChatModel([ModelReply(text="ok")]))
 
     answered = app.agent.answer("What is cora?", THREAD)
 
-    assert _walked(answered) == ["screen", "work", "answer"]
+    assert _walked(answered) == ["screen", "route", "focus", "work", "answer"]
 
 
 @pytest.mark.integration
@@ -67,9 +67,9 @@ def test_the_rounds_of_a_turn_are_spent_in_the_working_step() -> None:
     answered = app.agent.answer("What is 20 + 22, twice?", THREAD)
 
     said = [step.summary for step in answered.trace]
-    assert said[:2] == ["Started to screen", "Started to work"]
+    rounds = said.index("Started to work") + 1
     assert said[-1] == "Started to answer"
-    assert said[2:-1] == [
+    assert said[rounds:-1] == [
         "Decided to call add",
         "add(a=20, b=22) → 42",
         "Decided to call add",
