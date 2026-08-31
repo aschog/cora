@@ -48,8 +48,8 @@ uv sync                                    # install the environment
 npm ci --prefix frontends/react/ui         # and the page's
 git config core.hooksPath .githooks        # enable pre-commit + commit-msg hooks
 export OPENROUTER_API_KEY=sk-or-...
-export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness
-export CORA_SCOPES=fitness
+export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness,cora.plugins.travel
+export CORA_SCOPES=fitness,travel
 make run                                   # or: make run-env, to read the key from .env
 ```
 
@@ -59,9 +59,21 @@ moves — the module it names is one line, in the `Makefile`. `make run-env` is 
 thing reading its environment from `.env`, so the exports above go in that file
 instead. cora loads no plugin unless asked, so the `CORA_PLUGINS` line is what turns
 this from a bare cora into the coaching app with a prompt-injection screen. `CORA_SCOPES`
-says which of those plugins' scoped contributions a turn runs under: the coaching persona
-and its calculators are the fitness scope's, while its medical filter and the injection
-screen are system-wide and hold whatever a turn is running as.
+says which fields a turn *may* run in: the coaching persona and its calculators are the
+fitness scope's, the travel persona and its notes are travel's, while the medical filter
+and the injection screen are system-wide and hold whatever a turn is running as.
+
+With two fields named, cora reads each question and answers it in the one it belongs to —
+the trace says which, and a question that fits both stops the turn to ask. Pin the
+conversation to a field in the header and every later turn is answered in it, through a
+reload and a reopen: the pin is the thread's own state. A pin is set once, because a
+thread that could change field is a thread whose earlier turns mean something else — a
+second field is a second conversation. Naming one scope leaves nothing to route between,
+which is how a single-field deployment stays one.
+
+The travel plugin ships its notes as files under
+`plugins/travel/src/cora/plugins/travel/corpus/`; upload them in the documents rail to
+give that field something to answer from.
 
 A plugin reads its own settings from the environment, under its own name:
 `CORA_PLUGIN_FITNESS_UNITS=imperial` reaches `cora.plugins.fitness` as `units`. Cora's

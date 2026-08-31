@@ -46,6 +46,11 @@ names one. Splitting what a scope fuses, deferred with a reason in the sprint's 
 - Its answer is a set, as the shape requires, holding one member today.
 - Ambiguity calls `Pause` from inside the step, because the stop comes before the loop.
 - So `ask_user`, the round's own tool, is untouched and the ask step keeps one job.
+- A resumed step replays from its first line, so an asked question is read a second time.
+- Accepted: one extra routing call on an ambiguous question, against a fourth step in the
+  walk to separate reading from asking.
+- Routing that fails answers in the default scope: a broken reading leaves a turn less
+  focused, never unanswered, and the trace says which happened.
 - Rejected: routing as a tool the model calls in *work* — the brief would already be written.
 
 **The default scope is a name, not an empty set.**
@@ -69,6 +74,13 @@ names one. Splitting what a scope fuses, deferred with a reason in the sprint's 
 
 - Routing needs a second field, not a second set of things to call.
 - Its documents go into the one index, because a scope owns its files only in story 8.
+
+**A pin naming a field nobody loaded is refused at the door.**
+
+- The engine takes any name; what is on offer is the deployment's, and the API knows it.
+- Refused there because a pin cannot be undone, so a wrong one would outlive every turn.
+- The pin *conflict* is the engine's rule and arrives as a screening refusal does, on the
+  stream.
 
 **The page pins and reads the pin back off the session.**
 
