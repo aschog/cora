@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import RailToggle from './RailToggle'
+import ScopePicker from './ScopePicker'
 
 type Props = {
   plugins: string[]
+  fields: string[]
+  pin: string | null
+  fixedPin: boolean
+  onPin: (scope: string) => void
   leftOpen: boolean
   rightOpen: boolean
   onToggleLeft: () => void
@@ -16,6 +21,10 @@ const NOTHING_TO_START = 'You are already in a new session.'
 
 export default function Header({
   plugins,
+  fields,
+  pin,
+  fixedPin,
+  onPin,
   leftOpen,
   rightOpen,
   onToggleLeft,
@@ -78,6 +87,8 @@ export default function Header({
           </div>
         )}
       </div>
+
+      <ScopePicker available={fields} pin={pin} fixed={fixedPin} onPin={onPin} />
 
       {/* Reachable while it is unavailable, and carrying the reason: `disabled` would
           take the control out of the accessibility tree, which is where the reason a page

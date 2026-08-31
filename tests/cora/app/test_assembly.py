@@ -30,8 +30,11 @@ from cora.engine.port_logging import LoggingEmbedder, LoggingRetriever
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.steps import (
     ANSWER,
+    FOCUS,
+    ROUTE,
     SCREEN,
     WORK,
+    FocusStep,
     ModelStep,
     Named,
     Router,
@@ -598,10 +601,18 @@ def test_build_leaves_the_ports_bare_without_debug(
 
 def _screening(runner: LangGraphRunner) -> ScreenStep:
     """The step a turn opens with, off the walk the runner was handed."""
-    [named] = runner.before
-    assert isinstance(named, Named)
-    assert isinstance(named.take, ScreenStep)
-    return named.take
+    screen, _, _ = runner.before
+    assert isinstance(screen, Named)
+    assert isinstance(screen.take, ScreenStep)
+    return screen.take
+
+
+def _focusing(runner: LangGraphRunner) -> FocusStep:
+    """The step that writes the brief, which is where the memory slot lands."""
+    _, _, focus = runner.before
+    assert isinstance(focus, Named)
+    assert isinstance(focus.take, FocusStep)
+    return focus.take
 
 
 @pytest.mark.integration
@@ -627,7 +638,7 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
         ASK_TOOL_NAME,
         *(entry.value.name for entry in registered.registered if entry.kind == TOOL),
     }
-    assert app.memory is screening.memory, (
+    assert app.memory is _focusing(runner).memory, (
         "one memory, so what the tool writes is what the brief reads"
     )
     assert any(tmp_path.iterdir()), "the store must land under the configured path"
@@ -695,7 +706,7 @@ def test_the_graph_is_a_slot_like_every_other_port() -> None:
     assert isinstance(runner, _OneStepRunner)
     assert app.agent.answer("hi", THREAD).answer == "from the injected graph"
     assert runner.thread_id == THREAD
-    assert [step.step for step in runner.walked] == [SCREEN, WORK, ANSWER]
+    assert [step.step for step in runner.walked] == [SCREEN, ROUTE, FOCUS, WORK, ANSWER]
     assert set(asked) == {"max_tool_rounds"}, (
         "the slot is asked for the walk of a turn and its budget, and nothing else"
     )

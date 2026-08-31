@@ -93,6 +93,12 @@ export default function App() {
   const [flight, setFlight] = useState<{ thread: string; entry: Entry } | null>(null)
   const [documents, setDocuments] = useState<string[]>([])
   const [plugins, setPlugins] = useState<string[]>([])
+  /* The fields this deployment offers, and the one this conversation is fixed to.
+     `fixedPin` is whether a turn has written it into the thread's state — until one has,
+     the pick is the reader's intention and the next question is what settles it. */
+  const [fields, setFields] = useState<string[]>([])
+  const [pin, setPin] = useState<string | null>(null)
+  const [fixedPin, setFixedPin] = useState(false)
   const [facts, setFacts] = useState<Fact[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   /* The steps of the turn being taken, and the conversation they are being taken in: a
@@ -145,12 +151,14 @@ export default function App() {
         cora.memory(),
         cora.sessions(),
         cora.plugins(),
+        cora.scopes(),
       ])
-        .then(([indexed, kept, before, loaded]) => {
+        .then(([indexed, kept, before, loaded, offered]) => {
           setDocuments(indexed)
           setFacts(kept)
           setSessions(before)
           setPlugins(loaded)
+          setFields(offered.available)
           setTrouble(null)
         })
         .catch(reportTo(setTrouble)),
@@ -308,6 +316,7 @@ export default function App() {
               : running,
           )
         },
+        pin,
       )
       if (cora.paused(reply)) {
         // The turn is on the page now rather than in flight: it is waiting on the
@@ -367,6 +376,10 @@ export default function App() {
       setWorking(null)
       setLive(null)
       refresh()
+      /* What the thread holds, not what was sent: a turn that was admitted fixes the pin
+         even if the answer then failed, and a turn refused on the way in fixes nothing.
+         Only the thread knows which happened, so the control is drawn from it. */
+      void held(on)
     }
   }
 
@@ -385,6 +398,8 @@ export default function App() {
     setEntries([])
     setRead(null)
     setNotice(null)
+    setPin(null)
+    setFixedPin(false)
     refresh()
   }
 
@@ -543,13 +558,32 @@ export default function App() {
       setNotice(null)
     })
     if (outcome === 'unreadable') setTrouble(UNDRAWABLE)
-    if (outcome === 'drawn') void parked(session.thread_id)
+    if (outcome === 'drawn') {
+      void parked(session.thread_id)
+      void held(session.thread_id)
+    }
+  }
+
+  /** Which field a reopened conversation is in. The pin outlived the page because it is
+   *  the thread's own state; the picker is only where it is drawn. */
+  const held = async (thread_id: string) => {
+    /* A read that failed is no news about the field: `undefined` leaves the control as it
+       stands, where `null` would re-open a picker on a thread the engine has closed and
+       get the reader's next pick refused over a field they can no longer see. */
+    const fixed = await cora.pinned(thread_id).catch(() => undefined)
+    if (here.current !== thread_id || fixed === undefined) return
+    setPin(fixed)
+    setFixedPin(fixed !== null)
   }
 
   return (
     <div className="app">
       <Header
         plugins={plugins}
+        fields={fields}
+        pin={pin}
+        fixedPin={fixedPin}
+        onPin={(scope) => setPin(scope === '' ? null : scope)}
         leftOpen={leftOpen}
         rightOpen={rightOpen}
         onToggleLeft={() => setLeftOpen((shown) => !shown)}

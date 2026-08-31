@@ -92,9 +92,14 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
 
    A turn running under `birds` gets the persona and the tool, and a turn running under
    anything else gets neither. The screen above is system-wide, and nothing a turn is
-   running under can switch it off — which is what a safety check needs. What a turn
-   runs under is the deployment's to say, in `CORA_SCOPES`, until cora can route a
-   conversation into a scope by itself.
+   running under can switch it off — which is what a safety check needs.
+
+   Which fields a turn *may* run in is the deployment's to say, in `CORA_SCOPES`. Which
+   of them it does run in is the turn's: a pinned conversation is answered in its field,
+   and an unpinned one has its question read for the field it belongs to. The first line
+   of your instructions is what the router is given to choose between, and what the card
+   that asks the reader says under your scope's name — so open by saying what the field
+   answers, not with a rule.
 
 6. **Use what cora has.** The host is cora as your plugin is handed it — the documents
    the user uploaded, what cora remembers, the model behind every turn, a log named for

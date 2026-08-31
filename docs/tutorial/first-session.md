@@ -19,19 +19,30 @@ npm ci --prefix frontends/react/ui
 
 ```sh
 export OPENROUTER_API_KEY=sk-or-...        # required (https://openrouter.ai/keys)
-export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness
-export CORA_SCOPES=fitness
+export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness,cora.plugins.travel
+export CORA_SCOPES=fitness,travel
 make run                                   # or: make run-env, to read the key from .env
 ```
 
 cora loads no plugin unless asked, so the second line is what turns this from a bare
-cora into the coaching app with a prompt-injection screen. Drop it to see
-what the box does on its own. `CORA_SCOPES=fitness` is what says a turn runs as the
-coach: the persona and the calculators are that scope's, and the medical filter holds
-either way. `make run-env` reads its environment from `.env` instead, so put both there
-rather than exporting them.
+cora into a coach and a travel companion with a prompt-injection screen. Drop it to see
+what the box does on its own. `CORA_SCOPES` says which fields a turn may run in: the
+coaching persona and the calculators are the fitness scope's, the travel persona is
+travel's, and the medical filter holds either way. `make run-env` reads its environment
+from `.env` instead, so put both there rather than exporting them.
 
-## 3. Ask it something
+## 3. Pick a field, or let cora pick
+
+With two fields loaded, cora reads each question and answers it in the one it belongs
+to — the *STEPS* tab says which, and a question that fits both stops to ask you. If the
+conversation is about one field, pin it in the header: every later turn is answered in
+that field, and it survives a reload. A pin is set once, so a second field means a new
+session.
+
+Give travel something to answer from by uploading the notes it ships, in
+`plugins/travel/src/cora/plugins/travel/corpus/`.
+
+## 4. Ask it something
 
 Upload a document (txt/md/pdf) in the documents rail on the left, then ask about it —
 answers cite the passages they used. Click a `[1]` in an answer and that document opens

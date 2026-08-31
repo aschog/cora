@@ -69,6 +69,19 @@ class Registry:
             if applies(entry, scopes) and entry.value.strip()
         )
 
+    def outline(self, scope: str) -> str:
+        """What a scope is for, in the words its own instructions open with.
+
+        What a router is given to choose between, and what an option on the card that
+        asks the user says under the name. The opening paragraph, because a persona
+        opens by saying what it answers — and a scope nobody wrote instructions for is
+        described by its name alone.
+        """
+        for entry in self._of(INSTRUCTIONS):
+            if entry.scope == scope and entry.value.strip():
+                return _opening(entry.value)
+        return ""
+
     def handlers(
         self, event: str, scopes: frozenset[str] = frozenset()
     ) -> tuple[Registration, ...]:
@@ -111,6 +124,17 @@ class Registry:
                     f"'{entry.value.name}'. Load one of them, or rename the tool."
                 )
             registered_by[entry.value.name] = entry.module
+
+
+def _opening(instructions: str) -> str:
+    """The first paragraph, unwrapped.
+
+    A line break is where the author's editor wrapped and says nothing about where the
+    thought ends, so what is read is the paragraph rather than the line. The paragraph
+    rather than the sentence, because a full stop is not a sentence boundary either —
+    "e.g." would cut the outline in the middle of the phrase it was explaining.
+    """
+    return " ".join(instructions.strip().split("\n\n")[0].split())
 
 
 def _heading(module: str) -> str:

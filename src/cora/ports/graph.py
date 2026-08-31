@@ -109,6 +109,16 @@ class GraphRunner(Protocol):
         """
         ...
 
+    def pinned(self, thread_id: str) -> str | None:
+        """The scope this thread was pinned to, or nothing.
+
+        The pin is a key of the thread's own state, so the runner is what can read it —
+        and it has to be readable outside a turn: a page reopening a conversation draws
+        the pin before anyone asks anything, and a second, different pin is refused
+        before a turn is started on it.
+        """
+        ...
+
 
 @dataclass(frozen=True)
 class Loop:

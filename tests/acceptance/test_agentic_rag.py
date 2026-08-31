@@ -2,7 +2,7 @@ import pytest
 
 from app_builder import assembled, indexed
 from cora.app.assembly import App
-from cora.domain.trace import ModelDecision, StepEntered, ToolUse
+from cora.domain.trace import ModelDecision, ScopeSettled, StepEntered, ToolUse
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import ToolCall
 from fakes import CountingRetriever, FakeRetriever, ScriptedChatModel, add_tool
@@ -83,12 +83,9 @@ def test_an_answer_the_model_gave_without_searching_stands() -> None:
 
     assert result.answer == OFF_THE_CUFF
     assert retriever.queries == 0
-    assert [type(step) for step in result.trace] == [
-        StepEntered,
-        StepEntered,
-        ModelDecision,
-        StepEntered,
-    ]
+    assert [
+        type(step) for step in result.trace if not isinstance(step, StepEntered)
+    ] == [ScopeSettled, ModelDecision], "one round, and nothing searched in it"
 
 
 @pytest.mark.integration

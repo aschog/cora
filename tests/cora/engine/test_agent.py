@@ -38,6 +38,7 @@ class _StubRunner:
         writes: tuple[str, ...] = (),
         waiting: Pending | None = None,
         after: tuple[AgentState, ...] = (),
+        pin: str | None = None,
     ) -> None:
         self.found = found or {}
         self.states = states
@@ -45,6 +46,7 @@ class _StubRunner:
         self.writes = writes
         self.waiting = waiting
         self.after = after
+        self.pin = pin
         self.seeded: AgentState | None = None
         self.thread_id: str | None = None
         self.chosen: str | None = None
@@ -75,6 +77,9 @@ class _StubRunner:
     def pending(self, thread_id: str) -> Pending | None:
         return self.waiting
 
+    def pinned(self, thread_id: str) -> str | None:
+        return self.pin
+
 
 def _traced(*steps: TraceStep) -> AgentState:
     return {"answer": "done", "trace": list(steps)}
@@ -91,7 +96,8 @@ def test_answer_seeds_the_run_with_the_question_and_names_the_thread() -> None:
     assert runner.seeded == {
         "question": "What was my weight?",
         "scopes": ["fitness"],
-    }
+        "pinning": "",
+    }, "a turn asking for no pin says so, or the last turn's request would stand"
     assert runner.thread_id == "t1"
     assert result.answer == "80 kg."
 

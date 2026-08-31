@@ -19,6 +19,7 @@ members = [
     "cora-frontend-react",
     "cora-plugin-fitness",
     "cora-plugin-security",
+    "cora-plugin-travel",
 ]
 
 [[package]]
@@ -456,6 +457,7 @@ dev = [
     { name = "cora-frontend-react" },
     { name = "cora-plugin-fitness" },
     { name = "cora-plugin-security" },
+    { name = "cora-plugin-travel" },
     { name = "httpx" },
     { name = "mkdocs" },
     { name = "mkdocs-gen-files" },
@@ -487,6 +489,7 @@ dev = [
     { name = "cora-frontend-react", editable = "frontends/react" },
     { name = "cora-plugin-fitness", editable = "plugins/fitness" },
     { name = "cora-plugin-security", editable = "plugins/security" },
+    { name = "cora-plugin-travel", editable = "plugins/travel" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "mkdocs", specifier = ">=1.6.1" },
     { name = "mkdocs-gen-files", specifier = ">=0.6.1" },
@@ -535,6 +538,17 @@ requires-dist = [{ name = "cora", editable = "." }]
 name = "cora-plugin-security"
 version = "0.1.0"
 source = { editable = "plugins/security" }
+dependencies = [
+    { name = "cora" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "cora", editable = "." }]
+
+[[package]]
+name = "cora-plugin-travel"
+version = "0.1.0"
+source = { editable = "plugins/travel" }
 dependencies = [
     { name = "cora" },
 ]

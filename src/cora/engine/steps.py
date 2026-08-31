@@ -6,10 +6,11 @@ from typing import Protocol
 
 from cora.domain.agent_state import AgentState
 from cora.domain.citations import Citable, Citation
-from cora.domain.decision import Decision
+from cora.domain.decision import Decision, Option
 from cora.domain.errors import AdapterError, CoreError, ToolLoopLimitError
 from cora.domain.trace import (
     MemoryUnread,
+    ScopeSettled,
     StepEntered,
     ToolUse,
     TraceStep,
@@ -24,7 +25,13 @@ from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.rounds import Read, decided, told, used
 from cora.ports.chat_model import Aside, ChatModel, Message, TextSink, unheard
 from cora.ports.graph import ASK, DONE, TOOLS, Step
-from cora.ports.host import BRIEFING, CALLING, RETURNING, SCREENING
+from cora.ports.host import (
+    BRIEFING,
+    CALLING,
+    DEFAULT_SCOPE,
+    RETURNING,
+    SCREENING,
+)
 from cora.ports.memory import Fact, Memory
 from cora.ports.pause import Pause, declined
 from cora.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult
@@ -97,10 +104,39 @@ REMEMBERED_NOTICE = (
 
 
 SCREEN = "screen"
+ROUTE = "route"
+FOCUS = "focus"
 WORK = "work"
 ANSWER = "answer"
 """The steps a turn walks, in the order it walks them. A name is what a turn is *in*:
 it heads that step's trace, and a failure is reported under it."""
+
+ROUTING_RULE = (
+    "Sort the question below into the field it belongs to. The fields are listed under "
+    "the names you may answer with.\n\n"
+    "Answer with one name and nothing else. Answer with two or more names, separated "
+    "by commas, only if the question genuinely belongs to more than one of them. "
+    "Answer with 'none' if it belongs to none of them. Never explain, and never answer "
+    "the question itself."
+)
+"""What the router is told. It is handed no tools and no history: which field a question
+belongs to is a reading of that question, and a router given the thread would drift with
+it — the pin is what makes a decision about the conversation."""
+WHICH_FIELD = "Which field did you mean?"
+NEITHER_FIELD = "Neither — answer it plainly"
+
+PINNED = "pinned to this conversation"
+NAMED = "named by the caller"
+ONLY_FIELD = "the only field loaded"
+NO_FIELD_LOADED = "no field is loaded"
+ROUTED = "read off the question"
+CHOSEN = "chosen by you"
+NOTHING_CHOSEN_FIELD = "no field chosen"
+BELONGS_TO_NONE = "the question belongs to none of them"
+UNREAD = "the question could not be read"
+"""How a turn came to be in the scope it ran in, in the words the trace shows. The
+reading rather than the reason: a reader answered by the wrong specialist needs to know
+whether the conversation decided that or the question did."""
 
 
 def _nothing(state: AgentState) -> AgentState:
@@ -146,20 +182,20 @@ class Named:
 class ScreenStep:
     """The step that admits a question, and then opens the turn on it.
 
-    Holds what does not change between turns — what the plugins registered and the
-    memory slot — and reads the rest off the state it is handed, the turn's scopes
-    included.
+    Ahead of the routing step, and deliberately: routing reads the question with the
+    model, so a question cora will not accept is refused before any model sees it. The
+    cost is that a screen registered under a *scope* never sees a routed turn, which is
+    why every screen cora ships is system-wide.
     """
 
     registry: Registry = field(default_factory=Registry)
-    memory: Memory | None = None
 
     def __call__(self, state: AgentState) -> AgentState:
         """Open a turn on a thread that may already hold ten.
 
-        The question joins the transcript, the brief is restated for this turn alone,
-        and the answer the last turn finished with is cleared. The screening handlers
-        run before any of that, so a refused question costs the thread nothing.
+        The question joins the transcript, and the answer the last turn finished with is
+        cleared. The screening handlers run before either, so a refused question costs
+        the thread nothing.
 
         Raises:
             InputRejectedError: A handler refused the question, or broke screening it.
@@ -167,17 +203,178 @@ class ScreenStep:
                 steps taken travel on the refusal.
         """
         question = state["question"]
-        scopes = scoped(state)
         trace: list[TraceStep] = []
-        dispatch(SCREENING, question, self.registry.handlers(SCREENING, scopes), trace)
+        dispatch(
+            SCREENING,
+            question,
+            self.registry.handlers(SCREENING, scoped(state)),
+            trace,
+        )
         return {
             "messages": [Message(role="user", content=question)],
             "turn_start": len(state.get("messages", ())),
             "trace_start": len(state.get("trace", ())),
-            "brief": self._brief(scopes, trace),
             "trace": trace,
             "answer": "",
         }
+
+
+def _focused(scopes: tuple[str, ...], how: str) -> AgentState:
+    """The scopes a turn runs under, and the one line saying where they came from.
+
+    `candidates` is emptied by every settling, so a turn that had to ask leaves nothing
+    behind for the next turn on the thread to be asked about again.
+    """
+    return {
+        "scopes": list(scopes),
+        "candidates": [],
+        "trace": [ScopeSettled(scope=", ".join(scopes), how=how)],
+    }
+
+
+@dataclass(frozen=True)
+class RouteStep:
+    """The step that reads which field the turn belongs to.
+
+    Four ways in, tried in that order: the conversation's pin, the scopes one caller
+    named, the single field a deployment offers, and the question itself read by the
+    model. Every one of them ends in the same key, so nothing downstream knows which it
+    was — only the trace does.
+
+    A question the model reads as belonging to two fields settles nothing here: it
+    leaves the fields it named, and *focus* is where the reader is asked which was
+    meant. That split is not tidiness — a step that stops is replayed from its first
+    line when it is picked up, and a question read a second time can be read
+    differently, which would answer in a field the reader did not choose.
+    """
+
+    chat_model: ChatModel | None = None
+    available: tuple[str, ...] = ()
+    registry: Registry = field(default_factory=Registry)
+
+    def __call__(self, state: AgentState) -> AgentState:
+        """Settle the turn's scopes, and say in one step how they were settled.
+
+        A pin this turn asked for is taken here, which is why it survives a refused
+        question: the screen has run by now, so nothing the reader was refused for can
+        leave a conversation fixed to a field for good.
+        """
+        pinned = state.get("pin", "") or state.get("pinning", "")
+        if pinned:
+            return {**_focused((pinned,), PINNED), "pin": pinned}
+        named = tuple(state.get("scopes", ()))
+        if named:
+            # Trusted as given: the caller here is a frontend or a test, never the
+            # reader, and a scope no registration is under simply reaches nothing.
+            return _focused(named, NAMED)
+        if len(self.available) == 1:
+            return _focused((self.available[0],), ONLY_FIELD)
+        if not self.available:
+            return _focused((DEFAULT_SCOPE,), NO_FIELD_LOADED)
+        return self._read(state["question"])
+
+    def _read(self, question: str) -> AgentState:
+        """Which field the question belongs to, as the model reads it.
+
+        A question belonging to none is answered plainly, and so is one the model could
+        not be asked about: routing that fails leaves a turn less focused, never
+        unanswered. One that belongs to two is left for *focus* to put to the reader.
+        """
+        if self.chat_model is None:
+            return _focused((DEFAULT_SCOPE,), NO_FIELD_LOADED)
+        try:
+            said = self.chat_model.complete(self._asking(question), ()).text
+        except AdapterError:
+            return _focused((DEFAULT_SCOPE,), UNREAD)
+        candidates = self._named(said)
+        if not candidates:
+            return _focused((DEFAULT_SCOPE,), BELONGS_TO_NONE)
+        if len(candidates) == 1:
+            return _focused(candidates, ROUTED)
+        return {"scopes": [], "candidates": list(candidates)}
+
+    def _named(self, said: str) -> tuple[str, ...]:
+        """The available scopes the reply names, in the order it named them.
+
+        Read against what is on offer rather than trusted: a model answering with prose,
+        with a field nobody loaded, or with 'none' names nothing, and a turn that names
+        nothing is answered plainly.
+        """
+        offered = {scope.lower(): scope for scope in self.available}
+        found = [
+            offered[word]
+            for word in (part.strip().lower() for part in said.split(","))
+            if word in offered
+        ]
+        return tuple(dict.fromkeys(found))
+
+    def _asking(self, question: str) -> tuple[Message, ...]:
+        listed = "\n".join(
+            f"- {scope}: {self.registry.outline(scope) or scope}"
+            for scope in self.available
+        )
+        return (
+            Message(role="system", content=f"{ROUTING_RULE}\n\n{listed}"),
+            Message(role="user", content=question),
+        )
+
+
+@dataclass(frozen=True)
+class FocusStep:
+    """The step that states what cora is, under the scope the turn is answered in.
+
+    Holds what does not change between turns — what the plugins registered and the
+    memory slot — and reads the scopes off the state the routing step left behind. It is
+    also the one step that stops to ask which field was meant, because it is the last
+    place a scope can be settled and the first where nothing costly has run yet: a
+    stopped step is replayed from its first line, and everything before the stop here is
+    a read of state the step before it already committed.
+    """
+
+    registry: Registry = field(default_factory=Registry)
+    memory: Memory | None = None
+    pause: Pause = declined
+
+    def __call__(self, state: AgentState) -> AgentState:
+        """Restate the brief for this turn, under this turn's scopes and no others.
+
+        A field the step before it could not settle is put to the reader first, and what
+        they choose is what the brief is then written under.
+        """
+        contested = tuple(state.get("candidates", ()))
+        if contested:
+            settled = self._asked(contested)
+            trace: list[TraceStep] = list(settled["trace"])
+            return {
+                **settled,
+                "brief": self._brief(frozenset(settled["scopes"]), trace),
+                "trace": trace,
+            }
+        written: list[TraceStep] = []
+        return {"brief": self._brief(scoped(state), written), "trace": written}
+
+    def _asked(self, contested: tuple[str, ...]) -> AgentState:
+        """Put the fork to the reader rather than picking one of two fields for them.
+
+        The stop is this step's own rather than the round's `ask_user`: the scope has to
+        be settled before the brief is written, which is a step before the model is
+        offered a tool at all. Which makes this the second place a label is checked
+        against the card it was offered on: `AskStep` is the other, through `_offered`,
+        so that rule moves in two places until a pause has one owner.
+        """
+        chosen = self.pause(
+            Decision(
+                question=WHICH_FIELD,
+                options=tuple(
+                    Option(label=scope, note=self.registry.outline(scope))
+                    for scope in contested
+                ),
+                decline=NEITHER_FIELD,
+            )
+        )
+        if chosen in contested:
+            return _focused((str(chosen),), CHOSEN)
+        return _focused((DEFAULT_SCOPE,), NOTHING_CHOSEN_FIELD)
 
     def _brief(self, scopes: frozenset[str], trace: list[TraceStep]) -> str:
         """Cora first, then the scopes it was given, then the user's own notes.

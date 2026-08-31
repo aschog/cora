@@ -23,8 +23,19 @@ class AgentState(TypedDict, total=False):
     taken before it stopped.
 
     `scopes` is what the turn is running under: which of the registrations the plugins
-    made apply to it. Seeded when the turn opens and checkpointed with the rest, so a
+    made apply to it. Settled by the routing step and checkpointed with the rest, so a
     turn resumed after a pause is the same turn it was.
+
+    `pin` is the scope the *conversation* was fixed to, which is the one key here that
+    is not a turn's. It is set once, by the user and by nobody else, and every later
+    turn on the thread is answered under it — so a reopened thread reopens in its field
+    rather than being read afresh. `pinning` is what *this turn* asked to pin, which is
+    a separate key because a turn refused on the way in must fix nothing.
+
+    `candidates` is the fields a question was read as belonging to when it belonged to
+    more than one. It exists because the step that asks the reader which was meant is
+    replayed when the turn is picked up, so what it asks about has to be a read of state
+    rather than a second reading of the question.
     """
 
     question: str
@@ -34,5 +45,8 @@ class AgentState(TypedDict, total=False):
     turn_start: int
     trace_start: int
     scopes: list[str]
+    candidates: list[str]
+    pin: str
+    pinning: str
     brief: str
     answer: str

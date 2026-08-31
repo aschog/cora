@@ -7,8 +7,6 @@ gate, these are the only tests that can catch a model answering a document quest
 what it happens to know.
 """
 
-import dataclasses
-import os
 import re
 from pathlib import Path
 
@@ -16,12 +14,12 @@ import pytest
 from starlette.testclient import TestClient
 
 from cora.app.assembly import App, build
-from cora.app.config import Config
 from cora.domain.decision import TurnPaused
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.react.api import api
 from cora.plugins.fitness.tools import DAILY_ENERGY_TOOL
+from live import live_config
 from sse import frames
 
 pytestmark = pytest.mark.llm
@@ -36,30 +34,11 @@ LIVE_PLUGINS = ("cora.plugins.security", "cora.plugins.fitness")
 SMALL_TALK = "Hi there!"
 
 
-def _live_config(store: Path) -> Config:
-    """Every store is redirected — documents, memory and conversations alike: an
-    acceptance run that remembered things would otherwise write into whatever the
-    developer is actually using, and the conversation path is the checkpointer's too, so
-    a thread would carry yesterday's run into today's. The domain is named here rather
-    than taken from the default set, which ships the guard alone — a training question
-    needs a plugin that claims training as its subject."""
-    if not os.environ.get("OPENROUTER_API_KEY"):
-        pytest.skip("OPENROUTER_API_KEY is not set; the llm tier needs a real key")
-    return dataclasses.replace(
-        Config.from_env(),
-        plugin_modules=LIVE_PLUGINS,
-        db_path=str(store / "chroma"),
-        memory_path=str(store / "memory.sqlite"),
-        documents_path=str(store / "documents.sqlite"),
-        conversations_path=str(store / "conversations.sqlite"),
-    )
-
-
 def _live_app(store: Path) -> App:
     """The shipped composition root, pointed at stores of its own. Every other default
     is the deployed one — the model, the preamble and the reminder under test are
     whatever cora actually ships."""
-    return build(_live_config(store))
+    return build(live_config(store, LIVE_PLUGINS))
 
 
 def _holding_the_protein_doc(store: Path) -> App:

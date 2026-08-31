@@ -45,7 +45,10 @@ def serve() -> None:
         config = Config.from_env()
         chosen = port(os.environ)
         served = api(
-            build(config), plugins=config.plugin_modules, ui=ui_path(os.environ)
+            build(config),
+            plugins=config.plugin_modules,
+            scopes=config.scopes,
+            ui=ui_path(os.environ),
         )
     except CoreError as refused:
         # Written here rather than left to `SystemExit` to carry: an exit whose argument

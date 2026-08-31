@@ -134,3 +134,46 @@ def test_two_plugins_are_two_sections_headed_by_their_modules() -> None:
 
 def test_a_plugin_that_registered_nothing_to_say_adds_no_section() -> None:
     assert Registry((_registered(SECURITY, INSTRUCTIONS, "  "),)).instructions() == ""
+
+
+WRAPPED = """\
+Answer travel questions — destinations, routes, timing and logistics — from the
+user's own documents.
+
+- Search the documents for anything about a place, and cite what you used.
+"""
+
+
+@pytest.mark.parametrize(
+    ("written", "outlined"),
+    [
+        (
+            WRAPPED,
+            "Answer travel questions — destinations, routes, timing and logistics "
+            "— from the user's own documents.",
+        ),
+        ("One line, and no more of it.", "One line, and no more of it."),
+        (
+            "Answer questions about e.g. trains. Cite them.",
+            "Answer questions about e.g. trains. Cite them.",
+        ),
+        ("", ""),
+    ],
+)
+def test_a_scopes_outline_is_the_paragraph_its_instructions_open_with(
+    written: str, outlined: str
+) -> None:
+    """What the router chooses between and what the card says under a field's name. A
+    line break is where the author's editor wrapped, so the paragraph is what is read,
+    and a full stop is no boundary either — `e.g.` would cut the phrase it explains."""
+    registry = Registry((_registered(FITNESS, INSTRUCTIONS, written, "fitness"),))
+
+    assert registry.outline("fitness") == outlined
+
+
+def test_a_scope_nobody_wrote_instructions_for_outlines_as_nothing() -> None:
+    """The router is then given its name alone, which is all anyone said about it."""
+    registry = Registry((_registered(FITNESS, INSTRUCTIONS, "Coaching.", "fitness"),))
+
+    assert registry.outline("travel") == ""
+    assert Registry().outline("fitness") == ""
