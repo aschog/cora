@@ -33,6 +33,7 @@ from cora.engine.ingestion import DEFAULT_MAX_BYTES
 from cora.engine.validation import MAX_INPUT_CHARS
 from cora.frontends.react import payloads
 from cora.ports.chat_model import Piece, TextSink, Written
+from cora.ports.host import DEFAULT_SCOPE
 
 log = logging.getLogger(__name__)
 
@@ -59,23 +60,27 @@ def api(
     app: App,
     *,
     plugins: tuple[str, ...] = (),
+    scopes: tuple[str, ...] = (),
     ui: pathlib.Path | None = None,
 ) -> Starlette:
-    """`plugins` is what the deployment configured, which the assembled app does not
-    carry: the badge names them, and nothing on the page can change them."""
+    """`plugins` and `scopes` are what the deployment configured, which the assembled
+    app does not carry: the badge names the plugins, the picker offers the scopes, and
+    nothing on the page can change either."""
     routes: list[Route | Mount] = [
         Route("/api/documents", _documents(app), methods=["GET"]),
         Route("/api/documents", _ingest(app), methods=["POST"]),
-        Route("/api/ask", _ask(app), methods=["POST"]),
+        Route("/api/ask", _ask(app, scopes), methods=["POST"]),
         Route("/api/resume", _resume(app), methods=["POST"]),
         Route("/api/uploads/{upload}", _upload(app), methods=["GET"]),
         Route("/api/sessions", _sessions(app), methods=["GET"]),
         Route("/api/sessions/{thread_id}", _turns(app), methods=["GET"]),
         Route("/api/sessions/{thread_id}/pending", _pending(app), methods=["GET"]),
+        Route("/api/sessions/{thread_id}/scope", _scope(app), methods=["GET"]),
         Route("/api/memory", _memory(app), methods=["GET"]),
         Route("/api/memory", _clear(app), methods=["DELETE"]),
         Route("/api/memory/{key}", _forget(app), methods=["DELETE"]),
         Route("/api/plugins", _plugins(plugins), methods=["GET"]),
+        Route("/api/scopes", _scopes(scopes), methods=["GET"]),
     ]
     if ui is not None and ui.is_dir():
         routes.append(Mount("/", StaticFiles(directory=ui, html=True)))
@@ -208,6 +213,9 @@ around the two. Whether the question is too long is the engine's rule — this i
 much cora reads to find out."""
 TOO_LONG_TO_ASK = "That question is longer than cora reads."
 NOT_A_DECISION = "A decision needs the conversation it belongs to."
+NO_SUCH_SCOPE = (
+    "cora is not running that field, so a conversation cannot be pinned to it."
+)
 WENT_WRONG = "Something went wrong answering that. Please try again."
 """What an unmodelled failure says. A `CoreError` was written to be read by whoever
 asked; anything else was not, so its text goes to the log and the reader gets a sentence
@@ -217,7 +225,7 @@ DONE = None
 that is not closed is a page still spinning under an answer that already failed."""
 
 
-def _ask(app: App) -> Callable[[Request], Any]:
+def _ask(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
     """A turn takes as long as it takes, so it is a stream: the steps as the agent takes
     them, the answer in the pieces it is written in, then the answer whole, and either
     way an end. The whole one is what the page keeps — the pieces are it arriving early.
@@ -249,8 +257,16 @@ def _ask(app: App) -> Callable[[Request], Any]:
         question, thread_id = asked.get("question"), asked.get("thread_id")
         if not _said(question) or not _said(thread_id):
             return JSONResponse({"error": NOT_A_QUESTION}, status_code=REFUSED)
+        pinned = asked.get("pin")
+        # A field nobody loaded would pin the thread to a scope no registration is
+        # under, and a pin cannot be undone — so it is refused here, where what the
+        # deployment offers is known, rather than fixed forever inside the turn.
+        if pinned is not None and pinned not in scopes:
+            return JSONResponse({"error": NO_SUCH_SCOPE}, status_code=REFUSED)
         return _streaming(
-            lambda report, write: app.agent.answer(question, thread_id, report, write)
+            lambda report, write: app.agent.answer(
+                question, thread_id, report, write, pin=pinned
+            )
         )
 
     return taken
@@ -444,3 +460,24 @@ def _plugins(plugins: tuple[str, ...]) -> Callable[[Request], Any]:
         return JSONResponse(list(plugins))
 
     return named
+
+
+def _scopes(scopes: tuple[str, ...]) -> Callable[[Request], Any]:
+    """The fields this deployment offers, and the one a turn belonging to none runs in.
+    The page draws the picker from this: a deployment with one field has nothing to
+    pick, and a deployment with none is a bare cora."""
+
+    def offered(request: Request) -> JSONResponse:
+        return JSONResponse({"available": list(scopes), "default": DEFAULT_SCOPE})
+
+    return offered
+
+
+def _scope(app: App) -> Callable[[Request], Any]:
+    """What a thread is pinned to, for a page that has just reopened it. The pin is a
+    key of the thread's own state, so it survives the reload that lost the page's."""
+
+    def held(request: Request) -> JSONResponse:
+        return JSONResponse({"pin": app.agent.pinned(request.path_params["thread_id"])})
+
+    return held

@@ -44,6 +44,7 @@ members = ["plugins/*", "frontends/*"]
 cora = { workspace = true }
 cora-plugin-fitness = { workspace = true }
 cora-plugin-security = { workspace = true }
+cora-plugin-travel = { workspace = true }
 cora-frontend-react = { workspace = true }
 
 [dependency-groups]
@@ -51,6 +52,7 @@ dev = [
     "cora-frontend-react",
     "cora-plugin-fitness",
     "cora-plugin-security",
+    "cora-plugin-travel",
     "httpx>=0.28.1",
     "mkdocs>=1.6.1",
     "mkdocs-gen-files>=0.6.1",
@@ -74,6 +76,7 @@ root = [
     "frontends/react/src",
     "plugins/fitness/src",
     "plugins/security/src",
+    "plugins/travel/src",
     "tests/helpers",
 ]
 
@@ -84,6 +87,7 @@ src = [
     "frontends/react/src",
     "plugins/fitness/src",
     "plugins/security/src",
+    "plugins/travel/src",
     "tests/helpers",
 ]
 

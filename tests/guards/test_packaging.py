@@ -74,6 +74,7 @@ def test_the_workspace_holds_the_app_and_its_extension_points() -> None:
         "frontends/react": "cora-frontend-react",
         "plugins/fitness": "cora-plugin-fitness",
         "plugins/security": "cora-plugin-security",
+        "plugins/travel": "cora-plugin-travel",
     }
 
 
