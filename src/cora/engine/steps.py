@@ -358,7 +358,9 @@ class FocusStep:
 
         The stop is this step's own rather than the round's `ask_user`: the scope has to
         be settled before the brief is written, which is a step before the model is
-        offered a tool at all.
+        offered a tool at all. Which makes this the second place a label is checked
+        against the card it was offered on: `AskStep` is the other, through `_offered`,
+        so that rule moves in two places until a pause has one owner.
         """
         chosen = self.pause(
             Decision(
