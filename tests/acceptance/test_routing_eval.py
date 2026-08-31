@@ -8,10 +8,10 @@ The recorded set holds questions asked on their own and questions phrased as
 follow-ups. An unpinned thread is routed every turn, and the router is deliberately
 given the question without the thread — so a follow-up that no longer names its
 subject is the case most likely to go wrong. A question read as two fields counts as a
-miss: the running app stops and asks, which is right, and is not a field.
+miss, scored as `AMBIGUOUS`: the running app stops and asks, which is right, and is
+not a field.
 """
 
-import dataclasses
 from pathlib import Path
 
 import pytest
@@ -64,6 +64,12 @@ One miss out of sixteen passes, two do not. Raised only against another measurem
 """
 
 
+AMBIGUOUS = "ambiguous"
+"""What a question the router read as two fields is scored as. Its own outcome rather
+than a field: the running app stops and asks, which is the right thing to do and is not
+a reading of which field was meant."""
+
+
 def _router(store: Path) -> RouteStep:
     """The shipped router, off the walk the composition root wired.
 
@@ -72,17 +78,24 @@ def _router(store: Path) -> RouteStep:
     would measure the test's wiring.
     """
     runner = build(live_config(store, SCOPED_PLUGINS, (FITNESS, TRAVEL))).agent.runner
-    _, route, _ = runner.before  # ty: ignore[unresolved-attribute]
+    route = runner.before[1]  # ty: ignore[unresolved-attribute]
     step = route.take
     assert isinstance(step, RouteStep)
-    # A question read as two fields stops the run to ask, which cannot happen outside a
-    # graph — declining is what makes such a case a miss rather than an error.
-    return dataclasses.replace(step, pause=lambda decision: None)
+    return step
 
 
 def _chose(step: RouteStep, question: str) -> str:
-    settled = step({"question": question})["scopes"]
-    return settled[0] if len(settled) == 1 else ", ".join(settled)
+    """The one field the router settled on, or that it settled on none.
+
+    A two-field reading settles nothing and leaves the fields for the focusing step to
+    put to the reader, so it arrives here as an empty `scopes` — scored as its own
+    outcome rather than silently as the default field, which two of the recorded cases
+    legitimately expect.
+    """
+    settled = step({"question": question}).get("scopes", [])
+    if len(settled) == 1:
+        return settled[0]
+    return AMBIGUOUS
 
 
 def test_the_router_chooses_the_right_field_often_enough(

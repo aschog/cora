@@ -70,16 +70,16 @@ class Registry:
         )
 
     def outline(self, scope: str) -> str:
-        """One sentence saying what a scope is for, taken off its own instructions.
+        """What a scope is for, in the words its own instructions open with.
 
         What a router is given to choose between, and what an option on the card that
-        asks the user says under the name. The first sentence a plugin wrote, because a
-        persona opens by saying what it answers — and a scope nobody wrote instructions
-        for is described by its name alone.
+        asks the user says under the name. The opening paragraph, because a persona
+        opens by saying what it answers — and a scope nobody wrote instructions for is
+        described by its name alone.
         """
         for entry in self._of(INSTRUCTIONS):
             if entry.scope == scope and entry.value.strip():
-                return _first_sentence(entry.value)
+                return _opening(entry.value)
         return ""
 
     def handlers(
@@ -126,17 +126,15 @@ class Registry:
             registered_by[entry.value.name] = entry.module
 
 
-def _first_sentence(instructions: str) -> str:
-    """The opening sentence, unwrapped.
+def _opening(instructions: str) -> str:
+    """The first paragraph, unwrapped.
 
     A line break is where the author's editor wrapped and says nothing about where the
-    thought ends, so the paragraph is read whole and cut at the first full stop. A
-    paragraph with none is one sentence that has not ended.
+    thought ends, so what is read is the paragraph rather than the line. The paragraph
+    rather than the sentence, because a full stop is not a sentence boundary either —
+    "e.g." would cut the outline in the middle of the phrase it was explaining.
     """
-    opening = instructions.strip().split("\n\n")[0]
-    said = " ".join(word for word in opening.split())
-    ended = said.find(". ")
-    return said if ended < 0 else said[: ended + 1]
+    return " ".join(instructions.strip().split("\n\n")[0].split())
 
 
 def _heading(module: str) -> str:

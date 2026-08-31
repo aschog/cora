@@ -16,16 +16,21 @@ ChatResult.](assets/turn-map.svg)
 
 ## A round, as the graph walks it
 
-A turn walks named steps: *screen* admits the question and opens the turn, *route*
-settles which field the turn runs in, *focus* states what cora is under that field,
-*work* is where the rounds are spent, and *answer* settles what the user reads. The steps
-are named where they are wired, so a turn that grows one grows it there.
+A turn walks named steps: *screen* admits the question and opens the turn, *route* reads
+which field the turn belongs to, *focus* states what cora is under that field, *work* is
+where the rounds are spent, and *answer* settles what the user reads. The steps are named
+where they are wired, so a turn that grows one grows it there.
 
-*route* comes after *screen* and before *focus*, and both of those are deliberate. A
-question cora will not accept is refused before the model is asked to read it, and the
-brief cannot be written until the field is known. A pinned conversation is answered in
-its field without reading the question at all; an unpinned one is read every turn, and a
-question that belongs to two fields stops the turn to ask which was meant.
+*route* comes after *screen* and before *focus*, and both are deliberate. A question cora
+will not accept is refused before the model is asked to read it, and the brief cannot be
+written until the field is known. A pinned conversation is answered in its field without
+reading the question at all; an unpinned one is read every turn.
+
+A question that belongs to two fields is put to the reader, and that stop is *focus*'s
+rather than *route*'s. A stopped step is replayed from its first line when the turn is
+picked up, so the reading has to be a step behind the stop: read again on the way back,
+a question can be read differently, and the answer would arrive in a field the reader
+never chose.
 
 Four points inside that walk are open to a plugin — the question being screened, the
 brief being settled, a tool call about to run, a tool result coming back. A handler

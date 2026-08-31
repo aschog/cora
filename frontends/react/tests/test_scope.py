@@ -57,6 +57,14 @@ def test_a_question_can_carry_the_pin_that_fixes_the_thread_to_a_field() -> None
 
         assert streamed[-1][0] == "turn"
         assert reader.get(f"/api/sessions/{THREAD}/scope").json() == {"pin": "fitness"}
+        # The field the turn ran in is on the page as a step like any other, so the
+        # panel that draws the steps draws this one without being told about it.
+        [focused] = [
+            data["summary"]
+            for name, data in streamed
+            if name == "step" and data["summary"].startswith("Answering in")
+        ]
+        assert focused == "Answering in fitness — pinned to this conversation"
 
 
 def test_a_second_field_on_a_pinned_thread_is_refused_as_a_sentence() -> None:

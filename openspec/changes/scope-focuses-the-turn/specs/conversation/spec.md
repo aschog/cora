@@ -3,10 +3,11 @@
 ### Requirement: A turn walks named steps
 
 The system SHALL run a turn as an ordered sequence of named steps. *screen* admits the
-question and opens the turn. *route* settles which scope the turn runs under. *focus*
-states what cora is and what it may reach under that scope. *work* reaches for the model
-and its tools. *answer* settles what the user reads. The system SHALL report the steps,
-named, in the order walked.
+question and opens the turn. *route* reads which scope the turn belongs to. *focus*
+states what cora is and what it may reach under that scope, and is the one step that may
+stop to ask the reader which scope was meant. *work* reaches for the model and its tools.
+*answer* settles what the user reads. The system SHALL report the steps, named, in the
+order walked.
 
 #### Scenario: A turn names the steps it walked
 
@@ -25,6 +26,12 @@ named, in the order walked.
 - **GIVEN** a question routed into one of two scopes
 - **WHEN** the turn runs
 - **THEN** the brief the model reads is settled in *focus*, under the scope *route* named
+
+#### Scenario: A question is read for its scope once, however often the turn stops
+
+- **GIVEN** a turn that stopped to ask which of two scopes was meant
+- **WHEN** it is resumed
+- **THEN** the question is not read again, and the turn runs under the scope chosen
 
 #### Scenario: The model's rounds are spent in the working step
 

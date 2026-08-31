@@ -134,12 +134,16 @@ class ScopeSettled(TraceStep):
 
     scope: str = ""
     how: str = ""
-    detail: str = ""
 
     @property
     def summary(self) -> str:
-        """The scope the turn ran in, and where that came from."""
-        return f"Focused on {self.scope} — {self.how}"
+        """The field the turn is answered in, and where that came from.
+
+        Worded as settling rather than as focusing: this is contributed by the step
+        that reads the field, one step before the one that states what cora is under
+        it, so "focused" would announce the conclusion before the work.
+        """
+        return f"Answering in {self.scope} — {self.how}"
 
 
 @dataclass(frozen=True)

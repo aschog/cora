@@ -34,21 +34,26 @@ names one. Splitting what a scope fuses, deferred with a reason in the sprint's 
 **The pin is its own checkpointed key, and it arrives with the question.**
 
 - `scopes` stays what this turn runs under; `pin` is what the conversation holds.
-- Only a graph run writes a checkpoint, so the pin travels in beside the question.
+- Only a graph run writes a checkpoint, so the pin travels in beside the question, as a
+  request `route` promotes — a seeded key is written before the screen runs, and a
+  refused question must fix nothing.
 - The first turn carrying a pin fixes it, and a later turn naming a different one is refused.
 - The refusal is a core error naming the scope already held, so the page can say it.
 - Rejected: the pin in the conversation store — the sprint's shapes put it in the turn's state.
 - Rejected: a write path into the checkpointer outside a turn — a second door to one state.
 
-**Routing reads the question with the model, and asks the user through the pause it has.**
+**Routing reads the question with the model; *focus* is what asks the reader.**
 
 - `route` holds the model and the scopes the deployment offers, and names one of them.
 - Its answer is a set, as the shape requires, holding one member today.
-- Ambiguity calls `Pause` from inside the step, because the stop comes before the loop.
-- So `ask_user`, the round's own tool, is untouched and the ask step keeps one job.
-- A resumed step replays from its first line, so an asked question is read a second time.
-- Accepted: one extra routing call on an ambiguous question, against a fourth step in the
-  walk to separate reading from asking.
+- A two-field reading settles nothing and leaves the fields for `focus` to put to the reader.
+- Split because a stopped step replays from its first line: a question read again can be
+  read differently, and would then answer in a field the reader did not choose.
+- So the reading commits a superstep before the stop, and the resumed step only reads state.
+- `focus` calls `Pause` from inside itself, because the stop comes before the loop — and
+  `ask_user`, the round's own tool, is untouched.
+- Rejected: a fourth named step between the two, which buys the same separation and costs
+  the walk a name nobody asked for.
 - Routing that fails answers in the default scope: a broken reading leaves a turn less
   focused, never unanswered, and the trace says which happened.
 - Rejected: routing as a tool the model calls in *work* — the brief would already be written.
@@ -95,6 +100,8 @@ names one. Splitting what a scope fuses, deferred with a reason in the sprint's 
 ## Risks / Trade-offs
 
 - **An unpinned turn costs an extra model call** → a pin or a single-scope deployment avoids it.
+- **A turn admitted and then failed still pins the thread** → the question was accepted, so
+  the conversation is in that field; the page reads the pin back rather than assuming.
 - **A mis-route answers in the wrong persona, quietly** → the trace names the scope, and the
   `llm` tier measures how often it is right.
 - **Retrieval is not scoped until story 8** → a fitness turn can still cite a travel passage.

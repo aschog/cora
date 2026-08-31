@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from itertools import pairwise
 from typing import Any
 
+from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.memory import InMemorySaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
@@ -156,9 +157,15 @@ class LangGraphRunner:
         return Pending(asked=parked.values.get("question", ""), decision=decision)
 
     def pinned(self, thread_id: str) -> str | None:
-        """The thread's pin, read off the checkpoint. A thread nobody has asked
-        anything on has no checkpoint at all, and so no pin."""
-        held = self._graph(unheard).get_state(self._config(thread_id)).values.get("pin")
+        """The thread's pin, read straight off the checkpointer.
+
+        Asked of the saver rather than of a graph: `_graph` is built per run so that the
+        model node can be that turn's, and a read of one key needs none of that — a turn
+        carrying a pin would otherwise compile the whole walk twice before it began. A
+        thread nobody has asked anything on has no checkpoint, and so no pin.
+        """
+        saved = self.checkpointer.get(self._config(thread_id))
+        held = (saved or {}).get("channel_values", {}).get("pin")
         return held or None
 
     def _streamed(
@@ -171,7 +178,7 @@ class LangGraphRunner:
         except GraphRecursionError as exhausted:
             raise ToolLoopLimitError from exhausted
 
-    def _config(self, thread_id: str) -> dict[str, Any]:
+    def _config(self, thread_id: str) -> RunnableConfig:
         return {
             "recursion_limit": self.recursion_limit,
             "configurable": {"thread_id": thread_id},

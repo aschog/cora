@@ -40,6 +40,12 @@ scope, naming the scope the conversation is already in.
 - **WHEN** that scope is pinned
 - **THEN** every later turn runs under it
 
+#### Scenario: A question that was refused pins nothing
+
+- **GIVEN** a question a rule refuses, sent with a scope to pin
+- **WHEN** it is refused
+- **THEN** the conversation is pinned to nothing, and another scope may still be pinned
+
 #### Scenario: A second field is refused
 
 - **GIVEN** a conversation pinned to one scope
@@ -92,6 +98,12 @@ It SHALL then answer under the scope the user chose.
 - **GIVEN** a question that fits both loaded scopes
 - **WHEN** the turn runs
 - **THEN** cora asks which was meant, and answers under the one chosen
+
+#### Scenario: The scope chosen is the scope answered in
+
+- **GIVEN** the same question, and a second reading of it that would name one scope
+- **WHEN** the turn is resumed on the reader's choice
+- **THEN** it runs under what they chose, and the trace says it was chosen
 
 ### Requirement: A question fitting no scope is answered plainly
 

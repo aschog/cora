@@ -75,7 +75,8 @@ which the allowlist guard covers by discovery.
 - [x] 9.1 Write a test that shows the ask endpoint carrying a pin and fixing the thread's scope
 - [x] 9.2 Write a test that shows a session reporting the scope it is pinned to
 - [x] 9.3 Write a test that shows the endpoint refusing a second, different pin as a sentence
-- [x] 9.4 Write a test that shows the scope the turn ran under drawn on the page's trace
+- [x] 9.4 Write a test that shows the line naming the field arriving on the page's step
+      stream, worded as the reader reads it
 - [x] 9.5 Bring the component-map guard green again over the walk this change lengthens
 - [x] 9.6 Bring the sequence-diagram guard green again over the two new steps
 
@@ -86,8 +87,24 @@ which the allowlist guard covers by discovery.
 - [x] 10.2 Write a test that shows the report naming the share of scopes chosen rightly
 - [x] 10.3 Write a test that shows a share under the recorded threshold failing the `llm` tier
 
-## 11. The marker comes off
+## 11. What review found
 
-- [x] 11.1 Not used: the outer test was written green, after the walk it asserts. Recorded
+- [x] 11.1 Write a test that shows the field the reader chose surviving the step being
+      replayed — the reading now commits a step before the stop, so it is never redone
+- [x] 11.2 Write a test that shows a refused question pinning the conversation to nothing
+- [x] 11.3 Write a test that shows the page drawing the pin the thread holds rather than
+      the one it sent, so a turn that failed after being admitted still closes the control
+- [x] 11.4 Write a test that shows a scope's outline read as the paragraph its
+      instructions open with, wrapped lines and `e.g.` included
+- [x] 11.5 Write a test that shows the router told the names it may answer with and what
+      each field is for, and nothing of the thread
+- [x] 11.6 Write a test that shows a reply naming no offered field answered plainly, and
+      one the model could not be asked about answered plainly too
+- [x] 11.7 Write a test that shows the fixed field carrying a name a screen reader reads,
+      rather than a label pointing at a control that is gone
+
+## 12. The marker comes off
+
+- [x] 12.1 Not used: the outer test was written green, after the walk it asserts. Recorded
       here rather than quietly ticked — the marker exists to keep CI green while a slice
       is in flight, and this slice was built in one pass

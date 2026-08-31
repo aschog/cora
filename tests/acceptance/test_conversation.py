@@ -194,7 +194,7 @@ def test_the_trace_a_turn_returns_is_that_turns_alone() -> None:
     assert [step.summary for step in greeting.trace] == [
         "Started to screen",
         "Started to route",
-        f"Focused on {DEFAULT_SCOPE} — {NO_FIELD_LOADED}",
+        f"Answering in {DEFAULT_SCOPE} — {NO_FIELD_LOADED}",
         "Started to focus",
         "Started to work",
         "Decided no tool was needed",

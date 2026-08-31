@@ -13,7 +13,7 @@ from cora.domain.errors import (
     MemoryStoreError,
     ToolLoopLimitError,
 )
-from cora.domain.trace import ModelDecision, StepEntered, ToolUse
+from cora.domain.trace import ModelDecision, ScopeSettled, StepEntered, ToolUse
 from cora.engine.ask_tool import ASK_TOOL_NAME, ASKED_ALREADY, ask_tool
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.nesting import read_untrusted
@@ -23,17 +23,22 @@ from cora.engine.rounds import UNTRUSTED_NOTICE
 from cora.engine.steps import (
     AGENT_RULES,
     ASK_RULE,
+    BELONGS_TO_NONE,
     CHOSE_NOTHING,
     CORA_PREAMBLE,
     MEMORY_RULE,
     NOTHING_CHOSEN,
     REMEMBERED_HEADING,
+    ROUTED,
+    ROUTING_RULE,
+    UNREAD,
     AnswerStep,
     AskStep,
     FocusStep,
     ModelStep,
     Named,
     Router,
+    RouteStep,
     ScreenStep,
     ToolStep,
 )
@@ -44,6 +49,7 @@ from cora.ports.graph import ASK, DONE, TOOLS, Step
 from cora.ports.host import (
     BRIEFING,
     CALLING,
+    DEFAULT_SCOPE,
     HANDLER,
     INSTRUCTIONS,
     RETURNING,
@@ -445,6 +451,101 @@ def _screen(instructions: str = "SYS") -> ScreenStep:
 
 def _focus(instructions: str = "SYS", memory: Memory | None = None) -> FocusStep:
     return FocusStep(registry=_registry(instructions), memory=memory or FakeMemory())
+
+
+def _routing(*offered: str) -> tuple[RouteStep, ScriptedChatModel]:
+    """A router over named fields, each with instructions of its own to be outlined."""
+    model = ScriptedChatModel([ModelReply(text=offered[0] if offered else "none")])
+    return (
+        RouteStep(
+            chat_model=model,
+            available=offered,
+            registry=Registry(
+                tuple(
+                    Registration(
+                        module=f"plugins.{scope}",
+                        kind=INSTRUCTIONS,
+                        value=f"Answer {scope} questions.",
+                        scope=scope,
+                    )
+                    for scope in offered
+                )
+            ),
+        ),
+        model,
+    )
+
+
+def test_the_router_is_told_the_names_it_may_answer_with_and_what_each_is_for() -> None:
+    """The whole of what routing rests on: a prompt listing the fields under the names
+    the reply is read against, and nothing of the thread — a router handed the
+    conversation would drift with it, and the pin is what decides a conversation."""
+    step, model = _routing("fitness", "travel")
+
+    step({"question": "How much protein?"})
+
+    assert model.last_messages is not None
+    brief, asked = model.last_messages
+    assert asked == Message(role="user", content="How much protein?")
+    assert len(model.last_messages) == 2, (
+        "the router reads the question, not the thread"
+    )
+    assert model.last_tools == (), "a router that could call a tool is a turn"
+    assert "- fitness: Answer fitness questions." in brief.content
+    assert "- travel: Answer travel questions." in brief.content
+    assert ROUTING_RULE in brief.content
+
+
+def test_a_field_the_router_names_is_what_the_turn_runs_under() -> None:
+    step, _ = _routing("travel", "fitness")
+
+    assert step({"question": "Which platform?"}) == {
+        "scopes": ["travel"],
+        "candidates": [],
+        "trace": [ScopeSettled(scope="travel", how=ROUTED)],
+    }
+
+
+@pytest.mark.parametrize(
+    "said", ["none", "cooking", "I think this is about fitness, probably", ""]
+)
+def test_a_reply_naming_no_offered_field_is_answered_plainly(said: str) -> None:
+    """Read against what is on offer rather than trusted: prose, a field nobody loaded
+    and 'none' all name nothing, and a turn that names nothing is answered plainly."""
+    step, _ = _routing("fitness", "travel")
+    step = replace(step, chat_model=ScriptedChatModel([ModelReply(text=said)]))
+
+    settled = step({"question": "What are you?"})
+
+    assert settled["scopes"] == [DEFAULT_SCOPE]
+    assert settled["trace"] == [ScopeSettled(scope=DEFAULT_SCOPE, how=BELONGS_TO_NONE)]
+
+
+def test_two_fields_settle_nothing_and_leave_the_fork_to_the_focusing_step() -> None:
+    """The stop belongs where nothing costly runs before it: a step that stops is
+    replayed from its first line, and a question read a second time can be read
+    differently — which would answer in a field the reader never chose."""
+    step, _ = _routing("fitness", "travel")
+    step = replace(
+        step, chat_model=ScriptedChatModel([ModelReply(text="travel, fitness")])
+    )
+
+    settled = step({"question": "What should I take walking?"})
+
+    assert settled == {"scopes": [], "candidates": ["travel", "fitness"]}
+
+
+def test_a_router_that_cannot_reach_the_model_answers_plainly_rather_than_failing() -> (
+    None
+):
+    """A broken reading leaves a turn less focused, never unanswered, and says so."""
+    step, _ = _routing("fitness", "travel")
+    step = replace(step, chat_model=FailingChatModel(LlmError()))
+
+    settled = step({"question": "How much protein?"})
+
+    assert settled["scopes"] == [DEFAULT_SCOPE]
+    assert settled["trace"] == [ScopeSettled(scope=DEFAULT_SCOPE, how=UNREAD)]
 
 
 def _refuses(message: str) -> Handler:

@@ -25,10 +25,10 @@ a travel one.
 - `src/cora/domain/agent_state.py` — the pin, beside the scopes a turn runs under
 - `src/cora/domain/trace.py` — a step naming the scope a turn was routed into
 - `src/cora/engine/agent.py` — the pin arrives with the question, and a changed one is refused
-- `src/cora/app/assembly.py`, `src/cora/app/config.py` — two more steps, and the default scope
+- `src/cora/app/assembly.py`, `src/cora/ports/host.py` — two more steps, and the default scope
 - `plugins/travel/` — new: its instructions, its corpus and its scope
 - `frontends/react/` — the pin control, the pin on a session, the routed scope on the trace
 - `tests/acceptance/` — the recorded question set, the report and its threshold
 - `tests/guards/` — the component map and the walkthrough's sequence diagrams
-- `docs/big-picture.md`, `docs/happy-path.md`, `README.md` — the two steps, the pin, two scopes
+- `docs/happy-path.md`, `README.md`, `docs/tutorial/`, `docs/how-to/` — the steps, the pin, two fields
 - Left alone: retrieval, memory, the stores, the approval gate, every adapter
