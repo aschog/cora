@@ -5,6 +5,7 @@ import pytest
 
 from cora.domain.errors import ConfigurationError, PluginLoadError
 from cora.engine.plugin_registry import load_plugin, load_plugins
+from cora.engine.validation import CORA
 from cora.ports.host import CONTRACT
 
 
@@ -158,7 +159,11 @@ def test_a_dropped_file_that_fails_to_import_is_refused_by_its_filename(
         load_plugins([], folder=tmp_path)
 
     assert str(dropped) in refused.value.user_message
-    assert isinstance(refused.value.__cause__, RuntimeError)
+    assert "RuntimeError" in refused.value.user_message, (
+        "the operator reads the message, not the cause: `serve` prints "
+        "`user_message` and raises `SystemExit` from None, so a reason kept only on "
+        "`__cause__` is a reason nobody is shown"
+    )
 
 
 def test_a_dropped_file_named_like_a_named_module_is_refused_naming_both(
@@ -171,6 +176,48 @@ def test_a_dropped_file_named_like_a_named_module_is_refused_naming_both(
 
     assert "fixture_plugins.valid" in refused.value.user_message
     assert str(dropped) in refused.value.user_message
+
+
+DEFERRED_ANNOTATIONS = """\
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from cora.ports.host import Host
+
+
+@dataclass(frozen=True)
+class Sighting:
+    species: str
+    count: int
+
+
+def extend(cora: Host) -> None:
+    cora.register_instructions("Answer about birds.", scope="birds")
+"""
+
+
+def test_a_dropped_file_may_write_ordinary_python(tmp_path: pathlib.Path) -> None:
+    """A dataclass under deferred annotations resolves its fields through the imported
+    modules, so a file imported into nowhere fails on code that is correct everywhere
+    else — and the refusal would blame the author for cora's own loading."""
+    _drop(tmp_path, "field_notes.py", DEFERRED_ANNOTATIONS)
+
+    (loaded,) = load_plugins([], folder=tmp_path)
+
+    assert loaded.module == "field_notes"
+
+
+def test_a_plugin_may_not_take_coras_own_name(tmp_path: pathlib.Path) -> None:
+    """Cora registers under a name of its own, so a plugin holding it would be handed
+    cora's own screen as its registrations — and cora would report that nothing screens
+    what the user types while that plugin's screen was running."""
+    _drop(tmp_path, f"{CORA}.py")
+
+    with pytest.raises(ConfigurationError) as refused:
+        load_plugins([], folder=tmp_path)
+
+    assert CORA in refused.value.user_message
 
 
 def test_a_dropped_file_does_not_shadow_an_installed_module(
@@ -194,3 +241,20 @@ def test_a_contract_version_cora_does_not_offer_is_refused_naming_both() -> None
     assert "fixture_plugins.wrong_contract" in refused.value.user_message
     assert "99" in refused.value.user_message
     assert str(CONTRACT) in refused.value.user_message
+
+
+NOT_A_VERSION = ["'1'", "None", "1.5"]
+
+
+@pytest.mark.parametrize("declared", NOT_A_VERSION)
+def test_a_contract_that_is_not_a_version_is_refused_legibly(
+    tmp_path: pathlib.Path, declared: str
+) -> None:
+    """A version cora does not offer is a version cora does not offer, however it was
+    written — and the refusal quotes it, so `'1'` is telling apart from `1`."""
+    _drop(tmp_path, "field_notes.py", f"CONTRACT = {declared}\n{DROPPED}")
+
+    with pytest.raises(PluginLoadError) as refused:
+        load_plugins([], folder=tmp_path)
+
+    assert declared in refused.value.user_message

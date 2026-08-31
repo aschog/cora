@@ -43,14 +43,26 @@ def _one(plugin: Listed) -> str:
 def main() -> None:
     """Print the listing for the app this environment describes.
 
+    What cannot be assembled — a missing key, a plugin cora will not have — is answered
+    with the sentence the refusal was written as, on the error stream. The traceback it
+    arrived under buries the one line whoever ran this can act on, which is the reading
+    the shell's own entry point takes.
+
     Raises:
-        CoreError: The deployment cannot be assembled — a missing key, or a plugin cora
-            will not have. The refusal is the answer, and it names what is wrong.
+        SystemExit: The deployment could not be assembled.
     """
+    import sys
+
     from cora.app.assembly import build
     from cora.app.config import Config
+    from cora.domain.errors import CoreError
 
-    print(rendered(build(Config.from_env()).plugins))
+    try:
+        listed = rendered(build(Config.from_env()).plugins)
+    except CoreError as refused:
+        print(f"cora cannot list its plugins: {refused.user_message}", file=sys.stderr)
+        raise SystemExit(1) from None
+    print(listed)
 
 
 if __name__ == "__main__":

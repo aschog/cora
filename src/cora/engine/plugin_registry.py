@@ -3,16 +3,28 @@
 import importlib
 import importlib.util
 import pathlib
+import sys
 from collections.abc import Iterable
 from types import ModuleType
 
 from cora.domain.errors import ConfigurationError, PluginLoadError
-from cora.ports.host import CONTRACT, Extension
+from cora.engine.validation import CORA
+from cora.ports.host import CONTRACT, Extension, name_of
 
 EXTEND = "extend"
 DECLARED = "CONTRACT"
 """What a plugin names to ask for a version of the contract. Read before `extend` is
 called, because refusing a plugin whose code has already run is not refusing it."""
+
+DROPPED = "cora_dropped"
+"""The namespace a file dropped in the folder is imported under.
+
+It has to be imported under *some* name that outlives the import: a module absent from
+`sys.modules` cannot resolve its own annotations, so an ordinary dataclass in a dropped
+file fails on code that is correct everywhere else. Under a namespace of cora's own
+rather than under the file's own stem, so dropping `json.py` in the folder still cannot
+change what `import json` means anywhere.
+"""
 
 SUFFIX = ".py"
 PRIVATE = "_"
@@ -80,24 +92,29 @@ def load_plugin(module_path: str) -> Extension:
 def load_file(path: pathlib.Path) -> Extension:
     """One plugin dropped in as a single file, with no packaging at all.
 
-    Imported from where it lies rather than through `sys.path`, and left out of the
-    imported modules: a file dropped in a folder cannot then shadow an installed module
-    of the same name. Its stem is its name, as a module's last segment is — which is
-    what heads its section of the brief and what its settings are named for.
+    Imported from where it lies rather than through `sys.path`, and under a namespace
+    of cora's own: a file dropped in the folder cannot shadow an installed module of the
+    same name, and it can still resolve its own annotations. Its stem is its name, as a
+    module's last segment is — which is what heads its section of the brief and what its
+    settings are named for.
 
     Raises:
         PluginLoadError: The file cannot be read as a plugin, failed to import, asks
             for a contract version cora does not offer, or defines no usable `extend`.
     """
     source = str(path)
-    spec = importlib.util.spec_from_file_location(path.stem, path)
+    spec = importlib.util.spec_from_file_location(f"{DROPPED}.{path.stem}", path)
     if spec is None or spec.loader is None:
         raise PluginLoadError(source, "the file could not be read as a plugin")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
     try:
         spec.loader.exec_module(module)
     except Exception as exc:
-        raise PluginLoadError(source, "the plugin file failed to import") from exc
+        del sys.modules[spec.name]
+        raise PluginLoadError(
+            source, f"the plugin file raised {type(exc).__name__} while importing"
+        ) from exc
     return _extension(module, name=path.stem, source=source)
 
 
@@ -152,13 +169,20 @@ def _reject_two_named_alike(
 
     A name is what tells two plugins apart: it heads their sections of the brief, and
     their settings are named for it. A file dropped beside a named module collides with
-    it exactly as two named modules do, which is why both sources are read here.
+    it exactly as two named modules do, which is why both sources are read here — and
+    cora's own name is taken, a plugin holding it being handed cora's own registrations
+    as its own.
     """
     seen: dict[str, str] = {}
     for name, source in (
-        *((module.rsplit(".", 1)[-1], module) for module in named),
+        *((name_of(module), module) for module in named),
         *((path.stem, str(path)) for path in dropped),
     ):
+        if name == CORA:
+            raise ConfigurationError(
+                f"'{source}' is named '{CORA}', which is what cora registers its own "
+                "under. Rename it."
+            )
         first = seen.get(name)
         if first is not None:
             raise ConfigurationError(

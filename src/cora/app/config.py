@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from cora.app.log_config import LOG_FILE
 from cora.domain.errors import ConfigurationError
+from cora.ports.host import name_of
 
 DEFAULT_MODEL = "openai/gpt-4o-mini"
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
@@ -230,14 +231,10 @@ def plugin_settings(
     environ = os.environ if env is None else env
     found: dict[str, dict[str, str]] = {}
     for module in modules:
-        prefix = f"{PLUGIN_PREFIX}{_segment(module).upper()}_"
+        prefix = f"{PLUGIN_PREFIX}{name_of(module).upper()}_"
         found[module] = {
             key[len(prefix) :].lower(): value
             for key, value in environ.items()
             if key.startswith(prefix)
         }
     return found
-
-
-def _segment(module: str) -> str:
-    return module.rsplit(".", 1)[-1]

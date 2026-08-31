@@ -84,12 +84,17 @@ export default function Header({
                 <div key={plugin.source} className="plugin-option">
                   <span className="plugin-option-name">{plugin.name}</span>
                   <div className="plugin-option-blurb">{plugin.source}</div>
+                  {plugin.scopes.length > 0 && (
+                    <div className="plugin-option-fields">
+                      {plugin.scopes.join(' · ')}
+                    </div>
+                  )}
                   <ul className="plugin-registrations">
                     {plugin.contributions.length === 0 ? (
                       <li className="plugin-registration">{NOTHING_REGISTERED}</li>
                     ) : (
-                      plugin.contributions.map((each) => (
-                        <li key={key(each)} className="plugin-registration">
+                      plugin.contributions.map((each, at) => (
+                        <li key={key(each, at)} className="plugin-registration">
                           <span className="plugin-registration-kind">{each.kind}</span>
                           <span className="plugin-registration-name">{each.name}</span>
                           <span
@@ -144,6 +149,8 @@ export default function Header({
   )
 }
 
-/** Two registrations of one kind under one scope differ only by name, so all three
-    make the key — a plugin may register two tools in the same field. */
-const key = (each: Contribution) => `${each.kind}:${each.name}:${each.scope ?? ''}`
+/** Position, because nothing else is unique: a plugin may register two tools in one
+    field, and two sections of the brief carry no name to tell them apart at all. The
+    list is rebuilt whole from one fetch, so an index is stable for as long as it is
+    drawn. */
+const key = (each: Contribution, at: number) => `${at}:${each.kind}:${each.name}`

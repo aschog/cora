@@ -204,9 +204,9 @@ def test_the_listing_names_what_each_plugin_registered_and_where() -> None:
     coaching, guarding = listed
     assert (coaching.name, coaching.source) == ("fitness", FITNESS)
     assert (guarding.name, guarding.source) == ("security", "notes.py")
-    assert [each.name for each in coaching.tools] == ["bmr"]
-    assert [each.name for each in coaching.events] == [SCREENING]
-    assert coaching.instructions is not None
+    assert [each.name for each in coaching.of(TOOL)] == ["bmr"]
+    assert [each.name for each in coaching.of(HANDLER)] == [SCREENING]
+    assert coaching.of(INSTRUCTIONS)
     assert coaching.scopes == ("fitness",)
     assert [each.system_wide for each in coaching.contributions] == [False, False, True]
 
@@ -216,6 +216,5 @@ def test_a_plugin_that_registered_nothing_is_listed_with_nothing_under_it() -> N
     (quiet,) = Registry().listing((_extension(FITNESS),))
 
     assert quiet.contributions == ()
-    assert quiet.tools == quiet.events == ()
-    assert quiet.instructions is None
+    assert quiet.of(TOOL) == quiet.of(HANDLER) == quiet.of(INSTRUCTIONS) == ()
     assert quiet.scopes == ()

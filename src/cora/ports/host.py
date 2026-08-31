@@ -79,13 +79,24 @@ class Registration:
     scope: str | None = None
 
 
+def name_of(module: str) -> str:
+    """What a plugin is called: the last segment of what it was loaded under.
+
+    One rule in one place, because four things are named by it — the heading of its
+    section in the brief, the settings it may read, the logger its lines carry, and the
+    name two plugins may not share. A file dropped in the plugins folder is loaded under
+    its own stem, so this is that stem.
+    """
+    return module.rsplit(".", 1)[-1]
+
+
 @dataclass(frozen=True)
 class Contributed:
     """One registration as the listing shows it: what kind, what name, and where.
 
-    `name` is the tool's name, the event a handler subscribed to, or the word
-    `INSTRUCTIONS` — one field over every kind, so a fifth kind is listed without this
-    shape widening.
+    `name` is the tool's name or the event a handler subscribed to, and blank where the
+    kind has no name of its own, as a section of the brief has not. One field over every
+    kind, so a fifth kind is listed without this shape widening.
     """
 
     kind: str
@@ -116,23 +127,12 @@ class Listed:
         named = [each.scope for each in self.contributions if each.scope is not None]
         return tuple(dict.fromkeys(named))
 
-    @property
-    def tools(self) -> tuple[Contributed, ...]:
-        """What it offered the model, in the order it registered them."""
-        return self._of(TOOL)
+    def of(self, kind: str) -> tuple[Contributed, ...]:
+        """Everything it registered of one kind, in the order it registered them.
 
-    @property
-    def events(self) -> tuple[Contributed, ...]:
-        """The points in a turn it subscribed to, in the order it subscribed."""
-        return self._of(HANDLER)
-
-    @property
-    def instructions(self) -> Contributed | None:
-        """The section it heads in the brief, or nothing where it wrote none."""
-        heading = self._of(INSTRUCTIONS)
-        return heading[0] if heading else None
-
-    def _of(self, kind: str) -> tuple[Contributed, ...]:
+        One reader over the kinds rather than a property per kind: a fifth kind is
+        already listed, and would otherwise want a fourth accessor to be read by.
+        """
         return tuple(each for each in self.contributions if each.kind == kind)
 
 

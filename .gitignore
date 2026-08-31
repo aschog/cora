@@ -19,9 +19,11 @@ node_modules/
 .DS_Store
 
 # Local vector store (Chroma persistence)
-.cora/
-# Everything cora keeps at runtime is ignored — except the folder a plugin is dropped
-# into, which has to be there to drop one into.
+# Everything cora keeps at runtime — except the folder a plugin is dropped into, which
+# has to be there to drop one into. The entries are written per-child rather than as
+# `.cora/`: git does not descend into an excluded directory, so a negation under one is
+# never read.
+.cora/*
 !.cora/plugins/
 .cora/plugins/*
 !.cora/plugins/.gitkeep

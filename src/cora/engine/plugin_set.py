@@ -16,6 +16,7 @@ from cora.ports.host import (
     Extension,
     Listed,
     Registration,
+    name_of,
 )
 from cora.ports.plugin import Tool
 
@@ -116,7 +117,7 @@ class Registry:
         """
         return tuple(
             Listed(
-                name=_name(plugin.module),
+                name=name_of(plugin.module),
                 source=plugin.source,
                 contributions=tuple(
                     _contributed(entry)
@@ -171,11 +172,6 @@ def _contributed(entry: Registration) -> Contributed:
     return Contributed(kind=entry.kind, name=named(entry.value), scope=entry.scope)
 
 
-def _name(module: str) -> str:
-    """What a plugin is called: its last segment, which its settings are named for."""
-    return module.rsplit(".", 1)[-1]
-
-
 def _opening(instructions: str) -> str:
     """The first paragraph, unwrapped.
 
@@ -189,4 +185,4 @@ def _opening(instructions: str) -> str:
 
 def _heading(module: str) -> str:
     """The name a plugin's section of the brief is headed by, taken from its module."""
-    return _name(module).replace("_", " ").strip().capitalize()
+    return name_of(module).replace("_", " ").strip().capitalize()

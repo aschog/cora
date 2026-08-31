@@ -5,7 +5,14 @@ import pathlib
 
 from app_builder import assembled
 from cora.engine.plugin_registry import load_plugins
-from cora.ports.host import BRIEFING, CALLING, RETURNING
+from cora.ports.host import (
+    BRIEFING,
+    CALLING,
+    HANDLER,
+    INSTRUCTIONS,
+    RETURNING,
+    TOOL,
+)
 
 NAMED = "fixture_plugins.taking_part"
 DROPPED = """\
@@ -40,13 +47,17 @@ def test_a_named_module_and_a_dropped_file_are_both_loaded_and_both_listed(
 
     installed = listed["taking_part"]
     assert installed.source == NAMED
-    assert [tool.name for tool in installed.tools] == ["shipping", "lookup"]
-    assert [event.name for event in installed.events] == [BRIEFING, CALLING, RETURNING]
+    assert [each.name for each in installed.of(TOOL)] == ["shipping", "lookup"]
+    assert [each.name for each in installed.of(HANDLER)] == [
+        BRIEFING,
+        CALLING,
+        RETURNING,
+    ]
     assert all(each.system_wide for each in installed.contributions)
 
     read = listed["field_notes"]
     assert read.source == str(dropped)
     assert read.scopes == ("birds",)
-    assert [tool.name for tool in read.tools] == ["count_species"]
-    assert read.instructions is not None
+    assert [each.name for each in read.of(TOOL)] == ["count_species"]
+    assert read.of(INSTRUCTIONS)
     assert not any(each.system_wide for each in read.contributions)

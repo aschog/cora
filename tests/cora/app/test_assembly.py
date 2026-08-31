@@ -557,6 +557,41 @@ def test_build_starts_with_an_empty_store(tmp_path: Path) -> None:
     assert app.knowledge_base.list_sources() == []
 
 
+DROPPED = """\
+from cora.ports.host import Host
+
+
+def extend(cora: Host) -> None:
+    cora.register_tool(
+        name="count_" + cora.settings.get("units", "metric"),
+        description="How many were seen.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: 3,
+        scope="birds",
+    )
+"""
+
+
+@pytest.mark.integration
+def test_build_loads_the_plugins_folder_and_names_a_dropped_plugin_its_settings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The one seam the folder crosses: a plugin nobody named in `CORA_PLUGINS` is
+    still a plugin, so it reads the variables named for it as any other does — a
+    settings map built from what the deployment typed would hand it nothing."""
+    folder = tmp_path / "dropped"
+    folder.mkdir()
+    (folder / "field_notes.py").write_text(DROPPED)
+    monkeypatch.setenv("CORA_PLUGIN_FIELD_NOTES_UNITS", "imperial")
+
+    app = build(replace(_config(tmp_path), plugins_path=str(folder)))
+
+    listed = {each.name: each for each in app.plugins}
+    assert sorted(listed) == ["field_notes", "valid"]
+    offered = listed["field_notes"].of(TOOL)
+    assert [each.name for each in offered] == ["count_imperial"]
+
+
 @pytest.mark.integration
 def test_build_keeps_a_documents_store_at_the_configured_path(tmp_path: Path) -> None:
     """The pane reads what ingest kept, so the store has to be the one the settings

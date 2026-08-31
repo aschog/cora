@@ -142,10 +142,12 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    names the one it was written against:
 
    ```python
-   from cora.ports.host import CONTRACT   # what this cora offers
-
    CONTRACT = 1
    ```
+
+   Write the number, not an import of cora's own `CONTRACT` — importing it would
+   declare whatever the cora in front of you offers, which is the check saying yes to
+   everything.
 
    It is read before `extend` is called, so a plugin cora will not have never runs. A
    plugin declaring nothing is taken as asking for the version cora offers, and one

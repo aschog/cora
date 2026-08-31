@@ -220,10 +220,34 @@ def test_a_plugin_calls_the_model_through_the_host() -> None:
 
 def test_a_plugins_log_is_named_for_the_plugin() -> None:
     """So a line in the log says which plugin wrote it, without the plugin saying so."""
-    host = host_for("cora.plugins.fitness")
+    host = host_for("acme.plugins.birds")
 
-    assert host.log.name == "cora.plugins.fitness"
+    assert host.log.name.endswith("birds")
     assert isinstance(host.log, logging.Logger)
+
+
+def test_what_a_plugin_logs_reaches_the_handlers_cora_configures(
+    clean_cora_logger: logging.Logger,
+) -> None:
+    """`CORA_DEBUG` attaches its handlers to cora's own logger and nowhere else, so a
+    plugin logging outside that namespace logs into nothing — which a file dropped in
+    the plugins folder, named for itself, would otherwise always do."""
+    written: list[str] = []
+    clean_cora_logger.setLevel(logging.DEBUG)
+    clean_cora_logger.addHandler(_Collecting(written))
+
+    host_for("field_notes").log.info("counted %d", 3)
+
+    assert written == ["counted 3"]
+
+
+class _Collecting(logging.Handler):
+    def __init__(self, written: list[str]) -> None:
+        super().__init__()
+        self.written = written
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.written.append(record.getMessage())
 
 
 def test_a_plugin_reads_the_settings_named_for_it() -> None:

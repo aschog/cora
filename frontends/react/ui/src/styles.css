@@ -1043,6 +1043,12 @@ button {
   color: var(--n700);
 }
 
+.plugin-option-fields {
+  padding: 0 8px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+
 .plugin-registrations {
   margin: 6px 0 0;
   padding: 0 8px;

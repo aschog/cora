@@ -686,28 +686,24 @@ def _names_a_plugin(path: pathlib.Path) -> bool:
 
 
 def _shipped_scopes() -> tuple[str, ...]:
-    """The fields the shipped plugins register under, read from the plugins themselves.
+    """The fields this workspace's own plugins register under, read from the plugins.
 
-    Read rather than written down here: a third plugin adding a fourth field is covered
-    the day it is installed, and a guard listing the names would be a second place the
-    core knows them.
+    Read rather than written down here: a third plugin in the workspace is covered the
+    day it ships, and a guard listing the names would be a second place the core knows
+    them. Read off the *manifests* rather than off the `cora.plugins` namespace, which
+    any installed distribution contributes to — a rule keyed on that would fail this
+    repository's suite because of a plugin somebody else installed.
     """
     return tuple(
         sorted(
             {
                 scope
-                for module in _shipped_plugin_modules()
-                if isinstance(scope := getattr(module, "SCOPE", None), str)
+                for _, module in workspace.plugins()
+                if isinstance(
+                    scope := getattr(importlib.import_module(module), "SCOPE", None),
+                    str,
+                )
             }
-        )
-    )
-
-
-def _shipped_plugin_modules() -> tuple[ModuleType, ...]:
-    return tuple(
-        importlib.import_module(found.name)
-        for found in pkgutil.iter_modules(
-            cora.plugins.__path__, f"{cora.plugins.__name__}."
         )
     )
 
@@ -731,9 +727,11 @@ def test_no_shipped_file_names_a_scope_a_plugin_registers_under(scope: str) -> N
     assert named == [], "\n".join([f"these name the '{scope}' field:", *named])
 
 
-def test_the_scopes_the_guard_reads_are_the_ones_the_plugins_register() -> None:
+def test_the_scopes_the_guard_reads_are_the_ones_this_workspace_ships() -> None:
     """The guard above is only worth its parametrisation if the reading works: an empty
-    tuple would pass it by covering nothing at all."""
+    tuple would pass it by covering nothing at all. A plugin registering a scope without
+    naming it as `SCOPE` is invisible here — the attribute is a convention rather than
+    contract, and this is the guard admitting what it can see."""
     assert len(_shipped_scopes()) >= 2
 
 

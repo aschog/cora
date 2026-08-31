@@ -86,3 +86,20 @@ covering nothing.
 ## 9. The marker comes off
 
 - [x] 9.1 Drop 1.1's `xfail` marker and watch the outer test pass
+
+## 10. What review found
+
+- [x] 10.1 Write a test that shows a plugin dropped in the folder reading the settings
+      named for it, through the app the deployment configured
+- [x] 10.2 Write a test that shows a dropped file writing ordinary Python — a dataclass
+      under deferred annotations — loading
+- [x] 10.3 Write a test that shows a dropped file's refusal naming what went wrong in it,
+      in the message the operator is shown
+- [x] 10.4 Write a test that shows the listing command answering an unassemblable
+      deployment with one sentence rather than a traceback
+- [x] 10.5 Write a test that shows what a plugin logs reaching the handlers cora
+      configures
+- [x] 10.6 Write a test that shows a contract that is not a version refused legibly
+- [x] 10.7 Write a test that shows a plugin refused for taking cora's own name
+- [x] 10.8 Change the guard to read its scopes off the workspace's manifests rather than
+      off the installed `cora.plugins` namespace

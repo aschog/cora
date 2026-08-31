@@ -287,6 +287,12 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
 
     enable_debug_logs(config.debug, config.log_path)
     retriever = ChromaRetriever(path=config.db_path, collection=collection)
+    # Read off what loaded rather than off what the deployment typed: a plugin dropped
+    # in the folder was named by nobody, and settings keyed by `CORA_PLUGINS` would
+    # hand it an empty slice under a name it does not have.
+    folder = Path(config.plugins_path).resolve()
+    log.info("reading dropped plugins from %s", folder)
+    loaded = load_plugins(config.plugin_modules, folder=folder)
     return assemble(
         chat_model=OpenRouterChatModel(
             model=config.model,
@@ -299,8 +305,8 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         embedder=SentenceTransformerEmbedder(),
         retriever=retriever,
         documents=SqliteDocuments.at(config.documents_path),
-        plugins=load_plugins(config.plugin_modules, folder=Path(config.plugins_path)),
-        plugin_settings=read_plugin_settings(config.plugin_modules),
+        plugins=loaded,
+        plugin_settings=read_plugin_settings(tuple(plugin.module for plugin in loaded)),
         scopes=config.scopes,
         memory=SqliteStoreMemory.at(config.memory_path),
         conversations=SqliteConversations.at(config.conversations_path),
