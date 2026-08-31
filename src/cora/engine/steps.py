@@ -1,5 +1,6 @@
 """The steps a turn is made of, and the rule that routes between them."""
 
+from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from typing import Protocol
 
@@ -17,7 +18,7 @@ from cora.domain.transcript import prompt_from
 from cora.engine.ask_tool import ASK_TOOL_NAME, decision_from
 from cora.engine.events import dispatch
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
-from cora.engine.nesting import Inside, collecting
+from cora.engine.nesting import Inside, collecting, read_untrusted
 from cora.engine.plugin_set import Registry
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.rounds import Read, decided, told, used
@@ -338,7 +339,8 @@ class ToolStep:
         trace: list[TraceStep] = []
         added: list[Citation] = []
         for call in _requested_calls(state):
-            result, inside = self._ran(call, scopes, trace)
+            after: list[TraceStep] = []
+            result, inside = self._ran(call, scopes, trace, after)
             citable = result.payload if isinstance(result.payload, Citable) else None
             if citable is None:
                 read = Read(
@@ -352,18 +354,33 @@ class ToolStep:
                 read = Read(body=context.text, outcome=citable.summary, untrusted=True)
             messages.append(told(result, read))
             trace.append(used(call, result, read, tuple(inside.steps)))
+            trace.extend(after)
         return {"messages": messages, "trace": trace, "citations": added}
 
     def _ran(
-        self, call: ToolCall, scopes: frozenset[str], trace: list[TraceStep]
+        self,
+        call: ToolCall,
+        scopes: frozenset[str],
+        before: list[TraceStep],
+        after: list[TraceStep],
     ) -> tuple[ToolResult, Inside]:
         """One call, checked before it runs and its result handed on afterwards.
 
         A refusal costs the turn the call and nothing else, so it comes back as the
         result the model reads — the same shape a tool's own refusal already has.
+
+        Args:
+            before: Where the steps taken ahead of the call go.
+            after: Where the steps taken on its result go, which the caller appends
+                below the call itself: a reader follows a trace downwards, and a step
+                that changed a result cannot stand above the call that produced it.
         """
+        # A copy of the arguments, because a refusing event may refuse its value and
+        # may not change it — and a dict inside a frozen call is changeable. One
+        # rewritten in place would change what ran and leave no step saying so.
+        checked = replace(call, arguments=deepcopy(call.arguments))
         try:
-            dispatch(CALLING, call, self.registry.handlers(CALLING, scopes), trace)
+            dispatch(CALLING, checked, self.registry.handlers(CALLING, scopes), before)
         except ToolRefusal as refused:
             return (
                 ToolResult(
@@ -374,9 +391,14 @@ class ToolStep:
             )
         with collecting() as inside:
             result = self.tool_runtime.execute(call, scopes)
-        amended = dispatch(
-            RETURNING, result, self.registry.handlers(RETURNING, scopes), trace
-        )
+            if isinstance(result.payload, Citable):
+                # The user's documents went into this call, and they went in before any
+                # handler saw it: a handler replacing the payload with prose of its own
+                # has replaced the material, not where it came from.
+                read_untrusted()
+            amended = dispatch(
+                RETURNING, result, self.registry.handlers(RETURNING, scopes), after
+            )
         # The id answers one call and is the provider's: a handler changes what the
         # model is told, never which call it is being told about. Left to a handler, a
         # turn could answer a call nobody made and leave its own outstanding.

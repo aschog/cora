@@ -48,12 +48,21 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    neither. The four points are `cora.ports.host`'s, and they differ in what a return
    means:
 
-   | Event | Handed | Returning a value |
-   | --- | --- | --- |
-   | `SCREENING` | the question the user sent | refuses the turn, with that as the reason |
-   | `BRIEFING` | the brief the model is about to read | replaces it |
-   | `CALLING` | a `ToolCall` about to run | refuses the call, and the model is told why |
-   | `RETURNING` | the `ToolResult` that came back | replaces what the model is told |
+   | Event | Handed | Return | What returning it does |
+   | --- | --- | --- | --- |
+   | `SCREENING` | the question the user sent | `str` | refuses the turn, with that as the reason |
+   | `BRIEFING` | the brief the model is about to read | `str` | replaces it |
+   | `CALLING` | a `ToolCall` about to run | `str` | refuses the call, and the model is told why |
+   | `RETURNING` | the `ToolResult` that came back | `ToolResult` | replaces what the model is told |
+
+   Return the type in that column or `None`. Anything else is dropped exactly as a raise
+   is — a `RETURNING` handler answering with a string changes nothing, and a `SCREENING`
+   handler answering with something that is not a sentence refuses on cora's wording
+   rather than on your value. A `RETURNING` handler is read for the payload and the
+   error: the call id answers one call and is not yours to change. Two things `CALLING`
+   does not cover: an `ask_user` call, which the turn settles with the reader before the
+   tools run, and the arguments — you are handed a copy, so rewriting them changes
+   nothing.
 
    ```python
    def a_note_on_the_season(brief: str) -> str:

@@ -24,6 +24,7 @@ from cora.domain.errors import (
     ToolLoopLimitError,
 )
 from cora.domain.trace import (
+    HandlerRan,
     MemoryUnread,
     ModelDecision,
     StepEntered,
@@ -439,6 +440,7 @@ def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
         ModelDecision(detail="thinking", tools=("add",)),
         ToolUse(name="add", arguments={"a": 1}, outcome="3"),
         MemoryUnread(),
+        HandlerRan(plugin="plug", event="brief", outcome="amended the brief"),
     ]
 
     def tracing(state: AgentState) -> AgentState:

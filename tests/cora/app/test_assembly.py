@@ -37,8 +37,9 @@ from cora.engine.steps import (
     Router,
     ScreenStep,
 )
+from cora.engine.validation import CORA
 from cora.ports.chat_model import ModelReply, unheard
-from cora.ports.host import TOOL, Extension
+from cora.ports.host import SCREENING, TOOL, Extension
 from cora.ports.plugin import ToolCall
 from cora.ports.retrieval import RetrievedChunk
 from fakes import FakeMemory, FakeRetriever, ScriptedChatModel, host_for
@@ -929,3 +930,17 @@ def test_a_plugin_of_tools_alone_assembles_and_says_nothing_about_cora() -> None
     assert "##" not in model.last_messages[0].content, (
         "a plugin with nothing to say gets no heading"
     )
+
+
+def test_coras_own_screen_is_registered_under_coras_own_name() -> None:
+    """What the trace attributes a refusal to, and what tells cora's own screen from a
+    plugin's — the warning below reads the same field."""
+    app = assembled(plugins=())
+    runner = app.agent.runner
+    assert isinstance(runner, LangGraphRunner)
+    screening = _screening(runner)
+
+    subscribed = screening.registry.handlers(SCREENING)
+
+    assert [entry.module for entry in subscribed] == [CORA, CORA]
+    assert not screening.registry.screened_by_a_plugin()

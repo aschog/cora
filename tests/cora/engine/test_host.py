@@ -738,3 +738,15 @@ def test_a_handler_class_registered_instead_of_a_function_is_refused() -> None:
 
     assert MODULE in refused.value.user_message
     assert host.registered == []
+
+
+def test_a_registration_under_a_blank_scope_is_refused() -> None:
+    """`None` is system-wide and means something. A blank name means nothing, and would
+    load as a registration that applies to no turn there is."""
+    host = host_for(MODULE)
+
+    with pytest.raises(PluginLoadError) as refused:
+        host.register_instructions("Be a coach.", scope="  ")
+
+    assert MODULE in refused.value.user_message
+    assert host.registered == []

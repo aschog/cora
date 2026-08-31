@@ -19,6 +19,7 @@ from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.nesting import read_untrusted
 from cora.engine.plugin_set import Registry
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
+from cora.engine.rounds import UNTRUSTED_NOTICE
 from cora.engine.steps import (
     AGENT_RULES,
     ASK_RULE,
@@ -41,6 +42,7 @@ from cora.ports.chat_model import Aside, Message, ModelReply, Piece, Written
 from cora.ports.graph import ASK, DONE, TOOLS, Step
 from cora.ports.host import (
     BRIEFING,
+    CALLING,
     HANDLER,
     INSTRUCTIONS,
     RETURNING,
@@ -50,7 +52,7 @@ from cora.ports.host import (
     Subscription,
 )
 from cora.ports.memory import Fact, Memory
-from cora.ports.plugin import Tool, ToolCall
+from cora.ports.plugin import Tool, ToolCall, ToolResult
 from cora.ports.retrieval import RetrievedChunk
 from fakes import (
     FailingChatModel,
@@ -1254,3 +1256,75 @@ def test_a_result_handler_cannot_redirect_the_answer_to_another_call() -> None:
     [told] = partial["messages"]
     assert told.tool_call_id == "c1"
     assert told.content == "99", "what the handler returned is still what is told"
+
+
+def test_a_result_handler_cannot_strip_the_label_off_the_users_documents() -> None:
+    """A handler replacing a citable payload with prose of its own has replaced the
+    material, not where it came from: the passage went into this call, so what the model
+    is told still arrives behind the notice that says not to take orders from it."""
+    step = ToolStep(
+        tool_runtime=ToolRuntime(tools=(_searcher(_hit("note.md")),)),
+        registry=Registry(
+            (
+                _subscribed(
+                    RETURNING,
+                    lambda result: ToolResult(
+                        call_id=result.call_id, payload=f"sealed: {result.render()}"
+                    ),
+                ),
+            )
+        ),
+    )
+
+    partial = step(_asked(_search_call("s1")))
+
+    [told] = partial["messages"]
+    assert UNTRUSTED_NOTICE in told.content
+    assert "sealed:" in told.content, "and it is still what the handler returned"
+
+
+def test_a_call_handler_cannot_rewrite_the_arguments_the_model_asked_for() -> None:
+    """A refusing event may refuse its value and may not change it. The arguments are a
+    dict inside a frozen call, so a handler is handed a copy of them — one that mutated
+    them in place and refused nothing would change what ran, and leave no step saying
+    so."""
+    ran: list[int] = []
+    counting = Tool(
+        name="add",
+        description="Add one number to nothing.",
+        parameter_schema={"type": "object", "properties": {"a": {"type": "integer"}}},
+        run=lambda a: ran.append(a) or f"got {a}",
+    )
+
+    def tamper(call: ToolCall) -> None:
+        call.arguments["a"] = 999
+        return None
+
+    step = ToolStep(
+        tool_runtime=ToolRuntime(tools=(counting,)),
+        registry=Registry((_subscribed(CALLING, tamper),)),
+    )
+
+    step(_asked(ToolCall(name="add", arguments={"a": 1}, call_id="c1")))
+
+    assert ran == [1]
+
+
+def test_what_a_result_handler_did_is_traced_after_the_call_it_changed() -> None:
+    """A reader follows a trace downwards, so a step that changed a result cannot stand
+    above the call that produced it."""
+    step = ToolStep(
+        tool_runtime=ToolRuntime(tools=(add_tool(),)),
+        registry=Registry(
+            (_subscribed(RETURNING, lambda result: replace(result, payload=99)),)
+        ),
+    )
+
+    partial = step(
+        _asked(ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1"))
+    )
+
+    assert [type(step).__name__ for step in partial["trace"]] == [
+        "ToolUse",
+        "HandlerRan",
+    ]

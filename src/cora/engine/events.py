@@ -7,6 +7,7 @@ is an entry in `EVENTS`; a new meaning is a class beside the two below. Neither 
 branch anyone has to find.
 """
 
+import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
@@ -22,6 +23,8 @@ from cora.ports.host import (
     Subscription,
 )
 from cora.ports.plugin import ToolRefusal, ToolResult
+
+log = logging.getLogger(__name__)
 
 UNSCREENED = "Your question could not be checked, so it was not answered."
 """What the user reads when a screening handler broke rather than refused. It says what
@@ -130,6 +133,12 @@ def dispatch(
         try:
             answered = subscription.handle(value)
         except Exception as broke:
+            # Logged as well as traced: a question refused on the way in ends the turn,
+            # and the operator is the only reader left once the trace goes with it. The
+            # kind of what was raised and nothing else, as everywhere else.
+            log.warning(
+                "%s raised %s on '%s'", entry.module, type(broke).__name__, event
+            )
             _took(trace, entry, event, kind.broke, type(broke).__name__, failed=True)
             if isinstance(kind, Refusing):
                 raise _ending(kind, kind.reason, trace) from broke

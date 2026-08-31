@@ -279,6 +279,17 @@ class PluginHost:
         return tuple(entry.value for entry in self.registered if entry.kind == TOOL)
 
     def _record(self, kind: str, value: Any, scope: str | None = None) -> None:
+        """Keep one registration, under the scope it was made for.
+
+        Raises:
+            PluginLoadError: The scope is not a name. `None` is system-wide and is the
+                one absence that means something — a blank string is a registration
+                that loads and then applies to nothing, which no deployment asked for.
+        """
+        if scope is not None and (not isinstance(scope, str) or not scope.strip()):
+            raise PluginLoadError(
+                self.module, f"a {kind} was registered under a blank scope"
+            )
         self.registered.append(
             Registration(module=self.module, kind=kind, value=value, scope=scope)
         )
