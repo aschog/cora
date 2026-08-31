@@ -13,6 +13,7 @@ call needs a new field on cora.
 - Every registration carries a scope, and `scope=None` is system-wide and unremovable
 - The fitness plugin registers its medical filter system-wide, its rest under its scope
 - The active scopes are a set on the turn's state, supplied by the caller until story 6
+- A deployment names what a turn runs under in `CORA_SCOPES`, so the app still demos
 - A refused tool call answers the model and the turn continues, spending no round
 - A rule that raises refuses the turn; an amender or an observer that raises is dropped
 - The trace names the plugin behind every amendment, refusal and failure
@@ -27,6 +28,7 @@ call needs a new field on cora.
 - `src/cora/engine/steps.py` — *screen*, the brief and the tool step dispatch their events
 - `src/cora/engine/validation.py` — cora's rules become handlers it registers for itself
 - `src/cora/domain/agent_state.py`, `trace.py` — the active scopes, and a handler's step
+- `src/cora/app/config.py`, `engine/agent.py` — `CORA_SCOPES`, and the turn's default
 - `src/cora/app/assembly.py` — seeds cora's own registrations before any plugin's
 - `plugins/fitness/`, `plugins/security/` — rules rewritten as handlers, scopes declared
 - `docs/how-to/write-a-plugin.md`, `docs/big-picture.md` — the contract gained an event

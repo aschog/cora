@@ -102,3 +102,20 @@ are the same path, because an observer *is* an amender that amends nothing.
 ## 10. The marker comes off
 
 - [x] 10.1 Drop 1.1's `xfail` marker and watch the outer test pass
+
+## 11. What review found
+
+- [x] 11.1 Write a test that shows a result handler unable to answer another call
+- [x] 11.2 Write a test that shows a result handler unable to strip the untrusted label
+      off the user's own documents
+- [x] 11.3 Write a test that shows a call handler unable to rewrite the arguments the
+      model asked for
+- [x] 11.4 Write a test that shows a class refused where a handler function belongs
+- [x] 11.5 Write a test that shows a refusal that is not a sentence refusing on cora's
+      own wording
+- [x] 11.6 Write a test that shows a registration under a blank scope refused
+- [x] 11.7 Write a test that shows cora's own screen registered under cora's own name
+- [x] 11.8 Write a test that shows a result handler's step traced under the call it
+      changed, not above it
+- [x] 11.9 Write a test that shows `CORA_SCOPES` read, and a turn running under what the
+      deployment named

@@ -9,7 +9,10 @@ one of each, and only the first is a point in the turn a plugin can reach.
 through too. A scope on every registration, so story 6 routes rather than reshapes. A
 handler that stays a function: frozen values in, a decision out.
 
-**Non-Goals** — routing, the pin, and how a real turn acquires a scope, all story 6. The
+**Non-Goals** — routing and the pin, story 6. How a real turn acquires a scope is story
+6's too, *except* the deployment's own default: `CORA_SCOPES` landed here, because a
+story that scopes the fitness plugin and leaves nothing to supply a scope ships an app
+that no longer coaches. Routing chooses between scopes; this only names them. The
 approval gate, which stands at the tool-call point but is a privileged step rather than a
 handler, story 11. A plugin ordering itself against another, deferred with a reason. Any
 event on the answer the user reads.
@@ -74,6 +77,20 @@ event on the answer the user reads.
 - "Cannot be scoped away" falls out of that filter rather than being enforced anywhere.
 - The active scopes are a checkpointed set on the turn's state, plural from the start so
   story 6 costs no migration, and supplied by the caller until it lands.
+- The caller that supplies them in the running app is the composition root: `Agent`
+  carries the deployment's own, read from `CORA_SCOPES`, and a caller naming its own
+  wins. Routing replaces the default, not the field.
+
+**What a handler is handed, it may read and not keep.**
+
+- A refusing event hands out a copy of a call's arguments: `ToolCall` is frozen and its
+  `arguments` dict is not, and a handler rewriting them in place would change what ran
+  and leave no step saying so.
+- Whether the user's documents went into a call is decided before any handler sees the
+  result, so a handler replacing a citable payload with prose of its own has replaced
+  the material and not where it came from — the label stays.
+- A result's `call_id` is pinned to the call it answers: a handler changes what the model
+  is told, never which call it is being told about.
 
 **A tool-call refusal reuses the path a refusing tool already has.**
 
