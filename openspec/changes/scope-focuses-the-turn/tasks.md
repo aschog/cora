@@ -102,6 +102,10 @@ which the allowlist guard covers by discovery.
       one the model could not be asked about answered plainly too
 - [x] 11.7 Write a test that shows the fixed field carrying a name a screen reader reads,
       rather than a label pointing at a control that is gone
+- [x] 11.8 Write a test that shows a pin a refused turn asked for not waiting for the next
+      turn to take it — found by the second review pass, in the first fix's own seam
+- [x] 11.9 Write a test that shows a scope read that failed leaving the pin the page
+      already knows about, rather than re-opening a control the engine has closed
 
 ## 12. The marker comes off
 

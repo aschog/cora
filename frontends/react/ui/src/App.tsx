@@ -567,8 +567,11 @@ export default function App() {
   /** Which field a reopened conversation is in. The pin outlived the page because it is
    *  the thread's own state; the picker is only where it is drawn. */
   const held = async (thread_id: string) => {
-    const fixed = await cora.pinned(thread_id).catch(() => null)
-    if (here.current !== thread_id) return
+    /* A read that failed is no news about the field: `undefined` leaves the control as it
+       stands, where `null` would re-open a picker on a thread the engine has closed and
+       get the reader's next pick refused over a field they can no longer see. */
+    const fixed = await cora.pinned(thread_id).catch(() => undefined)
+    if (here.current !== thread_id || fixed === undefined) return
     setPin(fixed)
     setFixedPin(fixed !== null)
   }

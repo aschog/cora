@@ -96,7 +96,8 @@ def test_answer_seeds_the_run_with_the_question_and_names_the_thread() -> None:
     assert runner.seeded == {
         "question": "What was my weight?",
         "scopes": ["fitness"],
-    }
+        "pinning": "",
+    }, "a turn asking for no pin says so, or the last turn's request would stand"
     assert runner.thread_id == "t1"
     assert result.answer == "80 kg."
 

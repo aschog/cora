@@ -2750,3 +2750,43 @@ test('the picker says what the thread holds, not what the reader picked', async 
   expect(screen.queryByRole('combobox')).toBeNull()
 })
 
+
+test('a scope read that failed leaves the pin the page already knows about', async () => {
+  /* `held` runs after every turn now, so a transient failure reading the thread must not
+     re-open a control the engine has closed: the reader's next pick would be refused with
+     a sentence about a field they can no longer see. */
+  let reachable = true
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/ask') return answering()
+      if (path.endsWith('/scope')) {
+        if (!reachable) return { ok: false, status: 503, json: async () => ({}) } as Response
+        return { ok: true, json: async () => ({ pin: 'fitness' }) } as unknown as Response
+      }
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByLabelText('Field'), { target: { value: 'fitness' } })
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await waitFor(() => expect(screen.getByLabelText('Field').textContent).toBe('fitness'))
+
+  reachable = false
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'And creatine?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText('And creatine?')
+
+  /* The read failed; the field the thread holds is not news the page has, so it keeps
+     what it had rather than inventing a choice. */
+  await waitFor(() => expect(screen.getByLabelText('Field').textContent).toBe('fitness'))
+  expect(screen.queryByRole('combobox')).toBeNull()
+})

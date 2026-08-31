@@ -336,14 +336,22 @@ class FocusStep:
     pause: Pause = declined
 
     def __call__(self, state: AgentState) -> AgentState:
-        """Restate the brief for this turn, under this turn's scopes and no others."""
+        """Restate the brief for this turn, under this turn's scopes and no others.
+
+        A field the step before it could not settle is put to the reader first, and what
+        they choose is what the brief is then written under.
+        """
         contested = tuple(state.get("candidates", ()))
-        settled: AgentState = {}
-        if contested and not scoped(state):
+        if contested:
             settled = self._asked(contested)
-        scopes = frozenset(settled.get("scopes", ())) or scoped(state)
-        trace: list[TraceStep] = list(settled.get("trace", ()))
-        return {**settled, "brief": self._brief(scopes, trace), "trace": trace}
+            trace: list[TraceStep] = list(settled["trace"])
+            return {
+                **settled,
+                "brief": self._brief(frozenset(settled["scopes"]), trace),
+                "trace": trace,
+            }
+        written: list[TraceStep] = []
+        return {"brief": self._brief(scoped(state), written), "trace": written}
 
     def _asked(self, contested: tuple[str, ...]) -> AgentState:
         """Put the fork to the reader rather than picking one of two fields for them.

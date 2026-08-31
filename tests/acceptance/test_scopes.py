@@ -133,6 +133,21 @@ def test_a_question_that_was_refused_pins_the_conversation_to_nothing() -> None:
 
 
 @pytest.mark.integration
+def test_a_pin_a_refused_turn_asked_for_does_not_wait_for_the_next_turn() -> None:
+    """A pin is a request one turn made, so it lasts one turn. Left in the thread, it
+    would be promoted by whatever question came next — which asked for no field, and
+    would be answered in one, and pinned to it for good."""
+    app, _ = _two_scopes(_answer(FITNESS), _answer("Protein, then."))
+
+    with pytest.raises(InputRejectedError):
+        app.agent.answer("   ", THREAD, pin=TRAVEL)
+    answered = app.agent.answer(COACH_QUESTION, THREAD)
+
+    assert app.agent.pinned(THREAD) is None
+    assert _focus(answered) == ScopeSettled(scope=FITNESS, how=ROUTED)
+
+
+@pytest.mark.integration
 def test_the_pin_binds_what_comes_next_and_not_what_came_before() -> None:
     """A turn is a record of how it ran. Pinning later must not rewrite it, which is
     what reopening the thread has to show."""

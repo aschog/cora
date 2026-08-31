@@ -101,15 +101,20 @@ class Agent:
             AdapterError: Something outside cora failed mid-turn. A failure raised
                 inside a step carries that step's name.
         """
-        seeded: AgentState = {"question": question, "scopes": list(scopes)}
+        # `pinning` is asked for rather than set: the seeded keys are written before the
+        # first step runs, and a question the screen refuses must fix nothing. The step
+        # that reads the pin is the step that writes it, one step further on. Written on
+        # every turn, because a request is one turn's: left standing, a pin a refused
+        # question asked for would be taken by whatever was asked next.
+        seeded: AgentState = {
+            "question": question,
+            "scopes": list(scopes),
+            "pinning": pin or "",
+        }
         if pin is not None:
             held = self.pinned(thread_id)
             if held is not None and held != pin:
                 raise ScopePinnedError(held)
-            # Asked for rather than set: the seeded keys are written before the first
-            # step runs, and a question the screen refuses must fix nothing. The step
-            # that reads the pin is the step that writes it, one step further on.
-            seeded["pinning"] = pin
         return self._turn(
             self.runner.run(seeded, thread_id, on_text), question, thread_id, on_step
         )

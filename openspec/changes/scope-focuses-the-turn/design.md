@@ -37,6 +37,8 @@ names one. Splitting what a scope fuses, deferred with a reason in the sprint's 
 - Only a graph run writes a checkpoint, so the pin travels in beside the question, as a
   request `route` promotes — a seeded key is written before the screen runs, and a
   refused question must fix nothing.
+- The request is written on every turn, because it is one turn's: left standing, a pin a
+  refused question asked for would be taken by whatever was asked next.
 - The first turn carrying a pin fixes it, and a later turn naming a different one is refused.
 - The refusal is a core error naming the scope already held, so the page can say it.
 - Rejected: the pin in the conversation store — the sprint's shapes put it in the turn's state.
