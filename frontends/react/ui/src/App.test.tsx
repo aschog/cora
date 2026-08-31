@@ -76,6 +76,7 @@ const OLDER = {
 const served: Record<string, unknown> = {
   '/api/documents': ['notes.md'],
   '/api/plugins': ['cora.plugins.fitness'],
+  '/api/scopes': { available: ['fitness', 'travel'], default: 'cora' },
   '/api/memory': [{ key: 'f1', text: 'No burpees.' }],
   '/api/sessions': [{ thread_id: 'old', opened_with: OLDER.question }],
   '/api/sessions/old': [OLDER],
@@ -97,6 +98,8 @@ beforeEach(() => {
       if (path === '/api/ask') return answering()
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
@@ -245,6 +248,8 @@ test('a document cited in an earlier turn is not marked for this one', async () 
       if (path === '/api/ask') return uncited()
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
@@ -423,6 +428,8 @@ test('a citation wrapped in a link the model wrote opens the passage, not the li
       if (path === '/api/ask') return oneTurn(linked)
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
@@ -490,6 +497,8 @@ test('a conversation shows its own plan, not the plan of a turn left behind', as
       if (path === '/api/ask') return steppingSlowly()
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
@@ -627,6 +636,8 @@ test('a turn that failed does not un-cite the answer still on screen', async () 
       if (path === '/api/ask') return failing()
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
@@ -670,6 +681,8 @@ test('an answer returning to the conversation it was asked in is not dropped', a
         } as unknown as Response
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
@@ -884,6 +897,8 @@ test('the question asked after a new session runs on another thread', async () =
       }
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
@@ -1177,6 +1192,8 @@ test('the control is reachable while it is unavailable, and clicking it then cha
       }
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
@@ -1643,6 +1660,8 @@ async function asked(parts: string[], held?: number): Promise<void> {
       if (path === '/api/ask') return streaming(parts, held)
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
@@ -1973,6 +1992,8 @@ async function ready(outcomes: (number | { error: string })[]): Promise<void> {
       if (path === '/api/ask') return answering()
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
@@ -2057,6 +2078,8 @@ test('a notice for an upload the reader walked away from is not drawn', async ()
       if (path === '/api/ask') return answering()
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
@@ -2178,9 +2201,17 @@ test('a full page explains none of its own panels', async () => {
 })
 
 test('a page with nothing in it yet draws the controls and no prose', async () => {
+  /* A bare cora: no document, no plugin, no field to pin a conversation to. */
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => ({ ok: true, json: async () => [] }) as unknown as Response),
+    vi.fn(
+      async (path: string) =>
+        ({
+          ok: true,
+          json: async () =>
+            path === '/api/scopes' ? { available: [], default: 'cora' } : [],
+        }) as unknown as Response,
+    ),
   )
   render(<App />)
   await screen.findByText('Add a document')
@@ -2219,6 +2250,8 @@ test('an upload that failed in a conversation left behind keeps this one’s not
       if (path === '/api/ask') return answering()
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
@@ -2604,4 +2637,60 @@ test('a decision that could not be sent is still answerable, and says what went 
   fireEvent.click(screen.getByRole('button', { name: /75 kg/ }))
 
   await waitFor(() => expect(of(sent, '/api/resume')).toHaveLength(2))
+})
+
+test('a conversation is pinned to a field, and keeps it', async () => {
+  const sent = () =>
+    (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
+      .filter(([path]) => path === '/api/ask')
+      .map(([, init]) => JSON.parse((init as RequestInit).body as string))
+
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  /* Unpinned, cora reads every question. The pick binds what comes next, so it is the
+     next question that carries it. */
+  fireEvent.change(screen.getByLabelText('Field'), { target: { value: 'fitness' } })
+  expect(screen.getByText(/next question/)).toBeTruthy()
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  expect(sent()).toEqual([
+    { question: 'Why am I stalling?', thread_id: expect.any(String), pin: 'fitness' },
+  ])
+  /* The pin is in the thread's state now, so the control stops being a choice: a second
+     field is a second conversation, and the reason is on the page for a screen reader. */
+  expect(screen.queryByLabelText('Field')).toBeNull()
+  expect(document.querySelector('.scope-fixed')?.textContent).toBe('fitness')
+  expect(screen.getByText(/Start a new one/)).toBeTruthy()
+})
+
+test('a reopened conversation is drawn in the field it was pinned to', async () => {
+  const pinned: Record<string, unknown> = {
+    ...served,
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async (path: string) =>
+        ({ ok: true, json: async () => pinned[path] ?? [] }) as unknown as Response,
+    ),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
+
+  /* The pin outlived the page because it is the thread's own state, not the page's. */
+  await waitFor(() =>
+    expect(document.querySelector('.scope-fixed')?.textContent).toBe('travel'),
+  )
+  expect(screen.queryByLabelText('Field')).toBeNull()
 })

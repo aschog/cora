@@ -38,6 +38,10 @@ export type Fact = { key: string; text: string }
 
 export type Session = { thread_id: string; opened_with: string }
 
+/** The fields this deployment offers, and the one a question belonging to none is
+ *  answered in. A deployment with no field is a bare cora and has nothing to pin. */
+export type Scopes = { available: string[]; default: string }
+
 const UNREADABLE = 'cora could not be reached.'
 const NO_CONTENT = 204
 
@@ -58,6 +62,7 @@ async function failure(response: Response): Promise<string> {
 
 export const documents = () => read<string[]>('/api/documents')
 export const plugins = () => read<string[]>('/api/plugins')
+export const scopes = () => read<Scopes>('/api/scopes')
 export const memory = () => read<Fact[]>('/api/memory')
 export const sessions = () => read<Session[]>('/api/sessions')
 export const turns = (thread: string) => read<Turn[]>(`/api/sessions/${thread}`)
@@ -99,6 +104,9 @@ export async function upload(file: File): Promise<{ document: string; chunks: nu
  *
  * A turn that stopped to ask resolves with a `Pending` instead of a `Result`, which is
  * not a failure: `resume` is what finishes it.
+ *
+ * `pin` is the field this conversation is fixed to, sent on every question while it holds
+ * one: the pin lives in the thread's state and only a turn writes it there.
  */
 export async function ask(
   question: string,
@@ -106,9 +114,14 @@ export async function ask(
   onStep: (step: Step) => void,
   onText: (piece: string) => void = () => {},
   onAside: () => void = () => {},
+  pin: string | null = null,
 ): Promise<Reply> {
   return streamed(
-    await post('/api/ask', { question, thread_id: thread }),
+    await post('/api/ask', {
+      question,
+      thread_id: thread,
+      ...(pin === null ? {} : { pin }),
+    }),
     onStep,
     onText,
     onAside,
@@ -134,6 +147,11 @@ export async function resume(
     onAside,
   )
 }
+
+/** Which field a conversation is pinned to, or nothing. The pin is a key of the thread's
+ *  own state, so this is what a reloaded page reads it back from. */
+export const pinned = (thread: string) =>
+  read<{ pin: string | null }>(`/api/sessions/${thread}/scope`).then((held) => held.pin)
 
 /** What a conversation is waiting on, or nothing. A page that arrived after the pause
  *  has nowhere else to look: the turn is recorded only once it has an answer. */
