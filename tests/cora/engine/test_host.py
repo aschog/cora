@@ -720,3 +720,21 @@ class _Endless:
 
 def _endlessly(calls: list[str], name: str) -> _Endless:
     return _Endless(calls, name, tool="deeper" if name == "outer" else "nothing")
+
+
+def test_a_handler_class_registered_instead_of_a_function_is_refused() -> None:
+    """The likeliest way to get this wrong, and the one a callable check waves through:
+    a class is callable, so subscribing one subscribes a constructor. It screens nothing
+    and refuses everything, each question answered with whatever it built."""
+
+    class RefusesShouting:
+        def __init__(self, question: str) -> None:
+            self.question = question
+
+    host = host_for(MODULE)
+
+    with pytest.raises(PluginLoadError) as refused:
+        host.register_handler(event=SCREENING, handle=RefusesShouting)
+
+    assert MODULE in refused.value.user_message
+    assert host.registered == []

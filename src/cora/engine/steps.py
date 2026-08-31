@@ -374,12 +374,13 @@ class ToolStep:
             )
         with collecting() as inside:
             result = self.tool_runtime.execute(call, scopes)
-        return (
-            dispatch(
-                RETURNING, result, self.registry.handlers(RETURNING, scopes), trace
-            ),
-            inside,
+        amended = dispatch(
+            RETURNING, result, self.registry.handlers(RETURNING, scopes), trace
         )
+        # The id answers one call and is the provider's: a handler changes what the
+        # model is told, never which call it is being told about. Left to a handler, a
+        # turn could answer a call nobody made and leave its own outstanding.
+        return replace(amended, call_id=call.call_id), inside
 
 
 @dataclass(frozen=True)

@@ -43,6 +43,7 @@ from cora.ports.host import (
     BRIEFING,
     HANDLER,
     INSTRUCTIONS,
+    RETURNING,
     SCREENING,
     Handler,
     Registration,
@@ -1228,3 +1229,28 @@ def test_the_step_a_failure_first_came_out_of_is_the_one_it_keeps() -> None:
         Named("screen", inner)({"question": "q"})
 
     assert refused.value.step == "focus"
+
+
+def test_a_result_handler_cannot_redirect_the_answer_to_another_call() -> None:
+    """The call id is the provider's and answers one call. A handler that changed it
+    would leave the round's call unanswered and the transcript claiming to answer a call
+    nobody made — so what it returns is read for the payload and not for the id."""
+    step = ToolStep(
+        tool_runtime=ToolRuntime(tools=(add_tool(),)),
+        registry=Registry(
+            (
+                _subscribed(
+                    RETURNING,
+                    lambda result: replace(result, call_id="not-the-call", payload=99),
+                ),
+            )
+        ),
+    )
+
+    partial = step(
+        _asked(ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1"))
+    )
+
+    [told] = partial["messages"]
+    assert told.tool_call_id == "c1"
+    assert told.content == "99", "what the handler returned is still what is told"

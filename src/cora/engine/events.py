@@ -36,10 +36,11 @@ that failed is not a check that passed."""
 class Refusing:
     """An event whose handlers may refuse its value, and may not change it.
 
-    Answering with anything is refusing, and the answer is the reason. A handler that
-    raises refuses too — a broken rule must not admit an input — and only the kind of
-    what it raised is passed on, because the message could be carrying whatever the
-    handler held.
+    Answering with anything is refusing, and a sentence is the reason. Answering with
+    something that is not one refuses too, on cora's own wording: fail closed, and never
+    on a plugin's repr. A handler that raises refuses as well — a broken rule must not
+    admit an input — and only the kind of what it raised is passed on, because the
+    message could be carrying whatever the handler held.
     """
 
     refusal: type[Exception]
@@ -136,8 +137,18 @@ def dispatch(
         if answered is None:
             continue
         if isinstance(kind, Refusing):
-            _took(trace, entry, event, kind.refused, str(answered))
-            raise _ending(kind, str(answered), trace)
+            if not isinstance(answered, str):
+                _took(
+                    trace,
+                    entry,
+                    event,
+                    kind.broke,
+                    type(answered).__name__,
+                    failed=True,
+                )
+                raise _ending(kind, kind.reason, trace)
+            _took(trace, entry, event, kind.refused, answered)
+            raise _ending(kind, answered, trace)
         if not isinstance(answered, kind.holds):
             _took(trace, entry, event, kind.broke, type(answered).__name__, failed=True)
             continue

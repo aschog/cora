@@ -159,17 +159,20 @@ class PluginHost:
         """Take part in the turn at one of the points `cora.ports.host` names.
 
         Raises:
-            PluginLoadError: Cora has no such event, or the handler cannot be called.
-                Both are refused at startup: a handler runs once a turn is under way,
-                and one left to be found there is a question dying halfway through.
+            PluginLoadError: Cora has no such event, the handler cannot be called, or a
+                class was registered where a function belongs — a class is callable, so
+                a check that only asked whether it could be called would subscribe a
+                constructor and refuse every question with whatever it built. All three
+                are refused at startup: a handler runs once a turn is under way, and one
+                left to be found there is a question dying halfway through.
         """
         if event not in EVENTS:
             raise PluginLoadError(
                 self.module, f"there is no '{event}' point in a turn to subscribe to"
             )
-        if not callable(handle):
+        if not callable(handle) or isinstance(handle, type):
             raise PluginLoadError(
-                self.module, f"the handler for '{event}' cannot be called"
+                self.module, f"the handler for '{event}' is not a function to call"
             )
         self._record(HANDLER, Subscription(event=event, handle=handle), scope)
 

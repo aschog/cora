@@ -152,3 +152,24 @@ def test_an_amendment_of_the_wrong_shape_is_dropped_like_a_raise() -> None:
     [dropped] = trace
     assert dropped.failed
     assert "dict" in dropped.detail
+
+
+def test_a_refusal_that_is_not_a_sentence_still_refuses_and_says_nothing_of_it() -> (
+    None
+):
+    """Fail closed: a handler answering with something that is not a reason has refused
+    all the same, and what the user reads is cora's wording rather than a repr."""
+    trace: list[TraceStep] = []
+
+    with pytest.raises(InputRejectedError) as refused:
+        dispatch(
+            SCREENING,
+            "anything",
+            (_subscribed(FIRST, SCREENING, lambda q: True),),
+            trace,
+        )
+
+    assert refused.value.user_message == UNSCREENED
+    [named] = trace
+    assert named.failed
+    assert "bool" in named.detail
