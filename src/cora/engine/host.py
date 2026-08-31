@@ -26,6 +26,7 @@ from cora.ports.host import (
     Handler,
     Registration,
     Subscription,
+    name_of,
 )
 from cora.ports.memory import Memory
 from cora.ports.plugin import Tool, ToolRefusal, ToolResult
@@ -81,6 +82,12 @@ is prose, so nothing inside one is a citation: a loop explaining code writes num
 that are the code's own."""
 
 
+PLUGIN_LOGGER = "cora.plugin"
+"""Where a plugin's own logger hangs. Under cora, so one switch configures every line
+the app writes, and singular so it is a logger rather than the namespace a distribution
+installs into."""
+
+
 @dataclass
 class PluginHost:
     """What one plugin's `extend` is called with, and what it registered afterwards.
@@ -111,8 +118,14 @@ class PluginHost:
 
     @property
     def log(self) -> logging.Logger:
-        """A logger named for this plugin, so its lines say which plugin wrote them."""
-        return logging.getLogger(self.module)
+        """A logger named for this plugin, so its lines say which plugin wrote them.
+
+        Under cora's own namespace rather than under the plugin's module path: the
+        debug handlers are attached to cora's logger and nowhere else, and a plugin
+        installed from anywhere — a file dropped in a folder most of all — would
+        otherwise write into a logger nothing is listening to.
+        """
+        return logging.getLogger(f"{PLUGIN_LOGGER}.{name_of(self.module)}")
 
     def register_tool(
         self,

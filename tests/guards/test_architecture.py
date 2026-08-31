@@ -685,6 +685,105 @@ def _names_a_plugin(path: pathlib.Path) -> bool:
     )
 
 
+def _shipped_scopes() -> tuple[str, ...]:
+    """The fields this workspace's own plugins register under, read from the plugins.
+
+    Read rather than written down here: a third plugin in the workspace is covered the
+    day it ships, and a guard listing the names would be a second place the core knows
+    them. Read off the *manifests* rather than off the `cora.plugins` namespace, which
+    any installed distribution contributes to — a rule keyed on that would fail this
+    repository's suite because of a plugin somebody else installed.
+    """
+    return tuple(
+        sorted(
+            {
+                scope
+                for _, module in workspace.plugins()
+                if isinstance(
+                    scope := getattr(importlib.import_module(module), "SCOPE", None),
+                    str,
+                )
+            }
+        )
+    )
+
+
+def _names(source: str) -> set[str]:
+    """Every word a file uses as a *name* rather than as prose.
+
+    Identifiers, the words inside strings that are not prose, and anything quoted in
+    backticks — which is how a docstring names a thing in the code. Running prose is
+    what is left out, because "steps taken travel on the refusal" is the English verb
+    and not the field a plugin registers under. Matching raw text instead would make
+    every scope name a reserved word in the core's own writing, and a plugin scoped
+    `search` or `memory` would fail this across dozens of files it never touched.
+    """
+    tree = ast.parse(source)
+    prose = {
+        id(node.value)
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant)
+    }
+    found: set[str] = set()
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name):
+            found.add(node.id)
+        elif isinstance(node, ast.Attribute):
+            found.add(node.attr)
+        elif isinstance(node, ast.arg) or (isinstance(node, ast.keyword) and node.arg):
+            found.add(node.arg or "")
+        elif isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef):
+            found.add(node.name)
+        elif isinstance(node, ast.alias):
+            found.update(node.name.split("."))
+            found.add(node.asname or "")
+        elif (
+            isinstance(node, ast.Constant)
+            and isinstance(node.value, str)
+            and id(node) not in prose
+        ):
+            found.update(re.findall(r"\w+", node.value))
+    for quoted in re.findall(r"`([^`\n]+)`", source):
+        found.update(re.findall(r"\w+", quoted))
+    return {word.lower() for word in found}
+
+
+@pytest.mark.parametrize("scope", _shipped_scopes())
+def test_no_shipped_file_names_a_scope_a_plugin_registers_under(scope: str) -> None:
+    """A field is a plugin's word, not cora's: naming one under `src/cora/` would be the
+    core knowing what it is for, which is the claim the whole contract rests on.
+
+    A name rather than a word, so a docstring explaining the settings namespace with
+    `fitness` in it is the core knowing a plugin, and "passages travel in a message" is
+    not the travel field.
+    """
+    named = sorted(
+        str(path.relative_to(workspace.ROOT))
+        for path in REPOSITORY_FILES
+        if path.is_relative_to(SHIPPED) and scope in _names(path.read_text())
+    )
+
+    assert named == [], "\n".join([f"these name the '{scope}' field:", *named])
+
+
+def test_the_scope_guard_reads_a_name_and_not_a_word() -> None:
+    """The two readings this guard turns on, planted: a field named in a docstring the
+    way a docstring names code, and the same letters as ordinary English."""
+    naming = '"""Set `travel` in the environment."""\nSCOPE = "fitness"\n'
+    prose = '"""The steps taken travel on the refusal, and the fitness of a plan."""\n'
+
+    assert {"travel", "fitness"} <= _names(naming)
+    assert {"travel", "fitness"}.isdisjoint(_names(prose))
+
+
+def test_the_scopes_the_guard_reads_are_the_ones_this_workspace_ships() -> None:
+    """The guard above is only worth its parametrisation if the reading works: an empty
+    tuple would pass it by covering nothing at all. A plugin registering a scope without
+    naming it as `SCOPE` is invisible here — the attribute is a convention rather than
+    contract, and this is the guard admitting what it can see."""
+    assert len(_shipped_scopes()) >= 2
+
+
 def test_nothing_in_the_repository_offers_a_second_door_into_screening() -> None:
     """Screening is a subscription like any other, so the port and the list that used to
     be the other way in are gone rather than deprecated: two doors to one moment is what

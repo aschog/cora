@@ -3,7 +3,7 @@
 
 REACT := cora.frontends.react.server
 
-.PHONY: run run-env ui ui-build ui-test ui-test-browser docs docs-serve diagram
+.PHONY: run run-env plugins plugins-env ui ui-build ui-test ui-test-browser docs docs-serve diagram
 
 # cora, as one process serving the page and the API on 127.0.0.1:8000. It builds first
 # because the server only ever reads `ui/dist` — without that a source change is
@@ -14,6 +14,15 @@ run: ui-build
 # Reads it from .env instead, which is how the live tier is run too.
 run-env: ui-build
 	uv run --env-file .env python -m $(REACT)
+
+# What this deployment loaded, and what each plugin registered. It assembles the app the
+# environment describes rather than reading the manifests, so what prints is what runs.
+plugins:
+	uv run python -m cora.app.listing
+
+# The same, reading its environment from .env — as `run-env` is to `run`.
+plugins-env:
+	uv run --env-file .env python -m cora.app.listing
 
 # The page on its own, for working on it: Vite on 5173, proxying /api to `make run`.
 ui:

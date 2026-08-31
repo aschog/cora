@@ -46,7 +46,6 @@ def serve() -> None:
         chosen = port(os.environ)
         served = api(
             build(config),
-            plugins=config.plugin_modules,
             scopes=config.scopes,
             ui=ui_path(os.environ),
         )

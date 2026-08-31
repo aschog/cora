@@ -10,6 +10,15 @@ from cora.ports.context_source import ContextSource
 from cora.ports.memory import Memory
 from cora.ports.plugin import Tool
 
+CONTRACT = 1
+"""The version of this contract cora offers, and what a plugin declares to ask for.
+
+A number rather than a range: cora offers one version, a plugin declaring another is
+refused by name, and a plugin declaring none is taken as asking for this one. What is
+public is everything this module names; what may move is said on the page that teaches
+a plugin to be written.
+"""
+
 TOOL = "tool"
 HANDLER = "handler"
 INSTRUCTIONS = "instructions"
@@ -58,16 +67,74 @@ class Subscription:
 class Registration:
     """One thing a plugin registered, and the module that registered it.
 
-    The module is what a refusal quotes back, because it is what the deployment typed.
-    `value` is read according to `kind`, in the one place that turns registrations into
-    what a turn takes. `scope` is where it applies: a name the turn has to be running
-    under, or `None` for everywhere — and nothing a scope can switch off.
+    The module is what a plugin is known by — what the deployment typed, or the stem
+    of a file dropped in the plugins folder. `value` is read according to `kind`, in
+    the one place that turns registrations into what a turn takes. `scope` is where it
+    applies: a name the turn has to be running under, or `None` for everywhere — and
+    nothing a scope can switch off.
     """
 
     module: str
     kind: str
     value: Any
     scope: str | None = None
+
+
+def name_of(module: str) -> str:
+    """What a plugin is called: the last segment of what it was loaded under.
+
+    One rule in one place, because four things are named by it — the heading of its
+    section in the brief, the settings it may read, the logger its lines carry, and the
+    name two plugins may not share. A file dropped in the plugins folder is loaded under
+    its own stem, so this is that stem.
+    """
+    return module.rsplit(".", 1)[-1]
+
+
+@dataclass(frozen=True)
+class Contributed:
+    """One registration as the listing shows it: what kind, what name, and where.
+
+    `name` is the tool's name or the event a handler subscribed to, and blank where the
+    kind has no name of its own, as a section of the brief has not. One field over every
+    kind, so a fifth kind is listed without this shape widening.
+    """
+
+    kind: str
+    name: str
+    scope: str | None = None
+
+    @property
+    def system_wide(self) -> bool:
+        """Whether this applies to every turn, no scope being able to switch it off."""
+        return self.scope is None
+
+
+@dataclass(frozen=True)
+class Listed:
+    """One loaded plugin, and everything it registered.
+
+    `name` is its last segment — what heads its section of the brief and names its
+    settings — and `source` is where it was found: a module path, or a file.
+    """
+
+    name: str
+    source: str
+    contributions: tuple[Contributed, ...] = ()
+
+    @property
+    def scopes(self) -> tuple[str, ...]:
+        """Every field it registered under, once each, in registration order."""
+        named = [each.scope for each in self.contributions if each.scope is not None]
+        return tuple(dict.fromkeys(named))
+
+    def of(self, kind: str) -> tuple[Contributed, ...]:
+        """Everything it registered of one kind, in the order it registered them.
+
+        One reader over the kinds rather than a property per kind: a fifth kind is
+        already listed, and would otherwise want a fourth accessor to be read by.
+        """
+        return tuple(each for each in self.contributions if each.kind == kind)
 
 
 class Host(Protocol):
@@ -181,8 +248,17 @@ class Extension:
     """A plugin module that imported, and the call that registers what it has.
 
     Loading proves the module is there and defines `extend`; registering happens later,
-    against a host, because a host needs the parts an assembled app holds.
+    against a host, because a host needs the parts an assembled app holds. `source` is
+    where it was found and what every refusal quotes: the module path a deployment
+    named, or the file it was read from. A named module is its own source, so leaving it
+    out says "named rather than dropped".
     """
 
     module: str
     extend: Extend
+    source: str = ""
+
+    def __post_init__(self) -> None:
+        """Take the module path as the source where none was given."""
+        if not self.source:
+            object.__setattr__(self, "source", self.module)

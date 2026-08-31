@@ -138,9 +138,61 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    turn. Because it read the user's documents, its answer reaches cora's own model
    labelled untrusted, the same as a passage would.
 
-8. **Name it.** `CORA_PLUGINS` takes module paths separated by commas, in order:
+8. **Say which contract it wants.** cora offers one version at a time, and a plugin
+   names the one it was written against:
+
+   ```python
+   CONTRACT = 1
+   ```
+
+   Write the number, not an import of cora's own `CONTRACT` — importing it would
+   declare whatever the cora in front of you offers, which is the check saying yes to
+   everything.
+
+   It is read before `extend` is called, so a plugin cora will not have never runs. A
+   plugin declaring nothing is taken as asking for the version cora offers, and one
+   asking for another is refused by name — the refusal says which version it wanted and
+   which cora has.
+
+   **What is public** is everything `cora.ports.host` names: `Host` and its register
+   calls, the four event names, `CONTRACT`, `DEFAULT_SCOPE`, and the values a handler is
+   handed — `ToolCall` and `ToolResult` from `cora.ports.plugin`, and `ToolRefusal` to
+   raise. **What may move** is everything else: `cora.engine`, `cora.app`, the shape of
+   the trace, and the wording of any message. A compatibility policy waits for the first
+   author it would bind; until then, the version is how you find out.
+
+9. **Load it.** Two ways, and neither is a fork. Name the module in `CORA_PLUGINS`,
+   separated by commas, in order:
 
    ```sh
    export CORA_PLUGINS=cora.plugins.security,cora.plugins.birds
    make run
    ```
+
+   Or drop a single `.py` file into `./.cora/plugins/` and skip the packaging entirely:
+
+   ```sh
+   cp field_notes.py .cora/plugins/
+   make run
+   ```
+
+   A dropped file is named for itself — `field_notes.py` is the `field_notes` plugin,
+   which heads its section of the brief and names its settings. The name has to be a
+   plain identifier, because it also spells a variable in the environment. The folder is
+   read in name order after the modules `CORA_PLUGINS` names, because load order is the
+   only precedence there is, and `CORA_PLUGINS_PATH` moves the folder.
+
+   A dropped plugin is *one* file: it may import anything installed, but it cannot
+   import a neighbour in the folder or use a relative import. A plugin that has grown
+   past one file is a package, which is step 1.
+
+10. **See what loaded.** `make plugins` prints every plugin under where it came from,
+    with what each registered and the scope it applies in — and a registration carrying
+    no scope is marked `system-wide`, because a claim on every turn is a visible act:
+
+    ```sh
+    make plugins
+    ```
+
+    The same listing is behind the plug icon on the page. Both read the registrations
+    the running app holds, so neither can drift from what it describes.

@@ -83,13 +83,14 @@ def test_the_page_uploads_asks_reads_the_passage_and_comes_back_to_it() -> None:
     question is answered against it with its steps on the wire as they are taken and
     its answer in the pieces it was written in, the citation opens onto the text its
     offsets were measured in, and the conversation is there to reopen afterwards."""
-    with TestClient(api(_app(), plugins=("cora.plugins.fitness",))) as page:
+    with TestClient(api(_app())) as page:
         added = page.post(
             "/api/documents", files={"file": (DOCUMENT, SEED, "text/markdown")}
         )
         assert added.json()["chunks"] >= 1
         assert page.get("/api/documents").json() == [DOCUMENT]
-        assert page.get("/api/plugins").json() == ["cora.plugins.fitness"]
+        listed = page.get("/api/plugins").json()
+        assert [each["name"] for each in listed] == ["valid"]
 
         streamed = frames(
             page.post("/api/ask", json={"question": QUESTION, "thread_id": THREAD}).text
@@ -140,7 +141,7 @@ def test_a_search_the_model_asked_for_and_malformed_ends_the_turn(
         reasoning_effort="low",
     )
 
-    with TestClient(api(_app(model), plugins=("cora.plugins.fitness",))) as page:
+    with TestClient(api(_app(model))) as page:
         page.post("/api/documents", files={"file": (DOCUMENT, SEED, "text/markdown")})
 
         streamed = frames(

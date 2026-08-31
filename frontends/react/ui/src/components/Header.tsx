@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
+import type { Contribution, Plugin } from '../api'
 import RailToggle from './RailToggle'
 import ScopePicker from './ScopePicker'
 
 type Props = {
-  plugins: string[]
+  plugins: Plugin[]
   fields: string[]
   pin: string | null
   fixedPin: boolean
@@ -18,6 +19,8 @@ type Props = {
 
 const BARE = 'bare cora'
 const NOTHING_TO_START = 'You are already in a new session.'
+const SYSTEM_WIDE = 'system-wide'
+const NOTHING_REGISTERED = 'registers nothing'
 
 export default function Header({
   plugins,
@@ -68,7 +71,7 @@ export default function Header({
             <path d="M10 16.2V18" stroke="currentColor" strokeWidth="1.4" />
           </svg>
           <span className="plugin-badge-name">
-            {plugins.length === 0 ? BARE : plugins.map(shortly).join(' · ')}
+            {plugins.length === 0 ? BARE : plugins.map((each) => each.name).join(' · ')}
           </span>
           <span className="plugin-badge-caret">▾</span>
         </button>
@@ -77,10 +80,36 @@ export default function Header({
             {plugins.length === 0 ? (
               <div className="plugin-option-blurb">No plugin is loaded.</div>
             ) : (
-              plugins.map((module) => (
-                <div key={module} className="plugin-option">
-                  <span className="plugin-option-name">{shortly(module)}</span>
-                  <div className="plugin-option-blurb">{module}</div>
+              plugins.map((plugin) => (
+                <div key={plugin.source} className="plugin-option">
+                  <span className="plugin-option-name">{plugin.name}</span>
+                  <div className="plugin-option-blurb">{plugin.source}</div>
+                  {plugin.scopes.length > 0 && (
+                    <div className="plugin-option-fields">
+                      {plugin.scopes.join(' · ')}
+                    </div>
+                  )}
+                  <ul className="plugin-registrations">
+                    {plugin.contributions.length === 0 ? (
+                      <li className="plugin-registration">{NOTHING_REGISTERED}</li>
+                    ) : (
+                      plugin.contributions.map((each, at) => (
+                        <li key={key(each, at)} className="plugin-registration">
+                          <span className="plugin-registration-kind">{each.kind}</span>
+                          <span className="plugin-registration-name">{each.name}</span>
+                          <span
+                            className={
+                              each.scope === null
+                                ? 'plugin-registration-everywhere'
+                                : 'plugin-registration-scope'
+                            }
+                          >
+                            {each.scope ?? SYSTEM_WIDE}
+                          </span>
+                        </li>
+                      ))
+                    )}
+                  </ul>
                 </div>
               ))
             )}
@@ -120,5 +149,8 @@ export default function Header({
   )
 }
 
-/** `cora.plugins.fitness` reads as `fitness` on a badge; the menu keeps the full name. */
-const shortly = (module: string) => module.split('.').pop() ?? module
+/** Position, because nothing else is unique: a plugin may register two tools in one
+    field, and two sections of the brief carry no name to tell them apart at all. The
+    list is rebuilt whole from one fetch, so an index is stable for as long as it is
+    drawn. */
+const key = (each: Contribution, at: number) => `${at}:${each.kind}:${each.name}`

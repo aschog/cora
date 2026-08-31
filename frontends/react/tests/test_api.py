@@ -33,17 +33,13 @@ from cora.frontends.react.api import (
     api,
 )
 from fakes import FailingConversations, FailingMemory, FakeConversations, FakeMemory
+from fixture_plugins import make_plugin, make_tool
 
 NOTES = b"Squats stall on sleep, not on volume. The block holds intensity."
 
 
-def client(
-    app: App,
-    *,
-    plugins: tuple[str, ...] = (),
-    ui: pathlib.Path | None = None,
-) -> TestClient:
-    return TestClient(api(app, plugins=plugins, ui=ui))
+def client(app: App, *, ui: pathlib.Path | None = None) -> TestClient:
+    return TestClient(api(app, ui=ui))
 
 
 def test_the_documents_endpoint_lists_what_is_indexed() -> None:
@@ -208,14 +204,28 @@ def test_forgetting_where_nothing_is_kept_is_done_rather_than_missing(
     assert forgotten.status_code == 204
 
 
-def test_the_plugins_endpoint_names_what_the_deployment_configured() -> None:
-    named = client(assembled(), plugins=("cora.plugins.fitness",)).get("/api/plugins")
+def test_the_plugins_endpoint_carries_what_each_plugin_registered() -> None:
+    """The listing `make plugins` prints, as the menu reads it — one projection of the
+    registrations, so a terminal and the page cannot disagree."""
+    app = assembled(plugin=make_plugin("birds", tools=(make_tool("count"),), scope="b"))
 
-    assert named.json() == ["cora.plugins.fitness"]
+    listed = client(app).get("/api/plugins").json()
+
+    assert listed == [
+        {
+            "name": "birds",
+            "source": "fixture_plugins.birds",
+            "scopes": ["b"],
+            "contributions": [
+                {"kind": "instructions", "name": "", "scope": "b"},
+                {"kind": "tool", "name": "count", "scope": "b"},
+            ],
+        }
+    ]
 
 
 def test_with_no_plugin_configured_the_page_is_told_bare_cora() -> None:
-    assert client(assembled()).get("/api/plugins").json() == []
+    assert client(assembled(plugins=())).get("/api/plugins").json() == []
 
 
 def test_a_built_page_is_served_beside_the_api(tmp_path: pathlib.Path) -> None:

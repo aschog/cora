@@ -9,6 +9,7 @@ from cora.ports.host import (
     INSTRUCTIONS,
     SCREENING,
     TOOL,
+    Extension,
     Registration,
     Subscription,
 )
@@ -177,3 +178,43 @@ def test_a_scope_nobody_wrote_instructions_for_outlines_as_nothing() -> None:
 
     assert registry.outline("travel") == ""
     assert Registry().outline("fitness") == ""
+
+
+def _extension(module: str, source: str = "") -> Extension:
+    return Extension(module=module, extend=lambda cora: None, source=source)
+
+
+def test_the_listing_names_what_each_plugin_registered_and_where() -> None:
+    """One entry per plugin loaded, holding what a turn would take from it: a listing
+    read off the registrations cannot drift from the app it describes."""
+    registry = Registry(
+        (
+            _registered(
+                CORA, HANDLER, Subscription(SCREENING, refuses_containing("x"))
+            ),
+            _registered(FITNESS, INSTRUCTIONS, "Coach.", "fitness"),
+            _registered(FITNESS, TOOL, make_tool("bmr"), "fitness"),
+            _subscribed(FITNESS, SCREENING),
+            _registered(SECURITY, TOOL, make_tool("scan"), "travel"),
+        )
+    )
+
+    listed = registry.listing((_extension(FITNESS), _extension(SECURITY, "notes.py")))
+
+    coaching, guarding = listed
+    assert (coaching.name, coaching.source) == ("fitness", FITNESS)
+    assert (guarding.name, guarding.source) == ("security", "notes.py")
+    assert [each.name for each in coaching.of(TOOL)] == ["bmr"]
+    assert [each.name for each in coaching.of(HANDLER)] == [SCREENING]
+    assert coaching.of(INSTRUCTIONS)
+    assert coaching.scopes == ("fitness",)
+    assert [each.system_wide for each in coaching.contributions] == [False, False, True]
+
+
+def test_a_plugin_that_registered_nothing_is_listed_with_nothing_under_it() -> None:
+    """It is the one an operator most needs to see: loaded, and contributing none."""
+    (quiet,) = Registry().listing((_extension(FITNESS),))
+
+    assert quiet.contributions == ()
+    assert quiet.of(TOOL) == quiet.of(HANDLER) == quiet.of(INSTRUCTIONS) == ()
+    assert quiet.scopes == ()

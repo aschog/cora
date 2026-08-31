@@ -6,6 +6,7 @@ from cora.app.config import (
     DEFAULT_MEMORY_PATH,
     DEFAULT_MODEL,
     DEFAULT_PLUGINS,
+    DEFAULT_PLUGINS_PATH,
     DEFAULT_SCOPES,
     Config,
 )
@@ -31,6 +32,7 @@ def test_from_env_reads_every_field() -> None:
             "CORA_DOCUMENTS_PATH": "/tmp/documents.sqlite",
             "CORA_CONVERSATIONS_PATH": "/tmp/conversations.sqlite",
             "CORA_SCOPES": " fitness , cooking ,",
+            "CORA_PLUGINS_PATH": "/tmp/dropped",
         }
     )
 
@@ -51,6 +53,7 @@ def test_from_env_reads_every_field() -> None:
         memory_path="/tmp/memory.sqlite",
         documents_path="/tmp/documents.sqlite",
         conversations_path="/tmp/conversations.sqlite",
+        plugins_path="/tmp/dropped",
     )
 
 
@@ -66,6 +69,7 @@ def test_from_env_applies_defaults_for_optional_fields() -> None:
     assert config.history_turns > 0
     assert config.db_path
     assert config.memory_path
+    assert config.plugins_path == DEFAULT_PLUGINS_PATH
 
 
 def test_the_model_may_be_named_with_the_prefix_the_key_and_url_already_use() -> None:
