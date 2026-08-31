@@ -188,21 +188,29 @@ turn's active ones, and SHALL offer no way for a scope to switch a system-wide o
 
 ### Requirement: A turn runs under the scopes it was given
 
-The system SHALL run a turn under the scopes its caller named, and under the
-deployment's own where the caller named none. A deployment SHALL name them in the
-environment, and a turn SHALL keep them for as long as it lasts.
+The system SHALL run a turn under the scope its conversation is pinned to, or the one its
+caller named, or the one it routed the question to. A deployment SHALL name in the
+environment the scopes a turn may run under, and a deployment naming one SHALL leave
+routing nothing to choose. A turn SHALL keep the scope it settled on for as long as it
+lasts.
 
 #### Scenario: The deployment says what its cora is for
 
 - **GIVEN** a deployment naming one scope beside the plugins it loaded
 - **WHEN** anyone asks anything
-- **THEN** that scope's instructions and tools are what the turn runs with
+- **THEN** that scope's instructions and tools are what the turn runs with, unrouted
 
 #### Scenario: The caller of one turn says otherwise
 
 - **GIVEN** the same deployment
 - **WHEN** a turn is asked for under a scope of its own
 - **THEN** it runs under that one instead
+
+#### Scenario: The pin outranks the reading of the question
+
+- **GIVEN** a conversation pinned to one of two available scopes
+- **WHEN** a question belonging to the other is asked
+- **THEN** the turn runs under the pinned scope, and the question is not routed
 
 #### Scenario: A turn that stopped to ask resumes under the same scopes
 
