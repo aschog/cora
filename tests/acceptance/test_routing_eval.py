@@ -54,12 +54,13 @@ RECORDED: tuple[tuple[str, str], ...] = (
 """Every question, with the field it belongs to. Grown rather than rewritten: a case
 removed after a bad run would make the number say what the set was chosen to say."""
 
-THRESHOLD = 0.75
+THRESHOLD = 0.9
 """The share the router has to reach.
 
-Not yet measured: this is a floor to run the set against, replaced by the first real
-number the tier reports. Raised only against a measurement — a threshold set above what
-was ever observed fails the tier on the model rather than on a regression.
+Measured at 16/16 on the first run, against `openai/gpt-4o-mini` at the shipped
+defaults. Set below that on purpose: one sample says nothing about the variance, and a
+bar at what was observed once fails the tier on a single reading going the other way.
+One miss out of sixteen passes, two do not. Raised only against another measurement.
 """
 
 

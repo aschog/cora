@@ -16,7 +16,7 @@ a travel one.
 - `CORA_SCOPES` now names the scopes a turn *may* run under, not the ones it does
 - The travel plugin arrives with its instructions and its corpus, and nothing else yet
 - The page offers the pin and reads back the one the thread already holds
-- An `llm`-tier report measures how often the router chose the right scope
+- An `llm`-tier report measures the router: 16/16 first run, `gpt-4o-mini`, bar at 90%
 - New capability `scopes`; modified `conversation` and `plugins`
 
 ## Impact
