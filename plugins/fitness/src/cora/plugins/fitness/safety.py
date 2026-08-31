@@ -1,7 +1,5 @@
 import re
 
-from cora.domain.errors import InputRejectedError
-
 _REDIRECT = (
     "I can't help with medical or medication questions. Please consult a "
     "qualified healthcare professional."
@@ -47,7 +45,7 @@ _ASKS_IF_IT_IS_ONE = re.compile(
 the article: "is my chest pain a heart condition" against "I have a heart condition"."""
 
 
-class MedicalSafetyRule:
+def refuse_medical(question: str) -> str | None:
     """Refuses a request for medical judgement, not a mention of what someone lives
     with: naming diabetes or the medication they take is how a training question gets
     the answer it needs, and the caution that answer carries is the model's to write.
@@ -56,16 +54,13 @@ class MedicalSafetyRule:
     model on every message, so it stays a word list. What it misses, the plugin's
     "you are not a doctor" instruction is there to catch.
     """
-
-    def apply(self, user_input: str) -> None:
-        text = user_input.lower()
-        subject = _any(text, _CONDITIONS + _MEDICATIONS)
-        asks = _any(text, _ABOUT_MEDICATION + _FOR_TREATMENT + _FOR_A_VERDICT)
-        diagnosis = _ASKS_TO_BE_DIAGNOSED.search(text) or _ASKS_IF_IT_IS_ONE.search(
-            text
-        )
-        if (subject and asks) or diagnosis:
-            raise InputRejectedError(_REDIRECT)
+    text = question.lower()
+    subject = _any(text, _CONDITIONS + _MEDICATIONS)
+    asks = _any(text, _ABOUT_MEDICATION + _FOR_TREATMENT + _FOR_A_VERDICT)
+    diagnosis = _ASKS_TO_BE_DIAGNOSED.search(text) or _ASKS_IF_IT_IS_ONE.search(text)
+    if (subject and asks) or diagnosis:
+        return _REDIRECT
+    return None
 
 
 def _any(text: str, words: tuple[str, ...]) -> bool:

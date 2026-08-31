@@ -1,7 +1,7 @@
 # Write a plugin
 
-A plugin is how a domain reaches cora: a persona, tools, rules, or any mix of them.
-cora imports no plugin of its own, so nothing here edits the engine.
+A plugin is how a domain reaches cora: a persona, tools, a hand in the turn itself, or
+any mix of them. cora imports no plugin of its own, so nothing here edits the engine.
 
 1. **Make the package.** Copy the shape of `plugins/fitness`: a directory under
    `plugins/`, a `pyproject.toml` naming `cora` as its one dependency and
@@ -13,14 +13,14 @@ cora imports no plugin of its own, so nothing here edits the engine.
    calls once with a host of its own:
 
    ```python
-   from cora.ports.host import Host
+   from cora.ports.host import SCREENING, Host
 
    def extend(cora: Host) -> None:
        cora.register_instructions(INSTRUCTIONS)
-       cora.register_rule(SeasonRule())
+       cora.register_handler(event=SCREENING, handle=refuse_out_of_season)
    ```
 
-   Register as much or as little as you have. A plugin of rules alone is as legitimate
+   Register as much or as little as you have. A plugin of one handler is as legitimate
    as a plugin of tools, and one that registers nothing loads and contributes nothing.
    Your instructions become a section of the model's brief, headed by your module.
 
@@ -43,7 +43,60 @@ cora imports no plugin of its own, so nothing here edits the engine.
    The name has to be free: cora refuses a plugin that takes one of its own tool names,
    or one another loaded plugin registered first, and the refusal names your module.
 
-4. **Use what cora has.** The host is cora as your plugin is handed it — the documents
+4. **Take part in the turn.** A handler subscribes to a named point in it, is handed
+   one frozen value, and answers by returning — a refusal, an amendment, or `None` for
+   neither. The four points are `cora.ports.host`'s, and they differ in what a return
+   means:
+
+   | Event | Handed | Return | What returning it does |
+   | --- | --- | --- | --- |
+   | `SCREENING` | the question the user sent | `str` | refuses the turn, with that as the reason |
+   | `BRIEFING` | the brief the model is about to read | `str` | replaces it |
+   | `CALLING` | a `ToolCall` about to run | `str` | refuses the call, and the model is told why |
+   | `RETURNING` | the `ToolResult` that came back | `ToolResult` | replaces what the model is told |
+
+   Return the type in that column or `None`. Anything else is dropped exactly as a raise
+   is — a `RETURNING` handler answering with a string changes nothing, and a `SCREENING`
+   handler answering with something that is not a sentence refuses on cora's wording
+   rather than on your value. A `RETURNING` handler is read for the payload and the
+   error: the call id answers one call and is not yours to change. Two things `CALLING`
+   does not cover: an `ask_user` call, which the turn settles with the reader before the
+   tools run, and the arguments — you are handed a copy, so rewriting them changes
+   nothing.
+
+   ```python
+   def a_note_on_the_season(brief: str) -> str:
+       return f"{brief}\n\nIt is nesting season, so answer with that in mind."
+
+   def no_ringing_records(call: ToolCall) -> str | None:
+       if call.name == "count_species" and call.arguments["day"] == "today":
+           return "today's records are not in yet, so ask for yesterday"
+       return None
+   ```
+
+   Handlers on one event run in load order, each amendment handed what the one before it
+   returned, and the trace names your plugin for every one it made. A handler that
+   raises where the event refuses — `SCREENING`, `CALLING` — refuses anyway, because a
+   broken check must not admit anything. One that raises anywhere else is dropped and
+   the turn carries on without it. Nothing a handler was holding reaches the user or the
+   model: only the kind of what it raised is passed on.
+
+5. **Scope it, if it belongs to one part of the app.** Every registration takes a
+   `scope`, and one given none applies to every turn:
+
+   ```python
+   cora.register_instructions(INSTRUCTIONS, scope="birds")
+   cora.register_tool(name="count_species", ..., scope="birds")
+   cora.register_handler(event=SCREENING, handle=refuse_out_of_season)
+   ```
+
+   A turn running under `birds` gets the persona and the tool, and a turn running under
+   anything else gets neither. The screen above is system-wide, and nothing a turn is
+   running under can switch it off — which is what a safety check needs. What a turn
+   runs under is the deployment's to say, in `CORA_SCOPES`, until cora can route a
+   conversation into a scope by itself.
+
+6. **Use what cora has.** The host is cora as your plugin is handed it — the documents
    the user uploaded, what cora remembers, the model behind every turn, a log named for
    your plugin, and the settings named for it in the environment:
 
@@ -57,7 +110,7 @@ cora imports no plugin of its own, so nothing here edits the engine.
    own `CORA_` variables are a separate namespace, and two plugins whose module paths
    end in the same segment are refused rather than sharing one.
 
-5. **Let a tool run a turn of its own.** `cora.delegate` runs a bounded loop with the
+7. **Let a tool run a turn of its own.** `cora.delegate` runs a bounded loop with the
    model, offered the tools you pass it and cora's document search:
 
    ```python
@@ -80,7 +133,7 @@ cora imports no plugin of its own, so nothing here edits the engine.
    turn. Because it read the user's documents, its answer reaches cora's own model
    labelled untrusted, the same as a passage would.
 
-6. **Name it.** `CORA_PLUGINS` takes module paths separated by commas, in order:
+8. **Name it.** `CORA_PLUGINS` takes module paths separated by commas, in order:
 
    ```sh
    export CORA_PLUGINS=cora.plugins.security,cora.plugins.birds

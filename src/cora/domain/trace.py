@@ -139,6 +139,28 @@ class MemoryUnread(TraceStep):
 
 
 @dataclass(frozen=True)
+class HandlerRan(TraceStep):
+    """One plugin's handler took part in the turn, and this is what came of it.
+
+    `plugin` is the module the deployment named, because that is who a reader holds
+    responsible for an amendment they did not expect. `outcome` is the one line they
+    read, worded for the event it happened at; `detail` carries the refusal, or the kind
+    of exception a handler that broke was raising.
+    """
+
+    plugin: str = ""
+    event: str = ""
+    outcome: str = ""
+    detail: str = ""
+    failed: bool = False
+
+    @property
+    def summary(self) -> str:
+        """The plugin, and what it did — the plugin first, because that is the news."""
+        return f"{self.plugin} {self.outcome}"
+
+
+@dataclass(frozen=True)
 class ToolUse(TraceStep):
     """One tool call and what came back from it.
 

@@ -160,7 +160,7 @@ class Slot:
 
 
 def _element(annotation: ast.expr) -> str:
-    """What one of a container holds: a rule out of `tuple[ValidationRule, ...]`."""
+    """What one of a container holds: a step out of `tuple[TraceStep, ...]`."""
     if isinstance(annotation, ast.Subscript):
         inner = annotation.slice
         first = inner.elts[0] if isinstance(inner, ast.Tuple) else inner

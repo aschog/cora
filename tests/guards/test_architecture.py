@@ -685,6 +685,23 @@ def _names_a_plugin(path: pathlib.Path) -> bool:
     )
 
 
+def test_nothing_in_the_repository_offers_a_second_door_into_screening() -> None:
+    """Screening is a subscription like any other, so the port and the list that used to
+    be the other way in are gone rather than deprecated: two doors to one moment is what
+    the story forbids, and a registration method left standing is the second one.
+    """
+    gone = r"\b(?:Validation" + r"Rule|register_" + r"rule|CORA_" + r"RULES)\b"
+    # Assembled from fragments so this file is not its own violation: a guard has to
+    # name what it forbids, and `_names_a_plugin` reads every file including this one.
+    named = sorted(
+        str(path.relative_to(workspace.ROOT))
+        for path in REPOSITORY_FILES
+        if re.search(gone, path.read_text())
+    )
+
+    assert named == [], "\n".join(["these still name the old screening door:", *named])
+
+
 def test_no_module_in_the_repository_declares_a_plugin_record() -> None:
     """The record is gone rather than deprecated: a module still declaring one would
     load and contribute nothing, which is worse than being refused."""

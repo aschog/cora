@@ -81,13 +81,17 @@ def _traced(*steps: TraceStep) -> AgentState:
 
 
 def test_answer_seeds_the_run_with_the_question_and_names_the_thread() -> None:
-    """The conversation is the thread's, so there is nothing else to seed: history
-    left the signature with the turn that stopped replaying it."""
+    """The conversation is the thread's, so the question and what the turn runs under
+    are all there is to seed: history left the signature with the turn that stopped
+    replaying it."""
     runner = _StubRunner({"answer": "80 kg."})
 
-    result = Agent(runner).answer("What was my weight?", "t1")
+    result = Agent(runner).answer("What was my weight?", "t1", scopes=("fitness",))
 
-    assert runner.seeded == {"question": "What was my weight?"}
+    assert runner.seeded == {
+        "question": "What was my weight?",
+        "scopes": ["fitness"],
+    }
     assert runner.thread_id == "t1"
     assert result.answer == "80 kg."
 

@@ -22,8 +22,8 @@ Why cora is built the way it is.
 
 One task each, for when you are already working.
 
-- [Write a plugin](how-to/write-a-plugin.md) — a persona, tools and rules, as a package
-  to install
+- [Write a plugin](how-to/write-a-plugin.md) — a persona, tools and a hand in the turn,
+  as a package to install
 - [Run the React shell](how-to/run-the-react-shell.md) — the same app over HTTP, with a
   React page
 - [Watch a turn happen](how-to/watch-a-turn.md) — the trace, the port log, and the live

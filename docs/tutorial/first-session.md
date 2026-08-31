@@ -20,13 +20,16 @@ npm ci --prefix frontends/react/ui
 ```sh
 export OPENROUTER_API_KEY=sk-or-...        # required (https://openrouter.ai/keys)
 export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness
+export CORA_SCOPES=fitness
 make run                                   # or: make run-env, to read the key from .env
 ```
 
 cora loads no plugin unless asked, so the second line is what turns this from a bare
 cora into the coaching app with a prompt-injection screen. Drop it to see
-what the box does on its own. `make run-env` reads its environment from `.env` instead,
-so put `CORA_PLUGINS` there too rather than exporting it.
+what the box does on its own. `CORA_SCOPES=fitness` is what says a turn runs as the
+coach: the persona and the calculators are that scope's, and the medical filter holds
+either way. `make run-env` reads its environment from `.env` instead, so put both there
+rather than exporting them.
 
 ## 3. Ask it something
 

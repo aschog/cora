@@ -1,6 +1,7 @@
 """The steps a turn is made of, and the rule that routes between them."""
 
-from dataclasses import dataclass, replace
+from copy import deepcopy
+from dataclasses import dataclass, field, replace
 from typing import Protocol
 
 from cora.domain.agent_state import AgentState
@@ -15,27 +16,36 @@ from cora.domain.trace import (
 )
 from cora.domain.transcript import prompt_from
 from cora.engine.ask_tool import ASK_TOOL_NAME, decision_from
+from cora.engine.events import dispatch
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
-from cora.engine.nesting import collecting
+from cora.engine.nesting import Inside, collecting, read_untrusted
+from cora.engine.plugin_set import Registry
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.rounds import Read, decided, told, used
 from cora.ports.chat_model import Aside, ChatModel, Message, TextSink, unheard
 from cora.ports.graph import ASK, DONE, TOOLS, Step
+from cora.ports.host import BRIEFING, CALLING, RETURNING, SCREENING
 from cora.ports.memory import Fact, Memory
 from cora.ports.pause import Pause, declined
-from cora.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult, ValidationRule
+from cora.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult
 
 
 class ToolExecutor(Protocol):
     """Whatever runs a call and answers with a result."""
 
-    def execute(self, call: ToolCall) -> ToolResult:
+    def execute(
+        self, call: ToolCall, scopes: frozenset[str] = frozenset()
+    ) -> ToolResult:
         """Run one call and answer for it, however it went.
 
         A tool that refused, failed or does not exist comes back as a result carrying
         the reason, because the model is owed an answer for every call it made. Only an
         `AdapterError` propagates: a store that is unreachable is not this call's news
         to break.
+
+        Args:
+            scopes: What the turn is running under. A tool registered under a scope
+                that is not among them is not there to be called.
         """
         ...
 
@@ -136,54 +146,65 @@ class Named:
 class ScreenStep:
     """The step that admits a question, and then opens the turn on it.
 
-    Holds what does not change between turns — the rules, the plugins' instructions,
-    the memory slot — and reads the rest off the state it is handed.
+    Holds what does not change between turns — what the plugins registered and the
+    memory slot — and reads the rest off the state it is handed, the turn's scopes
+    included.
     """
 
-    rules: tuple[ValidationRule, ...]
-    instructions: str = ""
+    registry: Registry = field(default_factory=Registry)
     memory: Memory | None = None
 
     def __call__(self, state: AgentState) -> AgentState:
         """Open a turn on a thread that may already hold ten.
 
         The question joins the transcript, the brief is restated for this turn alone,
-        and the answer the last turn finished with is cleared. The rules run before any
-        of that, so a refused question costs the thread nothing.
+        and the answer the last turn finished with is cleared. The screening handlers
+        run before any of that, so a refused question costs the thread nothing.
 
         Raises:
-            InputRejectedError: A rule refused the question. Nothing was written, and
-                the message is the one the user reads.
+            InputRejectedError: A handler refused the question, or broke screening it.
+                Nothing was written, the message is the one the user reads, and the
+                steps taken travel on the refusal.
         """
         question = state["question"]
-        for rule in self.rules:
-            rule.apply(question)
-        brief, unread = self._brief()
+        scopes = scoped(state)
+        trace: list[TraceStep] = []
+        dispatch(SCREENING, question, self.registry.handlers(SCREENING, scopes), trace)
         return {
             "messages": [Message(role="user", content=question)],
             "turn_start": len(state.get("messages", ())),
             "trace_start": len(state.get("trace", ())),
-            "brief": brief,
-            "trace": [MemoryUnread()] if unread else [],
+            "brief": self._brief(scopes, trace),
+            "trace": trace,
             "answer": "",
         }
 
-    def _brief(self) -> tuple[str, bool]:
+    def _brief(self, scopes: frozenset[str], trace: list[TraceStep]) -> str:
         """Cora first, then the scopes it was given, then the user's own notes.
 
         No memory in the slot means no remembering: the rule is left out with the tool
-        it names, so the model is never told to call what it was not offered.
+        it names, so the model is never told to call what it was not offered. What the
+        brief's own handlers make of the result is the last word on it — cora's
+        preamble included, because a deployment that loaded a plugin asked for it.
         """
         facts, unread = self._recalled()
+        if unread:
+            trace.append(MemoryUnread())
+        instructions = self.registry.instructions(scopes)
         sections = (
             CORA_PREAMBLE,
             AGENT_RULES,
             *((MEMORY_RULE,) if self.memory is not None else ()),
             ASK_RULE,
-            *((self.instructions,) if self.instructions.strip() else ()),
+            *((instructions,) if instructions.strip() else ()),
             *_remembered(facts),
         )
-        return "\n\n".join(sections), unread
+        return dispatch(
+            BRIEFING,
+            "\n\n".join(sections),
+            self.registry.handlers(BRIEFING, scopes),
+            trace,
+        )
 
     def _recalled(self) -> tuple[tuple[Fact, ...], bool]:
         """The facts to state, and whether reading them failed.
@@ -210,6 +231,7 @@ class ModelStep:
     chat_model: ChatModel
     tools: tuple[Tool, ...]
     max_history_turns: int
+    registry: Registry = field(default_factory=Registry)
     on_text: TextSink = unheard
 
     def writing_to(self, on_text: TextSink) -> "ModelStep":
@@ -234,13 +256,23 @@ class ModelStep:
             LlmError: The model gave back nothing usable. The turn ends: half an answer
                 is not a shorter answer.
         """
-        reply = self.chat_model.complete(self._prompt(state), self.tools, self.on_text)
+        reply = self.chat_model.complete(
+            self._prompt(state), self._offered(state), self.on_text
+        )
         if not reply.is_final and reply.text:
             self.on_text(Aside())
         appended = Message(
             role="assistant", content=reply.text, tool_calls=reply.tool_calls
         )
         return {"messages": [appended], "trace": [decided(reply)]}
+
+    def _offered(self, state: AgentState) -> tuple[Tool, ...]:
+        """Cora's own tools, and the registered ones this turn's scopes reach.
+
+        A tool out of scope is not offered rather than offered and refused: the model
+        is told what it can do, and a list it cannot use is a list it will try.
+        """
+        return (*self.tools, *self.registry.tools(scoped(state)))
 
     def _prompt(self, state: AgentState) -> tuple[Message, ...]:
         return prompt_from(
@@ -271,14 +303,25 @@ class AnswerStep:
         return {"answer": rounds[-1].content if rounds else ""}
 
 
+REFUSED_CALL = "tool '{name}' was refused: {reason}"
+"""What the model is told about a call a handler would not let run. Worded as a refusal
+rather than as a failure: nothing broke, and the turn answers around it."""
+
+
 @dataclass(frozen=True)
 class ToolStep:
     """The step that runs what a round asked for, and numbers what it cites."""
 
     tool_runtime: ToolExecutor
+    registry: Registry = field(default_factory=Registry)
 
     def __call__(self, state: AgentState) -> AgentState:
         """Run the round's outstanding calls, in the order the model made them.
+
+        Each is offered to the handlers first, and one they refuse never runs: the model
+        is told why, in a `tool` message like any other, and the turn answers on the
+        round it already has. What a tool returned is offered to the handlers too, and
+        what they make of it is what the model is told.
 
         A payload that cites its own material is replaced by the numbered block the
         model reads, and the citations it hands out join the conversation's registry —
@@ -291,12 +334,13 @@ class ToolStep:
         while the call runs, and it is kept under that call rather than beside it.
         """
         known = tuple(state.get("citations", ()))
+        scopes = scoped(state)
         messages: list[Message] = []
         trace: list[TraceStep] = []
         added: list[Citation] = []
         for call in _requested_calls(state):
-            with collecting() as inside:
-                result = self.tool_runtime.execute(call)
+            after: list[TraceStep] = []
+            result, inside = self._ran(call, scopes, trace, after)
             citable = result.payload if isinstance(result.payload, Citable) else None
             if citable is None:
                 read = Read(
@@ -310,7 +354,55 @@ class ToolStep:
                 read = Read(body=context.text, outcome=citable.summary, untrusted=True)
             messages.append(told(result, read))
             trace.append(used(call, result, read, tuple(inside.steps)))
+            trace.extend(after)
         return {"messages": messages, "trace": trace, "citations": added}
+
+    def _ran(
+        self,
+        call: ToolCall,
+        scopes: frozenset[str],
+        before: list[TraceStep],
+        after: list[TraceStep],
+    ) -> tuple[ToolResult, Inside]:
+        """One call, checked before it runs and its result handed on afterwards.
+
+        A refusal costs the turn the call and nothing else, so it comes back as the
+        result the model reads — the same shape a tool's own refusal already has.
+
+        Args:
+            before: Where the steps taken ahead of the call go.
+            after: Where the steps taken on its result go, which the caller appends
+                below the call itself: a reader follows a trace downwards, and a step
+                that changed a result cannot stand above the call that produced it.
+        """
+        # A copy of the arguments, because a refusing event may refuse its value and
+        # may not change it — and a dict inside a frozen call is changeable. One
+        # rewritten in place would change what ran and leave no step saying so.
+        checked = replace(call, arguments=deepcopy(call.arguments))
+        try:
+            dispatch(CALLING, checked, self.registry.handlers(CALLING, scopes), before)
+        except ToolRefusal as refused:
+            return (
+                ToolResult(
+                    call_id=call.call_id,
+                    error=REFUSED_CALL.format(name=call.name, reason=refused),
+                ),
+                Inside(),
+            )
+        with collecting() as inside:
+            result = self.tool_runtime.execute(call, scopes)
+            if isinstance(result.payload, Citable):
+                # The user's documents went into this call, and they went in before any
+                # handler saw it: a handler replacing the payload with prose of its own
+                # has replaced the material, not where it came from.
+                read_untrusted()
+            amended = dispatch(
+                RETURNING, result, self.registry.handlers(RETURNING, scopes), after
+            )
+        # The id answers one call and is the provider's: a handler changes what the
+        # model is told, never which call it is being told about. Left to a handler, a
+        # turn could answer a call nobody made and leave its own outstanding.
+        return replace(amended, call_id=call.call_id), inside
 
 
 @dataclass(frozen=True)
@@ -384,6 +476,16 @@ class Router:
         if _rounds(state) >= self.max_tool_rounds:
             raise ToolLoopLimitError
         return TOOLS
+
+
+def scoped(state: AgentState) -> frozenset[str]:
+    """What the turn is running under, read off the state as a set.
+
+    Plural from the start, and a set rather than a list: what applies to a turn is a
+    question of membership, and nothing about it is ordered. A turn given none runs
+    what is system-wide, which is what a bare cora is.
+    """
+    return frozenset(state.get("scopes", ()))
 
 
 def _remembered(facts: tuple[Fact, ...]) -> tuple[str, ...]:

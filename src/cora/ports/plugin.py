@@ -3,7 +3,7 @@
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any
 
 
 class ToolRefusal(Exception):
@@ -69,16 +69,3 @@ class ToolResult:
         if isinstance(self.payload, str):
             return self.payload
         return json.dumps(self.payload, default=str)
-
-
-class ValidationRule(Protocol):
-    """A rule about what a user may send, applied before a turn starts."""
-
-    def apply(self, user_input: str) -> None:
-        """Let the input through, or refuse it.
-
-        Raises:
-            InputRejectedError: The input breaks this rule. The message is shown to the
-                user, so it says what to do about it.
-        """
-        ...

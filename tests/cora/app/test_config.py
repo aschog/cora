@@ -6,6 +6,7 @@ from cora.app.config import (
     DEFAULT_MEMORY_PATH,
     DEFAULT_MODEL,
     DEFAULT_PLUGINS,
+    DEFAULT_SCOPES,
     Config,
 )
 from cora.domain.errors import ConfigurationError
@@ -29,6 +30,7 @@ def test_from_env_reads_every_field() -> None:
             "CORA_MEMORY_PATH": "/tmp/memory.sqlite",
             "CORA_DOCUMENTS_PATH": "/tmp/documents.sqlite",
             "CORA_CONVERSATIONS_PATH": "/tmp/conversations.sqlite",
+            "CORA_SCOPES": " fitness , cooking ,",
         }
     )
 
@@ -37,6 +39,7 @@ def test_from_env_reads_every_field() -> None:
         model="anthropic/claude",
         base_url="https://example/api",
         plugin_modules=("cora.plugins.custom",),
+        scopes=("fitness", "cooking"),
         top_k=7,
         max_tool_rounds=3,
         history_turns=9,
@@ -57,6 +60,7 @@ def test_from_env_applies_defaults_for_optional_fields() -> None:
     assert config.model
     assert config.base_url
     assert config.plugin_modules == DEFAULT_PLUGINS
+    assert config.scopes == DEFAULT_SCOPES
     assert config.top_k > 0
     assert config.max_tool_rounds > 0
     assert config.history_turns > 0

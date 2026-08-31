@@ -34,11 +34,12 @@ The nouns this file uses, each against the class that carries it. Paths are unde
 - **Scope** *(new, story 5)* — one field on a registration, naming the field a turn runs in
   and the lifetime of everything registered under it; `None` means system-wide.
 - **Tool** — `ports.plugin.Tool`, asked for as a `ToolCall` and answered by a `ToolResult`.
-- **Rule** — `ports.plugin.ValidationRule`, refusing an input with `InputRejectedError`
-  before any model call.
-- **Handler** *(new, story 5)* — a registration subscribed to a step, returning an amendment
-  or a refusal — never a pause, which is the gate's privilege alone; a rule and an
-  instruction become two kinds of it, an amender and an observer two more.
+- **Rule** — was `ports.plugin.ValidationRule`; gone in story 5, where screening became a
+  handler on the *screen* event and cora's own rules became system-wide subscribers.
+- **Handler** *(new, story 5)* — a registration subscribed to a named point in the turn,
+  returning an amendment or a refusal — never a pause, which is the gate's privilege
+  alone. Instructions stayed a registration: they are a string, and the brief's headings
+  are composed from them.
 - **Effect** *(new, story 11)* — a tool call that changes something outside cora, and so
   waits for approval before it runs.
 - **Approval** *(new, story 11)* — a yes or no bound to one proposed call, checkpointed;
@@ -230,67 +231,6 @@ criterion 4's evaluation number, and one scope leaves nothing to route between, 
 it would take the measurement with it. If the sprint runs long, the sprint runs long, and
 what gives is argued then against *Not in this sprint* rather than decided here while it
 is cheap to be brave.
-
-### 5. A plugin can take part in the turn
-
-As someone writing a plugin,\
-I want to act at a named point in the turn rather than only before it starts,\
-so that I can amend what the model is told, refuse a call before it runs, or wrap what comes
-back — without asking for a new field.
-
-**Scenario:** cora's own steps are subscribers
-
-- **Given** the injection screen and the input rules cora ships
-- **When** a turn runs
-- **Then** they run as handlers on the same events a plugin subscribes to, and nothing in
-  the core reaches them another way
-
-**Scenario:** a handler amends what the model is told
-
-- **Given** a plugin subscribing before the model is called
-- **When** a turn runs in its scope
-- **Then** what it returned is in the brief, and the trace attributes it to that plugin
-
-**Scenario:** two handlers amend the same step
-
-- **Given** two plugins subscribing before the model is called
-- **When** a turn runs where both apply
-- **Then** the amendments chain in load order — the second sees what the first returned —
-  and the trace attributes each to its plugin
-
-**Scenario:** a handler refuses a call before it runs
-
-- **Given** a plugin subscribing to the tool-call event and refusing one
-- **When** the model asks for that tool
-- **Then** the tool does not run, the model is told why, and the turn continues
-
-**Scenario:** a system-wide rule cannot be scoped away
-
-- **Given** a system-wide plugin loaded beside two scopes
-- **When** an injection attempt arrives in any scope, or with no scope active
-- **Then** it is refused before the model is called
-
-**Scenario:** a scoped handler applies where it belongs
-
-- **Given** a handler registered under a named scope
-- **When** a turn runs in a different scope
-- **Then** it does not run
-
-**Scenario:** the medical filter moves to where it always applies
-
-- **Given** the medical filter, today inside the fitness plugin
-- **When** a medical question is asked outside the fitness scope, or with no scope active
-- **Then** it is still refused, because the filter now ships system-wide
-
-**Scenario:** a failing handler fails the right way
-
-- **Given** a rule that raises, an amender that raises and an observer that raises
-- **When** a turn runs
-- **Then** the rule's turn is refused, the amender's and the observer's turns complete
-  without them, and the trace names the plugin in every case
-
-Until story 6 adds routing and the pin, the active scope in these scenarios is supplied by
-the caller — how a real turn acquires one is story 6's to answer.
 
 ### 6. A scope focuses the turn
 

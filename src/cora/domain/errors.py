@@ -6,12 +6,17 @@ verbatim, so no failure ever reaches the user as a stack trace.
 
 from collections.abc import Iterable
 
+from cora.domain.trace import TraceStep
+
 
 class CoreError(Exception):
     """Base error for all application failures.
 
     `step` is the step of a turn the failure came out of, filled in by whoever named
     that step and empty everywhere else — a failure outside a turn belongs to no step.
+    `trace` is what the turn had done by then, filled in by whoever holds those steps
+    when the turn ends before any state carries them out: a question refused on the way
+    in still says which plugin refused it.
     """
 
     def __init__(self, user_message: str) -> None:
@@ -19,6 +24,7 @@ class CoreError(Exception):
         super().__init__(user_message)
         self.user_message = user_message
         self.step = ""
+        self.trace: tuple[TraceStep, ...] = ()
 
 
 class IngestionError(CoreError):
@@ -87,7 +93,7 @@ class PluginLoadError(CoreError):
 
 
 class InputRejectedError(CoreError):
-    """A `ValidationRule` refused what the user sent. The message says what to do."""
+    """A handler refused what the user sent. The message says what to do about it."""
 
     pass
 

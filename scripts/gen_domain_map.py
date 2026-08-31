@@ -337,6 +337,7 @@ GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "StepEntered",
             "ModelDecision",
             "MemoryUnread",
+            "HandlerRan",
             "ToolUse",
         ),
     ),

@@ -1,45 +1,37 @@
-"""What cora refuses before a turn starts, whatever the plugins add to it."""
+"""What cora refuses before a turn starts, subscribed the way a plugin subscribes."""
 
-from dataclasses import dataclass
+from cora.ports.host import SCREENING, Host
 
-from cora.domain.errors import InputRejectedError
-
+CORA = "cora"
+"""The module name cora's own contributions are registered under. It is a plugin of
+itself here: there is one door into a turn, and cora goes through it too."""
 MAX_INPUT_CHARS = 4000
-"""What a question may run to. Beside the rule that enforces it, as the fact bound is
+"""What a question may run to. Beside the handler that enforces it, as the fact bound is
 beside the tool it sizes."""
 
 
-@dataclass(frozen=True)
-class EmptyInputRule:
-    """Nothing to answer is not a question."""
-
-    def apply(self, user_input: str) -> None:
-        """Refuse input that is empty or only whitespace.
-
-        Raises:
-            InputRejectedError: There is nothing there to answer.
-        """
-        if not user_input.strip():
-            raise InputRejectedError("Please enter a question.")
+def refuse_nothing_to_answer(question: str) -> str | None:
+    """Refuse a question that is empty or only whitespace."""
+    return None if question.strip() else "Please enter a question."
 
 
-@dataclass(frozen=True)
-class MaxLengthRule:
-    """A cap on one question, so a paste of a whole document is refused as input.
+def refuse_too_long(question: str) -> str | None:
+    """Refuse a question over `MAX_INPUT_CHARS`, naming the cap.
 
-    Sized by the deployment rather than fixed here: `MAX_INPUT_CHARS` is what cora is
-    assembled with.
+    A cap so that a paste of a whole document is refused as input rather than answered
+    as a question.
     """
+    if len(question) <= MAX_INPUT_CHARS:
+        return None
+    return f"Your message is too long — the limit is {MAX_INPUT_CHARS} characters."
 
-    max_chars: int
 
-    def apply(self, user_input: str) -> None:
-        """Refuse input longer than the cap, naming the cap.
+def extend(cora: Host) -> None:
+    """Register what cora asks of any input, whatever it was asked to be.
 
-        Raises:
-            InputRejectedError: The message is over `max_chars` characters.
-        """
-        if len(user_input) > self.max_chars:
-            raise InputRejectedError(
-                f"Your message is too long — the limit is {self.max_chars} characters."
-            )
+    Screening for injection is not here: it is a plugin, and so something a deployment
+    adds. What is here is system-wide, and registered first, so no plugin's handler is
+    ever handed a question cora would have refused outright.
+    """
+    cora.register_handler(event=SCREENING, handle=refuse_nothing_to_answer)
+    cora.register_handler(event=SCREENING, handle=refuse_too_long)

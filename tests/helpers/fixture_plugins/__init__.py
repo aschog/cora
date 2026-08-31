@@ -1,22 +1,18 @@
-from cora.domain.errors import InputRejectedError
-from cora.ports.host import Extension, Host
-from cora.ports.plugin import Tool, ValidationRule
+from cora.ports.host import SCREENING, Extension, Handler, Host
+from cora.ports.plugin import Tool
 
 REFUSAL = "The test plugin refused that."
 
 
-class RefusesContaining:
-    """A plugin's screen, in the shape every real one has: it reads the question, it
+def refuses_containing(trigger: str, message: str = REFUSAL) -> Handler:
+    """A plugin's screen, in the shape every real one has: it reads the question, and it
     refuses or it does not. Written here so a suite can prove the engine runs a plugin's
-    rules without installing a plugin to borrow a rule from."""
+    screen without installing a plugin to borrow one from."""
 
-    def __init__(self, trigger: str, message: str = REFUSAL) -> None:
-        self.trigger = trigger
-        self.message = message
+    def screen(question: str) -> str | None:
+        return message if trigger.lower() in question.lower() else None
 
-    def apply(self, user_input: str) -> None:
-        if self.trigger.lower() in user_input.lower():
-            raise InputRejectedError(self.message)
+    return screen
 
 
 def identity(x: int) -> int:
@@ -40,11 +36,13 @@ def make_plugin(
     name: str = "valid",
     instructions: str = "You are a test plugin.",
     tools: tuple[Tool, ...] | None = None,
-    validation_rules: tuple[ValidationRule, ...] = (),
+    screens: tuple[Handler, ...] = (),
+    scope: str | None = None,
 ) -> Extension:
     """One plugin as a test wants it: `tools=None` asks for the three default tools,
     and `tools=()` for none. `name` is the module's last segment, which is what heads
-    its section of the brief and what its settings are named for."""
+    its section of the brief and what its settings are named for. `scope` is where
+    everything it registers applies, and `None` is everywhere."""
     offered = (
         (make_tool("one"), make_tool("two"), make_tool("three"))
         if tools is None
@@ -53,15 +51,16 @@ def make_plugin(
 
     def extend(cora: Host) -> None:
         if instructions.strip():
-            cora.register_instructions(instructions)
+            cora.register_instructions(instructions, scope=scope)
         for tool in offered:
             cora.register_tool(
                 name=tool.name,
                 description=tool.description,
                 parameter_schema=tool.parameter_schema,
                 run=tool.run,
+                scope=scope,
             )
-        for rule in validation_rules:
-            cora.register_rule(rule)
+        for screen in screens:
+            cora.register_handler(event=SCREENING, handle=screen, scope=scope)
 
     return Extension(module=f"fixture_plugins.{name}", extend=extend)

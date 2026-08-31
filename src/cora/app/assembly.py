@@ -22,7 +22,7 @@ from cora.engine.host import PluginHost
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.memory_tool import remember_tool
 from cora.engine.plugin_registry import load_plugins
-from cora.engine.plugin_set import CORA_RULES, Registry
+from cora.engine.plugin_set import Registry
 from cora.engine.port_logging import (
     LoggingChatModel,
     LoggingEmbedder,
@@ -42,6 +42,8 @@ from cora.engine.steps import (
     ToolStep,
 )
 from cora.engine.tool_runtime import ToolRuntime
+from cora.engine.validation import CORA
+from cora.engine.validation import extend as coras_own_screen
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
 from cora.ports.conversations import Conversations
@@ -80,6 +82,7 @@ def assemble(
     documents: Documents,
     plugins: tuple[Extension, ...] = (),
     plugin_settings: dict[str, dict[str, str]] | None = None,
+    scopes: tuple[str, ...] = (),
     memory: Memory | None = None,
     conversations: Conversations | None = None,
     top_k: int = DEFAULT_TOP_K,
@@ -100,6 +103,8 @@ def assemble(
             handed a host of its own and registers what it has.
         plugin_settings: What each plugin module may read as its own settings, keyed
             by module path. A deployment fills this from the environment.
+        scopes: What a turn runs under unless its caller says otherwise — which of the
+            plugins' scoped registrations this deployment is for.
         memory: What cora keeps about the user. Without it, no `remember` tool is
             offered at all.
         conversations: Where turns are recorded. Without it, a turn is answered and
@@ -127,24 +132,21 @@ def assemble(
         top_k=top_k,
     )
     _warn_unscreened(registry)
-    tools = _offered_tools(registry, knowledge_base, top_k, memory)
+    tools = _coras_own_tools(knowledge_base, top_k, memory)
     runner = graph(
-        before=(
-            Named(
-                SCREEN,
-                ScreenStep(
-                    rules=registry.rules,
-                    instructions=registry.instructions,
-                    memory=memory,
-                ),
-            ),
-        ),
+        before=(Named(SCREEN, ScreenStep(registry=registry, memory=memory)),),
         loop=Loop(
             marker=Named(WORK),
             model=ModelStep(
-                chat_model=chat_model, tools=tools, max_history_turns=history_turns
+                chat_model=chat_model,
+                tools=tools,
+                max_history_turns=history_turns,
+                registry=registry,
             ).writing_to,
-            tools=ToolStep(tool_runtime=ToolRuntime(tools=tools)),
+            tools=ToolStep(
+                tool_runtime=ToolRuntime(tools=tools, registry=registry),
+                registry=registry,
+            ),
             ask=AskStep(pause=interrupting),
             router=Router(max_tool_rounds=max_tool_rounds),
         ),
@@ -152,7 +154,7 @@ def assemble(
         max_tool_rounds=max_tool_rounds,
     )
     return App(
-        agent=Agent(runner=runner, conversations=conversations),
+        agent=Agent(runner=runner, conversations=conversations, scopes=scopes),
         knowledge_base=knowledge_base,
         memory=memory,
         conversations=conversations,
@@ -179,7 +181,7 @@ def _warn_unscreened(registry: Registry) -> None:
     `CORA_DEBUG`, where the `cora` logger carries no handler. A plugin may register
     only tools, so what is announced is the screen, not the count.
     """
-    if len(registry.rules) == len(CORA_RULES):
+    if not registry.screened_by_a_plugin():
         log.warning("no plugin screens what the user types")
 
 
@@ -197,13 +199,16 @@ def _registered(
     Registering is what loading could not do: a host is made of the parts assembled
     here, so `extend` is called now rather than when the module was imported.
 
+    Cora registers first, under its own name: its screen is a subscriber like any
+    other, and being first is what "cora's screen runs first" is made of.
+
     Raises:
         PluginLoadError: A plugin raised while registering. The module is named, and
             the turn it would have served never starts.
         ConfigurationError: What they registered cannot be composed.
     """
     entries = []
-    for plugin in plugins:
+    for plugin in (Extension(module=CORA, extend=coras_own_screen), *plugins):
         host = PluginHost(
             module=plugin.module,
             index=documents,
@@ -225,24 +230,20 @@ def _registered(
     return Registry(tuple(entries))
 
 
-def _offered_tools(
-    registry: Registry,
+def _coras_own_tools(
     context_source: ContextSource,
     top_k: int,
     memory: Memory | None,
 ) -> tuple[Tool, ...]:
-    """What the model may call, cora's own tools first and the plugins' after.
+    """What every turn may call, whatever it is running under.
 
+    The plugins' tools are not here: which of them a turn may call depends on its
+    scopes, so they are read off the registry per turn rather than fixed at assembly.
     No memory slot behind the app means no `remember` offered, so the absence is visible
     to the model rather than a tool that quietly forgets.
     """
     remembering = (remember_tool(memory),) if memory is not None else ()
-    return (
-        search_tool(context_source, top_k),
-        *remembering,
-        ask_tool(),
-        *registry.tools,
-    )
+    return (search_tool(context_source, top_k), *remembering, ask_tool())
 
 
 def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
@@ -282,6 +283,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         documents=SqliteDocuments.at(config.documents_path),
         plugins=load_plugins(config.plugin_modules),
         plugin_settings=read_plugin_settings(config.plugin_modules),
+        scopes=config.scopes,
         memory=SqliteStoreMemory.at(config.memory_path),
         conversations=SqliteConversations.at(config.conversations_path),
         graph=partial(langgraph_for, checkpoints_at=config.conversations_path),

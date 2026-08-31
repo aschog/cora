@@ -1,6 +1,11 @@
-from cora.plugins.fitness.safety import MedicalSafetyRule
+from cora.plugins.fitness.safety import refuse_medical
 from cora.plugins.fitness.tools import TOOLS
-from cora.ports.host import Host
+from cora.ports.host import SCREENING, Host
+
+SCOPE = "fitness"
+"""What the coaching is registered under: a turn asking as a coach gets the persona and
+the calculators, and a turn asking as anything else does not. The medical filter is not
+under it — a question about medication is refused wherever it was asked."""
 
 INSTRUCTIONS = """\
 Answer training and nutrition questions as a knowledgeable, evidence-based coach:
@@ -19,13 +24,14 @@ clearly, practically, and from the user's own documents.
 
 
 def extend(cora: Host) -> None:
-    """Coaching: what to answer as, the calculators to answer with, and one refusal."""
-    cora.register_instructions(INSTRUCTIONS)
+    """Coaching under its own scope, and one refusal that holds outside it too."""
+    cora.register_instructions(INSTRUCTIONS, scope=SCOPE)
     for tool in TOOLS:
         cora.register_tool(
             name=tool.name,
             description=tool.description,
             parameter_schema=tool.parameter_schema,
             run=tool.run,
+            scope=SCOPE,
         )
-    cora.register_rule(MedicalSafetyRule())
+    cora.register_handler(event=SCREENING, handle=refuse_medical)

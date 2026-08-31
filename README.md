@@ -2,8 +2,8 @@
 
 <!-- --8<-- [start:what-cora-is] -->
 cora is an agent you chat with, and everything it knows and can do arrives as a plugin.
-The core runs a turn and screens what comes in; a plugin gives it a field, tools and rules
-of its own. With nothing loaded it still answers.
+The core runs a turn and screens what comes in; a plugin gives it a field, tools and a
+hand in the turn itself. With nothing loaded it still answers.
 <!-- --8<-- [end:what-cora-is] -->
 
 On the showcase: [showcase.turingcollege.com](https://showcase.turingcollege.com/).
@@ -28,7 +28,8 @@ A plugin contributes three things, and may bring only one of them:
 
 - **what cora can do** — a tool, named and given a schema, that the model may call
 - **what cora is** — instructions heading its section of the brief
-- **what cora will not accept** — a rule that refuses an input before any model runs
+- **what cora does as a turn runs** — a handler at a named point in it: refusing the
+  question, amending the brief, refusing one tool call, wrapping what a tool returned
 
 With none loaded cora still answers: it searches its documents, remembers what it is
 told, asks when it cannot tell, and cites what it used.
@@ -48,15 +49,19 @@ npm ci --prefix frontends/react/ui         # and the page's
 git config core.hooksPath .githooks        # enable pre-commit + commit-msg hooks
 export OPENROUTER_API_KEY=sk-or-...
 export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness
+export CORA_SCOPES=fitness
 make run                                   # or: make run-env, to read the key from .env
 ```
 
 `make run` builds the page and serves it with the API from one process on
 `127.0.0.1:8000`. The target exists so the command survives the next time a package
 moves — the module it names is one line, in the `Makefile`. `make run-env` is the same
-thing reading its environment from `.env`, so both exports below go in that file
+thing reading its environment from `.env`, so the exports above go in that file
 instead. cora loads no plugin unless asked, so the `CORA_PLUGINS` line is what turns
-this from a bare cora into the coaching app with a prompt-injection screen.
+this from a bare cora into the coaching app with a prompt-injection screen. `CORA_SCOPES`
+says which of those plugins' scoped contributions a turn runs under: the coaching persona
+and its calculators are the fitness scope's, while its medical filter and the injection
+screen are system-wide and hold whatever a turn is running as.
 
 A plugin reads its own settings from the environment, under its own name:
 `CORA_PLUGIN_FITNESS_UNITS=imperial` reaches `cora.plugins.fitness` as `units`. Cora's

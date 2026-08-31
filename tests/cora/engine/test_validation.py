@@ -1,27 +1,27 @@
 import pytest
 
-from cora.domain.errors import InputRejectedError
-from cora.engine.validation import EmptyInputRule, MaxLengthRule
+from cora.engine.validation import (
+    MAX_INPUT_CHARS,
+    refuse_nothing_to_answer,
+    refuse_too_long,
+)
 
 
-@pytest.mark.parametrize("user_input", ["", "   ", "\n\t "])
-def test_empty_input_rule_rejects_blank_input(user_input: str) -> None:
-    with pytest.raises(InputRejectedError) as excinfo:
-        EmptyInputRule().apply(user_input)
-
-    assert excinfo.value.user_message
+@pytest.mark.parametrize("question", ["", "   ", "\n\t "])
+def test_a_blank_question_is_refused(question: str) -> None:
+    assert refuse_nothing_to_answer(question)
 
 
-def test_empty_input_rule_accepts_real_input() -> None:
-    EmptyInputRule().apply("How much protein per day?")
+def test_a_real_question_is_let_through() -> None:
+    assert refuse_nothing_to_answer("How much protein per day?") is None
 
 
-def test_max_length_rule_rejects_input_beyond_the_cap() -> None:
-    with pytest.raises(InputRejectedError) as excinfo:
-        MaxLengthRule(max_chars=10).apply("x" * 11)
+def test_a_question_past_the_cap_is_refused_and_the_cap_is_named() -> None:
+    refused = refuse_too_long("x" * (MAX_INPUT_CHARS + 1))
 
-    assert excinfo.value.user_message
+    assert refused is not None
+    assert str(MAX_INPUT_CHARS) in refused
 
 
-def test_max_length_rule_accepts_input_within_the_cap() -> None:
-    MaxLengthRule(max_chars=10).apply("x" * 10)
+def test_a_question_at_the_cap_is_let_through() -> None:
+    assert refuse_too_long("x" * MAX_INPUT_CHARS) is None
