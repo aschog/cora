@@ -318,9 +318,6 @@ export default function App() {
         },
         pin,
       )
-      /* The pin is in the thread's state now, and a thread keeps the field it was fixed
-         to — so the picker becomes what the conversation is rather than what to make it. */
-      if (pin !== null) setFixedPin(true)
       if (cora.paused(reply)) {
         // The turn is on the page now rather than in flight: it is waiting on the
         // reader, and what they pick lands on it where it stands.
@@ -379,6 +376,10 @@ export default function App() {
       setWorking(null)
       setLive(null)
       refresh()
+      /* What the thread holds, not what was sent: a turn that was admitted fixes the pin
+         even if the answer then failed, and a turn refused on the way in fixes nothing.
+         Only the thread knows which happened, so the control is drawn from it. */
+      void held(on)
     }
   }
 

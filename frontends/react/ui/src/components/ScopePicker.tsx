@@ -24,11 +24,24 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
   if (available.length === 0) return null
   return (
     <div className="scope-wrap">
-      <label className="scope-label" htmlFor="scope-pin">
-        Field
-      </label>
+      {/* A label points at a control, so once the pin is fixed there is none to point
+          at: the name moves onto the value itself, which is then what a screen reader
+          reads out — an orphaned `for` would leave the field with no name at all. */}
       {fixed && pin !== null ? (
-        <span className="scope-fixed" aria-describedby="scope-why">
+        <span className="scope-label" id="scope-field">
+          Field
+        </span>
+      ) : (
+        <label className="scope-label" htmlFor="scope-pin">
+          Field
+        </label>
+      )}
+      {fixed && pin !== null ? (
+        <span
+          className="scope-fixed"
+          aria-labelledby="scope-field"
+          aria-describedby="scope-why"
+        >
           {pin}
         </span>
       ) : (

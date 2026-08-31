@@ -253,10 +253,15 @@ class RouteStep:
     registry: Registry = field(default_factory=Registry)
 
     def __call__(self, state: AgentState) -> AgentState:
-        """Settle the turn's scopes, and say in one step how they were settled."""
-        pinned = state.get("pin", "")
+        """Settle the turn's scopes, and say in one step how they were settled.
+
+        A pin this turn asked for is taken here, which is why it survives a refused
+        question: the screen has run by now, so nothing the reader was refused for can
+        leave a conversation fixed to a field for good.
+        """
+        pinned = state.get("pin", "") or state.get("pinning", "")
         if pinned:
-            return _focused((pinned,), PINNED)
+            return {**_focused((pinned,), PINNED), "pin": pinned}
         named = tuple(state.get("scopes", ()))
         if named:
             # Trusted as given: the caller here is a frontend or a test, never the

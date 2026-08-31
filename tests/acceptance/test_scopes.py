@@ -7,7 +7,7 @@ from app_builder import assembled
 from cora.app.assembly import App
 from cora.domain.chat_result import ChatResult
 from cora.domain.decision import TurnPaused
-from cora.domain.errors import ScopePinnedError
+from cora.domain.errors import InputRejectedError, ScopePinnedError
 from cora.domain.trace import ScopeSettled
 from cora.engine.steps import (
     BELONGS_TO_NONE,
@@ -117,6 +117,19 @@ def test_a_conversation_pinned_to_one_field_refuses_a_second() -> None:
         app.agent.answer(TRIP_QUESTION, THREAD, pin=TRAVEL)
     assert FITNESS in refused.value.user_message
     assert app.agent.answer("Again?", THREAD, pin=FITNESS).answer == "ok"
+
+
+@pytest.mark.integration
+def test_a_question_that_was_refused_pins_the_conversation_to_nothing() -> None:
+    """The screen runs before anything, so a refused question costs the thread nothing —
+    and a pin is the one cost it could not pay back, because a pin cannot be undone."""
+    app, _ = _two_scopes(_answer("ok"))
+
+    with pytest.raises(InputRejectedError):
+        app.agent.answer("   ", THREAD, pin=FITNESS)
+
+    assert app.agent.pinned(THREAD) is None
+    assert app.agent.answer(TRIP_QUESTION, THREAD, pin=TRAVEL).answer == "ok"
 
 
 @pytest.mark.integration

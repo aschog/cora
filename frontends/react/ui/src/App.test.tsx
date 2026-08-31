@@ -92,14 +92,21 @@ afterEach(() => {
 beforeEach(() => {
   turn = held()
   step = held()
+  /* A pin sent with a question is read back off the thread afterwards, as the real API
+     does: the page draws the control from what the thread holds, so a fake that forgot
+     the pin would show every conversation as unpinned however it was asked. */
+  let taken: string | null = null
   vi.stubGlobal(
     'fetch',
-    vi.fn(async (path: string) => {
-      if (path === '/api/ask') return answering()
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/ask') {
+        taken = JSON.parse((init?.body as string) ?? '{}').pin ?? taken
+        return answering()
+      }
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       if (path.endsWith('/scope') && !(path in served))
-        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
+        return { ok: true, json: async () => ({ pin: taken }) } as unknown as Response
       return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
     }),
   )
@@ -2665,8 +2672,8 @@ test('a conversation is pinned to a field, and keeps it', async () => {
   ])
   /* The pin is in the thread's state now, so the control stops being a choice: a second
      field is a second conversation, and the reason is on the page for a screen reader. */
-  expect(screen.queryByLabelText('Field')).toBeNull()
-  expect(document.querySelector('.scope-fixed')?.textContent).toBe('fitness')
+  expect(screen.queryByRole('combobox')).toBeNull()
+  expect(screen.getByLabelText('Field').textContent).toBe('fitness')
   expect(screen.getByText(/Start a new one/)).toBeTruthy()
 })
 
@@ -2689,8 +2696,57 @@ test('a reopened conversation is drawn in the field it was pinned to', async () 
   fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
 
   /* The pin outlived the page because it is the thread's own state, not the page's. */
-  await waitFor(() =>
-    expect(document.querySelector('.scope-fixed')?.textContent).toBe('travel'),
-  )
-  expect(screen.queryByLabelText('Field')).toBeNull()
+  await waitFor(() => expect(screen.getByLabelText('Field').textContent).toBe('travel'))
+  expect(screen.queryByRole('combobox')).toBeNull()
 })
+
+test('the picker says what the thread holds, not what the reader picked', async () => {
+  /* The pin is fixed by the turn rather than by the pick, and a turn that was admitted
+     fixes it even if the answer then fails. So the page reads the thread back after every
+     question instead of inferring from what it sent — otherwise a failed turn leaves the
+     control offering a field the engine has already closed. */
+  let asked = false
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') {
+        asked = true
+        return {
+          ok: true,
+          body: {
+            getReader: () => ({
+              cancel: async () => {},
+              read: async () => ({
+                done: false,
+                value: new TextEncoder().encode(
+                  frame('error', { error: 'The assistant is temporarily unavailable.' }),
+                ),
+              }),
+            }),
+          },
+        } as unknown as Response
+      }
+      if (path.endsWith('/scope'))
+        return {
+          ok: true,
+          json: async () => ({ pin: asked ? 'fitness' : null }),
+        } as unknown as Response
+      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByLabelText('Field'), { target: { value: 'fitness' } })
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/temporarily unavailable/)
+
+  /* The turn failed, but it was admitted — so the thread is in that field now, and the
+     control says so rather than offering a choice that would be refused. */
+  await waitFor(() => expect(screen.getByLabelText('Field').textContent).toBe('fitness'))
+  expect(screen.queryByRole('combobox')).toBeNull()
+})
+

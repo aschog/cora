@@ -84,8 +84,9 @@ class Agent:
                 call closes with an `Aside`.
             scopes: What this turn runs under — which of the plugins' scoped
                 registrations apply to it. Given none, the turn routes itself.
-            pin: The scope to fix this conversation to, from this turn on. Sent again
-                on every later turn by a caller that holds one; the same one costs
+            pin: The scope to fix this conversation to, from this turn on — taken once
+                the question has been admitted, so a refused one fixes nothing. Sent
+                again on every later turn by a caller that holds one; the same one costs
                 nothing, and a different one is refused.
 
         Returns:
@@ -105,7 +106,10 @@ class Agent:
             held = self.pinned(thread_id)
             if held is not None and held != pin:
                 raise ScopePinnedError(held)
-            seeded["pin"] = pin
+            # Asked for rather than set: the seeded keys are written before the first
+            # step runs, and a question the screen refuses must fix nothing. The step
+            # that reads the pin is the step that writes it, one step further on.
+            seeded["pinning"] = pin
         return self._turn(
             self.runner.run(seeded, thread_id, on_text), question, thread_id, on_step
         )
@@ -152,7 +156,10 @@ class Agent:
         """The scope this conversation was fixed to, or nothing.
 
         What a page reopening a thread draws before anything is asked on it, and what
-        makes a second pin refusable rather than silently ignored.
+        makes a second pin refusable rather than silently ignored. Read before the turn
+        rather than inside it, which assumes one caller per thread: cora runs on the
+        machine of the person whose conversations it holds, and nothing under this
+        offers the per-thread serialisation a stronger promise would need.
         """
         return self.runner.pinned(thread_id)
 
