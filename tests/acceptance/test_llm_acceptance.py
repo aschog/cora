@@ -53,7 +53,7 @@ def _page(app: App) -> TestClient:
     """The surface the page reads, with the plugins the deployment configured. No
     timeout to set: the app runs in this process, so a live turn takes as long as the
     model takes rather than as long as a socket allows."""
-    return TestClient(api(app, plugins=LIVE_PLUGINS))
+    return TestClient(api(app))
 
 
 def _turn(page: TestClient, question: str, thread: str = "acceptance") -> dict:

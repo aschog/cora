@@ -13,6 +13,7 @@ from cora.domain.conversation import Session, Turn
 from cora.domain.decision import Decision, Option, Pending
 from cora.domain.trace import ToolUse, TraceStep
 from cora.engine.plugin_set import RESERVED_TOOL_NAMES
+from cora.ports.host import Listed
 from cora.ports.memory import Fact
 
 
@@ -88,3 +89,24 @@ def fact(fact: Fact) -> dict[str, Any]:
 
 def session(session: Session) -> dict[str, Any]:
     return {"thread_id": session.thread_id, "opened_with": session.opened_with}
+
+
+def plugin(listed: Listed) -> dict[str, Any]:
+    """One loaded plugin as the header menu draws it.
+
+    The contributions arrive as one list of the same three keys whatever kind they are,
+    so the menu renders a kind it has never heard of rather than dropping it.
+    """
+    return {
+        "name": listed.name,
+        "source": listed.source,
+        "scopes": list(listed.scopes),
+        "contributions": [
+            {
+                "kind": each.kind,
+                "name": each.name,
+                "scope": each.scope,
+            }
+            for each in listed.contributions
+        ],
+    }

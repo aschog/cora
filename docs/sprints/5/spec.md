@@ -232,50 +232,6 @@ it would take the measurement with it. If the sprint runs long, the sprint runs 
 what gives is argued then against *Not in this sprint* rather than decided here while it
 is cheap to be brave.
 
-### 7. A plugin is installed, not forked, and cora says what it loaded
-
-As someone who wrote a plugin for my own field,\
-I want to install it or drop it in a folder and have cora find it,\
-so that using it does not mean forking cora.
-
-**Scenario:** a named module is enough
-
-- **Given** a plugin module named in `CORA_PLUGINS`, its code living outside this repository
-- **When** cora starts
-- **Then** it is loaded
-- **And** nothing under `src/cora/` names it
-
-**Scenario:** a file is enough
-
-- **Given** a single `.py` file in `./.cora/plugins/`
-- **When** cora starts
-- **Then** it is loaded with no packaging at all, and the listing says where it came from
-
-**Scenario:** cora says what is loaded
-
-- **Given** several plugins from different sources
-- **When** I ask cora what it has
-- **Then** each one is listed with its source, its scope, its tools, its rules and the steps
-  it subscribes to
-- **And** every system-wide registration is flagged as such — a tool callable in every
-  scope is a visible act, not a quiet field
-- **And** the same listing is on the screen, not only in a terminal
-
-**Scenario:** the contract has a version and says so
-
-- **Given** a plugin declaring a contract version cora does not support
-- **When** it is loaded
-- **Then** the refusal says which version it wants and which cora offers
-- **And** `docs/how-to/write-a-plugin.md` names what is public and what may move — a
-  compatibility policy waits for the first author it would bind
-
-**Scenario:** a plugin is a distribution, not a fork
-
-- **Given** the contract, complete
-- **When** the travel plugin is read back against it
-- **Then** it is a distribution and nothing more, and a guard asserts that the core names no
-  plugin and no scope
-
 ### 8. A scope's documents are its own files
 
 As a person with material in more than one field,\

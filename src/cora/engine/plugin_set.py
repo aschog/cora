@@ -7,7 +7,16 @@ from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.validation import CORA
-from cora.ports.host import HANDLER, INSTRUCTIONS, SCREENING, TOOL, Registration
+from cora.ports.host import (
+    HANDLER,
+    INSTRUCTIONS,
+    SCREENING,
+    TOOL,
+    Contributed,
+    Extension,
+    Listed,
+    Registration,
+)
 from cora.ports.plugin import Tool
 
 RESERVED_TOOL_NAMES = {
@@ -96,6 +105,28 @@ class Registry:
             if entry.value.event == event and applies(entry, scopes)
         )
 
+    def listing(self, plugins: tuple[Extension, ...]) -> tuple[Listed, ...]:
+        """What each of these plugins registered, in the order they were loaded.
+
+        A projection of the registrations already held rather than a second record, so
+        a listing cannot drift from the app it describes. Driven by the plugins given:
+        cora's own registrations are not a plugin's and are not listed, and a plugin
+        that registered nothing is listed with nothing under it — it is the one an
+        operator most needs to see.
+        """
+        return tuple(
+            Listed(
+                name=_name(plugin.module),
+                source=plugin.source,
+                contributions=tuple(
+                    _contributed(entry)
+                    for entry in self.entries
+                    if entry.module == plugin.module
+                ),
+            )
+            for plugin in plugins
+        )
+
     def screened_by_a_plugin(self) -> bool:
         """Whether anything but cora itself screens what the user types."""
         return any(
@@ -126,6 +157,25 @@ class Registry:
             registered_by[entry.value.name] = entry.module
 
 
+def _contributed(entry: Registration) -> Contributed:
+    """One registration as the listing shows it, named by what its kind is named by.
+
+    A tool by its own name and a handler by the event it subscribed to. Instructions go
+    unnamed, having no name of their own: a plugin writes one section, and the kind is
+    already what it is called.
+    """
+    named = {
+        TOOL: lambda value: str(value.name),
+        HANDLER: lambda value: str(value.event),
+    }.get(entry.kind, lambda value: "")
+    return Contributed(kind=entry.kind, name=named(entry.value), scope=entry.scope)
+
+
+def _name(module: str) -> str:
+    """What a plugin is called: its last segment, which its settings are named for."""
+    return module.rsplit(".", 1)[-1]
+
+
 def _opening(instructions: str) -> str:
     """The first paragraph, unwrapped.
 
@@ -139,4 +189,4 @@ def _opening(instructions: str) -> str:
 
 def _heading(module: str) -> str:
     """The name a plugin's section of the brief is headed by, taken from its module."""
-    return module.rsplit(".", 1)[-1].replace("_", " ").strip().capitalize()
+    return _name(module).replace("_", " ").strip().capitalize()

@@ -685,6 +685,58 @@ def _names_a_plugin(path: pathlib.Path) -> bool:
     )
 
 
+def _shipped_scopes() -> tuple[str, ...]:
+    """The fields the shipped plugins register under, read from the plugins themselves.
+
+    Read rather than written down here: a third plugin adding a fourth field is covered
+    the day it is installed, and a guard listing the names would be a second place the
+    core knows them.
+    """
+    return tuple(
+        sorted(
+            {
+                scope
+                for module in _shipped_plugin_modules()
+                if isinstance(scope := getattr(module, "SCOPE", None), str)
+            }
+        )
+    )
+
+
+def _shipped_plugin_modules() -> tuple[ModuleType, ...]:
+    return tuple(
+        importlib.import_module(found.name)
+        for found in pkgutil.iter_modules(
+            cora.plugins.__path__, f"{cora.plugins.__name__}."
+        )
+    )
+
+
+@pytest.mark.parametrize("scope", _shipped_scopes())
+def test_no_shipped_file_names_a_scope_a_plugin_registers_under(scope: str) -> None:
+    """A field is a plugin's word, not cora's: naming one under `src/cora/` would be the
+    core knowing what it is for, which is the claim the whole contract rests on.
+
+    The whole word, so `travels` is the ordinary verb and not the field. Blunt on
+    purpose — a scope named for a word cora already uses fails this, and that is the
+    guard saying the two cannot both be true rather than a rule wanting an exception.
+    """
+    naming = re.compile(rf"\b{re.escape(scope)}\b", re.IGNORECASE)
+    named = sorted(
+        str(path.relative_to(workspace.ROOT))
+        for path in REPOSITORY_FILES
+        if path.is_relative_to(SHIPPED) and naming.search(path.read_text())
+    )
+
+    assert named == [], "\n".join([f"these name the '{scope}' field:", *named])
+
+
+def test_the_scopes_the_guard_reads_are_the_ones_the_plugins_register() -> None:
+    """The guard above is only worth its parametrisation if the reading works: an empty
+    tuple would pass it by covering nothing at all."""
+    assert len(_shipped_scopes()) >= 2
+
+
 def test_nothing_in_the_repository_offers_a_second_door_into_screening() -> None:
     """Screening is a subscription like any other, so the port and the list that used to
     be the other way in are gone rather than deprecated: two doors to one moment is what

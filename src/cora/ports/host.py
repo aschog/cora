@@ -10,6 +10,15 @@ from cora.ports.context_source import ContextSource
 from cora.ports.memory import Memory
 from cora.ports.plugin import Tool
 
+CONTRACT = 1
+"""The version of this contract cora offers, and what a plugin declares to ask for.
+
+A number rather than a range: cora offers one version, a plugin declaring another is
+refused by name, and a plugin declaring none is taken as asking for this one. What is
+public is everything this module names; what may move is said on the page that teaches
+a plugin to be written.
+"""
+
 TOOL = "tool"
 HANDLER = "handler"
 INSTRUCTIONS = "instructions"
@@ -68,6 +77,63 @@ class Registration:
     kind: str
     value: Any
     scope: str | None = None
+
+
+@dataclass(frozen=True)
+class Contributed:
+    """One registration as the listing shows it: what kind, what name, and where.
+
+    `name` is the tool's name, the event a handler subscribed to, or the word
+    `INSTRUCTIONS` — one field over every kind, so a fifth kind is listed without this
+    shape widening.
+    """
+
+    kind: str
+    name: str
+    scope: str | None = None
+
+    @property
+    def system_wide(self) -> bool:
+        """Whether this applies to every turn, no scope being able to switch it off."""
+        return self.scope is None
+
+
+@dataclass(frozen=True)
+class Listed:
+    """One loaded plugin, and everything it registered.
+
+    `name` is its last segment — what heads its section of the brief and names its
+    settings — and `source` is where it was found: a module path, or a file.
+    """
+
+    name: str
+    source: str
+    contributions: tuple[Contributed, ...] = ()
+
+    @property
+    def scopes(self) -> tuple[str, ...]:
+        """Every field it registered under, once each, in registration order."""
+        named = [each.scope for each in self.contributions if each.scope is not None]
+        return tuple(dict.fromkeys(named))
+
+    @property
+    def tools(self) -> tuple[Contributed, ...]:
+        """What it offered the model, in the order it registered them."""
+        return self._of(TOOL)
+
+    @property
+    def events(self) -> tuple[Contributed, ...]:
+        """The points in a turn it subscribed to, in the order it subscribed."""
+        return self._of(HANDLER)
+
+    @property
+    def instructions(self) -> Contributed | None:
+        """The section it heads in the brief, or nothing where it wrote none."""
+        heading = self._of(INSTRUCTIONS)
+        return heading[0] if heading else None
+
+    def _of(self, kind: str) -> tuple[Contributed, ...]:
+        return tuple(each for each in self.contributions if each.kind == kind)
 
 
 class Host(Protocol):
@@ -181,8 +247,17 @@ class Extension:
     """A plugin module that imported, and the call that registers what it has.
 
     Loading proves the module is there and defines `extend`; registering happens later,
-    against a host, because a host needs the parts an assembled app holds.
+    against a host, because a host needs the parts an assembled app holds. `source` is
+    where it was found and what every refusal quotes: the module path a deployment
+    named, or the file it was read from. A named module is its own source, so leaving it
+    out says "named rather than dropped".
     """
 
     module: str
     extend: Extend
+    source: str = ""
+
+    def __post_init__(self) -> None:
+        """Take the module path as the source where none was given."""
+        if not self.source:
+            object.__setattr__(self, "source", self.module)

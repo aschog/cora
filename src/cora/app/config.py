@@ -16,6 +16,9 @@ DEFAULT_SCOPES: tuple[str, ...] = ()
 """What a turn runs under where the deployment named nothing: only what is system-wide,
 which is a bare cora with whatever screens a plugin registered for every turn. Named
 here until a turn can be routed into a scope of its own."""
+DEFAULT_PLUGINS_PATH = ".cora/plugins"
+"""Where a plugin may be dropped in as a single file, needing no packaging at all.
+Beside cora's other stores, because it is one more thing the deployment keeps here."""
 DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
 DEFAULT_MAX_OUTPUT_TOKENS = 8192
@@ -64,6 +67,7 @@ class Config:
     reasoning_effort: str
     db_path: str
     scopes: tuple[str, ...] = DEFAULT_SCOPES
+    plugins_path: str = DEFAULT_PLUGINS_PATH
     memory_path: str = DEFAULT_MEMORY_PATH
     documents_path: str = DEFAULT_DOCUMENTS_PATH
     conversations_path: str = DEFAULT_CONVERSATIONS_PATH
@@ -93,6 +97,7 @@ class Config:
             model=_model(env),
             base_url=_named(env, "OPENROUTER_BASE_URL", DEFAULT_BASE_URL),
             plugin_modules=_plugin_modules(env),
+            plugins_path=_named(env, "CORA_PLUGINS_PATH", DEFAULT_PLUGINS_PATH),
             scopes=_named_list(env, "CORA_SCOPES", DEFAULT_SCOPES),
             top_k=int_setting(env, "CORA_TOP_K", DEFAULT_TOP_K, minimum=1),
             max_tool_rounds=int_setting(
@@ -205,8 +210,8 @@ def plugin_settings(
 ) -> dict[str, dict[str, str]]:
     """What each plugin may read as its own settings, keyed by module path.
 
-    A plugin's variables are the ones named for it — `CORA_PLUGIN_FITNESS_UNITS` reaches
-    the module whose last segment is `fitness`, as `units`. Named for the plugin so a
+    A plugin's variables are the ones named for it — `CORA_PLUGIN_BIRDS_UNITS` reaches
+    the module whose last segment is `birds`, as `units`. Named for the plugin so a
     deployment can see whose setting it is setting, and read here rather than by the
     plugin so that reading the environment stays the composition root's job.
 
@@ -215,8 +220,8 @@ def plugin_settings(
         env: Where to read from. The process environment unless a caller says otherwise.
 
     A plugin whose name is the tail of another's prefix can be handed a variable meant
-    for that one — `CORA_PLUGIN_FITNESS_UNITS_X` reaches both `fitness` and
-    `fitness_units`, as `units_x` and as `x`. Loading refuses two plugins named *alike*,
+    for that one — `CORA_PLUGIN_BIRDS_UNITS_X` reaches both `birds` and
+    `birds_units`, as `units_x` and as `x`. Loading refuses two plugins named *alike*,
     which is not this: these are two names, and one is a prefix of the other. Left as it
     is because both are plugins the same deployment named, so nothing of cora's leaks
     and nothing crosses a trust boundary — a plugin reads a setting meant for its

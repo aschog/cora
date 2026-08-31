@@ -75,7 +75,18 @@ const OLDER = {
 
 const served: Record<string, unknown> = {
   '/api/documents': ['notes.md'],
-  '/api/plugins': ['cora.plugins.fitness'],
+  '/api/plugins': [
+    {
+      name: 'fitness',
+      source: 'cora.plugins.fitness',
+      scopes: ['fitness'],
+      contributions: [
+        { kind: 'instructions', name: '', scope: 'fitness' },
+        { kind: 'tool', name: 'bmr', scope: 'fitness' },
+        { kind: 'handler', name: 'screen', scope: null },
+      ],
+    },
+  ],
   '/api/scopes': { available: ['fitness', 'travel'], default: 'cora' },
   '/api/memory': [{ key: 'f1', text: 'No burpees.' }],
   '/api/sessions': [{ thread_id: 'old', opened_with: OLDER.question }],
@@ -120,9 +131,13 @@ test('the plan fills while the turn runs, then the answer lands with its citatio
 
   expect(await screen.findByText('notes.md')).toBeTruthy()
 
-  // The badge names the shell's plugin; the menu names the module it was loaded from.
+  /* The badge names the shell's plugin; the menu says where it came from and what it
+     registered, with a claim on every turn marked as one rather than left blank. */
   fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
   expect(screen.getByText('cora.plugins.fitness')).toBeTruthy()
+  expect(screen.getByText('bmr')).toBeTruthy()
+  expect(screen.getByText('screen')).toBeTruthy()
+  expect(screen.getByText('system-wide')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -2222,6 +2237,10 @@ test('a page with nothing in it yet draws the controls and no prose', async () =
   )
   render(<App />)
   await screen.findByText('Add a document')
+
+  fireEvent.click(screen.getByRole('button', { name: /bare cora/ }))
+  expect(screen.getByText('No plugin is loaded.')).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: /bare cora/ }))
 
   for (const panel of ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY']) {
     fireEvent.click(screen.getByRole('tab', { name: panel }))

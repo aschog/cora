@@ -1043,6 +1043,36 @@ button {
   color: var(--n700);
 }
 
+.plugin-registrations {
+  margin: 6px 0 0;
+  padding: 0 8px;
+  list-style: none;
+}
+
+.plugin-registration {
+  display: grid;
+  grid-template-columns: 84px 1fr auto;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 12.5px;
+  color: var(--n700);
+}
+
+.plugin-registration-kind {
+  color: var(--n600);
+}
+
+.plugin-registration-name {
+  color: var(--text);
+}
+
+/* A registration no scope can switch off is a claim on every turn, so it reads as one
+   rather than as a blank where a field would be. */
+.plugin-registration-everywhere {
+  font-weight: 600;
+  color: var(--text);
+}
+
 .plan-origin {
   margin-top: 6px;
 }

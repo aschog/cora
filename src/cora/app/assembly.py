@@ -54,7 +54,7 @@ from cora.ports.conversations import Conversations
 from cora.ports.documents import Documents
 from cora.ports.embedding import Embedder
 from cora.ports.graph import GraphFor, Loop
-from cora.ports.host import Extension
+from cora.ports.host import Extension, Listed
 from cora.ports.memory import Memory
 from cora.ports.plugin import Tool
 from cora.ports.retrieval import Retriever
@@ -74,6 +74,7 @@ class App:
 
     agent: Agent
     knowledge_base: KnowledgeBase
+    plugins: tuple[Listed, ...] = ()
     memory: Memory | None = None
     conversations: Conversations | None = None
 
@@ -171,6 +172,7 @@ def assemble(
     return App(
         agent=Agent(runner=runner, conversations=conversations),
         knowledge_base=knowledge_base,
+        plugins=registry.listing(plugins),
         memory=memory,
         conversations=conversations,
     )
@@ -185,7 +187,7 @@ def _announce(plugins: tuple[Extension, ...]) -> None:
     registered: a plugin that registered nothing is the one they most need to see.
     """
     if plugins:
-        log.info("plugins loaded: %s", ", ".join(plugin.module for plugin in plugins))
+        log.info("plugins loaded: %s", ", ".join(plugin.source for plugin in plugins))
 
 
 def _warn_unscreened(registry: Registry) -> None:
@@ -274,6 +276,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         ConfigurationError: The plugins load but cannot be composed together.
     """
     from functools import partial
+    from pathlib import Path
 
     from cora.adapters.chroma_retriever import ChromaRetriever
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
@@ -296,7 +299,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         embedder=SentenceTransformerEmbedder(),
         retriever=retriever,
         documents=SqliteDocuments.at(config.documents_path),
-        plugins=load_plugins(config.plugin_modules),
+        plugins=load_plugins(config.plugin_modules, folder=Path(config.plugins_path)),
         plugin_settings=read_plugin_settings(config.plugin_modules),
         scopes=config.scopes,
         memory=SqliteStoreMemory.at(config.memory_path),

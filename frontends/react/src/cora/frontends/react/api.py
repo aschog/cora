@@ -59,13 +59,12 @@ carrying it is bounded here instead, before any of it is read."""
 def api(
     app: App,
     *,
-    plugins: tuple[str, ...] = (),
     scopes: tuple[str, ...] = (),
     ui: pathlib.Path | None = None,
 ) -> Starlette:
-    """`plugins` and `scopes` are what the deployment configured, which the assembled
-    app does not carry: the badge names the plugins, the picker offers the scopes, and
-    nothing on the page can change either."""
+    """`scopes` is what the deployment configured, which the assembled app does not
+    carry: the picker offers them, and nothing on the page can change them. What
+    loaded is the app's own listing, so the menu and a terminal say one thing."""
     routes: list[Route | Mount] = [
         Route("/api/documents", _documents(app), methods=["GET"]),
         Route("/api/documents", _ingest(app), methods=["POST"]),
@@ -79,7 +78,7 @@ def api(
         Route("/api/memory", _memory(app), methods=["GET"]),
         Route("/api/memory", _clear(app), methods=["DELETE"]),
         Route("/api/memory/{key}", _forget(app), methods=["DELETE"]),
-        Route("/api/plugins", _plugins(plugins), methods=["GET"]),
+        Route("/api/plugins", _plugins(app), methods=["GET"]),
         Route("/api/scopes", _scopes(scopes), methods=["GET"]),
     ]
     if ui is not None and ui.is_dir():
@@ -455,11 +454,14 @@ def _clear(app: App) -> Callable[[Request], Any]:
     return everything
 
 
-def _plugins(plugins: tuple[str, ...]) -> Callable[[Request], Any]:
-    def named(request: Request) -> JSONResponse:
-        return JSONResponse(list(plugins))
+def _plugins(app: App) -> Callable[[Request], Any]:
+    """What loaded, with what each plugin registered — the listing `make plugins`
+    prints, as the menu reads it."""
 
-    return named
+    def listed(request: Request) -> JSONResponse:
+        return JSONResponse([payloads.plugin(each) for each in app.plugins])
+
+    return listed
 
 
 def _scopes(scopes: tuple[str, ...]) -> Callable[[Request], Any]:

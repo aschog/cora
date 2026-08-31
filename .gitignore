@@ -20,6 +20,11 @@ node_modules/
 
 # Local vector store (Chroma persistence)
 .cora/
+# Everything cora keeps at runtime is ignored — except the folder a plugin is dropped
+# into, which has to be there to drop one into.
+!.cora/plugins/
+.cora/plugins/*
+!.cora/plugins/.gitkeep
 e2e-artifacts/
 
 # The built docs site.

@@ -75,6 +75,15 @@ The travel plugin ships its notes as files under
 `plugins/travel/src/cora/plugins/travel/corpus/`; upload them in the documents rail to
 give that field something to answer from.
 
+A plugin does not have to be installed. Drop a single `.py` file into `./.cora/plugins/`
+and cora loads it with no packaging at all, named for the file — the folder is read in
+name order after the modules `CORA_PLUGINS` names, and `CORA_PLUGINS_PATH` moves it.
+`make plugins` prints what loaded: every plugin under where it came from, with its tools,
+its instructions and the points in a turn it subscribed to, and anything registered
+without a scope marked `system-wide`. The same listing is behind the plug icon on the
+page. A plugin declares which version of the contract it wants, and one cora does not
+offer is refused before its code runs.
+
 A plugin reads its own settings from the environment, under its own name:
 `CORA_PLUGIN_FITNESS_UNITS=imperial` reaches `cora.plugins.fitness` as `units`. Cora's
 own `CORA_` variables are a separate namespace, so no plugin can read them.

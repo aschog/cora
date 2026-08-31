@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as cora from './api'
-import type { Citation, Decision, Fact, Session, Step, Turn } from './api'
+import type { Citation, Decision, Fact, Plugin, Session, Step, Turn } from './api'
 import Answer from './components/Answer'
 import CitationModal from './components/CitationModal'
 import DocumentRail from './components/DocumentRail'
@@ -92,7 +92,7 @@ export default function App() {
      which used to take the question the reader had just asked with it. */
   const [flight, setFlight] = useState<{ thread: string; entry: Entry } | null>(null)
   const [documents, setDocuments] = useState<string[]>([])
-  const [plugins, setPlugins] = useState<string[]>([])
+  const [plugins, setPlugins] = useState<Plugin[]>([])
   /* The fields this deployment offers, and the one this conversation is fixed to.
      `fixedPin` is whether a turn has written it into the thread's state — until one has,
      the pick is the reader's intention and the next question is what settles it. */
