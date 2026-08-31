@@ -1,7 +1,4 @@
 import re
-from dataclasses import dataclass
-
-from cora.domain.errors import InputRejectedError
 
 _INJECTION_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(
@@ -21,9 +18,8 @@ REFUSAL = (
 )
 
 
-@dataclass(frozen=True)
-class PromptInjectionRule:
-    def apply(self, user_input: str) -> None:
-        normalized = " ".join(user_input.lower().split())
-        if any(pattern.search(normalized) for pattern in _INJECTION_PATTERNS):
-            raise InputRejectedError(REFUSAL)
+def refuse_injection(question: str) -> str | None:
+    normalized = " ".join(question.lower().split())
+    if any(pattern.search(normalized) for pattern in _INJECTION_PATTERNS):
+        return REFUSAL
+    return None

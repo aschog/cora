@@ -1,10 +1,11 @@
-from cora.plugins.security.injection import PromptInjectionRule
-from cora.ports.host import Host
+from cora.plugins.security.injection import refuse_injection
+from cora.ports.host import SCREENING, Host
 
 
 def extend(cora: Host) -> None:
-    """A rule and nothing else: the screen contributes no persona and no tools, so a
+    """A screen and nothing else: it contributes no persona and no tools, so a
     deployment can name it beside a domain plugin and carry a guard without carrying a
-    second domain. Like every plugin it is named in `CORA_PLUGINS` or it is not there —
-    cora starts with none, and says so."""
-    cora.register_rule(PromptInjectionRule())
+    second domain. System-wide, and so under no scope: an injection attempt is refused
+    whatever the turn was running as. Like every plugin it is named in `CORA_PLUGINS`
+    or it is not there — cora starts with none, and says so."""
+    cora.register_handler(event=SCREENING, handle=refuse_injection)

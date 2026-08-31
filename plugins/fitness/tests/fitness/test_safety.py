@@ -1,7 +1,6 @@
 import pytest
 
-from cora.domain.errors import InputRejectedError
-from cora.plugins.fitness.safety import MedicalSafetyRule
+from cora.plugins.fitness.safety import refuse_medical
 
 
 @pytest.mark.parametrize(
@@ -14,12 +13,11 @@ from cora.plugins.fitness.safety import MedicalSafetyRule
     ],
 )
 def test_a_decision_about_medication_is_redirected(text: str) -> None:
-    with pytest.raises(InputRejectedError) as excinfo:
-        MedicalSafetyRule().apply(text)
+    refused = refuse_medical(text)
 
-    message = excinfo.value.user_message.lower()
-    assert "medical" in message
-    assert "professional" in message
+    assert refused is not None
+    assert "medical" in refused.lower()
+    assert "professional" in refused.lower()
 
 
 @pytest.mark.parametrize(
@@ -35,8 +33,7 @@ def test_a_decision_about_medication_is_redirected(text: str) -> None:
     ],
 )
 def test_asking_for_a_diagnosis_is_redirected(text: str) -> None:
-    with pytest.raises(InputRejectedError):
-        MedicalSafetyRule().apply(text)
+    assert refuse_medical(text) is not None
 
 
 @pytest.mark.parametrize(
@@ -50,8 +47,7 @@ def test_asking_for_a_diagnosis_is_redirected(text: str) -> None:
 def test_asking_to_be_treated_is_redirected(text: str) -> None:
     """Higher-stakes than a diagnosis request and easier to miss: the question names no
     medication and asks for no name for the condition, just for what to do about it."""
-    with pytest.raises(InputRejectedError):
-        MedicalSafetyRule().apply(text)
+    assert refuse_medical(text) is not None
 
 
 @pytest.mark.parametrize(
@@ -71,7 +67,7 @@ def test_naming_what_you_live_with_is_not_asking_about_it(text: str) -> None:
     medical judgement. Refusing the whole message turns the guard rail into the reason
     the app is useless to the people most in need of a careful answer; the caveat that
     answer needs is the plugin's instructions to write."""
-    MedicalSafetyRule().apply(text)
+    assert refuse_medical(text) is None
 
 
 @pytest.mark.parametrize(
@@ -83,4 +79,4 @@ def test_naming_what_you_live_with_is_not_asking_about_it(text: str) -> None:
     ],
 )
 def test_in_scope_questions_are_allowed(text: str) -> None:
-    MedicalSafetyRule().apply(text)
+    assert refuse_medical(text) is None
