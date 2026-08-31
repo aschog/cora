@@ -70,18 +70,16 @@ class Registry:
         )
 
     def outline(self, scope: str) -> str:
-        """One line saying what a scope is for, taken off its own instructions.
+        """One sentence saying what a scope is for, taken off its own instructions.
 
         What a router is given to choose between, and what an option on the card that
-        asks the user says under the name. The first line a plugin wrote, because a
+        asks the user says under the name. The first sentence a plugin wrote, because a
         persona opens by saying what it answers — and a scope nobody wrote instructions
         for is described by its name alone.
         """
         for entry in self._of(INSTRUCTIONS):
-            if entry.scope == scope:
-                first = entry.value.strip().splitlines()
-                if first and first[0].strip():
-                    return first[0].strip()
+            if entry.scope == scope and entry.value.strip():
+                return _first_sentence(entry.value)
         return ""
 
     def handlers(
@@ -126,6 +124,19 @@ class Registry:
                     f"'{entry.value.name}'. Load one of them, or rename the tool."
                 )
             registered_by[entry.value.name] = entry.module
+
+
+def _first_sentence(instructions: str) -> str:
+    """The opening sentence, unwrapped.
+
+    A line break is where the author's editor wrapped and says nothing about where the
+    thought ends, so the paragraph is read whole and cut at the first full stop. A
+    paragraph with none is one sentence that has not ended.
+    """
+    opening = instructions.strip().split("\n\n")[0]
+    said = " ".join(word for word in opening.split())
+    ended = said.find(". ")
+    return said if ended < 0 else said[: ended + 1]
 
 
 def _heading(module: str) -> str:
