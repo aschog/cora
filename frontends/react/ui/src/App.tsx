@@ -214,15 +214,17 @@ export default function App() {
   const conversation =
     flight?.thread === thread ? [...entries, flight.entry] : entries
 
-  /** The document as this conversation last had it. A filename names nothing on its
-   *  own — one name can cover two uploads, and the store keeps a text per upload — so
-   *  the newest citation for the name is what says which text to read. */
+  /** The document as this conversation last had it, in the field the rail is showing.
+   *  A filename names nothing on its own — one name can cover a document in each field,
+   *  and two uploads within one — so the newest citation for the name *here* is what
+   *  says which text to read. A field the conversation has cited nothing in names
+   *  nothing, which is the honest answer: this field's copy has not been read. */
   const latestFor = (document: string) =>
     entries
       .slice()
       .reverse()
       .flatMap((entry) => entry.citations)
-      .find((citation) => citation.document === document)
+      .find((citation) => citation.document === document && citation.scope === field)
 
   /** Where a document's text is kept: the field it was ingested into and the upload it
    *  arrived as. Both, because a span is only meaningful against one field's file. */
@@ -242,9 +244,13 @@ export default function App() {
    *  come from one citation set, because a span measured in one upload's text points at
    *  arbitrary words in another's. */
   const passagesIn = (document: string) => {
-    const upload = latestFor(document)?.upload
+    const found = latestFor(document)
+    if (!found) return []
     return (answering(entries)?.citations ?? []).filter(
-      (citation) => citation.document === document && citation.upload === upload,
+      (citation) =>
+        citation.document === document &&
+        citation.upload === found.upload &&
+        citation.scope === found.scope,
     )
   }
 

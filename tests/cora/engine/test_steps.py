@@ -1488,3 +1488,26 @@ def test_a_plugins_payload_reads_the_field_the_turn_is_running_in() -> None:
     [reported] = [step for step in partial["trace"] if isinstance(step, ToolUse)]
     assert "kyoto.md" in reported.outcome
     assert "plan.md" not in reported.outcome
+
+
+def test_a_screen_reads_the_field_the_thread_is_pinned_to() -> None:
+    """Screening runs before routing, so a turn's field is unsettled here — but a
+    pinned thread's is settled, and a screen reading the documents reads that one."""
+    kb = KnowledgeBase(
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        loaders=TEXT_LOADERS,
+        documents=FakeDocuments(),
+    )
+    kb.add_file(b"The block holds intensity in the fourth week.", "plan.md", "fitness")
+    kb.add_file(b"The sleeper to Kyoto sells out early.", "kyoto.md", "travel")
+    seen: list[str] = []
+
+    def screen(question: str) -> None:
+        seen.extend(hit.chunk.source for hit in kb.search("notes", 5))
+
+    step = ScreenStep(registry=_registry("SYS", screens=(screen,)))
+
+    step({"question": "anything", "pin": "travel"})
+
+    assert seen == ["kyoto.md"]

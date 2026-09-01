@@ -14,7 +14,7 @@ from typing import Any
 
 from cora.domain.errors import CoreError, InputRejectedError
 from cora.domain.trace import HandlerRan, TraceStep
-from cora.engine.scoping import running_in
+from cora.engine.scoping import here, running_in
 from cora.ports.host import (
     BRIEFING,
     CALLING,
@@ -128,15 +128,16 @@ def dispatch(
             scopes and in the order they registered.
         trace: Where a step is appended per handler that did something, in order. Kept
             by the caller, so a refusal leaves behind what it interrupted.
-        scopes: What the turn is running under. Empty where it is not settled yet —
-            screening runs before routing, so a screen reads the default field.
+        scopes: What the turn is running under. Told nothing, this keeps whatever field
+            the work is already in rather than narrowing to the default one — the
+            argument binds a field, and never takes one away.
 
     Raises:
         InputRejectedError: A handler refused the question, or broke while screening it.
         ToolRefusal: A handler refused the call, or broke while checking it. The turn
             answers anyway: the model is told, and no round is spent.
     """
-    with running_in(scopes):
+    with running_in(scopes or here()):
         return _ran(event, value, handlers, trace)
 
 

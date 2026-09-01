@@ -2921,3 +2921,52 @@ test('leaving a pinned conversation returns the rail to the default field', asyn
     ).toBe('cora'),
   )
 })
+
+test('a filename in two fields never opens the other field’s copy', async () => {
+  /* One name can cover a document in each field. Reading the newest citation for the
+     name alone would open the other field's text under this field's listing — the panel
+     would show a document the rail is not offering, marked at a span measured in
+     something else. */
+  const answered = {
+    answer: 'From the default field [1].',
+    citations: [
+      { number: 1, document: 'notes.md', start: 0, end: 5, upload: 'u1', scope: 'cora' },
+    ],
+    trace: [],
+  }
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['notes.md'] }
+  const opened: string[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return oneTurn(answered)
+      if (path.startsWith('/api/uploads/')) {
+        opened.push(path)
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      }
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
+      }
+      const body = served[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Which copy?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/From the default field/)
+
+  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
+    target: { value: 'travel' },
+  })
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  fireEvent.click(screen.getByRole('button', { name: 'notes.md' }))
+
+  expect(await screen.findByText(/indexed before cora kept its text/)).toBeTruthy()
+  expect(opened).toEqual([])
+})

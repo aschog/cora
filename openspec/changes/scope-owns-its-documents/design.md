@@ -84,6 +84,9 @@ migration: nothing written before this change is carried over.
 - **One document in two fields is two copies** → a field is meant to be self-contained.
 - **The turn's field is implicit** → set in one place, read in one, and the pattern is here already.
 - **The upload rail grows a control** → without it a second field is unreachable from the page.
+- **A field whose files were deleted reads as an empty one** → the model is told nothing
+  was uploaded, which is the wrong sentence; the directory is cora's to write, so it is a
+  cost of the store being readable rather than a state cora puts it in.
 - **Everything already uploaded is lost** → the sprint says nothing is carried over.
 
 ## Migration Plan

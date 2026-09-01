@@ -210,7 +210,7 @@ class ScreenStep:
             question,
             self.registry.handlers(SCREENING, scoped(state)),
             trace,
-            scoped(state),
+            _pinned_field(state),
         )
         return {
             "messages": [Message(role="user", content=question)],
@@ -219,6 +219,19 @@ class ScreenStep:
             "trace": trace,
             "answer": "",
         }
+
+
+def _pinned_field(state: AgentState) -> frozenset[str]:
+    """The field a turn is in before it has been routed, which is the thread's pin.
+
+    Screening runs ahead of routing, so the scopes a turn ends up under are not settled
+    here — but a pinned thread's field is, and it is what a screen reading the documents
+    should read. An unpinned turn has no field yet and reads the default one. The pin
+    the *question* asked for is not taken: nothing a refused question sent may decide
+    what a screen is shown.
+    """
+    pinned = state.get("pin", "")
+    return frozenset({pinned}) if pinned else scoped(state)
 
 
 def _focused(scopes: tuple[str, ...], how: str) -> AgentState:

@@ -348,3 +348,56 @@ def test_a_passage_whose_file_is_gone_is_left_out(
 
     with running_in(frozenset({FITNESS})):
         assert kb.search("intensity", k=5) == []
+
+
+def test_a_missing_file_costs_its_own_place_and_not_the_one_below_it(
+    kb: KnowledgeBase, documents: FakeDocuments
+) -> None:
+    """A turn running in two fields merges what each returned, so cutting to `k` before
+    the unreadable passages are dropped spends a place on a passage nobody gets."""
+    kb.add_file(KYOTO, "kyoto.md", scope=TRAVEL)
+    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    documents.forget(TRAVEL)
+
+    with running_in(frozenset({FITNESS, TRAVEL})):
+        [hit] = kb.search(KYOTO.decode(), k=1)
+
+    assert hit.chunk.source == "plan.md"
+
+
+class _RecordingRetriever(FakeRetriever):
+    """What the index was handed, as the port promises it: the span, and no words."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.given: list[Chunk] = []
+
+    def add(
+        self,
+        scope: str,
+        chunks: list[Chunk],
+        vectors: list[list[float]],
+        file_hash: str,
+    ) -> None:
+        self.given.extend(chunks)
+        super().add(scope, chunks, vectors, file_hash)
+
+
+def test_the_index_is_handed_the_span_and_none_of_the_words(
+    documents: FakeDocuments, embedder: FakeEmbedder
+) -> None:
+    """The file is where the text is kept, so handing it to the index as well would be
+    the second copy the story exists to remove."""
+    retriever = _RecordingRetriever()
+    kb = KnowledgeBase(
+        embedder=embedder,
+        retriever=retriever,
+        loaders=TEXT_LOADERS,
+        documents=documents,
+    )
+
+    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+
+    assert retriever.given
+    assert all(chunk.text == "" for chunk in retriever.given)
+    assert sum(chunk.length for chunk in retriever.given) >= len(PLAN.decode())
