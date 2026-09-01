@@ -5,7 +5,7 @@ import pytest
 
 from cora.domain.agent_state import AgentState
 from cora.domain.chunk import Chunk
-from cora.domain.citations import Citation
+from cora.domain.citations import Citable, Citation, Context
 from cora.domain.decision import Decision, Option
 from cora.domain.errors import (
     InputRejectedError,
@@ -1437,3 +1437,54 @@ def test_a_handler_reads_the_field_the_turn_is_running_in() -> None:
 
     assert "READ: kyoto.md" in settled["brief"]
     assert "plan.md" not in settled["brief"]
+
+
+def test_a_plugins_payload_reads_the_field_the_turn_is_running_in() -> None:
+    """A payload that cites its own material is a plugin's too, and it is asked to say
+    what it found after the call has returned. It reads the turn's field there as well:
+    the round is what runs in a field, not the call alone."""
+    kb = KnowledgeBase(
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        loaders=TEXT_LOADERS,
+        documents=FakeDocuments(),
+    )
+    kb.add_file(b"The block holds intensity in the fourth week.", "plan.md", "fitness")
+    kb.add_file(b"The sleeper to Kyoto sells out early.", "kyoto.md", "travel")
+
+    @dataclasses.dataclass(frozen=True)
+    class _LateReader(Citable):
+        def register(self, known: tuple[Citation, ...]) -> Context:
+            return Context(text="read", citations=())
+
+        def unnumbered(self) -> str:
+            return "read"
+
+        @property
+        def summary(self) -> str:
+            return " ".join(hit.chunk.source for hit in kb.search("notes", 5))
+
+    tool = Tool(
+        name="research",
+        description="Reads the documents and says what it found.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=_LateReader,
+    )
+    step = ToolStep(ToolRuntime(tools=(tool,)))
+
+    partial = step(
+        {
+            "messages": [
+                Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=(ToolCall(name="research", arguments={}, call_id="c1"),),
+                )
+            ],
+            "scopes": ["travel"],
+        }
+    )
+
+    [reported] = [step for step in partial["trace"] if isinstance(step, ToolUse)]
+    assert "kyoto.md" in reported.outcome
+    assert "plan.md" not in reported.outcome

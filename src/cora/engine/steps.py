@@ -23,6 +23,7 @@ from cora.engine.nesting import Inside, collecting, read_untrusted
 from cora.engine.plugin_set import Registry
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.rounds import Read, decided, told, used
+from cora.engine.scoping import running_in
 from cora.ports.chat_model import Aside, ChatModel, Message, TextSink, unheard
 from cora.ports.graph import ASK, DONE, TOOLS, Step
 from cora.ports.host import (
@@ -532,8 +533,14 @@ class ToolStep:
         A tool that ran work of its own — a plugin delegating to the model — reports it
         while the call runs, and it is kept under that call rather than beside it.
         """
-        known = tuple(state.get("citations", ()))
         scopes = scoped(state)
+        # The whole round, not the call alone: a payload that cites its own material is
+        # a plugin's too, and it is asked what it found after the call has returned.
+        with running_in(scopes):
+            return self._round(state, scopes)
+
+    def _round(self, state: AgentState, scopes: frozenset[str]) -> AgentState:
+        known = tuple(state.get("citations", ()))
         messages: list[Message] = []
         trace: list[TraceStep] = []
         added: list[Citation] = []

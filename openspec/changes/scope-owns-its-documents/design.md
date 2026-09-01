@@ -48,10 +48,10 @@ migration: nothing written before this change is carried over.
 
 **The turn's field is ambient, set where every tool call already passes.**
 
-- `ToolRuntime.execute` holds the turn's scopes and binds them for the length of the call.
+- The tool round and the handler dispatch each bind the turn's scopes over what they run.
 - That is the pattern `host.py` already uses to bound what a delegated loop may spend.
-- `KnowledgeBase.search` reads it, so cora's own tool, `Host.documents` and a delegated
-  loop are all scoped by construction.
+- `KnowledgeBase.search` reads it, so cora's own tool, a handler, a plugin's payload and
+  a delegated loop are all scoped by construction — everywhere a plugin gets to run.
 - Unset means the default field, which is what a bare cora and a bare test both want.
 - `ContextSource` keeps its signature, so the plugin contract does not move.
 - Rejected: a scope argument on `search` — every plugin would pass a field it cannot see.

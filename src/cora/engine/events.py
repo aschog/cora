@@ -118,9 +118,10 @@ def dispatch(
     value that comes back is what all of them made of it. On a refusing event nothing
     chains — the value is what was handed in, or the event's exception is raised.
 
-    This and `ToolRuntime.execute` are the two places a plugin's own code runs, so both
-    bind the turn's field around it: a handler that reads the documents reads the field
-    the turn is in, and material from another one never reaches the brief.
+    A plugin's own code runs here, so the turn's field is bound around it: a handler
+    that reads the documents reads the field the turn is in, and material from another
+    one never reaches the brief. The tool round binds it too, over everything a call
+    touches — one rule, wherever a plugin gets to run.
 
     Args:
         handlers: What is subscribed to this event, already narrowed to the turn's
