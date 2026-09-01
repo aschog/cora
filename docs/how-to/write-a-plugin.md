@@ -103,7 +103,13 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
 
 6. **Use what cora has.** The host is cora as your plugin is handed it — the documents
    the user uploaded, what cora remembers, the model behind every turn, a log named for
-   your plugin, and the settings named for it in the environment:
+   your plugin, and the settings named for it in the environment.
+
+   `cora.documents.search` reads the field the turn is running in, not every field there
+   is. You are not handed that field and cannot ask for another: a plugin cannot see the
+   turn it is in, so cora binds it around every point your code runs — a tool call, a
+   handler, a delegated loop — and the search reads it from there. A passage from a field
+   the turn is not in is a passage its answer could never cite.
 
    ```python
    def extend(cora: Host) -> None:
