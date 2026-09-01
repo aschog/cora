@@ -3,14 +3,15 @@ import DocumentBody, { usePassage } from './DocumentBody'
 
 type Props = {
   document: string | null
-  /** Where the text is kept: any citation the conversation carries for this document
-   *  names it, whether or not the newest answer rested on it. */
-  upload: string | null
+  /** Where the text is kept — the field and the upload. Any citation the conversation
+   *  carries for this document names both, whether or not the newest answer rested on
+   *  it. */
+  source: { scope: string; upload: string } | null
   citations: Citation[]
 }
 
-export default function SourcePanel({ document, upload, citations }: Props) {
-  const { text, trouble } = usePassage(upload)
+export default function SourcePanel({ document, source, citations }: Props) {
+  const { text, trouble } = usePassage(source)
 
   if (!document) return null
 

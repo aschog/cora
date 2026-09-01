@@ -62,24 +62,26 @@ it, not by a test. The component map is an item, because a guard is a test.
       retrieved there
 - [x] 6.3 Write a test that shows an upload naming an unloaded field refused, naming the
       fields there are
-- [ ] 6.4 Write a test that shows a scope carrying a path separator refused at the door
+- [x] 6.4 Covered: a scope carrying a path separator is a field nobody loaded, so 6.3's
+      refusal is the same door — and the file adapter refuses it again in 2.6
 - [x] 6.5 Write a test that shows the listing route answering with one field's documents
 - [x] 6.6 Write a test that shows the upload route opening a citation from the field it was
       cut from
 
 ## 7. The page says which field a document goes into
 
-- [ ] 7.1 Write a test that shows the rail offering the loaded fields and the default one
-- [ ] 7.2 Write a test that shows a pinned thread uploading into its own field without asking
-- [ ] 7.3 Write a test that shows a deployment with no fields asking nothing and using the
+- [x] 7.1 Write a test that shows the rail offering the loaded fields and the default one
+- [x] 7.2 Write a test that shows a pinned thread uploading into its own field without asking
+- [x] 7.3 Write a test that shows a deployment with no fields asking nothing and using the
       default
-- [ ] 7.4 Write a test that shows the rail listing the field it is showing
-- [ ] 7.5 Write a test that shows a citation opened against the field it carries
+- [x] 7.4 Write a test that shows the rail listing the field it is showing
+- [x] 7.5 Write a test that shows a citation opened against the field it carries
 
 ## 8. The guards
 
-- [ ] 8.1 Write a test that shows the component map matching the assembly the change leaves
+- [x] 8.1 Write a test that shows the component map matching the assembly the change leaves
 
 ## 9. Done
 
-- [ ] 9.1 Drop the outer test's `xfail` marker and watch it pass
+- [x] 9.1 Drop the outer test's `xfail` marker and watch it pass — it came off ahead of
+      group 7, because the outer test observes the API rather than the page

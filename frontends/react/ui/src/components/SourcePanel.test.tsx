@@ -11,7 +11,10 @@ const cited = (upload: string): Citation => ({
   start: 0,
   end: 6,
   upload,
+  scope: 'cora',
 })
+
+const kept = (upload: string) => ({ scope: 'cora', upload })
 
 beforeEach(() => {
   vi.stubGlobal(
@@ -24,7 +27,7 @@ afterEach(cleanup)
 
 test('with nothing opened the panel draws nothing', () => {
   const { container } = render(
-    <SourcePanel document={null} upload={null} citations={[]} />,
+    <SourcePanel document={null} source={null} citations={[]} />,
   )
 
   expect(container.textContent).toBe('')
@@ -37,11 +40,11 @@ test('a passage whose text was never kept says so rather than drawing an empty p
   /* `uploadOf` hands the panel what the citation names — the empty string for such an
      index — and `null` when the conversation cites the document nowhere at all. A
      document that cannot be read is a document that cannot be read. */
-  render(<SourcePanel document="notes.md" upload="" citations={[cited('')]} />)
+  render(<SourcePanel document="notes.md" source={null} citations={[cited('')]} />)
 
   expect(screen.getByText(/indexed before cora kept its text/)).toBeTruthy()
   cleanup()
-  render(<SourcePanel document="notes.md" upload={null} citations={[]} />)
+  render(<SourcePanel document="notes.md" source={null} citations={[]} />)
 
   expect(screen.getByText(/indexed before cora kept its text/)).toBeTruthy()
   expect(screen.queryByText(/The rest of the document follows/)).toBeNull()
@@ -49,7 +52,7 @@ test('a passage whose text was never kept says so rather than drawing an empty p
 
 test('a document with its text kept is shown under its name, and marked', async () => {
   const { container } = render(
-    <SourcePanel document="notes.md" upload="u1" citations={[cited('u1')]} />,
+    <SourcePanel document="notes.md" source={kept('u1')} citations={[cited('u1')]} />,
   )
 
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
@@ -59,7 +62,7 @@ test('a document with its text kept is shown under its name, and marked', async 
 })
 
 test('a document this answer did not rest on still says so', () => {
-  render(<SourcePanel document="notes.md" upload="u1" citations={[]} />)
+  render(<SourcePanel document="notes.md" source={kept('u1')} citations={[]} />)
 
   expect(screen.getByText('not cited in this answer')).toBeTruthy()
 })

@@ -5,7 +5,9 @@ import DocumentBody, { usePassage } from './DocumentBody'
 type Props = { citation: Citation; onClose: () => void }
 
 export default function CitationModal({ citation, onClose }: Props) {
-  const { text, trouble } = usePassage(citation.upload)
+  const { text, trouble } = usePassage(
+    citation.upload ? { scope: citation.scope, upload: citation.upload } : null,
+  )
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

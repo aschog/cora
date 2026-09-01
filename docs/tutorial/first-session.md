@@ -44,7 +44,8 @@ Give travel something to answer from by uploading the notes it ships, in
 
 ## 4. Ask it something
 
-Upload a document (txt/md/pdf) in the documents rail on the left, then ask about it —
+Upload a document (txt/md/pdf) in the documents rail on the left — with two fields
+loaded, *Upload into* says which one it lands in — then ask about it —
 answers cite the passages they used. Click a `[1]` in an answer and that document opens
 with the cited passage highlighted. The steps appear as cora takes them, under the
 *STEPS* tab on the right: what it decided, which tool it ran and what came back. A

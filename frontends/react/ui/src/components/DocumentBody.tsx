@@ -10,26 +10,26 @@ export const UNKEPT =
  * before cora kept any text names no upload, and a reader who clicked `[1]` deserves
  * that sentence as much as a reader who opened the document in the rail.
  */
-export function usePassage(upload: string | null) {
+export function usePassage(source: { scope: string; upload: string } | null) {
   const [text, setText] = useState<string | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
 
   useEffect(() => {
     setText(null)
     setTrouble(null)
-    if (!upload) {
+    if (!source) {
       setTrouble(UNKEPT)
       return
     }
     let current = true
     cora
-      .passage(upload)
+      .passage(source.scope, source.upload)
       .then((kept) => current && setText(kept))
       .catch((failed) => current && setTrouble(String(failed.message ?? failed)))
     return () => {
       current = false
     }
-  }, [upload])
+  }, [source?.scope, source?.upload])
 
   return { text, trouble }
 }

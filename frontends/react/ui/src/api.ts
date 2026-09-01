@@ -4,6 +4,9 @@ export type Citation = {
   start: number
   end: number
   upload: string
+  /** The field it was ingested into, whose directory the text is kept under. A passage
+   *  is opened where it was ingested, so both names are needed to read it back. */
+  scope: string
 }
 
 export type Step = {
@@ -70,15 +73,18 @@ async function failure(response: Response): Promise<string> {
   }
 }
 
-export const documents = () => read<string[]>('/api/documents')
+export const documents = (scope: string) =>
+  read<string[]>(`/api/documents?scope=${encodeURIComponent(scope)}`)
 export const plugins = () => read<Plugin[]>('/api/plugins')
 export const scopes = () => read<Scopes>('/api/scopes')
 export const memory = () => read<Fact[]>('/api/memory')
 export const sessions = () => read<Session[]>('/api/sessions')
 export const turns = (thread: string) => read<Turn[]>(`/api/sessions/${thread}`)
 
-export const passage = (upload: string) =>
-  read<{ text: string }>(`/api/uploads/${upload}`).then((kept) => kept.text)
+export const passage = (scope: string, upload: string) =>
+  read<{ text: string }>(
+    `/api/uploads/${encodeURIComponent(scope)}/${encodeURIComponent(upload)}`,
+  ).then((kept) => kept.text)
 
 export const forget = (key: string) => discard(`/api/memory/${key}`)
 
@@ -95,9 +101,13 @@ async function discard(path: string): Promise<void> {
   if (!response.ok) throw new Error(await failure(response))
 }
 
-export async function upload(file: File): Promise<{ document: string; chunks: number }> {
+export async function upload(
+  file: File,
+  scope: string,
+): Promise<{ document: string; chunks: number; scope: string }> {
   const carried = new FormData()
   carried.append('file', file)
+  carried.append('scope', scope)
   return read('/api/documents', { method: 'POST', body: carried })
 }
 

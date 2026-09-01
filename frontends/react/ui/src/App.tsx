@@ -11,6 +11,10 @@ import SessionsPanel from './components/SessionsPanel'
 import SourcePanel from './components/SourcePanel'
 import type { Notice } from './components/UploadNotice'
 
+/** The field a question belonging to none is answered in, and where an upload naming no
+ *  field lands. A field like any other, so the rail offers it beside the loaded ones. */
+const ANY_FIELD = 'cora'
+
 const TABS = ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
 type Tab = (typeof TABS)[number]
 
@@ -99,6 +103,10 @@ export default function App() {
   const [fields, setFields] = useState<string[]>([])
   const [pin, setPin] = useState<string | null>(null)
   const [fixedPin, setFixedPin] = useState(false)
+  /* The field the rail shows and uploads into. It follows the pin, because a pinned
+     conversation has one field and a document put anywhere else could never be cited
+     in it; unpinned, it is the reader's own pick and starts at the default field. */
+  const [field, setField] = useState(ANY_FIELD)
   const [facts, setFacts] = useState<Fact[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   /* The steps of the turn being taken, and the conversation they are being taken in: a
@@ -147,7 +155,7 @@ export default function App() {
   const refresh = useCallback(
     () =>
       Promise.all([
-        cora.documents(),
+        cora.documents(field),
         cora.memory(),
         cora.sessions(),
         cora.plugins(),
@@ -162,12 +170,18 @@ export default function App() {
           setTrouble(null)
         })
         .catch(reportTo(setTrouble)),
-    [],
+    [field],
   )
 
   useEffect(() => {
     refresh()
   }, [refresh])
+
+  /* A pinned conversation decides the rail's field: the pin is the thread's own state,
+     so reopening one moves the rail with it. */
+  useEffect(() => {
+    if (pin !== null) setField(pin)
+  }, [pin])
 
   /* A card left open outlives the page it was drawn on: the conversation it was open in
      is picked back up, and the question with it. */
@@ -207,7 +221,12 @@ export default function App() {
       .flatMap((entry) => entry.citations)
       .find((citation) => citation.document === document)
 
-  const uploadOf = (document: string) => latestFor(document)?.upload ?? null
+  /** Where a document's text is kept: the field it was ingested into and the upload it
+   *  arrived as. Both, because a span is only meaningful against one field's file. */
+  const sourceOf = (document: string) => {
+    const found = latestFor(document)
+    return found?.upload ? { scope: found.scope, upload: found.upload } : null
+  }
 
   /** Whether there is a conversation to leave: what the header draws, and what `start`
    *  refuses on. */
@@ -413,7 +432,7 @@ export default function App() {
   const uploaded = (file: File) => {
     const from = here.current
     return cora
-      .upload(file)
+      .upload(file, field)
       .then((added) => {
         if (here.current === from) setNotice(ingested(added))
         return refresh()
@@ -605,6 +624,10 @@ export default function App() {
           <DocumentRail
             documents={documents}
             cited={cited}
+            fields={fields}
+            field={field}
+            fixedField={pin !== null}
+            onField={setField}
             onOpen={open}
             onUpload={uploaded}
             upload={notice}
@@ -647,7 +670,7 @@ export default function App() {
           {tab === 'SOURCE' && (
             <SourcePanel
               document={read}
-              upload={read ? uploadOf(read) : null}
+              source={read ? sourceOf(read) : null}
               citations={read ? passagesIn(read) : []}
             />
           )}
