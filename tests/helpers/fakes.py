@@ -21,6 +21,7 @@ from cora.ports.chat_model import (
     TextSink,
     unheard,
 )
+from cora.ports.context_source import ContextSource
 from cora.ports.loading import Loaders
 from cora.ports.memory import Fact, Memory
 from cora.ports.plugin import Tool
@@ -60,38 +61,54 @@ class _Record(NamedTuple):
     vector: list[float]
     chunk: Chunk
     file_hash: str
+    scope: str
 
 
 class FakeRetriever:
+    """One list, read a field at a time, as the real index is a collection per field.
+    The stored chunk carries no text, because the index keeps the span alone."""
+
     def __init__(self) -> None:
-        self._records: list[_Record] = []
+        self.records: list[_Record] = []
 
     def add(
-        self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
+        self,
+        scope: str,
+        chunks: list[Chunk],
+        vectors: list[list[float]],
+        file_hash: str,
     ) -> None:
-        """Stamped with the upload on the way in, as the real index does: a hit carries
-        the upload its offsets were measured in."""
-        self._records.extend(
-            _Record(vector, replace(chunk, upload=file_hash), file_hash)
+        """Stamped with the upload and the field on the way in, as the real index does:
+        a hit carries the upload its offsets were measured in, and the field whose
+        directory that text is kept under."""
+        self.records.extend(
+            _Record(
+                vector, replace(chunk, upload=file_hash, scope=scope), file_hash, scope
+            )
             for chunk, vector in zip(chunks, vectors, strict=True)
         )
 
-    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
+    def query(
+        self, scope: str, query_vector: list[float], k: int
+    ) -> list[RetrievedChunk]:
         ranked = sorted(
             (
                 RetrievedChunk(chunk=r.chunk, score=_cosine(query_vector, r.vector))
-                for r in self._records
+                for r in self.records
+                if r.scope == scope
             ),
             key=lambda hit: hit.score,
             reverse=True,
         )
         return ranked[:k]
 
-    def sources(self) -> list[str]:
-        return list(dict.fromkeys(r.chunk.source for r in self._records))
+    def sources(self, scope: str) -> list[str]:
+        return list(
+            dict.fromkeys(r.chunk.source for r in self.records if r.scope == scope)
+        )
 
-    def contains(self, file_hash: str) -> bool:
-        return any(r.file_hash == file_hash for r in self._records)
+    def contains(self, scope: str, file_hash: str) -> bool:
+        return any(r.file_hash == file_hash and r.scope == scope for r in self.records)
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -138,37 +155,43 @@ class CountingRetriever(FakeRetriever):
         super().__init__()
         self.queries = 0
 
-    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
+    def query(
+        self, scope: str, query_vector: list[float], k: int
+    ) -> list[RetrievedChunk]:
         self.queries += 1
-        return super().query(query_vector, k)
+        return super().query(scope, query_vector, k)
 
 
 class FakeDocuments:
-    """The kept text, in a dict, keyed by upload as the real store is. `writes` is what
-    lets a test say a document was kept once, or not at all."""
+    """The kept text, in a dict, keyed by field and upload as the real store is.
+    `writes` is what lets a test say a document was kept once, or not at all."""
 
     def __init__(self) -> None:
-        self._kept: dict[str, str] = {}
+        self._kept: dict[tuple[str, str], str] = {}
         self.writes = 0
 
-    def keep(self, upload: str, text: str) -> None:
-        self._kept[upload] = text
+    def keep(self, scope: str, upload: str, filename: str, text: str) -> None:
+        self._kept[(scope, upload)] = text
         self.writes += 1
 
-    def read(self, upload: str) -> str | None:
-        return self._kept.get(upload)
+    def read(self, scope: str, upload: str) -> str | None:
+        return self._kept.get((scope, upload))
+
+    def forget(self, scope: str) -> None:
+        """Every file of one field gone, as a directory emptied behind cora's back."""
+        self._kept = {key: text for key, text in self._kept.items() if key[0] != scope}
 
 
 class KeepsNothingDocuments(FakeDocuments):
     """A store that accepts and forgets: what an index written before cora kept any
     document text looks like from the outside."""
 
-    def keep(self, upload: str, text: str) -> None:
+    def keep(self, scope: str, upload: str, filename: str, text: str) -> None:
         return None
 
 
 class FailingDocuments(FakeDocuments):
-    def read(self, upload: str) -> str | None:
+    def read(self, scope: str, upload: str) -> str | None:
         raise DocumentStoreError
 
 
@@ -245,17 +268,23 @@ class FailingRetriever:
     error: Exception
 
     def add(
-        self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
+        self,
+        scope: str,
+        chunks: list[Chunk],
+        vectors: list[list[float]],
+        file_hash: str,
     ) -> None:
         raise self.error
 
-    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
+    def query(
+        self, scope: str, query_vector: list[float], k: int
+    ) -> list[RetrievedChunk]:
         raise self.error
 
-    def sources(self) -> list[str]:
+    def sources(self, scope: str) -> list[str]:
         raise self.error
 
-    def contains(self, file_hash: str) -> bool:
+    def contains(self, scope: str, file_hash: str) -> bool:
         raise self.error
 
 
@@ -353,7 +382,7 @@ class UnopenableSessions:
 def host_for(
     module: str = "fixture_plugins.valid",
     *,
-    documents: FakeContextSource | None = None,
+    documents: ContextSource | None = None,
     model: ChatModel | None = None,
     memory: Memory | None = None,
     settings: dict[str, str] | None = None,

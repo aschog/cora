@@ -3,6 +3,7 @@ from functools import wraps
 from typing import cast
 
 import chromadb
+from chromadb.api.models.Collection import Collection
 from chromadb.errors import ChromaError
 
 from cora.domain.chunk import Chunk
@@ -21,37 +22,59 @@ def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
     return wrapper
 
 
-def _to_chunk(document: object, metadata: Mapping[str, object]) -> Chunk:
+def _to_chunk(scope: str, metadata: Mapping[str, object]) -> Chunk:
+    """The span the index kept, with no words in it: the file holds those."""
     return Chunk(
-        text=str(document),
+        text="",
         source=cast(str, metadata["source"]),
         index=cast(int, metadata["index"]),
         offset=cast(int, metadata["offset"]),
+        length=cast(int, metadata["length"]),
         upload=cast(str, metadata["file_hash"]),
+        scope=scope,
     )
 
 
 class ChromaRetriever:
+    """One collection per field, named for it under a shared prefix.
+
+    A field is a collection rather than a filter, so a passage of one is unreachable
+    from another rather than merely left out of a result — and an empty field is an
+    empty collection, which is the honest answer to searching one nothing was uploaded
+    to.
+    """
+
     @_translate_errors
     def __init__(self, path: str, collection: str) -> None:
-        client = chromadb.PersistentClient(path=path)
-        self._collection = client.get_or_create_collection(
-            name=collection, configuration={"hnsw": {"space": "cosine"}}
-        )
+        self._client = chromadb.PersistentClient(path=path)
+        self._prefix = collection
+        self._collections: dict[str, Collection] = {}
+
+    def _of(self, scope: str) -> Collection:
+        if scope not in self._collections:
+            self._collections[scope] = self._client.get_or_create_collection(
+                name=f"{self._prefix}-{scope}",
+                configuration={"hnsw": {"space": "cosine"}},
+            )
+        return self._collections[scope]
 
     @_translate_errors
     def add(
-        self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
+        self,
+        scope: str,
+        chunks: list[Chunk],
+        vectors: list[list[float]],
+        file_hash: str,
     ) -> None:
-        self._collection.add(
+        self._of(scope).add(
             ids=[f"{file_hash}:{chunk.index}" for chunk in chunks],
             embeddings=[list(vector) for vector in vectors],
-            documents=[chunk.text for chunk in chunks],
             metadatas=[
                 {
                     "source": chunk.source,
                     "index": chunk.index,
                     "offset": chunk.offset,
+                    "length": chunk.length,
                     "file_hash": file_hash,
                 }
                 for chunk in chunks
@@ -59,30 +82,29 @@ class ChromaRetriever:
         )
 
     @_translate_errors
-    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
-        result = self._collection.query(
+    def query(
+        self, scope: str, query_vector: list[float], k: int
+    ) -> list[RetrievedChunk]:
+        result = self._of(scope).query(
             query_embeddings=[list(query_vector)],
             n_results=k,
-            include=["documents", "metadatas", "distances"],
+            include=["metadatas", "distances"],
         )
-        documents = (result["documents"] or [[]])[0]
         metadatas = (result["metadatas"] or [[]])[0]
         distances = (result["distances"] or [[]])[0]
         return [
-            RetrievedChunk(chunk=_to_chunk(document, metadata), score=1.0 - distance)
-            for document, metadata, distance in zip(
-                documents, metadatas, distances, strict=True
-            )
+            RetrievedChunk(chunk=_to_chunk(scope, metadata), score=1.0 - distance)
+            for metadata, distance in zip(metadatas, distances, strict=True)
         ]
 
     @_translate_errors
-    def sources(self) -> list[str]:
-        metadatas = self._collection.get(include=["metadatas"])["metadatas"] or []
+    def sources(self, scope: str) -> list[str]:
+        metadatas = self._of(scope).get(include=["metadatas"])["metadatas"] or []
         return list(
             dict.fromkeys(cast(str, metadata["source"]) for metadata in metadatas)
         )
 
     @_translate_errors
-    def contains(self, file_hash: str) -> bool:
-        found = self._collection.get(where={"file_hash": file_hash}, limit=1)
+    def contains(self, scope: str, file_hash: str) -> bool:
+        found = self._of(scope).get(where={"file_hash": file_hash}, limit=1)
         return len(found["ids"]) > 0

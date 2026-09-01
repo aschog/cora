@@ -43,7 +43,10 @@ refusing it. No test holds that — only the provider can answer it."""
 DEFAULT_HISTORY_TURNS = 20
 DEFAULT_DB_PATH = ".cora/chroma"
 DEFAULT_MEMORY_PATH = ".cora/memory.sqlite"
-DEFAULT_DOCUMENTS_PATH = ".cora/documents.sqlite"
+DEFAULT_DOCUMENTS_PATH = ".cora/documents"
+"""Where a scope keeps its documents: a directory per field under this root, and one
+Markdown file per source under that. A directory rather than a database file, because
+the point of it is that a person can open it and read what cora has."""
 DEFAULT_CONVERSATIONS_PATH = ".cora/conversations.sqlite"
 DEFAULT_LOG_PATH = LOG_FILE
 

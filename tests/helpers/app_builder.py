@@ -7,7 +7,7 @@ from cora.app.assembly import App, assemble
 from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.documents import Documents
 from cora.ports.embedding import Embedder
-from cora.ports.host import Extension
+from cora.ports.host import DEFAULT_SCOPE, Extension
 from cora.ports.retrieval import Retriever
 from fakes import FakeDocuments, FakeEmbedder, FakeRetriever, ScriptedChatModel
 from fixture_plugins import make_plugin
@@ -39,7 +39,9 @@ def assembled(
     )
 
 
-def indexed(app: App, *docs: tuple[str, bytes]) -> App:
+def indexed(app: App, *docs: tuple[str, bytes], scope: str = DEFAULT_SCOPE) -> App:
+    """The app with these documents in one of its fields, the default one unless a test
+    names another."""
     for filename, data in docs:
-        app.knowledge_base.add_file(data, filename)
+        app.knowledge_base.add_file(data, filename, scope)
     return app

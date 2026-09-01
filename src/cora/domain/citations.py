@@ -45,7 +45,8 @@ class Citation:
     never moves to another passage, not even when the same filename is uploaded again
     with other text in it.
 
-    `document` is the name to show; `upload` is what to read.
+    `document` is the name to show; `upload` is what to read, and `scope` is the field
+    whose directory it is kept under — a passage is opened where it was ingested.
     """
 
     number: int
@@ -53,6 +54,7 @@ class Citation:
     start: int
     end: int
     upload: str = ""
+    scope: str = ""
 
 
 @dataclass(frozen=True)
@@ -114,7 +116,7 @@ def build_context_block(
         if span in number_of:
             continue
         number_of[span] = next_number
-        upload, document, start, end = span
+        scope, upload, document, start, end = span
         added.append(
             Citation(
                 number=next_number,
@@ -122,6 +124,7 @@ def build_context_block(
                 start=start,
                 end=end,
                 upload=upload,
+                scope=scope,
             )
         )
         next_number += 1
@@ -132,19 +135,31 @@ def build_context_block(
     return Context(text=body, citations=tuple(added))
 
 
-def _span(citation: Citation) -> tuple[str, str, int, int]:
-    return (citation.upload, citation.document, citation.start, citation.end)
+def _span(citation: Citation) -> tuple[str, str, str, int, int]:
+    return (
+        citation.scope,
+        citation.upload,
+        citation.document,
+        citation.start,
+        citation.end,
+    )
 
 
-def _hit_span(hit: RetrievedChunk) -> tuple[str, str, int, int]:
+def _hit_span(hit: RetrievedChunk) -> tuple[str, str, str, int, int]:
     """What makes two passages the same passage.
 
-    The upload, because a span means nothing without the text it was measured in, and
-    the name beside it, because an upload whose hash was never recorded would otherwise
-    pool with every other.
+    The field and the upload, because a span means nothing without the text it was
+    measured in, and the name beside them, because an upload whose hash was never
+    recorded would otherwise pool with every other.
     """
     chunk = hit.chunk
-    return (chunk.upload, chunk.source, chunk.offset, chunk.offset + len(chunk.text))
+    return (
+        chunk.scope,
+        chunk.upload,
+        chunk.source,
+        chunk.offset,
+        chunk.offset + len(chunk.text),
+    )
 
 
 class Citable(ABC):

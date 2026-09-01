@@ -5,7 +5,6 @@ is asked of the agent directly, so the assertion is about what a pinned turn cou
 retrieve and cite rather than about the stream that carries it.
 """
 
-import pytest
 from starlette.testclient import TestClient
 
 from app_builder import assembled
@@ -22,8 +21,6 @@ PLAN = b"The block holds intensity and drops volume in the fourth week."
 KYOTO = b"The sleeper to Kyoto sells out a month before the maples turn."
 QUESTION = "What do my notes say?"
 THREAD = "t1"
-IN_PROGRESS = "story 8: a scope's documents are its own files"
-
 SEARCH = ModelReply(
     tool_calls=(
         ToolCall(name=SEARCH_TOOL_NAME, arguments={"query": QUESTION}, call_id="c1"),
@@ -32,7 +29,6 @@ SEARCH = ModelReply(
 ANSWER = ModelReply(text="They say the sleeper sells out early [1][2].")
 
 
-@pytest.mark.xfail(strict=True, reason=IN_PROGRESS)
 def test_a_field_answers_from_its_own_files() -> None:
     app = assembled(
         chat_model=ScriptedChatModel([SEARCH, ANSWER]),

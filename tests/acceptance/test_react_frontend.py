@@ -113,7 +113,8 @@ def test_the_page_uploads_asks_reads_the_passage_and_comes_back_to_it() -> None:
         [citation] = turn["citations"]
         assert citation["document"] == DOCUMENT
 
-        kept = page.get(f"/api/uploads/{citation['upload']}").json()["text"]
+        opened = f"/api/uploads/{citation['scope']}/{citation['upload']}"
+        kept = page.get(opened).json()["text"]
         assert PASSAGE in kept[citation["start"] : citation["end"]]
 
         [session] = page.get("/api/sessions").json()

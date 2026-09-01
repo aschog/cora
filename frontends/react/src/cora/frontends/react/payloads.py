@@ -24,6 +24,7 @@ def citation(citation: Citation) -> dict[str, Any]:
         "start": citation.start,
         "end": citation.end,
         "upload": citation.upload,
+        "scope": citation.scope,
     }
 
 

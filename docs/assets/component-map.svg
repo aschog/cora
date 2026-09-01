@@ -110,7 +110,7 @@
   <rect x="1361.35" y="336" width="8" height="4" class="glyph"/>
   <rect x="1361.35" y="342" width="8" height="4" class="glyph"/>
   <rect x="1097.77" y="416" width="295.58" height="52" rx="3" class="outer"/>
-  <text x="1115.77" y="447" class="name" text-anchor="start">SqliteDocuments</text>
+  <text x="1115.77" y="447" class="name" text-anchor="start">FileDocuments</text>
   <rect x="1365.35" y="426" width="14" height="14" class="glyph"/>
   <rect x="1361.35" y="428" width="8" height="4" class="glyph"/>
   <rect x="1361.35" y="434" width="8" height="4" class="glyph"/>

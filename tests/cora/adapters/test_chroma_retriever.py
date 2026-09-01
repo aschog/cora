@@ -1,12 +1,12 @@
 from collections.abc import Callable
 from dataclasses import replace
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
 
 from cora.domain.chunk import Chunk
 from cora.domain.errors import RetrievalError
+from cora.ports.host import DEFAULT_SCOPE
 from fakes import FakeEmbedder
 
 if TYPE_CHECKING:
@@ -25,16 +25,16 @@ def test_chroma_round_trips_with_our_own_embeddings(
         make_chunk("gamma", index=2),
     ]
     chroma_retriever.add(
-        chunks, embedder.embed([c.text for c in chunks]), file_hash="h"
+        DEFAULT_SCOPE, chunks, embedder.embed([c.text for c in chunks]), file_hash="h"
     )
 
     [query_vector] = embedder.embed(["beta"])
-    hits = chroma_retriever.query(query_vector, k=2)
+    hits = chroma_retriever.query(DEFAULT_SCOPE, query_vector, k=2)
 
     assert len(hits) == 2
-    assert hits[0].chunk == replace(chunks[1], upload="h"), (
-        "a hit carries the upload it was added under"
-    )
+    assert hits[0].chunk == replace(
+        chunks[1], text="", upload="h", scope=DEFAULT_SCOPE
+    ), "a hit carries the span, the upload and the field it was added under"
     assert hits[0].chunk.source == "doc.txt"
     assert hits[0].score >= hits[1].score
 
@@ -47,7 +47,7 @@ def test_a_store_nothing_was_added_to_returns_nothing_at_all(
     collection with no hits rather than raising or padding to k."""
     [query_vector] = FakeEmbedder().embed(["anything at all"])
 
-    assert chroma_retriever.query(query_vector, k=5) == []
+    assert chroma_retriever.query(DEFAULT_SCOPE, query_vector, k=5) == []
 
 
 def test_chroma_reads_back_sources_and_contains(
@@ -59,12 +59,14 @@ def test_chroma_reads_back_sources_and_contains(
         make_chunk("b", source="two.txt", index=0),
         make_chunk("c", source="two.txt", index=1),
     ]
-    chroma_retriever.add(first, embedder.embed(["a"]), file_hash="h1")
-    chroma_retriever.add(second, embedder.embed(["b", "c"]), file_hash="h2")
+    chroma_retriever.add(DEFAULT_SCOPE, first, embedder.embed(["a"]), file_hash="h1")
+    chroma_retriever.add(
+        DEFAULT_SCOPE, second, embedder.embed(["b", "c"]), file_hash="h2"
+    )
 
-    assert sorted(chroma_retriever.sources()) == ["one.txt", "two.txt"]
-    assert chroma_retriever.contains("h1")
-    assert not chroma_retriever.contains("h3")
+    assert sorted(chroma_retriever.sources(DEFAULT_SCOPE)) == ["one.txt", "two.txt"]
+    assert chroma_retriever.contains(DEFAULT_SCOPE, "h1")
+    assert not chroma_retriever.contains(DEFAULT_SCOPE, "h3")
 
 
 def test_chroma_records_persist_across_a_fresh_client(
@@ -72,13 +74,15 @@ def test_chroma_records_persist_across_a_fresh_client(
 ) -> None:
     embedder = FakeEmbedder()
     chunk = make_chunk("persisted", index=0)
-    make_chroma().add([chunk], embedder.embed(["persisted"]), file_hash="h")
+    make_chroma().add(
+        DEFAULT_SCOPE, [chunk], embedder.embed(["persisted"]), file_hash="h"
+    )
 
     reopened = make_chroma()
-    hits = reopened.query(embedder.embed(["persisted"])[0], k=1)
+    hits = reopened.query(DEFAULT_SCOPE, embedder.embed(["persisted"])[0], k=1)
 
     assert len(hits) == 1
-    assert hits[0].chunk == replace(chunk, upload="h")
+    assert hits[0].chunk == replace(chunk, text="", upload="h", scope=DEFAULT_SCOPE)
 
 
 def test_chroma_re_adds_with_same_ids_do_not_duplicate(
@@ -87,10 +91,10 @@ def test_chroma_re_adds_with_same_ids_do_not_duplicate(
     embedder = FakeEmbedder()
     chunks = [make_chunk("a", index=0), make_chunk("b", index=1)]
     vectors = embedder.embed([c.text for c in chunks])
-    chroma_retriever.add(chunks, vectors, file_hash="h")
-    chroma_retriever.add(chunks, vectors, file_hash="h")
+    chroma_retriever.add(DEFAULT_SCOPE, chunks, vectors, file_hash="h")
+    chroma_retriever.add(DEFAULT_SCOPE, chunks, vectors, file_hash="h")
 
-    hits = chroma_retriever.query(embedder.embed(["a"])[0], k=10)
+    hits = chroma_retriever.query(DEFAULT_SCOPE, embedder.embed(["a"])[0], k=10)
     assert len(hits) == 2
 
 
@@ -99,17 +103,40 @@ def test_chroma_failure_surfaces_as_retrieval_error(
 ) -> None:
     embedder = FakeEmbedder()
     chroma_retriever.add(
-        [make_chunk("a", index=0)], embedder.embed(["a"]), file_hash="h"
+        DEFAULT_SCOPE, [make_chunk("a", index=0)], embedder.embed(["a"]), file_hash="h"
     )
 
     with pytest.raises(RetrievalError):
-        chroma_retriever.query([0.1, 0.2, 0.3], k=1)
+        chroma_retriever.query(DEFAULT_SCOPE, [0.1, 0.2, 0.3], k=1)
 
 
-def test_chroma_construction_failure_surfaces_as_retrieval_error(
-    tmp_path: Path,
+def test_a_field_chroma_will_not_name_a_collection_surfaces_as_retrieval_error(
+    chroma_retriever: "ChromaRetriever",
 ) -> None:
-    from cora.adapters.chroma_retriever import ChromaRetriever
-
+    """A field is reached the first time it is asked about, so this is where a name
+    Chroma refuses shows up — construction opens the client and nothing else."""
     with pytest.raises(RetrievalError):
-        ChromaRetriever(path=str(tmp_path), collection="x")
+        chroma_retriever.sources("a..b")
+
+
+def test_a_field_is_a_collection_of_its_own(
+    chroma_retriever: "ChromaRetriever", make_chunk: Callable[..., Chunk]
+) -> None:
+    """A field is unreachable from another rather than filtered out of it, so a leak is
+    not one missing clause away."""
+    embedder = FakeEmbedder()
+    chroma_retriever.add(
+        "travel",
+        [make_chunk("kyoto", source="kyoto.md")],
+        embedder.embed(["kyoto"]),
+        "h1",
+    )
+
+    [query_vector] = embedder.embed(["kyoto"])
+
+    assert chroma_retriever.query("fitness", query_vector, k=5) == []
+    assert chroma_retriever.sources("fitness") == []
+    assert not chroma_retriever.contains("fitness", "h1")
+    assert [
+        hit.chunk.source for hit in chroma_retriever.query("travel", query_vector, k=5)
+    ] == ["kyoto.md"]

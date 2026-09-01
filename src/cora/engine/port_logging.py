@@ -65,34 +65,42 @@ class LoggingRetriever:
     inner: Retriever
 
     def add(
-        self, chunks: list[Chunk], vectors: list[list[float]], file_hash: str
+        self,
+        scope: str,
+        chunks: list[Chunk],
+        vectors: list[list[float]],
+        file_hash: str,
     ) -> None:
-        """Index the chunks, saying how many and from where."""
+        """Index the chunks, saying how many, from where and into which field."""
         log.debug(
-            "indexing: %d chunks from %s",
+            "indexing: %d chunks from %s into %s",
             len(chunks),
             truncate(chunks[0].source) if chunks else "an empty batch",
+            scope,
         )
-        self.inner.add(chunks, vectors, file_hash)
+        self.inner.add(scope, chunks, vectors, file_hash)
 
-    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
-        """The hits, unchanged, with their sources and scores in the log."""
-        hits = self.inner.query(query_vector, k)
+    def query(
+        self, scope: str, query_vector: list[float], k: int
+    ) -> list[RetrievedChunk]:
+        """The hits, unchanged, with the field, their sources and scores in the log."""
+        hits = self.inner.query(scope, query_vector, k)
         log.debug(
-            "retrieval: k=%d, %d hits [%s]",
+            "retrieval: scope=%s, k=%d, %d hits [%s]",
+            scope,
             k,
             len(hits),
             truncate(", ".join(_describe(hit) for hit in hits)),
         )
         return hits
 
-    def sources(self) -> list[str]:
+    def sources(self, scope: str) -> list[str]:
         """Straight through: a list of filenames says nothing a log needs."""
-        return self.inner.sources()
+        return self.inner.sources(scope)
 
-    def contains(self, file_hash: str) -> bool:
+    def contains(self, scope: str, file_hash: str) -> bool:
         """Straight through."""
-        return self.inner.contains(file_hash)
+        return self.inner.contains(scope, file_hash)
 
 
 @dataclass(frozen=True)

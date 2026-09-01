@@ -1,9 +1,21 @@
 import pytest
 
 from cora.domain.errors import RetrievalError
+from cora.engine.host import PluginHost
+from cora.engine.knowledge_base import KnowledgeBase
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.tool_runtime import ToolRuntime
+from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import Tool, ToolCall, ToolRefusal
-from fakes import add_tool
+from fakes import (
+    TEXT_LOADERS,
+    FakeDocuments,
+    FakeEmbedder,
+    FakeRetriever,
+    ScriptedChatModel,
+    add_tool,
+    host_for,
+)
 
 
 def explode() -> None:
@@ -182,3 +194,102 @@ def test_an_adapter_error_from_a_tool_propagates_instead_of_becoming_a_result() 
 
     with pytest.raises(RetrievalError):
         runtime.execute(ToolCall(name="unavailable", arguments={}, call_id="call-7"))
+
+
+FITNESS, TRAVEL = "fitness", "travel"
+PLAN = b"The block holds intensity and drops volume in the fourth week."
+KYOTO = b"The sleeper to Kyoto sells out a month before the maples turn."
+
+
+def _two_fields() -> KnowledgeBase:
+    kb = KnowledgeBase(
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        loaders=TEXT_LOADERS,
+        documents=FakeDocuments(),
+    )
+    kb.add_file(PLAN, "plan.md", FITNESS)
+    kb.add_file(KYOTO, "kyoto.md", TRAVEL)
+    return kb
+
+
+def _reading(host: PluginHost) -> Tool:
+    """A plugin's own tool, answering with the documents it found for itself."""
+
+    def read() -> str:
+        return " ".join(hit.chunk.source for hit in host.documents.search("notes", 5))
+
+    return Tool(
+        name="read",
+        description="Reads the documents.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=read,
+    )
+
+
+def test_a_plugins_own_search_reads_the_field_the_turn_is_running_in() -> None:
+    """A plugin cannot see the turn it is running in, so the field reaches its search
+    through the call rather than through an argument it would have to fill."""
+    host = host_for(documents=_two_fields())
+    runtime = ToolRuntime(tools=(_reading(host),))
+
+    result = runtime.execute(
+        ToolCall(name="read", arguments={}, call_id="c1"), frozenset({TRAVEL})
+    )
+
+    assert result.payload == "kyoto.md"
+
+
+def test_a_delegated_loops_search_reads_the_field_the_turn_is_running_in() -> None:
+    model = ScriptedChatModel(
+        [
+            ModelReply(
+                tool_calls=(
+                    ToolCall(
+                        name=SEARCH_TOOL_NAME,
+                        arguments={"query": "notes"},
+                        call_id="d1",
+                    ),
+                )
+            ),
+            ModelReply(text="read"),
+        ]
+    )
+    host = host_for(documents=_two_fields(), model=model)
+
+    def delegating() -> str:
+        return host.delegate("What do the notes say?")
+
+    runtime = ToolRuntime(
+        tools=(
+            Tool(
+                name="research",
+                description="Delegates.",
+                parameter_schema={"type": "object", "properties": {}},
+                run=delegating,
+            ),
+        )
+    )
+
+    runtime.execute(
+        ToolCall(name="research", arguments={}, call_id="c1"), frozenset({TRAVEL})
+    )
+
+    assert model.last_messages is not None
+    read = model.last_messages[-1].content
+    assert "kyoto.md" in read
+    assert "plan.md" not in read
+
+
+def test_the_field_is_not_still_bound_once_the_call_has_returned() -> None:
+    """One call's field must not answer the next one's search: a turn in a second field
+    would otherwise read the first field's documents."""
+    host = host_for(documents=_two_fields())
+    runtime = ToolRuntime(tools=(_reading(host),))
+
+    runtime.execute(
+        ToolCall(name="read", arguments={}, call_id="c1"), frozenset({TRAVEL})
+    )
+    after = runtime.execute(ToolCall(name="read", arguments={}, call_id="c2"))
+
+    assert after.payload == ""

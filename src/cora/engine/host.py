@@ -16,6 +16,7 @@ from cora.engine.events import EVENTS
 from cora.engine.nesting import collecting, read_untrusted, took
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.engine.rounds import Read, decided, told, used
+from cora.engine.scoping import here
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import ChatModel, Message
 from cora.ports.context_source import ContextSource
@@ -259,7 +260,10 @@ class PluginHost:
             )
             for call in reply.tool_calls:
                 with collecting() as inside:
-                    result = runtime.execute(call)
+                    # The loop runs in the field of the call that started it: a
+                    # delegated search that read another field would put a passage the
+                    # turn could not cite into an answer the turn signs for.
+                    result = runtime.execute(call, here())
                 read = _read(result, inside.untrusted)
                 if read.untrusted:
                     read_untrusted()
