@@ -120,7 +120,7 @@ def test_a_result_is_the_answer_its_citations_and_its_trace() -> None:
             ),
         ),
         trace=(ModelDecision(tools=("search",)),),
-        scope="cora",
+        scopes=("cora",),
     )
 
     assert payloads.result(result) == {
@@ -135,7 +135,7 @@ def test_a_result_is_the_answer_its_citations_and_its_trace() -> None:
                 "scope": "cora",
             }
         ],
-        "scope": "cora",
+        "scopes": ["cora"],
         "trace": [
             {
                 "summary": "Decided to call search",
@@ -154,7 +154,7 @@ def test_a_turn_is_a_question_and_the_result_it_got() -> None:
 
     assert payloads.turn(turn) == {
         "question": "Why?",
-        "result": {"answer": "Because.", "citations": [], "trace": [], "scope": ""},
+        "result": {"answer": "Because.", "citations": [], "trace": [], "scopes": []},
     }
 
 

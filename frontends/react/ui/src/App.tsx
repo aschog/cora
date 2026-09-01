@@ -155,6 +155,8 @@ export default function App() {
      names the old thread for anything that runs before that render lands — which is any
      reply arriving in the same task batch as the reopen. */
   const here = useRef(thread)
+  /* Which field the newest documents load asked about, so an older one cannot land. */
+  const shown = useRef('')
   const [rightOpen, setRightOpen] = useState(true)
 
   /** What the page shows around the conversation, loaded together: one banner for all
@@ -162,8 +164,10 @@ export default function App() {
    *  its own raced that banner — a page that could not find out which plugin is loaded
    *  would say `bare cora` and then clear the only warning that it was guessing. */
   const refresh = useCallback(
-    () =>
-      Promise.all([
+    () => {
+      const asked = field
+      shown.current = asked
+      return Promise.all([
         cora.documents(field),
         cora.memory(),
         cora.sessions(),
@@ -171,7 +175,11 @@ export default function App() {
         cora.scopes(),
       ])
         .then(([indexed, kept, before, loaded, offered]) => {
-          setDocuments(indexed)
+          /* The listing is per field and this load asked for the field the page was in
+             when it started. A load the reader has moved past answers about a field the
+             rail is no longer showing, and its list must not land under the new one's
+             name — the same race every other read on this page guards against. */
+          if (shown.current === asked) setDocuments(indexed)
           setFacts(kept)
           setSessions(before)
           setPlugins(loaded)
@@ -179,7 +187,8 @@ export default function App() {
           setAnyField(offered.default)
           setTrouble(null)
         })
-        .catch(reportTo(setTrouble)),
+        .catch(reportTo(setTrouble))
+    },
     [field],
   )
 
@@ -400,7 +409,7 @@ export default function App() {
           setEntries((said) => [...said, { id, question, ...reply }])
         }
         setRead((current) => _opened(reply) ?? current)
-        if (reply.scope) setField(reply.scope)
+        setField((standing) => answeredIn(reply) ?? standing)
       }
     } catch (failed) {
       // A failure is recorded nowhere, so it exists only on the page it was asked from —
@@ -526,9 +535,10 @@ export default function App() {
       }
       forget()
       at((found) => ({ ...found, ...reply, pending: false }))
-      if (here.current === on)
+      if (here.current === on) {
         setRead((current) => _opened(reply) ?? current)
-        if (reply.scope) setField(reply.scope)
+        setField((standing) => answeredIn(reply) ?? standing)
+      }
     } catch (failed) {
       /* Nothing was settled, so the card says nothing was: it goes back to waiting and
          the stow stays, which is what lets the reader pick again. */
@@ -603,6 +613,12 @@ export default function App() {
       setEntries(turns)
       setRead(null)
       setNotice(null)
+      /* A conversation nothing pinned is still in a field: routing settled one per turn
+         and the last of them is where it stands. Left where the conversation before it
+         put the rail, this one would list another field's documents and mark none of
+         its own citations. A pin, where there is one, wins a moment later. */
+      const lastField = answeredIn(kept.at(-1)?.result ?? { scopes: [] })
+      if (lastField) setField(lastField)
     })
     if (outcome === 'unreadable') setTrouble(UNDRAWABLE)
     if (outcome === 'drawn') {
@@ -733,6 +749,12 @@ const answering = (entries: Entry[]): Entry | undefined =>
   entries.filter((entry) => !entry.error).at(-1)
 
 /** The documents this conversation has actually rested on, by name. */
+/** The one field a turn was answered in, or nothing where it named none or several —
+ *  the rail draws one field, and a turn under two is not a turn it can follow. */
+function answeredIn(reply: { scopes?: string[] }): string | null {
+  return reply.scopes?.length === 1 ? reply.scopes[0] : null
+}
+
 /** The document an answer opens on: its first citation, in the field that citation was
  *  cut from. An answer that cited nothing leaves whatever was open. */
 function _opened(reply: Result): { document: string; scope: string } | null {

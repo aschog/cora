@@ -41,3 +41,14 @@ test('a passage whose text was never kept says so rather than opening onto nothi
 
   expect(screen.getByText(/indexed before cora kept its text/)).toBeTruthy()
 })
+
+test('a citation that names no field says so rather than asking for a broken address', () => {
+  /* A conversation recorded before a passage carried its field restores citations with
+     none. Asking for one would miss the route entirely and leave the reader a bare 404
+     where a sentence was written for them. */
+  render(
+    <CitationModal citation={{ ...cited('u1'), scope: '' }} onClose={vi.fn()} />,
+  )
+
+  expect(screen.getByText(/indexed before cora kept its text/)).toBeTruthy()
+})

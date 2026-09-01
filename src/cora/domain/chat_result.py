@@ -14,12 +14,14 @@ class ChatResult:
     retrieved, and `trace` covers this turn alone — a turn is reportable on its own or
     the report belongs to the conversation instead of to the answer.
 
-    `scope` is the field it was answered in, which routing settles inside the turn: an
-    unpinned conversation is answered in a field nothing outside the turn chose, so a
+    `scopes` are the fields it was answered in, which routing settles inside the turn:
+    an unpinned conversation is answered in a field nothing outside the turn chose, so a
     reader shown documents and citations per field has no other way to know which.
+    Plural because a caller may name several, as the state does — a reader that has to
+    draw one field reads this as one field only when it names one.
     """
 
     answer: str
     citations: tuple[Citation, ...] = ()
     trace: tuple[TraceStep, ...] = ()
-    scope: str = ""
+    scopes: tuple[str, ...] = ()

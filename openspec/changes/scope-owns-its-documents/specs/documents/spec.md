@@ -132,6 +132,30 @@ as the one chosen.
 - **WHEN** the reader uploads a document
 - **THEN** no field is asked for, and it lands in the default scope
 
+### Requirement: A turn says which field it was answered in
+
+The system SHALL report, with a turn's answer, the fields it ran in, and SHALL keep them
+with the turn it recorded. The page SHALL draw a conversation in the field its turns were
+answered in, where they name one.
+
+#### Scenario: An unpinned turn names the field it was routed to
+
+- **GIVEN** two fields loaded and no pin
+- **WHEN** a question belonging to one is answered
+- **THEN** the turn reports that field
+
+#### Scenario: A reopened conversation is drawn in its own field
+
+- **GIVEN** a recorded conversation whose turns were answered in one field
+- **WHEN** it is reopened
+- **THEN** its documents and citations are drawn in that field
+
+#### Scenario: A field a turn was answered in outlives the page
+
+- **GIVEN** a recorded turn
+- **WHEN** it is read back from the store
+- **THEN** it reports the field it was answered in
+
 ### Requirement: The layout is written down
 
 The system SHALL state in `README.md` where a scope's documents are kept, in a

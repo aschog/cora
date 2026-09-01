@@ -2378,6 +2378,7 @@ const holding = (gate: { until: Promise<void> }, ...parts: string[]): Response =
 const stopping = (
   pending: unknown = null,
   gate?: { until: Promise<void> },
+  answered: unknown = WEIGHED,
 ): Sent[] => {
   const sent: Sent[] = []
   vi.stubGlobal(
@@ -2388,8 +2389,8 @@ const stopping = (
       if (path === '/api/ask') return stream(frame('paused', PAUSED))
       if (path === '/api/resume')
         return gate
-          ? holding(gate, frame('turn', WEIGHED))
-          : stream(frame('turn', WEIGHED))
+          ? holding(gate, frame('turn', answered))
+          : stream(frame('turn', answered))
       if (path.endsWith('/pending'))
         return { ok: true, json: async () => pending } as unknown as Response
       return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
@@ -3022,7 +3023,7 @@ test('an unpinned turn leaves the rail in the field it was answered in', async (
       },
     ],
     trace: [],
-    scope: 'travel',
+    scopes: ['travel'],
   }
   const held: Record<string, string[]> = { cora: [], travel: ['kyoto.md'] }
   vi.stubGlobal(
@@ -3051,4 +3052,124 @@ test('an unpinned turn leaves the rail in the field it was answered in', async (
   expect(await screen.findByText('kyoto.md')).toBeTruthy()
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+})
+
+test('a resumed answer does not move the rail of the conversation the reader moved to', async () => {
+  /* The answer itself is correctly not landed when the reader has moved on. The field
+     it was answered in must not land either: a rail flipped to another conversation's
+     field lists documents this one could never cite. */
+  const gate = held()
+  stopping(PAUSED, gate, { ...WEIGHED, scopes: ['travel'] })
+  await stopped()
+
+  cleanup()
+  render(<App />)
+  const restored = await screen.findByRole('group', { name: /Paused/ })
+  fireEvent.click(within(restored).getByRole('button', { name: /75 kg/ }))
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  gate.release()
+  await flushed()
+
+  expect(
+    (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+  ).toBe('cora')
+})
+
+test('reopening an unpinned conversation draws it in the field it was answered in', async () => {
+  /* Nothing is pinned, so only the conversation's own turns say which field it is in.
+     Left where the last conversation put it, the rail lists another field's documents
+     and marks none of this one's citations. */
+  const earlier = {
+    question: 'How early?',
+    result: {
+      answer: 'Book it early [1].',
+      citations: [
+        {
+          number: 1,
+          document: 'kyoto.md',
+          start: 0,
+          end: 5,
+          upload: 'u9',
+          scope: 'travel',
+        },
+      ],
+      trace: [],
+      scopes: ['travel'],
+    },
+  }
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['kyoto.md'] }
+  const kept: Record<string, unknown> = {
+    ...served,
+    '/api/sessions': [{ thread_id: 'trip', opened_with: earlier.question }],
+    '/api/sessions/trip': [earlier],
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
+      }
+      const body = kept[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: new RegExp(earlier.question) }))
+
+  await waitFor(() =>
+    expect(
+      (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+    ).toBe('travel'),
+  )
+  expect(await screen.findByText('kyoto.md')).toBeTruthy()
+})
+
+test('a slow listing for the field left behind never lands on the one shown', async () => {
+  /* Asking moves the rail to the field the turn was answered in, and the load the turn
+     kicked off asked for the field before it. The older answer arriving last would
+     leave one field's name over another field's documents. */
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['kyoto.md'] }
+  let holdCora: null | (() => void) = null
+  const release = () => holdCora?.()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask')
+        return oneTurn({ answer: 'Answered.', citations: [], trace: [], scopes: ['travel'] })
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        const body = held[asked] ?? []
+        if (asked === 'cora' && holdCora === null) {
+          await new Promise<void>((go) => {
+            holdCora = go
+          })
+        }
+        return { ok: true, json: async () => body } as unknown as Response
+      }
+      const rest = served[route(path)] ?? []
+      return { ok: true, json: async () => rest } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByPlaceholderText(/Ask a question/)
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Anything?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText('Answered.')
+  await screen.findByText('kyoto.md')
+
+  release()
+  await flushed()
+
+  expect(screen.queryByText('notes.md')).toBeNull()
+  expect(screen.getByText('kyoto.md')).toBeTruthy()
 })

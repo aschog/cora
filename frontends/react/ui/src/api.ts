@@ -23,10 +23,10 @@ export type Result = {
   answer: string
   citations: Citation[]
   trace: Step[]
-  /** The field it was answered in. Routing settles it inside the turn, so this is the
-   *  only thing that says which — an unpinned conversation is answered in a field the
-   *  page never chose. */
-  scope: string
+  /** The fields it was answered in. Routing settles them inside the turn, so this is
+   *  the only thing that says which — an unpinned conversation is answered in a field
+   *  the page never chose. A turn that names one is a turn the rail can follow. */
+  scopes: string[]
 }
 
 export type Turn = { question: string; result: Result }

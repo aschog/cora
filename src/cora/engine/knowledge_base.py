@@ -43,7 +43,9 @@ class KnowledgeBase:
 
         Args:
             scope: The field it lands in, whose directory the text is kept under and
-                whose index it goes into.
+                whose index it goes into. It defaults where `search` takes none at all,
+                because an upload happens outside a turn: there is no field to inherit,
+                and the default one is a field like any other to land in.
 
         Raises:
             IngestionError: The document was refused. Nothing was written.

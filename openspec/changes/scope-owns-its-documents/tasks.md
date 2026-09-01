@@ -77,11 +77,29 @@ it, not by a test. The component map is an item, because a guard is a test.
 - [x] 7.4 Write a test that shows the rail listing the field it is showing
 - [x] 7.5 Write a test that shows a citation opened against the field it carries
 
-## 8. The guards
+## 8. A turn says which field it was answered in
 
-- [x] 8.1 Write a test that shows the component map matching the assembly the change leaves
+Found in review: the page drew documents and citations per field but never learned which
+field a turn ran in, so both configurations the README documents put uploads in the wrong
+field and called their own cited documents unopenable.
 
-## 9. Done
+- [x] 8.1 Write a test that shows a turn reporting the field routing settled it in
+- [x] 8.2 Write a test that shows a recorded turn keeping that field through the store
+- [x] 8.3 Write a test that shows the rail following the field a turn was answered in
+- [x] 8.4 Write a test that shows a reopened unpinned conversation drawn in its own field
+- [x] 8.5 Write a test that shows a single loaded field stated rather than offered
+- [x] 8.6 Write a test that shows a resumed answer not moving the rail of a conversation
+      the reader has left
+- [x] 8.7 Write a test that shows a listing for the field left behind never landing on
+      the one shown
+- [x] 8.8 Write a test that shows a citation naming no field saying so rather than
+      asking for an address the router has not got
 
-- [x] 9.1 Drop the outer test's `xfail` marker and watch it pass — it came off ahead of
+## 9. The guards
+
+- [x] 9.1 Write a test that shows the component map matching the assembly the change leaves
+
+## 10. Done
+
+- [x] 10.1 Drop the outer test's `xfail` marker and watch it pass — it came off ahead of
       group 7, because the outer test observes the API rather than the page

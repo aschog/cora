@@ -83,10 +83,20 @@ def test_a_prefix_of_an_upload_does_not_read_it(tmp_path: Path) -> None:
     assert store.read(FITNESS, UPLOAD) == TEXT
 
 
-def test_a_scope_that_is_not_a_bare_name_reads_as_nothing(tmp_path: Path) -> None:
+def test_a_scope_that_walks_out_of_the_root_reads_nothing(tmp_path: Path) -> None:
     """A name no field has is a document this store does not hold, which is what `read`
-    already says with nothing — an outage would tell the caller to try again."""
-    assert _store(tmp_path).read("../elsewhere", UPLOAD) is None
+    says with nothing. The file it would have walked to is put there first, or the guard
+    is held by an empty directory rather than by itself."""
+    root = tmp_path / "documents"
+    store = FileDocuments.at(str(root))
+    store.keep(FITNESS, UPLOAD, "notes.md", TEXT)
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    (outside / f"secret-{UPLOAD[:12]}.md").write_text("another field's text")
+
+    assert store.read("../elsewhere", UPLOAD) is None
+    assert store.read("fitness/../../elsewhere", UPLOAD) is None
+    assert store.read(FITNESS, UPLOAD) == TEXT
 
 
 def test_an_upload_with_no_filename_is_still_a_file_that_can_be_read(

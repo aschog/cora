@@ -135,130 +135,130 @@
 <!-- Citation -->
 <g id="node8" class="node uml&#45;class">
 <title>Citation</title>
-<polygon  points="323.5,-301.75 323.5,-338.25 424.5,-338.25 424.5,-301.75 323.5,-301.75" class="head"/>
-<text xml:space="preserve" text-anchor="start" x="347.75" y="-322.75" font-family="Helvetica,sans-Serif" font-size="10.00" class="stereotype">«dataclass»</text>
-<text xml:space="preserve" text-anchor="start" x="350.38" y="-310.38" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.50" class="name">Citation</text>
-<polygon  points="323.5,-211.25 323.5,-301.75 424.5,-301.75 424.5,-211.25 323.5,-211.25" class="body"/>
-<text xml:space="preserve" text-anchor="start" x="330.5" y="-285" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ document: str</text>
-<text xml:space="preserve" text-anchor="start" x="330.5" y="-272.25" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ end: int</text>
-<text xml:space="preserve" text-anchor="start" x="330.5" y="-259.5" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ number: int</text>
-<text xml:space="preserve" text-anchor="start" x="330.5" y="-246.75" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ scope: str</text>
-<text xml:space="preserve" text-anchor="start" x="330.5" y="-234" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ start: int</text>
-<text xml:space="preserve" text-anchor="start" x="330.5" y="-221.25" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ upload: str</text>
-<polygon  points="322.5,-301.75 322.5,-301.75 425.5,-301.75 425.5,-301.75 322.5,-301.75" class="rule"/>
-<polygon  points="322.5,-210.25 322.5,-339.25 425.5,-339.25 425.5,-210.25 322.5,-210.25" class="frame"/>
+<polygon  points="370.5,-301.75 370.5,-338.25 471.5,-338.25 471.5,-301.75 370.5,-301.75" class="head"/>
+<text xml:space="preserve" text-anchor="start" x="394.75" y="-322.75" font-family="Helvetica,sans-Serif" font-size="10.00" class="stereotype">«dataclass»</text>
+<text xml:space="preserve" text-anchor="start" x="397.38" y="-310.38" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.50" class="name">Citation</text>
+<polygon  points="370.5,-211.25 370.5,-301.75 471.5,-301.75 471.5,-211.25 370.5,-211.25" class="body"/>
+<text xml:space="preserve" text-anchor="start" x="377.5" y="-285" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ document: str</text>
+<text xml:space="preserve" text-anchor="start" x="377.5" y="-272.25" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ end: int</text>
+<text xml:space="preserve" text-anchor="start" x="377.5" y="-259.5" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ number: int</text>
+<text xml:space="preserve" text-anchor="start" x="377.5" y="-246.75" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ scope: str</text>
+<text xml:space="preserve" text-anchor="start" x="377.5" y="-234" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ start: int</text>
+<text xml:space="preserve" text-anchor="start" x="377.5" y="-221.25" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ upload: str</text>
+<polygon  points="369.5,-301.75 369.5,-301.75 472.5,-301.75 472.5,-301.75 369.5,-301.75" class="rule"/>
+<polygon  points="369.5,-210.25 369.5,-339.25 472.5,-339.25 472.5,-210.25 369.5,-210.25" class="frame"/>
 </g>
 <!-- Context&#45;&gt;Citation -->
 <g id="edge14" class="edge uml&#45;association">
 <title>Context&#45;&gt;Citation</title>
-<path   d="M255,-462.11C255,-401.05 255,-275 255,-275 255,-275 311.62,-275 311.62,-275"/>
-<polygon   points="321.62,-275 311.62,-279.5 317.84,-275 311.62,-275 311.62,-275 311.62,-275 317.84,-275 311.62,-270.5 321.62,-275"/>
-<text xml:space="preserve" text-anchor="middle" x="291.5" y="-367.52" font-family="Helvetica,sans-Serif" font-size="10.50">citations</text>
-<text xml:space="preserve" text-anchor="middle" x="307.63" y="-265.71" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
+<path   d="M255,-462.11C255,-401.05 255,-275 255,-275 255,-275 358.62,-275 358.62,-275"/>
+<polygon   points="368.62,-275 358.62,-279.5 364.84,-275 358.62,-275 358.62,-275 358.62,-275 364.84,-275 358.62,-270.5 368.62,-275"/>
+<text xml:space="preserve" text-anchor="middle" x="315.5" y="-367.52" font-family="Helvetica,sans-Serif" font-size="10.50">citations</text>
+<text xml:space="preserve" text-anchor="middle" x="354.62" y="-265.71" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
 </g>
 <!-- Turn -->
 <g id="node5" class="node uml&#45;class">
 <title>Turn</title>
-<polygon  points="327.25,-715.75 327.25,-752.25 420.75,-752.25 420.75,-715.75 327.25,-715.75" class="head"/>
-<text xml:space="preserve" text-anchor="start" x="347.75" y="-736.75" font-family="Helvetica,sans-Serif" font-size="10.00" class="stereotype">«dataclass»</text>
-<text xml:space="preserve" text-anchor="start" x="360.5" y="-724.38" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.50" class="name">Turn</text>
-<polygon  points="327.25,-689 327.25,-715.75 420.75,-715.75 420.75,-689 327.25,-689" class="body"/>
-<text xml:space="preserve" text-anchor="start" x="334.25" y="-699" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ question: str</text>
-<polygon  points="326.25,-715.75 326.25,-715.75 421.75,-715.75 421.75,-715.75 326.25,-715.75" class="rule"/>
-<polygon  points="326.25,-688 326.25,-753.25 421.75,-753.25 421.75,-688 326.25,-688" class="frame"/>
+<polygon  points="374.25,-715.75 374.25,-752.25 467.75,-752.25 467.75,-715.75 374.25,-715.75" class="head"/>
+<text xml:space="preserve" text-anchor="start" x="394.75" y="-736.75" font-family="Helvetica,sans-Serif" font-size="10.00" class="stereotype">«dataclass»</text>
+<text xml:space="preserve" text-anchor="start" x="407.5" y="-724.38" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.50" class="name">Turn</text>
+<polygon  points="374.25,-689 374.25,-715.75 467.75,-715.75 467.75,-689 374.25,-689" class="body"/>
+<text xml:space="preserve" text-anchor="start" x="381.25" y="-699" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ question: str</text>
+<polygon  points="373.25,-715.75 373.25,-715.75 468.75,-715.75 468.75,-715.75 373.25,-715.75" class="rule"/>
+<polygon  points="373.25,-688 373.25,-753.25 468.75,-753.25 468.75,-688 373.25,-688" class="frame"/>
 </g>
 <!-- ChatResult -->
 <g id="node6" class="node uml&#45;class">
 <title>ChatResult</title>
-<polygon  points="330.62,-496 330.62,-532.5 417.38,-532.5 417.38,-496 330.62,-496" class="head"/>
-<text xml:space="preserve" text-anchor="start" x="347.75" y="-517" font-family="Helvetica,sans-Serif" font-size="10.00" class="stereotype">«dataclass»</text>
-<text xml:space="preserve" text-anchor="start" x="341" y="-504.62" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.50" class="name">ChatResult</text>
-<polygon  points="330.62,-456.5 330.62,-496 417.38,-496 417.38,-456.5 330.62,-456.5" class="body"/>
-<text xml:space="preserve" text-anchor="start" x="337.62" y="-479.25" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ answer: str</text>
-<text xml:space="preserve" text-anchor="start" x="337.62" y="-466.5" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ scope: str</text>
-<polygon  points="329.62,-496 329.62,-496 418.38,-496 418.38,-496 329.62,-496" class="rule"/>
-<polygon  points="329.62,-455.5 329.62,-533.5 418.38,-533.5 418.38,-455.5 329.62,-455.5" class="frame"/>
+<polygon  points="352.5,-496 352.5,-532.5 489.5,-532.5 489.5,-496 352.5,-496" class="head"/>
+<text xml:space="preserve" text-anchor="start" x="394.75" y="-517" font-family="Helvetica,sans-Serif" font-size="10.00" class="stereotype">«dataclass»</text>
+<text xml:space="preserve" text-anchor="start" x="388" y="-504.62" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.50" class="name">ChatResult</text>
+<polygon  points="352.5,-456.5 352.5,-496 489.5,-496 489.5,-456.5 352.5,-456.5" class="body"/>
+<text xml:space="preserve" text-anchor="start" x="359.5" y="-479.25" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ answer: str</text>
+<text xml:space="preserve" text-anchor="start" x="359.5" y="-466.5" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ scopes: tuple[str, ...]</text>
+<polygon  points="351.5,-496 351.5,-496 490.5,-496 490.5,-496 351.5,-496" class="rule"/>
+<polygon  points="351.5,-455.5 351.5,-533.5 490.5,-533.5 490.5,-455.5 351.5,-455.5" class="frame"/>
 </g>
 <!-- Turn&#45;&gt;ChatResult -->
 <g id="edge19" class="edge uml&#45;association">
 <title>Turn&#45;&gt;ChatResult</title>
-<path   d="M374,-688.23C374,-688.23 374,-544.5 374,-544.5"/>
-<polygon   points="374,-534.5 378.5,-544.5 374,-538.28 374,-544.5 374,-544.5 374,-544.5 374,-538.28 369.5,-544.5 374,-534.5"/>
-<text xml:space="preserve" text-anchor="middle" x="387.12" y="-612.77" font-family="Helvetica,sans-Serif" font-size="10.50">result</text>
-<text xml:space="preserve" text-anchor="middle" x="369.06" y="-544.15" font-family="Helvetica,sans-Serif" font-size="10.50">1</text>
+<path   d="M421,-688.23C421,-688.23 421,-544.5 421,-544.5"/>
+<polygon   points="421,-534.5 425.5,-544.5 421,-538.28 421,-544.5 421,-544.5 421,-544.5 421,-538.28 416.5,-544.5 421,-534.5"/>
+<text xml:space="preserve" text-anchor="middle" x="434.12" y="-612.77" font-family="Helvetica,sans-Serif" font-size="10.50">result</text>
+<text xml:space="preserve" text-anchor="middle" x="416.06" y="-544.15" font-family="Helvetica,sans-Serif" font-size="10.50">1</text>
 </g>
 <!-- ChatResult&#45;&gt;Citation -->
 <g id="edge11" class="edge uml&#45;association">
 <title>ChatResult&#45;&gt;Citation</title>
-<path   d="M374,-455.72C374,-455.72 374,-350.18 374,-350.18"/>
-<polygon   points="374,-340.18 378.5,-350.18 374,-343.96 374,-350.18 374,-350.18 374,-350.18 374,-343.96 369.5,-350.18 374,-340.18"/>
-<text xml:space="preserve" text-anchor="middle" x="393.5" y="-367.52" font-family="Helvetica,sans-Serif" font-size="10.50">citations</text>
-<text xml:space="preserve" text-anchor="middle" x="369.06" y="-349.83" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
+<path   d="M421,-455.72C421,-455.72 421,-350.18 421,-350.18"/>
+<polygon   points="421,-340.18 425.5,-350.18 421,-343.96 421,-350.18 421,-350.18 421,-350.18 421,-343.96 416.5,-350.18 421,-340.18"/>
+<text xml:space="preserve" text-anchor="middle" x="440.5" y="-367.52" font-family="Helvetica,sans-Serif" font-size="10.50">citations</text>
+<text xml:space="preserve" text-anchor="middle" x="416.06" y="-349.83" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
 </g>
 <!-- TraceStep -->
 <g id="node9" class="node uml&#45;class">
 <title>TraceStep</title>
-<polygon  points="562,-282.62 562,-319.12 660,-319.12 660,-282.62 562,-282.62" class="head"/>
-<text xml:space="preserve" text-anchor="start" x="588.12" y="-303.62" font-family="Helvetica,sans-Serif" font-size="10.00" class="stereotype">«abstract»</text>
-<text xml:space="preserve" text-anchor="start" x="581.38" y="-291.25" font-family="Helvetica,sans-Serif" font-weight="bold" font-style="italic" font-size="12.50" class="name">TraceStep</text>
-<polygon  points="562,-230.38 562,-282.62 660,-282.62 660,-230.38 562,-230.38" class="body"/>
-<text xml:space="preserve" text-anchor="start" x="569" y="-265.88" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ detail: str</text>
-<text xml:space="preserve" text-anchor="start" x="569" y="-253.12" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ failed: bool</text>
-<text xml:space="preserve" text-anchor="start" x="569" y="-240.38" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ summary: str</text>
-<polygon  points="561,-282.62 561,-282.62 661,-282.62 661,-282.62 561,-282.62" class="rule"/>
-<polygon  points="561,-229.38 561,-320.12 661,-320.12 661,-229.38 561,-229.38" class="frame"/>
+<polygon  points="633,-282.62 633,-319.12 731,-319.12 731,-282.62 633,-282.62" class="head"/>
+<text xml:space="preserve" text-anchor="start" x="659.12" y="-303.62" font-family="Helvetica,sans-Serif" font-size="10.00" class="stereotype">«abstract»</text>
+<text xml:space="preserve" text-anchor="start" x="652.38" y="-291.25" font-family="Helvetica,sans-Serif" font-weight="bold" font-style="italic" font-size="12.50" class="name">TraceStep</text>
+<polygon  points="633,-230.38 633,-282.62 731,-282.62 731,-230.38 633,-230.38" class="body"/>
+<text xml:space="preserve" text-anchor="start" x="640" y="-265.88" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ detail: str</text>
+<text xml:space="preserve" text-anchor="start" x="640" y="-253.12" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ failed: bool</text>
+<text xml:space="preserve" text-anchor="start" x="640" y="-240.38" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ summary: str</text>
+<polygon  points="632,-282.62 632,-282.62 732,-282.62 732,-282.62 632,-282.62" class="rule"/>
+<polygon  points="632,-229.38 632,-320.12 732,-320.12 732,-229.38 632,-229.38" class="frame"/>
 </g>
 <!-- ChatResult&#45;&gt;TraceStep -->
 <g id="edge12" class="edge uml&#45;association">
 <title>ChatResult&#45;&gt;TraceStep</title>
-<path   d="M418.09,-495C429.95,-495 439.56,-495 439.56,-495 439.56,-495 439.56,-275 439.56,-275 439.56,-275 550.19,-275 550.19,-275"/>
-<polygon   points="560.19,-275 550.19,-279.5 556.41,-275 550.19,-275 550.19,-275 550.19,-275 556.41,-275 550.19,-270.5 560.19,-275"/>
-<text xml:space="preserve" text-anchor="middle" x="470" y="-367.52" font-family="Helvetica,sans-Serif" font-size="10.50">trace</text>
-<text xml:space="preserve" text-anchor="middle" x="546.2" y="-265.71" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
+<path   d="M481.5,-455.51C481.5,-392.44 481.5,-275 481.5,-275 481.5,-275 620.96,-275 620.96,-275"/>
+<polygon   points="630.96,-275 620.96,-279.5 627.18,-275 620.96,-275 620.96,-275 620.96,-275 627.18,-275 620.96,-270.5 630.96,-275"/>
+<text xml:space="preserve" text-anchor="middle" x="523" y="-367.52" font-family="Helvetica,sans-Serif" font-size="10.50">trace</text>
+<text xml:space="preserve" text-anchor="middle" x="616.96" y="-265.71" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
 </g>
 <!-- AgentState -->
 <g id="node7" class="node uml&#45;class">
 <title>AgentState</title>
-<polygon  points="460.75,-547 460.75,-583.5 761.25,-583.5 761.25,-547 460.75,-547" class="accent-head"/>
-<text xml:space="preserve" text-anchor="start" x="583.62" y="-568" font-family="Helvetica,sans-Serif" font-size="10.00" class="accent-ink">«TypedDict»</text>
-<text xml:space="preserve" text-anchor="start" x="578" y="-555.62" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.50" class="name">AgentState</text>
-<polygon  points="460.75,-405.5 460.75,-547 761.25,-547 761.25,-405.5 460.75,-405.5" class="accent-body"/>
-<text xml:space="preserve" text-anchor="start" x="467.75" y="-530.25" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ answer: str</text>
-<text xml:space="preserve" text-anchor="start" x="467.75" y="-517.5" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ brief: str</text>
-<text xml:space="preserve" text-anchor="start" x="467.75" y="-504.75" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ candidates: list[str]</text>
-<text xml:space="preserve" text-anchor="start" x="467.75" y="-492" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ messages: Annotated[list[Message], operator.add]</text>
-<text xml:space="preserve" text-anchor="start" x="467.75" y="-479.25" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ pin: str</text>
-<text xml:space="preserve" text-anchor="start" x="467.75" y="-466.5" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ pinning: str</text>
-<text xml:space="preserve" text-anchor="start" x="467.75" y="-453.75" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ question: str</text>
-<text xml:space="preserve" text-anchor="start" x="467.75" y="-441" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ scopes: list[str]</text>
-<text xml:space="preserve" text-anchor="start" x="467.75" y="-428.25" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ trace_start: int</text>
-<text xml:space="preserve" text-anchor="start" x="467.75" y="-415.5" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ turn_start: int</text>
-<polygon  points="459.75,-547 459.75,-547 762.25,-547 762.25,-547 459.75,-547" class="accent-rule"/>
-<polygon  points="459.75,-404.5 459.75,-584.5 762.25,-584.5 762.25,-404.5 459.75,-404.5" class="accent"/>
+<polygon  points="531.75,-547 531.75,-583.5 832.25,-583.5 832.25,-547 531.75,-547" class="accent-head"/>
+<text xml:space="preserve" text-anchor="start" x="654.62" y="-568" font-family="Helvetica,sans-Serif" font-size="10.00" class="accent-ink">«TypedDict»</text>
+<text xml:space="preserve" text-anchor="start" x="649" y="-555.62" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.50" class="name">AgentState</text>
+<polygon  points="531.75,-405.5 531.75,-547 832.25,-547 832.25,-405.5 531.75,-405.5" class="accent-body"/>
+<text xml:space="preserve" text-anchor="start" x="538.75" y="-530.25" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ answer: str</text>
+<text xml:space="preserve" text-anchor="start" x="538.75" y="-517.5" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ brief: str</text>
+<text xml:space="preserve" text-anchor="start" x="538.75" y="-504.75" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ candidates: list[str]</text>
+<text xml:space="preserve" text-anchor="start" x="538.75" y="-492" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ messages: Annotated[list[Message], operator.add]</text>
+<text xml:space="preserve" text-anchor="start" x="538.75" y="-479.25" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ pin: str</text>
+<text xml:space="preserve" text-anchor="start" x="538.75" y="-466.5" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ pinning: str</text>
+<text xml:space="preserve" text-anchor="start" x="538.75" y="-453.75" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ question: str</text>
+<text xml:space="preserve" text-anchor="start" x="538.75" y="-441" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ scopes: list[str]</text>
+<text xml:space="preserve" text-anchor="start" x="538.75" y="-428.25" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ trace_start: int</text>
+<text xml:space="preserve" text-anchor="start" x="538.75" y="-415.5" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ turn_start: int</text>
+<polygon  points="530.75,-547 530.75,-547 833.25,-547 833.25,-547 530.75,-547" class="accent-rule"/>
+<polygon  points="530.75,-404.5 530.75,-584.5 833.25,-584.5 833.25,-404.5 530.75,-404.5" class="accent"/>
 </g>
 <!-- AgentState&#45;&gt;Citation -->
 <g id="edge9" class="edge uml&#45;association">
 <title>AgentState&#45;&gt;Citation</title>
-<path   d="M510.38,-404.78C510.38,-367.6 510.38,-333 510.38,-333 510.38,-333 436.39,-333 436.39,-333"/>
-<polygon   points="426.39,-333 436.39,-328.5 430.17,-333 436.39,-333 436.39,-333 436.39,-333 430.17,-333 436.39,-337.5 426.39,-333"/>
-<text xml:space="preserve" text-anchor="middle" x="546.5" y="-367.52" font-family="Helvetica,sans-Serif" font-size="10.50">citations</text>
-<text xml:space="preserve" text-anchor="middle" x="440.39" y="-333.59" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
+<path   d="M572.56,-404.78C572.56,-367.6 572.56,-333 572.56,-333 572.56,-333 483.53,-333 483.53,-333"/>
+<polygon   points="473.53,-333 483.53,-328.5 477.31,-333 483.53,-333 483.53,-333 483.53,-333 477.31,-333 483.53,-337.5 473.53,-333"/>
+<text xml:space="preserve" text-anchor="middle" x="611.5" y="-367.52" font-family="Helvetica,sans-Serif" font-size="10.50">citations</text>
+<text xml:space="preserve" text-anchor="middle" x="487.53" y="-333.59" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
 </g>
 <!-- AgentState&#45;&gt;TraceStep -->
 <g id="edge10" class="edge uml&#45;association">
 <title>AgentState&#45;&gt;TraceStep</title>
-<path   d="M594.33,-404.8C594.33,-404.8 594.33,-331.16 594.33,-331.16"/>
-<polygon   points="594.33,-321.16 598.83,-331.16 594.33,-324.94 594.33,-331.16 594.33,-331.16 594.33,-331.16 594.33,-324.94 589.83,-331.16 594.33,-321.16"/>
-<text xml:space="preserve" text-anchor="middle" x="623" y="-367.52" font-family="Helvetica,sans-Serif" font-size="10.50">trace</text>
-<text xml:space="preserve" text-anchor="middle" x="589.39" y="-330.81" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
+<path   d="M698.67,-404.8C698.67,-404.8 698.67,-331.16 698.67,-331.16"/>
+<polygon   points="698.67,-321.16 703.17,-331.16 698.67,-324.94 698.67,-331.16 698.67,-331.16 698.67,-331.16 698.67,-324.94 694.17,-331.16 698.67,-321.16"/>
+<text xml:space="preserve" text-anchor="middle" x="694" y="-367.52" font-family="Helvetica,sans-Serif" font-size="10.50">trace</text>
+<text xml:space="preserve" text-anchor="middle" x="693.72" y="-330.81" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
 </g>
 <!-- TraceStep&#45;&gt;TraceStep -->
 <g id="edge18" class="edge uml&#45;association">
 <title>TraceStep&#45;&gt;TraceStep</title>
-<path   d="M627.67,-319.73C627.67,-324.13 627.67,-327 627.67,-327 627.67,-327 707.5,-327 707.5,-327 707.5,-327 707.5,-220 707.5,-220 707.5,-220 659.25,-220 659.25,-220 659.25,-220 659.25,-220.95 659.25,-220.95"/>
-<polygon   points="659.25,-228.32 654.75,-218.32 659.25,-224.54 659.25,-218.32 659.25,-218.32 659.25,-218.32 659.25,-224.54 663.75,-218.32 659.25,-228.32"/>
-<text xml:space="preserve" text-anchor="middle" x="694.75" y="-293.72" font-family="Helvetica,sans-Serif" font-size="10.50">steps</text>
-<text xml:space="preserve" text-anchor="middle" x="664.19" y="-209.97" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
+<path   d="M665.33,-319.73C665.33,-324.13 665.33,-327 665.33,-327 665.33,-327 623.19,-327 623.19,-327 623.19,-327 623.19,-220 623.19,-220 623.19,-220 649.6,-220 649.6,-220 649.6,-220 649.6,-220.95 649.6,-220.95"/>
+<polygon   points="649.6,-228.32 645.1,-218.32 649.6,-224.54 649.6,-218.32 649.6,-218.32 649.6,-218.32 649.6,-224.54 654.1,-218.32 649.6,-228.32"/>
+<text xml:space="preserve" text-anchor="middle" x="610.44" y="-285.8" font-family="Helvetica,sans-Serif" font-size="10.50">steps</text>
+<text xml:space="preserve" text-anchor="middle" x="654.54" y="-209.97" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
 </g>
 <!-- StepEntered -->
 <g id="node10" class="node uml&#45;class">
@@ -275,8 +275,8 @@
 <!-- TraceStep&#45;&gt;StepEntered -->
 <g id="edge6" class="edge uml&#45;specialization">
 <title>TraceStep&#45;&gt;StepEntered</title>
-<path   d="M655.75,-217.18C655.75,-217.18 655.75,-119.4 655.75,-119.4"/>
-<polygon   points="651.9,-217.18 655.75,-228.18 659.6,-217.18 651.9,-217.18"/>
+<path   d="M680,-217.18C680,-217.18 680,-119.4 680,-119.4"/>
+<polygon   points="676.15,-217.18 680,-228.18 683.85,-217.18 676.15,-217.18"/>
 </g>
 <!-- ModelDecision -->
 <g id="node11" class="node uml&#45;class">
@@ -294,8 +294,8 @@
 <!-- TraceStep&#45;&gt;ModelDecision -->
 <g id="edge4" class="edge uml&#45;specialization">
 <title>TraceStep&#45;&gt;ModelDecision</title>
-<path   d="M673.5,-262C673.5,-262 858,-262 858,-262 858,-262 858,-179.59 858,-125.83"/>
-<polygon   points="673.5,-258.15 662.5,-262 673.5,-265.85 673.5,-258.15"/>
+<path   d="M744.37,-262C744.37,-262 813.88,-262 813.88,-262 813.88,-262 813.88,-179.59 813.88,-125.83"/>
+<polygon   points="744.37,-258.15 733.37,-262 744.37,-265.85 744.37,-258.15"/>
 </g>
 <!-- MemoryUnread -->
 <g id="node12" class="node uml&#45;class">
@@ -312,8 +312,8 @@
 <!-- TraceStep&#45;&gt;MemoryUnread -->
 <g id="edge3" class="edge uml&#45;specialization">
 <title>TraceStep&#45;&gt;MemoryUnread</title>
-<path   d="M673.33,-288C673.33,-288 1014,-288 1014,-288 1014,-288 1014,-179.05 1014,-119.04"/>
-<polygon   points="673.33,-284.15 662.33,-288 673.33,-291.85 673.33,-284.15"/>
+<path   d="M744.22,-288C744.22,-288 1014,-288 1014,-288 1014,-288 1014,-179.05 1014,-119.04"/>
+<polygon   points="744.22,-284.15 733.22,-288 744.22,-291.85 744.22,-284.15"/>
 </g>
 <!-- HandlerRan -->
 <g id="node13" class="node uml&#45;class">
@@ -334,8 +334,8 @@
 <!-- TraceStep&#45;&gt;HandlerRan -->
 <g id="edge2" class="edge uml&#45;specialization">
 <title>TraceStep&#45;&gt;HandlerRan</title>
-<path   d="M657.5,-216.86C657.5,-216.86 657.5,-135 657.5,-135 657.5,-135 980.94,-135 1107.28,-135"/>
-<polygon   points="653.65,-216.86 657.5,-227.86 661.35,-216.86 653.65,-216.86"/>
+<path   d="M706,-216.99C706,-216.99 706,-140 706,-140 706,-140 989.59,-140 1107.01,-140"/>
+<polygon   points="702.15,-216.99 706,-227.99 709.85,-216.99 702.15,-216.99"/>
 </g>
 <!-- ScopeSettled -->
 <g id="node14" class="node uml&#45;class">
@@ -353,8 +353,8 @@
 <!-- TraceStep&#45;&gt;ScopeSettled -->
 <g id="edge5" class="edge uml&#45;specialization">
 <title>TraceStep&#45;&gt;ScopeSettled</title>
-<path   d="M574.34,-216.98C574.34,-216.98 574.34,-178 574.34,-178 574.34,-178 368.25,-178 368.25,-178 368.25,-178 368.25,-151.29 368.25,-125.82"/>
-<polygon   points="570.49,-216.98 574.34,-227.98 578.19,-216.98 570.49,-216.98"/>
+<path   d="M636.4,-216.98C636.4,-216.98 636.4,-178 636.4,-178 636.4,-178 391.75,-178 391.75,-178 391.75,-178 391.75,-151.29 391.75,-125.82"/>
+<polygon   points="632.55,-216.98 636.4,-227.98 640.25,-216.98 632.55,-216.98"/>
 </g>
 <!-- ToolUse -->
 <g id="node15" class="node uml&#45;class">
@@ -375,16 +375,16 @@
 <!-- TraceStep&#45;&gt;ToolUse -->
 <g id="edge7" class="edge uml&#45;specialization">
 <title>TraceStep&#45;&gt;ToolUse</title>
-<path   d="M601.03,-217.18C601.03,-217.18 601.03,-144.81 601.03,-144.81"/>
-<polygon   points="597.18,-217.18 601.03,-228.18 604.88,-217.18 597.18,-217.18"/>
+<path   d="M645.2,-217.15C645.2,-217.15 645.2,-131 645.2,-131 645.2,-131 631.76,-131 614.22,-131"/>
+<polygon   points="641.35,-217.15 645.2,-228.15 649.05,-217.15 641.35,-217.15"/>
 </g>
 <!-- ToolUse&#45;&gt;TraceStep -->
 <g id="edge17" class="edge uml&#45;association">
 <title>ToolUse&#45;&gt;TraceStep</title>
-<path   d="M587.69,-144.91C587.69,-144.91 587.69,-218.32 587.69,-218.32"/>
-<polygon   points="587.69,-228.32 583.19,-218.32 587.69,-224.54 587.69,-218.32 587.69,-218.32 587.69,-218.32 587.69,-224.54 592.19,-218.32 587.69,-228.32"/>
-<text xml:space="preserve" text-anchor="middle" x="615.75" y="-173.28" font-family="Helvetica,sans-Serif" font-size="10.50">steps</text>
-<text xml:space="preserve" text-anchor="middle" x="592.63" y="-209.97" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
+<path   d="M614.13,-135C629.44,-135 640.8,-135 640.8,-135 640.8,-135 640.8,-218.16 640.8,-218.16"/>
+<polygon   points="640.8,-228.16 636.3,-218.16 640.8,-224.38 640.8,-218.16 640.8,-218.16 640.8,-218.16 640.8,-224.38 645.3,-218.16 640.8,-228.16"/>
+<text xml:space="preserve" text-anchor="middle" x="638.75" y="-173.28" font-family="Helvetica,sans-Serif" font-size="10.50">steps</text>
+<text xml:space="preserve" text-anchor="middle" x="645.74" y="-209.81" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
 </g>
 <!-- Session -->
 <g id="node16" class="node uml&#45;class">
@@ -483,5 +483,5 @@
 <text xml:space="preserve" text-anchor="middle" x="1548.06" y="-130.14" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
 </g>
 </g>
-<!-- drawn by scripts/gen_domain_map.py from f85849237d9d3556 -->
+<!-- drawn by scripts/gen_domain_map.py from 93d5eaf566b9f6ca -->
 </svg>

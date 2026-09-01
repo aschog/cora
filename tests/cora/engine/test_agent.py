@@ -442,4 +442,4 @@ def test_a_turn_says_which_field_it_was_answered_in() -> None:
 
     answered = app.agent.answer("How early?", "t1")
 
-    assert answered.scope == "travel"
+    assert answered.scopes == ("travel",)

@@ -401,3 +401,16 @@ def test_the_index_is_handed_the_span_and_none_of_the_words(
     assert retriever.given
     assert all(chunk.text == "" for chunk in retriever.given)
     assert sum(chunk.length for chunk in retriever.given) >= len(PLAN.decode())
+
+
+def test_a_passage_whose_file_was_cut_short_is_left_out(
+    kb: KnowledgeBase, documents: FakeDocuments
+) -> None:
+    """A file is cora's to write but a person's to read, and one edited down to less
+    than a passage's span leaves that passage nothing to say. It is left out for the
+    same reason a missing one is: an empty passage would be cited as though it spoke."""
+    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    documents.keep(FITNESS, sha256(PLAN).hexdigest(), "plan.md", "")
+
+    with running_in(frozenset({FITNESS})):
+        assert kb.search("intensity", k=5) == []

@@ -6,7 +6,12 @@ type Props = { citation: Citation; onClose: () => void }
 
 export default function CitationModal({ citation, onClose }: Props) {
   const { text, trouble } = usePassage(
-    citation.upload ? { scope: citation.scope, upload: citation.upload } : null,
+    /* Both names, or neither: a citation stored before a passage carried its field
+       names no field, and a request for one would leave the reader the router's 404
+       rather than the sentence written for them. */
+    citation.upload && citation.scope
+      ? { scope: citation.scope, upload: citation.upload }
+      : null,
   )
 
   useEffect(() => {

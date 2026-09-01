@@ -537,3 +537,12 @@ def test_a_passage_asked_for_under_a_field_nobody_loaded_is_not_an_outage() -> N
 
     assert refused.status_code == 400
     assert TRAVEL in refused.json()["error"]
+
+
+def test_a_refusal_quotes_back_only_so_much_of_the_name_it_was_given() -> None:
+    """The name is the client's, so what is echoed into a refusal is capped rather than
+    reasoned about."""
+    refused = _scoped(assembled()).get(f"/api/documents?scope={'z' * 5000}")
+
+    assert refused.status_code == 400
+    assert len(refused.json()["error"]) < 200

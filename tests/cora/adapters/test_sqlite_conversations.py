@@ -227,3 +227,20 @@ def test_a_turn_written_before_the_trace_was_a_tree_reads_back(tmp_path: Path) -
         'search_documents(query="protein") → 1 passage from diet.md',
     ]
     assert all(step.steps == () for step in read.result.trace)
+
+
+def test_a_recorded_turn_keeps_the_field_it_was_answered_in(tmp_path: Path) -> None:
+    """The page draws documents and citations per field, and a reopened conversation
+    has to be drawn in the field its turns ran in — which only the store still knows."""
+    store = _store(tmp_path)
+
+    store.record(
+        "t1",
+        Turn(
+            question="How early?",
+            result=ChatResult(answer="Book it early.", scopes=("travel",)),
+        ),
+    )
+
+    [kept] = _store(tmp_path).turns("t1")
+    assert kept.result.scopes == ("travel",)
