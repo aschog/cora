@@ -71,9 +71,19 @@ thread that could change field is a thread whose earlier turns mean something el
 second field is a second conversation. Naming one scope leaves nothing to route between,
 which is how a single-field deployment stays one.
 
+A field owns its documents. Each one cora ingests is kept as a Markdown file of its
+cleaned text, under a directory named for the field it was uploaded into: `travel` holds
+`kyoto-8f21c0a4e9d3.md`, the upload's hash in the name so one filename uploaded twice is
+two files rather than one overwritten. The index beside it keeps the embeddings and
+where each passage sits in that file, and nothing else: a
+passage's words are read back out of the file when it is retrieved, so the text exists
+once and a citation opens onto something you can read yourself. A search sees the field
+its turn is running in and no other, and the rail lists and uploads into the field it is
+set to. `CORA_DOCUMENTS_PATH` moves the root; a second field is a directory under it.
+
 The travel plugin ships its notes as files under
-`plugins/travel/src/cora/plugins/travel/corpus/`; upload them in the documents rail to
-give that field something to answer from.
+`plugins/travel/src/cora/plugins/travel/corpus/`; upload them in the documents rail,
+with `travel` picked as the field, to give it something to answer from.
 
 A plugin does not have to be installed. Drop a single `.py` file into `./.cora/plugins/`
 and cora loads it with no packaging at all, named for the file — the folder is read in

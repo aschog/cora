@@ -4,11 +4,16 @@ import DocumentRail from './DocumentRail'
 
 afterEach(cleanup)
 
-const rail = (documents: string[], cited: string[]) =>
+const rail = (documents: string[], cited: string[], fields: string[] = []) =>
   render(
     <DocumentRail
       documents={documents}
       cited={new Set(cited)}
+      fields={fields}
+      field={fields[0] ?? 'cora'}
+      anyField="cora"
+      fixedField={false}
+      onField={vi.fn()}
       onOpen={vi.fn()}
       onUpload={vi.fn()}
       upload={null}
@@ -61,6 +66,11 @@ test('what an upload did is announced in that same region', () => {
     <DocumentRail
       documents={['notes.md']}
       cited={new Set<string>()}
+      fields={[]}
+      field="cora"
+      anyField="cora"
+      fixedField={false}
+      onField={vi.fn()}
       onOpen={vi.fn()}
       onUpload={vi.fn()}
       upload={{ said: '“notes.md” is already in your documents.', wrong: true }}
@@ -71,4 +81,44 @@ test('what an upload did is announced in that same region', () => {
   expect(
     screen.getByRole('status', { name: 'Last upload' }).textContent,
   ).toContain('already in your documents')
+})
+
+test('a rail with fields loaded offers the one an upload goes into', () => {
+  rail([], [], ['fitness', 'travel'])
+
+  const picker = screen.getByRole('combobox', {
+    name: /upload into/i,
+  }) as HTMLSelectElement
+  expect(Array.from(picker.options).map((option) => option.value)).toEqual([
+    'fitness',
+    'travel',
+    'cora',
+  ])
+})
+
+test('a rail with no field loaded offers nothing to choose', () => {
+  rail([], [], [])
+
+  expect(screen.queryByRole('combobox', { name: /upload into/i })).toBeNull()
+})
+
+test('a pinned conversation shows its field and cannot change it', () => {
+  render(
+    <DocumentRail
+      documents={[]}
+      cited={new Set()}
+      fields={['fitness', 'travel']}
+      field="travel"
+      anyField="cora"
+      fixedField
+      onField={vi.fn()}
+      onOpen={vi.fn()}
+      onUpload={vi.fn()}
+      upload={null}
+      onDismissUpload={vi.fn()}
+    />,
+  )
+
+  expect(screen.queryByRole('combobox', { name: /upload into/i })).toBeNull()
+  expect(screen.getByLabelText('Upload into').textContent).toBe('travel')
 })

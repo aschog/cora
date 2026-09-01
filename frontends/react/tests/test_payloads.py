@@ -11,11 +11,11 @@ from cora.frontends.react import payloads
 from cora.ports.memory import Fact
 
 
-def test_a_citation_carries_the_upload_its_span_was_measured_in() -> None:
-    """The page reads a passage back by upload, not by filename: it is the one name
-    that still points at the text the offsets were taken from."""
+def test_a_citation_carries_the_field_and_upload_its_span_was_measured_in() -> None:
+    """The page reads a passage back by field and upload, not by filename: together they
+    are the one name that still points at the text the offsets were taken from."""
     citation = Citation(
-        number=2, document="notes.md", start=10, end=24, upload="a1b2c3"
+        number=2, document="notes.md", start=10, end=24, upload="a1b2c3", scope="travel"
     )
 
     assert payloads.citation(citation) == {
@@ -24,6 +24,7 @@ def test_a_citation_carries_the_upload_its_span_was_measured_in() -> None:
         "start": 10,
         "end": 24,
         "upload": "a1b2c3",
+        "scope": "travel",
     }
 
 
@@ -113,8 +114,13 @@ def test_what_a_tool_did_inside_its_call_travels_as_the_call_s_own_steps() -> No
 def test_a_result_is_the_answer_its_citations_and_its_trace() -> None:
     result = ChatResult(
         answer="Because [1].",
-        citations=(Citation(number=1, document="a.txt", start=0, end=4, upload="h"),),
+        citations=(
+            Citation(
+                number=1, document="a.txt", start=0, end=4, upload="h", scope="cora"
+            ),
+        ),
         trace=(ModelDecision(tools=("search",)),),
+        scopes=("cora",),
     )
 
     assert payloads.result(result) == {
@@ -126,8 +132,10 @@ def test_a_result_is_the_answer_its_citations_and_its_trace() -> None:
                 "start": 0,
                 "end": 4,
                 "upload": "h",
+                "scope": "cora",
             }
         ],
+        "scopes": ["cora"],
         "trace": [
             {
                 "summary": "Decided to call search",
@@ -146,7 +154,7 @@ def test_a_turn_is_a_question_and_the_result_it_got() -> None:
 
     assert payloads.turn(turn) == {
         "question": "Why?",
-        "result": {"answer": "Because.", "citations": [], "trace": []},
+        "result": {"answer": "Because.", "citations": [], "trace": [], "scopes": []},
     }
 
 

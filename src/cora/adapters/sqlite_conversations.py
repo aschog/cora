@@ -87,6 +87,7 @@ def _as_data(turn: Turn) -> dict[str, Any]:
         "answer": turn.result.answer,
         "citations": [asdict(citation) for citation in turn.result.citations],
         "trace": [_as_step(step) for step in turn.result.trace],
+        "scopes": list(turn.result.scopes),
     }
 
 
@@ -97,6 +98,9 @@ def _from_data(data: dict[str, Any]) -> Turn:
             answer=str(data["answer"]),
             citations=tuple(Citation(**found) for found in data["citations"]),
             trace=tuple(_step(step) for step in data["trace"]),
+            # A turn recorded before a turn carried its fields has none, and reads back
+            # as a turn in no named field — which is what it was.
+            scopes=tuple(data.get("scopes", ())),
         ),
     )
 

@@ -66,7 +66,9 @@ test('blocks the new HTML no longer has are removed', () => {
 })
 
 test('an answer arriving in pieces ends as one parse of the whole would have drawn it', () => {
-  const citations = [{ number: 1, document: 'notes.md', start: 0, end: 5, upload: 'u1' }]
+  const citations = [
+    { number: 1, document: 'notes.md', start: 0, end: 5, upload: 'u1', scope: 'cora' },
+  ]
   const pieces = ['Sleep is ', 'the lever.\n\n- Not volume\n', '- Not intensity [1]\n']
   const kept = block()
 

@@ -2,6 +2,7 @@ from collections.abc import Iterator
 
 import pytest
 
+from app_builder import assembled
 from cora.domain.agent_state import AgentState
 from cora.domain.citations import Citation
 from cora.domain.conversation import Turn
@@ -14,8 +15,9 @@ from cora.domain.errors import (
 )
 from cora.domain.trace import ModelDecision, StepEntered, ToolUse, TraceStep
 from cora.engine.agent import Agent
-from cora.ports.chat_model import Piece, TextSink, Written, unheard
-from fakes import FailingConversations, FakeConversations
+from cora.ports.chat_model import ModelReply, Piece, TextSink, Written, unheard
+from fakes import FailingConversations, FakeConversations, ScriptedChatModel
+from fixture_plugins import make_plugin
 
 SEARCHED = ToolUse(name="search_documents", arguments={"query": "protein"})
 ANSWERED = ModelDecision()
@@ -422,3 +424,22 @@ def test_a_walk_that_settled_no_answer_is_a_failure_not_a_blank_one() -> None:
         agent.answer("How much protein?", THREAD)
 
     assert conversations.turns(THREAD) == (), "and nothing was kept to come back to"
+
+
+def test_a_turn_says_which_field_it_was_answered_in() -> None:
+    """The reader is shown documents and citations per field, so the page has to know
+    which field a turn ran in — routing settles it inside the turn, and nothing outside
+    can work it out."""
+    app = assembled(
+        chat_model=ScriptedChatModel([ModelReply(text="Book it early.")]),
+        plugins=(
+            make_plugin(
+                name="trips", instructions="A companion.", tools=(), scope="travel"
+            ),
+        ),
+        scopes=("travel",),
+    )
+
+    answered = app.agent.answer("How early?", "t1")
+
+    assert answered.scopes == ("travel",)

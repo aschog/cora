@@ -13,6 +13,7 @@ from cora.engine.port_logging import (
     truncate,
 )
 from cora.ports.chat_model import Message, ModelReply
+from cora.ports.host import DEFAULT_SCOPE
 from cora.ports.plugin import ToolCall
 from fakes import (
     FailingChatModel,
@@ -185,13 +186,15 @@ def test_logging_retriever_delegates_and_logs_the_hits(
     embedder = FakeEmbedder()
     inner = FakeRetriever()
     chunk = Chunk(text="protein needs", source="guide.pdf", index=2, offset=40)
-    inner.add([chunk], embedder.embed([chunk.text]), "hash-1")
+    inner.add(DEFAULT_SCOPE, [chunk], embedder.embed([chunk.text]), "hash-1")
     query_vector = embedder.embed([chunk.text])[0]
 
     with caplog.at_level(logging.DEBUG, logger="cora"):
-        hits = LoggingRetriever(inner).query(query_vector, k=3)
+        hits = LoggingRetriever(inner).query(DEFAULT_SCOPE, query_vector, k=3)
 
-    assert [hit.chunk for hit in hits] == [replace(chunk, upload="hash-1")]
+    assert [hit.chunk for hit in hits] == [
+        replace(chunk, text="", upload="hash-1", scope=DEFAULT_SCOPE)
+    ]
     retrieval = line_about(caplog, "retrieval")
     assert "k=3" in retrieval
     assert "guide.pdf" in retrieval
@@ -212,10 +215,10 @@ def test_logging_retriever_delegates_and_logs_an_add(
     vectors = embedder.embed([chunk.text for chunk in chunks])
 
     with caplog.at_level(logging.DEBUG, logger="cora"):
-        LoggingRetriever(inner).add(chunks, vectors, "hash-1")
+        LoggingRetriever(inner).add(DEFAULT_SCOPE, chunks, vectors, "hash-1")
 
-    assert inner.sources() == ["guide.pdf"]
-    assert inner.contains("hash-1")
+    assert inner.sources(DEFAULT_SCOPE) == ["guide.pdf"]
+    assert inner.contains(DEFAULT_SCOPE, "hash-1")
     indexed = line_about(caplog, "indexing")
     assert "3 chunks" in indexed
     assert "guide.pdf" in indexed
@@ -225,7 +228,7 @@ def test_logging_retriever_survives_an_add_with_no_chunks(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
     with caplog.at_level(logging.DEBUG, logger="cora"):
-        LoggingRetriever(FakeRetriever()).add([], [], "hash-1")
+        LoggingRetriever(FakeRetriever()).add(DEFAULT_SCOPE, [], [], "hash-1")
 
     assert "0 chunks" in line_about(caplog, "indexing")
 
@@ -240,7 +243,7 @@ def test_logging_retriever_announces_an_add_before_attempting_it(
         pytest.raises(RetrievalError),
     ):
         LoggingRetriever(FailingRetriever(RetrievalError())).add(
-            [chunk], [[0.1]], "hash-1"
+            DEFAULT_SCOPE, [chunk], [[0.1]], "hash-1"
         )
 
     assert "1 chunks" in line_about(caplog, "indexing")
@@ -255,7 +258,7 @@ def test_logging_retriever_reraises_a_failed_query(
         caplog.at_level(logging.DEBUG, logger="cora"),
         pytest.raises(RetrievalError) as raised,
     ):
-        LoggingRetriever(FailingRetriever(failure)).query([0.1], k=3)
+        LoggingRetriever(FailingRetriever(failure)).query(DEFAULT_SCOPE, [0.1], k=3)
 
     assert raised.value is failure
     assert caplog.records == []
@@ -267,13 +270,13 @@ def test_logging_retriever_answers_lookups_silently(
     embedder = FakeEmbedder()
     inner = FakeRetriever()
     chunk = Chunk(text="protein needs", source="guide.pdf", index=0, offset=0)
-    inner.add([chunk], embedder.embed([chunk.text]), "hash-1")
+    inner.add(DEFAULT_SCOPE, [chunk], embedder.embed([chunk.text]), "hash-1")
     retriever = LoggingRetriever(inner)
 
     with caplog.at_level(logging.DEBUG, logger="cora"):
-        sources = retriever.sources()
-        known = retriever.contains("hash-1")
-        unknown = retriever.contains("hash-2")
+        sources = retriever.sources(DEFAULT_SCOPE)
+        known = retriever.contains(DEFAULT_SCOPE, "hash-1")
+        unknown = retriever.contains(DEFAULT_SCOPE, "hash-2")
 
     assert sources == ["guide.pdf"]
     assert known is True

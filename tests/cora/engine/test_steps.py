@@ -5,7 +5,7 @@ import pytest
 
 from cora.domain.agent_state import AgentState
 from cora.domain.chunk import Chunk
-from cora.domain.citations import Citation
+from cora.domain.citations import Citable, Citation, Context
 from cora.domain.decision import Decision, Option
 from cora.domain.errors import (
     InputRejectedError,
@@ -15,6 +15,7 @@ from cora.domain.errors import (
 )
 from cora.domain.trace import ModelDecision, ScopeSettled, StepEntered, ToolUse
 from cora.engine.ask_tool import ASK_TOOL_NAME, ASKED_ALREADY, ask_tool
+from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.nesting import read_untrusted
 from cora.engine.plugin_set import Registry
@@ -62,10 +63,14 @@ from cora.ports.memory import Memory
 from cora.ports.plugin import Tool, ToolCall, ToolResult
 from cora.ports.retrieval import RetrievedChunk
 from fakes import (
+    TEXT_LOADERS,
     FailingChatModel,
     FailingMemory,
     FakeContextSource,
+    FakeDocuments,
+    FakeEmbedder,
     FakeMemory,
+    FakeRetriever,
     ScriptedChatModel,
     add_tool,
 )
@@ -1407,3 +1412,125 @@ def test_what_a_result_handler_did_is_traced_after_the_call_it_changed() -> None
         "ToolUse",
         "HandlerRan",
     ]
+
+
+def test_a_handler_reads_the_field_the_turn_is_running_in() -> None:
+    """A plugin takes part in the turn outside any tool call, and may read the documents
+    while it does. It reads the turn's field there too: material from another field put
+    into the brief is material the answer rests on and could never cite."""
+    kb = KnowledgeBase(
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        loaders=TEXT_LOADERS,
+        documents=FakeDocuments(),
+    )
+    kb.add_file(b"The block holds intensity in the fourth week.", "plan.md", "fitness")
+    kb.add_file(b"The sleeper to Kyoto sells out early.", "kyoto.md", "travel")
+
+    def enrich(brief: str) -> str:
+        found = " ".join(hit.chunk.source for hit in kb.search("notes", 5))
+        return f"{brief}\n\nREAD: {found}"
+
+    step = FocusStep(registry=_registry("SYS", briefs=(enrich,)), memory=FakeMemory())
+
+    settled = step({"question": "anything", "scopes": ["travel"]})
+
+    assert "READ: kyoto.md" in settled["brief"]
+    assert "plan.md" not in settled["brief"]
+
+
+def test_a_plugins_payload_reads_the_field_the_turn_is_running_in() -> None:
+    """A payload that cites its own material is a plugin's too, and it is asked to say
+    what it found after the call has returned. It reads the turn's field there as well:
+    the round is what runs in a field, not the call alone."""
+    kb = KnowledgeBase(
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        loaders=TEXT_LOADERS,
+        documents=FakeDocuments(),
+    )
+    kb.add_file(b"The block holds intensity in the fourth week.", "plan.md", "fitness")
+    kb.add_file(b"The sleeper to Kyoto sells out early.", "kyoto.md", "travel")
+
+    @dataclasses.dataclass(frozen=True)
+    class _LateReader(Citable):
+        def register(self, known: tuple[Citation, ...]) -> Context:
+            return Context(text="read", citations=())
+
+        def unnumbered(self) -> str:
+            return "read"
+
+        @property
+        def summary(self) -> str:
+            return " ".join(hit.chunk.source for hit in kb.search("notes", 5))
+
+    tool = Tool(
+        name="research",
+        description="Reads the documents and says what it found.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=_LateReader,
+    )
+    step = ToolStep(ToolRuntime(tools=(tool,)))
+
+    partial = step(
+        {
+            "messages": [
+                Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=(ToolCall(name="research", arguments={}, call_id="c1"),),
+                )
+            ],
+            "scopes": ["travel"],
+        }
+    )
+
+    [reported] = [step for step in partial["trace"] if isinstance(step, ToolUse)]
+    assert "kyoto.md" in reported.outcome
+    assert "plan.md" not in reported.outcome
+
+
+def test_a_screen_reads_the_field_the_thread_is_pinned_to() -> None:
+    """Screening runs before routing, so a turn's field is unsettled here — but a
+    pinned thread's is settled, and a screen reading the documents reads that one."""
+    kb = KnowledgeBase(
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        loaders=TEXT_LOADERS,
+        documents=FakeDocuments(),
+    )
+    kb.add_file(b"The block holds intensity in the fourth week.", "plan.md", "fitness")
+    kb.add_file(b"The sleeper to Kyoto sells out early.", "kyoto.md", "travel")
+    seen: list[str] = []
+
+    def screen(question: str) -> None:
+        seen.extend(hit.chunk.source for hit in kb.search("notes", 5))
+
+    step = ScreenStep(registry=_registry("SYS", screens=(screen,)))
+
+    step({"question": "anything", "pin": "travel"})
+
+    assert seen == ["kyoto.md"]
+
+
+def test_the_turn_that_pins_a_thread_screens_in_the_field_it_pins_it_to() -> None:
+    """The first turn of a pinned thread would otherwise screen against another field
+    than every turn after it, and a screen that reads the documents would behave one way
+    once and another way for good."""
+    kb = KnowledgeBase(
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        loaders=TEXT_LOADERS,
+        documents=FakeDocuments(),
+    )
+    kb.add_file(b"The sleeper to Kyoto sells out early.", "kyoto.md", "travel")
+    seen: list[str] = []
+
+    def screen(question: str) -> None:
+        seen.extend(hit.chunk.source for hit in kb.search("notes", 5))
+
+    step = ScreenStep(registry=_registry("SYS", screens=(screen,)))
+
+    step({"question": "anything", "pinning": "travel"})
+
+    assert seen == ["kyoto.md"]

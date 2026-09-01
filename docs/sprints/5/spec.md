@@ -144,13 +144,6 @@ decisions, and the first three are the sprint.
   system-wide — and widening that set is a supported move, not a second code path. Stories
   5 and 6.
 
-- **A scope owns its documents.** Cleaned text moves from `adapters/sqlite_documents.py` to
-  one Markdown file per source, under a directory named for its scope, behind the
-  `Documents` port that already exists; the index keeps embeddings and offsets and reads the
-  text back from the file. That answers the reviewer's two store findings at once. Threads
-  and remembered facts stay in SQLite, and memory stays system-wide — one person, both
-  scopes. Story 8.
-
 - **An effect is gated by the interrupt that already exists, and the gate is the core's.** A
   tool that changes something outside cora says what it is about to do and waits. The gate
   stands at the *tool-call* point but is not a handler: it pauses the turn, which no plugin
@@ -231,38 +224,6 @@ criterion 4's evaluation number, and one scope leaves nothing to route between, 
 it would take the measurement with it. If the sprint runs long, the sprint runs long, and
 what gives is argued then against *Not in this sprint* rather than decided here while it
 is cheap to be brave.
-
-### 8. A scope's documents are its own files
-
-As a person with material in more than one field,\
-I want each scope's documents kept as readable files under a place named for that scope,\
-so that I can see what cora has, and a second field is a directory rather than a redesign.
-
-**Scenario:** a citation opens onto a file
-
-- **Given** a document ingested into a scope
-- **When** its cleaned text is kept
-- **Then** one Markdown file per source holds it, under that scope's directory, and the
-  citation opens onto that file
-- **And** nothing duplicates the text a second time — the index keeps embeddings and
-  offsets, and reads a chunk's text from the file
-
-**Scenario:** a search sees one scope
-
-- **Given** documents in two scopes
-- **When** cora searches in one of them
-- **Then** only the active scope's sources can be retrieved or cited
-- **And** `README.md` states the layout in a paragraph
-
-**Scenario:** an upload with no scope has a home
-
-- **Given** a document uploaded with no scope chosen
-- **When** it is ingested
-- **Then** it lands in the default scope's directory, and an unscoped search can retrieve
-  it — the default scope is a scope like any other
-
-It merges after story 11: nothing in stories 9–11 reads these files, so the reach never
-waits on this polish.
 
 ### 9. cora reaches outside itself
 

@@ -42,7 +42,7 @@ from cora.engine.steps import (
 )
 from cora.engine.validation import CORA
 from cora.ports.chat_model import ModelReply, unheard
-from cora.ports.host import SCREENING, TOOL, Extension
+from cora.ports.host import DEFAULT_SCOPE, SCREENING, TOOL, Extension
 from cora.ports.plugin import ToolCall
 from cora.ports.retrieval import RetrievedChunk
 from fakes import FakeMemory, FakeRetriever, ScriptedChatModel, host_for
@@ -57,9 +57,11 @@ class _RecordingRetriever(FakeRetriever):
         super().__init__()
         self.last_k: int | None = None
 
-    def query(self, query_vector: list[float], k: int) -> list[RetrievedChunk]:
+    def query(
+        self, scope: str, query_vector: list[float], k: int
+    ) -> list[RetrievedChunk]:
         self.last_k = k
-        return super().query(query_vector, k)
+        return super().query(scope, query_vector, k)
 
 
 def _assemble(
@@ -524,7 +526,7 @@ def _config(db_path: Path, *, debug: bool = False) -> Config:
         reasoning_effort="low",
         db_path=str(db_path),
         memory_path=str(db_path / "memory.sqlite"),
-        documents_path=str(db_path / "documents.sqlite"),
+        documents_path=str(db_path / "documents"),
         conversations_path=str(db_path / "conversations.sqlite"),
         log_path=str(db_path / "logs" / "cora.log"),
         # Pinned under the test's own directory, because the default is the folder the
@@ -608,9 +610,12 @@ def test_build_keeps_a_documents_store_at_the_configured_path(tmp_path: Path) ->
 
     [hit] = app.knowledge_base.search("protein", k=1)
     upload = hit.chunk.upload
-    assert (tmp_path / "documents.sqlite").exists()
-    assert app.knowledge_base.text(upload) == "Aim for 1.6 g of protein per kg."
-    assert build(_config(tmp_path)).knowledge_base.text(upload) is not None
+    assert (tmp_path / "documents" / DEFAULT_SCOPE).is_dir()
+    assert (
+        app.knowledge_base.text(DEFAULT_SCOPE, upload)
+        == "Aim for 1.6 g of protein per kg."
+    )
+    assert build(_config(tmp_path)).knowledge_base.text(DEFAULT_SCOPE, upload)
 
 
 @pytest.mark.integration

@@ -29,7 +29,7 @@ def test_from_env_reads_every_field() -> None:
             "CORA_LOG_PATH": "/tmp/cora.log",
             "CORA_DB_PATH": "/tmp/vectors",
             "CORA_MEMORY_PATH": "/tmp/memory.sqlite",
-            "CORA_DOCUMENTS_PATH": "/tmp/documents.sqlite",
+            "CORA_DOCUMENTS_PATH": "/tmp/documents",
             "CORA_CONVERSATIONS_PATH": "/tmp/conversations.sqlite",
             "CORA_SCOPES": " fitness , cooking ,",
             "CORA_PLUGINS_PATH": "/tmp/dropped",
@@ -51,7 +51,7 @@ def test_from_env_reads_every_field() -> None:
         log_path="/tmp/cora.log",
         db_path="/tmp/vectors",
         memory_path="/tmp/memory.sqlite",
-        documents_path="/tmp/documents.sqlite",
+        documents_path="/tmp/documents",
         conversations_path="/tmp/conversations.sqlite",
         plugins_path="/tmp/dropped",
     )

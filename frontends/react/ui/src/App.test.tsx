@@ -19,7 +19,9 @@ const LIVE = [
 ]
 const TURN = {
   answer: 'Sleep, not volume [1].',
-  citations: [{ number: 1, document: 'notes.md', start: 0, end: 6, upload: 'u1' }],
+  citations: [
+    { number: 1, document: 'notes.md', start: 0, end: 6, upload: 'u1', scope: 'cora' },
+  ],
   trace: [
     { summary: 'Wrote the answer', detail: '', failed: false, origin: '', steps: [] },
   ],
@@ -119,12 +121,16 @@ beforeEach(() => {
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       if (path.endsWith('/scope') && !(path in served))
         return { ok: true, json: async () => ({ pin: taken }) } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
 })
 
 const KEPT = 'Sleep, not volume. The rest of the document follows.'
+
+/** The route a request names, without the field it asked the route for. The listing is
+ *  per field now, and the fixture serves one set of documents whichever is asked for. */
+const route = (path: string) => path.split('?')[0]
 
 
 test('the plan fills while the turn runs, then the answer lands with its citation', async () => {
@@ -171,14 +177,14 @@ test('a panel that could not be read says so, and stops saying it once it can', 
   vi.stubGlobal(
     'fetch',
     vi.fn(async (path: string) => {
-      if (path === '/api/documents' && !reachable)
+      if (route(path) === '/api/documents' && !reachable)
         return {
           ok: false,
           status: 503,
           json: async () => broken,
         } as unknown as Response
       if (path === '/api/ask') return answering()
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
 
@@ -274,7 +280,7 @@ test('a document cited in an earlier turn is not marked for this one', async () 
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       if (path.endsWith('/scope') && !(path in served))
         return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   await ask()
@@ -412,7 +418,7 @@ test('a turn that fails says so where the answer would have been, and is scrolle
     'fetch',
     vi.fn(async (path: string) => {
       if (path === '/api/ask') return failing()
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   const { container } = render(<App />)
@@ -454,7 +460,7 @@ test('a citation wrapped in a link the model wrote opens the passage, not the li
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       if (path.endsWith('/scope') && !(path in served))
         return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -523,7 +529,7 @@ test('a conversation shows its own plan, not the plan of a turn left behind', as
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       if (path.endsWith('/scope') && !(path in served))
         return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -559,12 +565,16 @@ test('a filename uploaded twice is read at the upload this answer cited', async 
   const copies = [
     {
       answer: 'From the first copy [1].',
-      citations: [{ number: 1, document: 'notes.md', start: 0, end: 5, upload: 'u1' }],
+      citations: [
+        { number: 1, document: 'notes.md', start: 0, end: 5, upload: 'u1', scope: 'cora' },
+      ],
       trace: [],
     },
     {
       answer: 'From the second copy [1].',
-      citations: [{ number: 1, document: 'notes.md', start: 0, end: 5, upload: 'u2' }],
+      citations: [
+        { number: 1, document: 'notes.md', start: 0, end: 5, upload: 'u2', scope: 'cora' },
+      ],
       trace: [],
     },
   ]
@@ -573,11 +583,11 @@ test('a filename uploaded twice is read at the upload this answer cited', async 
     'fetch',
     vi.fn(async (path: string) => {
       if (path === '/api/ask') return oneTurn(copies[asked++] ?? copies[1])
-      if (path === '/api/uploads/u1')
+      if (path === '/api/uploads/cora/u1')
         return { ok: true, json: async () => ({ text: FIRST }) } as unknown as Response
-      if (path === '/api/uploads/u2')
+      if (path === '/api/uploads/cora/u2')
         return { ok: true, json: async () => ({ text: SECOND }) } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   const { container } = render(<App />)
@@ -662,7 +672,7 @@ test('a turn that failed does not un-cite the answer still on screen', async () 
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       if (path.endsWith('/scope') && !(path in served))
         return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -707,7 +717,7 @@ test('an answer returning to the conversation it was asked in is not dropped', a
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       if (path.endsWith('/scope') && !(path in served))
         return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -762,7 +772,7 @@ test('a conversation that loads late does not overwrite the one the reader is in
       }
       if (path === '/api/sessions/old') return body([OLDER])
       if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
-      return body(served[path] ?? [])
+      return body(served[route(path)] ?? [])
     }),
   )
   render(<App />)
@@ -834,7 +844,7 @@ test('the question in flight stays with the conversation it was asked in', async
         )
       if (path === '/api/sessions/old') return body([OLDER])
       if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
-      return body(served[path] ?? [])
+      return body(served[route(path)] ?? [])
     }),
   )
   render(<App />)
@@ -923,7 +933,7 @@ test('the question asked after a new session runs on another thread', async () =
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       if (path.endsWith('/scope') && !(path in served))
         return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -1039,7 +1049,7 @@ test('the conversation left behind is listed under SESSIONS', async () => {
         return body(recorded ? [{ thread_id: 't1', opened_with: 'Why am I stalling?' }] : [])
       if (path.startsWith('/api/uploads/'))
         return body({ text: KEPT })
-      return body(served[path] ?? [])
+      return body(served[route(path)] ?? [])
     }),
   )
   render(<App />)
@@ -1079,7 +1089,7 @@ test('a reopen still loading when a new session starts does not land on it', asy
         return body([OLDER])
       }
       if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
-      return body(served[path] ?? [])
+      return body(served[route(path)] ?? [])
     }),
   )
   render(<App />)
@@ -1124,7 +1134,7 @@ test('a turn left running says so where the question would be typed, and lands i
       if (path === '/api/sessions/t1')
         return body(recorded ? [{ question: 'Why am I stalling?', result: TURN }] : [])
       if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
-      return body(served[path] ?? [])
+      return body(served[route(path)] ?? [])
     }),
   )
   render(<App />)
@@ -1178,7 +1188,7 @@ test('a banner raised by the conversation left behind does not follow the new se
           json: async () => ({ error: unreachable }),
         } as unknown as Response
       if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
-      return body(served[path] ?? [])
+      return body(served[route(path)] ?? [])
     }),
   )
   render(<App />)
@@ -1218,7 +1228,7 @@ test('the control is reachable while it is unavailable, and clicking it then cha
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       if (path.endsWith('/scope') && !(path in served))
         return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -1268,7 +1278,7 @@ test('a conversation load that lost the race says nothing about it', async () =>
         } as unknown as Response
       }
       if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
-      return body(served[path] ?? [])
+      return body(served[route(path)] ?? [])
     }),
   )
   render(<App />)
@@ -1299,7 +1309,7 @@ test('a question left running that fails says so, rather than never arriving', a
     'fetch',
     vi.fn(async (path: string) => {
       if (path === '/api/ask') return failing()
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -1345,7 +1355,7 @@ test('a turn that fails while a reopen is loading is not swallowed by it', async
         await slow.until
         return body([OLDER])
       }
-      return body(served[path] ?? [])
+      return body(served[route(path)] ?? [])
     }),
   )
   render(<App />)
@@ -1386,7 +1396,7 @@ test('the failure of a question you left is not still said once you are back in 
       if (path === '/api/sessions/t1')
         return body(recorded ? [{ question: 'First question', result: TURN }] : [])
       if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
-      return body(served[path] ?? [])
+      return body(served[route(path)] ?? [])
     }),
   )
   render(<App />)
@@ -1436,7 +1446,7 @@ test('a turn that fails in the conversation on screen says so there, whatever el
         return body([OLDER])
       }
       if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
-      return body(served[path] ?? [])
+      return body(served[route(path)] ?? [])
     }),
   )
   render(<App />)
@@ -1485,7 +1495,7 @@ test('the page says both of its sentences at once, in one order', async () => {
           status: 503,
           json: async () => ({ error: unreachable }),
         } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -1531,7 +1541,7 @@ test('a conversation that cannot be drawn says so, and does not read as a failed
       if (path === '/api/ask') return answering()
       if (path === '/api/sessions/old') return body(NONSENSE)
       if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
-      return body(served[path] ?? [])
+      return body(served[route(path)] ?? [])
     }),
   )
   render(<App />)
@@ -1567,7 +1577,7 @@ test('a turn that succeeded is not drawn as failed by the re-read that follows i
       if (path === '/api/sessions/t1') return body(reads++ === 0 ? [] : NONSENSE)
       if (path === '/api/sessions/old') return body([OLDER])
       if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
-      return body(served[path] ?? [])
+      return body(served[route(path)] ?? [])
     }),
   )
   render(<App />)
@@ -1617,7 +1627,7 @@ test('a conversation that cannot be drawn does not half-move the page into it', 
       }
       if (path === '/api/sessions/old') return body(NONSENSE)
       if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
-      return body(served[path] ?? [])
+      return body(served[route(path)] ?? [])
     }),
   )
   render(<App />)
@@ -1686,7 +1696,7 @@ async function asked(parts: string[], held?: number): Promise<void> {
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       if (path.endsWith('/scope') && !(path in served))
         return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -1708,7 +1718,7 @@ test(
         if (path === '/api/ask') return writing(['Sleep, ', 'not volume [1].'])
         if (path.startsWith('/api/uploads/'))
           return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
-        return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+        return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
       }),
     )
     render(<App />)
@@ -1978,12 +1988,12 @@ test('a file uploaded twice is added, and then said to be there already', async 
   vi.stubGlobal(
     'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (path === '/api/documents' && init?.method === 'POST')
+      if (route(path) === '/api/documents' && init?.method === 'POST')
         return {
           ok: true,
           json: async () => ({ document: 'notes.md', chunks: counts.shift() }),
         } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -2004,7 +2014,7 @@ async function ready(outcomes: (number | { error: string })[]): Promise<void> {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (path === '/api/documents' && init?.method === 'POST') {
+      if (route(path) === '/api/documents' && init?.method === 'POST') {
         const outcome = answers.shift()
         if (typeof outcome === 'number')
           return {
@@ -2018,7 +2028,7 @@ async function ready(outcomes: (number | { error: string })[]): Promise<void> {
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       if (path.endsWith('/scope') && !(path in served))
         return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -2092,7 +2102,7 @@ test('a notice for an upload the reader walked away from is not drawn', async ()
   vi.stubGlobal(
     'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (path === '/api/documents' && init?.method === 'POST') {
+      if (route(path) === '/api/documents' && init?.method === 'POST') {
         await ingesting.until
         return {
           ok: true,
@@ -2104,7 +2114,7 @@ test('a notice for an upload the reader walked away from is not drawn', async ()
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       if (path.endsWith('/scope') && !(path in served))
         return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -2261,7 +2271,7 @@ test('an upload that failed in a conversation left behind keeps this one’s not
   vi.stubGlobal(
     'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (path === '/api/documents' && init?.method === 'POST') {
+      if (route(path) === '/api/documents' && init?.method === 'POST') {
         if (first) {
           first = false
           await refusing.until
@@ -2280,7 +2290,7 @@ test('an upload that failed in a conversation left behind keeps this one’s not
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       if (path.endsWith('/scope') && !(path in served))
         return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -2368,6 +2378,7 @@ const holding = (gate: { until: Promise<void> }, ...parts: string[]): Response =
 const stopping = (
   pending: unknown = null,
   gate?: { until: Promise<void> },
+  answered: unknown = WEIGHED,
 ): Sent[] => {
   const sent: Sent[] = []
   vi.stubGlobal(
@@ -2378,11 +2389,11 @@ const stopping = (
       if (path === '/api/ask') return stream(frame('paused', PAUSED))
       if (path === '/api/resume')
         return gate
-          ? holding(gate, frame('turn', WEIGHED))
-          : stream(frame('turn', WEIGHED))
+          ? holding(gate, frame('turn', answered))
+          : stream(frame('turn', answered))
       if (path.endsWith('/pending'))
         return { ok: true, json: async () => pending } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   return sent
@@ -2620,7 +2631,7 @@ test('a card parked in an unrecorded conversation is not lost by reading another
         return { ok: true, json: async () => null } as unknown as Response
       if (path.endsWith('/pending'))
         return { ok: true, json: async () => PAUSED } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   await stopped()
@@ -2651,7 +2662,7 @@ test('a decision that could not be sent is still answerable, and says what went 
         } as unknown as Response
       if (path.endsWith('/pending'))
         return { ok: true, json: async () => PAUSED } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   const asked = await stopped()
@@ -2707,7 +2718,7 @@ test('a reopened conversation is drawn in the field it was pinned to', async () 
     'fetch',
     vi.fn(
       async (path: string) =>
-        ({ ok: true, json: async () => pinned[path] ?? [] }) as unknown as Response,
+        ({ ok: true, json: async () => pinned[route(path)] ?? [] }) as unknown as Response,
     ),
   )
   render(<App />)
@@ -2752,7 +2763,7 @@ test('the picker says what the thread holds, not what the reader picked', async 
           ok: true,
           json: async () => ({ pin: asked ? 'fitness' : null }),
         } as unknown as Response
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -2786,7 +2797,7 @@ test('a scope read that failed leaves the pin the page already knows about', asy
           return { ok: false, status: 503, json: async () => ({}) } as Response
         return { ok: true, json: async () => ({ pin: 'fitness' }) } as unknown as Response
       }
-      return { ok: true, json: async () => served[path] ?? [] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
   render(<App />)
@@ -2811,4 +2822,518 @@ test('a scope read that failed leaves the pin the page already knows about', asy
      what it had rather than inventing a choice. */
   await waitFor(() => expect(screen.getByLabelText('Field').textContent).toBe('fitness'))
   expect(screen.queryByRole('combobox')).toBeNull()
+})
+
+test('the rail lists and uploads into the field it is set to', async () => {
+  /* One field is what a turn can cite, so the rail shows the field it uploads into: a
+     list of documents no turn in this field could reach would be a list that lies. */
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['kyoto.md'] }
+  let into: string | null = null
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (route(path) === '/api/documents' && init?.method === 'POST') {
+        into = (init.body as FormData).get('scope') as string
+        const added = { document: 'kyoto.md', chunks: 3 }
+        return { ok: true, json: async () => added } as unknown as Response
+      }
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
+      }
+      const body = served[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
+    target: { value: 'travel' },
+  })
+
+  expect(await screen.findByText('kyoto.md')).toBeTruthy()
+  expect(screen.queryByText('notes.md')).toBeNull()
+
+  upload('kyoto.md')
+  await screen.findByText(/Added/)
+  expect(into).toBe('travel')
+})
+
+test('a pinned conversation uploads into its own field', async () => {
+  const pinned: Record<string, unknown> = {
+    ...served,
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
+  let into: string | null = null
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (route(path) === '/api/documents' && init?.method === 'POST') {
+        into = (init.body as FormData).get('scope') as string
+        const added = { document: 'kyoto.md', chunks: 3 }
+        return { ok: true, json: async () => added } as unknown as Response
+      }
+      const body = pinned[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
+  await waitFor(() =>
+    expect(screen.getByLabelText('Upload into').textContent).toBe('travel'),
+  )
+
+  upload('kyoto.md')
+
+  await waitFor(() => expect(into).toBe('travel'))
+})
+
+test('leaving a pinned conversation returns the rail to the default field', async () => {
+  /* A field the conversation is not in would keep taking uploads no turn in it could
+     cite, so the rail follows the pin away as well as into it. */
+  const pinned: Record<string, unknown> = {
+    ...served,
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      const body = pinned[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
+  await waitFor(() =>
+    expect(screen.getByLabelText('Upload into').textContent).toBe('travel'),
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+
+  await waitFor(() =>
+    expect(
+      (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement)
+        .value,
+    ).toBe('cora'),
+  )
+})
+
+test('a filename in two fields never opens the other field’s copy', async () => {
+  /* One name can cover a document in each field. Reading the newest citation for the
+     name alone would mark this field's copy as cited and open the other field's text
+     under it, at a span measured in something else — so the citation the conversation
+     holds belongs to the field it was cut from, and to no other. */
+  const answered = {
+    answer: 'From the default field [1].',
+    citations: [
+      { number: 1, document: 'notes.md', start: 0, end: 5, upload: 'u1', scope: 'cora' },
+    ],
+    trace: [],
+  }
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['notes.md'] }
+  const opened: string[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return oneTurn(answered)
+      if (path.startsWith('/api/uploads/')) {
+        opened.push(path)
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      }
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
+      }
+      const body = served[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Which copy?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/From the default field/)
+
+  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
+    target: { value: 'travel' },
+  })
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'notes.md' }).hasAttribute('disabled'),
+    ).toBe(true),
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'notes.md' }))
+
+  expect(opened).toEqual([])
+})
+
+test('a single loaded field is where uploads go, with nothing to choose', async () => {
+  /* Routing has nothing to choose between, so every turn runs in that field — a rail
+     offering the default one beside it would take documents no turn could ever cite. */
+  let into: string | null = null
+  const one: Record<string, unknown> = {
+    ...served,
+    '/api/scopes': { available: ['fitness'], default: 'cora' },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (route(path) === '/api/documents' && init?.method === 'POST') {
+        into = (init.body as FormData).get('scope') as string
+        const added = { document: 'plan.md', chunks: 2 }
+        return { ok: true, json: async () => added } as unknown as Response
+      }
+      const body = one[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await waitFor(() =>
+    expect(screen.getByLabelText('Upload into').textContent).toBe('fitness'),
+  )
+  expect(screen.queryByRole('combobox', { name: /upload into/i })).toBeNull()
+
+  upload('plan.md')
+
+  await waitFor(() => expect(into).toBe('fitness'))
+})
+
+test('an unpinned turn leaves the rail in the field it was answered in', async () => {
+  /* Routing settles the field inside the turn, so the answer is the only thing that can
+     say which — and the rail would otherwise list a field the conversation is not in and
+     call its own cited document unopenable. */
+  const answered = {
+    answer: 'Book it early [1].',
+    citations: [
+      {
+        number: 1,
+        document: 'kyoto.md',
+        start: 0,
+        end: 5,
+        upload: 'u9',
+        scope: 'travel',
+      },
+    ],
+    trace: [],
+    scopes: ['travel'],
+  }
+  const held: Record<string, string[]> = { cora: [], travel: ['kyoto.md'] }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return oneTurn(answered)
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
+      }
+      const body = served[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByPlaceholderText(/Ask a question/)
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'How early?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Book it early/)
+
+  expect(await screen.findByText('kyoto.md')).toBeTruthy()
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+})
+
+test('a resumed answer does not move the rail of the conversation the reader moved to', async () => {
+  /* The answer itself is correctly not landed when the reader has moved on. The field
+     it was answered in must not land either: a rail flipped to another conversation's
+     field lists documents this one could never cite. */
+  const gate = held()
+  stopping(PAUSED, gate, { ...WEIGHED, scopes: ['travel'] })
+  await stopped()
+
+  cleanup()
+  render(<App />)
+  const restored = await screen.findByRole('group', { name: /Paused/ })
+  fireEvent.click(within(restored).getByRole('button', { name: /75 kg/ }))
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  gate.release()
+  await flushed()
+
+  expect(
+    (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+  ).toBe('cora')
+})
+
+test('reopening an unpinned conversation draws it in the field it was answered in', async () => {
+  /* Nothing is pinned, so only the conversation's own turns say which field it is in.
+     Left where the last conversation put it, the rail lists another field's documents
+     and marks none of this one's citations. */
+  const earlier = {
+    question: 'How early?',
+    result: {
+      answer: 'Book it early [1].',
+      citations: [
+        {
+          number: 1,
+          document: 'kyoto.md',
+          start: 0,
+          end: 5,
+          upload: 'u9',
+          scope: 'travel',
+        },
+      ],
+      trace: [],
+      scopes: ['travel'],
+    },
+  }
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['kyoto.md'] }
+  const kept: Record<string, unknown> = {
+    ...served,
+    '/api/sessions': [{ thread_id: 'trip', opened_with: earlier.question }],
+    '/api/sessions/trip': [earlier],
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
+      }
+      const body = kept[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: new RegExp(earlier.question) }))
+
+  await waitFor(() =>
+    expect(
+      (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+    ).toBe('travel'),
+  )
+  expect(await screen.findByText('kyoto.md')).toBeTruthy()
+})
+
+test('a slow listing for the field left behind never lands on the one shown', async () => {
+  /* Asking moves the rail to the field the turn was answered in, and the load the turn
+     kicked off asked for the field before it. The older answer arriving last would
+     leave one field's name over another field's documents. */
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['kyoto.md'] }
+  let holdCora: null | (() => void) = null
+  const release = () => holdCora?.()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask')
+        return oneTurn({ answer: 'Answered.', citations: [], trace: [], scopes: ['travel'] })
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        const body = held[asked] ?? []
+        if (asked === 'cora' && holdCora === null) {
+          await new Promise<void>((go) => {
+            holdCora = go
+          })
+        }
+        return { ok: true, json: async () => body } as unknown as Response
+      }
+      const rest = served[route(path)] ?? []
+      return { ok: true, json: async () => rest } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByPlaceholderText(/Ask a question/)
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Anything?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText('Answered.')
+  await screen.findByText('kyoto.md')
+
+  release()
+  await flushed()
+
+  expect(screen.queryByText('notes.md')).toBeNull()
+  expect(screen.getByText('kyoto.md')).toBeTruthy()
+})
+
+test('a conversation reopened after a pinned one is still drawn in its own field', async () => {
+  /* Leaving a pinned conversation clears the pin, and clearing it must not overrule the
+     field the conversation being opened was answered in. */
+  const earlier = {
+    question: 'How early?',
+    result: {
+      answer: 'Book it early.',
+      citations: [],
+      trace: [],
+      scopes: ['fitness'],
+    },
+  }
+  const kept: Record<string, unknown> = {
+    ...served,
+    '/api/sessions': [
+      { thread_id: 'old', opened_with: OLDER.question },
+      { thread_id: 'gym', opened_with: earlier.question },
+    ],
+    '/api/sessions/old': [OLDER],
+    '/api/sessions/gym': [earlier],
+    '/api/sessions/old/scope': { pin: 'travel' },
+    '/api/sessions/gym/scope': { pin: null },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      const body = kept[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+
+  fireEvent.click(await screen.findByRole('button', { name: new RegExp(OLDER.question) }))
+  await waitFor(() =>
+    expect(screen.getByLabelText('Upload into').textContent).toBe('travel'),
+  )
+  fireEvent.click(await screen.findByRole('button', { name: new RegExp(earlier.question) }))
+  await waitFor(() =>
+    expect(screen.getByRole('combobox', { name: /upload into/i })).toBeTruthy(),
+  )
+  await flushed()
+
+  expect(
+    (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+  ).toBe('fitness')
+})
+
+test('answering a decision moves the rail to the field it settled', async () => {
+  /* The card is where a reader picks the field of an unpinned turn, so the rail has to
+     follow what they picked — not only refuse to follow what they did not. */
+  stopping(PAUSED, undefined, { ...WEIGHED, scopes: ['travel'] })
+  await stopped()
+
+  fireEvent.click(screen.getByRole('button', { name: /75 kg/ }))
+
+  await waitFor(() =>
+    expect(
+      (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+    ).toBe('travel'),
+  )
+})
+
+test('a listing that failed for a field left behind neither banners nor clears', async () => {
+  /* Only the list was guarded by the field it asked for. A banner is news about a field
+     too: one cleared by a load the reader has moved past hides a live failure. */
+  let holdTravel: null | (() => void) = null
+  const release = () => holdTravel?.()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        if (asked === 'travel') {
+          await new Promise<void>((go) => {
+            holdTravel = go
+          })
+          return { ok: true, json: async () => ['kyoto.md'] } as unknown as Response
+        }
+        if (holdTravel !== null)
+          return {
+            ok: false,
+            status: 503,
+            json: async () => ({
+              error: 'The knowledge base is temporarily unavailable.',
+            }),
+          } as unknown as Response
+        return { ok: true, json: async () => ['notes.md'] } as unknown as Response
+      }
+      const rest = served[route(path)] ?? []
+      return { ok: true, json: async () => rest } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
+    target: { value: 'travel' },
+  })
+  await flushed()
+  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
+    target: { value: 'cora' },
+  })
+  expect(
+    await screen.findByText('The knowledge base is temporarily unavailable.'),
+  ).toBeTruthy()
+
+  release()
+  await flushed()
+
+  expect(
+    screen.getByText('The knowledge base is temporarily unavailable.'),
+  ).toBeTruthy()
+})
+
+test('a listing that failed for a field left behind raises no banner about it', async () => {
+  /* The mirror of the clear: news about a field the reader has moved off is news about
+     a page they cannot see, and it would sit over a field that is loading fine. */
+  let failTravel: null | (() => void) = null
+  const release = () => failTravel?.()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        if (asked === 'travel') {
+          await new Promise<void>((go) => {
+            failTravel = go
+          })
+          return {
+            ok: false,
+            status: 503,
+            json: async () => ({
+              error: 'The knowledge base is temporarily unavailable.',
+            }),
+          } as unknown as Response
+        }
+        return { ok: true, json: async () => ['notes.md'] } as unknown as Response
+      }
+      const rest = served[route(path)] ?? []
+      return { ok: true, json: async () => rest } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
+    target: { value: 'travel' },
+  })
+  await flushed()
+  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
+    target: { value: 'cora' },
+  })
+  await flushed()
+
+  release()
+  await flushed()
+
+  expect(
+    screen.queryByText('The knowledge base is temporarily unavailable.'),
+  ).toBeNull()
 })

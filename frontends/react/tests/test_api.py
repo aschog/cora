@@ -32,6 +32,7 @@ from cora.frontends.react.api import (
     UNREADABLE_UPLOAD,
     api,
 )
+from cora.ports.host import DEFAULT_SCOPE
 from fakes import FailingConversations, FailingMemory, FakeConversations, FakeMemory
 from fixture_plugins import make_plugin, make_tool
 
@@ -59,7 +60,7 @@ def test_an_upload_is_ingested_and_reports_the_chunks_it_cut() -> None:
     )
 
     assert added.status_code == 200
-    assert added.json() == {"document": "notes.md", "chunks": 1}
+    assert added.json() == {"document": "notes.md", "chunks": 1, "scope": DEFAULT_SCOPE}
     assert app.knowledge_base.list_sources() == ["notes.md"]
 
 
@@ -92,14 +93,16 @@ def test_a_passage_reads_back_from_the_upload_its_span_was_measured_in() -> None
     app = indexed(assembled(), ("notes.md", NOTES))
     upload = hashlib.sha256(NOTES).hexdigest()
 
-    kept = client(app).get(f"/api/uploads/{upload}")
+    kept = client(app).get(f"/api/uploads/{DEFAULT_SCOPE}/{upload}")
 
     assert kept.status_code == 200
     assert kept.json()["text"] == NOTES.decode()
 
 
 def test_an_upload_never_kept_says_so_rather_than_serving_an_empty_document() -> None:
-    missing = client(assembled()).get("/api/uploads/nothingwaskeptunderthis")
+    missing = client(assembled()).get(
+        f"/api/uploads/{DEFAULT_SCOPE}/nothingwaskeptunderthis"
+    )
 
     assert missing.status_code == 404
 
@@ -435,3 +438,111 @@ def test_a_refusal_at_a_status_that_forbids_a_body_is_given_none(status: int) ->
 
     assert answered.status_code == status
     assert answered.content == b""
+
+
+FITNESS, TRAVEL = "fitness", "travel"
+KYOTO = b"The sleeper to Kyoto sells out a month before the maples turn."
+
+
+def _scoped(app: App) -> TestClient:
+    return TestClient(api(app, scopes=(FITNESS, TRAVEL)))
+
+
+def test_an_upload_lands_in_the_field_it_names() -> None:
+    app = assembled()
+    client = _scoped(app)
+
+    client.post(
+        "/api/documents",
+        files={"file": ("kyoto.md", KYOTO, "text/markdown")},
+        data={"scope": TRAVEL},
+    )
+
+    assert app.knowledge_base.list_sources(TRAVEL) == ["kyoto.md"]
+    assert app.knowledge_base.list_sources(FITNESS) == []
+
+
+def test_an_upload_naming_no_field_lands_in_the_default_one() -> None:
+    app = assembled()
+
+    _scoped(app).post("/api/documents", files={"file": ("notes.md", NOTES, "text/md")})
+
+    assert app.knowledge_base.list_sources(DEFAULT_SCOPE) == ["notes.md"]
+
+
+def test_an_upload_naming_a_field_nobody_loaded_is_refused() -> None:
+    app = assembled()
+
+    refused = _scoped(app).post(
+        "/api/documents",
+        files={"file": ("kyoto.md", KYOTO, "text/markdown")},
+        data={"scope": "../elsewhere"},
+    )
+
+    assert refused.status_code == 400
+    assert TRAVEL in refused.json()["error"]
+    assert app.knowledge_base.list_sources(DEFAULT_SCOPE) == []
+
+
+def test_the_documents_listed_are_the_field_that_was_asked_for() -> None:
+    app = assembled()
+    client = _scoped(app)
+    client.post(
+        "/api/documents",
+        files={"file": ("kyoto.md", KYOTO, "text/markdown")},
+        data={"scope": TRAVEL},
+    )
+    client.post(
+        "/api/documents",
+        files={"file": ("notes.md", NOTES, "text/markdown")},
+        data={"scope": FITNESS},
+    )
+
+    assert client.get(f"/api/documents?scope={TRAVEL}").json() == ["kyoto.md"]
+    assert client.get(f"/api/documents?scope={FITNESS}").json() == ["notes.md"]
+
+
+def test_a_passage_opens_from_its_own_field_and_no_other() -> None:
+    app = assembled()
+    client = _scoped(app)
+    client.post(
+        "/api/documents",
+        files={"file": ("kyoto.md", KYOTO, "text/markdown")},
+        data={"scope": TRAVEL},
+    )
+    upload = hashlib.sha256(KYOTO).hexdigest()
+
+    assert (
+        client.get(f"/api/uploads/{TRAVEL}/{upload}").json()["text"] == KYOTO.decode()
+    )
+    assert client.get(f"/api/uploads/{FITNESS}/{upload}").status_code == 404
+
+
+def test_the_listing_refuses_a_field_nobody_loaded() -> None:
+    """The name is the client's, and it reaches a collection the store would create for
+    it: a route that took any name would grow the store on every request."""
+    app = assembled()
+
+    refused = _scoped(app).get("/api/documents?scope=invented")
+
+    assert refused.status_code == 400
+    assert TRAVEL in refused.json()["error"]
+
+
+def test_a_passage_asked_for_under_a_field_nobody_loaded_is_not_an_outage() -> None:
+    """A name no field has is the reader's mistake, not the store's: a 503 would tell
+    them to retry something that cannot work, and `.hidden` reaching the store at all
+    is a name the door should have stopped."""
+    refused = _scoped(assembled()).get("/api/uploads/.hidden/abc123")
+
+    assert refused.status_code == 400
+    assert TRAVEL in refused.json()["error"]
+
+
+def test_a_refusal_quotes_back_only_so_much_of_the_name_it_was_given() -> None:
+    """The name is the client's, so what is echoed into a refusal is capped rather than
+    reasoned about."""
+    refused = _scoped(assembled()).get(f"/api/documents?scope={'z' * 5000}")
+
+    assert refused.status_code == 400
+    assert len(refused.json()["error"]) < 200

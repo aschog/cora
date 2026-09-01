@@ -14,6 +14,7 @@ from typing import Any
 
 from cora.domain.errors import CoreError, InputRejectedError
 from cora.domain.trace import HandlerRan, TraceStep
+from cora.engine.scoping import here, running_in
 from cora.ports.host import (
     BRIEFING,
     CALLING,
@@ -109,6 +110,7 @@ def dispatch(
     value: Any,
     handlers: tuple[Registration, ...],
     trace: list[TraceStep],
+    scopes: frozenset[str] = frozenset(),
 ) -> Any:
     """Run one event's handlers, in order, and answer with the value to carry on with.
 
@@ -116,17 +118,35 @@ def dispatch(
     value that comes back is what all of them made of it. On a refusing event nothing
     chains — the value is what was handed in, or the event's exception is raised.
 
+    A plugin's own code runs here, so the turn's field is bound around it: a handler
+    that reads the documents reads the field the turn is in, and material from another
+    one never reaches the brief. The tool round binds it too, over everything a call
+    touches — one rule, wherever a plugin gets to run.
+
     Args:
         handlers: What is subscribed to this event, already narrowed to the turn's
             scopes and in the order they registered.
         trace: Where a step is appended per handler that did something, in order. Kept
             by the caller, so a refusal leaves behind what it interrupted.
+        scopes: What the turn is running under. Told nothing, this keeps whatever field
+            the work is already in rather than narrowing to the default one — the
+            argument binds a field, and never takes one away.
 
     Raises:
         InputRejectedError: A handler refused the question, or broke while screening it.
         ToolRefusal: A handler refused the call, or broke while checking it. The turn
             answers anyway: the model is told, and no round is spent.
     """
+    with running_in(scopes or here()):
+        return _ran(event, value, handlers, trace)
+
+
+def _ran(
+    event: str,
+    value: Any,
+    handlers: tuple[Registration, ...],
+    trace: list[TraceStep],
+) -> Any:
     kind = EVENTS[event]
     for entry in handlers:
         subscription: Subscription = entry.value

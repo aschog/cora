@@ -73,6 +73,7 @@ def test_the_travel_corpus_is_cora_s_to_search_once_it_is_uploaded() -> None:
             scopes=("travel",),
         ),
         *((path.name, path.read_bytes()) for path in sorted(CORPUS.glob("*.md"))),
+        scope="travel",
     )
 
     answered = app.agent.answer(TRIP, "t1")

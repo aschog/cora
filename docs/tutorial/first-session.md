@@ -40,14 +40,19 @@ that field, and it survives a reload. A pin is set once, so a second field means
 session.
 
 Give travel something to answer from by uploading the notes it ships, in
-`plugins/travel/src/cora/plugins/travel/corpus/`.
+`plugins/travel/src/cora/plugins/travel/corpus/` — with *Upload into* set to `travel`,
+because a field answers from its own documents and no others.
 
 ## 4. Ask it something
 
-Upload a document (txt/md/pdf) in the documents rail on the left, then ask about it —
-answers cite the passages they used. Click a `[1]` in an answer and that document opens
-with the cited passage highlighted. The steps appear as cora takes them, under the
-*STEPS* tab on the right: what it decided, which tool it ran and what came back. A
+Upload a document (txt/md/pdf) in the documents rail on the left. With two fields loaded,
+*Upload into* says which one it lands in, and the rail lists that field's documents —
+a turn answers from the field it runs in, so a document put in the other one is a
+document it will not find. Then ask about it: answers cite the passages they used. Click
+a `[1]` in an answer and that document opens with the cited passage highlighted, read
+back out of the Markdown file cora kept it as. The steps appear as cora takes them,
+under the *STEPS* tab on the right: what it decided, which tool it ran and what came
+back. A
 question that needs no documents is answered without searching them.
 
 Ask it to remember something — "remember that I train on Tuesdays and Thursdays",

@@ -3,9 +3,15 @@
 ## A document goes in
 
 ![A UML sequence diagram of an upload: cora.frontends calls add_file on the knowledge
-base, which asks the retriever whether it holds these bytes already, and then either
-repairs the text of an upload indexed before any text was kept, or ingests, embeds, keeps
-and indexes it.](assets/upload-map.svg)
+base with the field the document lands in, which asks the retriever whether that field
+holds these bytes already, and then either repairs the text of an upload indexed before
+any text was kept, or ingests, embeds, keeps and indexes it — the text as a file under
+the field's own directory, the passages as spans in the field's own
+index.](assets/upload-map.svg)
+
+An upload names the field it lands in, and every step of the sequence is asked within it:
+a field is a directory of Markdown files and a collection of spans, so the same document
+uploaded into two fields is two copies and neither is reachable from the other.
 
 ## A turn, as a frontend asks for one
 
@@ -49,7 +55,18 @@ running them, or leaves the loop for the answer step.](assets/round-map.svg)
 gave, and hands back whatever came out — numbered `[n]` first if the result can cite
 itself.
 
+The round it runs in binds the turn's field, and the search reads it rather than being
+handed it. That is what makes one rule out of four readers: cora's own search, a plugin
+reading `Host.documents`, a handler at any of the four points, and a loop delegated from
+inside a call all read the field the turn is in — and a plugin cannot see the turn it is
+running in, so a parameter would be one nobody could fill.
+
 ![A UML sequence diagram of a document search: the tool runtime runs the tool, which asks
-its context source to search, and the knowledge base embeds the question with the same
-embedder the chunks went through and reads the nearest chunks out of the
-index.](assets/search-map.svg)
+its context source to search; the knowledge base reads the field the turn is running in,
+embeds the question with the same embedder the chunks went through, queries that field's
+index for the nearest spans, and reads each passage's words back out of the file its span
+was measured in.](assets/search-map.svg)
+
+The index keeps the span and the file keeps the words, so what a search hands back is cut
+out of the file rather than copied a second time into the index — and a passage whose
+file is gone is left out rather than handed back empty.

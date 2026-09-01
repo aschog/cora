@@ -24,6 +24,7 @@ def citation(citation: Citation) -> dict[str, Any]:
         "start": citation.start,
         "end": citation.end,
         "upload": citation.upload,
+        "scope": citation.scope,
     }
 
 
@@ -58,6 +59,7 @@ def result(result: ChatResult) -> dict[str, Any]:
         "answer": result.answer,
         "citations": [citation(each) for each in result.citations],
         "trace": [step(each) for each in result.trace],
+        "scopes": list(result.scopes),
     }
 
 

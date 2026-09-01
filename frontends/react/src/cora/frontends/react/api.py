@@ -66,11 +66,11 @@ def api(
     carry: the picker offers them, and nothing on the page can change them. What
     loaded is the app's own listing, so the menu and a terminal say one thing."""
     routes: list[Route | Mount] = [
-        Route("/api/documents", _documents(app), methods=["GET"]),
-        Route("/api/documents", _ingest(app), methods=["POST"]),
+        Route("/api/documents", _documents(app, scopes), methods=["GET"]),
+        Route("/api/documents", _ingest(app, scopes), methods=["POST"]),
         Route("/api/ask", _ask(app, scopes), methods=["POST"]),
         Route("/api/resume", _resume(app), methods=["POST"]),
-        Route("/api/uploads/{upload}", _upload(app), methods=["GET"]),
+        Route("/api/uploads/{scope}/{upload}", _upload(app, scopes), methods=["GET"]),
         Route("/api/sessions", _sessions(app), methods=["GET"]),
         Route("/api/sessions/{thread_id}", _turns(app), methods=["GET"]),
         Route("/api/sessions/{thread_id}/pending", _pending(app), methods=["GET"]),
@@ -151,14 +151,41 @@ inside `api` so a handler can be driven by a test over a route that fails on dem
 no real route can be made to fail these ways."""
 
 
-def _documents(app: App) -> Callable[[Request], Any]:
+def _documents(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
+    """What one field holds, which is what a turn in it could cite. Asked for no field,
+    the default one answers — it is a field like any other."""
+
     def listed(request: Request) -> JSONResponse:
-        return JSONResponse(app.knowledge_base.list_sources())
+        named = request.query_params.get("scope", "")
+        scope = _field(named, scopes)
+        if scope is None:
+            return JSONResponse(
+                {"error": _no_such_field(named, scopes)}, status_code=REFUSED
+            )
+        return JSONResponse(app.knowledge_base.list_sources(scope))
 
     return listed
 
 
-def _ingest(app: App) -> Callable[[Request], Any]:
+def _field(named: str, scopes: tuple[str, ...]) -> str | None:
+    """The field a request asked for, or nothing where it named one nobody loaded.
+
+    One rule for every route that takes a field, because the name is the client's: a
+    field the deployment never loaded holds nothing a turn could reach, and it would
+    otherwise reach a directory and a collection the stores create on being asked.
+    """
+    asked = named or DEFAULT_SCOPE
+    return asked if asked in (*scopes, DEFAULT_SCOPE) else None
+
+
+def _ingest(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
+    """An upload, into the field it names or into the default one.
+
+    The name is refused here rather than deeper down: it is the reader's, and a field
+    the deployment never loaded is both a document nothing could ever retrieve and a
+    name that has no business reaching a directory.
+    """
+
     async def add(request: Request) -> JSONResponse:
         refused = _over_ceiling(request)
         if refused is not None:
@@ -167,12 +194,31 @@ def _ingest(app: App) -> Callable[[Request], Any]:
             uploaded = form.get("file")
             if not isinstance(uploaded, UploadFile):
                 return JSONResponse({"error": NO_FILE}, status_code=REFUSED)
+            named = str(form.get("scope") or "")
             filename = uploaded.filename or ""
             data = await uploaded.read()
-        chunks = await run_in_threadpool(app.knowledge_base.add_file, data, filename)
-        return JSONResponse({"document": filename, "chunks": chunks})
+        scope = _field(named, scopes)
+        if scope is None:
+            return JSONResponse(
+                {"error": _no_such_field(named, scopes)}, status_code=REFUSED
+            )
+        chunks = await run_in_threadpool(
+            app.knowledge_base.add_file, data, filename, scope
+        )
+        return JSONResponse({"document": filename, "chunks": chunks, "scope": scope})
 
     return add
+
+
+MOST_OF_A_NAME = 40
+"""How much of a name a refusal quotes back. The name is the client's, so what is echoed
+is capped rather than reasoned about."""
+
+
+def _no_such_field(named: str, scopes: tuple[str, ...]) -> str:
+    offered = ", ".join((*scopes, DEFAULT_SCOPE))
+    asked = named[:MOST_OF_A_NAME]
+    return f"There is no field called {asked!r}. This cora has: {offered}."
 
 
 NO_FILE = "No file was uploaded."
@@ -389,9 +435,15 @@ def _event(name: str, data: dict[str, Any]) -> str:
     return f"event: {name}\ndata: {json.dumps(data)}\n\n"
 
 
-def _upload(app: App) -> Callable[[Request], Any]:
+def _upload(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
     def read(request: Request) -> JSONResponse:
-        text = app.knowledge_base.text(request.path_params["upload"])
+        named = request.path_params["scope"]
+        scope = _field(named, scopes)
+        if scope is None:
+            return JSONResponse(
+                {"error": _no_such_field(named, scopes)}, status_code=REFUSED
+            )
+        text = app.knowledge_base.text(scope, request.path_params["upload"])
         if text is None:
             return JSONResponse({"error": UNKEPT}, status_code=404)
         return JSONResponse({"text": text})

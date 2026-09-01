@@ -8,6 +8,7 @@ const cite = (number: number): Citation => ({
   start: 0,
   end: 4,
   upload: 'u1',
+  scope: 'cora',
 })
 
 test('markdown is markdown: a list stays a list and bold stays bold', () => {

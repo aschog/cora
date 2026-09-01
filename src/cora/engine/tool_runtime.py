@@ -6,6 +6,7 @@ from jsonschema import Draft202012Validator, ValidationError
 
 from cora.domain.errors import AdapterError
 from cora.engine.plugin_set import Registry
+from cora.engine.scoping import running_in
 from cora.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult
 
 
@@ -35,6 +36,10 @@ class ToolRuntime:
         out of scope is a tool nobody offers, which is what putting one behind a scope
         means.
 
+        The turn's scopes are bound for the length of the call, which is what makes
+        every reader of the documents underneath it read one field: cora's own search,
+        a plugin reading `Host.documents`, and a loop delegated from inside the call.
+
         Args:
             scopes: What the turn is running under, empty for a turn given none.
 
@@ -55,7 +60,8 @@ class ToolRuntime:
                 call_id=call.call_id, error=f"invalid arguments: {exc.message}"
             )
         try:
-            payload = tool.run(**call.arguments)
+            with running_in(scopes):
+                payload = tool.run(**call.arguments)
         except AdapterError:
             raise
         except ToolRefusal as refused:

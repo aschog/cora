@@ -279,10 +279,10 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
     from pathlib import Path
 
     from cora.adapters.chroma_retriever import ChromaRetriever
+    from cora.adapters.file_documents import FileDocuments
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
     from cora.adapters.sqlite_conversations import SqliteConversations
-    from cora.adapters.sqlite_documents import SqliteDocuments
     from cora.adapters.sqlite_store_memory import SqliteStoreMemory
 
     enable_debug_logs(config.debug, config.log_path)
@@ -304,7 +304,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         ),
         embedder=SentenceTransformerEmbedder(),
         retriever=retriever,
-        documents=SqliteDocuments.at(config.documents_path),
+        documents=FileDocuments.at(config.documents_path),
         plugins=loaded,
         plugin_settings=read_plugin_settings(tuple(plugin.module for plugin in loaded)),
         scopes=config.scopes,

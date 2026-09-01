@@ -23,6 +23,7 @@ from cora.engine.nesting import Inside, collecting, read_untrusted
 from cora.engine.plugin_set import Registry
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.rounds import Read, decided, told, used
+from cora.engine.scoping import running_in
 from cora.ports.chat_model import Aside, ChatModel, Message, TextSink, unheard
 from cora.ports.graph import ASK, DONE, TOOLS, Step
 from cora.ports.host import (
@@ -209,6 +210,7 @@ class ScreenStep:
             question,
             self.registry.handlers(SCREENING, scoped(state)),
             trace,
+            _pinned_field(state),
         )
         return {
             "messages": [Message(role="user", content=question)],
@@ -217,6 +219,22 @@ class ScreenStep:
             "trace": trace,
             "answer": "",
         }
+
+
+def _pinned_field(state: AgentState) -> frozenset[str]:
+    """The field a turn is in before it has been routed, which is the thread's pin.
+
+    Screening runs ahead of routing, so the scopes a turn ends up under are not settled
+    here — but a pinned thread's field is, and it is what a screen reading the documents
+    should read. An unpinned turn has no field yet and reads the default one.
+
+    The pin a turn *asks* for counts too, so the turn that pins a thread screens in the
+    same field as every turn after it: `Agent.answer` has already refused a pin that
+    fights the one the thread holds, so what arrives here is either the held field or
+    the field this thread is about to be in for good.
+    """
+    pinned = state.get("pin", "") or state.get("pinning", "")
+    return frozenset({pinned}) if pinned else scoped(state)
 
 
 def _focused(scopes: tuple[str, ...], how: str) -> AgentState:
@@ -401,6 +419,7 @@ class FocusStep:
             "\n\n".join(sections),
             self.registry.handlers(BRIEFING, scopes),
             trace,
+            scopes,
         )
 
     def _recalled(self) -> tuple[tuple[Fact, ...], bool]:
@@ -530,8 +549,14 @@ class ToolStep:
         A tool that ran work of its own — a plugin delegating to the model — reports it
         while the call runs, and it is kept under that call rather than beside it.
         """
-        known = tuple(state.get("citations", ()))
         scopes = scoped(state)
+        # The whole round, not the call alone: a payload that cites its own material is
+        # a plugin's too, and it is asked what it found after the call has returned.
+        with running_in(scopes):
+            return self._round(state, scopes)
+
+    def _round(self, state: AgentState, scopes: frozenset[str]) -> AgentState:
+        known = tuple(state.get("citations", ()))
         messages: list[Message] = []
         trace: list[TraceStep] = []
         added: list[Citation] = []
@@ -577,7 +602,13 @@ class ToolStep:
         # rewritten in place would change what ran and leave no step saying so.
         checked = replace(call, arguments=deepcopy(call.arguments))
         try:
-            dispatch(CALLING, checked, self.registry.handlers(CALLING, scopes), before)
+            dispatch(
+                CALLING,
+                checked,
+                self.registry.handlers(CALLING, scopes),
+                before,
+                scopes,
+            )
         except ToolRefusal as refused:
             return (
                 ToolResult(
@@ -594,7 +625,11 @@ class ToolStep:
                 # has replaced the material, not where it came from.
                 read_untrusted()
             amended = dispatch(
-                RETURNING, result, self.registry.handlers(RETURNING, scopes), after
+                RETURNING,
+                result,
+                self.registry.handlers(RETURNING, scopes),
+                after,
+                scopes,
             )
         # The id answers one call and is the provider's: a handler changes what the
         # model is told, never which call it is being told about. Left to a handler, a

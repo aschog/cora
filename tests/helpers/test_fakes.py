@@ -3,6 +3,7 @@ from dataclasses import replace
 
 from cora.domain.chunk import Chunk
 from cora.ports.chat_model import Message, ModelReply
+from cora.ports.host import DEFAULT_SCOPE
 from fakes import (
     FakeEmbedder,
     FakeMemory,
@@ -20,7 +21,12 @@ def _add(
     chunks: list[Chunk],
     file_hash: str = DEFAULT_UPLOAD,
 ) -> None:
-    retriever.add(chunks, embedder.embed([c.text for c in chunks]), file_hash=file_hash)
+    retriever.add(
+        DEFAULT_SCOPE,
+        chunks,
+        embedder.embed([c.text for c in chunks]),
+        file_hash=file_hash,
+    )
 
 
 def test_fake_embedder_is_deterministic(embedder: FakeEmbedder) -> None:
@@ -52,7 +58,7 @@ def test_fake_embedder_embeds_a_batch_element_wise(embedder: FakeEmbedder) -> No
 def test_fake_retriever_query_on_empty_store_returns_no_hits(
     retriever: FakeRetriever,
 ) -> None:
-    assert retriever.query([0.1, 0.2, 0.3], k=3) == []
+    assert retriever.query(DEFAULT_SCOPE, [0.1, 0.2, 0.3], k=3) == []
 
 
 def test_fake_retriever_ranks_hits_by_cosine_similarity_capped_at_k(
@@ -62,10 +68,12 @@ def test_fake_retriever_ranks_hits_by_cosine_similarity_capped_at_k(
     _add(retriever, embedder, chunks)
 
     [query_vector] = embedder.embed(["beta"])
-    hits = retriever.query(query_vector, k=2)
+    hits = retriever.query(DEFAULT_SCOPE, query_vector, k=2)
 
     assert len(hits) == 2
-    assert hits[0].chunk == replace(chunks[1], upload=DEFAULT_UPLOAD)
+    assert hits[0].chunk == replace(
+        chunks[1], text="", upload=DEFAULT_UPLOAD, scope=DEFAULT_SCOPE
+    )
     assert hits[0].score >= hits[1].score
 
 
@@ -76,10 +84,12 @@ def test_fake_retriever_returns_every_record_when_k_exceeds_store(
     _add(retriever, embedder, chunks)
 
     [query_vector] = embedder.embed(["alpha"])
-    hits = retriever.query(query_vector, k=10)
+    hits = retriever.query(DEFAULT_SCOPE, query_vector, k=10)
 
     assert len(hits) == 2
-    assert hits[0].chunk == replace(chunks[0], upload=DEFAULT_UPLOAD)
+    assert hits[0].chunk == replace(
+        chunks[0], text="", upload=DEFAULT_UPLOAD, scope=DEFAULT_SCOPE
+    )
 
 
 def test_fake_retriever_query_returns_hits_from_every_source(
@@ -89,7 +99,7 @@ def test_fake_retriever_query_returns_hits_from_every_source(
     _add(retriever, embedder, [make_chunk("b", source="two.txt")], file_hash="h2")
 
     [query_vector] = embedder.embed(["a"])
-    hits = retriever.query(query_vector, k=10)
+    hits = retriever.query(DEFAULT_SCOPE, query_vector, k=10)
 
     assert {hit.chunk.source for hit in hits} == {"one.txt", "two.txt"}
 
@@ -105,7 +115,7 @@ def test_fake_retriever_lists_each_source_once(
         file_hash="h2",
     )
 
-    assert retriever.sources() == ["one.txt", "two.txt"]
+    assert retriever.sources(DEFAULT_SCOPE) == ["one.txt", "two.txt"]
 
 
 def test_fake_retriever_contains_reports_known_hashes(
@@ -113,8 +123,8 @@ def test_fake_retriever_contains_reports_known_hashes(
 ) -> None:
     _add(retriever, embedder, [make_chunk("a", source="one.txt")], file_hash="h1")
 
-    assert retriever.contains("h1")
-    assert not retriever.contains("h2")
+    assert retriever.contains(DEFAULT_SCOPE, "h1")
+    assert not retriever.contains(DEFAULT_SCOPE, "h2")
 
 
 def test_scripted_chat_model_returns_queued_replies_in_order() -> None:
