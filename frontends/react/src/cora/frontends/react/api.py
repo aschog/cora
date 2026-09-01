@@ -210,9 +210,15 @@ def _ingest(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
     return add
 
 
+MOST_OF_A_NAME = 40
+"""How much of a name a refusal quotes back. The name is the client's, so what is echoed
+is capped rather than reasoned about."""
+
+
 def _no_such_field(named: str, scopes: tuple[str, ...]) -> str:
     offered = ", ".join((*scopes, DEFAULT_SCOPE))
-    return f"There is no field called {named!r}. This cora has: {offered}."
+    asked = named[:MOST_OF_A_NAME]
+    return f"There is no field called {asked!r}. This cora has: {offered}."
 
 
 NO_FILE = "No file was uploaded."

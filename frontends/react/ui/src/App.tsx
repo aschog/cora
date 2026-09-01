@@ -1,6 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as cora from './api'
-import type { Citation, Decision, Fact, Plugin, Session, Step, Turn } from './api'
+import type {
+  Citation,
+  Decision,
+  Fact,
+  Plugin,
+  Result,
+  Session,
+  Step,
+  Turn,
+} from './api'
 import Answer from './components/Answer'
 import CitationModal from './components/CitationModal'
 import DocumentRail from './components/DocumentRail'
@@ -121,7 +130,7 @@ export default function App() {
    *  resume has no entry in flight to name the thread, and the note about a question
    *  left running is only true when the work is somewhere else. */
   const [working, setWorking] = useState<string | null>(null)
-  const [read, setRead] = useState<string | null>(null)
+  const [read, setRead] = useState<{ document: string; scope: string } | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
   /* What the last upload did. Its own state, because it is not trouble and a refresh
@@ -168,7 +177,14 @@ export default function App() {
           setPlugins(loaded)
           setFields(offered.available)
           setAnyField(offered.default)
-          setField((picked) => picked || offered.default)
+          /* One field loaded is a field routing cannot choose against, so every turn
+             runs in it — and the reader is offered nothing, because there is nothing to
+             offer. */
+          setField(
+            (picked) =>
+              picked ||
+              (offered.available.length === 1 ? offered.available[0] : offered.default),
+          )
           setTrouble(null)
         })
         .catch(reportTo(setTrouble)),
@@ -208,7 +224,7 @@ export default function App() {
     { which: 'lost', said: lost && lost.thread !== thread ? lost.said : null },
   ].filter((banner): banner is Banner => Boolean(banner.said))
 
-  const cited = citedDocuments(entries)
+  const cited = citedDocuments(entries, field)
   /** What the conversation column shows: its recorded turns, and the one being asked in
    *  it. A turn in flight elsewhere is that conversation's, and is not drawn here. */
   const conversation =
@@ -219,17 +235,20 @@ export default function App() {
    *  and two uploads within one — so the newest citation for the name *here* is what
    *  says which text to read. A field the conversation has cited nothing in names
    *  nothing, which is the honest answer: this field's copy has not been read. */
-  const latestFor = (document: string) =>
+  const latestFor = (opened: { document: string; scope: string }) =>
     entries
       .slice()
       .reverse()
       .flatMap((entry) => entry.citations)
-      .find((citation) => citation.document === document && citation.scope === field)
+      .find(
+        (citation) =>
+          citation.document === opened.document && citation.scope === opened.scope,
+      )
 
   /** Where a document's text is kept: the field it was ingested into and the upload it
    *  arrived as. Both, because a span is only meaningful against one field's file. */
-  const sourceOf = (document: string) => {
-    const found = latestFor(document)
+  const sourceOf = (opened: { document: string; scope: string }) => {
+    const found = latestFor(opened)
     return found?.upload ? { scope: found.scope, upload: found.upload } : null
   }
 
@@ -243,19 +262,19 @@ export default function App() {
    *  is highlighted; what is *openable* is any upload the conversation still names. Both
    *  come from one citation set, because a span measured in one upload's text points at
    *  arbitrary words in another's. */
-  const passagesIn = (document: string) => {
-    const found = latestFor(document)
+  const passagesIn = (opened: { document: string; scope: string }) => {
+    const found = latestFor(opened)
     if (!found) return []
     return (answering(entries)?.citations ?? []).filter(
       (citation) =>
-        citation.document === document &&
+        citation.document === opened.document &&
         citation.upload === found.upload &&
         citation.scope === found.scope,
     )
   }
 
   const open = (document: string) => {
-    setRead(document)
+    setRead({ document, scope: field })
     setTab('SOURCE')
   }
 
@@ -382,7 +401,8 @@ export default function App() {
         } else if ((await recall(on)) !== 'drawn' && here.current === on) {
           setEntries((said) => [...said, { id, question, ...reply }])
         }
-        setRead((current) => reply.citations[0]?.document ?? current)
+        setRead((current) => _opened(reply) ?? current)
+        if (reply.scope) setField(reply.scope)
       }
     } catch (failed) {
       // A failure is recorded nowhere, so it exists only on the page it was asked from —
@@ -509,7 +529,8 @@ export default function App() {
       forget()
       at((found) => ({ ...found, ...reply, pending: false }))
       if (here.current === on)
-        setRead((current) => reply.citations[0]?.document ?? current)
+        setRead((current) => _opened(reply) ?? current)
+        if (reply.scope) setField(reply.scope)
     } catch (failed) {
       /* Nothing was settled, so the card says nothing was: it goes back to waiting and
          the stow stays, which is what lets the reader pick again. */
@@ -679,7 +700,7 @@ export default function App() {
           )}
           {tab === 'SOURCE' && (
             <SourcePanel
-              document={read}
+              document={read?.document ?? null}
               source={read ? sourceOf(read) : null}
               citations={read ? passagesIn(read) : []}
             />
@@ -714,9 +735,22 @@ const answering = (entries: Entry[]): Entry | undefined =>
   entries.filter((entry) => !entry.error).at(-1)
 
 /** The documents this conversation has actually rested on, by name. */
-function citedDocuments(entries: Entry[]): Set<string> {
+/** The document an answer opens on: its first citation, in the field that citation was
+ *  cut from. An answer that cited nothing leaves whatever was open. */
+function _opened(reply: Result): { document: string; scope: string } | null {
+  const [first] = reply.citations
+  return first ? { document: first.document, scope: first.scope } : null
+}
+
+function citedDocuments(entries: Entry[], field: string): Set<string> {
+  /* Per field, because the rail lists one: a document of this name cited in another
+     field is not this field's document, and offering it would open the wrong text. */
   return new Set(
-    entries.flatMap((entry) => entry.citations.map((citation) => citation.document)),
+    entries.flatMap((entry) =>
+      entry.citations
+        .filter((citation) => citation.scope === field)
+        .map((citation) => citation.document),
+    ),
   )
 }
 

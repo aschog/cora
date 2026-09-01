@@ -72,7 +72,7 @@ def test_fake_retriever_ranks_hits_by_cosine_similarity_capped_at_k(
 
     assert len(hits) == 2
     assert hits[0].chunk == replace(
-        chunks[1], upload=DEFAULT_UPLOAD, scope=DEFAULT_SCOPE
+        chunks[1], text="", upload=DEFAULT_UPLOAD, scope=DEFAULT_SCOPE
     )
     assert hits[0].score >= hits[1].score
 
@@ -88,7 +88,7 @@ def test_fake_retriever_returns_every_record_when_k_exceeds_store(
 
     assert len(hits) == 2
     assert hits[0].chunk == replace(
-        chunks[0], upload=DEFAULT_UPLOAD, scope=DEFAULT_SCOPE
+        chunks[0], text="", upload=DEFAULT_UPLOAD, scope=DEFAULT_SCOPE
     )
 
 

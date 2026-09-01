@@ -226,11 +226,14 @@ def _pinned_field(state: AgentState) -> frozenset[str]:
 
     Screening runs ahead of routing, so the scopes a turn ends up under are not settled
     here — but a pinned thread's field is, and it is what a screen reading the documents
-    should read. An unpinned turn has no field yet and reads the default one. The pin
-    the *question* asked for is not taken: nothing a refused question sent may decide
-    what a screen is shown.
+    should read. An unpinned turn has no field yet and reads the default one.
+
+    The pin a turn *asks* for counts too, so the turn that pins a thread screens in the
+    same field as every turn after it: `Agent.answer` has already refused a pin that
+    fights the one the thread holds, so what arrives here is either the held field or
+    the field this thread is about to be in for good.
     """
-    pinned = state.get("pin", "")
+    pinned = state.get("pin", "") or state.get("pinning", "")
     return frozenset({pinned}) if pinned else scoped(state)
 
 

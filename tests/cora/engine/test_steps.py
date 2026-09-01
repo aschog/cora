@@ -1511,3 +1511,26 @@ def test_a_screen_reads_the_field_the_thread_is_pinned_to() -> None:
     step({"question": "anything", "pin": "travel"})
 
     assert seen == ["kyoto.md"]
+
+
+def test_the_turn_that_pins_a_thread_screens_in_the_field_it_pins_it_to() -> None:
+    """The first turn of a pinned thread would otherwise screen against another field
+    than every turn after it, and a screen that reads the documents would behave one way
+    once and another way for good."""
+    kb = KnowledgeBase(
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        loaders=TEXT_LOADERS,
+        documents=FakeDocuments(),
+    )
+    kb.add_file(b"The sleeper to Kyoto sells out early.", "kyoto.md", "travel")
+    seen: list[str] = []
+
+    def screen(question: str) -> None:
+        seen.extend(hit.chunk.source for hit in kb.search("notes", 5))
+
+    step = ScreenStep(registry=_registry("SYS", screens=(screen,)))
+
+    step({"question": "anything", "pinning": "travel"})
+
+    assert seen == ["kyoto.md"]

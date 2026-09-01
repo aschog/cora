@@ -19,7 +19,15 @@ export type Step = {
   steps: Step[]
 }
 
-export type Result = { answer: string; citations: Citation[]; trace: Step[] }
+export type Result = {
+  answer: string
+  citations: Citation[]
+  trace: Step[]
+  /** The field it was answered in. Routing settles it inside the turn, so this is the
+   *  only thing that says which — an unpinned conversation is answered in a field the
+   *  page never chose. */
+  scope: string
+}
 
 export type Turn = { question: string; result: Result }
 

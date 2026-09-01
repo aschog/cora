@@ -83,7 +83,10 @@ class FakeRetriever:
         directory that text is kept under."""
         self._records.extend(
             _Record(
-                vector, replace(chunk, upload=file_hash, scope=scope), file_hash, scope
+                vector,
+                replace(chunk, text="", upload=file_hash, scope=scope),
+                file_hash,
+                scope,
             )
             for chunk, vector in zip(chunks, vectors, strict=True)
         )

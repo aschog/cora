@@ -2924,9 +2924,9 @@ test('leaving a pinned conversation returns the rail to the default field', asyn
 
 test('a filename in two fields never opens the other field’s copy', async () => {
   /* One name can cover a document in each field. Reading the newest citation for the
-     name alone would open the other field's text under this field's listing — the panel
-     would show a document the rail is not offering, marked at a span measured in
-     something else. */
+     name alone would mark this field's copy as cited and open the other field's text
+     under it, at a span measured in something else — so the citation the conversation
+     holds belongs to the field it was cut from, and to no other. */
   const answered = {
     answer: 'From the default field [1].',
     citations: [
@@ -2964,9 +2964,91 @@ test('a filename in two fields never opens the other field’s copy', async () =
   fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
     target: { value: 'travel' },
   })
-  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  await waitFor(() =>
+    expect(
+      screen.getByRole('button', { name: 'notes.md' }).hasAttribute('disabled'),
+    ).toBe(true),
+  )
   fireEvent.click(screen.getByRole('button', { name: 'notes.md' }))
 
-  expect(await screen.findByText(/indexed before cora kept its text/)).toBeTruthy()
   expect(opened).toEqual([])
+})
+
+test('a single loaded field is where uploads go, with nothing to choose', async () => {
+  /* Routing has nothing to choose between, so every turn runs in that field — a rail
+     offering the default one beside it would take documents no turn could ever cite. */
+  let into: string | null = null
+  const one: Record<string, unknown> = {
+    ...served,
+    '/api/scopes': { available: ['fitness'], default: 'cora' },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (route(path) === '/api/documents' && init?.method === 'POST') {
+        into = (init.body as FormData).get('scope') as string
+        const added = { document: 'plan.md', chunks: 2 }
+        return { ok: true, json: async () => added } as unknown as Response
+      }
+      const body = one[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await waitFor(() =>
+    expect(screen.getByLabelText('Upload into').textContent).toBe('fitness'),
+  )
+  expect(screen.queryByRole('combobox', { name: /upload into/i })).toBeNull()
+
+  upload('plan.md')
+
+  await waitFor(() => expect(into).toBe('fitness'))
+})
+
+test('an unpinned turn leaves the rail in the field it was answered in', async () => {
+  /* Routing settles the field inside the turn, so the answer is the only thing that can
+     say which — and the rail would otherwise list a field the conversation is not in and
+     call its own cited document unopenable. */
+  const answered = {
+    answer: 'Book it early [1].',
+    citations: [
+      {
+        number: 1,
+        document: 'kyoto.md',
+        start: 0,
+        end: 5,
+        upload: 'u9',
+        scope: 'travel',
+      },
+    ],
+    trace: [],
+    scope: 'travel',
+  }
+  const held: Record<string, string[]> = { cora: [], travel: ['kyoto.md'] }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return oneTurn(answered)
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
+      }
+      const body = served[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByPlaceholderText(/Ask a question/)
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'How early?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Book it early/)
+
+  expect(await screen.findByText('kyoto.md')).toBeTruthy()
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
 })

@@ -81,3 +81,21 @@ def test_a_prefix_of_an_upload_does_not_read_it(tmp_path: Path) -> None:
 
     assert store.read(FITNESS, UPLOAD[:12]) is None
     assert store.read(FITNESS, UPLOAD) == TEXT
+
+
+def test_a_scope_that_is_not_a_bare_name_reads_as_nothing(tmp_path: Path) -> None:
+    """A name no field has is a document this store does not hold, which is what `read`
+    already says with nothing — an outage would tell the caller to try again."""
+    assert _store(tmp_path).read("../elsewhere", UPLOAD) is None
+
+
+def test_an_upload_with_no_filename_is_still_a_file_that_can_be_read(
+    tmp_path: Path,
+) -> None:
+    """A form can arrive naming no file at all, and a document kept under no name is
+    still a citation waiting to be opened."""
+    store = _store(tmp_path)
+
+    store.keep(FITNESS, UPLOAD, "", TEXT)
+
+    assert store.read(FITNESS, UPLOAD) == TEXT

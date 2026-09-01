@@ -13,8 +13,13 @@ class ChatResult:
     `citations` are the ones the answer actually cites, not everything the turn
     retrieved, and `trace` covers this turn alone — a turn is reportable on its own or
     the report belongs to the conversation instead of to the answer.
+
+    `scope` is the field it was answered in, which routing settles inside the turn: an
+    unpinned conversation is answered in a field nothing outside the turn chose, so a
+    reader shown documents and citations per field has no other way to know which.
     """
 
     answer: str
     citations: tuple[Citation, ...] = ()
     trace: tuple[TraceStep, ...] = ()
+    scope: str = ""

@@ -59,6 +59,7 @@ def result(result: ChatResult) -> dict[str, Any]:
         "answer": result.answer,
         "citations": [citation(each) for each in result.citations],
         "trace": [step(each) for each in result.trace],
+        "scope": result.scope,
     }
 
 

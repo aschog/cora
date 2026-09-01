@@ -7,6 +7,7 @@ Cleaned text sits in a SQLite store nobody can read, and every field shares one 
 - Cleaned text becomes one Markdown file per source, under a directory named for its scope
 - The `Documents` port keeps and reads within a scope, and a file adapter fills it
 - The index keeps embeddings and offsets only, and a hit's text is read back from its file
+- A passage, a citation and a turn each carry the field they belong to
 - A search sees the turn's scope alone, so no other field's passage is retrieved or cited
 - An upload names the field it lands in, and one naming none lands in the default scope
 - The rail offers the field to upload into, and lists the active field's documents
@@ -26,5 +27,5 @@ Cleaned text sits in a SQLite store nobody can read, and every field shares one 
 - `src/cora/app/config.py`, `src/cora/app/assembly.py` — one documents root replaces two store paths
 - `frontends/react/` — the upload's field, the scoped listing, and the rail's picker
 - `tests/guards/` — the component map redrawn from the assembly
-- `README.md`, `docs/big-picture.md` — the layout, and the port that now holds it
+- `README.md`, `docs/tutorial/first-session.md` — the layout, and the field an upload names
 - Left alone: memory, threads, checkpoints, the brief, routing and the pin

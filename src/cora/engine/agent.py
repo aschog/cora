@@ -206,6 +206,7 @@ class Agent:
             answer=answer,
             citations=cited(answer, tuple(final.get("citations", ()))),
             trace=tuple(final.get("trace", ()))[final.get("trace_start", started) :],
+            scope=", ".join(final.get("scopes", ())),
         )
         self._record(thread_id, Turn(question=question, result=result))
         return result

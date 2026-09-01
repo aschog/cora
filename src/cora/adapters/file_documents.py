@@ -55,9 +55,9 @@ class FileDocuments:
     @_translate_errors
     def read(self, scope: str, upload: str) -> str | None:
         head = _head(upload)
-        if head is None:
+        if head is None or not BARE_NAME.match(scope):
             return None
-        for found in sorted(self._folder(scope).glob(f"*-{head}.md")):
+        for found in sorted((self._root / scope).glob(f"*-{head}.md")):
             return found.read_text(encoding="utf-8")
         return None
 

@@ -193,7 +193,7 @@ def test_logging_retriever_delegates_and_logs_the_hits(
         hits = LoggingRetriever(inner).query(DEFAULT_SCOPE, query_vector, k=3)
 
     assert [hit.chunk for hit in hits] == [
-        replace(chunk, upload="hash-1", scope=DEFAULT_SCOPE)
+        replace(chunk, text="", upload="hash-1", scope=DEFAULT_SCOPE)
     ]
     retrieval = line_about(caplog, "retrieval")
     assert "k=3" in retrieval

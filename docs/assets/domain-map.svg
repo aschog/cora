@@ -170,29 +170,30 @@
 <!-- ChatResult -->
 <g id="node6" class="node uml&#45;class">
 <title>ChatResult</title>
-<polygon  points="330.62,-489.62 330.62,-526.12 417.38,-526.12 417.38,-489.62 330.62,-489.62" class="head"/>
-<text xml:space="preserve" text-anchor="start" x="347.75" y="-510.62" font-family="Helvetica,sans-Serif" font-size="10.00" class="stereotype">«dataclass»</text>
-<text xml:space="preserve" text-anchor="start" x="341" y="-498.25" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.50" class="name">ChatResult</text>
-<polygon  points="330.62,-462.88 330.62,-489.62 417.38,-489.62 417.38,-462.88 330.62,-462.88" class="body"/>
-<text xml:space="preserve" text-anchor="start" x="337.62" y="-472.88" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ answer: str</text>
-<polygon  points="329.62,-489.62 329.62,-489.62 418.38,-489.62 418.38,-489.62 329.62,-489.62" class="rule"/>
-<polygon  points="329.62,-461.88 329.62,-527.12 418.38,-527.12 418.38,-461.88 329.62,-461.88" class="frame"/>
+<polygon  points="330.62,-496 330.62,-532.5 417.38,-532.5 417.38,-496 330.62,-496" class="head"/>
+<text xml:space="preserve" text-anchor="start" x="347.75" y="-517" font-family="Helvetica,sans-Serif" font-size="10.00" class="stereotype">«dataclass»</text>
+<text xml:space="preserve" text-anchor="start" x="341" y="-504.62" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.50" class="name">ChatResult</text>
+<polygon  points="330.62,-456.5 330.62,-496 417.38,-496 417.38,-456.5 330.62,-456.5" class="body"/>
+<text xml:space="preserve" text-anchor="start" x="337.62" y="-479.25" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ answer: str</text>
+<text xml:space="preserve" text-anchor="start" x="337.62" y="-466.5" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ scope: str</text>
+<polygon  points="329.62,-496 329.62,-496 418.38,-496 418.38,-496 329.62,-496" class="rule"/>
+<polygon  points="329.62,-455.5 329.62,-533.5 418.38,-533.5 418.38,-455.5 329.62,-455.5" class="frame"/>
 </g>
 <!-- Turn&#45;&gt;ChatResult -->
 <g id="edge19" class="edge uml&#45;association">
 <title>Turn&#45;&gt;ChatResult</title>
-<path   d="M374,-688.23C374,-688.23 374,-538.06 374,-538.06"/>
-<polygon   points="374,-528.06 378.5,-538.06 374,-531.84 374,-538.06 374,-538.06 374,-538.06 374,-531.84 369.5,-538.06 374,-528.06"/>
+<path   d="M374,-688.23C374,-688.23 374,-544.5 374,-544.5"/>
+<polygon   points="374,-534.5 378.5,-544.5 374,-538.28 374,-544.5 374,-544.5 374,-544.5 374,-538.28 369.5,-544.5 374,-534.5"/>
 <text xml:space="preserve" text-anchor="middle" x="387.12" y="-612.77" font-family="Helvetica,sans-Serif" font-size="10.50">result</text>
-<text xml:space="preserve" text-anchor="middle" x="369.06" y="-537.71" font-family="Helvetica,sans-Serif" font-size="10.50">1</text>
+<text xml:space="preserve" text-anchor="middle" x="369.06" y="-544.15" font-family="Helvetica,sans-Serif" font-size="10.50">1</text>
 </g>
 <!-- ChatResult&#45;&gt;Citation -->
 <g id="edge11" class="edge uml&#45;association">
 <title>ChatResult&#45;&gt;Citation</title>
-<path   d="M374,-462.08C374,-462.08 374,-350.35 374,-350.35"/>
-<polygon   points="374,-340.35 378.5,-350.35 374,-344.13 374,-350.35 374,-350.35 374,-350.35 374,-344.13 369.5,-350.35 374,-340.35"/>
+<path   d="M374,-455.72C374,-455.72 374,-350.18 374,-350.18"/>
+<polygon   points="374,-340.18 378.5,-350.18 374,-343.96 374,-350.18 374,-350.18 374,-350.18 374,-343.96 369.5,-350.18 374,-340.18"/>
 <text xml:space="preserve" text-anchor="middle" x="393.5" y="-367.52" font-family="Helvetica,sans-Serif" font-size="10.50">citations</text>
-<text xml:space="preserve" text-anchor="middle" x="369.06" y="-350" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
+<text xml:space="preserve" text-anchor="middle" x="369.06" y="-349.83" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
 </g>
 <!-- TraceStep -->
 <g id="node9" class="node uml&#45;class">
@@ -482,5 +483,5 @@
 <text xml:space="preserve" text-anchor="middle" x="1548.06" y="-130.14" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
 </g>
 </g>
-<!-- drawn by scripts/gen_domain_map.py from 072c652b3d648a2e -->
+<!-- drawn by scripts/gen_domain_map.py from f85849237d9d3556 -->
 </svg>
