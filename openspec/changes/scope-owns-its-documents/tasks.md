@@ -7,7 +7,7 @@ it, not by a test. The component map is an item, because a guard is a test.
 
 ## 1. The outer test
 
-- [ ] 1.1 **Outer.** Write a test that shows two fields each holding a document, a turn in
+- [x] 1.1 **Outer.** Write a test that shows two fields each holding a document, a turn in
       one citing only its own field's passage, that field's listing naming only its own,
       and the citation opened from that field alone — `tests/acceptance/test_documents.py::`
       `test_a_field_answers_from_its_own_files`, marked `@pytest.mark.xfail(strict=True)`
