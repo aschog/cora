@@ -11,6 +11,7 @@ const cited = (upload: string): Citation => ({
   start: 0,
   end: 6,
   upload,
+  scope: 'cora',
 })
 
 beforeEach(() =>
