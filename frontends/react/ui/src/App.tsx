@@ -177,14 +177,6 @@ export default function App() {
           setPlugins(loaded)
           setFields(offered.available)
           setAnyField(offered.default)
-          /* One field loaded is a field routing cannot choose against, so every turn
-             runs in it — and the reader is offered nothing, because there is nothing to
-             offer. */
-          setField(
-            (picked) =>
-              picked ||
-              (offered.available.length === 1 ? offered.available[0] : offered.default),
-          )
           setTrouble(null)
         })
         .catch(reportTo(setTrouble)),
@@ -195,12 +187,18 @@ export default function App() {
     refresh()
   }, [refresh])
 
+  /* Where the rail sits when the conversation has not said otherwise. One field loaded
+     is a field routing cannot choose against, so every turn runs in it; with more than
+     one, a turn belonging to none is answered in the default field. */
+  const home = fields.length === 1 ? fields[0] : anyField
+
   /* A pinned conversation decides the rail's field: the pin is the thread's own state,
-     so reopening one moves the rail with it. Leaving one returns the rail to the
-     default field rather than leaving it in a field this conversation is not in. */
+     so reopening one moves the rail with it. Leaving one returns the rail home rather
+     than leaving it in a field this conversation is not in. The one place the field is
+     settled from outside the conversation — a second would race this one. */
   useEffect(() => {
-    setField(pin ?? anyField)
-  }, [pin, anyField])
+    setField(pin ?? home)
+  }, [pin, home])
 
   /* A card left open outlives the page it was drawn on: the conversation it was open in
      is picked back up, and the question with it. */
