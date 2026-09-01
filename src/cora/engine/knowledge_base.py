@@ -90,6 +90,11 @@ class KnowledgeBase:
         the distances mean anything. Which fields is not asked for: it is what the work
         happening now is running in, so a plugin's search and cora's own read the same
         one without either being handed it.
+
+        The cut to `k` comes after a passage whose file is gone has been left out,
+        which is what keeps the merge across two fields from spending its places on
+        passages that are then dropped. The index is asked for `k` per field, so a field
+        whose files have been deleted under cora still answers with fewer.
         """
         [query_vector] = self.embedder.embed([query])
         found = [
@@ -98,7 +103,7 @@ class KnowledgeBase:
             for hit in self.retriever.query(scope, query_vector, k)
         ]
         found.sort(key=lambda hit: hit.score, reverse=True)
-        return self._written(found[:k])
+        return self._written(found)[:k]
 
     def list_sources(self, scope: str = DEFAULT_SCOPE) -> list[str]:
         """Every document one field holds a passage from, by its uploaded name."""

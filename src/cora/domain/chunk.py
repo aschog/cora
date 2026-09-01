@@ -26,11 +26,11 @@ class Chunk:
     length: int = 0
 
     def __post_init__(self) -> None:
-        """Take the length from the text, for every chunk that was cut from one.
+        """Measure the length of every chunk that has text to measure.
 
-        A chunk read back from the index has the length and not the text, and one just
-        cut has the text and no length written out beside it — measuring it here is what
-        keeps the two from ever disagreeing.
+        A chunk read back from the index has the length and not the text; one cut from a
+        document has the text, and its length is what the text is — taken here rather
+        than passed in, so the two can never be given disagreeing values.
         """
-        if self.text and not self.length:
+        if self.text:
             object.__setattr__(self, "length", len(self.text))

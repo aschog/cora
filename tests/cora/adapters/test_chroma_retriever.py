@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import replace
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import pytest
@@ -140,3 +141,18 @@ def test_a_field_is_a_collection_of_its_own(
     assert [
         hit.chunk.source for hit in chroma_retriever.query("travel", query_vector, k=5)
     ] == ["kyoto.md"]
+
+
+def test_a_client_that_cannot_be_opened_surfaces_as_retrieval_error(
+    tmp_path: Path,
+) -> None:
+    """Opening the client is the one thing construction does, and it is still a store
+    that can be unreachable — the path being a file rather than a directory is the
+    cheapest way it happens."""
+    blocked = tmp_path / "chroma"
+    blocked.write_text("not a directory")
+
+    with pytest.raises(RetrievalError):
+        from cora.adapters.chroma_retriever import ChromaRetriever
+
+        ChromaRetriever(path=str(blocked), collection="documents")

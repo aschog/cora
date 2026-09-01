@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import replace
+from hashlib import sha256
 
 import pytest
 
@@ -325,19 +326,18 @@ def test_a_search_with_no_field_bound_reads_the_default_one(kb: KnowledgeBase) -
 
 
 def test_a_passage_carries_the_text_at_its_span_read_from_the_file(
-    kb: KnowledgeBase, retriever: FakeRetriever
+    kb: KnowledgeBase, documents: FakeDocuments
 ) -> None:
     """The index keeps the span and the file keeps the words, so what a search hands
-    back is sliced out of the file rather than copied a second time into the index."""
+    back is sliced out of the file — which is why editing the file changes what a
+    passage says, and why the index alone could not have answered."""
     kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    documents.keep(FITNESS, sha256(PLAN).hexdigest(), "plan.md", "REWRITTEN.")
 
     with running_in(frozenset({FITNESS})):
         [hit] = kb.search("intensity", k=1)
 
-    assert hit.chunk.text == PLAN.decode()
-    [indexed] = retriever.records
-    assert indexed.chunk.text == ""
-    assert indexed.chunk.length == len(PLAN.decode())
+    assert hit.chunk.text == "REWRITTEN."
 
 
 def test_a_passage_whose_file_is_gone_is_left_out(

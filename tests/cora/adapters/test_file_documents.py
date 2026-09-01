@@ -7,8 +7,8 @@ from cora.domain.errors import DocumentStoreError
 
 TEXT = "For strength training, aim for 1.6 g of protein per kg."
 OTHER = "The sleeper to Kyoto sells out a month before the maples turn."
-UPLOAD = "3f786850e387550fdab836ed7e6dc881de23001b"
-ANOTHER = "89e6c98d92887913cadf06b2adb97f26cde4849b"
+UPLOAD = "7692c3ad3540bb803c020b3aee66cd8887123234ea0c6e7143c0add73ff431ed"
+ANOTHER = "3fc4ccfe745870e2c0d99f71f30ff0656c8dedd41cc1d7d3d376b0dbe685e2f3"
 FITNESS, TRAVEL = "fitness", "travel"
 
 
@@ -71,3 +71,13 @@ def test_a_root_that_cannot_be_written_raises(tmp_path: Path) -> None:
 
     with pytest.raises(DocumentStoreError):
         FileDocuments.at(str(blocked)).keep(FITNESS, UPLOAD, "notes.md", TEXT)
+
+
+def test_a_prefix_of_an_upload_does_not_read_it(tmp_path: Path) -> None:
+    """The hash in the filename is short so the directory reads well, and short is not
+    a name to accept from a URL: an upload is read by the whole of what it is."""
+    store = _store(tmp_path)
+    store.keep(FITNESS, UPLOAD, "notes.md", TEXT)
+
+    assert store.read(FITNESS, UPLOAD[:12]) is None
+    assert store.read(FITNESS, UPLOAD) == TEXT

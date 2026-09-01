@@ -69,7 +69,7 @@ class FakeRetriever:
     The stored chunk carries no text, because the index keeps the span alone."""
 
     def __init__(self) -> None:
-        self.records: list[_Record] = []
+        self._records: list[_Record] = []
 
     def add(
         self,
@@ -81,7 +81,7 @@ class FakeRetriever:
         """Stamped with the upload and the field on the way in, as the real index does:
         a hit carries the upload its offsets were measured in, and the field whose
         directory that text is kept under."""
-        self.records.extend(
+        self._records.extend(
             _Record(
                 vector, replace(chunk, upload=file_hash, scope=scope), file_hash, scope
             )
@@ -94,7 +94,7 @@ class FakeRetriever:
         ranked = sorted(
             (
                 RetrievedChunk(chunk=r.chunk, score=_cosine(query_vector, r.vector))
-                for r in self.records
+                for r in self._records
                 if r.scope == scope
             ),
             key=lambda hit: hit.score,
@@ -104,11 +104,11 @@ class FakeRetriever:
 
     def sources(self, scope: str) -> list[str]:
         return list(
-            dict.fromkeys(r.chunk.source for r in self.records if r.scope == scope)
+            dict.fromkeys(r.chunk.source for r in self._records if r.scope == scope)
         )
 
     def contains(self, scope: str, file_hash: str) -> bool:
-        return any(r.file_hash == file_hash and r.scope == scope for r in self.records)
+        return any(r.file_hash == file_hash and r.scope == scope for r in self._records)
 
 
 def _cosine(a: list[float], b: list[float]) -> float:

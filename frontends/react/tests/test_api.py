@@ -516,3 +516,24 @@ def test_a_passage_opens_from_its_own_field_and_no_other() -> None:
         client.get(f"/api/uploads/{TRAVEL}/{upload}").json()["text"] == KYOTO.decode()
     )
     assert client.get(f"/api/uploads/{FITNESS}/{upload}").status_code == 404
+
+
+def test_the_listing_refuses_a_field_nobody_loaded() -> None:
+    """The name is the client's, and it reaches a collection the store would create for
+    it: a route that took any name would grow the store on every request."""
+    app = assembled()
+
+    refused = _scoped(app).get("/api/documents?scope=invented")
+
+    assert refused.status_code == 400
+    assert TRAVEL in refused.json()["error"]
+
+
+def test_a_passage_asked_for_under_a_field_nobody_loaded_is_not_an_outage() -> None:
+    """A name no field has is the reader's mistake, not the store's: a 503 would tell
+    them to retry something that cannot work, and `.hidden` reaching the store at all
+    is a name the door should have stopped."""
+    refused = _scoped(assembled()).get("/api/uploads/.hidden/abc123")
+
+    assert refused.status_code == 400
+    assert TRAVEL in refused.json()["error"]

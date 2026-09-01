@@ -11,6 +11,7 @@ const rail = (documents: string[], cited: string[], fields: string[] = []) =>
       cited={new Set(cited)}
       fields={fields}
       field={fields[0] ?? 'cora'}
+      anyField="cora"
       fixedField={false}
       onField={vi.fn()}
       onOpen={vi.fn()}
@@ -67,6 +68,7 @@ test('what an upload did is announced in that same region', () => {
       cited={new Set<string>()}
       fields={[]}
       field="cora"
+      anyField="cora"
       fixedField={false}
       onField={vi.fn()}
       onOpen={vi.fn()}
@@ -107,6 +109,7 @@ test('a pinned conversation shows its field and cannot change it', () => {
       cited={new Set()}
       fields={['fitness', 'travel']}
       field="travel"
+      anyField="cora"
       fixedField
       onField={vi.fn()}
       onOpen={vi.fn()}

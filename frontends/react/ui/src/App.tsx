@@ -11,10 +11,6 @@ import SessionsPanel from './components/SessionsPanel'
 import SourcePanel from './components/SourcePanel'
 import type { Notice } from './components/UploadNotice'
 
-/** The field a question belonging to none is answered in, and where an upload naming no
- *  field lands. A field like any other, so the rail offers it beside the loaded ones. */
-const ANY_FIELD = 'cora'
-
 const TABS = ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
 type Tab = (typeof TABS)[number]
 
@@ -103,10 +99,14 @@ export default function App() {
   const [fields, setFields] = useState<string[]>([])
   const [pin, setPin] = useState<string | null>(null)
   const [fixedPin, setFixedPin] = useState(false)
+  /* The field a question belonging to none is answered in, and where an upload naming
+     none lands. The server's answer rather than a constant here: it is one fact, and
+     the page is not where it is decided. */
+  const [anyField, setAnyField] = useState('')
   /* The field the rail shows and uploads into. It follows the pin, because a pinned
      conversation has one field and a document put anywhere else could never be cited
-     in it; unpinned, it is the reader's own pick and starts at the default field. */
-  const [field, setField] = useState(ANY_FIELD)
+     in it; unpinned, it is the reader's own pick and returns to the default field. */
+  const [field, setField] = useState('')
   const [facts, setFacts] = useState<Fact[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   /* The steps of the turn being taken, and the conversation they are being taken in: a
@@ -167,6 +167,8 @@ export default function App() {
           setSessions(before)
           setPlugins(loaded)
           setFields(offered.available)
+          setAnyField(offered.default)
+          setField((picked) => picked || offered.default)
           setTrouble(null)
         })
         .catch(reportTo(setTrouble)),
@@ -178,10 +180,11 @@ export default function App() {
   }, [refresh])
 
   /* A pinned conversation decides the rail's field: the pin is the thread's own state,
-     so reopening one moves the rail with it. */
+     so reopening one moves the rail with it. Leaving one returns the rail to the
+     default field rather than leaving it in a field this conversation is not in. */
   useEffect(() => {
-    if (pin !== null) setField(pin)
-  }, [pin])
+    setField(pin ?? anyField)
+  }, [pin, anyField])
 
   /* A card left open outlives the page it was drawn on: the conversation it was open in
      is picked back up, and the question with it. */
@@ -626,6 +629,7 @@ export default function App() {
             cited={cited}
             fields={fields}
             field={field}
+            anyField={anyField}
             fixedField={pin !== null}
             onField={setField}
             onOpen={open}

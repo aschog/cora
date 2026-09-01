@@ -89,7 +89,7 @@
   <path d="M 946.715 308 L 442.9 308" class="back"/>
   <text x="694.807" y="301" class="answer" text-anchor="middle">found</text>
   <path d="M 442.9 342 L 468.9 342 L 468.9 360 L 447.9 360" class="send"/>
-  <text x="478.9" y="347" class="said" text-anchor="start">_written(found[:k])</text>
+  <text x="478.9" y="347" class="said" text-anchor="start">_written(found)</text>
   <path d="M 442.9 435 L 1112.07 435" class="send"/>
   <rect x="640.862" y="416" width="273.25" height="16" rx="2" class="sheet"/>
   <text x="777.487" y="428" class="said" text-anchor="middle">read(hit.chunk.scope, hit.chunk.upload)</text>

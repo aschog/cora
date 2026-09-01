@@ -27,6 +27,8 @@ SEARCH = ModelReply(
     )
 )
 ANSWER = ModelReply(text="They say the sleeper sells out early [1][2].")
+"""Cites more than one field could hand out on purpose: a leak numbers a second
+passage, and the answer is written ready to cite it."""
 
 
 def test_a_field_answers_from_its_own_files() -> None:

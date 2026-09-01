@@ -209,6 +209,7 @@ class ScreenStep:
             question,
             self.registry.handlers(SCREENING, scoped(state)),
             trace,
+            scoped(state),
         )
         return {
             "messages": [Message(role="user", content=question)],
@@ -401,6 +402,7 @@ class FocusStep:
             "\n\n".join(sections),
             self.registry.handlers(BRIEFING, scopes),
             trace,
+            scopes,
         )
 
     def _recalled(self) -> tuple[tuple[Fact, ...], bool]:
@@ -577,7 +579,13 @@ class ToolStep:
         # rewritten in place would change what ran and leave no step saying so.
         checked = replace(call, arguments=deepcopy(call.arguments))
         try:
-            dispatch(CALLING, checked, self.registry.handlers(CALLING, scopes), before)
+            dispatch(
+                CALLING,
+                checked,
+                self.registry.handlers(CALLING, scopes),
+                before,
+                scopes,
+            )
         except ToolRefusal as refused:
             return (
                 ToolResult(
@@ -594,7 +602,11 @@ class ToolStep:
                 # has replaced the material, not where it came from.
                 read_untrusted()
             amended = dispatch(
-                RETURNING, result, self.registry.handlers(RETURNING, scopes), after
+                RETURNING,
+                result,
+                self.registry.handlers(RETURNING, scopes),
+                after,
+                scopes,
             )
         # The id answers one call and is the provider's: a handler changes what the
         # model is told, never which call it is being told about. Left to a handler, a

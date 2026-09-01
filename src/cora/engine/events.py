@@ -14,6 +14,7 @@ from typing import Any
 
 from cora.domain.errors import CoreError, InputRejectedError
 from cora.domain.trace import HandlerRan, TraceStep
+from cora.engine.scoping import running_in
 from cora.ports.host import (
     BRIEFING,
     CALLING,
@@ -109,6 +110,7 @@ def dispatch(
     value: Any,
     handlers: tuple[Registration, ...],
     trace: list[TraceStep],
+    scopes: frozenset[str] = frozenset(),
 ) -> Any:
     """Run one event's handlers, in order, and answer with the value to carry on with.
 
@@ -116,17 +118,33 @@ def dispatch(
     value that comes back is what all of them made of it. On a refusing event nothing
     chains — the value is what was handed in, or the event's exception is raised.
 
+    This and `ToolRuntime.execute` are the two places a plugin's own code runs, so both
+    bind the turn's field around it: a handler that reads the documents reads the field
+    the turn is in, and material from another one never reaches the brief.
+
     Args:
         handlers: What is subscribed to this event, already narrowed to the turn's
             scopes and in the order they registered.
         trace: Where a step is appended per handler that did something, in order. Kept
             by the caller, so a refusal leaves behind what it interrupted.
+        scopes: What the turn is running under. Empty where it is not settled yet —
+            screening runs before routing, so a screen reads the default field.
 
     Raises:
         InputRejectedError: A handler refused the question, or broke while screening it.
         ToolRefusal: A handler refused the call, or broke while checking it. The turn
             answers anyway: the model is told, and no round is spent.
     """
+    with running_in(scopes):
+        return _ran(event, value, handlers, trace)
+
+
+def _ran(
+    event: str,
+    value: Any,
+    handlers: tuple[Registration, ...],
+    trace: list[TraceStep],
+) -> Any:
     kind = EVENTS[event]
     for entry in handlers:
         subscription: Subscription = entry.value

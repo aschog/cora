@@ -144,13 +144,6 @@ decisions, and the first three are the sprint.
   system-wide — and widening that set is a supported move, not a second code path. Stories
   5 and 6.
 
-- **A scope owns its documents.** Cleaned text moves from `adapters/sqlite_documents.py` to
-  one Markdown file per source, under a directory named for its scope, behind the
-  `Documents` port that already exists; the index keeps embeddings and offsets and reads the
-  text back from the file. That answers the reviewer's two store findings at once. Threads
-  and remembered facts stay in SQLite, and memory stays system-wide — one person, both
-  scopes. Story 8.
-
 - **An effect is gated by the interrupt that already exists, and the gate is the core's.** A
   tool that changes something outside cora says what it is about to do and waits. The gate
   stands at the *tool-call* point but is not a handler: it pauses the turn, which no plugin

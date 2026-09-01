@@ -1,8 +1,10 @@
 import pytest
 
 from cora.domain.errors import RetrievalError
+from cora.domain.trace import ToolUse
 from cora.engine.host import PluginHost
 from cora.engine.knowledge_base import KnowledgeBase
+from cora.engine.nesting import collecting
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import ModelReply
@@ -252,12 +254,14 @@ def test_a_delegated_loops_search_reads_the_field_the_turn_is_running_in() -> No
                     ),
                 )
             ),
-            ModelReply(text="read"),
+            ModelReply(text="I read what the search returned."),
         ]
     )
     host = host_for(documents=_two_fields(), model=model)
 
     def delegating() -> str:
+        """What the loop was shown, answered back: a delegated loop is offered cora's
+        own search, so what it found is what its own answer can rest on."""
         return host.delegate("What do the notes say?")
 
     runtime = ToolRuntime(
@@ -271,14 +275,15 @@ def test_a_delegated_loops_search_reads_the_field_the_turn_is_running_in() -> No
         )
     )
 
-    runtime.execute(
-        ToolCall(name="research", arguments={}, call_id="c1"), frozenset({TRAVEL})
-    )
+    with collecting() as inside:
+        result = runtime.execute(
+            ToolCall(name="research", arguments={}, call_id="c1"), frozenset({TRAVEL})
+        )
 
-    assert model.last_messages is not None
-    read = model.last_messages[-1].content
-    assert "kyoto.md" in read
-    assert "plan.md" not in read
+    assert result.payload == "I read what the search returned."
+    [searched] = [step for step in inside.steps if isinstance(step, ToolUse)]
+    assert "kyoto.md" in searched.outcome
+    assert "plan.md" not in searched.outcome
 
 
 def test_the_field_is_not_still_bound_once_the_call_has_returned() -> None:

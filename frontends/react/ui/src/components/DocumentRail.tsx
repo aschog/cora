@@ -9,6 +9,9 @@ type Props = {
   fields: string[]
   /** The field this rail is showing and uploading into. */
   field: string
+  /** The field an upload naming none lands in — a field like any other, so it is
+   *  offered beside the loaded ones. The server says which it is. */
+  anyField: string
   /** Whether the conversation's pin decides it. A pinned thread has one field for good,
    *  so the rail states it rather than offering it. */
   fixedField: boolean
@@ -21,15 +24,12 @@ type Props = {
   onDismissUpload: () => void
 }
 
-/** The default field, which is a field like any other and is always somewhere to put a
- *  document — it is what a bare cora answers in. */
-const ANY = 'cora'
-
 export default function DocumentRail({
   documents,
   cited,
   fields,
   field,
+  anyField,
   fixedField,
   onField,
   onOpen,
@@ -37,7 +37,7 @@ export default function DocumentRail({
   upload,
   onDismissUpload,
 }: Props) {
-  const offered = [...fields.filter((each) => each !== ANY), ANY]
+  const offered = [...fields.filter((each) => each !== anyField), anyField]
 
   return (
     <aside className="rail-docs">

@@ -66,11 +66,11 @@ def api(
     carry: the picker offers them, and nothing on the page can change them. What
     loaded is the app's own listing, so the menu and a terminal say one thing."""
     routes: list[Route | Mount] = [
-        Route("/api/documents", _documents(app), methods=["GET"]),
+        Route("/api/documents", _documents(app, scopes), methods=["GET"]),
         Route("/api/documents", _ingest(app, scopes), methods=["POST"]),
         Route("/api/ask", _ask(app, scopes), methods=["POST"]),
         Route("/api/resume", _resume(app), methods=["POST"]),
-        Route("/api/uploads/{scope}/{upload}", _upload(app), methods=["GET"]),
+        Route("/api/uploads/{scope}/{upload}", _upload(app, scopes), methods=["GET"]),
         Route("/api/sessions", _sessions(app), methods=["GET"]),
         Route("/api/sessions/{thread_id}", _turns(app), methods=["GET"]),
         Route("/api/sessions/{thread_id}/pending", _pending(app), methods=["GET"]),
@@ -151,15 +151,31 @@ inside `api` so a handler can be driven by a test over a route that fails on dem
 no real route can be made to fail these ways."""
 
 
-def _documents(app: App) -> Callable[[Request], Any]:
+def _documents(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
     """What one field holds, which is what a turn in it could cite. Asked for no field,
     the default one answers — it is a field like any other."""
 
     def listed(request: Request) -> JSONResponse:
-        scope = request.query_params.get("scope", "") or DEFAULT_SCOPE
+        named = request.query_params.get("scope", "")
+        scope = _field(named, scopes)
+        if scope is None:
+            return JSONResponse(
+                {"error": _no_such_field(named, scopes)}, status_code=REFUSED
+            )
         return JSONResponse(app.knowledge_base.list_sources(scope))
 
     return listed
+
+
+def _field(named: str, scopes: tuple[str, ...]) -> str | None:
+    """The field a request asked for, or nothing where it named one nobody loaded.
+
+    One rule for every route that takes a field, because the name is the client's: a
+    field the deployment never loaded holds nothing a turn could reach, and it would
+    otherwise reach a directory and a collection the stores create on being asked.
+    """
+    asked = named or DEFAULT_SCOPE
+    return asked if asked in (*scopes, DEFAULT_SCOPE) else None
 
 
 def _ingest(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
@@ -178,12 +194,13 @@ def _ingest(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
             uploaded = form.get("file")
             if not isinstance(uploaded, UploadFile):
                 return JSONResponse({"error": NO_FILE}, status_code=REFUSED)
-            scope = str(form.get("scope") or "") or DEFAULT_SCOPE
+            named = str(form.get("scope") or "")
             filename = uploaded.filename or ""
             data = await uploaded.read()
-        if scope not in (*scopes, DEFAULT_SCOPE):
+        scope = _field(named, scopes)
+        if scope is None:
             return JSONResponse(
-                {"error": _no_such_field(scope, scopes)}, status_code=REFUSED
+                {"error": _no_such_field(named, scopes)}, status_code=REFUSED
             )
         chunks = await run_in_threadpool(
             app.knowledge_base.add_file, data, filename, scope
@@ -412,11 +429,15 @@ def _event(name: str, data: dict[str, Any]) -> str:
     return f"event: {name}\ndata: {json.dumps(data)}\n\n"
 
 
-def _upload(app: App) -> Callable[[Request], Any]:
+def _upload(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
     def read(request: Request) -> JSONResponse:
-        text = app.knowledge_base.text(
-            request.path_params["scope"], request.path_params["upload"]
-        )
+        named = request.path_params["scope"]
+        scope = _field(named, scopes)
+        if scope is None:
+            return JSONResponse(
+                {"error": _no_such_field(named, scopes)}, status_code=REFUSED
+            )
+        text = app.knowledge_base.text(scope, request.path_params["upload"])
         if text is None:
             return JSONResponse({"error": UNKEPT}, status_code=404)
         return JSONResponse({"text": text})

@@ -15,6 +15,7 @@ from cora.domain.errors import (
 )
 from cora.domain.trace import ModelDecision, ScopeSettled, StepEntered, ToolUse
 from cora.engine.ask_tool import ASK_TOOL_NAME, ASKED_ALREADY, ask_tool
+from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.nesting import read_untrusted
 from cora.engine.plugin_set import Registry
@@ -62,10 +63,14 @@ from cora.ports.memory import Memory
 from cora.ports.plugin import Tool, ToolCall, ToolResult
 from cora.ports.retrieval import RetrievedChunk
 from fakes import (
+    TEXT_LOADERS,
     FailingChatModel,
     FailingMemory,
     FakeContextSource,
+    FakeDocuments,
+    FakeEmbedder,
     FakeMemory,
+    FakeRetriever,
     ScriptedChatModel,
     add_tool,
 )
@@ -1407,3 +1412,28 @@ def test_what_a_result_handler_did_is_traced_after_the_call_it_changed() -> None
         "ToolUse",
         "HandlerRan",
     ]
+
+
+def test_a_handler_reads_the_field_the_turn_is_running_in() -> None:
+    """A plugin takes part in the turn outside any tool call, and may read the documents
+    while it does. It reads the turn's field there too: material from another field put
+    into the brief is material the answer rests on and could never cite."""
+    kb = KnowledgeBase(
+        embedder=FakeEmbedder(),
+        retriever=FakeRetriever(),
+        loaders=TEXT_LOADERS,
+        documents=FakeDocuments(),
+    )
+    kb.add_file(b"The block holds intensity in the fourth week.", "plan.md", "fitness")
+    kb.add_file(b"The sleeper to Kyoto sells out early.", "kyoto.md", "travel")
+
+    def enrich(brief: str) -> str:
+        found = " ".join(hit.chunk.source for hit in kb.search("notes", 5))
+        return f"{brief}\n\nREAD: {found}"
+
+    step = FocusStep(registry=_registry("SYS", briefs=(enrich,)), memory=FakeMemory())
+
+    settled = step({"question": "anything", "scopes": ["travel"]})
+
+    assert "READ: kyoto.md" in settled["brief"]
+    assert "plan.md" not in settled["brief"]

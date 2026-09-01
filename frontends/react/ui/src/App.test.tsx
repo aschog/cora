@@ -2889,3 +2889,35 @@ test('a pinned conversation uploads into its own field', async () => {
 
   await waitFor(() => expect(into).toBe('travel'))
 })
+
+test('leaving a pinned conversation returns the rail to the default field', async () => {
+  /* A field the conversation is not in would keep taking uploads no turn in it could
+     cite, so the rail follows the pin away as well as into it. */
+  const pinned: Record<string, unknown> = {
+    ...served,
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      const body = pinned[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
+  await waitFor(() =>
+    expect(screen.getByLabelText('Upload into').textContent).toBe('travel'),
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+
+  await waitFor(() =>
+    expect(
+      (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement)
+        .value,
+    ).toBe('cora'),
+  )
+})
