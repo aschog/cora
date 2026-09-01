@@ -112,10 +112,12 @@ export default function App() {
      none lands. The server's answer rather than a constant here: it is one fact, and
      the page is not where it is decided. */
   const [anyField, setAnyField] = useState('')
-  /* The field the rail shows and uploads into. It follows the pin, because a pinned
-     conversation has one field and a document put anywhere else could never be cited
-     in it; unpinned, it is the reader's own pick and returns to the default field. */
-  const [field, setField] = useState('')
+  /* Two of the four things the rail's field is settled from, and the only two the page
+     holds: what the reader picked for this conversation, and the field this
+     conversation's own turns were answered in. Both are the conversation's, so both are
+     dropped when it is left. */
+  const [picked, setPicked] = useState<string | null>(null)
+  const [answered, setAnswered] = useState<string | null>(null)
   const [facts, setFacts] = useState<Fact[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
   /* The steps of the turn being taken, and the conversation they are being taken in: a
@@ -159,6 +161,19 @@ export default function App() {
   const shown = useRef('')
   const [rightOpen, setRightOpen] = useState(true)
 
+  /* Where the rail sits when nothing else has spoken. One field loaded is a field
+     routing cannot choose against, so every turn runs in it; with more than one, a turn
+     belonging to none is answered in the default field. */
+  const home = fields.length === 1 ? fields[0] : anyField
+
+  /** Which field the rail shows and uploads into, in one expression rather than in the
+   *  several places that used to write it — a pin outranks a pick because a pinned
+   *  conversation has one field for good; a pick outranks the conversation's own turns
+   *  because the reader asking for a field is later news than the last answer; and a
+   *  conversation that has said nothing sits at home. Derived, so nothing can race it:
+   *  every writer below settles one of the inputs and none settles the answer. */
+  const field = pin ?? picked ?? answered ?? home
+
   /** What the page shows around the conversation, loaded together: one banner for all
    *  of it, and a load that goes through clears the last one's. Loading the badge on
    *  its own raced that banner — a page that could not find out which plugin is loaded
@@ -177,9 +192,12 @@ export default function App() {
         .then(([indexed, kept, before, loaded, offered]) => {
           /* The listing is per field and this load asked for the field the page was in
              when it started. A load the reader has moved past answers about a field the
-             rail is no longer showing, and its list must not land under the new one's
-             name — the same race every other read on this page guards against. */
-          if (shown.current === asked) setDocuments(indexed)
+             rail is no longer showing: its list must not land under the new one's name,
+             and neither must its news — clearing the banner would hide a failure the
+             field on the page is still in, and raising one would report a field that is
+             no longer drawn. The same race every other read here guards against. */
+          if (shown.current !== asked) return
+          setDocuments(indexed)
           setFacts(kept)
           setSessions(before)
           setPlugins(loaded)
@@ -187,7 +205,9 @@ export default function App() {
           setAnyField(offered.default)
           setTrouble(null)
         })
-        .catch(reportTo(setTrouble))
+        .catch((failed) => {
+          if (shown.current === asked) reportTo(setTrouble)(failed)
+        })
     },
     [field],
   )
@@ -195,19 +215,6 @@ export default function App() {
   useEffect(() => {
     refresh()
   }, [refresh])
-
-  /* Where the rail sits when the conversation has not said otherwise. One field loaded
-     is a field routing cannot choose against, so every turn runs in it; with more than
-     one, a turn belonging to none is answered in the default field. */
-  const home = fields.length === 1 ? fields[0] : anyField
-
-  /* A pinned conversation decides the rail's field: the pin is the thread's own state,
-     so reopening one moves the rail with it. Leaving one returns the rail home rather
-     than leaving it in a field this conversation is not in. The one place the field is
-     settled from outside the conversation — a second would race this one. */
-  useEffect(() => {
-    setField(pin ?? home)
-  }, [pin, home])
 
   /* A card left open outlives the page it was drawn on: the conversation it was open in
      is picked back up, and the question with it. */
@@ -409,7 +416,7 @@ export default function App() {
           setEntries((said) => [...said, { id, question, ...reply }])
         }
         setRead((current) => _opened(reply) ?? current)
-        setField((standing) => answeredIn(reply) ?? standing)
+        setAnswered((standing) => answeredIn(reply) ?? standing)
       }
     } catch (failed) {
       // A failure is recorded nowhere, so it exists only on the page it was asked from —
@@ -455,6 +462,8 @@ export default function App() {
     setNotice(null)
     setPin(null)
     setFixedPin(false)
+    setPicked(null)
+    setAnswered(null)
     refresh()
   }
 
@@ -537,7 +546,7 @@ export default function App() {
       at((found) => ({ ...found, ...reply, pending: false }))
       if (here.current === on) {
         setRead((current) => _opened(reply) ?? current)
-        setField((standing) => answeredIn(reply) ?? standing)
+        setAnswered((standing) => answeredIn(reply) ?? standing)
       }
     } catch (failed) {
       /* Nothing was settled, so the card says nothing was: it goes back to waiting and
@@ -614,11 +623,10 @@ export default function App() {
       setRead(null)
       setNotice(null)
       /* A conversation nothing pinned is still in a field: routing settled one per turn
-         and the last of them is where it stands. Left where the conversation before it
-         put the rail, this one would list another field's documents and mark none of
-         its own citations. A pin, where there is one, wins a moment later. */
-      const lastField = answeredIn(kept.at(-1)?.result ?? { scopes: [] })
-      if (lastField) setField(lastField)
+         and the last of them is where it stands. The pick goes with the conversation
+         that made it. */
+      setPicked(null)
+      setAnswered(answeredIn(kept.at(-1)?.result ?? { scopes: [] }))
     })
     if (outcome === 'unreadable') setTrouble(UNDRAWABLE)
     if (outcome === 'drawn') {
@@ -672,7 +680,7 @@ export default function App() {
             field={field}
             anyField={anyField}
             fixedField={pin !== null}
-            onField={setField}
+            onField={setPicked}
             onOpen={open}
             onUpload={uploaded}
             upload={notice}

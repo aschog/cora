@@ -94,6 +94,12 @@ field and called their own cited documents unopenable.
       the one shown
 - [x] 8.8 Write a test that shows a citation naming no field saying so rather than
       asking for an address the router has not got
+- [x] 8.9 Write a test that shows a conversation reopened after a pinned one still drawn
+      in its own field
+- [x] 8.10 Write a test that shows answering a decision moving the rail to the field it
+      settled
+- [x] 8.11 Write a test that shows a listing for a field left behind neither clearing the
+      banner on the field shown nor raising one of its own
 
 ## 9. The guards
 

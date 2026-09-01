@@ -3173,3 +3173,167 @@ test('a slow listing for the field left behind never lands on the one shown', as
   expect(screen.queryByText('notes.md')).toBeNull()
   expect(screen.getByText('kyoto.md')).toBeTruthy()
 })
+
+test('a conversation reopened after a pinned one is still drawn in its own field', async () => {
+  /* Leaving a pinned conversation clears the pin, and clearing it must not overrule the
+     field the conversation being opened was answered in. */
+  const earlier = {
+    question: 'How early?',
+    result: {
+      answer: 'Book it early.',
+      citations: [],
+      trace: [],
+      scopes: ['fitness'],
+    },
+  }
+  const kept: Record<string, unknown> = {
+    ...served,
+    '/api/sessions': [
+      { thread_id: 'old', opened_with: OLDER.question },
+      { thread_id: 'gym', opened_with: earlier.question },
+    ],
+    '/api/sessions/old': [OLDER],
+    '/api/sessions/gym': [earlier],
+    '/api/sessions/old/scope': { pin: 'travel' },
+    '/api/sessions/gym/scope': { pin: null },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      const body = kept[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+
+  fireEvent.click(await screen.findByRole('button', { name: new RegExp(OLDER.question) }))
+  await waitFor(() =>
+    expect(screen.getByLabelText('Upload into').textContent).toBe('travel'),
+  )
+  fireEvent.click(await screen.findByRole('button', { name: new RegExp(earlier.question) }))
+  await waitFor(() =>
+    expect(screen.getByRole('combobox', { name: /upload into/i })).toBeTruthy(),
+  )
+  await flushed()
+
+  expect(
+    (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+  ).toBe('fitness')
+})
+
+test('answering a decision moves the rail to the field it settled', async () => {
+  /* The card is where a reader picks the field of an unpinned turn, so the rail has to
+     follow what they picked — not only refuse to follow what they did not. */
+  stopping(PAUSED, undefined, { ...WEIGHED, scopes: ['travel'] })
+  await stopped()
+
+  fireEvent.click(screen.getByRole('button', { name: /75 kg/ }))
+
+  await waitFor(() =>
+    expect(
+      (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+    ).toBe('travel'),
+  )
+})
+
+test('a listing that failed for a field left behind neither banners nor clears', async () => {
+  /* Only the list was guarded by the field it asked for. A banner is news about a field
+     too: one cleared by a load the reader has moved past hides a live failure. */
+  let holdTravel: null | (() => void) = null
+  const release = () => holdTravel?.()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        if (asked === 'travel') {
+          await new Promise<void>((go) => {
+            holdTravel = go
+          })
+          return { ok: true, json: async () => ['kyoto.md'] } as unknown as Response
+        }
+        if (holdTravel !== null)
+          return {
+            ok: false,
+            status: 503,
+            json: async () => ({
+              error: 'The knowledge base is temporarily unavailable.',
+            }),
+          } as unknown as Response
+        return { ok: true, json: async () => ['notes.md'] } as unknown as Response
+      }
+      const rest = served[route(path)] ?? []
+      return { ok: true, json: async () => rest } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
+    target: { value: 'travel' },
+  })
+  await flushed()
+  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
+    target: { value: 'cora' },
+  })
+  expect(
+    await screen.findByText('The knowledge base is temporarily unavailable.'),
+  ).toBeTruthy()
+
+  release()
+  await flushed()
+
+  expect(
+    screen.getByText('The knowledge base is temporarily unavailable.'),
+  ).toBeTruthy()
+})
+
+test('a listing that failed for a field left behind raises no banner about it', async () => {
+  /* The mirror of the clear: news about a field the reader has moved off is news about
+     a page they cannot see, and it would sit over a field that is loading fine. */
+  let failTravel: null | (() => void) = null
+  const release = () => failTravel?.()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        if (asked === 'travel') {
+          await new Promise<void>((go) => {
+            failTravel = go
+          })
+          return {
+            ok: false,
+            status: 503,
+            json: async () => ({
+              error: 'The knowledge base is temporarily unavailable.',
+            }),
+          } as unknown as Response
+        }
+        return { ok: true, json: async () => ['notes.md'] } as unknown as Response
+      }
+      const rest = served[route(path)] ?? []
+      return { ok: true, json: async () => rest } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
+    target: { value: 'travel' },
+  })
+  await flushed()
+  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
+    target: { value: 'cora' },
+  })
+  await flushed()
+
+  release()
+  await flushed()
+
+  expect(
+    screen.queryByText('The knowledge base is temporarily unavailable.'),
+  ).toBeNull()
+})
