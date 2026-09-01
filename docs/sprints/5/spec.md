@@ -232,38 +232,6 @@ it would take the measurement with it. If the sprint runs long, the sprint runs 
 what gives is argued then against *Not in this sprint* rather than decided here while it
 is cheap to be brave.
 
-### 8. A scope's documents are its own files
-
-As a person with material in more than one field,\
-I want each scope's documents kept as readable files under a place named for that scope,\
-so that I can see what cora has, and a second field is a directory rather than a redesign.
-
-**Scenario:** a citation opens onto a file
-
-- **Given** a document ingested into a scope
-- **When** its cleaned text is kept
-- **Then** one Markdown file per source holds it, under that scope's directory, and the
-  citation opens onto that file
-- **And** nothing duplicates the text a second time — the index keeps embeddings and
-  offsets, and reads a chunk's text from the file
-
-**Scenario:** a search sees one scope
-
-- **Given** documents in two scopes
-- **When** cora searches in one of them
-- **Then** only the active scope's sources can be retrieved or cited
-- **And** `README.md` states the layout in a paragraph
-
-**Scenario:** an upload with no scope has a home
-
-- **Given** a document uploaded with no scope chosen
-- **When** it is ingested
-- **Then** it lands in the default scope's directory, and an unscoped search can retrieve
-  it — the default scope is a scope like any other
-
-It merges after story 11: nothing in stories 9–11 reads these files, so the reach never
-waits on this polish.
-
 ### 9. cora reaches outside itself
 
 As a person asking about something my documents cannot know,\
