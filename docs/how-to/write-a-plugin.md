@@ -65,6 +65,20 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    prose, and let the trace be the record of the call. Your `ToolRefusal` is labelled
    too, so quoting a service in one is safe.
 
+   **If calling it changes something outside cora, say that too.** A file written, a
+   booking made:
+
+   ```python
+   cora.register_tool(name="book_it", ..., run=book_it, effect=True)
+   ```
+
+   The listing shows it, in the terminal and in the page's plug menu, because what a
+   plugin may *do* is what a reader opens that menu to find out. And cora never offers
+   such a tool to a delegated loop: an effect waits for the person watching the turn,
+   and a sub-agent is not something they are watching. Pass your whole tool list to
+   `delegate` if you like — the ones with an effect are withheld, and your logger says
+   which.
+
 4. **Take part in the turn.** A handler subscribes to a named point in it, is handed
    one frozen value, and answers by returning — a refusal, an amendment, or `None` for
    neither. The four points are `cora.ports.host`'s, and they differ in what a return
@@ -161,10 +175,13 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    tools that write or stop the turn — an effect and a stop-to-ask belong in the turn,
    where the gate is. It is bounded rather than sandboxed: a tool *you* pass it is a tool
    it can call, and `rounds` is capped by the host whatever you ask for. The cap is per
-   call, so a turn that makes several spends several caps. What it did is shown under the
-   call that ran it, and what it answers carries no `[n]` — citation numbers belong to the
-   turn. Because it read the user's documents, its answer reaches cora's own model
-   labelled untrusted, the same as a passage would.
+   call, so a turn that makes several spends several caps. A loop that reaches the cap is
+   asked once more, with no tools, to write up what it found — so the rounds it spent
+   are not lost, and what comes back says it stopped early rather than reading as a
+   whole answer. Only a write-up that comes back empty fails the call. What it did is
+   shown under the call that ran it, and what it answers carries no `[n]` — citation
+   numbers belong to the turn. Because it read the user's documents, its answer reaches
+   cora's own model labelled untrusted, the same as a passage would.
 
 8. **Say which contract it wants.** cora offers one version at a time, and a plugin
    names the one it was written against:
@@ -183,11 +200,11 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    which cora has.
 
    **What is public** is everything `cora.ports.host` names: `Host` and its register
-   calls — including a tool's `untrusted` — the four event names, `CONTRACT`,
-   `DEFAULT_SCOPE`, and the values a handler is handed — `ToolCall` and `ToolResult`
-   from `cora.ports.plugin`, and `ToolRefusal` to raise. **What may move** is everything
-   else: `cora.engine`, `cora.app`, the shape of the trace, and the wording of any
-   message. A compatibility policy waits for the first
+   calls — including a tool's `untrusted` and `effect` — the four event names,
+   `CONTRACT`, `DEFAULT_SCOPE`, and the values a handler is handed — `ToolCall` and
+   `ToolResult` from `cora.ports.plugin`, and `ToolRefusal` to raise. **What may move**
+   is everything else: `cora.engine`, `cora.app`, the shape of the trace, and the
+   wording of any message. A compatibility policy waits for the first
    author it would bind; until then, the version is how you find out.
 
 9. **Load it.** Two ways, and neither is a fork. Name the module in `CORA_PLUGINS`,

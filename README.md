@@ -27,7 +27,8 @@ the trace, so a turn is read back rather than guessed at.
 A plugin contributes three things, and may bring only one of them:
 
 - **what cora can do** — a tool, named and given a schema, that the model may call —
-  and, where it reaches outside cora, declared so that what it returns is labelled
+  declared, where it reaches outside cora, so what it returns is labelled, and where it
+  changes something out there, so the listing says so and no sub-agent is offered it
 - **what cora is** — instructions heading its section of the brief
 - **what cora does as a turn runs** — a handler at a named point in it: refusing the
   question, amending the brief, refusing one tool call, wrapping what a tool returned
@@ -86,10 +87,16 @@ The travel plugin ships its notes as files under
 `plugins/travel/src/cora/plugins/travel/corpus/`; upload them in the documents rail,
 with `travel` picked as the field, to give it something to answer from.
 
-It also reaches past them. Ask it what the weather will do and it calls a live forecast
-service — no key, nothing to configure — and answers from what came back. A document
-holds what somebody wrote down once, and this is the part of an answer that has to be
-current instead. What a service says is not cora's own words, so it reaches the model
+It also digs. Ask it what to do with three days somewhere and it sends a researcher: a
+tool that runs a bounded loop of its own, makes its lookups one at a time, and comes back
+with a single report — so the conversation carries the answer while the trace carries the
+searching, nested under the call that started it. Run out of rounds and it writes up what
+it has and says so, rather than losing it or offering it as the whole story.
+
+It also reaches past its documents. Ask it what the weather will do and it calls a live
+forecast service — no key, nothing to configure — and answers from what came back. A
+document holds what somebody wrote down once, and this is the part of an answer that has
+to be current instead. What a service says is not cora's own words, so it reaches the model
 behind the same untrusted-data label a passage carries, and no plugin can take that off.
 It earns no `[n]`: a citation opens onto a passage of a file you uploaded, and a
 forecast has none, so the answer says it in cora's own prose and the trace is the record
