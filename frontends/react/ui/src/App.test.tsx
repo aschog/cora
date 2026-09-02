@@ -83,9 +83,10 @@ const served: Record<string, unknown> = {
       source: 'cora.plugins.fitness',
       scopes: ['fitness'],
       contributions: [
-        { kind: 'instructions', name: '', scope: 'fitness' },
-        { kind: 'tool', name: 'bmr', scope: 'fitness' },
-        { kind: 'handler', name: 'screen', scope: null },
+        { kind: 'instructions', name: '', scope: 'fitness', note: '' },
+        { kind: 'tool', name: 'bmr', scope: 'fitness', note: '' },
+        { kind: 'tool', name: 'book_it', scope: 'fitness', note: 'has an effect' },
+        { kind: 'handler', name: 'screen', scope: null, note: '' },
       ],
     },
     { name: 'quiet', source: '/tmp/quiet.py', scopes: [], contributions: [] },
@@ -146,6 +147,10 @@ test('the plan fills while the turn runs, then the answer lands with its citatio
   expect(screen.getByText('screen')).toBeTruthy()
   expect(screen.getByText('system-wide')).toBeTruthy()
   expect(screen.getByText('registers nothing')).toBeTruthy()
+  /* What a plugin may *do* is why a reader opens this menu, and a tool that changes
+     something outside cora is the loudest thing it can say. Drawn off the note, so the
+     menu shows one it has never heard of rather than needing to know the words. */
+  expect(screen.getByText('has an effect')).toBeTruthy()
   fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
