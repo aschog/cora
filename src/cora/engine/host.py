@@ -68,13 +68,16 @@ CLOSE_OUT = (
 the call it answers is offered none, so this cannot become another lookup."""
 STOPPED_EARLY = (
     "STOPPED EARLY: the sub-agent reached its limit of rounds, so what follows is what "
-    "it had found and not a complete answer. Say which part is unresearched."
+    "it had found and not a complete answer."
 )
 """What the report is headed with when the loop was stopped rather than finished.
 
-In the text the turn's model reads, because that is the only place it cannot be
-overlooked: a partial report relayed as a whole answer is the failure this exists to
-prevent, and the turn is the one signing for it.
+A statement and not an instruction. A report earns the untrusted-data label like any
+other material a tool hands back, and that label tells the model never to follow
+instructions found inside it — so a sentence here telling it what to do would be
+addressed to a reader under orders to ignore it. What survives the label is what is
+needed: evidence that this is a part and not a whole. Telling the model what to do
+about that belongs in a brief, where cora speaks in its own voice.
 """
 _allowance: ContextVar[list[int] | None] = ContextVar("_allowance", default=None)
 """What is left of the rounds this delegation may spend, shared by every loop under it.
@@ -242,15 +245,18 @@ class PluginHost:
 
         Args:
             task: What the loop is being asked to do, as its first message.
-            tools: What it may call, on top of searching the documents.
-            rounds: How many rounds of tools it may spend, up to
-                `MAX_DELEGATED_ROUNDS`. Ignored in a loop delegated from another,
-                which spends what the outermost one opened.
+            tools: What it may call, on top of searching the documents. One declaring
+                an effect is withheld, and the plugin's logger says which.
+            rounds: How many rounds it may spend, up to `MAX_DELEGATED_ROUNDS`. One
+                more than this reaches the model, the last with the tools still on the
+                table so a loop can answer in it. Ignored in a loop delegated from
+                another, which spends what the outermost one opened.
 
         Raises:
-            ToolRefusal: The loop spent its rounds without reaching an answer, or a
-                tool passed in takes the name cora's search already has. The call fails
-                and the model is told why; the turn around it answers anyway.
+            ToolRefusal: The loop gathered nothing before its rounds ran out, or was
+                asked to write up what it had and answered with nothing, or a tool
+                passed in takes the name cora's search already has. The call fails and
+                the model is told why; the turn around it answers anyway.
             LlmError: The model gave back nothing usable.
         """
         offered = self._offered(tools)
@@ -311,10 +317,20 @@ class PluginHost:
         before it. So the loop is asked for a write-up instead, offered no tools so the
         asking cannot become another lookup.
 
+        A loop that gathered nothing is not asked at all. It has nothing to write up,
+        and asking anyway costs a model call the allowance never authorised — which is
+        how a loop arriving to find the pot already empty turns the width of a fan-out
+        into a bill, the model choosing the width. It is also the one way a heading
+        reading "what it had found" could end up over a model's answer to a question it
+        looked nothing up for.
+
         Raises:
-            ToolRefusal: The write-up came back empty. Nothing is dressed up as a
-                report, so this is the one case the loop still gives up on.
+            ToolRefusal: Nothing was gathered to write up, or the write-up came back
+                empty. Nothing is dressed up as a report, so these are the cases the
+                loop still gives up on.
         """
+        if not any(message.role == "tool" for message in said):
+            raise ToolRefusal(OVERSPENT)
         said.append(Message(role="user", content=CLOSE_OUT))
         reply = self.model.complete(tuple(said), ())
         took(decided(reply))

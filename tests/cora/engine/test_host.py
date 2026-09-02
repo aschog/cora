@@ -737,8 +737,13 @@ def test_only_the_line_a_number_left_is_closed_up() -> None:
 def test_a_loop_and_everything_it_delegates_share_one_allowance() -> None:
     """Nesting is not a way to ask again: a loop that delegates again spends the pot the
     outermost one opened, so one tool call costs what the host allows however deep the
-    plugin goes."""
-    calls: list[str] = []
+    plugin goes.
+
+    Counted over the rounds that could reach a tool, which is what the pot buys. A
+    write-up is not one of those — it is offered nothing to call — so it is counted
+    separately below, against the depth that is the only thing able to multiply it.
+    """
+    calls: list[tuple[str, bool]] = []
     inner_host = host_for(MODULE, model=_endlessly(calls, "inner"))
     deeper = Tool(
         name="deeper",
@@ -752,15 +757,24 @@ def test_a_loop_and_everything_it_delegates_share_one_allowance() -> None:
             "Go.", tools=(deeper,)
         )
 
-    assert len(calls) <= MAX_DELEGATED_ROUNDS + 1, (
-        f"one allowance across every level, and {len(calls)} rounds were spent"
+    rounds = [name for name, offered_tools in calls if offered_tools]
+    written_up = [name for name, offered_tools in calls if not offered_tools]
+    assert len(rounds) <= MAX_DELEGATED_ROUNDS + 1, (
+        f"one allowance across every level, and {len(rounds)} rounds were spent"
+    )
+    assert len(written_up) <= 2, (
+        f"one write-up per level that gathered something, and {len(written_up)} ran"
     )
 
 
 class _Endless:
-    """A model that always asks for one more tool call, so only a budget stops it."""
+    """A model that always asks for one more tool call, so only a budget stops it.
 
-    def __init__(self, calls: list[str], name: str, tool: str) -> None:
+    Each call is recorded with whether it was offered anything to call, which is what
+    tells a round apart from a write-up: the write-up is offered nothing, by design.
+    """
+
+    def __init__(self, calls: list[tuple[str, bool]], name: str, tool: str) -> None:
         self.calls = calls
         self.name = name
         self.tool = tool
@@ -771,7 +785,7 @@ class _Endless:
         tools: tuple[Tool, ...],
         on_text: TextSink = unheard,
     ) -> ModelReply:
-        self.calls.append(self.name)
+        self.calls.append((self.name, bool(tools)))
         return ModelReply(
             tool_calls=(
                 ToolCall(name=self.tool, arguments={}, call_id=f"c{len(self.calls)}"),
@@ -779,7 +793,7 @@ class _Endless:
         )
 
 
-def _endlessly(calls: list[str], name: str) -> _Endless:
+def _endlessly(calls: list[tuple[str, bool]], name: str) -> _Endless:
     return _Endless(calls, name, tool="deeper" if name == "outer" else "nothing")
 
 
@@ -884,3 +898,90 @@ def test_a_plugin_can_register_a_tool_that_changes_something_outside_cora() -> N
 
     [registered] = [entry.value for entry in host.registered if entry.kind == TOOL]
     assert registered.effect
+
+
+class _FanningOut:
+    """One reply that asks for the same nested tool N times, then answers.
+
+    The shape that turns a spent allowance into a bill: every nested call arrives to
+    find the pot empty, and what each of them does about that is the question.
+    """
+
+    def __init__(self, fan: int) -> None:
+        self.fan = fan
+        self.calls = 0
+
+    def complete(
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
+    ) -> ModelReply:
+        self.calls += 1
+        if self.calls == 1:
+            return ModelReply(
+                tool_calls=tuple(
+                    ToolCall(name="deeper", arguments={}, call_id=f"c{at}")
+                    for at in range(self.fan)
+                )
+            )
+        return ModelReply(text="found something")
+
+
+def _spent_on(fan: int) -> int:
+    """Model calls spent by a turn whose loop fans out `fan` ways on one round."""
+    model = _FanningOut(fan)
+    inner = host_for(MODULE, model=model)
+    deeper = Tool(
+        name="deeper",
+        description="Ask again, one level down.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: inner.delegate("deeper?"),
+    )
+    host_for(MODULE, model=model).delegate("Go.", tools=(deeper,), rounds=1)
+    return model.calls
+
+
+def test_fanning_out_after_the_allowance_is_gone_buys_no_further_model_calls() -> None:
+    """The allowance is what stops one tool call spending a deployment's bill, so a
+    loop that arrives to find it gone must not spend a call of its own asking to be
+    written up. It has nothing to write up: nothing was looked up in it.
+
+    Without that, how much a turn costs is the model's to decide — it picks the width
+    of the fan-out, and each arm buys another call the pot never authorised.
+    """
+    assert _spent_on(10) == _spent_on(1), "the width of the fan-out is not a budget"
+
+
+def test_a_loop_that_gathered_nothing_refuses_rather_than_reporting_nothing() -> None:
+    """A write-up asked of an empty transcript is a model asked what it found when it
+    looked nothing up, and whatever came back would arrive under a heading reading
+    "what it had found". So the arm with a round left answers, and the arm that arrived
+    to find the pot empty refuses — it has nothing to be written up."""
+    model = _FanningOut(2)
+    inner = host_for(MODULE, model=model)
+    outcomes: list[str] = []
+
+    def deeper() -> str:
+        try:
+            said = inner.delegate("deeper?")
+        except ToolRefusal as refused:
+            outcomes.append(f"refused: {refused}")
+            raise
+        outcomes.append(f"reported: {said}")
+        return said
+
+    host_for(MODULE, model=model).delegate(
+        "Go.",
+        tools=(
+            Tool(
+                name="deeper",
+                description="Ask again, one level down.",
+                parameter_schema={"type": "object", "properties": {}},
+                run=deeper,
+            ),
+        ),
+        rounds=1,
+    )
+
+    assert outcomes == ["reported: found something", f"refused: {OVERSPENT}"]
