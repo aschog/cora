@@ -154,11 +154,16 @@ class Host(Protocol):
         parameter_schema: dict[str, Any],
         run: Callable[..., Any],
         scope: str | None = None,
+        untrusted: bool = False,
     ) -> None:
         """Offer the model one more thing it can do, as `Tool` describes one.
 
         Args:
             scope: Where it is offered. `None` offers it in every turn.
+            untrusted: Whether what it returns is material cora did not write — a
+                service it called, a page it read. What such a tool returns reaches
+                the model behind the label a passage of the user's own documents has,
+                and no handler can take it off.
         """
         ...
 

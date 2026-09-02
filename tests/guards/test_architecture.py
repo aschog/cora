@@ -165,18 +165,35 @@ REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in
 # plugin is data over the contract, the composition root names adapters rather than
 # importing what they wrap, and a frontend reaches for what it draws or serves with
 # and no more.
+# A layer that appears in `EXTENSION_TOOLKITS` below is answered per portion, so its
+# entry here is read for nothing but the case list: a name added to one of those two
+# buys no import, and would sit here looking as though it had. Only `the app` is read.
 TECHNOLOGY_ALLOWED: dict[str, frozenset[str]] = {
     "the app": frozenset(),
     "the plugins": frozenset(),
     "the frontends": frozenset(),
 }
-# The frontends are the one layer with more than one answer, so theirs is keyed by the
-# portion a file ships in rather than by the layer. One set across both would read as
-# "a frontend may import whatever any frontend imports" — which is how a widget shell
-# quietly grows an HTTP server, declared in no manifest and caught by no gate.
+# The two extension points are the layers with more than one answer, so theirs are keyed
+# by the portion a file ships in rather than by the layer. One set across a layer would
+# read as "a frontend may import whatever any frontend imports" — which is how a widget
+# shell quietly grows an HTTP server, declared in no manifest and caught by no gate. A
+# plugin is the same rule seen from the other side: reaching outside cora is one
+# plugin's business, and inheriting the reach is not a thing its neighbours may do.
 FRONTEND_TOOLKITS: dict[str, frozenset[str]] = {
     "react": frozenset({"starlette", "uvicorn", "python_multipart"}),
 }
+PLUGIN_TOOLKITS: dict[str, frozenset[str]] = {
+    "fitness": frozenset(),
+    "security": frozenset(),
+    "travel": frozenset({"httpx"}),
+}
+EXTENSION_TOOLKITS: dict[str, dict[str, frozenset[str]]] = {
+    "the frontends": FRONTEND_TOOLKITS,
+    "the plugins": PLUGIN_TOOLKITS,
+}
+"""Which layers answer per portion rather than per layer. Read as one map so the rule is
+applied by lookup rather than by asking which layer this is — the third extension point
+is an entry here, and the walker that enforces it does not learn its name."""
 TECHNOLOGY_CASES = [
     (layer, path) for layer in TECHNOLOGY_ALLOWED for path in LAYER_FILES[layer]
 ]
@@ -242,9 +259,10 @@ def _test_only_imports(path: pathlib.Path) -> list[str]:
 def _technologies_bound(layer: str, path: pathlib.Path, tree: ast.Module) -> list[str]:
     """What a file imports that its own layer — and, for a frontend, its own shell —
     was never given."""
+    per_portion = EXTENSION_TOOLKITS.get(layer)
     allowed = (
-        FRONTEND_TOOLKITS[_shipped_as(path).parts[2]]
-        if layer == "the frontends"
+        per_portion[_shipped_as(path).parts[2]]
+        if per_portion is not None
         else TECHNOLOGY_ALLOWED[layer]
     )
     return sorted(
@@ -438,12 +456,15 @@ def test_every_layer_that_may_bind_nothing_has_files_to_say_it_of() -> None:
     assert all(LAYER_FILES[layer] for layer in TECHNOLOGY_ALLOWED)
 
 
-def test_every_frontend_declares_the_toolkit_it_draws_or_serves_with() -> None:
-    """A shell added without an entry inherits nothing — it would be allowed no
-    technology at all and fail loudly, rather than inheriting the other shells'."""
-    shipped = {_shipped_as(path).parts[2] for path in LAYER_FILES["the frontends"]}
+@pytest.mark.parametrize(
+    "layer", sorted(EXTENSION_TOOLKITS), ids=lambda v: v.removeprefix("the ")
+)
+def test_every_extension_declares_the_technology_it_reaches_for(layer: str) -> None:
+    """One added without an entry inherits nothing — the lookup raises rather than
+    handing it the allowance of the neighbour it happens to ship beside."""
+    shipped = {_shipped_as(path).parts[2] for path in LAYER_FILES[layer]}
 
-    assert shipped == FRONTEND_TOOLKITS.keys()
+    assert shipped == EXTENSION_TOOLKITS[layer].keys()
 
 
 def test_a_frontend_may_not_reach_for_a_toolkit_it_was_not_given(
@@ -455,14 +476,35 @@ def test_a_frontend_may_not_reach_for_a_toolkit_it_was_not_given(
     planted is the reach rather than the second shell."""
     drawn = ast.parse("import streamlit\n")
     served = ast.parse("import starlette.applications\n")
-    http = _planted(tmp_path, "react", "api.py")
+    http = _planted(tmp_path, "frontends", "react", "api.py")
 
     assert _technologies_bound("the frontends", http, drawn) == ["streamlit"]
     assert _technologies_bound("the frontends", http, served) == []
 
 
-def _planted(root: pathlib.Path, frontend: str, name: str) -> pathlib.Path:
-    where = root / "src" / "cora" / "frontends" / frontend
+def test_a_plugin_may_not_reach_for_a_neighbours_technology(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Here the neighbour is real: travel is allowed an HTTP client, and fitness is
+    not. A plugin that reached outside because the plugin loaded beside it does is a
+    plugin whose dependency is declared in nobody's manifest."""
+    fetching = ast.parse("import httpx\n")
+
+    assert (
+        _technologies_bound(
+            "the plugins",
+            _planted(tmp_path, "plugins", "travel", "forecast.py"),
+            fetching,
+        )
+        == []
+    )
+    assert _technologies_bound(
+        "the plugins", _planted(tmp_path, "plugins", "fitness", "tools.py"), fetching
+    ) == ["httpx"]
+
+
+def _planted(root: pathlib.Path, point: str, portion: str, name: str) -> pathlib.Path:
+    where = root / "src" / "cora" / point / portion
     where.mkdir(parents=True, exist_ok=True)
     return where / name
 
@@ -538,10 +580,10 @@ def test_the_walkers_pass_innocent_code(tmp_path: pathlib.Path) -> None:
     ]
 
 
-def _bought_by(frontend: str) -> set[str]:
-    """The import names a frontend's own manifest pays for: every module the
+def _bought_by(module: str) -> set[str]:
+    """The import names one extension's own manifest pays for: every module the
     distributions it declares contribute, and none a transitive one happens to bring."""
-    declared = workspace.requirements(workspace.member_of(f"cora.frontends.{frontend}"))
+    declared = workspace.requirements(workspace.member_of(module))
     return {
         module
         for module, distributions in packages_distributions().items()
@@ -549,19 +591,29 @@ def _bought_by(frontend: str) -> set[str]:
     }
 
 
-@pytest.mark.parametrize("frontend", sorted(FRONTEND_TOOLKITS))
-def test_a_frontend_is_allowed_only_the_toolkit_its_manifest_buys(
-    frontend: str,
+@pytest.mark.parametrize(
+    ("layer", "portion"),
+    [
+        (layer, portion)
+        for layer, toolkits in sorted(EXTENSION_TOOLKITS.items())
+        for portion in sorted(toolkits)
+    ],
+    ids=lambda value: value.removeprefix("the "),
+)
+def test_an_extension_is_allowed_only_the_technology_its_manifest_buys(
+    layer: str, portion: str
 ) -> None:
-    """`FRONTEND_TOOLKITS` is written by hand, so the cheapest way past the rule it
-    enforces is to add a name to it. This is what that has to cost: the distribution
-    declared in the frontend's own manifest, which ships in the wheel's metadata and is
-    installed with it — rather than a word in a test that buys nothing."""
-    unbought = FRONTEND_TOOLKITS[frontend] - _bought_by(frontend)
+    """The map is written by hand, so the cheapest way past the rule it enforces is to
+    add a name to it. This is what that has to cost: the distribution declared in the
+    extension's own manifest, which ships in the wheel's metadata and is installed with
+    it — rather than a word in a test that buys nothing."""
+    [namespace] = LAYER_MODULES[layer]
+    module = f"{namespace}.{portion}"
+    unbought = EXTENSION_TOOLKITS[layer][portion] - _bought_by(module)
 
     assert not unbought, (
-        f"the {frontend} shell is allowed {sorted(unbought)}, which "
-        f"{workspace.location(workspace.member_of(f'cora.frontends.{frontend}'))}"
+        f"{portion} is allowed {sorted(unbought)}, which "
+        f"{workspace.location(workspace.member_of(module))}"
         "/pyproject.toml does not declare"
     )
 

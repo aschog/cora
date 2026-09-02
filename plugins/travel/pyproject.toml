@@ -1,10 +1,14 @@
 [project]
 name = "cora-plugin-travel"
 version = "0.1.0"
-description = "cora's second field: a travel companion. Instructions and a corpus and nothing else yet — it is what routing routes between, and it gains a live-service tool, a researcher and an effect in the stories after this one"
+description = "cora's second field: a travel companion. Instructions, a corpus and a forecast tool that reaches a live service — it is what routing routes between, and it gains a researcher and an effect in the stories after this one"
 requires-python = ">=3.12"
+# The one technology a plugin cora ships reaches for, and it is declared here because
+# reaching outside cora is this plugin's business rather than the layer's: the
+# architecture guard allows `travel` an HTTP client and allows its neighbours none.
 dependencies = [
     "cora",
+    "httpx>=0.28.1,<1",
 ]
 
 [build-system]

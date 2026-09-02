@@ -155,17 +155,34 @@ def test_the_app_carries_no_plugin_and_names_none() -> None:
     ]
 
 
-@pytest.mark.parametrize(
-    "plugin", [module for _, module in workspace.plugins()], ids=lambda m: m
-)
-def test_a_plugin_needs_the_app_and_nothing_else(plugin: str) -> None:
-    """A plugin is data over the contract: the fitness bundle uses four names —
-    `Plugin`, `Tool`, `ToolRefusal`, `InputRejectedError` — and the screen one, and
-    neither takes a technology of its own. What a plugin author no longer gets is a
-    light install; that was the price of collapsing the layers."""
+# What each plugin reaches outside cora with, as distributions rather than as import
+# names — which is why this is stated here and not read off the architecture guard's
+# allowance: that one names modules, and the two vocabularies differ the moment a
+# distribution's name is not its module's. The frontends' rule below is keyed the same
+# way for the same reason.
+PLUGIN_REACHES: dict[str, set[str]] = {
+    "cora.plugins.fitness": set(),
+    "cora.plugins.security": set(),
+    "cora.plugins.travel": {"httpx"},
+}
+
+
+def test_every_plugin_says_what_it_reaches_outside_with() -> None:
+    """One added without an entry is asked for nothing, rather than inheriting the
+    allowance of the plugin it happens to ship beside."""
+    assert {module for _, module in workspace.plugins()} == PLUGIN_REACHES.keys()
+
+
+@pytest.mark.parametrize("plugin", sorted(PLUGIN_REACHES), ids=lambda m: m)
+def test_a_plugin_needs_the_app_and_what_it_reaches_outside_with(plugin: str) -> None:
+    """A plugin is data over the contract, and most take nothing else: the fitness
+    bundle uses four names and the screen one, and neither binds a technology. Travel
+    calls a live service, so it declares an HTTP client — in its own manifest rather
+    than the root's, because that declaration is what the architecture guard's
+    allowance has to cost."""
     member = next(m for m in MEMBERS if plugin in workspace.modules(m))
 
-    assert workspace.requirements(member) == {"cora"}
+    assert workspace.requirements(member) == {"cora", *PLUGIN_REACHES[plugin]}
 
 
 @pytest.mark.parametrize(

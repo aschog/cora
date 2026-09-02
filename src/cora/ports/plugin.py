@@ -24,12 +24,19 @@ class Tool:
     arguments before `run` sees them; `run` is called with those arguments as keywords,
     and whatever it returns is rendered for the model — returning nothing is an error,
     because a tool that ran and said nothing is indistinguishable from one that failed.
+
+    `untrusted` says that what this tool returns is material cora did not write — a
+    service it called, a page it read. Declared here rather than read off the payload,
+    because a fetched string and a calculated one are the same shape, and only the tool
+    knows which it is. What a declaring tool returns reaches the model behind the same
+    label a passage of the user's own documents does.
     """
 
     name: str
     description: str
     parameter_schema: dict[str, Any]
     run: Callable[..., Any]
+    untrusted: bool = False
 
 
 @dataclass(frozen=True)

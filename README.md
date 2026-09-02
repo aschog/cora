@@ -26,7 +26,8 @@ the trace, so a turn is read back rather than guessed at.
 
 A plugin contributes three things, and may bring only one of them:
 
-- **what cora can do** — a tool, named and given a schema, that the model may call
+- **what cora can do** — a tool, named and given a schema, that the model may call —
+  and, where it reaches outside cora, declared so that what it returns is labelled
 - **what cora is** — instructions heading its section of the brief
 - **what cora does as a turn runs** — a handler at a named point in it: refusing the
   question, amending the brief, refusing one tool call, wrapping what a tool returned
@@ -84,6 +85,16 @@ set to. `CORA_DOCUMENTS_PATH` moves the root; a second field is a directory unde
 The travel plugin ships its notes as files under
 `plugins/travel/src/cora/plugins/travel/corpus/`; upload them in the documents rail,
 with `travel` picked as the field, to give it something to answer from.
+
+It also reaches past them. Ask it what the weather will do and it calls a live forecast
+service — no key, nothing to configure — and answers from what came back. A document
+holds what somebody wrote down once, and this is the part of an answer that has to be
+current instead. What a service says is not cora's own words, so it reaches the model
+behind the same untrusted-data label a passage carries, and no plugin can take that off.
+It earns no `[n]`: a citation opens onto a passage of a file you uploaded, and a
+forecast has none, so the answer says it in cora's own prose and the trace is the record
+of the call. A service that is down costs the turn that one call — a friendly sentence,
+and the conversation intact.
 
 A plugin does not have to be installed. Drop a single `.py` file into `./.cora/plugins/`
 and cora loads it with no packaging at all, named for the file — the folder is read in
