@@ -15,6 +15,7 @@ because a claim on every turn is a visible act and not a quiet field."""
 INDENT = "  "
 KIND_WIDTH = 14
 NAME_WIDTH = 24
+SCOPE_WIDTH = 12
 
 
 def rendered(plugins: tuple[Listed, ...]) -> str:
@@ -31,8 +32,10 @@ def rendered(plugins: tuple[Listed, ...]) -> str:
 def _one(plugin: Listed) -> str:
     lines = [f"{plugin.name} — {plugin.source}"]
     lines.extend(
-        f"{INDENT}{each.kind:<{KIND_WIDTH}}{each.name:<{NAME_WIDTH}}"
-        f"{each.scope or SYSTEM_WIDE}"
+        (
+            f"{INDENT}{each.kind:<{KIND_WIDTH}}{each.name:<{NAME_WIDTH}}"
+            f"{(each.scope or SYSTEM_WIDE):<{SCOPE_WIDTH}}{each.note}"
+        ).rstrip()
         for each in plugin.contributions
     )
     if not plugin.contributions:

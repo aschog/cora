@@ -220,8 +220,8 @@ def test_the_plugins_endpoint_carries_what_each_plugin_registered() -> None:
             "source": "fixture_plugins.birds",
             "scopes": ["b"],
             "contributions": [
-                {"kind": "instructions", "name": "", "scope": "b"},
-                {"kind": "tool", "name": "count", "scope": "b"},
+                {"kind": "instructions", "name": "", "scope": "b", "note": ""},
+                {"kind": "tool", "name": "count", "scope": "b", "note": ""},
             ],
         }
     ]

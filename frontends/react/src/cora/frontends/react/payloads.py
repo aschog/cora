@@ -96,8 +96,10 @@ def session(session: Session) -> dict[str, Any]:
 def plugin(listed: Listed) -> dict[str, Any]:
     """One loaded plugin as the header menu draws it.
 
-    The contributions arrive as one list of the same three keys whatever kind they are,
-    so the menu renders a kind it has never heard of rather than dropping it.
+    The contributions arrive as one list of the same four keys whatever kind they are,
+    so the menu renders a kind it has never heard of rather than dropping it. `note` is
+    whatever else a registration says about itself — a tool with an effect says so —
+    and the menu shows it without having to know what it means.
     """
     return {
         "name": listed.name,
@@ -108,6 +110,7 @@ def plugin(listed: Listed) -> dict[str, Any]:
                 "kind": each.kind,
                 "name": each.name,
                 "scope": each.scope,
+                "note": each.note,
             }
             for each in listed.contributions
         ],

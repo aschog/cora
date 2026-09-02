@@ -4,6 +4,7 @@ import pytest
 
 from app_builder import assembled, indexed
 from cora.domain.errors import InputRejectedError
+from cora.engine.host import STOPPED_EARLY
 from cora.engine.plugin_registry import load_plugins
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ModelReply
@@ -94,25 +95,32 @@ def test_a_plugins_tool_runs_a_turn_of_its_own_under_the_call_that_ran_it() -> N
 
 
 @pytest.mark.integration
-def test_a_delegated_loop_that_overspends_costs_the_call_and_not_the_turn() -> None:
-    """The budget a plugin's loop spends is its own: a loop that will not finish fails
-    its call, the model is told so, and the turn answers anyway."""
+def test_a_delegated_loop_that_overspends_reports_what_it_found_to_the_turn() -> None:
+    """The budget a plugin's loop spends is its own, and running out of it costs the
+    turn nothing: the loop is asked to write up what it had, the report says it stopped
+    early, and the turn answers around it. What the rounds bought is not thrown away
+    with the rounds — but it does not arrive claiming to be a whole answer either."""
     model = ScriptedChatModel(
         [
             _calling_research("why do squats stall?"),
             _searching("squats"),
             _searching("squats again"),
             _searching("squats once more"),
-            ModelReply(text="I could not look that up, but sleep matters."),
+            ModelReply(text="Sleep came up in the notes; I did not reach volume."),
+            ModelReply(text="Sleep, most likely — though the digging was cut short."),
         ]
     )
     app = indexed(assembled(chat_model=model, plugins=load_plugins([SUB_AGENT])), NOTES)
 
     answered = app.agent.answer("Why do my squats stall?", THREAD)
 
-    assert answered.answer == "I could not look that up, but sleep matters."
+    assert answered.answer == "Sleep, most likely — though the digging was cut short."
     [call] = [step for step in answered.trace if step.summary.startswith("research(")]
-    assert call.failed, "the call carries the loop's give-up"
+    assert not call.failed, "a loop that learnt something did not fail its call"
+    assert STOPPED_EARLY in call.detail, (
+        "and the turn is told it is not the whole story"
+    )
+    assert "Sleep came up in the notes" in call.detail
 
 
 @pytest.mark.integration

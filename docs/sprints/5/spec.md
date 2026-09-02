@@ -23,8 +23,8 @@ The nouns this file uses, each against the class that carries it. Paths are unde
 - **Step** — `ports.graph.Step` as the callable, `engine.steps.*` as the implementations —
   one named part of a turn with a single responsibility.
 - **Trace** — `AgentState["trace"]`, a list of `domain.trace.TraceStep`: `StepEntered`,
-  `ModelDecision`, `ToolUse`, `MemoryUnread` today, nesting from story 4 — drawn on the
-  screen from story 10.
+  `ModelDecision`, `ToolUse`, `MemoryUnread` today, nesting from story 4 — and drawn
+  nested on the screen since, so story 10 costs the shell nothing after all.
 - **Plugin** — `ports.plugin.Plugin`, a frozen record today; becomes `extend(cora: Host)` in
   story 4.
 - **Host** *(new, story 4)* — the port a plugin is handed at load: cora's own parts, and the
@@ -222,51 +222,6 @@ criterion 4's evaluation number, and one scope leaves nothing to route between, 
 it would take the measurement with it. If the sprint runs long, the sprint runs long, and
 what gives is argued then against *Not in this sprint* rather than decided here while it
 is cheap to be brave.
-
-### 10. cora sends a researcher and reads the report
-
-As a person asking something that takes several lookups,\
-I want cora to delegate the digging and come back with one answer,\
-so that a broad question is answered without the searching itself filling the conversation.
-
-**Scenario:** a broad question is researched, not answered in one pass
-
-- **Given** the travel scope, with its documents and the live-service tool story 9 added
-- **When** I ask something that needs several lookups — three days somewhere, what is open,
-  what the weather will be
-- **Then** a tool runs a bounded loop of its own and the answer rests on what it found
-- **And** the trace shows the researcher's steps nested under the call that started it
-- **And** the conversation carries the report, not every lookup that produced it
-
-**Scenario:** a researcher reads and does not act
-
-- **Given** a scope holding both the researcher and a tool marked as an effect — the mark
-  is just a field on a registration; story 11 builds its gate, and travel's real effect
-  arrives with it
-- **When** the researcher runs
-- **Then** only read-only tools are offered to it, and it can neither propose an effect nor
-  stop to ask
-- **And** a guard asserts that rule, because it is what keeps a nested turn from needing a
-  nested approval
-
-**Scenario:** the fan-out has a ceiling
-
-- **Given** a question that could be split many ways
-- **When** the researcher runs
-- **Then** it makes at most the configured number of rounds, and the report says so when it
-  stopped early rather than presenting a partial answer as a whole one
-
-**Scenario:** it is a plugin, not a feature
-
-- **Given** the researcher, working
-- **When** this story's diff is read
-- **Then** nothing under `src/cora/` was changed to allow it, beyond the shell learning to
-  draw a nested step
-
-It lands after story 9 because a researcher with nothing to research is a loop, and it is
-where story 4's claim stops being a test and becomes something a user watches. **The React
-shell learns to draw nesting here** — story 4 asserts nested steps exist in the trace and
-nobody draws them yet, which is this story's one cost outside the plugin.
 
 ### 11. cora acts, but only when I say so
 

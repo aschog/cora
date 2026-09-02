@@ -106,6 +106,11 @@ export default function Header({
                           >
                             {each.scope ?? SYSTEM_WIDE}
                           </span>
+                          {each.note && (
+                            <span className="plugin-registration-note">
+                              {each.note}
+                            </span>
+                          )}
                         </li>
                       ))
                     )}

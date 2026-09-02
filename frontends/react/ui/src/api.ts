@@ -53,8 +53,16 @@ export type Session = { thread_id: string; opened_with: string }
  *  answered in. A deployment with no field is a bare cora and has nothing to pin. */
 export type Scopes = { available: string[]; default: string }
 
-/** One registration as the menu draws it. `scope: null` is a claim on every turn. */
-export type Contribution = { kind: string; name: string; scope: string | null }
+/** One registration as the menu draws it. `scope: null` is a claim on every turn, and
+ *  `note` is whatever else the registration says about itself — a tool that changes
+ *  something outside cora says so there. Drawn as it arrives, so a note the page has
+ *  never heard of reaches the reader anyway. */
+export type Contribution = {
+  kind: string
+  name: string
+  scope: string | null
+  note: string
+}
 
 export type Plugin = {
   name: string

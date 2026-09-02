@@ -1,5 +1,9 @@
+import pytest
+
+from cora.domain.errors import PluginLoadError
 from cora.plugins.travel import CORPUS, INSTRUCTIONS, SCOPE, extend
 from cora.plugins.travel.forecast import FORECAST_TOOL_NAME
+from cora.plugins.travel.researcher import RESEARCH_TOOL_NAME
 from cora.ports.host import INSTRUCTIONS as SAYS
 from cora.ports.host import TOOL as HAS
 from fakes import host_for
@@ -27,10 +31,17 @@ def test_everything_travel_registers_belongs_to_its_own_scope() -> None:
     assert [(entry.kind, entry.scope) for entry in host.registered] == [
         (SAYS, SCOPE),
         (HAS, SCOPE),
+        (HAS, SCOPE),
     ]
-    [tool] = [entry.value for entry in host.registered if entry.kind == HAS]
-    assert tool.name == FORECAST_TOOL_NAME
-    assert tool.untrusted, "what a service said is not cora's own words"
+    tools = [entry.value for entry in host.registered if entry.kind == HAS]
+    assert [tool.name for tool in tools] == [FORECAST_TOOL_NAME, RESEARCH_TOOL_NAME]
+    assert all(tool.untrusted for tool in tools), (
+        "a service's answer is not cora's own words, and neither is a loop's report "
+        "built out of one"
+    )
+    assert not any(tool.effect for tool in tools), (
+        "travel changes nothing outside cora yet — its effect arrives with the gate"
+    )
 
 
 def test_the_first_line_of_the_instructions_says_what_the_field_is() -> None:
@@ -49,3 +60,21 @@ def test_the_corpus_ships_as_documents_a_reader_can_upload() -> None:
 
     assert shipped
     assert all(path.read_text().strip() for path in CORPUS.glob("*.md"))
+
+
+def test_a_rounds_setting_that_is_not_a_number_is_refused_by_name_at_load() -> None:
+    """The operator is the audience for a load-time refusal, and they need the name of
+    the setting they mistyped. A bare `ValueError` would reach them as "the plugin
+    raised ValueError while registering" — cora keeps a plugin's exception text out of
+    that message deliberately, because it could be carrying a key. So a plugin with
+    something to tell the operator says it the sanctioned way, and that reaches them
+    as it was worded."""
+    host = host_for("cora.plugins.travel", settings={"rounds": "three"})
+
+    with pytest.raises(PluginLoadError) as refused:
+        extend(host)
+
+    said = refused.value.user_message
+    assert "rounds" in said, "the setting they can act on is named"
+    assert "three" in said, "and what they set it to"
+    assert "cora.plugins.travel" in said

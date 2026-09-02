@@ -30,6 +30,10 @@ class Tool:
     because a fetched string and a calculated one are the same shape, and only the tool
     knows which it is. What a declaring tool returns reaches the model behind the same
     label a passage of the user's own documents does.
+
+    `effect` says that calling it changes something outside cora — a file written, a
+    booking made. A tool declaring one is never offered to a delegated loop, so an
+    effect stays in the turn the user is watching rather than inside a call of it.
     """
 
     name: str
@@ -37,6 +41,7 @@ class Tool:
     parameter_schema: dict[str, Any]
     run: Callable[..., Any]
     untrusted: bool = False
+    effect: bool = False
 
 
 @dataclass(frozen=True)

@@ -9,6 +9,7 @@ from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.validation import CORA
 from cora.ports.host import (
     HANDLER,
+    HAS_AN_EFFECT,
     INSTRUCTIONS,
     SCREENING,
     TOOL,
@@ -169,7 +170,15 @@ def _contributed(entry: Registration) -> Contributed:
         TOOL: lambda value: str(value.name),
         HANDLER: lambda value: str(value.event),
     }.get(entry.kind, lambda value: "")
-    return Contributed(kind=entry.kind, name=named(entry.value), scope=entry.scope)
+    noted = {TOOL: lambda value: HAS_AN_EFFECT if value.effect else ""}.get(
+        entry.kind, lambda value: ""
+    )
+    return Contributed(
+        kind=entry.kind,
+        name=named(entry.value),
+        scope=entry.scope,
+        note=noted(entry.value),
+    )
 
 
 def _opening(instructions: str) -> str:

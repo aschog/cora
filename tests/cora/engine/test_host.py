@@ -7,7 +7,12 @@ import pytest
 from cora.domain.chunk import Chunk
 from cora.domain.errors import PluginLoadError
 from cora.engine.ask_tool import ASK_TOOL_NAME
-from cora.engine.host import DELEGATE_BRIEF, MAX_DELEGATED_ROUNDS, OVERSPENT
+from cora.engine.host import (
+    DELEGATE_BRIEF,
+    MAX_DELEGATED_ROUNDS,
+    OVERSPENT,
+    STOPPED_EARLY,
+)
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.nesting import collecting
 from cora.engine.retrieval_tool import (
@@ -389,26 +394,58 @@ def test_a_tool_run_inside_a_delegated_loop_keeps_its_own_steps() -> None:
     ]
 
 
-def test_a_loop_may_not_spend_more_rounds_than_the_host_allows() -> None:
-    """The budget is the host's: a plugin asking for ten thousand rounds gets the
-    ceiling, so one tool call cannot spend a deployment's model bill."""
-    model = ScriptedChatModel(
-        [
-            ModelReply(
-                tool_calls=(
-                    ToolCall(name="add", arguments={"a": 1, "b": 1}, call_id="c1"),
-                )
-            )
-        ]
-        * (MAX_DELEGATED_ROUNDS + 1)
+def _adding() -> ModelReply:
+    return ModelReply(
+        tool_calls=(ToolCall(name="add", arguments={"a": 1, "b": 1}, call_id="c1"),)
     )
+
+
+def _spending_everything(*after: ModelReply) -> ScriptedChatModel:
+    """A loop that asks for a tool every round it has, then whatever comes next."""
+    return ScriptedChatModel([_adding()] * (MAX_DELEGATED_ROUNDS + 1) + list(after))
+
+
+def test_a_loop_stopped_at_the_hosts_ceiling_reports_what_it_found() -> None:
+    """The budget is the host's: a plugin asking for ten thousand rounds gets the
+    ceiling, so one tool call cannot spend a deployment's model bill. What it spent the
+    rounds learning is not thrown away with them — the loop is asked to write up what
+    it has, and the report says it stopped early so the turn cannot sign for it as
+    complete."""
+    model = _spending_everything(ModelReply(text="the sum is 2"))
+
+    reported = host_for(MODULE, model=model).delegate(
+        "Loop forever.", tools=(add_tool(),), rounds=10_000
+    )
+
+    assert model.completions == MAX_DELEGATED_ROUNDS + 2, (
+        "every round it was allowed, and one call to write up what it found"
+    )
+    assert "the sum is 2" in reported
+    assert STOPPED_EARLY in reported
+
+
+def test_the_close_out_call_is_offered_no_tools_so_it_cannot_dig_further() -> None:
+    """What bounds the close-out is that there is nothing to call: a loop handed its
+    tools again could spend a round outside the allowance that just ran out."""
+    model = _spending_everything(ModelReply(text="the sum is 2"))
+
+    host_for(MODULE, model=model).delegate(
+        "Loop forever.", tools=(add_tool(),), rounds=10_000
+    )
+
+    assert model.last_tools == (), "the write-up round is offered nothing to call"
+
+
+def test_a_close_out_that_says_nothing_falls_back_to_the_refusal() -> None:
+    """An empty write-up is not a report, and dressing one up would put a heading
+    saying "here is what I found" over nothing at all."""
+    model = _spending_everything(ModelReply(text="   "))
 
     with pytest.raises(ToolRefusal) as gave_up:
         host_for(MODULE, model=model).delegate(
             "Loop forever.", tools=(add_tool(),), rounds=10_000
         )
 
-    assert model.completions == MAX_DELEGATED_ROUNDS + 1
     assert str(gave_up.value) == OVERSPENT, (
         "a refusal the model can act on, not a class name it cannot"
     )
@@ -700,8 +737,13 @@ def test_only_the_line_a_number_left_is_closed_up() -> None:
 def test_a_loop_and_everything_it_delegates_share_one_allowance() -> None:
     """Nesting is not a way to ask again: a loop that delegates again spends the pot the
     outermost one opened, so one tool call costs what the host allows however deep the
-    plugin goes."""
-    calls: list[str] = []
+    plugin goes.
+
+    Counted over the rounds that could reach a tool, which is what the pot buys. A
+    write-up is not one of those — it is offered nothing to call — so it is counted
+    separately below, against the depth that is the only thing able to multiply it.
+    """
+    calls: list[tuple[str, bool]] = []
     inner_host = host_for(MODULE, model=_endlessly(calls, "inner"))
     deeper = Tool(
         name="deeper",
@@ -715,15 +757,24 @@ def test_a_loop_and_everything_it_delegates_share_one_allowance() -> None:
             "Go.", tools=(deeper,)
         )
 
-    assert len(calls) <= MAX_DELEGATED_ROUNDS + 1, (
-        f"one allowance across every level, and {len(calls)} rounds were spent"
+    rounds = [name for name, offered_tools in calls if offered_tools]
+    written_up = [name for name, offered_tools in calls if not offered_tools]
+    assert len(rounds) <= MAX_DELEGATED_ROUNDS + 1, (
+        f"one allowance across every level, and {len(rounds)} rounds were spent"
+    )
+    assert len(written_up) <= 2, (
+        f"one write-up per level that gathered something, and {len(written_up)} ran"
     )
 
 
 class _Endless:
-    """A model that always asks for one more tool call, so only a budget stops it."""
+    """A model that always asks for one more tool call, so only a budget stops it.
 
-    def __init__(self, calls: list[str], name: str, tool: str) -> None:
+    Each call is recorded with whether it was offered anything to call, which is what
+    tells a round apart from a write-up: the write-up is offered nothing, by design.
+    """
+
+    def __init__(self, calls: list[tuple[str, bool]], name: str, tool: str) -> None:
         self.calls = calls
         self.name = name
         self.tool = tool
@@ -734,7 +785,7 @@ class _Endless:
         tools: tuple[Tool, ...],
         on_text: TextSink = unheard,
     ) -> ModelReply:
-        self.calls.append(self.name)
+        self.calls.append((self.name, bool(tools)))
         return ModelReply(
             tool_calls=(
                 ToolCall(name=self.tool, arguments={}, call_id=f"c{len(self.calls)}"),
@@ -742,7 +793,7 @@ class _Endless:
         )
 
 
-def _endlessly(calls: list[str], name: str) -> _Endless:
+def _endlessly(calls: list[tuple[str, bool]], name: str) -> _Endless:
     return _Endless(calls, name, tool="deeper" if name == "outer" else "nothing")
 
 
@@ -774,3 +825,163 @@ def test_a_registration_under_a_blank_scope_is_refused() -> None:
 
     assert MODULE in refused.value.user_message
     assert host.registered == []
+
+
+def _acting(name: str = "book_it") -> Tool:
+    """A tool that changes something outside cora, said on the registration."""
+    return Tool(
+        name=name,
+        description="Book the thing.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: "booked",
+        effect=True,
+    )
+
+
+def _reading(name: str = "look_up") -> Tool:
+    return Tool(
+        name=name,
+        description="Look something up.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: "looked",
+    )
+
+
+def test_a_delegated_loop_is_offered_nothing_that_writes_stops_or_acts() -> None:
+    """The rule that keeps a nested turn from needing a nested approval, asserted over
+    the set the loop is actually handed rather than described in prose.
+
+    An effect and a stop-to-ask belong in the outer turn, where the gate is. So a tool
+    declaring an effect is withheld even though the plugin passed it in, cora's own
+    writing and stopping tools were never put in, and what is left is the reading tool
+    and cora's search.
+    """
+    model = ScriptedChatModel([ModelReply(text="looked it up")])
+    host = host_for(model=model)
+
+    host.delegate("look it up", tools=(_reading(), _acting()))
+
+    offered = {tool.name for tool in model.last_tools or ()}
+    assert offered == {SEARCH_TOOL_NAME, "look_up"}
+    assert REMEMBER_TOOL_NAME not in offered, "a sub-agent does not write"
+    assert ASK_TOOL_NAME not in offered, "a sub-agent does not stop the turn"
+
+
+def test_the_plugin_is_told_which_of_its_tools_was_withheld(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Withheld rather than refused, because a plugin may reasonably pass its scope's
+    whole tool list — but silence would leave an author watching their tool never run,
+    with nothing anywhere saying why."""
+    model = ScriptedChatModel([ModelReply(text="looked it up")])
+    host = host_for(model=model)
+
+    with caplog.at_level(logging.INFO):
+        host.delegate("look it up", tools=(_reading(), _acting()))
+
+    assert "book_it" in caplog.text
+
+
+def test_a_plugin_can_register_a_tool_that_changes_something_outside_cora() -> None:
+    """The declaration is the contract's, not a shape a plugin builds for itself: story
+    11's gate reads the same field, so nothing about it moves when the gate lands."""
+    host = host_for()
+
+    host.register_tool(
+        name="book_it",
+        description="Book the thing.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: "booked",
+        scope="travel",
+        effect=True,
+    )
+
+    [registered] = [entry.value for entry in host.registered if entry.kind == TOOL]
+    assert registered.effect
+
+
+class _FanningOut:
+    """One reply that asks for the same nested tool N times, then answers.
+
+    The shape that turns a spent allowance into a bill: every nested call arrives to
+    find the pot empty, and what each of them does about that is the question.
+    """
+
+    def __init__(self, fan: int) -> None:
+        self.fan = fan
+        self.calls = 0
+
+    def complete(
+        self,
+        messages: tuple[Message, ...],
+        tools: tuple[Tool, ...],
+        on_text: TextSink = unheard,
+    ) -> ModelReply:
+        self.calls += 1
+        if self.calls == 1:
+            return ModelReply(
+                tool_calls=tuple(
+                    ToolCall(name="deeper", arguments={}, call_id=f"c{at}")
+                    for at in range(self.fan)
+                )
+            )
+        return ModelReply(text="found something")
+
+
+def _spent_on(fan: int) -> int:
+    """Model calls spent by a turn whose loop fans out `fan` ways on one round."""
+    model = _FanningOut(fan)
+    inner = host_for(MODULE, model=model)
+    deeper = Tool(
+        name="deeper",
+        description="Ask again, one level down.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: inner.delegate("deeper?"),
+    )
+    host_for(MODULE, model=model).delegate("Go.", tools=(deeper,), rounds=1)
+    return model.calls
+
+
+def test_fanning_out_after_the_allowance_is_gone_buys_no_further_model_calls() -> None:
+    """The allowance is what stops one tool call spending a deployment's bill, so a
+    loop that arrives to find it gone must not spend a call of its own asking to be
+    written up. It has nothing to write up: nothing was looked up in it.
+
+    Without that, how much a turn costs is the model's to decide — it picks the width
+    of the fan-out, and each arm buys another call the pot never authorised.
+    """
+    assert _spent_on(10) == _spent_on(1), "the width of the fan-out is not a budget"
+
+
+def test_a_loop_that_gathered_nothing_refuses_rather_than_reporting_nothing() -> None:
+    """A write-up asked of an empty transcript is a model asked what it found when it
+    looked nothing up, and whatever came back would arrive under a heading reading
+    "what it had found". So the arm with a round left answers, and the arm that arrived
+    to find the pot empty refuses — it has nothing to be written up."""
+    model = _FanningOut(2)
+    inner = host_for(MODULE, model=model)
+    outcomes: list[str] = []
+
+    def deeper() -> str:
+        try:
+            said = inner.delegate("deeper?")
+        except ToolRefusal as refused:
+            outcomes.append(f"refused: {refused}")
+            raise
+        outcomes.append(f"reported: {said}")
+        return said
+
+    host_for(MODULE, model=model).delegate(
+        "Go.",
+        tools=(
+            Tool(
+                name="deeper",
+                description="Ask again, one level down.",
+                parameter_schema={"type": "object", "properties": {}},
+                run=deeper,
+            ),
+        ),
+        rounds=1,
+    )
+
+    assert outcomes == ["reported: found something", f"refused: {OVERSPENT}"]

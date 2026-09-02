@@ -91,6 +91,12 @@ def name_of(module: str) -> str:
     return module.rsplit(".", 1)[-1]
 
 
+HAS_AN_EFFECT = "has an effect"
+"""What a tool that changes something outside cora is listed as. One wording for both
+renderings — the terminal's and the page's — because it is the same claim, and the
+reader deciding whether to load a plugin is asking it of both."""
+
+
 @dataclass(frozen=True)
 class Contributed:
     """One registration as the listing shows it: what kind, what name, and where.
@@ -98,11 +104,17 @@ class Contributed:
     `name` is the tool's name or the event a handler subscribed to, and blank where the
     kind has no name of its own, as a section of the brief has not. One field over every
     kind, so a fifth kind is listed without this shape widening.
+
+    `note` is whatever else this registration says about itself, in words a reader can
+    take at face value — a tool that has an effect says so here. A note rather than a
+    field per property, for the same reason `name` is one field: a rendering shows it
+    without having heard of what it means.
     """
 
     kind: str
     name: str
     scope: str | None = None
+    note: str = ""
 
     @property
     def system_wide(self) -> bool:
@@ -155,6 +167,7 @@ class Host(Protocol):
         run: Callable[..., Any],
         scope: str | None = None,
         untrusted: bool = False,
+        effect: bool = False,
     ) -> None:
         """Offer the model one more thing it can do, as `Tool` describes one.
 
@@ -164,6 +177,9 @@ class Host(Protocol):
                 service it called, a page it read. What such a tool returns reaches
                 the model behind the label a passage of the user's own documents has,
                 and no handler can take it off.
+            effect: Whether calling it changes something outside cora. Such a tool is
+                never offered to a delegated loop, so an effect stays in the turn the
+                user is watching, and the listing says the plugin has one.
         """
         ...
 
@@ -223,22 +239,29 @@ class Host(Protocol):
     def delegate(self, task: str, tools: tuple[Tool, ...] = (), rounds: int = 3) -> str:
         """Run a bounded loop of the model's own, and answer with what it wrote.
 
-        The loop is offered the tools given plus cora's document search, and none of
-        cora's own tools that write or stop the turn: an effect and a stop-to-ask
-        belong in the turn around it, where the gate is. Its steps are reported under
-        the call that ran it, and what it answers carries no citation of its own — and
-        reaches the turn labelled untrusted, because the documents went into it.
+        The loop is offered the tools given plus cora's document search, and never a
+        tool that writes, stops the turn, or declares an effect — one passed in that
+        declares one is withheld, and the plugin's logger says which. An effect and a
+        stop-to-ask belong in the turn around it, where the gate is. Its steps are
+        reported under the call that ran it, and what it answers carries no citation of
+        its own — and reaches the turn labelled untrusted, because the documents went
+        into it.
+
+        A loop that spends every round without reaching an answer is asked once more,
+        with no tools, to write up what it found: the rounds it spent are not lost, and
+        what comes back says it stopped early rather than reading as a whole answer.
 
         Args:
             task: What the loop is being asked to do, as its first message.
             tools: What it may call, on top of searching the documents.
-            rounds: How many rounds of tools it may spend, capped by the host and
-                ignored in a loop delegated from another.
+            rounds: How many rounds it may spend, capped by the host and ignored in a
+                loop delegated from another. One more than this reaches the model, the
+                last with the tools still on the table so a loop can answer in it.
 
         Raises:
-            ToolRefusal: The loop spent its rounds without reaching an answer, or a
-                tool passed in takes the name cora's own search has. Either way the
-                call fails and the turn around it answers anyway.
+            ToolRefusal: The loop gathered nothing before its rounds ran out, or the
+                write-up came back empty, or a tool passed in takes the name cora's own
+                search has. Either way the call fails and the turn answers anyway.
             LlmError: The model gave back nothing usable.
         """
         ...

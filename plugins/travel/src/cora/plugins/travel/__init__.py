@@ -1,10 +1,12 @@
 import pathlib
 
-from cora.plugins.travel.forecast import (
-    FORECAST_SCHEMA,
-    FORECAST_TOOL_DESCRIPTION,
-    FORECAST_TOOL_NAME,
-    Forecast,
+from cora.domain.errors import PluginLoadError
+from cora.plugins.travel.forecast import forecast_tool
+from cora.plugins.travel.researcher import (
+    RESEARCH_SCHEMA,
+    RESEARCH_TOOL_DESCRIPTION,
+    RESEARCH_TOOL_NAME,
+    researching,
 )
 from cora.ports.host import Host
 
@@ -23,6 +25,10 @@ user's own documents.
 - Fetch the forecast when the answer turns on the weather, and report it in your own
   words — it comes from a live service, so there is no passage to cite for it. Say
   where it came from, and say so too when the service could not be reached.
+- Send the researcher when a question needs several lookups — three days somewhere,
+  what is open, what the weather will do — rather than searching over and over
+  yourself. Answer from the report it brings back, and if the report says it stopped
+  early, say which part is still unresearched.
 - Ask for the dates when the answer turns on them, rather than assuming a season.
 - Never invent a price, a timetable or an address.
 """
@@ -38,18 +44,42 @@ choose, and these are files they may choose.
 
 
 def extend(cora: Host) -> None:
-    """Instructions and one tool, both under the travel scope and neither outside it.
+    """Instructions and two tools, all under the travel scope and none outside it.
 
-    The forecast is declared as returning material cora did not write, which is what
-    puts a service's answer behind the same label a passage of the user's own documents
-    carries. Nothing here is system-wide: a turn about training is offered no weather.
+    Both tools are declared as returning material cora did not write: a service's
+    answer is not cora's words, and neither is a report the researcher built out of
+    documents and a forecast. Nothing here is system-wide, so a turn about training is
+    offered no weather and no researcher.
+
+    Raises:
+        PluginLoadError: The rounds setting is not a whole number. Raised as one of
+            these rather than left as the `ValueError` underneath, because cora keeps a
+            plugin's exception text out of what the operator reads — it could be
+            carrying a key. A refusal a plugin raises itself reaches them as worded, so
+            this is the channel for saying which setting to go and fix.
     """
     cora.register_instructions(INSTRUCTIONS, scope=SCOPE)
+    # One tool, registered for the turn and handed to the researcher's loop: it holds
+    # an HTTP client, and a second would parse the certificate bundle over again.
+    fetching = forecast_tool()
     cora.register_tool(
-        name=FORECAST_TOOL_NAME,
-        description=FORECAST_TOOL_DESCRIPTION,
-        parameter_schema=FORECAST_SCHEMA,
-        run=Forecast(),
+        name=fetching.name,
+        description=fetching.description,
+        parameter_schema=fetching.parameter_schema,
+        run=fetching.run,
+        scope=SCOPE,
+        untrusted=fetching.untrusted,
+        effect=fetching.effect,
+    )
+    try:
+        research = researching(cora, fetching)
+    except ValueError as unreadable:
+        raise PluginLoadError(__name__, str(unreadable)) from unreadable
+    cora.register_tool(
+        name=RESEARCH_TOOL_NAME,
+        description=RESEARCH_TOOL_DESCRIPTION,
+        parameter_schema=RESEARCH_SCHEMA,
+        run=research,
         scope=SCOPE,
         untrusted=True,
     )

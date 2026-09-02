@@ -210,14 +210,24 @@ functional test goes green  →  feature done
 - [ ] Final sanity check: format, lint, type check, full test suite — and CI green
 - [ ] Every item in the change's `tasks.md` ticked — a docs-only change has none
 - [ ] Update project docs the feature touched (`README`, `CLAUDE.md`, `docs/`)
+- [ ] **Archive the change** with `/opsx:archive`, *on the feature branch and before the
+      merge* — it syncs the delta into `openspec/specs/`, so the specs describe the
+      product again, and moves the folder into `openspec/changes/archive/`.
+
+  Before the merge, because archiving afterwards leaves a window on trunk where the code
+  has shipped and the specs do not describe it — anyone reading main in that window, or
+  bisecting through it, is reading specs that lie. Archiving on the branch puts the
+  behaviour and the spec of that behaviour in one commit.
+
+  **Last on the branch, though: after review is clean, never before it.** A review that
+  changes behaviour changes the delta spec, and a delta already synced has to be
+  unpicked out of a main spec by hand instead of synced once. So: implement → review →
+  fix → archive → merge.
 - [ ] **Merge manually** into trunk as **one atomic commit** — squash the
       micro-commits so trunk history reads one green, self-contained commit
-      per feature
+      per feature, carrying the feature and the spec that describes it together
 - [ ] **Keep the feature branch** (don't delete) — the micro-commit trail stays
       publicly visible as evidence of the TDD process
-- [ ] **Archive the change** with `/opsx:archive` — it syncs the delta into
-      `openspec/specs/`, so the specs describe the product again, and moves the folder
-      into `openspec/changes/archive/`
 
 ---
 

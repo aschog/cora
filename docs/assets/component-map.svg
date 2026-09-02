@@ -236,6 +236,8 @@
   <text x="116.85" y="1272" class="import-label" text-anchor="start">«import»</text>
   <path d="M 189.7 554 L 498.02 554" class="imports"/>
   <text x="316.58" y="544" class="import-label" text-anchor="start">«import»</text>
+  <path d="M 1173.93 1168 L 1173.93 1286" class="imports"/>
+  <text x="1183.93" y="1272" class="import-label" text-anchor="start">«import»</text>
   <path d="M 1121.77 1168 L 1121.77 1202 L 554.77 1202 L 554.77 856" class="imports"/>
   <text x="578.77" y="1192" class="import-label" text-anchor="start">«import»</text>
 </svg>

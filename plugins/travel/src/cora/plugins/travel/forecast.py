@@ -10,7 +10,7 @@ from typing import Any, Protocol
 
 import httpx
 
-from cora.ports.plugin import ToolRefusal
+from cora.ports.plugin import Tool, ToolRefusal
 
 GEOCODING = "https://geocoding-api.open-meteo.com/v1/search"
 FORECAST = "https://api.open-meteo.com/v1/forecast"
@@ -255,3 +255,19 @@ FORECAST_SCHEMA = {
     },
     "required": ["place"],
 }
+
+
+def forecast_tool() -> Tool:
+    """The forecast as the model is offered it, declared as reaching outside cora.
+
+    One definition, read twice: the plugin registers from it, and the researcher passes
+    it to the loop it delegates. A second construction would be a second description of
+    the same tool, and they would drift.
+    """
+    return Tool(
+        name=FORECAST_TOOL_NAME,
+        description=FORECAST_TOOL_DESCRIPTION,
+        parameter_schema=FORECAST_SCHEMA,
+        run=Forecast(),
+        untrusted=True,
+    )
