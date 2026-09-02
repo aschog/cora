@@ -26,8 +26,11 @@ service. Any change to `Citation`, to what is stored, or to the page.
 
 - `ToolRuntime.execute` calls `nesting.read_untrusted()` when a declaring tool has run.
 - `ToolStep` already reads `inside.untrusted` for a payload that is not `Citable`.
+- The `Citable` check moves here too, so the label is one claim made in one line.
+- A declaring tool's *refusal* earns it as well: the sentence may quote what the tool found.
 - A tool that delegates still earns the label dynamically, and the two agree rather than compete.
 - Rejected: a second branch in `ToolStep` on the payload's type — a switch where a field will do.
+- Rejected: telling plugin authors not to quote a service in a refusal — a rule the engine can keep instead.
 
 **`Citable` stays what it is, and a forecast is not one.**
 
@@ -60,9 +63,19 @@ service. Any change to `Citation`, to what is stored, or to the page.
 
 **A plugin's technology is keyed per plugin and bought by its own manifest.**
 
-- `PLUGIN_TOOLKITS` mirrors `FRONTEND_TOOLKITS`, with the same manifest-buys test beside it.
+- Both extension points read one map, so the walker applies the rule without asking which layer it is in.
+- That replaces the frontends-only rule rather than sitting beside it: three tests become four over both layers.
 - The packaging guard's `== {"cora"}` becomes the app plus what that plugin declares.
+- Its allowance stays written in distributions there, because import names and distribution names are two vocabularies.
 - Rejected: one set for the layer — every plugin would inherit an HTTP client it never asked for.
+- Rejected: a second branch beside the frontends' — the switch that grows with every extension point.
+
+**Each leg of a fetch is read by something that answers with the shape the line needs.**
+
+- A reader per leg — a place, then its days — refusing anything it cannot turn into that shape.
+- So nothing downstream handles a key that might be missing, and a moved service is one sentence.
+- A day the service left out is refused, not dropped: dropping it answers three days with two.
+- Rejected: validating in the renderer — the same three checks spread across the code that writes prose.
 
 **What moves at the edges.**
 

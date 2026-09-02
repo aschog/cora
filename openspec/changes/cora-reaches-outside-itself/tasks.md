@@ -1,7 +1,8 @@
 Every item is one failing test, and the list is what shipped rather than what was first
-guessed at: eight items came off it during the work, each because the test it asked for
-protected nothing a test already here protects. Those are recorded under the group they
-left, because a dropped item is a decision and not an absence.
+guessed at: eight items came off it during the work and four went on afterwards, three of
+them from review. A dropped item is recorded under the group it left, because it is a
+decision and not an absence — and one of them was wrong, which is written where it was
+dropped rather than quietly reinstated.
 
 The `README.md` paragraph and the how-to's page are not items: prose is held by a person
 reading it. The guards are items, because a guard is a test.
@@ -24,8 +25,15 @@ reading it. The guards are items, because a guard is a test.
   test drives it through a real host on the way to the label
 - Dropped: two calls of one tool both labelled — the declaration is a field on the tool,
   so there is no per-call path for it to take
-- Dropped: a handler unable to take the label off a fetched result — the label is now set
-  in one line covering both sources, and the document case already pins that line
+- [x] 2.3 A handler on the returning event unable to take the label off either source —
+      the document case and a declaring tool's, as one parametrized test. Dropped during
+      the work on the grounds that both share one line, and put back by review: sharing
+      one line is *why* the second case is needed, since a reader who splits them again
+      would take the injection defence off a tool that reaches outside and see nothing
+      go red
+- [x] 2.4 A declaring tool's refusal labelled like its result, because the sentence may
+      quote what the tool found — the one path a plugin is told to use when a service is
+      down was carrying a stranger's text out unlabelled
 - Dropped: the label's wording naming a service — prompt prose, held by a reader
 
 ## 3. The guards widen
@@ -50,10 +58,16 @@ reading it. The guards are items, because a guard is a test.
 - [x] 4.4 A service that does not answer refused in one friendly line — unreachable,
       timed out, and answering with a status, which are two doors into one sentence
 - [x] 4.5 An answer the tool cannot read refused rather than passed on: unparseable, not
-      an object, no days, missing measures, and a shape it does not recognise
-- [x] 4.6 The tool offered in the travel field and in no other, declared as returning
+      an object, no days, missing measures, a shape it does not recognise, no readings at
+      all, fewer readings than days, a day the service left out, a reading that is not a
+      number, and readings that are not lists
+- [x] 4.6 A place the service answers unreadably refused the same way — this leg had no
+      coverage at all when 4.5 was first ticked, and three reachable holes behind it: a
+      record with no point escaped as `KeyError`, a string where a record belongs as
+      `TypeError`, and empty readings as a *successful* forecast with no days in it
+- [x] 4.7 The tool offered in the travel field and in no other, declared as returning
       material cora did not write
-- [x] 4.7 The real service answering a forecast for a place it knows, marked `integration`
+- [x] 4.8 The real service answering a forecast for a place it knows, marked `integration`
 - Dropped: the failed call shown on the trace as that call's — every `ToolRefusal` is
   already reported that way, and the runtime's own suite pins it
 - Dropped: a mixed turn citing the passage and not the service — the outer test asserts
