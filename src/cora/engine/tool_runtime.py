@@ -24,7 +24,8 @@ class ToolRuntime:
     that can earn it: a tool that declared what it returns is not cora's own words, and
     a payload that cites the user's documents. One place, because the label is one
     claim — and here rather than in the step, because this is where the tool itself is
-    in hand, and because it runs before any handler sees the result.
+    in hand, and because it runs before any handler sees the result. A declaring tool's
+    *refusal* earns it too: the sentence may quote what the tool found.
 
     `tools` are cora's own, callable in every turn; `registry` holds what the plugins
     registered, and a turn reaches the ones its scopes apply to.
@@ -73,6 +74,12 @@ class ToolRuntime:
         except AdapterError:
             raise
         except ToolRefusal as refused:
+            # A tool that reached outside may quote what it found in its refusal, and a
+            # refusal is the path a plugin is told to use when a service is down. So it
+            # is labelled for the same reason a result is; an unexpected exception is
+            # not, because only its kind is passed on and that is cora's own word.
+            if tool.untrusted:
+                read_untrusted()
             return ToolResult(
                 call_id=call.call_id, error=f"tool '{call.name}' failed: {refused}"
             )

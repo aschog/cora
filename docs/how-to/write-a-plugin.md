@@ -62,7 +62,8 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
 
    Nothing cora hands back for a fetched result is citable: `[n]` opens onto a passage
    of a document the user uploaded, and a service has none. Report what you fetched in
-   prose and let the trace be the record of the call.
+   prose, and let the trace be the record of the call. Your `ToolRefusal` is labelled
+   too, so quoting a service in one is safe.
 
 4. **Take part in the turn.** A handler subscribes to a named point in it, is handed
    one frozen value, and answers by returning — a refusal, an amendment, or `None` for
@@ -184,8 +185,9 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    **What is public** is everything `cora.ports.host` names: `Host` and its register
    calls — including a tool's `untrusted` — the four event names, `CONTRACT`,
    `DEFAULT_SCOPE`, and the values a handler is handed — `ToolCall` and `ToolResult`
-   from `cora.ports.plugin`, and `ToolRefusal` to raise. **What may move** is everything else: `cora.engine`, `cora.app`, the shape of
-   the trace, and the wording of any message. A compatibility policy waits for the first
+   from `cora.ports.plugin`, and `ToolRefusal` to raise. **What may move** is everything
+   else: `cora.engine`, `cora.app`, the shape of the trace, and the wording of any
+   message. A compatibility policy waits for the first
    author it would bind; until then, the version is how you find out.
 
 9. **Load it.** Two ways, and neither is a fork. Name the module in `CORA_PLUGINS`,
