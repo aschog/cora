@@ -202,10 +202,17 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    **What is public** is everything `cora.ports.host` names: `Host` and its register
    calls — including a tool's `untrusted` and `effect` — the four event names,
    `CONTRACT`, `DEFAULT_SCOPE`, and the values a handler is handed — `ToolCall` and
-   `ToolResult` from `cora.ports.plugin`, and `ToolRefusal` to raise. **What may move**
-   is everything else: `cora.engine`, `cora.app`, the shape of the trace, and the
+   `ToolResult` from `cora.ports.plugin`, `ToolRefusal` to raise when a call cannot
+   run, and `PluginLoadError` from `cora.domain.errors` to raise while registering when
+   the deployment has configured you wrongly — that one reaches the operator as you
+   worded it, where any other exception reaches them as its class name alone. **What
+   may move** is everything else: `cora.engine`, `cora.app`, the shape of the trace, and the
    wording of any message. A compatibility policy waits for the first
-   author it would bind; until then, the version is how you find out.
+   author it would bind; until then, the version is how you find out — with one gap
+   worth knowing: the contract grows keywords without the number moving, so a plugin
+   passing `untrusted` or `effect` to an older cora fails on the call rather than at the
+   version check. The number tells you about a contract that *changed*, not one that
+   grew.
 
 9. **Load it.** Two ways, and neither is a fork. Name the module in `CORA_PLUGINS`,
    separated by commas, in order:

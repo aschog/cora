@@ -7,6 +7,10 @@ One existing test was **rewritten rather than kept**: `test_plugin_host.py` pinn
 old outcome at the ceiling — a failed call — and this change's delta spec modifies that
 requirement. The spec moved, so the test moved with it.
 
+Review then added four items and rewrote two. Its findings are folded in below rather
+than listed apart, because a list that records what was planned and not what shipped is
+the wrong document to read next sprint.
+
 ## 1. The outer test
 
 - [x] 1.1 **Outer.** A turn in the travel field calling the researcher, the loop making
@@ -45,9 +49,17 @@ requirement. The spec moved, so the test moved with it.
 - [x] 4.2 The close-out call offered no tools, which is what keeps it from digging further
 - [x] 4.3 A close-out that says nothing falling back to the refusal, so nothing empty is
       dressed up as a report
+- [x] 4.4 A loop that gathered nothing refusing rather than being asked to write up
+      nothing — put back by review, and it was the one drop of the eight that hid a real
+      defect: the write-up fired on an empty transcript, so every nested call arriving
+      after the pot emptied bought a model call the allowance never authorised
+- [x] 4.5 Fanning out after the allowance is gone buying no further model calls —
+      measured at 12 calls for a fan-out of 10 before the fix, 3 after, and the width is
+      the model's choice
+- [x] 4.6 The inherited depth guard counting rounds apart from write-ups. It had drifted
+      to zero headroom and was passing for a reason it was not written for: two of the
+      six calls it counted as "rounds spent" were write-ups
 - Dropped: the report saying it stopped early as its own test — it is one assertion in 4.1
-- Dropped: a loop that found nothing saying so — the same code path as 4.1 with other
-  words in the reply, and 4.3 is what guarantees nothing empty is presented as a finding
 - Dropped: a loop answering within its allowance unaffected, and the allowance bounding
   at any depth — both already pinned by the delegation tests this change inherited
 
@@ -57,9 +69,19 @@ requirement. The spec moved, so the test moved with it.
       forecast, both declared as returning material cora did not write and neither an effect
 - [x] 5.2 Its loop offered the forecast beside cora's document search
 - [x] 5.3 The rounds read from the plugin's own settings, and the default where none is named
-- [x] 5.4 A rounds setting that is not a number refused while the plugin registers, so the
-      composition root names it
-- [x] 5.5 The rounds it asks for being the rounds the loop actually spends
+- [x] 5.4 A rounds setting that is not a number refused while the plugin registers, and
+      the operator told which setting and what they set it to. Review found the first
+      version certified a message nobody sees: cora keeps a plugin's exception text out
+      of what the operator reads, so the plugin now raises the one error that passes
+      through worded
+- [x] 5.5 The rounds it asks for being the rounds the loop actually spends. **Rewritten
+      after review**, which found the first version asserted a call count that is
+      identical for every setting — it would have passed for a researcher ignoring the
+      setting entirely. It now reads how the loop *ended*, and a mutation hard-coding
+      the default makes it fail
+- [x] 5.6 The forecast handed to every loop being one tool, built where the plugin
+      registers — one per question would parse the certificate bundle again and reuse no
+      connection
 - Dropped: what the researcher answered reaching the turn labelled untrusted — inherited
   behaviour, and the delegation tests already pin it
 

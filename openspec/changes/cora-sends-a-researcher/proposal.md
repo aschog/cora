@@ -16,8 +16,8 @@ lookup the model thought of first.
 
 - `src/cora/ports/plugin.py`, `src/cora/ports/host.py` — a tool declares an effect, and the contract says so
 - `src/cora/engine/host.py` — the ceiling reports instead of refusing, and effects are withheld from a loop
-- `plugins/travel/` — new: the researcher, its brief and its rounds setting
-- `tests/guards/` — a sub-agent is offered nothing that writes, stops the turn or has an effect
+- `plugins/travel/` — new: the researcher, its brief, its rounds setting and the refusal for a bad one
+- `tests/cora/engine/test_host.py` — a sub-agent is offered nothing that writes, stops the turn or has an effect
 - `docs/how-to/write-a-plugin.md`, `README.md` — declaring an effect, and what a sub-agent may be handed
 - `docs/sprints/5/spec.md` — story 10 leaves it, and its stale claim about the shell is corrected
 - Left alone: the React shell, which already draws a nested step; citations, routing, the pin, memory

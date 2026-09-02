@@ -11,7 +11,8 @@ A tool SHALL be able to run its own bounded loop with the model, offered cora's 
 search and the tools the plugin passed it. The system SHALL offer such a loop none of its
 own tools that write or stop a turn, and SHALL bound what one loop and everything it
 delegates may spend. A loop that reaches that bound SHALL report what it found, saying it
-stopped early, rather than losing it or presenting it as complete. The system SHALL report
+stopped early, rather than losing it or presenting it as complete. A loop that gathered
+nothing SHALL refuse instead, so no write-up is asked of an empty transcript. The system SHALL report
 the steps of that loop as children of the call that ran it, and SHALL require no change of
 its own to allow it.
 
@@ -35,11 +36,17 @@ its own to allow it.
 - **THEN** it reports what it found so far, and says it stopped early
 - **AND** what it gathered is not discarded, and is not offered as a complete answer
 
-#### Scenario: A loop that found nothing says that instead
+#### Scenario: A loop that gathered nothing refuses rather than reporting
 
-- **GIVEN** a loop stopped at its ceiling having found nothing to report
+- **GIVEN** a loop stopped with nothing looked up in it
 - **WHEN** it stops
-- **THEN** it says so, and nothing is presented as a finding
+- **THEN** it refuses, no write-up is asked for, and nothing is presented as a finding
+
+#### Scenario: A spent allowance is not a model call per nested lookup
+
+- **GIVEN** a loop whose allowance is gone, and a round that fans out many ways
+- **WHEN** each nested lookup runs
+- **THEN** none of them spends a model call of its own, however wide the fan-out
 
 #### Scenario: The loop's steps are shown under the call
 
@@ -127,4 +134,5 @@ read from the plugin's own settings.
 
 - **GIVEN** a deployment naming a number of rounds in the plugin's own settings
 - **WHEN** the researcher runs
-- **THEN** it spends no more than that, and no more than the host allows either
+- **THEN** what it may spend follows that number, and the host's own ceiling still
+  bounds it
