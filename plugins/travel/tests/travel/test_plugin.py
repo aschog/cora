@@ -1,5 +1,7 @@
 from cora.plugins.travel import CORPUS, INSTRUCTIONS, SCOPE, extend
+from cora.plugins.travel.forecast import FORECAST_TOOL_NAME
 from cora.ports.host import INSTRUCTIONS as SAYS
+from cora.ports.host import TOOL as HAS
 from fakes import host_for
 
 
@@ -15,14 +17,20 @@ def test_the_instructions_state_the_domains_own_business() -> None:
 
 
 def test_everything_travel_registers_belongs_to_its_own_scope() -> None:
-    """A travel persona has no business in a turn about training, and this plugin has
-    nothing it would want to hold outside its field: no tool yet, and nothing
-    system-wide."""
+    """A travel persona has no business in a turn about training, and neither has a
+    forecast: this plugin holds nothing it would want outside its field, so a turn
+    about training is offered no way of reaching a weather service."""
     host = host_for("cora.plugins.travel")
 
     extend(host)
 
-    assert [(entry.kind, entry.scope) for entry in host.registered] == [(SAYS, SCOPE)]
+    assert [(entry.kind, entry.scope) for entry in host.registered] == [
+        (SAYS, SCOPE),
+        (HAS, SCOPE),
+    ]
+    [tool] = [entry.value for entry in host.registered if entry.kind == HAS]
+    assert tool.name == FORECAST_TOOL_NAME
+    assert tool.untrusted, "what a service said is not cora's own words"
 
 
 def test_the_first_line_of_the_instructions_says_what_the_field_is() -> None:
