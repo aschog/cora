@@ -43,6 +43,27 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    The name has to be free: cora refuses a plugin that takes one of its own tool names,
    or one another loaded plugin registered first, and the refusal names your module.
 
+   **If your tool reaches outside cora, say so.** A service you called, a page you read
+   — that is material cora did not write, and it must not reach the model as though it
+   had:
+
+   ```python
+   cora.register_tool(name="fetch_forecast", ..., run=fetch_forecast, untrusted=True)
+   ```
+
+   What such a tool returns arrives behind the same untrusted-data label a passage of
+   the user's own documents carries, telling the model to read it as evidence and never
+   to follow instructions found inside it. Declared on the tool rather than worked out
+   from what you return, because a fetched string and a calculated one are the same
+   shape and only you know which is which — and no handler, yours or anyone's, can take
+   the label off once it is on. A tool that reaches outside also owns what it reaches
+   with: your own client, your own timeout, and a `ToolRefusal` in one friendly sentence
+   when the service is down, so the turn answers around it rather than ending.
+
+   Nothing cora hands back for a fetched result is citable: `[n]` opens onto a passage
+   of a document the user uploaded, and a service has none. Report what you fetched in
+   prose and let the trace be the record of the call.
+
 4. **Take part in the turn.** A handler subscribes to a named point in it, is handed
    one frozen value, and answers by returning — a refusal, an amendment, or `None` for
    neither. The four points are `cora.ports.host`'s, and they differ in what a return
@@ -161,9 +182,9 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    which cora has.
 
    **What is public** is everything `cora.ports.host` names: `Host` and its register
-   calls, the four event names, `CONTRACT`, `DEFAULT_SCOPE`, and the values a handler is
-   handed — `ToolCall` and `ToolResult` from `cora.ports.plugin`, and `ToolRefusal` to
-   raise. **What may move** is everything else: `cora.engine`, `cora.app`, the shape of
+   calls — including a tool's `untrusted` — the four event names, `CONTRACT`,
+   `DEFAULT_SCOPE`, and the values a handler is handed — `ToolCall` and `ToolResult`
+   from `cora.ports.plugin`, and `ToolRefusal` to raise. **What may move** is everything else: `cora.engine`, `cora.app`, the shape of
    the trace, and the wording of any message. A compatibility policy waits for the first
    author it would bind; until then, the version is how you find out.
 
