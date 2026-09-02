@@ -50,8 +50,9 @@ The nouns this file uses, each against the class that carries it. Paths are unde
   to: set by the user and by nobody else, at whatever turn the conversation turns out to
   have a field, and never set twice. It survives a reload, and it is what a routed scope is
   not — a decision about the conversation rather than a reading of one question.
-- **Citation** — `domain.citations.Citation`, offsets into stored text today, widening to a
-  source with kinds in story 9.
+- **Citation** — `domain.citations.Citation`, offsets into the stored text of an uploaded
+  document, and nothing else this sprint: what story 9 fetches is answered in cora's own
+  prose and recorded on the trace.
 - **Document** — one source behind `ports.documents.Documents`, chunked into
   `domain.chunk.Chunk` and retrieved as `ports.retrieval.RetrievedChunk`.
 - **Memory** — `ports.memory.Memory`, holding `Fact`s about the person, system-wide across
@@ -180,9 +181,6 @@ right now costs nothing.
   effect and a stop-to-ask stay in the outer turn where the gate already is. Without that
   rule an interrupt has to travel up through a checkpointed inner loop and back down, which
   is a harder problem than the capability is worth.
-- **A citation's source has kinds.** Story 9 cites a live service, which has no document and
-  no offsets, so `Citation` widens once to a source with kinds — a stored span, a fetched
-  result — and a third kind later is a new case rather than a new shape.
 - **The pin belongs to the conversation.** It goes in `AgentState` and is checkpointed, so a
   reopened thread reopens in its scope; frontend session state would lose it on reload.
 - **A turn may stop more than once, and every stop comes before the round runs.**
@@ -224,37 +222,6 @@ criterion 4's evaluation number, and one scope leaves nothing to route between, 
 it would take the measurement with it. If the sprint runs long, the sprint runs long, and
 what gives is argued then against *Not in this sprint* rather than decided here while it
 is cheap to be brave.
-
-### 9. cora reaches outside itself
-
-As a person asking about something my documents cannot know,\
-I want cora to call a live service and answer from what it gets back,\
-so that the answer is current instead of a polite refusal.
-
-**Scenario:** a question that needs the outside world
-
-- **Given** a scope with a tool onto a live external service
-- **When** I ask something that needs current information
-- **Then** cora calls the service, the trace names the call and what it returned, and the
-  answer cites it as a source
-- **And** the service's text is treated as untrusted data, exactly as a document's is
-
-**Scenario:** the service is down
-
-- **Given** the service fails or times out
-- **When** the turn runs
-- **Then** one friendly message says so, the conversation is intact, and nothing is
-  presented as an answer
-
-**Scenario:** the plugin holds its own key
-
-- **Given** the service needs a credential
-- **When** the plugin asks the host for its configuration
-- **Then** it gets the slice named for it, from the environment, and the key is in no log
-  and no trace
-
-The travel plugin needs an HTTP client, so the architecture guard's technology allow-list
-for the plugins widens by that one name — a guard edit this story owns, made in the open.
 
 ### 10. cora sends a researcher and reads the report
 
@@ -409,6 +376,15 @@ record.
   reports; an inner loop that proposes an effect or asks a question needs an interrupt to
   travel up through a checkpointed subgraph and back down, and that is a bigger problem than
   the capability it buys. Booking is the job that would earn one.
+- **A plugin holding a credential of its own.** Story 9's forecast service needs none, so
+  the settings slice a plugin reads its key out of goes unexercised — it exists and is
+  tested, and a plugin wanting one appends it without a core change. Chosen so that a
+  reviewer with no account still sees the story work.
+- **A citation onto anything but an uploaded document.** Story 9 answers from a live
+  service in cora's own prose and leaves the call on the trace, so a citation stays a
+  passage of a file the user uploaded. `Citation` therefore does not widen to a source
+  with kinds this sprint, and the shape that said it would is withdrawn rather than
+  carried unmet. The day a fetched result has to be cited, that widening is what it costs.
 - **A plugin depending on another plugin, overriding another's tool, or ordering itself
   against one.** Load order is the only precedence there is, and it is the order the sources
   were read in. All three are real needs of a mature harness and none is needed by three
