@@ -1367,6 +1367,45 @@ def test_a_result_handler_cannot_strip_the_label_off_the_users_documents() -> No
     assert "sealed:" in told.content, "and it is still what the handler returned"
 
 
+def _fetching(name: str = "forecast") -> Tool:
+    """A tool that hands back material cora did not write, said at registration rather
+    than read off the payload: what a service returned is a plain string like any
+    other, so nothing about its shape could have told the turn where it came from."""
+    return Tool(
+        name=name,
+        description="Fetch a forecast.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: "Lisbon, 5-7 Sep: 24/17C Fri, 25/18C Sat",
+        untrusted=True,
+    )
+
+
+def test_what_a_declaring_tool_returned_reaches_the_model_labelled() -> None:
+    """A service's text is no more cora's own words than a passage is, and the model is
+    owed the same warning about both — the one that says not to take orders from it."""
+    step = ToolStep(tool_runtime=ToolRuntime(tools=(_fetching(),)))
+
+    partial = step(_asked(ToolCall(name="forecast", arguments={}, call_id="f1")))
+
+    [told] = partial["messages"]
+    assert UNTRUSTED_NOTICE in told.content
+    assert "24/17C Fri" in told.content, "and the material itself is still there"
+
+
+def test_what_a_tool_declaring_nothing_returned_is_not_labelled() -> None:
+    """The boundary of the rule above. The label spends a paragraph of the prompt on a
+    warning, so a calculator that added two of the user's own numbers does not earn
+    one."""
+    step = ToolStep(tool_runtime=ToolRuntime(tools=(add_tool(),)))
+
+    partial = step(
+        _asked(ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1"))
+    )
+
+    [told] = partial["messages"]
+    assert UNTRUSTED_NOTICE not in told.content
+
+
 def test_a_call_handler_cannot_rewrite_the_arguments_the_model_asked_for() -> None:
     """A refusing event may refuse its value and may not change it. The arguments are a
     dict inside a frozen call, so a handler is handed a copy of them — one that mutated

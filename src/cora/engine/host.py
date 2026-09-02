@@ -136,6 +136,7 @@ class PluginHost:
         parameter_schema: dict[str, Any],
         run: Callable[..., Any],
         scope: str | None = None,
+        untrusted: bool = False,
     ) -> None:
         """Offer the model one more thing it can do.
 
@@ -163,6 +164,7 @@ class PluginHost:
                 description=description,
                 parameter_schema=parameter_schema,
                 run=run,
+                untrusted=untrusted,
             ),
             scope,
         )

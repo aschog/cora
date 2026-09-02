@@ -19,7 +19,7 @@ from cora.domain.transcript import prompt_from
 from cora.engine.ask_tool import ASK_TOOL_NAME, decision_from
 from cora.engine.events import dispatch
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
-from cora.engine.nesting import Inside, collecting, read_untrusted
+from cora.engine.nesting import Inside, collecting
 from cora.engine.plugin_set import Registry
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.rounds import Read, decided, told, used
@@ -618,12 +618,10 @@ class ToolStep:
                 Inside(),
             )
         with collecting() as inside:
+            # What the call read is recorded by the runtime, before any handler sees the
+            # result: a handler replacing the payload with prose of its own has replaced
+            # the material, not where it came from.
             result = self.tool_runtime.execute(call, scopes)
-            if isinstance(result.payload, Citable):
-                # The user's documents went into this call, and they went in before any
-                # handler saw it: a handler replacing the payload with prose of its own
-                # has replaced the material, not where it came from.
-                read_untrusted()
             amended = dispatch(
                 RETURNING,
                 result,
