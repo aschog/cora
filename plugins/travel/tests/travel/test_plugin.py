@@ -1,5 +1,6 @@
 from cora.plugins.travel import CORPUS, INSTRUCTIONS, SCOPE, extend
 from cora.plugins.travel.forecast import FORECAST_TOOL_NAME
+from cora.plugins.travel.researcher import RESEARCH_TOOL_NAME
 from cora.ports.host import INSTRUCTIONS as SAYS
 from cora.ports.host import TOOL as HAS
 from fakes import host_for
@@ -27,10 +28,17 @@ def test_everything_travel_registers_belongs_to_its_own_scope() -> None:
     assert [(entry.kind, entry.scope) for entry in host.registered] == [
         (SAYS, SCOPE),
         (HAS, SCOPE),
+        (HAS, SCOPE),
     ]
-    [tool] = [entry.value for entry in host.registered if entry.kind == HAS]
-    assert tool.name == FORECAST_TOOL_NAME
-    assert tool.untrusted, "what a service said is not cora's own words"
+    tools = [entry.value for entry in host.registered if entry.kind == HAS]
+    assert [tool.name for tool in tools] == [FORECAST_TOOL_NAME, RESEARCH_TOOL_NAME]
+    assert all(tool.untrusted for tool in tools), (
+        "a service's answer is not cora's own words, and neither is a loop's report "
+        "built out of one"
+    )
+    assert not any(tool.effect for tool in tools), (
+        "travel changes nothing outside cora yet — its effect arrives with the gate"
+    )
 
 
 def test_the_first_line_of_the_instructions_says_what_the_field_is() -> None:
