@@ -336,9 +336,8 @@ def _read(result: ToolResult, read_documents: bool = False) -> Read:
 
     Passages reach a delegated loop by document name rather than by number: the numbers
     belong to the turn, and a loop that reads is not what a turn cites. So the loop can
-    still say where a fact came from, and the turn can pass that on. Story 9 is where a
-    delegated source earns a number of its own. Unnumbered or not, they are the user's
-    documents and carry the same label a turn's own passages do.
+    still say where a fact came from, and the turn can pass that on. Unnumbered or not,
+    they are the user's documents and carry the same label a turn's own passages do.
 
     Args:
         read_documents: Whether the call read the user's documents somewhere inside

@@ -165,6 +165,9 @@ REACH_CASES = [(layer, path) for layer, files in LAYER_FILES.items() for path in
 # plugin is data over the contract, the composition root names adapters rather than
 # importing what they wrap, and a frontend reaches for what it draws or serves with
 # and no more.
+# A layer that appears in `EXTENSION_TOOLKITS` below is answered per portion, so its
+# entry here is read for nothing but the case list: a name added to one of those two
+# buys no import, and would sit here looking as though it had. Only `the app` is read.
 TECHNOLOGY_ALLOWED: dict[str, frozenset[str]] = {
     "the app": frozenset(),
     "the plugins": frozenset(),
@@ -453,7 +456,9 @@ def test_every_layer_that_may_bind_nothing_has_files_to_say_it_of() -> None:
     assert all(LAYER_FILES[layer] for layer in TECHNOLOGY_ALLOWED)
 
 
-@pytest.mark.parametrize("layer", sorted(EXTENSION_TOOLKITS), ids=lambda v: v[4:])
+@pytest.mark.parametrize(
+    "layer", sorted(EXTENSION_TOOLKITS), ids=lambda v: v.removeprefix("the ")
+)
 def test_every_extension_declares_the_technology_it_reaches_for(layer: str) -> None:
     """One added without an entry inherits nothing — the lookup raises rather than
     handing it the allowance of the neighbour it happens to ship beside."""
@@ -593,7 +598,7 @@ def _bought_by(module: str) -> set[str]:
         for layer, toolkits in sorted(EXTENSION_TOOLKITS.items())
         for portion in sorted(toolkits)
     ],
-    ids=lambda value: value[4:] if value.startswith("the ") else value,
+    ids=lambda value: value.removeprefix("the "),
 )
 def test_an_extension_is_allowed_only_the_technology_its_manifest_buys(
     layer: str, portion: str
@@ -602,7 +607,8 @@ def test_an_extension_is_allowed_only_the_technology_its_manifest_buys(
     add a name to it. This is what that has to cost: the distribution declared in the
     extension's own manifest, which ships in the wheel's metadata and is installed with
     it — rather than a word in a test that buys nothing."""
-    module = f"cora.{layer[4:-1]}s.{portion}"
+    [namespace] = LAYER_MODULES[layer]
+    module = f"{namespace}.{portion}"
     unbought = EXTENSION_TOOLKITS[layer][portion] - _bought_by(module)
 
     assert not unbought, (

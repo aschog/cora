@@ -504,7 +504,7 @@ class AnswerStep:
     """The step that settles what the user reads, once and at the end.
 
     The round the turn ended on is the answer; the rounds before it asked for tools,
-    and what they wrote was thinking. Story 9's live sources compose here.
+    and what they wrote was thinking.
     """
 
     def __call__(self, state: AgentState) -> AgentState:
