@@ -31,8 +31,9 @@ CORPUS = pathlib.Path(__file__).parent / "corpus"
 """The notes this plugin ships, as files the user uploads like any other document.
 
 A directory rather than a registration: cora ingests what is uploaded, and a plugin that
-seeded the index at load would re-embed its corpus on every start. Story 8 gives a scope
-its own document directory, and that is where this stops being a folder to upload from.
+seeded the index at load would re-embed its corpus on every start. A field owning its
+own document directory did not change that: what is uploaded is still the reader's to
+choose, and these are files they may choose.
 """
 
 

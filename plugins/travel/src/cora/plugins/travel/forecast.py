@@ -82,6 +82,15 @@ def _client() -> Fetcher:
 
 
 @dataclass(frozen=True)
+class Place:
+    """Where the service says a place is: the name it knows it by, and its point."""
+
+    name: str
+    latitude: float
+    longitude: float
+
+
+@dataclass(frozen=True)
 class Forecast:
     """One place resolved, then its forecast fetched and written as a single line."""
 
@@ -95,37 +104,23 @@ class Forecast:
     ) -> str:
         """The forecast for a place, on one line the model can read out.
 
+        Each leg is read by something that answers with the shape the line needs, or
+        refuses: nothing downstream of here handles a key that might be missing, so a
+        service whose shape moved is one sentence rather than an exception class.
+
         Raises:
             ToolRefusal: The place is unknown to the service, the service could not be
                 reached, or it answered with something this cannot read. Each is one
                 sentence the turn can answer around.
         """
-        found = self._read(GEOCODING, {"name": place, "count": 1})
-        located = (found.get("results") or [None])[0]
+        located = _located(self._read(GEOCODING, {"name": place, "count": 1}))
         if located is None:
             raise ToolRefusal(
                 f"The forecast service does not know a place called '{place}', so I "
                 "have no forecast for it. A larger town nearby may work."
             )
-        days = self._read(FORECAST, self._where(located, start_date, end_date))
-        return f"{_named(located)} — {_days(days)}"
-
-    def _where(
-        self, located: dict[str, Any], start_date: str | None, end_date: str | None
-    ) -> dict[str, Any]:
-        asked = {
-            "latitude": located["latitude"],
-            "longitude": located["longitude"],
-            "daily": MEASURES,
-            "timezone": "auto",
-        }
-        # Left out entirely rather than sent empty: absent, the service answers with its
-        # own next few days, which is what "what will the weather be" means unasked.
-        if start_date:
-            asked["start_date"] = start_date
-        if end_date:
-            asked["end_date"] = end_date
-        return asked
+        days = self._read(FORECAST, _asked(located, start_date, end_date))
+        return f"{located.name} — {_days(days)}"
 
     def _read(self, url: str, params: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -142,13 +137,50 @@ class Forecast:
         return read
 
 
-def _named(located: dict[str, Any]) -> str:
-    """The place as the service knows it, so the reader can see it was understood."""
-    named = [
-        str(located.get("name", "")).strip(),
-        str(located.get("country", "")).strip(),
-    ]
-    return ", ".join(part for part in named if part)
+def _asked(
+    located: Place, start_date: str | None, end_date: str | None
+) -> dict[str, Any]:
+    asked: dict[str, Any] = {
+        "latitude": located.latitude,
+        "longitude": located.longitude,
+        "daily": MEASURES,
+        "timezone": "auto",
+    }
+    # Left out entirely rather than sent empty: absent, the service answers with its
+    # own next few days, which is what "what will the weather be" means unasked.
+    if start_date:
+        asked["start_date"] = start_date
+    if end_date:
+        asked["end_date"] = end_date
+    return asked
+
+
+def _located(found: dict[str, Any]) -> Place | None:
+    """The first place the service matched, or nothing where it matched none.
+
+    Matching none and answering unreadably are different answers: the first is a place
+    that does not exist, which the reader can act on by naming a larger town, and the
+    second is the service itself having moved.
+
+    Raises:
+        ToolRefusal: It answered with something that is not a list of places, or with a
+            place carrying no point to forecast.
+    """
+    results = found.get("results")
+    if results is None or results == []:
+        return None
+    if not isinstance(results, list) or not isinstance(results[0], dict):
+        raise ToolRefusal(UNREADABLE)
+    first = results[0]
+    latitude, longitude = first.get("latitude"), first.get("longitude")
+    if not isinstance(latitude, int | float) or not isinstance(longitude, int | float):
+        raise ToolRefusal(UNREADABLE)
+    named = [str(first.get(key, "")).strip() for key in ("name", "country")]
+    return Place(
+        name=", ".join(part for part in named if part),
+        latitude=float(latitude),
+        longitude=float(longitude),
+    )
 
 
 def _days(days: dict[str, Any]) -> str:
@@ -159,24 +191,36 @@ def _days(days: dict[str, Any]) -> str:
     wanted a line.
 
     Raises:
-        ToolRefusal: The answer is not shaped like a forecast.
+        ToolRefusal: The answer is not shaped like a forecast — no daily block, no days
+            in it, or a reading missing for a day. A day the service left out is
+            refused rather than dropped: dropping it would answer three days with two
+            and say nothing about the third.
     """
     daily = days.get("daily")
     if not isinstance(daily, dict):
         raise ToolRefusal(UNREADABLE)
-    try:
-        dates = list(daily["time"])
-        highs = list(daily["temperature_2m_max"])
-        lows = list(daily["temperature_2m_min"])
-        codes = list(daily["weather_code"])
-    except (KeyError, TypeError) as unreadable:
-        raise ToolRefusal(UNREADABLE) from unreadable
-    if not dates:
+    rows = [daily.get(key) for key in ("time", *MEASURES.split(","))]
+    if not all(isinstance(row, list) for row in rows):
+        raise ToolRefusal(UNREADABLE)
+    dates, highs, lows, codes = rows
+    if not dates or any(len(row) != len(dates) for row in rows):
         raise ToolRefusal(UNREADABLE)
     return "; ".join(
-        f"{date}: {round(high)}/{round(low)}°C, {_sky(code)}"
-        for date, high, low, code in zip(dates, highs, lows, codes, strict=False)
+        f"{date}: {_degrees(high)}/{_degrees(low)}°C, {_sky(code)}"
+        for date, high, low, code in zip(dates, highs, lows, codes, strict=True)
     )
+
+
+def _degrees(reading: Any) -> str:
+    """One temperature as a whole number.
+
+    Raises:
+        ToolRefusal: The service left it out, which it does for a day outside the window
+            it holds, or answered with something that is not a temperature.
+    """
+    if not isinstance(reading, int | float):
+        raise ToolRefusal(UNREADABLE)
+    return str(round(reading))
 
 
 def _sky(code: Any) -> str:
