@@ -1,5 +1,6 @@
 import pathlib
 
+from cora.domain.errors import PluginLoadError
 from cora.plugins.travel.forecast import forecast_tool
 from cora.plugins.travel.researcher import (
     RESEARCH_SCHEMA,
@@ -51,10 +52,15 @@ def extend(cora: Host) -> None:
     offered no weather and no researcher.
 
     Raises:
-        ValueError: The rounds setting is not a whole number. Raised here so the
-            deployment is refused at load with this plugin named.
+        PluginLoadError: The rounds setting is not a whole number. Raised as one of
+            these rather than left as the `ValueError` underneath, because cora keeps a
+            plugin's exception text out of what the operator reads — it could be
+            carrying a key. A refusal a plugin raises itself reaches them as worded, so
+            this is the channel for saying which setting to go and fix.
     """
     cora.register_instructions(INSTRUCTIONS, scope=SCOPE)
+    # One tool, registered for the turn and handed to the researcher's loop: it holds
+    # an HTTP client, and a second would parse the certificate bundle over again.
     fetching = forecast_tool()
     cora.register_tool(
         name=fetching.name,
@@ -63,12 +69,17 @@ def extend(cora: Host) -> None:
         run=fetching.run,
         scope=SCOPE,
         untrusted=fetching.untrusted,
+        effect=fetching.effect,
     )
+    try:
+        research = researching(cora, fetching)
+    except ValueError as unreadable:
+        raise PluginLoadError(__name__, str(unreadable)) from unreadable
     cora.register_tool(
         name=RESEARCH_TOOL_NAME,
         description=RESEARCH_TOOL_DESCRIPTION,
         parameter_schema=RESEARCH_SCHEMA,
-        run=researching(cora),
+        run=research,
         scope=SCOPE,
         untrusted=True,
     )

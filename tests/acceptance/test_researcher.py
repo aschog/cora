@@ -133,3 +133,6 @@ def test_a_broad_question_is_researched_not_answered_in_one_pass(
     assert [step.name for step in inside] == [SEARCH_TOOL_NAME, FORECAST_TOOL_NAME], (
         "the researcher's lookups are nested under the call that started them"
     )
+    assert not any(step.failed for step in inside), (
+        "and both of them worked, so the stubbed service is load-bearing here"
+    )

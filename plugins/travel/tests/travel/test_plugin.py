@@ -1,3 +1,6 @@
+import pytest
+
+from cora.domain.errors import PluginLoadError
 from cora.plugins.travel import CORPUS, INSTRUCTIONS, SCOPE, extend
 from cora.plugins.travel.forecast import FORECAST_TOOL_NAME
 from cora.plugins.travel.researcher import RESEARCH_TOOL_NAME
@@ -57,3 +60,21 @@ def test_the_corpus_ships_as_documents_a_reader_can_upload() -> None:
 
     assert shipped
     assert all(path.read_text().strip() for path in CORPUS.glob("*.md"))
+
+
+def test_a_rounds_setting_that_is_not_a_number_is_refused_by_name_at_load() -> None:
+    """The operator is the audience for a load-time refusal, and they need the name of
+    the setting they mistyped. A bare `ValueError` would reach them as "the plugin
+    raised ValueError while registering" — cora keeps a plugin's exception text out of
+    that message deliberately, because it could be carrying a key. So a plugin with
+    something to tell the operator says it the sanctioned way, and that reaches them
+    as it was worded."""
+    host = host_for("cora.plugins.travel", settings={"rounds": "three"})
+
+    with pytest.raises(PluginLoadError) as refused:
+        extend(host)
+
+    said = refused.value.user_message
+    assert "rounds" in said, "the setting they can act on is named"
+    assert "three" in said, "and what they set it to"
+    assert "cora.plugins.travel" in said

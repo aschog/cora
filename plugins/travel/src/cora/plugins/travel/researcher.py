@@ -8,8 +8,8 @@ makes, and this is where a reader watches it hold.
 
 from collections.abc import Callable, Mapping
 
-from cora.plugins.travel.forecast import forecast_tool
 from cora.ports.host import Host
+from cora.ports.plugin import Tool
 
 RESEARCH_TOOL_NAME = "research_trip"
 RESEARCH_TOOL_DESCRIPTION = (
@@ -71,20 +71,23 @@ def rounds_from(settings: Mapping[str, str]) -> int:
     return rounds
 
 
-def researching(cora: Host) -> Callable[[str], str]:
-    """What `research_trip` runs, closed over the host it was registered against.
+def researching(cora: Host, *lookups: Tool) -> Callable[[str], str]:
+    """What `research_trip` runs, closed over the host and the tools it may pass on.
 
-    Closed over rather than handed the host per call, because by the time the model
-    calls this there is no host in scope — the same reason cora's own tools are built
-    at assembly.
+    Closed over rather than handed them per call, because by the time the model calls
+    this there is no host in scope — the same reason cora's own tools are built at
+    assembly. The tools are taken here rather than built here for the same reason: one
+    of them holds an HTTP client, and building a client per question would parse the
+    certificate bundle again and reuse no connection from the question before.
+
+    Raises:
+        ValueError: The rounds setting is not a whole number.
     """
     rounds = rounds_from(cora.settings)
 
     def research(question: str) -> str:
         return cora.delegate(
-            TASK.format(question=question),
-            tools=(forecast_tool(),),
-            rounds=rounds,
+            TASK.format(question=question), tools=lookups, rounds=rounds
         )
 
     return research

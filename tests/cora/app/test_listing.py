@@ -29,7 +29,7 @@ TRAVEL = Listed(
 )
 
 
-def test_a_registration_with_something_more_to_say_says_it_on_its_own_line() -> None:
+def test_a_registration_with_something_more_to_say_says_it_beside_itself() -> None:
     """What a plugin may do is what the listing is for, and a tool that changes
     something outside cora is the loudest thing it can say. Read off the note rather
     than off the kind, so the rendering shows one it has never heard of."""
