@@ -158,14 +158,15 @@ def test_the_app_carries_no_plugin_and_names_none() -> None:
 @pytest.mark.parametrize(
     "plugin", [module for _, module in workspace.plugins()], ids=lambda m: m
 )
-def test_a_plugin_needs_the_app_and_nothing_else(plugin: str) -> None:
-    """A plugin is data over the contract: the fitness bundle uses four names —
-    `Plugin`, `Tool`, `ToolRefusal`, `InputRejectedError` — and the screen one, and
-    neither takes a technology of its own. What a plugin author no longer gets is a
-    light install; that was the price of collapsing the layers."""
+def test_a_plugin_needs_the_app_and_what_it_reaches_outside_with(plugin: str) -> None:
+    """A plugin is data over the contract, and most take nothing else: the fitness
+    bundle uses four names and the screen one, and neither binds a technology. Travel
+    calls a live service, so it declares an HTTP client — here rather than in the root,
+    because the manifest is what the architecture guard's allowance has to cost."""
     member = next(m for m in MEMBERS if plugin in workspace.modules(m))
+    reaches = {"httpx"} if plugin == "cora.plugins.travel" else set()
 
-    assert workspace.requirements(member) == {"cora"}
+    assert workspace.requirements(member) == {"cora", *reaches}
 
 
 @pytest.mark.parametrize(

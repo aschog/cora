@@ -86,10 +86,11 @@ def test_nothing_in_the_workspace_resolves_a_second_frontend() -> None:
 
 
 def test_a_plugin_resolves_the_app_and_stops() -> None:
-    """A plugin takes nothing of its own — no toolkit, no second technology. Equality,
-    not a superset: a plugin that grew a direct dependency of its own is exactly what
-    this is here to catch, and it pulls the whole app either way. That last part is what
-    the layer split used to buy and no longer does."""
+    """Asked of fitness, which is the plugin that takes nothing of its own: equality,
+    not a superset, and it pulls the whole app either way — that last part is what the
+    layer split used to buy and no longer does. Travel is not asked, because it reaches
+    a live service and declares an HTTP client for it; that a plugin may declare only
+    what its own allowance names is the packaging guard's rule, not this one's."""
     assert _resolved("cora-plugin-fitness") == {
         "cora-plugin-fitness",
         *_resolved("cora"),

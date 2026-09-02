@@ -551,10 +551,14 @@ version = "0.1.0"
 source = { editable = "plugins/travel" }
 dependencies = [
     { name = "cora" },
+    { name = "httpx" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "cora", editable = "." }]
+requires-dist = [
+    { name = "cora", editable = "." },
+    { name = "httpx", specifier = ">=0.28.1,<1" },
+]
 
 [[package]]
 name = "cuda-bindings"
