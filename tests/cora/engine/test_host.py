@@ -7,7 +7,12 @@ import pytest
 from cora.domain.chunk import Chunk
 from cora.domain.errors import PluginLoadError
 from cora.engine.ask_tool import ASK_TOOL_NAME
-from cora.engine.host import DELEGATE_BRIEF, MAX_DELEGATED_ROUNDS, OVERSPENT
+from cora.engine.host import (
+    DELEGATE_BRIEF,
+    MAX_DELEGATED_ROUNDS,
+    OVERSPENT,
+    STOPPED_EARLY,
+)
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.nesting import collecting
 from cora.engine.retrieval_tool import (
@@ -389,26 +394,58 @@ def test_a_tool_run_inside_a_delegated_loop_keeps_its_own_steps() -> None:
     ]
 
 
-def test_a_loop_may_not_spend_more_rounds_than_the_host_allows() -> None:
-    """The budget is the host's: a plugin asking for ten thousand rounds gets the
-    ceiling, so one tool call cannot spend a deployment's model bill."""
-    model = ScriptedChatModel(
-        [
-            ModelReply(
-                tool_calls=(
-                    ToolCall(name="add", arguments={"a": 1, "b": 1}, call_id="c1"),
-                )
-            )
-        ]
-        * (MAX_DELEGATED_ROUNDS + 1)
+def _adding() -> ModelReply:
+    return ModelReply(
+        tool_calls=(ToolCall(name="add", arguments={"a": 1, "b": 1}, call_id="c1"),)
     )
+
+
+def _spending_everything(*after: ModelReply) -> ScriptedChatModel:
+    """A loop that asks for a tool every round it has, then whatever comes next."""
+    return ScriptedChatModel([_adding()] * (MAX_DELEGATED_ROUNDS + 1) + list(after))
+
+
+def test_a_loop_stopped_at_the_hosts_ceiling_reports_what_it_found() -> None:
+    """The budget is the host's: a plugin asking for ten thousand rounds gets the
+    ceiling, so one tool call cannot spend a deployment's model bill. What it spent the
+    rounds learning is not thrown away with them — the loop is asked to write up what
+    it has, and the report says it stopped early so the turn cannot sign for it as
+    complete."""
+    model = _spending_everything(ModelReply(text="the sum is 2"))
+
+    reported = host_for(MODULE, model=model).delegate(
+        "Loop forever.", tools=(add_tool(),), rounds=10_000
+    )
+
+    assert model.completions == MAX_DELEGATED_ROUNDS + 2, (
+        "every round it was allowed, and one call to write up what it found"
+    )
+    assert "the sum is 2" in reported
+    assert STOPPED_EARLY in reported
+
+
+def test_the_close_out_call_is_offered_no_tools_so_it_cannot_dig_further() -> None:
+    """What bounds the close-out is that there is nothing to call: a loop handed its
+    tools again could spend a round outside the allowance that just ran out."""
+    model = _spending_everything(ModelReply(text="the sum is 2"))
+
+    host_for(MODULE, model=model).delegate(
+        "Loop forever.", tools=(add_tool(),), rounds=10_000
+    )
+
+    assert model.last_tools == (), "the write-up round is offered nothing to call"
+
+
+def test_a_close_out_that_says_nothing_falls_back_to_the_refusal() -> None:
+    """An empty write-up is not a report, and dressing one up would put a heading
+    saying "here is what I found" over nothing at all."""
+    model = _spending_everything(ModelReply(text="   "))
 
     with pytest.raises(ToolRefusal) as gave_up:
         host_for(MODULE, model=model).delegate(
             "Loop forever.", tools=(add_tool(),), rounds=10_000
         )
 
-    assert model.completions == MAX_DELEGATED_ROUNDS + 1
     assert str(gave_up.value) == OVERSPENT, (
         "a refusal the model can act on, not a class name it cannot"
     )
@@ -774,3 +811,76 @@ def test_a_registration_under_a_blank_scope_is_refused() -> None:
 
     assert MODULE in refused.value.user_message
     assert host.registered == []
+
+
+def _acting(name: str = "book_it") -> Tool:
+    """A tool that changes something outside cora, said on the registration."""
+    return Tool(
+        name=name,
+        description="Book the thing.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: "booked",
+        effect=True,
+    )
+
+
+def _reading(name: str = "look_up") -> Tool:
+    return Tool(
+        name=name,
+        description="Look something up.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: "looked",
+    )
+
+
+def test_a_delegated_loop_is_offered_nothing_that_writes_stops_or_acts() -> None:
+    """The rule that keeps a nested turn from needing a nested approval, asserted over
+    the set the loop is actually handed rather than described in prose.
+
+    An effect and a stop-to-ask belong in the outer turn, where the gate is. So a tool
+    declaring an effect is withheld even though the plugin passed it in, cora's own
+    writing and stopping tools were never put in, and what is left is the reading tool
+    and cora's search.
+    """
+    model = ScriptedChatModel([ModelReply(text="looked it up")])
+    host = host_for(model=model)
+
+    host.delegate("look it up", tools=(_reading(), _acting()))
+
+    offered = {tool.name for tool in model.last_tools or ()}
+    assert offered == {SEARCH_TOOL_NAME, "look_up"}
+    assert REMEMBER_TOOL_NAME not in offered, "a sub-agent does not write"
+    assert ASK_TOOL_NAME not in offered, "a sub-agent does not stop the turn"
+
+
+def test_the_plugin_is_told_which_of_its_tools_was_withheld(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Withheld rather than refused, because a plugin may reasonably pass its scope's
+    whole tool list — but silence would leave an author watching their tool never run,
+    with nothing anywhere saying why."""
+    model = ScriptedChatModel([ModelReply(text="looked it up")])
+    host = host_for(model=model)
+
+    with caplog.at_level(logging.INFO):
+        host.delegate("look it up", tools=(_reading(), _acting()))
+
+    assert "book_it" in caplog.text
+
+
+def test_a_plugin_can_register_a_tool_that_changes_something_outside_cora() -> None:
+    """The declaration is the contract's, not a shape a plugin builds for itself: story
+    11's gate reads the same field, so nothing about it moves when the gate lands."""
+    host = host_for()
+
+    host.register_tool(
+        name="book_it",
+        description="Book the thing.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: "booked",
+        scope="travel",
+        effect=True,
+    )
+
+    [registered] = [entry.value for entry in host.registered if entry.kind == TOOL]
+    assert registered.effect

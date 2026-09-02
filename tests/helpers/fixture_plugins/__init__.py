@@ -19,7 +19,7 @@ def identity(x: int) -> int:
     return x
 
 
-def make_tool(name: str) -> Tool:
+def make_tool(name: str, *, effect: bool = False) -> Tool:
     return Tool(
         name=name,
         description=f"The {name} tool.",
@@ -29,6 +29,7 @@ def make_tool(name: str) -> Tool:
             "required": ["x"],
         },
         run=identity,
+        effect=effect,
     )
 
 

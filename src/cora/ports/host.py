@@ -91,6 +91,12 @@ def name_of(module: str) -> str:
     return module.rsplit(".", 1)[-1]
 
 
+HAS_AN_EFFECT = "has an effect"
+"""What a tool that changes something outside cora is listed as. One wording for both
+renderings — the terminal's and the page's — because it is the same claim, and the
+reader deciding whether to load a plugin is asking it of both."""
+
+
 @dataclass(frozen=True)
 class Contributed:
     """One registration as the listing shows it: what kind, what name, and where.
@@ -98,11 +104,17 @@ class Contributed:
     `name` is the tool's name or the event a handler subscribed to, and blank where the
     kind has no name of its own, as a section of the brief has not. One field over every
     kind, so a fifth kind is listed without this shape widening.
+
+    `note` is whatever else this registration says about itself, in words a reader can
+    take at face value — a tool that has an effect says so here. A note rather than a
+    field per property, for the same reason `name` is one field: a rendering shows it
+    without having heard of what it means.
     """
 
     kind: str
     name: str
     scope: str | None = None
+    note: str = ""
 
     @property
     def system_wide(self) -> bool:
@@ -155,6 +167,7 @@ class Host(Protocol):
         run: Callable[..., Any],
         scope: str | None = None,
         untrusted: bool = False,
+        effect: bool = False,
     ) -> None:
         """Offer the model one more thing it can do, as `Tool` describes one.
 
@@ -164,6 +177,9 @@ class Host(Protocol):
                 service it called, a page it read. What such a tool returns reaches
                 the model behind the label a passage of the user's own documents has,
                 and no handler can take it off.
+            effect: Whether calling it changes something outside cora. Such a tool is
+                never offered to a delegated loop, so an effect stays in the turn the
+                user is watching, and the listing says the plugin has one.
         """
         ...
 

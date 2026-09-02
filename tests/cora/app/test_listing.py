@@ -1,7 +1,14 @@
 import pytest
 
 from cora.app.listing import NOTHING, SYSTEM_WIDE, main, rendered
-from cora.ports.host import HANDLER, INSTRUCTIONS, TOOL, Contributed, Listed
+from cora.ports.host import (
+    HANDLER,
+    HAS_AN_EFFECT,
+    INSTRUCTIONS,
+    TOOL,
+    Contributed,
+    Listed,
+)
 
 FITNESS = Listed(
     name="fitness",
@@ -12,6 +19,25 @@ FITNESS = Listed(
         Contributed(HANDLER, "screen"),
     ),
 )
+TRAVEL = Listed(
+    name="travel",
+    source="cora.plugins.travel",
+    contributions=(
+        Contributed(TOOL, "look_up", "travel"),
+        Contributed(TOOL, "book_it", "travel", HAS_AN_EFFECT),
+    ),
+)
+
+
+def test_a_registration_with_something_more_to_say_says_it_on_its_own_line() -> None:
+    """What a plugin may do is what the listing is for, and a tool that changes
+    something outside cora is the loudest thing it can say. Read off the note rather
+    than off the kind, so the rendering shows one it has never heard of."""
+    printed = rendered((TRAVEL,))
+
+    [_, reading, acting] = printed.splitlines()
+    assert HAS_AN_EFFECT in acting
+    assert HAS_AN_EFFECT not in reading
 
 
 def test_the_rendering_names_every_plugin_and_marks_what_is_system_wide() -> None:

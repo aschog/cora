@@ -45,12 +45,37 @@ host's rather than the plugin's: one tool call that asked for ten thousand round
 spend a deployment's bill. It bounds a *call* — a round of the turn's own may make
 several, and a turn several rounds, so what a turn can spend on delegation is this times
 what `Router` allows it. Bounded, not small."""
+WITHHELD = (
+    "not offering %s to the delegated loop: a tool with an effect waits for the user, "
+    "and a sub-agent is not something the user is watching"
+)
+"""What a plugin is told when one of its tools is kept out of a loop it delegated. On
+the plugin's own logger, because it is that plugin's tool and that plugin's author who
+has to understand why the loop never called it."""
 OVERSPENT = (
     "the sub-agent ran out of rounds without reaching an answer; ask it something "
     "narrower, or answer without it"
 )
-"""What the model is told when a delegated loop gives up. A sentence rather than a
-failure of the turn's: the turn has rounds left, and this is one call it cannot use."""
+"""What the model is told when a delegated loop gives up with nothing to show. A
+sentence rather than a failure of the turn's: the turn has rounds left, and this is one
+call it cannot use. Reached only when the write-up below comes back empty — a loop that
+spent its rounds *learning* something reports it instead."""
+CLOSE_OUT = (
+    "You have run out of rounds, so this is your last message. Write up what you found "
+    "in a few sentences, and say plainly what you did not get to. Call no tools."
+)
+"""What the loop is asked once its rounds are gone. A round it cannot spend on tools:
+the call it answers is offered none, so this cannot become another lookup."""
+STOPPED_EARLY = (
+    "STOPPED EARLY: the sub-agent reached its limit of rounds, so what follows is what "
+    "it had found and not a complete answer. Say which part is unresearched."
+)
+"""What the report is headed with when the loop was stopped rather than finished.
+
+In the text the turn's model reads, because that is the only place it cannot be
+overlooked: a partial report relayed as a whole answer is the failure this exists to
+prevent, and the turn is the one signing for it.
+"""
 _allowance: ContextVar[list[int] | None] = ContextVar("_allowance", default=None)
 """What is left of the rounds this delegation may spend, shared by every loop under it.
 
@@ -137,6 +162,7 @@ class PluginHost:
         run: Callable[..., Any],
         scope: str | None = None,
         untrusted: bool = False,
+        effect: bool = False,
     ) -> None:
         """Offer the model one more thing it can do.
 
@@ -165,6 +191,7 @@ class PluginHost:
                 parameter_schema=parameter_schema,
                 run=run,
                 untrusted=untrusted,
+                effect=effect,
             ),
             scope,
         )
@@ -244,10 +271,13 @@ class PluginHost:
     ) -> str:
         """One delegated loop, spending the allowance the outermost one opened.
 
+        Spending it all without reaching an answer is not a failure of the turn's: the
+        turn did not overspend, one of its calls did. The loop is asked to write up what
+        it found, and the report says it stopped early.
+
         Raises:
-            ToolRefusal: The allowance ran out before the loop answered. A refusal
-                rather than a loop limit of the turn's own: the turn did not overspend,
-                one of its calls did, and the model is owed a sentence saying so.
+            ToolRefusal: The allowance ran out and the write-up came back empty, so
+                there is nothing to report. The model is owed a sentence saying so.
         """
         while left[0] > 0:
             left[0] -= 1
@@ -271,7 +301,27 @@ class PluginHost:
                     read_untrusted()
                 took(used(call, result, read, tuple(inside.steps)))
                 said.append(told(result, read))
-        raise ToolRefusal(OVERSPENT)
+        return self._closed_out(said)
+
+    def _closed_out(self, said: list[Message]) -> str:
+        """One last call, with nothing to call, asking the loop to write up what it has.
+
+        The rounds bought lookups, and what they found is in `said` — throwing that away
+        because the last round did not happen to end in an answer wastes every round
+        before it. So the loop is asked for a write-up instead, offered no tools so the
+        asking cannot become another lookup.
+
+        Raises:
+            ToolRefusal: The write-up came back empty. Nothing is dressed up as a
+                report, so this is the one case the loop still gives up on.
+        """
+        said.append(Message(role="user", content=CLOSE_OUT))
+        reply = self.model.complete(tuple(said), ())
+        took(decided(reply))
+        written = _uncited(reply.text).strip()
+        if not written:
+            raise ToolRefusal(OVERSPENT)
+        return f"{STOPPED_EARLY}\n\n{written}"
 
     def _offered(self, tools: tuple[Tool, ...]) -> tuple[Tool, ...]:
         """What a delegated loop may call.
@@ -280,6 +330,13 @@ class PluginHost:
         or stopping tools is in that set — not because they are filtered out, but
         because they are never put in. The search is described as a reader that hands
         out no numbers is offered it, which is what this loop is.
+
+        A tool declaring an effect is withheld, however it got here: an effect waits
+        for the user's word, and a delegated loop is not something the user is
+        watching. That is what keeps a nested turn from needing a nested approval.
+        Withheld rather than refused, because a plugin may reasonably pass its scope's
+        whole tool list — and said out loud on the plugin's own logger, because an
+        author who is not told watches their tool never run.
 
         Raises:
             ToolRefusal: A tool passed in takes the name cora's search already has.
@@ -292,7 +349,11 @@ class PluginHost:
                 f"a tool passed to delegate is named '{SEARCH_TOOL_NAME}', which is "
                 "cora's own search; rename it"
             )
-        return (search_tool(self.documents, self.top_k, cites=False), *tools)
+        withheld = [tool.name for tool in tools if tool.effect]
+        if withheld:
+            self.log.info(WITHHELD, ", ".join(withheld))
+        reading = tuple(tool for tool in tools if not tool.effect)
+        return (search_tool(self.documents, self.top_k, cites=False), *reading)
 
     def _registered_tools(self) -> tuple[Tool, ...]:
         return tuple(entry.value for entry in self.registered if entry.kind == TOOL)

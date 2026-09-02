@@ -6,6 +6,7 @@ from cora.engine.validation import CORA
 from cora.ports.host import (
     BRIEFING,
     HANDLER,
+    HAS_AN_EFFECT,
     INSTRUCTIONS,
     SCREENING,
     TOOL,
@@ -209,6 +210,25 @@ def test_the_listing_names_what_each_plugin_registered_and_where() -> None:
     assert coaching.of(INSTRUCTIONS)
     assert coaching.scopes == ("fitness",)
     assert [each.system_wide for each in coaching.contributions] == [False, False, True]
+
+
+def test_a_tool_that_changes_something_outside_cora_is_listed_as_doing_so() -> None:
+    """What a plugin may do is what the listing is for, and an effect is the loudest
+    thing it can say. Carried as a note rather than a field of its own, so the two
+    renderings and a fifth kind of contribution each read one shape."""
+    registry = Registry(
+        (
+            _registered(FITNESS, TOOL, make_tool("bmr"), "fitness"),
+            _registered(FITNESS, TOOL, make_tool("book_it", effect=True), "fitness"),
+        )
+    )
+
+    (listed,) = registry.listing((_extension(FITNESS),))
+
+    assert [(each.name, each.note) for each in listed.of(TOOL)] == [
+        ("bmr", ""),
+        ("book_it", HAS_AN_EFFECT),
+    ]
 
 
 def test_a_plugin_that_registered_nothing_is_listed_with_nothing_under_it() -> None:
