@@ -152,7 +152,8 @@ network. Sorted by what you came for:
 - **Tutorial** — [your first session](docs/tutorial/first-session.md)
 - **Understand** — [what it is made of](docs/big-picture.md), the engine and its ten
   ports · [what happens when you ask](docs/happy-path.md), drawn out of the code that
-  runs it
+  runs it · [privacy, and what a plugin costs in trust](docs/privacy-and-ethics.md),
+  what leaves your machine and what loading someone else's code buys them
 - **How-to** — [write a plugin](docs/how-to/write-a-plugin.md) ·
   [run the React shell](docs/how-to/run-the-react-shell.md) ·
   [watch a turn happen](docs/how-to/watch-a-turn.md)

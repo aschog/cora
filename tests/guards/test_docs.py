@@ -15,7 +15,15 @@ import pathlib
 import re
 
 import workspace
-from cora.app.config import DEFAULT_OUTPUT_PATH
+from cora.app.config import (
+    DEFAULT_CONVERSATIONS_PATH,
+    DEFAULT_DB_PATH,
+    DEFAULT_DOCUMENTS_PATH,
+    DEFAULT_LOG_PATH,
+    DEFAULT_MEMORY_PATH,
+    DEFAULT_OUTPUT_PATH,
+    DEFAULT_PLUGINS_PATH,
+)
 
 PAGES = (
     "README.md",
@@ -23,6 +31,7 @@ PAGES = (
     "docs/index.md",
     "docs/big-picture.md",
     "docs/happy-path.md",
+    "docs/privacy-and-ethics.md",
     "docs/workflow.md",
     "docs/how-to/write-a-plugin.md",
     "docs/how-to/watch-a-turn.md",
@@ -30,6 +39,7 @@ PAGES = (
     "docs/tutorial/first-session.md",
 )
 
+PRIVACY = "docs/privacy-and-ethics.md"
 CONFIGS = ("Makefile",)
 SUFFIXES = (".py", ".md", ".toml", "/")
 
@@ -112,6 +122,28 @@ def test_a_path_is_claimed_from_its_dot_as_readily_as_from_a_letter() -> None:
     assert _references("see ./docs/big-picture.md", CONFIG_PATTERNS) == {
         "./docs/big-picture.md"
     }
+
+
+def test_the_privacy_page_names_every_store_cora_keeps() -> None:
+    """The privacy page's list of what is kept, held against the settings themselves.
+
+    The locations guard below cannot hold it: every store is made at runtime, so a page
+    naming one as a directory would claim a path a clean checkout does not have. Read
+    off the defaults instead, so a store that moves — or a seventh one added — is red
+    until the page says so.
+    """
+    page = pathlib.Path(PRIVACY).read_text()
+
+    for kept in (
+        DEFAULT_DB_PATH,
+        DEFAULT_MEMORY_PATH,
+        DEFAULT_DOCUMENTS_PATH,
+        DEFAULT_CONVERSATIONS_PATH,
+        DEFAULT_OUTPUT_PATH,
+        DEFAULT_LOG_PATH,
+        DEFAULT_PLUGINS_PATH,
+    ):
+        assert kept in page, f"the privacy page does not say cora keeps {kept}"
 
 
 def test_the_readme_says_where_an_effect_writes_and_how_to_move_it() -> None:

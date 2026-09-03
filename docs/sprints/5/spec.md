@@ -223,36 +223,6 @@ it would take the measurement with it. If the sprint runs long, the sprint runs 
 what gives is argued then against *Not in this sprint* rather than decided here while it
 is cheap to be brave.
 
-### 12. What cora does with my data, and what a plugin costs in trust
-
-As a person uploading my own documents and loading someone else's plugin,\
-I want one page saying what leaves my machine, what is stored, what the model is told and
-what a plugin may do,\
-so that I can judge both costs before I take either.
-
-**Scenario:** the privacy and ethics page
-
-- **Given** the docs site
-- **When** a reader looks for the privacy and ethics page
-- **Then** it names every place data goes — the model provider, the external services story
-  9 adds, the local index, the local text, remembered facts
-- **And** it says what the injection screen does and does not catch, what an effect can and
-  cannot do without approval, and where the answers can be wrong
-- **And** the claims match what the code does
-
-**Scenario:** what loading a plugin costs in trust
-
-- **Given** a reader deciding whether to load a plugin someone else wrote
-- **When** they look for what it may do
-- **Then** the page says a loaded plugin is arbitrary code running with their own
-  permissions — instructions the model follows, tools it may call, handlers that can refuse
-  or amend, and effects outside cora — and that this is true of every harness of this kind
-- **And** it names what cora enforces whatever a plugin does: the approval gate before an
-  effect, retrieved and fetched text handled as untrusted data, output confined to the
-  configured directory, and the tool names a plugin may not take
-- **And** it says what cora does *not* enforce: no sandbox, no network restriction, no
-  review of what a plugin's instructions tell the model
-
 ## Chores
 
 Not stories — no failing test names them — but tracked, and each is a merge of its own.
