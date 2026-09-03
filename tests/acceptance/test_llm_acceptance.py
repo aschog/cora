@@ -281,6 +281,7 @@ def test_a_real_model_asks_which_value_to_use_instead_of_picking_one(
         app.agent.answer(NEEDS_A_WEIGHT, DECIDING)
 
     decision = stopped.value.pending.decision
+    assert decision is not None
     offered = " ".join(option.label for option in decision.options)
     assert {"77", "75", "85"} <= set(re.findall(r"\d+", offered)), (
         f"the model asked about something other than the three it holds: {decision}"

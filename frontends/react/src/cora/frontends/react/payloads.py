@@ -7,6 +7,7 @@ panel that draws it wants three keys whatever kind arrived.
 
 from typing import Any
 
+from cora.domain.approval import Proposed
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
@@ -79,10 +80,29 @@ def decision(decision: Decision) -> dict[str, Any]:
     }
 
 
+def proposal(proposed: Proposed) -> dict[str, Any]:
+    """One call waiting for the user's word: what it would do, and what it was asked
+    with. The arguments go over as the model wrote them, so the card shows the call
+    that is really proposed rather than a summary of it."""
+    return {
+        "call_id": proposed.call_id,
+        "tool": proposed.tool,
+        "does": proposed.does,
+        "arguments": proposed.arguments,
+    }
+
+
 def pending(pending: Pending) -> dict[str, Any]:
-    """A turn parked on a question, with the question that opened it: a paused turn is
-    in no store, so the page has nothing else to draw the card under."""
-    return {"asked": pending.asked, "decision": decision(pending.decision)}
+    """A turn parked on something to settle, with the question that opened it: a paused
+    turn is in no store, so the page has nothing else to draw the card under.
+
+    Both keys are always sent and exactly one of them is filled, so the page reads which
+    kind of card to draw off the payload rather than off the shape of it."""
+    return {
+        "asked": pending.asked,
+        "decision": None if pending.decision is None else decision(pending.decision),
+        "proposal": None if pending.proposal is None else proposal(pending.proposal),
+    }
 
 
 def fact(fact: Fact) -> dict[str, Any]:

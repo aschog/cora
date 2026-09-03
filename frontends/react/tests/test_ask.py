@@ -644,6 +644,7 @@ def test_the_paused_frame_carries_the_question_and_every_way_out() -> None:
             ],
             "decline": "Neither of them",
         },
+        "proposal": None,
     }
 
 

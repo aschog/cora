@@ -693,6 +693,7 @@ def test_a_run_that_stops_to_ask_parks_what_it_stopped_on() -> None:
     waiting = runner.pending(THREAD)
     assert waiting is not None
     assert waiting.asked == WANTED
+    assert waiting.decision is not None
     assert waiting.decision.question == ASKED_AT_THE_NODE
     assert [option.label for option in waiting.decision.options] == ["77 kg", "75 kg"]
     assert waiting.decision.decline == "Neither"
