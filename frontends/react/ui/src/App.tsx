@@ -5,6 +5,7 @@ import type {
   Decision,
   Fact,
   Plugin,
+  Proposal,
   Result,
   Session,
   Step,
@@ -41,6 +42,11 @@ export type Entry = {
   /** What the reader picked — `null` is choosing none of them. Absent is a card still
    *  waiting on them. */
   chosen?: string | null
+  /** The call cora stopped to propose: a card while it is open, and afterwards the line
+   *  that says which way it went. */
+  proposal?: Proposal
+  /** Whether the reader approved that call. Absent is a card still waiting on them. */
+  approved?: boolean
   /** The card put back up: picking now asks a new question, because the turn it belonged
    *  to has already gone on. */
   changing?: boolean
@@ -79,6 +85,26 @@ const stowed = () => {
 
 /** What a different pick asks for, once the turn that raised the question has moved on. */
 const correction = (label: string) => `Use ${label} instead.`
+
+/** Which card a parked turn is drawn as, whichever way it stopped — and nothing at all
+ *  if it carries neither, however it arrived. Read in one place, so a third kind of
+ *  pause is a branch here rather than at each of the sites that put a card on the page. */
+export const unanswered = (entry: Entry) =>
+  (!!entry.decision && entry.chosen === undefined) ||
+  (!!entry.proposal && entry.approved === undefined)
+/** A turn stopped on a card nobody has answered yet, whichever kind it is. Exported
+ *  because the page has two things to do about one: draw the card as open, and refuse
+ *  the composer — two open questions on one thread would be two answers to one turn. */
+
+const stopper = (waiting: {
+  decision?: Decision | null
+  proposal?: Proposal | null
+}) =>
+  waiting.decision
+    ? { decision: waiting.decision }
+    : waiting.proposal
+      ? { proposal: waiting.proposal }
+      : null
 
 const UNDRAWABLE = 'That conversation could not be read.'
 
@@ -381,19 +407,16 @@ export default function App() {
       )
       if (cora.paused(reply)) {
         // The turn is on the page now rather than in flight: it is waiting on the
-        // reader, and what they pick lands on it where it stands.
-        stow(on)
-        if (here.current === on) {
-          setEntries((said) => [
-            ...said,
-            {
-              id,
-              question,
-              citations: [],
-              trace: taken,
-              decision: reply.decision,
-            },
-          ])
+        // reader, and what they answer lands on it where it stands.
+        const card = stopper(reply)
+        if (card) {
+          stow(on)
+          if (here.current === on) {
+            setEntries((said) => [
+              ...said,
+              { id, question, citations: [], trace: taken, ...card },
+            ])
+          }
         }
         return
       }
@@ -491,9 +514,28 @@ export default function App() {
   const recall = (thread_id: string) =>
     loaded(thread_id, (kept) => setEntries(recorded(kept)))
 
-  /** A decision answered. The turn is already on the page, so the rest of it lands on
-   *  the entry that asked rather than after it. */
-  const decide = async (entry: Entry, chosen: string | null) => {
+  /** A card answered, either kind. The turn is already on the page, so the rest of it
+   *  lands on the entry that raised the card rather than after it.
+   *
+   *  One function over both, because everything but the request and the two fields the
+   *  card holds is the same work: the steps go to the plan, the prose lands on the
+   *  entry, a second pause puts a second card up, and a failure leaves the card as it
+   *  was so the reader can answer again.
+   *
+   *  @param settling What the answer is, as the fields the card reads itself from —
+   *    written before the request goes out, so the card reads as answered while cora
+   *    works, and put back to waiting if the request fails.
+   *  @param carry The request itself, handed the three readers a streamed turn wants.
+   */
+  const settle = async (
+    entry: Entry,
+    settling: Partial<Entry>,
+    carry: (
+      onStep: (step: Step) => void,
+      onText: (piece: string) => void,
+      onAside: () => void,
+    ) => Promise<cora.Reply>,
+  ) => {
     const on = thread
     const taken: Step[] = []
     let written = ''
@@ -506,20 +548,23 @@ export default function App() {
         said.map((each) => (each.id === entry.id ? change(each) : each)),
       )
     }
+    /* What "nobody has answered this card" is, for whichever card it is: the same two
+       fields the answer above wrote, put back the way an unanswered card holds them. */
+    const reopened = Object.fromEntries(
+      Object.keys(settling).map((field) => [field, undefined]),
+    )
     setWorking(on)
     setLive({ thread: on, steps: taken })
     setTab('STEPS')
     at((found) => ({
       ...found,
-      chosen,
+      ...settling,
       changing: false,
       pending: true,
       error: undefined,
     }))
     try {
-      const reply = await cora.resume(
-        on,
-        chosen,
+      const reply = await carry(
         (step) => {
           taken.push(step)
           setLive({ thread: on, steps: [...taken] })
@@ -534,12 +579,15 @@ export default function App() {
         },
       )
       if (cora.paused(reply)) {
-        at((found) => ({
-          ...found,
-          decision: reply.decision,
-          chosen: undefined,
-          pending: false,
-        }))
+        const card = stopper(reply)
+        if (card) {
+          at((found) => ({
+            ...found,
+            ...reopened,
+            ...card,
+            pending: false,
+          }))
+        }
         return
       }
       forget()
@@ -550,10 +598,10 @@ export default function App() {
       }
     } catch (failed) {
       /* Nothing was settled, so the card says nothing was: it goes back to waiting and
-         the stow stays, which is what lets the reader pick again. */
+         the stow stays, which is what lets the reader answer again. */
       at((found) => ({
         ...found,
-        chosen: undefined,
+        ...reopened,
         error: message(failed),
         pending: false,
       }))
@@ -562,6 +610,22 @@ export default function App() {
       setLive(null)
       refresh()
     }
+  }
+
+  const decide = (entry: Entry, chosen: string | null) =>
+    settle(entry, { chosen }, (onStep, onText, onAside) =>
+      cora.resume(thread, chosen, onStep, onText, onAside),
+    )
+
+  /** An effect approved or declined. There is no putting this card back up: a decision
+   *  answered one way can be asked again the other, and an effect that has happened
+   *  cannot be taken back. */
+  const approve = (entry: Entry, yes: boolean) => {
+    if (!entry.proposal) return
+    const call = entry.proposal.call_id
+    void settle(entry, { approved: yes }, (onStep, onText, onAside) =>
+      cora.approve(thread, call, yes, onStep, onText, onAside),
+    )
   }
 
   /** A pick. On a card still waiting it finishes the turn; on one the reader put back up
@@ -583,20 +647,21 @@ export default function App() {
       said.map((each) => (each.id === entry.id ? { ...each, changing: true } : each)),
     )
 
-  /** The question a conversation is still parked on, drawn after its turns: it is in no
-   *  store, so nothing else on the page would bring it back. */
+  /** What a conversation is still parked on, drawn after its turns: it is in no store,
+   *  so nothing else on the page would bring it back. */
   const parked = async (thread_id: string) => {
     const waiting = await cora.pending(thread_id).catch(() => null)
     if (here.current !== thread_id) return
-    /* A payload with no decision in it is not a pause, however it arrived: the card is
-       drawn from the decision or not at all. */
-    if (!waiting?.decision) {
+    /* A payload with nothing to settle in it is not a pause, however it arrived: the
+       card is drawn from what stopped the turn or not at all. */
+    const card = waiting && stopper(waiting)
+    if (!card) {
       forgetIf(thread_id)
       return
     }
     stow(thread_id)
     setEntries((said) =>
-      said.some((each) => each.decision && each.chosen === undefined)
+      said.some(unanswered)
         ? said
         : [
             ...said,
@@ -605,7 +670,7 @@ export default function App() {
               question: waiting.asked,
               citations: [],
               trace: [],
-              decision: waiting.decision,
+              ...card,
             },
           ],
     )
@@ -696,6 +761,7 @@ export default function App() {
           onAsk={ask}
           onCite={setOpened}
           onDecide={decided}
+          onApprove={approve}
           onChange={change}
         />
 

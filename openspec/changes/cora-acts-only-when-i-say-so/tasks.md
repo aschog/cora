@@ -84,10 +84,10 @@ which is why the output location has one.
 - [x] 8.2 The endpoint that answers a proposal, approving and declining, and refusing one
       for a thread waiting on nothing
 - [x] 8.3 A streamed turn reporting a proposal as the paused event the page reads
-- [ ] 8.4 The card drawing what the call would do and its arguments, with an approve and
+- [x] 8.4 The card drawing what the call would do and its arguments, with an approve and
       a decline
-- [ ] 8.5 The card reading as settled once answered, saying which way it went
-- [ ] 8.6 A page reopened while a turn is stopped finding the proposal and drawing it
+- [x] 8.5 The card reading as settled once answered, saying which way it went
+- [x] 8.6 A page reopened while a turn is stopped finding the proposal and drawing it
 
 ## 9. The outer test passes
 

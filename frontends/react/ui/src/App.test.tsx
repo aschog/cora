@@ -2332,7 +2332,7 @@ const DECISION = {
   ],
   decline: 'Do not use any of them',
 }
-const PAUSED = { asked: 'What is my BMR?', decision: DECISION }
+const PAUSED = { asked: 'What is my BMR?', decision: DECISION, proposal: null }
 const WEIGHED = {
   answer: 'At 75 kg your BMR is about 1,730 kcal.',
   citations: [],
@@ -2547,13 +2547,13 @@ test('the composer says why it is unavailable while a card waits', async () => {
   stopping()
   const asked = await stopped()
 
-  expect(screen.getByText(/waiting on the decision/)).toBeTruthy()
+  expect(screen.getByText(/waiting on your answer/)).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Ask' })).toHaveProperty('disabled', true)
 
   fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
   await screen.findByText(/1,730 kcal/)
 
-  expect(screen.queryByText(/waiting on the decision/)).toBeNull()
+  expect(screen.queryByText(/waiting on your answer/)).toBeNull()
 })
 
 test('a card arriving brings the conversation down to it', async () => {
@@ -3341,4 +3341,132 @@ test('a listing that failed for a field left behind raises no banner about it', 
   expect(
     screen.queryByText('The knowledge base is temporarily unavailable.'),
   ).toBeNull()
+})
+
+
+// ── an effect waiting on the reader's word ──
+
+const PROPOSAL = {
+  call_id: 'c1',
+  tool: 'save_itinerary',
+  does: 'Save an itinerary as a Markdown file the user keeps.',
+  arguments: { title: 'Kyoto, three days' },
+}
+const PROPOSED = {
+  asked: 'Save the Kyoto days.',
+  decision: null,
+  proposal: PROPOSAL,
+}
+const SAVED = {
+  answer: 'Saved it to cora-output/kyoto-three-days.md.',
+  citations: [],
+  trace: [],
+}
+
+/** A page whose turn proposes an effect, and whose approval finishes it. */
+const proposing = (pending: unknown = null): Sent[] => {
+  const sent: Sent[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.body && typeof init.body === 'string')
+        sent.push({ path, body: JSON.parse(init.body) })
+      if (path === '/api/ask') return stream(frame('paused', PROPOSED))
+      if (path === '/api/approve') return stream(frame('turn', SAVED))
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => pending } as unknown as Response
+      return {
+        ok: true,
+        json: async () => served[route(path)] ?? [],
+      } as unknown as Response
+    }),
+  )
+  return sent
+}
+
+const proposed = async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+  askAbout('Save the Kyoto days.')
+  return card()
+}
+
+test('a turn that proposes an effect draws what it would do and the call itself', async () => {
+  proposing()
+
+  const asked = await proposed()
+
+  expect(within(asked).getByText(PROPOSAL.does)).toBeTruthy()
+  expect(within(asked).getByText('save_itinerary')).toBeTruthy()
+  expect(within(asked).getByText('Kyoto, three days')).toBeTruthy()
+  expect(within(asked).getByRole('button', { name: 'Approve' })).toBeTruthy()
+  expect(within(asked).getByRole('button', { name: 'Decline' })).toBeTruthy()
+})
+
+test('nothing can be typed while an effect is waiting on the reader', async () => {
+  proposing()
+
+  await proposed()
+
+  expect(screen.getByRole('button', { name: 'Ask' })).toHaveProperty('disabled', true)
+  expect(screen.getByText(/waiting on your answer/)).toBeTruthy()
+})
+
+test('approving names the call it answers, and the turn finishes', async () => {
+  const sent = proposing()
+  const asked = await proposed()
+
+  fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
+
+  expect(await screen.findByText(/kyoto-three-days\.md/)).toBeTruthy()
+  expect(of(sent, '/api/approve')[0].body).toEqual({
+    thread_id: expect.any(String),
+    call_id: 'c1',
+    approved: true,
+  })
+})
+
+test('an approved card reads as settled, and still shows what was approved', async () => {
+  proposing()
+  const asked = await proposed()
+
+  fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
+
+  expect(await screen.findByText(/You approved it/)).toBeTruthy()
+  expect(screen.getByRole('group', { name: /Settled/ })).toBeTruthy()
+  expect(screen.queryByRole('group', { name: /Paused/ })).toBeNull()
+  expect(screen.getByText('Kyoto, three days')).toBeTruthy()
+})
+
+test('declining says nothing outside cora changed, and the turn still answers', async () => {
+  const sent = proposing()
+  const asked = await proposed()
+
+  fireEvent.click(within(asked).getByRole('button', { name: 'Decline' }))
+
+  expect(await screen.findByText(/You declined it/)).toBeTruthy()
+  expect(of(sent, '/api/approve')[0].body.approved).toBe(false)
+})
+
+test('an approved effect offers no way of putting the card back up', async () => {
+  /* A decision answered one way can be asked again the other; an effect that has
+     happened cannot be taken back, and a control saying otherwise would be a lie. */
+  proposing()
+  const asked = await proposed()
+
+  fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
+  await screen.findByText(/You approved it/)
+
+  expect(screen.queryByRole('button', { name: 'Change' })).toBeNull()
+})
+
+test('a proposal left open comes back when the page does', async () => {
+  proposing(PROPOSED)
+  await proposed()
+
+  cleanup()
+  render(<App />)
+
+  expect(await screen.findByText(PROPOSAL.does)).toBeTruthy()
+  expect(await screen.findByRole('button', { name: 'Approve' })).toBeTruthy()
 })

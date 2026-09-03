@@ -36,14 +36,33 @@ export type Option = { label: string; note: string }
 /** What cora stopped to have settled, in its own words. */
 export type Decision = { question: string; options: Option[]; decline: string }
 
-/** A turn parked on a decision, with the question that opened it — a paused turn is in
- *  no store, so this is the only thing the card can be drawn under. */
-export type Pending = { asked: string; decision: Decision }
+/** One call cora is about to make that would change something outside it: what the tool
+ *  says it does, and the arguments the model wrote, so what is approved is this call and
+ *  not the idea of it. `call_id` is what an answer is bound to — a round may propose two
+ *  effects, and neither may be settled by the other's yes. */
+export type Proposal = {
+  call_id: string
+  tool: string
+  does: string
+  arguments: Record<string, unknown>
+}
 
-/** How a turn ends: with an answer, or with a question for the reader. */
+/** A turn parked on something the reader has to settle, with the question that opened
+ *  it — a paused turn is in no store, so this is the only thing a card can be drawn
+ *  under. Exactly one of the two is filled: a thread stops one way at a time, and which
+ *  way it stopped is which card the page draws. */
+export type Pending = {
+  asked: string
+  decision: Decision | null
+  proposal: Proposal | null
+}
+
+/** How a turn ends: with an answer, or with something for the reader to settle. */
 export type Reply = Result | Pending
 
-export const paused = (reply: Reply): reply is Pending => 'decision' in reply
+/* Read off `asked`, which only a parked turn carries: the other two keys are each filled
+   in one kind of pause and null in the other, so neither of them tells the two apart. */
+export const paused = (reply: Reply): reply is Pending => 'asked' in reply
 
 export type Fact = { key: string; text: string }
 
@@ -178,6 +197,27 @@ export async function resume(
 ): Promise<Reply> {
   return streamed(
     await post('/api/resume', { thread_id: thread, answer }),
+    onStep,
+    onText,
+    onAside,
+  )
+}
+
+/**
+ * The rest of a turn that stopped to propose an effect, on the reader's yes or no. The
+ * call is named, because the answer is bound to it and not to whichever effect happened
+ * to be outstanding.
+ */
+export async function approve(
+  thread: string,
+  call: string,
+  approved: boolean,
+  onStep: (step: Step) => void,
+  onText: (piece: string) => void = () => {},
+  onAside: () => void = () => {},
+): Promise<Reply> {
+  return streamed(
+    await post('/api/approve', { thread_id: thread, call_id: call, approved }),
     onStep,
     onText,
     onAside,

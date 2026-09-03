@@ -2,12 +2,14 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'rea
 import type { MouseEvent } from 'react'
 import { answerHtml } from '../answer'
 import { patch } from '../patch'
+import ApprovalCard from './ApprovalCard'
 import DecisionCard from './DecisionCard'
 import type { Citation } from '../api'
+import { unanswered } from '../App'
 import type { Entry } from '../App'
 
 const WORKING = 'Working…'
-const DECIDING = 'cora is waiting on the decision above.'
+const DECIDING = 'cora is waiting on your answer above.'
 /** How close to the end still counts as reading the newest turn. A line of slack, so the
  *  fraction of a pixel a browser leaves behind at the bottom does not read as scrolling
  *  away. */
@@ -27,11 +29,9 @@ type Props = {
   onAsk: (question: string) => void
   onCite: (citation: Citation) => void
   onDecide: (entry: Entry, chosen: string | null) => void
+  onApprove: (entry: Entry, approved: boolean) => void
   onChange: (entry: Entry) => void
 }
-
-/** A turn stopped on a question nobody has answered yet. */
-const waiting = (entry: Entry) => !!entry.decision && entry.chosen === undefined
 
 export default function Answer({
   thread,
@@ -41,6 +41,7 @@ export default function Answer({
   onAsk,
   onCite,
   onDecide,
+  onApprove,
   onChange,
 }: Props) {
   const [question, setQuestion] = useState('')
@@ -66,7 +67,7 @@ export default function Answer({
   /* cora is parked on a question in this conversation, so there is one thing to do and
      it is not typing: two open questions on one thread would be two answers to one
      turn. */
-  const parked = entries.some(waiting)
+  const parked = entries.some(unanswered)
 
   const send = () => {
     const asked = question.trim()
@@ -113,6 +114,13 @@ export default function Answer({
                   onChange={() => onChange(entry)}
                 />
               )}
+              {entry.proposal && (
+                <ApprovalCard
+                  proposal={entry.proposal}
+                  approved={entry.approved}
+                  onSettle={(approved) => onApprove(entry, approved)}
+                />
+              )}
               {/* What went wrong comes first, because it is the news whatever else the
                   turn has: a resume that failed leaves a card still waiting, and the
                   reader has to be told why before they answer it again. A turn in flight
@@ -121,7 +129,7 @@ export default function Answer({
                   reader says neither, because the card is what it has to say. */}
               {entry.error ? (
                 <p className="trouble">{entry.error}</p>
-              ) : waiting(entry) ? null : entry.pending && !entry.answer ? (
+              ) : unanswered(entry) ? null : entry.pending && !entry.answer ? (
                 <p className="working">{WORKING}</p>
               ) : (
                 <Written entry={entry} onCite={onCite} />
@@ -194,7 +202,13 @@ const Written = memo(function Written({
  *  alone leaves a failure below the fold, reading as nothing having happened. */
 const outcome = (entry?: Entry) =>
   entry &&
-  (entry.answer ?? entry.error ?? (entry.decision ? String(entry.chosen) : '…'))
+  (entry.answer ??
+    entry.error ??
+    (entry.decision
+      ? String(entry.chosen)
+      : entry.proposal
+        ? String(entry.approved)
+        : '…'))
 
 /** The answer is rendered markdown, so its citations are buttons in that HTML rather
  *  than elements React placed — which makes the click one listener on the block. */
