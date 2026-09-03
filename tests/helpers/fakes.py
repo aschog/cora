@@ -24,6 +24,7 @@ from cora.ports.chat_model import (
 from cora.ports.context_source import ContextSource
 from cora.ports.loading import Loaders
 from cora.ports.memory import Fact, Memory
+from cora.ports.output import Output
 from cora.ports.plugin import Tool
 from cora.ports.retrieval import RetrievedChunk
 
@@ -382,12 +383,30 @@ class UnopenableSessions:
         return self.listing.sessions()
 
 
+@dataclass
+class FakeOutput:
+    """Where an effect wrote, without a filesystem behind it.
+
+    The name it was asked for and the text it was given, and a path answered back —
+    which is what a tool has to be able to tell the user. Confinement is the real
+    adapter's subject, so nothing here refuses anything.
+    """
+
+    root: str = "/kept"
+    written: dict[str, str] = field(default_factory=dict)
+
+    def write(self, name: str, text: str) -> str:
+        self.written[name] = text
+        return f"{self.root}/{name}"
+
+
 def host_for(
     module: str = "fixture_plugins.valid",
     *,
     documents: ContextSource | None = None,
     model: ChatModel | None = None,
     memory: Memory | None = None,
+    output: Output | None = None,
     settings: dict[str, str] | None = None,
 ) -> PluginHost:
     """A host a test can hand a plugin, with fakes behind cora's own parts.
@@ -400,5 +419,6 @@ def host_for(
         index=documents or FakeContextSource(),
         model=model or ScriptedChatModel([ModelReply(text="ok")]),
         memory=memory,
+        output=output,
         settings=settings or {},
     )

@@ -31,6 +31,7 @@ def test_from_env_reads_every_field() -> None:
             "CORA_MEMORY_PATH": "/tmp/memory.sqlite",
             "CORA_DOCUMENTS_PATH": "/tmp/documents",
             "CORA_CONVERSATIONS_PATH": "/tmp/conversations.sqlite",
+            "CORA_OUTPUT_PATH": "/tmp/kept",
             "CORA_SCOPES": " fitness , cooking ,",
             "CORA_PLUGINS_PATH": "/tmp/dropped",
         }
@@ -53,6 +54,7 @@ def test_from_env_reads_every_field() -> None:
         memory_path="/tmp/memory.sqlite",
         documents_path="/tmp/documents",
         conversations_path="/tmp/conversations.sqlite",
+        output_path="/tmp/kept",
         plugins_path="/tmp/dropped",
     )
 
@@ -148,6 +150,15 @@ def test_the_memory_default_sits_beside_the_document_store() -> None:
     assert Path(config.conversations_path).parent == Path(config.db_path).parent
 
 
+def test_the_output_location_is_not_under_the_stores_cora_keeps_for_itself() -> None:
+    """What an effect produces is the user's to keep, so it does not land among the
+    indexes and databases cora would delete to start clean."""
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert config.output_path
+    assert Path(config.output_path).parent != Path(config.db_path).parent
+
+
 def test_a_memory_path_blanked_rather_than_deleted_is_no_path_at_all() -> None:
     """`sqlite3.connect("")` opens a private database that is deleted with the
     connection, so a blank taken as a value loses every remembered fact in silence."""
@@ -162,6 +173,7 @@ def test_a_memory_path_blanked_rather_than_deleted_is_no_path_at_all() -> None:
         ("CORA_DB_PATH", "db_path"),
         ("CORA_DOCUMENTS_PATH", "documents_path"),
         ("CORA_CONVERSATIONS_PATH", "conversations_path"),
+        ("CORA_OUTPUT_PATH", "output_path"),
         ("OPENROUTER_BASE_URL", "base_url"),
     ],
 )

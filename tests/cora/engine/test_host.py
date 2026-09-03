@@ -23,7 +23,14 @@ from cora.ports.chat_model import Message, ModelReply, TextSink, unheard
 from cora.ports.host import HANDLER, INSTRUCTIONS, SCREENING, TOOL
 from cora.ports.plugin import Tool, ToolCall, ToolRefusal
 from cora.ports.retrieval import RetrievedChunk
-from fakes import FakeContextSource, FakeMemory, ScriptedChatModel, add_tool, host_for
+from fakes import (
+    FakeContextSource,
+    FakeMemory,
+    FakeOutput,
+    ScriptedChatModel,
+    add_tool,
+    host_for,
+)
 from fixture_plugins import refuses_containing
 
 MODULE = "fixture_plugins.valid"
@@ -985,3 +992,12 @@ def test_a_loop_that_gathered_nothing_refuses_rather_than_reporting_nothing() ->
     )
 
     assert outcomes == ["reported: found something", f"refused: {OVERSPENT}"]
+
+
+def test_a_plugin_is_handed_the_output_location_rather_than_a_path_of_its_own() -> None:
+    """The port cora holds, not a copy of it and not a directory name: confinement lives
+    in the adapter, so a plugin cannot be the thing that decides where a file may go."""
+    output = FakeOutput()
+
+    assert host_for(output=output).output is output
+    assert host_for().output is None, "a deployment that configured none has none"

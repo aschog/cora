@@ -8,6 +8,7 @@ from typing import Any, Protocol
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
 from cora.ports.memory import Memory
+from cora.ports.output import Output
 from cora.ports.plugin import Tool
 
 CONTRACT = 1
@@ -224,6 +225,17 @@ class Host(Protocol):
     @property
     def model(self) -> ChatModel:
         """The model behind every turn, for a plugin that wants to ask it something."""
+        ...
+
+    @property
+    def output(self) -> Output | None:
+        """Where an effect may write what it produced, or nothing where none is set.
+
+        The port and never a path: a plugin holds the ability to write in the one place
+        the deployment allows, and the check that a name stays there is the adapter's.
+        A plugin whose tool needs it registers that tool only when there is one, the way
+        cora offers no `remember` without a memory.
+        """
         ...
 
     @property

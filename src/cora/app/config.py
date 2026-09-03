@@ -48,6 +48,10 @@ DEFAULT_DOCUMENTS_PATH = ".cora/documents"
 Markdown file per source under that. A directory rather than a database file, because
 the point of it is that a person can open it and read what cora has."""
 DEFAULT_CONVERSATIONS_PATH = ".cora/conversations.sqlite"
+DEFAULT_OUTPUT_PATH = "cora-output"
+"""Where an approved effect writes what it produced. Beside cora's stores rather than
+under them: everything in `.cora/` is cora's own bookkeeping and a deployment may delete
+it to start clean, while an itinerary the user approved is theirs to keep."""
 DEFAULT_LOG_PATH = LOG_FILE
 
 
@@ -75,6 +79,7 @@ class Config:
     memory_path: str = DEFAULT_MEMORY_PATH
     documents_path: str = DEFAULT_DOCUMENTS_PATH
     conversations_path: str = DEFAULT_CONVERSATIONS_PATH
+    output_path: str = DEFAULT_OUTPUT_PATH
     log_path: str = DEFAULT_LOG_PATH
     debug: bool = False
 
@@ -126,6 +131,7 @@ class Config:
             conversations_path=_named(
                 env, "CORA_CONVERSATIONS_PATH", DEFAULT_CONVERSATIONS_PATH
             ),
+            output_path=_named(env, "CORA_OUTPUT_PATH", DEFAULT_OUTPUT_PATH),
             log_path=_named(env, "CORA_LOG_PATH", DEFAULT_LOG_PATH),
             debug=_bool(env, "CORA_DEBUG"),
         )

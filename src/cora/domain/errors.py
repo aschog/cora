@@ -231,6 +231,12 @@ class ConversationStoreError(AdapterError):
     message = "I could not reach your earlier conversations. Please try again."
 
 
+class OutputStoreError(AdapterError):
+    """What an effect produced could not be written."""
+
+    message = "I could not write that file. Nothing else in this conversation changed."
+
+
 class GraphRunError(AdapterError):
     """A turn came back with no answer: the walk took no step, or settled nothing.
 
