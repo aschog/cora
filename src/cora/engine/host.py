@@ -30,6 +30,7 @@ from cora.ports.host import (
     name_of,
 )
 from cora.ports.memory import Memory
+from cora.ports.output import Output
 from cora.ports.plugin import Tool, ToolRefusal, ToolResult
 from cora.ports.retrieval import RetrievedChunk
 
@@ -130,6 +131,7 @@ class PluginHost:
     index: ContextSource
     model: ChatModel
     memory: Memory | None = None
+    output: Output | None = None
     settings: Mapping[str, str] = field(default_factory=dict)
     top_k: int = 5
     registered: list[Registration] = field(default_factory=list)

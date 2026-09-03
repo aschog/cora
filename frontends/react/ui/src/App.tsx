@@ -5,6 +5,7 @@ import type {
   Decision,
   Fact,
   Plugin,
+  Proposal,
   Result,
   Session,
   Step,
@@ -41,6 +42,10 @@ export type Entry = {
   /** What the reader picked — `null` is choosing none of them. Absent is a card still
    *  waiting on them. */
   chosen?: string | null
+  /** The effects this turn proposed, in the order it proposed them. A list because a
+   *  round may ask for two, while it may ask the reader at most one question — so the
+   *  first of them keeps its answer instead of being replaced by the second. */
+  proposals?: Waiting[]
   /** The card put back up: picking now asks a new question, because the turn it belonged
    *  to has already gone on. */
   changing?: boolean
@@ -79,6 +84,40 @@ const stowed = () => {
 
 /** What a different pick asks for, once the turn that raised the question has moved on. */
 const correction = (label: string) => `Use ${label} instead.`
+
+/** One effect a turn proposed, and the reader's answer once they have given it. */
+export type Waiting = { proposal: Proposal; approved?: boolean }
+
+/** A turn stopped on a card nobody has answered yet, whichever kind it is. Exported
+ *  because the page has two things to do about one: draw the card as open, and refuse
+ *  the composer — two open questions on one thread would be two answers to one turn. */
+export const unanswered = (entry: Entry) =>
+  (!!entry.decision && entry.chosen === undefined) ||
+  (entry.proposals ?? []).some((each) => each.approved === undefined)
+
+/** Whether a parked turn carries anything to draw a card from, however it arrived. */
+const stops = (waiting: cora.Pending) => !!(waiting.decision || waiting.proposal)
+
+/** The turn with the card it has just stopped on put on it. A decision replaces the one
+ *  before it, because a turn may ask the reader at most once. A proposal is appended,
+ *  because a round may propose two: the answer to the first is the record of what cora
+ *  was allowed to do, and replacing it would lose that and leave the second unanswerable.
+ *  Read in one place, so the three sites that put a card on the page cannot disagree. */
+const carded = (found: Entry, waiting: cora.Pending): Entry =>
+  waiting.decision
+    ? { ...found, decision: waiting.decision, chosen: undefined }
+    : waiting.proposal
+      ? {
+          ...found,
+          proposals: [...(found.proposals ?? []), { proposal: waiting.proposal }],
+        }
+      : found
+
+/** This turn's proposals with the one call named answered, or put back to waiting. */
+const answeredAt = (found: Entry, call: string, approved?: boolean) =>
+  (found.proposals ?? []).map((each) =>
+    each.proposal.call_id === call ? { ...each, approved } : each,
+  )
 
 const UNDRAWABLE = 'That conversation could not be read.'
 
@@ -381,19 +420,15 @@ export default function App() {
       )
       if (cora.paused(reply)) {
         // The turn is on the page now rather than in flight: it is waiting on the
-        // reader, and what they pick lands on it where it stands.
-        stow(on)
-        if (here.current === on) {
-          setEntries((said) => [
-            ...said,
-            {
-              id,
-              question,
-              citations: [],
-              trace: taken,
-              decision: reply.decision,
-            },
-          ])
+        // reader, and what they answer lands on it where it stands.
+        if (stops(reply)) {
+          stow(on)
+          if (here.current === on) {
+            setEntries((said) => [
+              ...said,
+              carded({ id, question, citations: [], trace: taken }, reply),
+            ])
+          }
         }
         return
       }
@@ -491,9 +526,31 @@ export default function App() {
   const recall = (thread_id: string) =>
     loaded(thread_id, (kept) => setEntries(recorded(kept)))
 
-  /** A decision answered. The turn is already on the page, so the rest of it lands on
-   *  the entry that asked rather than after it. */
-  const decide = async (entry: Entry, chosen: string | null) => {
+  /** A card answered, either kind. The turn is already on the page, so the rest of it
+   *  lands on the entry that raised the card rather than after it.
+   *
+   *  One function over both, because everything but the request and the two fields the
+   *  card holds is the same work: the steps go to the plan, the prose lands on the
+   *  entry, a second pause puts a second card up, and a failure leaves the card as it
+   *  was so the reader can answer again.
+   *
+   *  @param answering The turn with this card marked answered. Applied before the
+   *    request goes out, so the card reads as answered while cora works.
+   *  @param reopening The turn with it back to waiting, applied if the request fails —
+   *    its own function rather than a mirror of `answering`, because only the caller
+   *    knows which of possibly several cards it just answered.
+   *  @param carry The request itself, handed the three readers a streamed turn wants.
+   */
+  const settle = async (
+    entry: Entry,
+    answering: (found: Entry) => Entry,
+    reopening: (found: Entry) => Entry,
+    carry: (
+      onStep: (step: Step) => void,
+      onText: (piece: string) => void,
+      onAside: () => void,
+    ) => Promise<cora.Reply>,
+  ) => {
     const on = thread
     const taken: Step[] = []
     let written = ''
@@ -510,16 +567,13 @@ export default function App() {
     setLive({ thread: on, steps: taken })
     setTab('STEPS')
     at((found) => ({
-      ...found,
-      chosen,
+      ...answering(found),
       changing: false,
       pending: true,
       error: undefined,
     }))
     try {
-      const reply = await cora.resume(
-        on,
-        chosen,
+      const reply = await carry(
         (step) => {
           taken.push(step)
           setLive({ thread: on, steps: [...taken] })
@@ -534,12 +588,7 @@ export default function App() {
         },
       )
       if (cora.paused(reply)) {
-        at((found) => ({
-          ...found,
-          decision: reply.decision,
-          chosen: undefined,
-          pending: false,
-        }))
+        if (stops(reply)) at((found) => ({ ...carded(found, reply), pending: false }))
         return
       }
       forget()
@@ -550,10 +599,9 @@ export default function App() {
       }
     } catch (failed) {
       /* Nothing was settled, so the card says nothing was: it goes back to waiting and
-         the stow stays, which is what lets the reader pick again. */
+         the stow stays, which is what lets the reader answer again. */
       at((found) => ({
-        ...found,
-        chosen: undefined,
+        ...reopening(found),
         error: message(failed),
         pending: false,
       }))
@@ -563,6 +611,28 @@ export default function App() {
       refresh()
     }
   }
+
+  const decide = (entry: Entry, chosen: string | null) =>
+    settle(
+      entry,
+      (found) => ({ ...found, chosen }),
+      (found) => ({ ...found, chosen: undefined }),
+      (onStep, onText, onAside) =>
+        cora.resume(thread, chosen, onStep, onText, onAside),
+    )
+
+  /** One effect approved or declined, named by the call it answers so a round that
+   *  proposed two cannot have one settled by the other's answer. There is no putting
+   *  this card back up: a decision answered one way can be asked again the other, and
+   *  an effect that has happened cannot be taken back. */
+  const approve = (entry: Entry, call: string, yes: boolean) =>
+    void settle(
+      entry,
+      (found) => ({ ...found, proposals: answeredAt(found, call, yes) }),
+      (found) => ({ ...found, proposals: answeredAt(found, call) }),
+      (onStep, onText, onAside) =>
+        cora.approve(thread, call, yes, onStep, onText, onAside),
+    )
 
   /** A pick. On a card still waiting it finishes the turn; on one the reader put back up
    *  it asks a new question, because the turn that raised it has already gone on and
@@ -583,30 +653,32 @@ export default function App() {
       said.map((each) => (each.id === entry.id ? { ...each, changing: true } : each)),
     )
 
-  /** The question a conversation is still parked on, drawn after its turns: it is in no
-   *  store, so nothing else on the page would bring it back. */
+  /** What a conversation is still parked on, drawn after its turns: it is in no store,
+   *  so nothing else on the page would bring it back. */
   const parked = async (thread_id: string) => {
     const waiting = await cora.pending(thread_id).catch(() => null)
     if (here.current !== thread_id) return
-    /* A payload with no decision in it is not a pause, however it arrived: the card is
-       drawn from the decision or not at all. */
-    if (!waiting?.decision) {
+    /* A payload with nothing to settle in it is not a pause, however it arrived: the
+       card is drawn from what stopped the turn or not at all. */
+    if (!waiting || !stops(waiting)) {
       forgetIf(thread_id)
       return
     }
     stow(thread_id)
     setEntries((said) =>
-      said.some((each) => each.decision && each.chosen === undefined)
+      said.some(unanswered)
         ? said
         : [
             ...said,
-            {
-              id: -(said.length + 1),
-              question: waiting.asked,
-              citations: [],
-              trace: [],
-              decision: waiting.decision,
-            },
+            carded(
+              {
+                id: -(said.length + 1),
+                question: waiting.asked,
+                citations: [],
+                trace: [],
+              },
+              waiting,
+            ),
           ],
     )
   }
@@ -696,6 +768,7 @@ export default function App() {
           onAsk={ask}
           onCite={setOpened}
           onDecide={decided}
+          onApprove={approve}
           onChange={change}
         />
 

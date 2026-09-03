@@ -223,49 +223,6 @@ it would take the measurement with it. If the sprint runs long, the sprint runs 
 what gives is argued then against *Not in this sprint* rather than decided here while it
 is cheap to be brave.
 
-### 11. cora acts, but only when I say so
-
-As a person whose agent can change things,\
-I want to see what it is about to do and approve it first,\
-so that no effect cora is asked for happens without me.
-
-**Scenario:** an effect is proposed, approved, then happens
-
-- **Given** a scope with a tool that changes something outside cora
-- **When** the model asks to call it
-- **Then** cora shows what it will do and waits
-- **And** nothing changes until I approve
-- **And** after approval the effect happens and the trace records both
-
-**Scenario:** two effects in one turn, and nothing runs twice
-
-- **Given** a turn in which the model proposes two effects
-- **When** I approve the first and then the second
-- **Then** each ran exactly once — the approvals were settled before the round executed, so
-  resuming never replays an effect that already ran
-
-**Scenario:** declining changes nothing
-
-- **Given** the same proposal
-- **When** I decline
-- **Then** nothing outside cora has changed, and the turn says what it did not do
-
-**Scenario:** the gate is cora's, not the plugin's
-
-- **Given** a plugin that marks a tool as having an effect
-- **When** that tool is called
-- **Then** the gate runs — a privileged core step at the tool-call point that a plugin can
-  neither unsubscribe nor imitate, since no handler may pause a turn
-- **And** the gate covers what is declared to cora: a plugin's own code running past it is
-  the trust decision story 12 names, not a hole in the gate
-
-**Scenario:** the result is mine to keep
-
-- **Given** an approved effect that produces something — an itinerary, a training plan
-- **When** it completes
-- **Then** it exists as a file under the output location the app is configured with, outside
-  cora's own stores, and `README.md` says where that is
-
 ### 12. What cora does with my data, and what a plugin costs in trust
 
 As a person uploading my own documents and loading someone else's plugin,\

@@ -13,7 +13,7 @@ The pages are sorted by what you came for.
 
 Why cora is built the way it is.
 
-- [What it is made of](big-picture.md) — the engine, its nine ports, and what the tests
+- [What it is made of](big-picture.md) — the engine, its ten ports, and what the tests
   pin down. Start here.
 - [What happens when you ask](happy-path.md) — an upload, a turn, a round and a search,
   read out of the methods that take them.

@@ -184,6 +184,31 @@ class HandlerRan(TraceStep):
 
 
 @dataclass(frozen=True)
+class EffectSettled(TraceStep):
+    """The user was shown a call that would change something, and answered it.
+
+    Beside the call it authorised rather than folded into it: the approval and the call
+    are two things that happened, and a reader auditing what cora did outside itself is
+    looking for the yes as much as for the write. A decline is not a failure — nothing
+    broke, and the turn answers around it — so `failed` stays false either way.
+    """
+
+    tool: str = ""
+    does: str = ""
+    approved: bool = False
+
+    @property
+    def summary(self) -> str:
+        """Who settled it and which way, in the second person: the reader did this."""
+        return f"You {'approved' if self.approved else 'declined'} {self.tool}"
+
+    @property
+    def detail(self) -> str:
+        """What the call said it would do, which is what was put to the reader."""
+        return self.does
+
+
+@dataclass(frozen=True)
 class ToolUse(TraceStep):
     """One tool call and what came back from it.
 

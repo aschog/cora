@@ -8,6 +8,7 @@ from typing import Any, Protocol
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
 from cora.ports.memory import Memory
+from cora.ports.output import Output
 from cora.ports.plugin import Tool
 
 CONTRACT = 1
@@ -17,6 +18,12 @@ A number rather than a range: cora offers one version, a plugin declaring anothe
 refused by name, and a plugin declaring none is taken as asking for this one. What is
 public is everything this module names; what may move is said on the page that teaches
 a plugin to be written.
+
+It moves when the contract *changes*, not when it grows. Surface added to `Host` — a
+register keyword, a property like `output` — leaves it where it is, because a plugin
+asking for this version still gets everything this version promised. The cost is that a
+plugin needing something newly added cannot say so, and finds out by the call failing
+rather than at the version check.
 """
 
 TOOL = "tool"
@@ -224,6 +231,17 @@ class Host(Protocol):
     @property
     def model(self) -> ChatModel:
         """The model behind every turn, for a plugin that wants to ask it something."""
+        ...
+
+    @property
+    def output(self) -> Output | None:
+        """Where an effect may write what it produced, or nothing where none is set.
+
+        The port and never a path: a plugin holds the ability to write in the one place
+        the deployment allows, and the check that a name stays there is the adapter's.
+        A plugin whose tool needs it registers that tool only when there is one, the way
+        cora offers no `remember` without a memory.
+        """
         ...
 
     @property

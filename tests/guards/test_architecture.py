@@ -21,6 +21,11 @@ import cora.frontends.react
 import cora.plugins
 import cora.ports
 import workspace
+from app_builder import assembled
+from cora.app.assembly import App
+from cora.engine.steps import GateStep, ToolStep
+from cora.engine.tool_runtime import ToolRuntime
+from fixture_plugins import make_plugin
 
 PURE_MAY_USE = frozenset({"jsonschema"})
 """The one third party the contract and the engine may reach for. Validating a tool's
@@ -863,3 +868,31 @@ def test_no_module_in_the_repository_declares_a_plugin_record() -> None:
     )
 
     assert declaring == [], "\n".join(["these declare a PLUGIN record:", *declaring])
+
+
+def test_the_gate_and_the_runtime_are_offered_the_same_tools() -> None:
+    """The guard on the walk proves no call reaches a tool without passing the gate.
+    That only means something while the gate and the runtime are looking at the same
+    tools: one offered a tool the other had never heard of would run it ungated, and
+    every other test in the suite would still pass. Read off the assembled app, so it
+    is the wiring that is checked rather than a list restated here.
+    """
+    app = assembled(plugin=make_plugin(scope="somewhere"))
+    gate, runtime = _gate_and_runtime(app)
+
+    assert _offered(gate, frozenset({"somewhere"})) == _offered(
+        runtime, frozenset({"somewhere"})
+    )
+    assert _offered(gate, frozenset()) == _offered(runtime, frozenset())
+
+
+def _gate_and_runtime(app: App) -> tuple[GateStep, ToolRuntime]:
+    loop = app.agent.runner.loop  # ty: ignore[unresolved-attribute]
+    tools = loop.tools
+    assert isinstance(loop.gate, GateStep) and isinstance(tools, ToolStep)
+    assert isinstance(tools.tool_runtime, ToolRuntime)
+    return loop.gate, tools.tool_runtime
+
+
+def _offered(part: GateStep | ToolRuntime, scopes: frozenset[str]) -> set[str]:
+    return {tool.name for tool in (*part.tools, *part.registry.tools(scopes))}

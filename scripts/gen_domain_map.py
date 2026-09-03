@@ -339,12 +339,22 @@ GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "MemoryUnread",
             "HandlerRan",
             "ScopeSettled",
+            "EffectSettled",
             "ToolUse",
         ),
     ),
     (
         "Records & pausing",
-        ("Session", "Chunk", "TurnPaused", "Pending", "Decision", "Option"),
+        (
+            "Session",
+            "Chunk",
+            "TurnPaused",
+            "Pending",
+            "Decision",
+            "Option",
+            "Proposed",
+            "Approval",
+        ),
     ),
 )
 

@@ -198,6 +198,7 @@ def test_a_question_that_fits_two_fields_is_put_to_the_user() -> None:
         app.agent.answer("What should I take on a walking holiday?", THREAD)
 
     asked = stopped.value.pending.decision
+    assert asked is not None
     assert asked.question == WHICH_FIELD
     assert [option.label for option in asked.options] == [FITNESS, TRAVEL]
     assert asked.options[0].note == "You are a fitness coach."

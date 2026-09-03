@@ -3,7 +3,7 @@
 import logging
 from dataclasses import dataclass
 
-from cora.adapters.langgraph_runner import interrupting, langgraph_for
+from cora.adapters.langgraph_runner import approving, interrupting, langgraph_for
 from cora.adapters.loaders import LOADERS
 from cora.app.config import (
     DEFAULT_HISTORY_TURNS,
@@ -38,6 +38,7 @@ from cora.engine.steps import (
     AnswerStep,
     AskStep,
     FocusStep,
+    GateStep,
     ModelStep,
     Named,
     Router,
@@ -56,6 +57,7 @@ from cora.ports.embedding import Embedder
 from cora.ports.graph import GraphFor, Loop
 from cora.ports.host import Extension, Listed
 from cora.ports.memory import Memory
+from cora.ports.output import Output
 from cora.ports.plugin import Tool
 from cora.ports.retrieval import Retriever
 
@@ -90,6 +92,7 @@ def assemble(
     scopes: tuple[str, ...] = (),
     memory: Memory | None = None,
     conversations: Conversations | None = None,
+    output: Output | None = None,
     top_k: int = DEFAULT_TOP_K,
     max_tool_rounds: int = DEFAULT_MAX_TOOL_ROUNDS,
     history_turns: int = DEFAULT_HISTORY_TURNS,
@@ -115,6 +118,8 @@ def assemble(
             offered at all.
         conversations: Where turns are recorded. Without it, a turn is answered and
             not kept.
+        output: Where an approved effect writes what it produced. Without it, a plugin
+            whose tool needs one registers no such tool.
         top_k: How many passages a document search returns.
         max_tool_rounds: How many rounds of tools one turn may spend.
         history_turns: How many earlier turns of the thread reach the prompt.
@@ -134,6 +139,7 @@ def assemble(
         documents=knowledge_base,
         model=chat_model,
         memory=memory,
+        output=output,
         settings=plugin_settings or {},
         top_k=top_k,
     )
@@ -159,6 +165,7 @@ def assemble(
                 max_history_turns=history_turns,
                 registry=registry,
             ).writing_to,
+            gate=GateStep(tools=tools, registry=registry, approve=approving),
             tools=ToolStep(
                 tool_runtime=ToolRuntime(tools=tools, registry=registry),
                 registry=registry,
@@ -208,6 +215,7 @@ def _registered(
     documents: ContextSource,
     model: ChatModel,
     memory: Memory | None,
+    output: Output | None,
     settings: dict[str, dict[str, str]],
     top_k: int,
 ) -> Registry:
@@ -231,6 +239,7 @@ def _registered(
             index=documents,
             model=model,
             memory=memory,
+            output=output,
             settings=settings.get(plugin.module, {}),
             top_k=top_k,
         )
@@ -280,6 +289,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
 
     from cora.adapters.chroma_retriever import ChromaRetriever
     from cora.adapters.file_documents import FileDocuments
+    from cora.adapters.file_output import FileOutput
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
     from cora.adapters.sqlite_conversations import SqliteConversations
@@ -310,6 +320,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
         scopes=config.scopes,
         memory=SqliteStoreMemory.at(config.memory_path),
         conversations=SqliteConversations.at(config.conversations_path),
+        output=FileOutput.at(config.output_path),
         graph=partial(langgraph_for, checkpoints_at=config.conversations_path),
         top_k=config.top_k,
         max_tool_rounds=config.max_tool_rounds,

@@ -79,6 +79,39 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    `delegate` if you like — the ones with an effect are withheld, and your logger says
    which.
 
+   The declaration also buys the gate. A call of your tool does not run on the model's
+   word: the turn stops, the user is shown what your tool's `description` says it does
+   and the arguments the model wrote, and your `run` is reached only if they approve.
+   Decline and it is never called at all — the model is told, and the turn answers
+   around it. So write the `description` for the person deciding as much as for the
+   model: it is the sentence on the card.
+
+   The gate is cora's, at a point no plugin can subscribe to, and there is nothing a
+   handler can return that pauses a turn — which is what keeps it from being something
+   a plugin holds. It covers what you *declared*: a tool you registered without
+   `effect=True` is not gated, and what your own code does inside any call is the trust
+   the deployment extended by loading you.
+
+   **Write what it produces through the output cora hands you.** A path of your own
+   would be a path nothing checks:
+
+   ```python
+   def extend(cora: Host) -> None:
+       if cora.output is None:      # this deployment configured nowhere to write
+           return
+       kept = cora.output
+       def book_it(when: str) -> str:
+           return f"Saved to {kept.write('booking.md', when)}"
+       cora.register_tool(name="book_it", ..., run=book_it, effect=True)
+   ```
+
+   `write` takes a filename and the text, and answers with where the file landed, so
+   your tool can tell the user. One place, the deployment's to choose and to move; a
+   name that would climb out of it is refused, and the refusal reaches the model as a
+   refused call. `cora.output` is `None` where the deployment configured none — register
+   no such tool then, the way cora offers no `remember` without a memory. A tool that
+   can only fail is worse than one the model is never offered.
+
 4. **Take part in the turn.** A handler subscribes to a named point in it, is handed
    one frozen value, and answers by returning — a refusal, an amendment, or `None` for
    neither. The four points are `cora.ports.host`'s, and they differ in what a return
@@ -200,7 +233,8 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    which cora has.
 
    **What is public** is everything `cora.ports.host` names: `Host` and its register
-   calls — including a tool's `untrusted` and `effect` — the four event names,
+   calls — including a tool's `untrusted` and `effect` — `Host.output` and the `Output`
+   port it hands back, the four event names,
    `CONTRACT`, `DEFAULT_SCOPE`, and the values a handler is handed — `ToolCall` and
    `ToolResult` from `cora.ports.plugin`, `ToolRefusal` to raise when a call cannot
    run, and `PluginLoadError` from `cora.domain.errors` to raise while registering when
