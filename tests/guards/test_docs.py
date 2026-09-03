@@ -15,15 +15,10 @@ import pathlib
 import re
 
 import workspace
-from cora.app.config import (
-    DEFAULT_CONVERSATIONS_PATH,
-    DEFAULT_DB_PATH,
-    DEFAULT_DOCUMENTS_PATH,
-    DEFAULT_LOG_PATH,
-    DEFAULT_MEMORY_PATH,
-    DEFAULT_OUTPUT_PATH,
-    DEFAULT_PLUGINS_PATH,
-)
+from cora.app import config
+from cora.app.config import DEFAULT_DB_PATH, DEFAULT_OUTPUT_PATH
+
+PRIVACY = "docs/privacy-and-ethics.md"
 
 PAGES = (
     "README.md",
@@ -31,7 +26,7 @@ PAGES = (
     "docs/index.md",
     "docs/big-picture.md",
     "docs/happy-path.md",
-    "docs/privacy-and-ethics.md",
+    PRIVACY,
     "docs/workflow.md",
     "docs/how-to/write-a-plugin.md",
     "docs/how-to/watch-a-turn.md",
@@ -39,7 +34,6 @@ PAGES = (
     "docs/tutorial/first-session.md",
 )
 
-PRIVACY = "docs/privacy-and-ethics.md"
 CONFIGS = ("Makefile",)
 SUFFIXES = (".py", ".md", ".toml", "/")
 
@@ -124,26 +118,54 @@ def test_a_path_is_claimed_from_its_dot_as_readily_as_from_a_letter() -> None:
     }
 
 
-def test_the_privacy_page_names_every_store_cora_keeps() -> None:
+def stores() -> dict[str, str]:
+    """Every location a deployment can configure, and the variable that moves it.
+
+    Discovered rather than listed: a store added to `cora.app.config` has to reach the
+    privacy page, and a list here would be one more place to forget. The variable is
+    derived from the constant, which is the naming convention every one of them follows
+    — a path setting that broke the convention would fail here, which is the right
+    place to notice it. That a setting is really read under the name derived here is
+    `tests/cora/app/test_config.py`'s to hold, and it does.
+    """
+    return {
+        name.replace("DEFAULT_", "CORA_"): value
+        for name, value in vars(config).items()
+        if name.startswith("DEFAULT_") and name.endswith("_PATH")
+    }
+
+
+def test_a_store_is_discovered_rather_than_listed() -> None:
+    """Two readings compared, not one restated: the discovery is what the test below
+    holds the page against, so a discovery that found nothing would pass it on an empty
+    loop. The output location is the one this change added, and the plugins folder is
+    the one cora reads rather than writes."""
+    found = stores()
+
+    assert found["CORA_OUTPUT_PATH"] == DEFAULT_OUTPUT_PATH
+    assert found["CORA_DB_PATH"] == DEFAULT_DB_PATH
+    assert len(found) >= 7
+
+
+def test_the_privacy_page_names_every_store_and_the_setting_that_moves_it() -> None:
     """The privacy page's list of what is kept, held against the settings themselves.
 
     The locations guard below cannot hold it: every store is made at runtime, so a page
     naming one as a directory would claim a path a clean checkout does not have. Read
-    off the defaults instead, so a store that moves — or a seventh one added — is red
-    until the page says so.
+    off the settings instead, so a store that moves, a store that is added, or a
+    variable that is renamed is red until the page says so.
     """
     page = pathlib.Path(PRIVACY).read_text()
 
-    for kept in (
-        DEFAULT_DB_PATH,
-        DEFAULT_MEMORY_PATH,
-        DEFAULT_DOCUMENTS_PATH,
-        DEFAULT_CONVERSATIONS_PATH,
-        DEFAULT_OUTPUT_PATH,
-        DEFAULT_LOG_PATH,
-        DEFAULT_PLUGINS_PATH,
-    ):
-        assert kept in page, f"the privacy page does not say cora keeps {kept}"
+    missing = [
+        f"{variable} ({kept})"
+        for variable, kept in sorted(stores().items())
+        if kept not in page or variable not in page
+    ]
+
+    assert missing == [], "\n".join(
+        ["the privacy page does not account for:", *missing]
+    )
 
 
 def test_the_readme_says_where_an_effect_writes_and_how_to_move_it() -> None:

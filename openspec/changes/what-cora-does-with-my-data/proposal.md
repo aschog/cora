@@ -1,8 +1,8 @@
 ## Why
 
 A reader deciding whether to upload their documents or load someone else's plugin has
-nowhere to read what either costs, and both costs are now real: eight stores, two
-outbound services, and a plugin contract that runs arbitrary code.
+nowhere to read what either costs, and both costs are now real: seven stores, three
+outbound hosts, and a plugin contract that runs arbitrary code.
 
 ## What Changes
 
