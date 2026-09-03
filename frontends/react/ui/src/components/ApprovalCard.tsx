@@ -4,7 +4,7 @@ export const WAITING = 'Paused · needs your approval'
 export const SETTLED = 'Settled · your approval'
 export const APPROVE = 'Approve'
 export const DECLINE = 'Decline'
-export const APPROVED = 'You approved it, and it happened.'
+export const APPROVED = 'You approved it.'
 export const DECLINED = 'You declined it. Nothing outside cora was changed.'
 
 type Props = {
@@ -15,6 +15,10 @@ type Props = {
 }
 
 /** What cora is about to do, and afterwards the line that says which way it went.
+ *
+ *  The settled line says what the reader did, not what came of it: the answer is written
+ *  before the call runs, and a tool that then failed would leave a card claiming an
+ *  effect that never happened. What came of it is the turn's answer to tell.
  *
  *  No way back onto the card, unlike a decision: a decision the reader answered one way
  *  can be asked again the other, and an effect that has happened cannot be taken back.

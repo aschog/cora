@@ -92,3 +92,27 @@ which is why the output location has one.
 ## 9. The outer test passes
 
 - [x] 9.1 The `xfail` marker dropped, and the outer test passing
+
+## 10. Review findings, each back through the loop
+
+Raised by review after section 9. Every behavioural one is a failing test first; the two
+that are not — the contract's own wording, and a copied dict — change no behaviour.
+
+- [x] 10.1 A round of two effects drawing two cards on the page, the first settled and
+      the second answerable, naming its own call
+- [x] 10.2 An approved call whose tool then failed not shown as having happened
+- [x] 10.3 The text written as UTF-8, and text that cannot be encoded failing as the
+      port says it fails
+- [x] 10.4 A name that is not a path at all refused as a name rather than raised out of
+      the resolution
+- [x] 10.5 One title saved twice as two files, and the same itinerary twice as one
+- [x] 10.6 **Guard.** The gate and the runtime offered the same tools, read off the
+      assembled app — what the walk guard means only holds while they agree
+- [x] 10.7 A round of two effects answered one call at a time through the endpoint, with
+      one approval on the trace per call and no duplicate from the replay
+- [x] 10.8 An approval for a thread waiting on a decision refused rather than read as a
+      silent decline
+- [x] 10.9 What was approved copied, so nothing can rewrite the arguments before the
+      call runs — no behaviour, and the guard `ToolStep` already has one step later
+- [x] 10.10 `CONTRACT` saying that added surface does not move it — a written claim, so
+      no test

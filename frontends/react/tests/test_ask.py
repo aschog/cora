@@ -872,3 +872,56 @@ def test_approving_a_thread_waiting_on_nothing_is_refused() -> None:
         )
 
     assert refused.status_code == REFUSED
+
+
+def _proposing_two() -> ScriptedChatModel:
+    return ScriptedChatModel(
+        [
+            ModelReply(
+                tool_calls=(
+                    ToolCall(name=BOOKED, arguments={"when": "May"}, call_id="c1"),
+                    ToolCall(name=BOOKED, arguments={"when": "June"}, call_id="c2"),
+                )
+            ),
+            ModelReply(text="Done."),
+        ]
+    )
+
+
+def test_a_round_proposing_two_effects_is_answered_one_call_at_a_time() -> None:
+    """The page settles each on its own, so the endpoint has to put the second proposal
+    once the first is answered — and each answer names the call it belongs to."""
+    app = assembled(chat_model=_proposing_two(), plugin=_effecting())
+    with TestClient(api(app)) as reader:
+        reader.post("/api/ask", json={"question": "book both", "thread_id": "t1"})
+        first = reader.post(
+            "/api/approve", json={"thread_id": "t1", "call_id": "c1", "approved": True}
+        )
+        second = reader.post(
+            "/api/approve", json={"thread_id": "t1", "call_id": "c2", "approved": False}
+        )
+
+    [proposed] = _carried(first.text, "paused")
+    assert proposed["proposal"]["call_id"] == "c2"
+    assert not _carried(first.text, "turn"), "the round is not done while one is open"
+    [turn] = _carried(second.text, "turn")
+    assert turn["answer"] == "Done."
+    settled = [step["summary"] for step in turn["trace"] if "You " in step["summary"]]
+    assert settled == [f"You approved {BOOKED}", f"You declined {BOOKED}"], (
+        "one approval per call, and no duplicate from replaying the gate"
+    )
+
+
+def test_an_approval_for_a_thread_waiting_on_a_decision_is_refused() -> None:
+    """An approval answers a proposal. Reaching the ask step it would be read as a
+    decline — safe, and silent — so a mis-routed request is refused where it can still
+    be seen."""
+    with TestClient(api(assembled(chat_model=_stopping()))) as reader:
+        reader.post("/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"})
+
+        refused = reader.post(
+            "/api/approve", json={"thread_id": "t1", "call_id": "c1", "approved": True}
+        )
+
+    assert refused.status_code == REFUSED
+    assert refused.json() == {"error": NOT_AN_APPROVAL}

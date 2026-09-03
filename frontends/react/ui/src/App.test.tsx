@@ -3498,3 +3498,92 @@ test('a decision settled and then an effect proposed leaves one card open, not t
   expect(screen.getAllByRole('group', { name: /Paused/ })).toHaveLength(1)
   expect(screen.getAllByRole('group', { name: /Settled/ })).toHaveLength(1)
 })
+
+const CANCELLING = {
+  call_id: 'c2',
+  tool: 'cancel_booking',
+  does: 'Cancel a booking, which cannot be undone.',
+  arguments: { reference: 'BK-4471' },
+}
+
+/** A round that proposes two effects: answering the first puts the second up. */
+const proposingTwo = (): Sent[] => {
+  const sent: Sent[] = []
+  let answers = 0
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.body && typeof init.body === 'string')
+        sent.push({ path, body: JSON.parse(init.body) })
+      if (path === '/api/ask') return stream(frame('paused', PROPOSED))
+      if (path === '/api/approve')
+        return ++answers === 1
+          ? stream(frame('paused', { ...PROPOSED, proposal: CANCELLING }))
+          : stream(frame('turn', SAVED))
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => null } as unknown as Response
+      return {
+        ok: true,
+        json: async () => served[route(path)] ?? [],
+      } as unknown as Response
+    }),
+  )
+  return sent
+}
+
+test('the second effect of a round is answerable, and the first stays settled', async () => {
+  /* A round may propose two, and each is put on its own. The first keeps the answer it
+     was given — that is the record of what cora was allowed to do — and the second is
+     the only thing still waiting on the reader. */
+  proposingTwo()
+  const asked = await proposed()
+
+  fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
+
+  expect(await screen.findByText(CANCELLING.does)).toBeTruthy()
+  expect(screen.getByText(/You approved it/)).toBeTruthy()
+  expect(screen.getByText('Kyoto, three days')).toBeTruthy()
+  expect(screen.getAllByRole('group', { name: /Paused/ })).toHaveLength(1)
+  expect(screen.getAllByRole('group', { name: /Settled/ })).toHaveLength(1)
+  expect(screen.getByRole('button', { name: 'Ask' })).toHaveProperty('disabled', true)
+})
+
+test('answering the second effect names its own call, and finishes the turn', async () => {
+  const sent = proposingTwo()
+  const asked = await proposed()
+  fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
+  await screen.findByText(CANCELLING.does)
+
+  fireEvent.click(screen.getByRole('button', { name: 'Decline' }))
+
+  expect(await screen.findByText(/kyoto-three-days\.md/)).toBeTruthy()
+  expect(of(sent, '/api/approve').map((each) => each.body.call_id)).toEqual(['c1', 'c2'])
+  expect(of(sent, '/api/approve')[1].body.approved).toBe(false)
+  expect(screen.getAllByRole('group', { name: /Settled/ })).toHaveLength(2)
+})
+
+test('an approved call whose tool then failed is not shown as having happened', async () => {
+  /* The card is answered before the request goes out, so it cannot know the outcome.
+     It says what the reader did; what came of it is the answer's to say. */
+  const failed = { answer: 'I could not write that file.', citations: [], trace: [] }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return stream(frame('paused', PROPOSED))
+      if (path === '/api/approve') return stream(frame('turn', failed))
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => null } as unknown as Response
+      return {
+        ok: true,
+        json: async () => served[route(path)] ?? [],
+      } as unknown as Response
+    }),
+  )
+  const asked = await proposed()
+
+  fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
+
+  expect(await screen.findByText(/could not write that file/)).toBeTruthy()
+  expect(screen.getByText('You approved it.')).toBeTruthy()
+  expect(screen.queryByText(/it happened/)).toBeNull()
+})

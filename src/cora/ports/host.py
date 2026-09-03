@@ -18,6 +18,12 @@ A number rather than a range: cora offers one version, a plugin declaring anothe
 refused by name, and a plugin declaring none is taken as asking for this one. What is
 public is everything this module names; what may move is said on the page that teaches
 a plugin to be written.
+
+It moves when the contract *changes*, not when it grows. Surface added to `Host` — a
+register keyword, a property like `output` — leaves it where it is, because a plugin
+asking for this version still gets everything this version promised. The cost is that a
+plugin needing something newly added cannot say so, and finds out by the call failing
+rather than at the version check.
 """
 
 TOOL = "tool"

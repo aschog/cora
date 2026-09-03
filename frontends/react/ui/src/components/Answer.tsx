@@ -29,7 +29,7 @@ type Props = {
   onAsk: (question: string) => void
   onCite: (citation: Citation) => void
   onDecide: (entry: Entry, chosen: string | null) => void
-  onApprove: (entry: Entry, approved: boolean) => void
+  onApprove: (entry: Entry, call: string, approved: boolean) => void
   onChange: (entry: Entry) => void
 }
 
@@ -114,13 +114,18 @@ export default function Answer({
                   onChange={() => onChange(entry)}
                 />
               )}
-              {entry.proposal && (
+              {/* One card per effect the turn proposed, in the order it proposed
+                  them: a round may ask for two, and each is answered on its own. */}
+              {(entry.proposals ?? []).map((each) => (
                 <ApprovalCard
-                  proposal={entry.proposal}
-                  approved={entry.approved}
-                  onSettle={(approved) => onApprove(entry, approved)}
+                  key={each.proposal.call_id}
+                  proposal={each.proposal}
+                  approved={each.approved}
+                  onSettle={(approved) =>
+                    onApprove(entry, each.proposal.call_id, approved)
+                  }
                 />
-              )}
+              ))}
               {/* What went wrong comes first, because it is the news whatever else the
                   turn has: a resume that failed leaves a card still waiting, and the
                   reader has to be told why before they answer it again. A turn in flight
@@ -204,8 +209,10 @@ const outcome = (entry?: Entry) =>
   entry &&
   (entry.answer ??
     entry.error ??
-    (entry.decision || entry.proposal
-      ? `${entry.chosen}/${entry.approved}`
+    (entry.decision || entry.proposals
+      ? `${entry.chosen}/${(entry.proposals ?? [])
+          .map((each) => each.approved)
+          .join(',')}`
       : '…'))
 
 /** The answer is rendered markdown, so its citations are buttons in that HTML rather

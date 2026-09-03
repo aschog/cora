@@ -380,8 +380,14 @@ def _approve(app: App) -> Callable[[Request], Any]:
             return JSONResponse({"error": NOT_AN_APPROVAL}, status_code=REFUSED)
         if not isinstance(approved, bool):
             return JSONResponse({"error": NOT_AN_APPROVAL}, status_code=REFUSED)
-        if await run_in_threadpool(app.agent.pending, thread_id) is None:
+        # Not merely "something is pending": an approval reaching the ask step would be
+        # read as a decline — safe, and silent. A mis-routed request is refused where
+        # whoever sent it can still see it.
+        waiting = await run_in_threadpool(app.agent.pending, thread_id)
+        if waiting is None:
             raise NothingToResumeError
+        if waiting.proposal is None:
+            return JSONResponse({"error": NOT_AN_APPROVAL}, status_code=REFUSED)
         settled = Approval(call_id=call_id, approved=approved)
         return _streaming(
             lambda report, write: app.agent.approve(settled, thread_id, report, write)

@@ -142,6 +142,12 @@ like any other effect.
 - **WHEN** the plugins are listed
 - **THEN** the itinerary tool is shown as having an effect, under the travel scope
 
+#### Scenario: A revised itinerary does not replace the one already approved
+
+- **GIVEN** an itinerary saved under a title
+- **WHEN** a different itinerary is saved under that same title
+- **THEN** both files exist, and neither was written over
+
 ### Requirement: The page shows what cora is about to do
 
 The page SHALL draw a stopped turn as what the call would do, the arguments it carries,
@@ -167,3 +173,11 @@ saying which way it went.
 - **GIVEN** a proposal the reader approved
 - **WHEN** the rest of the turn arrives
 - **THEN** the card says it was approved, in the place the proposal stood
+- **AND** it says what the reader did rather than what came of it, which the answer says
+
+#### Scenario: A round of two effects draws two cards
+
+- **GIVEN** a turn whose round proposed two effects, the first of them answered
+- **WHEN** the second is put to the reader
+- **THEN** both are on the page — the first settled, the second waiting — and answering
+  the second names its own call

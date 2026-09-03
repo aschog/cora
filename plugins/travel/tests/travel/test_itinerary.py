@@ -17,10 +17,10 @@ def test_the_tool_writes_the_itinerary_and_answers_with_where_it_is() -> None:
 
     said = tool.run(title=TITLE, itinerary=PLAN)
 
-    assert output.written == {
-        "kyoto-three-days.md": f"# {TITLE}\n\n{PLAN}\n",
-    }
-    assert "/kept/kyoto-three-days.md" in said
+    [(name, kept)] = output.written.items()
+    assert kept == f"# {TITLE}\n\n{PLAN}\n"
+    assert name.startswith("kyoto-three-days-") and name.endswith(".md")
+    assert f"/kept/{name}" in said
 
 
 def test_the_tool_declares_that_it_changes_something_outside_cora() -> None:
@@ -44,3 +44,30 @@ def test_a_title_that_leaves_no_filename_is_refused_not_renamed() -> None:
         tool.run(title="...", itinerary=PLAN)
 
     assert output.written == {}
+
+
+def test_two_itineraries_under_one_title_are_two_files() -> None:
+    """A revised plan saved under the same title must not take the earlier one with it.
+    This is a file the user approved and keeps, so it is the upload store's rule: the
+    head of the content's hash is in the name, and one title saved twice is two files
+    rather than one overwritten."""
+    output = FakeOutput()
+    tool = itinerary_tool(output)
+
+    tool.run(title=TITLE, itinerary=PLAN)
+    tool.run(title=TITLE, itinerary=f"{PLAN}\nDay 3 — Nishiki.")
+
+    assert len(output.written) == 2
+    assert all(name.startswith("kyoto-three-days-") for name in output.written)
+
+
+def test_the_same_itinerary_saved_twice_is_one_file() -> None:
+    """The name is made out of what was saved, so saving the identical plan again is the
+    same file rather than a second copy of it."""
+    output = FakeOutput()
+    tool = itinerary_tool(output)
+
+    tool.run(title=TITLE, itinerary=PLAN)
+    tool.run(title=TITLE, itinerary=PLAN)
+
+    assert len(output.written) == 1

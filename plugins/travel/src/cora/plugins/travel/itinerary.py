@@ -4,6 +4,7 @@ The one thing this plugin does that changes something outside cora, which is why
 declared as having an effect and why a call of it waits for the user's word.
 """
 
+import hashlib
 import re
 from typing import Any
 
@@ -42,6 +43,11 @@ because the plugin is what turns a title into a name — cora refuses a name tha
 the location, and this is the case that never reaches it."""
 SUFFIX = ".md"
 UNSAFE = re.compile(r"[^a-z0-9]+")
+HASH_LENGTH = 12
+"""How much of the itinerary's hash goes in its filename, as `FileDocuments` puts the
+head of an upload's hash in its own. It is what makes one title saved twice two files
+rather than one overwritten — a revised plan is not a correction of the plan the user
+already approved, and this is a file they keep."""
 
 
 def itinerary_tool(output: Output) -> Tool:
@@ -70,15 +76,18 @@ def _saved(output: Output, title: str, itinerary: str) -> str:
         ToolRefusal: The title leaves no filename, or the name would not stay under the
             output location — which is cora's refusal, passed on as it was worded.
     """
-    where = output.write(_filename(title), f"# {title}\n\n{itinerary.strip()}\n")
+    kept = f"# {title}\n\n{itinerary.strip()}\n"
+    where = output.write(_filename(title, kept), kept)
     return f"Saved the itinerary to {where}"
 
 
-def _filename(title: str) -> str:
-    """The title as a filename: lowercased, and everything else turned into a hyphen.
+def _filename(title: str, kept: str) -> str:
+    """The title as a filename, with the head of what was saved hashed onto the end.
 
     Made rather than taken, because the title is the model's prose — a slash or a dot
-    in it is a word to the model and a path to a filesystem.
+    in it is a word to the model and a path to a filesystem. The hash is of the text
+    rather than of the moment, so the same plan saved twice is one file and a revised
+    one is a second: nothing the user approved is written over.
 
     Raises:
         ToolRefusal: Nothing is left of the title once it is safe to write.
@@ -86,4 +95,5 @@ def _filename(title: str) -> str:
     stem = UNSAFE.sub("-", title.lower()).strip("-")
     if not stem:
         raise ToolRefusal(UNNAMEABLE.format(title=title))
-    return f"{stem}{SUFFIX}"
+    marked = hashlib.sha256(kept.encode()).hexdigest()[:HASH_LENGTH]
+    return f"{stem}-{marked}{SUFFIX}"

@@ -684,11 +684,14 @@ class GateStep:
         messages: list[Message] = []
         trace: list[TraceStep] = []
         for call, tool in self._effecting(state):
+            # A copy of the arguments, for the reason `ToolStep._ran` copies them: a
+            # dict inside a frozen call is changeable, and whatever answers the gate
+            # reaches it from outside the run. What was approved has to be what runs.
             proposed = Proposed(
                 call_id=call.call_id,
                 tool=call.name,
                 does=tool.description,
-                arguments=call.arguments,
+                arguments=deepcopy(call.arguments),
             )
             approved = approves(proposed, self.approve(proposed))
             trace.append(
