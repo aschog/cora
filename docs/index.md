@@ -17,6 +17,9 @@ Why cora is built the way it is.
   pin down. Start here.
 - [What happens when you ask](happy-path.md) — an upload, a turn, a round and a search,
   read out of the methods that take them.
+- [Privacy, and what a plugin costs in trust](privacy-and-ethics.md) — what leaves your
+  machine, what is kept where, where the safeguards stop, and what loading someone
+  else's code buys them.
 
 ## How-to
 
