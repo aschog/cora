@@ -2,6 +2,7 @@ import pathlib
 
 from cora.domain.errors import PluginLoadError
 from cora.plugins.travel.forecast import forecast_tool
+from cora.plugins.travel.itinerary import itinerary_tool
 from cora.plugins.travel.researcher import (
     RESEARCH_SCHEMA,
     RESEARCH_TOOL_DESCRIPTION,
@@ -29,6 +30,9 @@ user's own documents.
   what is open, what the weather will do — rather than searching over and over
   yourself. Answer from the report it brings back, and if the report says it stopped
   early, say which part is still unresearched.
+- Offer to save the itinerary once a plan is settled and the user wants it — the save
+  is put to them for approval before it happens, so offer rather than announce, and say
+  where the file went once it is done.
 - Ask for the dates when the answer turns on them, rather than assuming a season.
 - Never invent a price, a timetable or an address.
 """
@@ -44,12 +48,17 @@ choose, and these are files they may choose.
 
 
 def extend(cora: Host) -> None:
-    """Instructions and two tools, all under the travel scope and none outside it.
+    """Instructions and three tools, all under the travel scope and none outside it.
 
-    Both tools are declared as returning material cora did not write: a service's
+    The first two are declared as returning material cora did not write: a service's
     answer is not cora's words, and neither is a report the researcher built out of
-    documents and a forecast. Nothing here is system-wide, so a turn about training is
-    offered no weather and no researcher.
+    documents and a forecast. The third changes something outside cora and says so, so
+    a call of it waits for the user. Nothing here is system-wide, so a turn about
+    training is offered no weather and no researcher.
+
+    Saving is offered only where the deployment configured somewhere to write. A tool
+    the model can call and that can only fail is worse than one it is never offered —
+    the same reason cora offers no `remember` without a memory.
 
     Raises:
         PluginLoadError: The rounds setting is not a whole number. Raised as one of
@@ -82,4 +91,15 @@ def extend(cora: Host) -> None:
         run=research,
         scope=SCOPE,
         untrusted=True,
+    )
+    if cora.output is None:
+        return
+    saving = itinerary_tool(cora.output)
+    cora.register_tool(
+        name=saving.name,
+        description=saving.description,
+        parameter_schema=saving.parameter_schema,
+        run=saving.run,
+        scope=SCOPE,
+        effect=saving.effect,
     )
