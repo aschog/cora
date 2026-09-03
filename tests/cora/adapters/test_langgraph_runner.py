@@ -9,12 +9,14 @@ from langgraph.checkpoint.memory import InMemorySaver
 from cora.adapters.langgraph_runner import (
     HEADROOM,
     LangGraphRunner,
+    approving,
     checkpointed_types,
     interrupting,
     langgraph_for,
     recursion_limit_for,
 )
 from cora.domain.agent_state import AgentState
+from cora.domain.approval import Approval, Proposed
 from cora.domain.chunk import Chunk
 from cora.domain.citations import Citation
 from cora.domain.errors import (
@@ -36,11 +38,13 @@ from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.plugin_set import Registry
 from cora.engine.steps import (
     ANSWER,
+    DECLINED_CALL,
     NOTHING_CHOSEN,
     SCREEN,
     WORK,
     AnswerStep,
     AskStep,
+    GateStep,
     ModelStep,
     Named,
     Router,
@@ -136,17 +140,24 @@ def _walk(
     model: ModelFor,
     *,
     screen: Step = _screen,
+    gate: Step | None = None,
     tools: Step = _ran,
     ask: Step = _nothing,
     rounds: int = ROUNDS,
     after: tuple[NamedStep, ...] = (Named(ANSWER, AnswerStep()),),
 ) -> dict[str, Any]:
-    """The named steps of a turn, with a fake in each place a test wants to watch."""
+    """The named steps of a turn, with a fake in each place a test wants to watch.
+
+    The gate is the real one unless a test says otherwise: with no effecting tool in
+    front of it there is nothing for it to stop, which is what a round that changes
+    nothing outside cora looks like going past it.
+    """
     return {
         "before": (Named(SCREEN, screen),),
         "loop": Loop(
             marker=Named(WORK),
             model=model,
+            gate=GateStep() if gate is None else gate,
             tools=tools,
             ask=ask,
             router=Router(max_tool_rounds=rounds),
@@ -159,13 +170,14 @@ def _runner(
     *,
     screen: Step = _screen,
     model: ModelFor,
+    gate: Step | None = None,
     tools: Step = _ran,
     ask: Step = _nothing,
     rounds: int = ROUNDS,
     recursion_limit: int | None = None,
 ) -> LangGraphRunner:
     return LangGraphRunner(
-        **_walk(model, screen=screen, tools=tools, ask=ask, rounds=rounds),
+        **_walk(model, screen=screen, gate=gate, tools=tools, ask=ask, rounds=rounds),
         recursion_limit=recursion_limit or recursion_limit_for(rounds, steps=STEPS),
     )
 
@@ -332,6 +344,7 @@ def _real_runner(model: ChatModel, rounds: int) -> LangGraphRunner:
             model=ModelStep(
                 chat_model=model, tools=(add_tool(),), max_history_turns=20
             ).writing_to,
+            gate=GateStep(tools=(add_tool(),)),
             tools=ToolStep(ToolRuntime(tools=(add_tool(),))),
             router=Router(max_tool_rounds=rounds),
             ask=AskStep(),
@@ -1110,3 +1123,175 @@ def test_a_nested_step_survives_a_checkpoint_as_the_children_it_had() -> None:
     ]
     assert replayed == nested, "the same step, not one that merely reads alike"
     assert replayed.steps == (ModelDecision(detail="looking", tools=("add",)), _A_STEP)
+
+
+BOOKED = "book_it"
+CANCELLED = "cancel_it"
+BOOKING = "Book the thing, which cannot be taken back"
+
+
+def _effecting(name: str) -> Tool:
+    return Tool(
+        name=name,
+        description=BOOKING,
+        parameter_schema={"type": "object"},
+        run=lambda **_: name,
+        effect=True,
+    )
+
+
+def _proposes(*names: str) -> Step:
+    """A model that asks for these effecting calls once, then answers."""
+
+    def model(state: AgentState) -> AgentState:
+        if _answered(state):
+            return {"messages": _said("assistant", "done")}
+        calls = tuple(
+            ToolCall(name=name, arguments={}, call_id=f"c{at}")
+            for at, name in enumerate(names, start=1)
+        )
+        return {"messages": [Message(role="assistant", content="", tool_calls=calls)]}
+
+    return model
+
+
+def _gated(*names: str) -> tuple[LangGraphRunner, list[str]]:
+    """A turn whose only tools declare effects, and a list of what actually ran."""
+    ran: list[str] = []
+    tools = tuple(_effecting(name) for name in names)
+
+    def running(state: AgentState) -> AgentState:
+        """The round's outstanding calls, read the way `ToolStep` reads them: what the
+        last assistant message asked for, minus whatever a `tool` message has settled —
+        so a call the gate answered is one this never sees."""
+        asked: tuple[ToolCall, ...] = ()
+        answered: set[str] = set()
+        for message in state.get("messages", ()):
+            if message.role == "assistant":
+                asked, answered = message.tool_calls, set()
+            elif message.tool_call_id is not None:
+                answered.add(message.tool_call_id)
+        messages = []
+        for call in asked:
+            if call.call_id in answered:
+                continue
+            ran.append(call.name)
+            messages.append(
+                Message(role="tool", content="ran", tool_call_id=call.call_id)
+            )
+        return {"messages": messages}
+
+    runner = langgraph_for(
+        before=(Named(SCREEN, _screen),),
+        loop=Loop(
+            marker=Named(WORK),
+            model=_always(_proposes(*names)),
+            gate=GateStep(tools=tools, approve=approving),
+            tools=running,
+            ask=_nothing,
+            router=Router(max_tool_rounds=ROUNDS),
+        ),
+        after=(Named(ANSWER, AnswerStep()),),
+        max_tool_rounds=ROUNDS,
+    )
+    assert isinstance(runner, LangGraphRunner)
+    return runner, ran
+
+
+def test_a_proposed_effect_parks_the_turn_before_its_tool_runs() -> None:
+    """The gate stands between the model and the tools, so the call is put to the reader
+    and nothing has happened while they think about it."""
+    runner, ran = _gated(BOOKED)
+
+    list(runner.run({"question": "book it"}, THREAD))
+    waiting = runner.pending(THREAD)
+
+    assert ran == [], "nothing outside cora ran while the turn waited"
+    assert waiting is not None
+    assert waiting.decision is None
+    assert waiting.proposal == Proposed(
+        call_id="c1", tool=BOOKED, does=BOOKING, arguments={}
+    )
+
+
+def test_an_approved_effect_runs_once_and_the_turn_answers() -> None:
+    runner, ran = _gated(BOOKED)
+    list(runner.run({"question": "book it"}, THREAD))
+
+    final = list(runner.resume(Approval(call_id="c1", approved=True), THREAD))[-1]
+
+    assert ran == [BOOKED]
+    assert final["answer"] == "done"
+    assert runner.pending(THREAD) is None
+
+
+def test_a_declined_effect_never_runs_and_the_turn_still_answers() -> None:
+    runner, ran = _gated(BOOKED)
+    list(runner.run({"question": "book it"}, THREAD))
+
+    final = list(runner.resume(Approval(call_id="c1", approved=False), THREAD))[-1]
+
+    assert ran == []
+    assert final["answer"] == "done"
+    assert any(
+        message.role == "tool" and BOOKED in message.content
+        for message in final["messages"]
+    ), "the model is told the call was declined, so it can answer around it"
+
+
+def test_two_effects_in_one_round_are_both_settled_before_either_runs() -> None:
+    """The scenario the story asks for: two stops, each naming its own call, nothing run
+    at the moment the second is put — and then each running exactly once."""
+    runner, ran = _gated(BOOKED, CANCELLED)
+
+    list(runner.run({"question": "book and cancel"}, THREAD))
+    first = runner.pending(THREAD)
+    list(runner.resume(Approval(call_id="c1", approved=True), THREAD))
+    second = runner.pending(THREAD)
+    ran_between = list(ran)
+    final = list(runner.resume(Approval(call_id="c2", approved=True), THREAD))[-1]
+
+    assert first is not None and first.proposal is not None
+    assert second is not None and second.proposal is not None
+    assert (first.proposal.call_id, second.proposal.call_id) == ("c1", "c2")
+    assert ran_between == [], "settling the second is not running the first"
+    assert ran == [BOOKED, CANCELLED]
+    assert final["answer"] == "done"
+
+
+def test_one_approved_and_one_declined_runs_only_the_one_that_was() -> None:
+    runner, ran = _gated(BOOKED, CANCELLED)
+    list(runner.run({"question": "book and cancel"}, THREAD))
+    list(runner.resume(Approval(call_id="c1", approved=True), THREAD))
+
+    final = list(runner.resume(Approval(call_id="c2", approved=False), THREAD))[-1]
+
+    assert ran == [BOOKED]
+    told = [
+        message.content
+        for message in final["messages"]
+        if message.role == "tool" and message.tool_call_id == "c2"
+    ]
+    assert told == [DECLINED_CALL.format(name=CANCELLED)], (
+        "and the model hears about it"
+    )
+
+
+def test_a_label_arriving_at_the_gate_is_read_as_a_decline() -> None:
+    """Resuming a thread parked on a proposal with a decision's answer settles nothing:
+    whatever comes back is checked, and only this call's own yes is an approval."""
+    runner, ran = _gated(BOOKED)
+    list(runner.run({"question": "book it"}, THREAD))
+
+    list(runner.resume("yes please", THREAD))
+
+    assert ran == []
+
+
+def test_a_proposal_is_what_a_thread_is_carried_through_a_checkpoint_as() -> None:
+    """Both shapes travel as data, so a page reopened while a turn is parked finds the
+    proposal — a serialiser not told about them would lose the turn."""
+    named = checkpointed_types()
+
+    assert ("cora.domain.approval", "Proposed") in named
+    assert ("cora.domain.approval", "Approval") in named

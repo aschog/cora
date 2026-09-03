@@ -23,35 +23,35 @@ which is why the output location has one.
 
 ## 3. An effect stops the round it was proposed in
 
-- [ ] 3.1 A round asking for a tool that declares an effect stopping before that tool runs
-- [ ] 3.2 A round asking only for tools that declare none never stopping
-- [ ] 3.3 An approved call running, and the trace holding the approval and the call it
+- [x] 3.1 A round asking for a tool that declares an effect stopping before that tool runs
+- [x] 3.2 A round asking only for tools that declare none never stopping
+- [x] 3.3 An approved call running, and the trace holding the approval and the call it
       authorised
-- [ ] 3.4 A declined call not running, the model told it was declined, and the turn still
+- [x] 3.4 A declined call not running, the model told it was declined, and the turn still
       answered
-- [ ] 3.5 An answer that is not an approval of the call proposed read as a decline
-- [ ] 3.6 The default pause declining, so a caller that cannot ask changes nothing
-- [ ] 3.7 A proposed call naming no registered tool passing the gate untouched, and being
+- [x] 3.5 An answer that is not an approval of the call proposed read as a decline
+- [x] 3.6 The default pause declining, so a caller that cannot ask changes nothing
+- [x] 3.7 A proposed call naming no registered tool passing the gate untouched, and being
       refused where a call always was
 
 ## 4. Two effects in one turn, and nothing runs twice
 
-- [ ] 4.1 A round proposing two effects stopping twice, each proposal naming its own call
-- [ ] 4.2 Both approved, and each tool call running exactly once
-- [ ] 4.3 One approved and one declined, only the approved one running and the model told
+- [x] 4.1 A round proposing two effects stopping twice, each proposal naming its own call
+- [x] 4.2 Both approved, and each tool call running exactly once
+- [x] 4.3 One approved and one declined, only the approved one running and the model told
       about both
-- [ ] 4.4 Neither tool having run at the moment the second proposal is put, which is what
+- [x] 4.4 Neither tool having run at the moment the second proposal is put, which is what
       settling ahead of the round means
 
 ## 5. The gate is cora's, and no call goes round it
 
-- [ ] 5.1 **Guard.** The walk the runner wires reaching the tools through the gate and
+- [x] 5.1 **Guard.** The walk the runner wires reaching the tools through the gate and
       through nothing else
-- [ ] 5.2 A plugin subscribed to every point it may, and the gate still stopping its own
+- [x] 5.2 A plugin subscribed to every point it may, and the gate still stopping its own
       effecting tool
-- [ ] 5.3 The recursion limit sized for the gate, the round budget still tripping first,
+- [x] 5.3 The recursion limit sized for the gate, the round budget still tripping first,
       measured as the existing sizing test measures it
-- [ ] 5.4 The committed round sequence redrawn from the walk the runner now wires
+- [x] 5.4 The committed round sequence redrawn from the walk the runner now wires
 
 ## 6. What an effect produces is a file the user keeps
 
@@ -79,11 +79,11 @@ which is why the output location has one.
 
 ## 8. The page shows what cora is about to do
 
-- [ ] 8.1 The pending endpoint answering with a proposal where the turn stopped on one,
+- [x] 8.1 The pending endpoint answering with a proposal where the turn stopped on one,
       and a decision where it stopped on that
-- [ ] 8.2 The endpoint that answers a proposal, approving and declining, and refusing one
+- [x] 8.2 The endpoint that answers a proposal, approving and declining, and refusing one
       for a thread waiting on nothing
-- [ ] 8.3 A streamed turn reporting a proposal as the paused event the page reads
+- [x] 8.3 A streamed turn reporting a proposal as the paused event the page reads
 - [ ] 8.4 The card drawing what the call would do and its arguments, with an approve and
       a decline
 - [ ] 8.5 The card reading as settled once answered, saying which way it went
@@ -91,4 +91,4 @@ which is why the output location has one.
 
 ## 9. The outer test passes
 
-- [ ] 9.1 The `xfail` marker dropped, and the outer test passing
+- [x] 9.1 The `xfail` marker dropped, and the outer test passing

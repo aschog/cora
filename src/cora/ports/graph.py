@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from cora.domain.agent_state import AgentState
+from cora.domain.approval import Approval
 from cora.domain.decision import Pending
 from cora.ports.chat_model import TextSink, unheard
 
@@ -47,6 +48,11 @@ class NamedStep(Protocol):
         ...
 
 
+Settled = str | Approval | None
+"""What travels back into a parked turn: a label off a card, an approval bound to one
+call, or nothing at all. One type because one thread stops one way at a time and the
+caller picking it up hands over whichever it was asked for."""
+
 Route = Callable[[AgentState], str]
 ModelFor = Callable[[TextSink], Step]
 """How a graph asks for the step that talks to the model: one per turn, bound to that
@@ -84,12 +90,14 @@ class GraphRunner(Protocol):
         ...
 
     def resume(
-        self, answer: str | None, thread_id: str, on_text: TextSink = unheard
+        self, answer: Settled, thread_id: str, on_text: TextSink = unheard
     ) -> Iterator[AgentState]:
-        """The same turn, picked up from where it stopped to ask.
+        """The same turn, picked up from where it stopped.
 
         Args:
-            answer: The label the user chose, or nothing if they declined.
+            answer: The label the user chose, the approval they gave, or nothing if they
+                declined. Each step that can stop checks what came back to it, so an
+                answer of the other kind settles nothing it was not asked.
             thread_id: The thread whose turn is parked.
             on_text: As in `run` — the rest of the turn is written to this caller.
 
@@ -97,7 +105,7 @@ class GraphRunner(Protocol):
             As `run` does, continuing the parked turn rather than starting one.
 
         Raises:
-            NothingToResumeError: That thread is not waiting on a decision.
+            NothingToResumeError: That thread is not waiting on anything.
         """
         ...
 
@@ -105,7 +113,7 @@ class GraphRunner(Protocol):
         """What the thread is waiting on, or nothing.
 
         A parked run stops yielding rather than saying so, so this is the only way to
-        tell a turn that stopped to ask from one that finished.
+        tell a turn that stopped from one that finished.
         """
         ...
 
@@ -125,14 +133,17 @@ class Loop:
     """The rounds of a turn, and the parts that take one.
 
     Named apart from the steps around it because it alone has a router and it alone may
-    stop to ask. `marker` is the step the rounds fall inside: it runs once, contributes
-    the name of the place the turn is in, and leaves the round to the model. `ask` is
-    handed over like the rest: an app that offers no decision says so with a step that
-    puts none, rather than with a slot left empty.
+    stop. `marker` is the step the rounds fall inside: it runs once, contributes the
+    name of the place the turn is in, and leaves the round to the model. `gate` stands
+    between the model and the tools, on every round, so no call reaches a tool without
+    passing it — a round proposing nothing that changes anything outside cora passes
+    straight through. `ask` is handed over like the rest: an app that offers no decision
+    says so with a step that puts none, rather than with a slot left empty.
     """
 
     marker: NamedStep
     model: ModelFor
+    gate: Step
     tools: Step
     router: Route
     ask: Step

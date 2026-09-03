@@ -5,10 +5,12 @@ from dataclasses import dataclass, field, replace
 from typing import Protocol
 
 from cora.domain.agent_state import AgentState
+from cora.domain.approval import Proposed, approves
 from cora.domain.citations import Citable, Citation
 from cora.domain.decision import Decision, Option
 from cora.domain.errors import AdapterError, CoreError, ToolLoopLimitError
 from cora.domain.trace import (
+    EffectSettled,
     MemoryUnread,
     ScopeSettled,
     StepEntered,
@@ -34,7 +36,7 @@ from cora.ports.host import (
     SCREENING,
 )
 from cora.ports.memory import Fact, Memory
-from cora.ports.pause import Pause, declined
+from cora.ports.pause import Approve, Pause, declined, refused
 from cora.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult
 
 
@@ -633,6 +635,89 @@ class ToolStep:
         # model is told, never which call it is being told about. Left to a handler, a
         # turn could answer a call nobody made and leave its own outstanding.
         return replace(amended, call_id=call.call_id), inside
+
+
+DECLINED_CALL = (
+    "tool '{name}' was not run: the user was asked to approve it and did not. Answer "
+    "without it, and say plainly that you did not do it."
+)
+"""What the model is told about a call the user declined. Worded as the refusal it is,
+with what to do next: the model is owed a way on, and the turn still has an answer to
+give. The story asks the answer to say what it did not do, and this is where it is
+asked for — a brief cannot say it, because a brief does not know which call."""
+
+
+@dataclass(frozen=True)
+class GateStep:
+    """The one step that can stop a turn for permission, and the only way to the tools.
+
+    A step of the core rather than a point a plugin subscribes to: no handler may pause
+    a turn, and one that could would be a plugin holding the gate. It runs no tool,
+    which is what makes it free to replay — a resumed node is walked again from its
+    first line, so anything that had already run would run twice.
+
+    `tools` is cora's own and `registry` the plugins', because what declares an effect
+    is read off the tool the call names. A call naming no tool at all is passed straight
+    through: nothing declared it, so there is nothing here to vouch for, and it is
+    refused where a call always was.
+    """
+
+    tools: tuple[Tool, ...] = ()
+    registry: Registry = field(default_factory=Registry)
+    approve: Approve = refused
+
+    def __call__(self, state: AgentState) -> AgentState:
+        """Put every effect this round proposed to the user, and settle the declines.
+
+        Each proposal is put on its own, so a round of two effects stops twice:
+        approving in a batch is one answer to two questions, and each is asked for.
+        Every one of them is settled before this step returns, and the tools run
+        afterwards — which is what "settled ahead of the round" is made of, and why
+        picking a turn up can never replay an effect that already ran.
+
+        An approved call is left outstanding for the tools and its yes goes on the
+        trace. A declined one is answered here, in a `tool` message like any other, so
+        the tools never see it and need no notion of approval at all.
+        """
+        messages: list[Message] = []
+        trace: list[TraceStep] = []
+        for call, tool in self._effecting(state):
+            proposed = Proposed(
+                call_id=call.call_id,
+                tool=call.name,
+                does=tool.description,
+                arguments=call.arguments,
+            )
+            approved = approves(proposed, self.approve(proposed))
+            trace.append(
+                EffectSettled(tool=call.name, does=tool.description, approved=approved)
+            )
+            if approved:
+                continue
+            messages.append(
+                Message(
+                    role="tool",
+                    content=DECLINED_CALL.format(name=call.name),
+                    tool_call_id=call.call_id,
+                )
+            )
+        return {"messages": messages, "trace": trace}
+
+    def _effecting(self, state: AgentState) -> tuple[tuple[ToolCall, Tool], ...]:
+        """This round's outstanding calls that declared an effect, with their tools.
+
+        Paired with the tool because the proposal is worded out of it: what the user is
+        shown is what the tool says it does, not a sentence cora wrote about the name.
+        """
+        offered = {
+            tool.name: tool
+            for tool in (*self.tools, *self.registry.tools(scoped(state)))
+        }
+        return tuple(
+            (call, tool)
+            for call in _requested_calls(state)
+            if (tool := offered.get(call.name)) is not None and tool.effect
+        )
 
 
 @dataclass(frozen=True)

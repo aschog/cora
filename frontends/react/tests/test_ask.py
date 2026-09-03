@@ -17,10 +17,13 @@ from cora.frontends.react.api import (
     MAX_ASK_BYTES,
     NOT_A_DECISION,
     NOT_A_QUESTION,
+    NOT_AN_APPROVAL,
+    REFUSED,
     TOO_LONG_TO_ASK,
     api,
 )
 from cora.ports.chat_model import Message, ModelReply, Piece, TextSink, unheard
+from cora.ports.host import Extension, Host
 from cora.ports.plugin import Tool, ToolCall
 from fakes import FailingChatModel, FakeConversations, ScriptedChatModel
 from sse import frames
@@ -741,3 +744,131 @@ def test_a_decision_that_says_nothing_at_all_is_refused() -> None:
     assert reader.get("/api/sessions/t1/pending").json() is not None, (
         "the thread is still waiting, so the card is still answerable"
     )
+
+
+# ── a turn that stopped to propose an effect ──
+
+BOOKED = "book_it"
+BOOKING = "Book the thing, which cannot be taken back"
+
+
+def _effecting() -> Extension:
+    def extend(cora: Host) -> None:
+        cora.register_tool(
+            name=BOOKED,
+            description=BOOKING,
+            parameter_schema={"type": "object"},
+            run=lambda **_: "booked",
+            effect=True,
+        )
+
+    return Extension(module="fixture_plugins.acting", extend=extend)
+
+
+def _proposing() -> ScriptedChatModel:
+    return ScriptedChatModel(
+        [
+            ModelReply(
+                tool_calls=(
+                    ToolCall(name=BOOKED, arguments={"when": "May"}, call_id="c1"),
+                )
+            ),
+            ModelReply(text="Done."),
+        ]
+    )
+
+
+def _acting_app() -> App:
+    return assembled(chat_model=_proposing(), plugin=_effecting())
+
+
+def test_a_proposed_effect_is_streamed_as_the_paused_event_the_page_reads() -> None:
+    """One event for both kinds of stop, carrying whichever it was: the page reads which
+    card to draw off the payload rather than off a second event name."""
+    with TestClient(api(_acting_app())) as reader:
+        streamed = reader.post(
+            "/api/ask", json={"question": "book it", "thread_id": "t1"}
+        )
+
+    [paused] = _carried(streamed.text, "paused")
+    assert paused == {
+        "asked": "book it",
+        "decision": None,
+        "proposal": {
+            "call_id": "c1",
+            "tool": BOOKED,
+            "does": BOOKING,
+            "arguments": {"when": "May"},
+        },
+    }
+    assert "turn" not in _named(streamed.text)
+
+
+def test_the_pending_route_answers_with_the_proposal_a_reopened_page_must_draw() -> (
+    None
+):
+    app = _acting_app()
+    with TestClient(api(app)) as reader:
+        reader.post("/api/ask", json={"question": "book it", "thread_id": "t1"})
+
+        waiting = reader.get("/api/sessions/t1/pending").json()
+
+    assert waiting["proposal"]["call_id"] == "c1"
+    assert waiting["decision"] is None
+
+
+def test_approving_a_proposal_streams_the_rest_of_the_turn() -> None:
+    app = _acting_app()
+    with TestClient(api(app)) as reader:
+        reader.post("/api/ask", json={"question": "book it", "thread_id": "t1"})
+        approved = reader.post(
+            "/api/approve",
+            json={"thread_id": "t1", "call_id": "c1", "approved": True},
+        )
+
+    [turn] = _carried(approved.text, "turn")
+    assert turn["answer"] == "Done."
+    assert any("approved" in step["summary"] for step in turn["trace"])
+
+
+def test_declining_a_proposal_still_finishes_the_turn() -> None:
+    app = _acting_app()
+    with TestClient(api(app)) as reader:
+        reader.post("/api/ask", json={"question": "book it", "thread_id": "t1"})
+        declined = reader.post(
+            "/api/approve",
+            json={"thread_id": "t1", "call_id": "c1", "approved": False},
+        )
+
+    [turn] = _carried(declined.text, "turn")
+    assert turn["answer"] == "Done."
+    assert any("declined" in step["summary"] for step in turn["trace"])
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"call_id": "c1", "approved": True},
+        {"thread_id": "t1", "approved": True},
+        {"thread_id": "t1", "call_id": "c1"},
+        {"thread_id": "t1", "call_id": "c1", "approved": "yes"},
+    ],
+)
+def test_an_approval_missing_half_of_what_binds_it_is_refused(body: dict) -> None:
+    """A yes has to say which call it answers and which conversation it is in, and it
+    has to say yes or no in so many words: a missing field must not read as either."""
+    with TestClient(api(_acting_app())) as reader:
+        refused = reader.post("/api/approve", json=body)
+
+    assert refused.status_code == REFUSED
+    assert refused.json() == {"error": NOT_AN_APPROVAL}
+
+
+def test_approving_a_thread_waiting_on_nothing_is_refused() -> None:
+    with TestClient(api(_acting_app())) as reader:
+        refused = reader.post(
+            "/api/approve",
+            json={"thread_id": "never-asked", "call_id": "c1", "approved": True},
+        )
+
+    assert refused.status_code == REFUSED

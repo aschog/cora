@@ -15,6 +15,7 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
 from cora.domain.agent_state import AgentState
+from cora.domain.approval import Approval, Proposed
 from cora.domain.decision import Decision, Pending
 from cora.domain.errors import NothingToResumeError, ToolLoopLimitError
 from cora.domain.trace import step_kinds
@@ -26,10 +27,15 @@ from cora.ports.graph import (
     GraphRunner,
     Loop,
     NamedStep,
+    Settled,
 )
 
 MODEL = "model"
-SUPERSTEPS_PER_ROUND = 2
+GATE = "gate"
+"""The two nodes of a round that are not the tools. Named here rather than in
+`cora.ports.graph`: the router's vocabulary is what a graph engine is told, and these
+are where this engine put the steps it was handed."""
+SUPERSTEPS_PER_ROUND = 3
 DECLINED = "\x00declined"
 """How choosing nothing travels back into the run. `Command(resume=None)` is not a
 resume LangGraph accepts — it reads as an empty command — so a decline has to carry a
@@ -38,7 +44,9 @@ HEADROOM = 2
 """Supersteps to spare, over the limit the longest walk of a turn was measured to need.
 
 The limit is spent one `run` at a time, so the longest walk is a turn that never pauses
-and spends every round: each named step once, then a model call and its tools per round.
+and spends every round: each named step once, then a model call, the gate and the tools
+per round. The gate costs a superstep on every round whether or not it stops anything,
+which is what a path that cannot be skipped costs.
 The limit such a walk needs is `SUPERSTEPS_PER_ROUND * rounds + steps`, one more than
 it spends, measured across budgets 1 to 12 and grown walks. The test walks it at the
 sizing *minus* this slack, which is that measured limit exactly, so every term of the
@@ -53,6 +61,8 @@ CHECKPOINTED_DATA = (
     ("cora.domain.citations", "Citation"),
     ("cora.domain.decision", "Decision"),
     ("cora.domain.decision", "Option"),
+    ("cora.domain.approval", "Proposed"),
+    ("cora.domain.approval", "Approval"),
 )
 """What a thread's state is made of besides its trace. Named because the alternative is
 LangGraph's default — deserialise anything and log a warning saying it will be blocked
@@ -109,6 +119,18 @@ def interrupting(decision: Decision) -> str | None:
     return chosen
 
 
+def approving(proposed: Proposed) -> Approval | None:
+    """The engine's `Approve`, bound to LangGraph's, as `interrupting` is its `Pause`.
+
+    Called once per proposal, so a node putting two of them parks twice and the answers
+    come back in the order they were asked — LangGraph counts the interrupts of a task
+    and replays the ones already settled. Anything back that is not an approval is
+    nothing, and the gate reads nothing as a decline.
+    """
+    answered = interrupt(proposed)
+    return answered if isinstance(answered, Approval) else None
+
+
 @dataclass(frozen=True)
 class LangGraphRunner:
     """The checkpointer is the runner's own: which technology remembers a thread is a
@@ -129,11 +151,12 @@ class LangGraphRunner:
         yield from self._streamed(state, thread_id, on_text)
 
     def resume(
-        self, answer: str | None, thread_id: str, on_text: TextSink = unheard
+        self, answer: Settled, thread_id: str, on_text: TextSink = unheard
     ) -> Iterator[AgentState]:
-        """The parked run, picked up where it stopped. The step that asked is replayed
+        """The parked run, picked up where it stopped. The step that stopped is replayed
         from its first line with `interrupt` returning the answer this time, which is
-        why nothing that has run may sit in front of it."""
+        why nothing that has run may sit in front of it — and why the gate runs no tool
+        of its own."""
         if self.pending(thread_id) is None:
             raise NothingToResumeError
         picked = DECLINED if answer is None else answer
@@ -142,19 +165,26 @@ class LangGraphRunner:
     def pending(self, thread_id: str) -> Pending | None:
         """What the thread is waiting on, read off the checkpoint rather than the
         stream: a run that parks simply stops yielding, so the pause is not something a
-        caller can see go past."""
+        caller can see go past.
+
+        Either shape, because either step may be the one that stopped — and the first
+        outstanding interrupt of either kind is the one being answered, since a node
+        puts its next proposal only once the one before it came back."""
         parked = self._graph(unheard).get_state(self._config(thread_id))
-        decision = next(
+        waiting = next(
             (
                 found.value
                 for found in parked.interrupts
-                if isinstance(found.value, Decision)
+                if isinstance(found.value, Decision | Proposed)
             ),
             None,
         )
-        if decision is None:
+        if waiting is None:
             return None
-        return Pending(asked=parked.values.get("question", ""), decision=decision)
+        asked = parked.values.get("question", "")
+        if isinstance(waiting, Proposed):
+            return Pending(asked=asked, proposal=waiting)
+        return Pending(asked=asked, decision=waiting)
 
     def pinned(self, thread_id: str) -> str | None:
         """The thread's pin, read straight off the checkpointer.
@@ -192,7 +222,10 @@ class LangGraphRunner:
         The walk is the sequence it was handed, so a turn that grew a step is a graph
         with a node more and this method unchanged. The rounds are the one part of it
         with a shape of their own: the model decides, and the router sends the turn to
-        the tools, to the reader, or on to whatever the walk does next.
+        the gate, to the reader, or on to whatever the walk does next. Every path to the
+        tools runs through the gate — the round's route arrives there and so does the
+        ask's, which is what makes the gate unbypassable by construction rather than by
+        anyone remembering to call it.
         """
         # ty does not see __required_keys__ on a TypedDict class, so it cannot
         # tell that AgentState satisfies LangGraph's state-schema bound.
@@ -201,6 +234,7 @@ class LangGraphRunner:
         for step in walked:
             builder.add_node(step.step, step)
         builder.add_node(MODEL, self.loop.model(on_text))
+        builder.add_node(GATE, self.loop.gate)
         builder.add_node(TOOLS, self.loop.tools)
         builder.add_node(ASK, self.loop.ask)
         opening = (*self.before, self.loop.marker)
@@ -209,9 +243,10 @@ class LangGraphRunner:
             builder.add_edge(here.step, there.step)
         builder.add_edge(self.loop.marker.step, MODEL)
         builder.add_conditional_edges(
-            MODEL, self.loop.router, {DONE: self._done, TOOLS: TOOLS, ASK: ASK}
+            MODEL, self.loop.router, {DONE: self._done, TOOLS: GATE, ASK: ASK}
         )
-        builder.add_edge(ASK, TOOLS)
+        builder.add_edge(ASK, GATE)
+        builder.add_edge(GATE, TOOLS)
         builder.add_edge(TOOLS, MODEL)
         for here, there in pairwise(self.after):
             builder.add_edge(here.step, there.step)

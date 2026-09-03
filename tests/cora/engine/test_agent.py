@@ -4,6 +4,7 @@ import pytest
 
 from app_builder import assembled
 from cora.domain.agent_state import AgentState
+from cora.domain.approval import Approval, Proposed
 from cora.domain.citations import Citation
 from cora.domain.conversation import Turn
 from cora.domain.decision import Decision, Option, Pending, TurnPaused
@@ -16,6 +17,7 @@ from cora.domain.errors import (
 from cora.domain.trace import ModelDecision, StepEntered, ToolUse, TraceStep
 from cora.engine.agent import Agent
 from cora.ports.chat_model import ModelReply, Piece, TextSink, Written, unheard
+from cora.ports.graph import Settled
 from fakes import FailingConversations, FakeConversations, ScriptedChatModel
 from fixture_plugins import make_plugin
 
@@ -51,7 +53,7 @@ class _StubRunner:
         self.pin = pin
         self.seeded: AgentState | None = None
         self.thread_id: str | None = None
-        self.chosen: str | None = None
+        self.chosen: Settled = None
         self.resumes = 0
 
     def run(
@@ -67,7 +69,7 @@ class _StubRunner:
             raise self.then
 
     def resume(
-        self, answer: str | None, thread_id: str, on_text: TextSink = unheard
+        self, answer: Settled, thread_id: str, on_text: TextSink = unheard
     ) -> Iterator[AgentState]:
         self.chosen = answer
         self.resumes += 1
@@ -358,6 +360,32 @@ def test_resuming_a_thread_that_is_waiting_on_nothing_is_refused() -> None:
 
     with pytest.raises(NothingToResumeError):
         Agent(runner).resume("75 kg", THREAD)
+
+    assert runner.resumes == 0
+
+
+def test_approving_carries_the_approval_into_the_parked_turn() -> None:
+    """An approval and a label are picked up the same way — the difference is which step
+    was waiting, and each of them checks what came back to it."""
+    yes = Approval(call_id="c1", approved=True)
+    runner = _StubRunner(
+        waiting=Pending(
+            asked=QUESTION, proposal=Proposed(call_id="c1", tool="book_it")
+        ),
+        after=({"answer": "Booked."},),
+    )
+
+    answered = Agent(runner).approve(yes, THREAD)
+
+    assert runner.chosen == yes
+    assert answered.answer == "Booked."
+
+
+def test_approving_a_thread_that_is_waiting_on_nothing_is_refused() -> None:
+    runner = _StubRunner({"answer": "done"})
+
+    with pytest.raises(NothingToResumeError):
+        Agent(runner).approve(Approval(call_id="c1", approved=True), THREAD)
 
     assert runner.resumes == 0
 

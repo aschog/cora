@@ -4,6 +4,7 @@ from dataclasses import dataclass, replace
 import pytest
 
 from cora.domain.agent_state import AgentState
+from cora.domain.approval import Approval, Proposed
 from cora.domain.chunk import Chunk
 from cora.domain.citations import Citable, Citation, Context
 from cora.domain.decision import Decision, Option
@@ -13,7 +14,13 @@ from cora.domain.errors import (
     MemoryStoreError,
     ToolLoopLimitError,
 )
-from cora.domain.trace import ModelDecision, ScopeSettled, StepEntered, ToolUse
+from cora.domain.trace import (
+    EffectSettled,
+    ModelDecision,
+    ScopeSettled,
+    StepEntered,
+    ToolUse,
+)
 from cora.engine.ask_tool import ASK_TOOL_NAME, ASKED_ALREADY, ask_tool
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
@@ -27,6 +34,7 @@ from cora.engine.steps import (
     BELONGS_TO_NONE,
     CHOSE_NOTHING,
     CORA_PREAMBLE,
+    DECLINED_CALL,
     MEMORY_RULE,
     NOTHING_CHOSEN,
     REMEMBERED_HEADING,
@@ -36,6 +44,7 @@ from cora.engine.steps import (
     AnswerStep,
     AskStep,
     FocusStep,
+    GateStep,
     ModelStep,
     Named,
     Router,
@@ -55,11 +64,13 @@ from cora.ports.host import (
     INSTRUCTIONS,
     RETURNING,
     SCREENING,
+    TOOL,
     Handler,
     Registration,
     Subscription,
 )
 from cora.ports.memory import Memory
+from cora.ports.pause import Approve
 from cora.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult
 from cora.ports.retrieval import RetrievedChunk
 from fakes import (
@@ -1617,3 +1628,153 @@ def test_the_turn_that_pins_a_thread_screens_in_the_field_it_pins_it_to() -> Non
     step({"question": "anything", "pinning": "travel"})
 
     assert seen == ["kyoto.md"]
+
+
+BOOKED = "book_it"
+DOES = "Book the thing, which cannot be taken back"
+
+
+def _acting(name: str = BOOKED, effect: bool = True) -> Tool:
+    return Tool(
+        name=name,
+        description=DOES,
+        parameter_schema={"type": "object"},
+        run=lambda **_: "booked",
+        effect=effect,
+    )
+
+
+def _offering(*tools: Tool) -> Registry:
+    return Registry(
+        tuple(
+            Registration(module="fixture_plugins.valid", kind=TOOL, value=tool)
+            for tool in tools
+        )
+    )
+
+
+def _proposing(*names: str) -> AgentState:
+    calls = tuple(
+        ToolCall(name=name, arguments={"what": name}, call_id=f"c{at}")
+        for at, name in enumerate(names, start=1)
+    )
+    return {"messages": [Message(role="assistant", content="", tool_calls=calls)]}
+
+
+def _yes(*call_ids: str) -> Approve:
+    def approve(proposed: Proposed) -> Approval:
+        return Approval(call_id=proposed.call_id, approved=proposed.call_id in call_ids)
+
+    return approve
+
+
+def test_the_gate_puts_an_effecting_call_to_the_user_as_the_tool_describes_it() -> None:
+    """What is approved is this call and not the idea of it, so the proposal carries the
+    tool's own words and the arguments the model wrote."""
+    seen: list[Proposed] = []
+
+    def approve(proposed: Proposed) -> Approval:
+        seen.append(proposed)
+        return Approval(call_id=proposed.call_id, approved=True)
+
+    GateStep(registry=_offering(_acting()), approve=approve)(_proposing(BOOKED))
+
+    assert seen == [
+        Proposed(call_id="c1", tool=BOOKED, does=DOES, arguments={"what": BOOKED})
+    ]
+
+
+def test_an_approved_call_is_left_for_the_tools_and_the_approval_is_traced() -> None:
+    """The gate runs no tool: what it contributes for a yes is the record of the yes,
+    and the call goes on to the tools still outstanding."""
+    contributed = GateStep(registry=_offering(_acting()), approve=_yes("c1"))(
+        _proposing(BOOKED)
+    )
+
+    assert contributed.get("messages", []) == [], "nothing settles an approved call"
+    assert contributed["trace"] == [
+        EffectSettled(tool=BOOKED, does=DOES, approved=True)
+    ]
+
+
+def test_a_declined_call_is_answered_where_it_was_proposed() -> None:
+    """Settled here, so the tools never see it and need no notion of approval at all —
+    and the model is told, in a `tool` message like any other, so the turn answers."""
+    contributed = GateStep(registry=_offering(_acting()), approve=_yes())(
+        _proposing(BOOKED)
+    )
+
+    assert contributed["messages"] == [
+        Message(
+            role="tool", content=DECLINED_CALL.format(name=BOOKED), tool_call_id="c1"
+        )
+    ]
+    assert contributed["trace"] == [
+        EffectSettled(tool=BOOKED, does=DOES, approved=False)
+    ]
+
+
+def test_a_round_that_proposes_no_effect_is_not_stopped_and_contributes_nothing() -> (
+    None
+):
+    """A tool that declares nothing runs in the round it was asked for. The gate stands
+    on the path either way and passes such a round straight through."""
+    stopped: list[Proposed] = []
+
+    def approve(proposed: Proposed) -> Approval:
+        stopped.append(proposed)
+        return Approval(call_id=proposed.call_id, approved=True)
+
+    gate = GateStep(
+        registry=_offering(_acting("look_it_up", effect=False)), approve=approve
+    )
+
+    assert gate(_proposing("look_it_up")) == {"messages": [], "trace": []}
+    assert stopped == []
+
+
+def test_a_call_naming_no_registered_tool_passes_the_gate_untouched() -> None:
+    """The gate knows what was declared to cora, and a name nothing declared is not an
+    effect it can vouch for. It is refused where a call always was — at the tools."""
+    gate = GateStep(registry=_offering(_acting()), approve=_yes())
+
+    assert gate(_proposing("no_such_tool")) == {"messages": [], "trace": []}
+
+
+def test_an_answer_that_is_not_an_approval_of_this_call_is_read_as_a_decline() -> None:
+    """Whatever answers arrived from outside the run: a yes to the other call of the
+    round is not a yes to this one."""
+    contributed = GateStep(registry=_offering(_acting()), approve=_yes("c2"))(
+        _proposing(BOOKED)
+    )
+
+    assert contributed["trace"] == [
+        EffectSettled(tool=BOOKED, does=DOES, approved=False)
+    ]
+
+
+def test_a_caller_that_cannot_ask_declines_rather_than_acting() -> None:
+    """The default, so a shell with no card to draw changes nothing outside cora — the
+    same way `declined` answers a decision nobody can be shown."""
+    contributed = GateStep(registry=_offering(_acting()))(_proposing(BOOKED))
+
+    assert contributed["trace"] == [
+        EffectSettled(tool=BOOKED, does=DOES, approved=False)
+    ]
+
+
+def test_the_gate_settles_every_proposal_of_a_round_before_any_of_it_runs() -> None:
+    """Which is what "settled ahead of execution" is made of: the gate runs no tool, so
+    a round proposing two effects is two stops and then one round of tools."""
+    gate = GateStep(
+        registry=_offering(_acting(), _acting("cancel_it")), approve=_yes("c1")
+    )
+
+    contributed = gate(_proposing(BOOKED, "cancel_it"))
+
+    settled = [step for step in contributed["trace"] if isinstance(step, EffectSettled)]
+    assert [(step.tool, step.approved) for step in settled] == [
+        (BOOKED, True),
+        ("cancel_it", False),
+    ]
+    assert [message.tool_call_id for message in contributed["messages"]] == ["c2"]
