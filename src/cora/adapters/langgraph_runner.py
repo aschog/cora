@@ -47,6 +47,7 @@ The limit is spent one `run` at a time, so the longest walk is a turn that never
 and spends every round: each named step once, then a model call, the gate and the tools
 per round. The gate costs a superstep on every round whether or not it stops anything,
 which is what a path that cannot be skipped costs.
+
 The limit such a walk needs is `SUPERSTEPS_PER_ROUND * rounds + steps`, one more than
 it spends, measured across budgets 1 to 12 and grown walks. The test walks it at the
 sizing *minus* this slack, which is that measured limit exactly, so every term of the

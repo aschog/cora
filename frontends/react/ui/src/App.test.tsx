@@ -3470,3 +3470,31 @@ test('a proposal left open comes back when the page does', async () => {
   expect(await screen.findByText(PROPOSAL.does)).toBeTruthy()
   expect(await screen.findByRole('button', { name: 'Approve' })).toBeTruthy()
 })
+
+test('a decision settled and then an effect proposed leaves one card open, not two', async () => {
+  /* One turn can do both: the reader picks a value, and the round that follows asks to
+     act on it. The decision they answered stays answered — it is the history of the
+     turn — and the only thing waiting on them is the new card. */
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return stream(frame('paused', PAUSED))
+      if (path === '/api/resume') return stream(frame('paused', PROPOSED))
+      if (path === '/api/approve') return stream(frame('turn', SAVED))
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => null } as unknown as Response
+      return {
+        ok: true,
+        json: async () => served[route(path)] ?? [],
+      } as unknown as Response
+    }),
+  )
+  const asked = await stopped()
+
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+
+  expect(await screen.findByText(/You chose 75 kg/)).toBeTruthy()
+  expect(screen.getByText(PROPOSAL.does)).toBeTruthy()
+  expect(screen.getAllByRole('group', { name: /Paused/ })).toHaveLength(1)
+  expect(screen.getAllByRole('group', { name: /Settled/ })).toHaveLength(1)
+})

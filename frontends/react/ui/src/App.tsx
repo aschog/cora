@@ -580,14 +580,7 @@ export default function App() {
       )
       if (cora.paused(reply)) {
         const card = stopper(reply)
-        if (card) {
-          at((found) => ({
-            ...found,
-            ...reopened,
-            ...card,
-            pending: false,
-          }))
-        }
+        if (card) at((found) => ({ ...found, ...card, pending: false }))
         return
       }
       forget()

@@ -204,11 +204,9 @@ const outcome = (entry?: Entry) =>
   entry &&
   (entry.answer ??
     entry.error ??
-    (entry.decision
-      ? String(entry.chosen)
-      : entry.proposal
-        ? String(entry.approved)
-        : '…'))
+    (entry.decision || entry.proposal
+      ? `${entry.chosen}/${entry.approved}`
+      : '…'))
 
 /** The answer is rendered markdown, so its citations are buttons in that HTML rather
  *  than elements React placed — which makes the click one listener on the block. */

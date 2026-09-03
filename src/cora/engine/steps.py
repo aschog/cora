@@ -638,13 +638,15 @@ class ToolStep:
 
 
 DECLINED_CALL = (
-    "tool '{name}' was not run: the user was asked to approve it and did not. Answer "
-    "without it, and say plainly that you did not do it."
+    "tool '{name}' was not run: it changes something outside cora and was not "
+    "approved. Answer without it, and say plainly that you did not do it."
 )
-"""What the model is told about a call the user declined. Worded as the refusal it is,
-with what to do next: the model is owed a way on, and the turn still has an answer to
-give. The story asks the answer to say what it did not do, and this is where it is
-asked for — a brief cannot say it, because a brief does not know which call."""
+"""What the model is told about a call that was not approved. Worded as what happened
+rather than as what somebody did — a frontend that cannot ask declines on the reader's
+behalf, and "the user declined" would then be a sentence nobody said. What follows is
+what to do next: the model is owed a way on, and the turn still has an answer to give.
+The story asks the answer to say what it did not do, and this is where it is asked for —
+a brief cannot say it, because a brief does not know which call."""
 
 
 @dataclass(frozen=True)

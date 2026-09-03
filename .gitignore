@@ -29,6 +29,10 @@ node_modules/
 !.cora/plugins/.gitkeep
 e2e-artifacts/
 
+# What an approved effect produced. The user's to keep, wherever `CORA_OUTPUT_PATH`
+# points; this is the default, which lands beside the stores above rather than in them.
+cora-output/
+
 # The built docs site.
 site/
 
