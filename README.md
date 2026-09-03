@@ -28,13 +28,15 @@ A plugin contributes three things, and may bring only one of them:
 
 - **what cora can do** — a tool, named and given a schema, that the model may call —
   declared, where it reaches outside cora, so what it returns is labelled, and where it
-  changes something out there, so the listing says so and no sub-agent is offered it
+  changes something out there, so the listing says so, no sub-agent is offered it, and a
+  call of it waits for you
 - **what cora is** — instructions heading its section of the brief
 - **what cora does as a turn runs** — a handler at a named point in it: refusing the
   question, amending the brief, refusing one tool call, wrapping what a tool returned
 
 With none loaded cora still answers: it searches its documents, remembers what it is
-told, asks when it cannot tell, and cites what it used.
+told, asks when it cannot tell, and cites what it used. It changes nothing outside itself
+unless a plugin gave it something that does — and then only once you have said yes.
 
 ## Writing your own plugin
 
@@ -103,6 +105,26 @@ forecast has none, so the answer says it in cora's own prose and the trace is th
 of the call. A service that is down costs the turn that one call — a friendly sentence,
 and the conversation intact.
 
+And it acts, but only when you say so. A tool that declares it changes something outside
+cora does not run on the model's word: the turn stops, the page shows the call — what the
+tool says it does, and the arguments the model wrote — and nothing happens until you
+approve it. Approve and it runs; decline and nothing outside cora has changed, the model
+is told plainly, and the turn still answers. Ask travel to save the itinerary you worked
+out and that is the shape of it: a card, then a file. A round that proposes two effects
+stops twice and settles both before either runs, so picking the turn up never replays one
+that already happened, and the trace carries the approval beside the call it authorised.
+
+The gate is cora's own — a step of the core standing on the only path from the model to
+its tools, which a plugin can neither switch off nor imitate, because no handler may stop
+a turn. It covers what is declared to cora, which is every tool a plugin registered;
+what a plugin's *own* code does inside a call is the trust you extend by loading it.
+
+What an effect produces is a file you keep. It lands under `cora-output` — beside cora's
+stores rather than in them, because everything in `.cora/` is bookkeeping a deployment may
+delete and an itinerary you approved is not. `CORA_OUTPUT_PATH` moves it. A plugin is
+handed the location rather than choosing one, and a filename that would climb out of it is
+refused, so no plugin writes that check itself.
+
 A plugin does not have to be installed. Drop a single `.py` file into `./.cora/plugins/`
 and cora loads it with no packaging at all, named for the file — the folder is read in
 name order after the modules `CORA_PLUGINS` names, and `CORA_PLUGINS_PATH` moves it. It
@@ -128,7 +150,7 @@ docs-serve` reads it on http://127.0.0.1:8001 with live reload, and it renders w
 network. Sorted by what you came for:
 
 - **Tutorial** — [your first session](docs/tutorial/first-session.md)
-- **Understand** — [what it is made of](docs/big-picture.md), the engine and its nine
+- **Understand** — [what it is made of](docs/big-picture.md), the engine and its ten
   ports · [what happens when you ask](docs/happy-path.md), drawn out of the code that
   runs it
 - **How-to** — [write a plugin](docs/how-to/write-a-plugin.md) ·

@@ -5,7 +5,7 @@ The design is *hexagonal* — ports and adapters. The tests show how the code wo
 
 ## The map
 
-![cora as a UML component diagram: the React frontend, the engine and its parts, nine
+![cora as a UML component diagram: the React frontend, the engine and its parts, ten
 required interfaces wired to the components that provide them, and the packages each one
 depends on.](assets/component-map.svg)
 

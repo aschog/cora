@@ -38,6 +38,21 @@ picked up, so the reading has to be a step behind the stop: read again on the wa
 a question can be read differently, and the answer would arrive in a field the reader
 never chose.
 
+Every round runs model → *gate* → tools, and the stop for the reader leads into the gate
+as well. The gate is what a call that changes something outside cora waits at: it puts
+each such call to the user, settles every one of them before the tools run, and answers a
+declined one where it was proposed, so the tools need no notion of approval at all. It is
+a step of the core rather than a point a plugin subscribes to — no handler may stop a
+turn — and it stands on the only path from the model to the tools, which is what makes it
+unbypassable by construction rather than by anyone remembering to call it. A round
+proposing nothing that declares an effect passes straight through, at the cost of the one
+superstep the sizing allows for.
+
+The gate runs no tool, and that is why it can be replayed. A stopped node is walked again
+from its first line when the turn is picked up, so a round of two effects stops twice,
+comes back with both answers in the order they were asked, and runs neither until both
+are settled — an effect that already happened can never run a second time.
+
 Four points inside that walk are open to a plugin — the question being screened, the
 brief being settled, a tool call about to run, a tool result coming back. A handler
 subscribed to one is handed a frozen value and answers with a refusal, an amendment or
@@ -45,9 +60,10 @@ nothing. What a return means at each point is `cora.engine.events`, and the trac
 the plugin behind every one of them. Cora's own screening goes through the same door.
 
 ![A UML sequence diagram of one turn inside the graph: the runner takes the screen, route
-and focus steps and then the work step, loops over the model step and the router, and on the router's
-answer either runs the round's tools, stops to put a decision to the reader before
-running them, or leaves the loop for the answer step.](assets/round-map.svg)
+and focus steps and then the work step, loops over the model step and the router, and on
+the router's answer either takes the round to the gate and on to its tools, stops to put a
+decision to the reader before the gate, or leaves the loop for the answer
+step.](assets/round-map.svg)
 
 ## The tool that reaches the documents
 

@@ -15,6 +15,7 @@ import pathlib
 import re
 
 import workspace
+from cora.app.config import DEFAULT_OUTPUT_PATH
 
 PAGES = (
     "README.md",
@@ -111,6 +112,17 @@ def test_a_path_is_claimed_from_its_dot_as_readily_as_from_a_letter() -> None:
     assert _references("see ./docs/big-picture.md", CONFIG_PATTERNS) == {
         "./docs/big-picture.md"
     }
+
+
+def test_the_readme_says_where_an_effect_writes_and_how_to_move_it() -> None:
+    """The output location is the one place cora writes something the user keeps, and
+    the spec says `README.md` has to name it. A default moved without the page moving
+    with it sends them looking in a directory nothing is in — so this claim is one a
+    guard reads, rather than prose held only by whoever remembers it."""
+    readme = pathlib.Path("README.md").read_text()
+
+    assert DEFAULT_OUTPUT_PATH in readme
+    assert "CORA_OUTPUT_PATH" in readme
 
 
 def test_every_location_the_docs_claim_exists() -> None:
