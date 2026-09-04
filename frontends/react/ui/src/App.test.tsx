@@ -77,20 +77,6 @@ const OLDER = {
 
 const served: Record<string, unknown> = {
   '/api/documents': ['notes.md'],
-  '/api/plugins': [
-    {
-      name: 'fitness',
-      source: 'cora.plugins.fitness',
-      scopes: ['fitness'],
-      contributions: [
-        { kind: 'instructions', name: '', scope: 'fitness', note: '' },
-        { kind: 'tool', name: 'bmr', scope: 'fitness', note: '' },
-        { kind: 'tool', name: 'book_it', scope: 'fitness', note: 'has an effect' },
-        { kind: 'handler', name: 'screen', scope: null, note: '' },
-      ],
-    },
-    { name: 'quiet', source: '/tmp/quiet.py', scopes: [], contributions: [] },
-  ],
   '/api/scopes': { available: ['fitness', 'travel'], default: 'cora' },
   '/api/memory': [{ key: 'f1', text: 'No burpees.' }],
   '/api/sessions': [{ thread_id: 'old', opened_with: OLDER.question }],
@@ -133,25 +119,26 @@ const KEPT = 'Sleep, not volume. The rest of the document follows.'
  *  per field now, and the fixture serves one set of documents whichever is asked for. */
 const route = (path: string) => path.split('?')[0]
 
+/** Naming a field is two clicks: the segment that asks which, then the plugin. */
+const pickPlugin = (name: string) => {
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  fireEvent.click(within(screen.getByRole('list')).getByRole('button', { name }))
+}
+
+/** The field the rail says it lists and uploads into, or `null` where it names none.
+ *  Read off the heading row, because that is where a reader reads it: the heading names
+ *  the list and the field follows it, with no ARIA in between. `null` rather than an
+ *  empty string, so a field drawn with nothing in it is not read as no field drawn. */
+const railField = () => {
+  const row = screen.getByRole('heading', { name: 'YOUR DOCUMENTS' }).parentElement!
+  return row.childElementCount > 1 ? row.lastElementChild!.textContent : null
+}
+
 
 test('the plan fills while the turn runs, then the answer lands with its citation', async () => {
   render(<App />)
 
   expect(await screen.findByText('notes.md')).toBeTruthy()
-
-  /* The badge names the shell's plugin; the menu says where it came from and what it
-     registered, with a claim on every turn marked as one rather than left blank. */
-  fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
-  expect(screen.getByText('cora.plugins.fitness')).toBeTruthy()
-  expect(screen.getByText('bmr')).toBeTruthy()
-  expect(screen.getByText('screen')).toBeTruthy()
-  expect(screen.getByText('system-wide')).toBeTruthy()
-  expect(screen.getByText('registers nothing')).toBeTruthy()
-  /* What a plugin may *do* is why a reader opens this menu, and a tool that changes
-     something outside cora is the loudest thing it can say. Drawn off the note, so the
-     menu shows one it has never heard of rather than needing to know the words. */
-  expect(screen.getByText('has an effect')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
@@ -229,6 +216,26 @@ test('each rail folds away and comes back, and its toggle says which it is', asy
   fireEvent.click(rail)
   expect(screen.getByText('notes.md')).toBeTruthy()
   expect(screen.getByRole('tab', { name: 'STEPS' })).toBeTruthy()
+})
+
+test('the rail carries the name and the controls, and folds down to its own toggle', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const documents = screen.getByRole('button', { name: 'Documents' })
+  const rail = documents.closest('aside')!
+  expect(rail.textContent).toContain('cora')
+  expect(rail.textContent).toContain('New session')
+  expect(rail.textContent).not.toContain('Chat')
+
+  fireEvent.click(documents)
+
+  // Folded, the name and the way back stay; everything the rail was holding goes.
+  expect(rail.textContent).toContain('cora')
+  expect(screen.getByRole('button', { name: 'Documents' })).toBeTruthy()
+  expect(screen.queryByText('New session')).toBeNull()
+  // The field the conversation runs in is the conversation's, so folding the rail keeps it.
+  expect(screen.getByRole('button', { name: 'Chat' })).toBeTruthy()
 })
 
 
@@ -895,7 +902,7 @@ test('the question in flight stays with the conversation it was asked in', async
   )
 })
 
-test('the header offers a way to start a new session', async () => {
+test('the rail offers a way to start a new session', async () => {
   render(<App />)
   await screen.findByText('notes.md')
 
@@ -2213,7 +2220,7 @@ const nothingExplains = () =>
   EXPLANATIONS.forEach((said) => expect(screen.queryByText(said)).toBeNull())
 
 test('a full page explains none of its own panels', async () => {
-  /* Documents, steps, facts, a plugin and a past conversation — every panel with something
+  /* Documents, steps, facts and a past conversation — every panel with something
      in it, and the reader is told about none of them. */
   render(<App />)
   await screen.findByText('notes.md')
@@ -2235,12 +2242,10 @@ test('a full page explains none of its own panels', async () => {
     fireEvent.click(screen.getByRole('tab', { name: panel }))
     nothingExplains()
   }
-  fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
-  nothingExplains()
 })
 
 test('a page with nothing in it yet draws the controls and no prose', async () => {
-  /* A bare cora: no document, no plugin, no field to pin a conversation to. */
+  /* A bare cora: no document, and no field to pin a conversation to. */
   vi.stubGlobal(
     'fetch',
     vi.fn(
@@ -2254,10 +2259,6 @@ test('a page with nothing in it yet draws the controls and no prose', async () =
   )
   render(<App />)
   await screen.findByText('Add a document')
-
-  fireEvent.click(screen.getByRole('button', { name: /bare cora/ }))
-  expect(screen.getByText('No plugin is loaded.')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: /bare cora/ }))
 
   for (const panel of ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY']) {
     fireEvent.click(screen.getByRole('tab', { name: panel }))
@@ -2694,7 +2695,7 @@ test('a conversation is pinned to a field, and keeps it', async () => {
 
   /* Unpinned, cora reads every question. The pick binds what comes next, so it is the
      next question that carries it. */
-  fireEvent.change(screen.getByLabelText('Field'), { target: { value: 'fitness' } })
+  pickPlugin('fitness')
   expect(screen.getByText(/next question/)).toBeTruthy()
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -2709,9 +2710,13 @@ test('a conversation is pinned to a field, and keeps it', async () => {
   ])
   /* The pin is in the thread's state now, so the control stops being a choice: a second
      field is a second conversation, and the reason is on the page for a screen reader. */
-  expect(screen.queryByRole('combobox')).toBeNull()
-  expect(screen.getByLabelText('Field').textContent).toBe('fitness')
-  expect(screen.getByText(/Start a new one/)).toBeTruthy()
+  expect(screen.queryByRole('list')).toBeNull()
+  expect(screen.getByLabelText('Answer in').textContent).toBe('fitness')
+  /* And the reason is read rather than clipped. It stands where the promise it replaces
+     stood: a control that has become a fact owes the reader the fact, and a description
+     hung off an unfocusable name reaches nobody either way. */
+  const why = screen.getByText(/Start a new one/)
+  expect(why.classList.contains('told-not-shown')).toBe(false)
 })
 
 test('a reopened conversation is drawn in the field it was pinned to', async () => {
@@ -2733,8 +2738,8 @@ test('a reopened conversation is drawn in the field it was pinned to', async () 
   fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
 
   /* The pin outlived the page because it is the thread's own state, not the page's. */
-  await waitFor(() => expect(screen.getByLabelText('Field').textContent).toBe('travel'))
-  expect(screen.queryByRole('combobox')).toBeNull()
+  await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('travel'))
+  expect(screen.queryByRole('list')).toBeNull()
 })
 
 test('the picker says what the thread holds, not what the reader picked', async () => {
@@ -2774,7 +2779,7 @@ test('the picker says what the thread holds, not what the reader picked', async 
   render(<App />)
   await screen.findByText('notes.md')
 
-  fireEvent.change(screen.getByLabelText('Field'), { target: { value: 'fitness' } })
+  pickPlugin('fitness')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
   })
@@ -2783,8 +2788,8 @@ test('the picker says what the thread holds, not what the reader picked', async 
 
   /* The turn failed, but it was admitted — so the thread is in that field now, and the
      control says so rather than offering a choice that would be refused. */
-  await waitFor(() => expect(screen.getByLabelText('Field').textContent).toBe('fitness'))
-  expect(screen.queryByRole('combobox')).toBeNull()
+  await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
+  expect(screen.queryByRole('list')).toBeNull()
 })
 
 
@@ -2808,13 +2813,13 @@ test('a scope read that failed leaves the pin the page already knows about', asy
   render(<App />)
   await screen.findByText('notes.md')
 
-  fireEvent.change(screen.getByLabelText('Field'), { target: { value: 'fitness' } })
+  pickPlugin('fitness')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
   })
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
   turn.release()
-  await waitFor(() => expect(screen.getByLabelText('Field').textContent).toBe('fitness'))
+  await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
 
   reachable = false
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -2825,8 +2830,8 @@ test('a scope read that failed leaves the pin the page already knows about', asy
 
   /* The read failed; the field the thread holds is not news the page has, so it keeps
      what it had rather than inventing a choice. */
-  await waitFor(() => expect(screen.getByLabelText('Field').textContent).toBe('fitness'))
-  expect(screen.queryByRole('combobox')).toBeNull()
+  await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
+  expect(screen.queryByRole('list')).toBeNull()
 })
 
 test('the rail lists and uploads into the field it is set to', async () => {
@@ -2853,9 +2858,7 @@ test('the rail lists and uploads into the field it is set to', async () => {
   render(<App />)
   await screen.findByText('notes.md')
 
-  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
-    target: { value: 'travel' },
-  })
+  pickPlugin('travel')
 
   expect(await screen.findByText('kyoto.md')).toBeTruthy()
   expect(screen.queryByText('notes.md')).toBeNull()
@@ -2888,7 +2891,7 @@ test('a pinned conversation uploads into its own field', async () => {
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
   fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
   await waitFor(() =>
-    expect(screen.getByLabelText('Upload into').textContent).toBe('travel'),
+    expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
   )
 
   upload('kyoto.md')
@@ -2915,15 +2918,14 @@ test('leaving a pinned conversation returns the rail to the default field', asyn
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
   fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
   await waitFor(() =>
-    expect(screen.getByLabelText('Upload into').textContent).toBe('travel'),
+    expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
   )
 
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
   await waitFor(() =>
     expect(
-      (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement)
-        .value,
+      railField(),
     ).toBe('cora'),
   )
 })
@@ -2967,9 +2969,7 @@ test('a filename in two fields never opens the other field’s copy', async () =
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
   await screen.findByText(/From the default field/)
 
-  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
-    target: { value: 'travel' },
-  })
+  pickPlugin('travel')
   await waitFor(() =>
     expect(
       screen.getByRole('button', { name: 'notes.md' }).hasAttribute('disabled'),
@@ -2980,9 +2980,9 @@ test('a filename in two fields never opens the other field’s copy', async () =
   expect(opened).toEqual([])
 })
 
-test('a single loaded field is where uploads go, with nothing to choose', async () => {
-  /* Routing has nothing to choose between, so every turn runs in that field — a rail
-     offering the default one beside it would take documents no turn could ever cite. */
+test('a single loaded field is where uploads go', async () => {
+  /* Routing has nothing to choose between, so every turn runs in that field — and the
+     rail states it, because an upload landing anywhere else could never be cited. */
   let into: string | null = null
   const one: Record<string, unknown> = {
     ...served,
@@ -3002,13 +3002,41 @@ test('a single loaded field is where uploads go, with nothing to choose', async 
   )
   render(<App />)
   await waitFor(() =>
-    expect(screen.getByLabelText('Upload into').textContent).toBe('fitness'),
+    expect(railField()).toBe('fitness'),
   )
-  expect(screen.queryByRole('combobox', { name: /upload into/i })).toBeNull()
+
+  /* Nothing to route between is nothing to choose between: both segments would answer in
+     the one field, and naming it would fix the thread to it for good in exchange for
+     nothing. A choice that changes no answer is not a choice. */
+  expect(screen.queryByRole('button', { name: 'Chat' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Plugin' })).toBeNull()
 
   upload('plan.md')
 
   await waitFor(() => expect(into).toBe('fitness'))
+})
+
+test('a single loaded field a conversation is already pinned to is still named somewhere', async () => {
+  /* A thread pinned when the deployment loaded two fields survives it loading one, and the
+     strip that would say so is gone with the choice. The rail names it then, the same way
+     it does when the fields could not be listed at all. */
+  globalThis.sessionStorage.setItem('cora.parked', 'old')
+  const one: Record<string, unknown> = {
+    ...served,
+    '/api/scopes': { available: ['travel'], default: 'cora' },
+    '/api/sessions/old': [OLDER],
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async (path: string) =>
+        ({ ok: true, json: async () => one[route(path)] ?? [] }) as unknown as Response,
+    ),
+  )
+  render(<App />)
+
+  await waitFor(() => expect(railField()).toBe('travel'))
 })
 
 test('an unpinned turn leaves the rail in the field it was answered in', async () => {
@@ -3059,6 +3087,211 @@ test('an unpinned turn leaves the rail in the field it was answered in', async (
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
 })
 
+test('Chat is a way back to the default field, not only away from a pin', async () => {
+  /* Routing leaves the field it settled standing, so the rail follows a turn into
+     `travel`. Asking for Chat is the reader saying no field is named — and the default
+     field is the field a turn naming none runs in, so that is where it has to land.
+     Without this, one routed turn puts the default field out of reach for the life of
+     the conversation, `New session` being the only way out. */
+  const routed = { answer: 'Book it early.', citations: [], trace: [], scopes: ['travel'] }
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['kyoto.md'] }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return oneTurn(routed)
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
+      }
+      const body = served[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'How early?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Book it early/)
+  await waitFor(() =>
+    expect(railField()).toBe('travel'),
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
+
+  await waitFor(() =>
+    expect(railField()).toBe('cora'),
+  )
+  expect(await screen.findByText('notes.md')).toBeTruthy()
+})
+
+test('the note about a pin is absent until there is a pin to note', async () => {
+  /* "From your next question on." is what a pick promises. Standing under a strip with
+     nothing picked, it promises something about a pin the reader has not set. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  expect(screen.queryByText(/next question/)).toBeNull()
+
+  pickPlugin('fitness')
+
+  expect(screen.getByText(/next question/)).toBeTruthy()
+})
+
+test('the segment that opens the list says what it opens, and whether it is open', async () => {
+  /* The list is a region this button discloses, so the button is where a reader finds
+     out that there is one and whether it is showing. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const trigger = screen.getByRole('button', { name: 'Plugin' })
+  expect(trigger.getAttribute('aria-expanded')).toBe('false')
+
+  fireEvent.click(trigger)
+
+  expect(trigger.getAttribute('aria-expanded')).toBe('true')
+  expect(trigger.getAttribute('aria-controls')).toBe(screen.getByRole('list').id)
+})
+
+test('a pinned conversation the page cannot list the fields of is still named somewhere', async () => {
+  /* The strip needs the loaded fields to draw itself and a pin needs only the thread, so
+     a scopes read that failed leaves a conversation pinned with no strip to say so. A
+     parked card is picked up outside the load that failed, which is how the page reaches
+     that state. The rail is what names the field then — otherwise the field taking the
+     uploads is named nowhere. */
+  globalThis.sessionStorage.setItem('cora.parked', 'old')
+  const half: Record<string, unknown> = {
+    '/api/sessions/old': [OLDER],
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (route(path) === '/api/scopes')
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({ error: 'No.' }),
+        } as unknown as Response
+      const body = half[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+
+  await waitFor(() => expect(railField()).toBe('travel'))
+  expect(screen.queryByRole('button', { name: 'Chat' })).toBeNull()
+})
+
+test('the field list closes on Escape, and hands the trigger its focus back', async () => {
+  /* An overlay stands over the conversation, so a reader who opens it and changes their
+     mind has to be able to shut it. Without a key that does, a keyboard is a way in and
+     no way out. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const trigger = screen.getByRole('button', { name: 'Plugin' })
+  fireEvent.click(trigger)
+  expect(screen.getByRole('list')).toBeTruthy()
+
+  fireEvent.keyDown(within(screen.getByRole('list')).getByRole('button', { name: 'travel' }), {
+    key: 'Escape',
+  })
+
+  expect(screen.queryByRole('list')).toBeNull()
+  expect(document.activeElement).toBe(trigger)
+})
+
+test('picking a field closes the list, and hands the trigger its focus back', async () => {
+  /* The other way out of the list is using it. The button that was pressed goes away with
+     the list it was in, so a reader who picked with the keyboard is left on nothing unless
+     the focus is put back — the same place Escape puts it. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  fireEvent.click(within(screen.getByRole('list')).getByRole('button', { name: 'fitness' }))
+
+  expect(screen.queryByRole('list')).toBeNull()
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'fitness' }))
+})
+
+test('the strip says which field it is running in, and the list which one is picked', async () => {
+  /* The state has to be on the control, not only in its colour: `Chat` says whether any
+     field is named, the trigger says which, and the list marks it. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  expect(screen.getByRole('button', { name: 'Chat' }).getAttribute('aria-pressed')).toBe(
+    'true',
+  )
+
+  pickPlugin('fitness')
+
+  expect(screen.getByRole('button', { name: 'Chat' }).getAttribute('aria-pressed')).toBe(
+    'false',
+  )
+  const named = screen.getByRole('button', { name: 'fitness' })
+  expect(named.getAttribute('aria-pressed')).toBe('true')
+  expect(screen.queryByRole('list')).toBeNull()
+
+  fireEvent.click(named)
+  const marked = within(screen.getByRole('list'))
+    .getAllByRole('button')
+    .filter((each) => each.getAttribute('aria-current') === 'true')
+  expect(marked.map((each) => each.textContent)).toEqual(['fitness'])
+})
+
+test('the field list closes when the reader turns to something else', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  expect(screen.getByRole('list')).toBeTruthy()
+
+  fireEvent.mouseDown(screen.getByPlaceholderText(/Ask a question/))
+
+  expect(screen.queryByRole('list')).toBeNull()
+})
+
+test('a pinned conversation is named over the conversation, and not twice', async () => {
+  /* The strip says the field a pinned conversation is in, so the rail saying it again
+     would be the same fact drawn in two places — and two places is where they drift. */
+  const pinned: Record<string, unknown> = {
+    ...served,
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      const body = pinned[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
+
+  await waitFor(() =>
+    expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
+  )
+  expect(railField()).toBeNull()
+})
+
+test('the rail names no field before the deployment has said which there are', async () => {
+  /* `anyField` is the server's answer and arrives with the rest of the page. Until it
+     does the field is the empty string, and a pill drawn around it is a pill with
+     nothing in it. */
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
+  render(<App />)
+
+  await screen.findByText('YOUR DOCUMENTS')
+  expect(railField()).toBeNull()
+})
+
 test('a resumed answer does not move the rail of the conversation the reader moved to', async () => {
   /* The answer itself is correctly not landed when the reader has moved on. The field
      it was answered in must not land either: a rail flipped to another conversation's
@@ -3079,7 +3312,7 @@ test('a resumed answer does not move the rail of the conversation the reader mov
   await flushed()
 
   expect(
-    (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+    railField(),
   ).toBe('cora')
 })
 
@@ -3130,7 +3363,7 @@ test('reopening an unpinned conversation draws it in the field it was answered i
 
   await waitFor(() =>
     expect(
-      (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+      railField(),
     ).toBe('travel'),
   )
   expect(await screen.findByText('kyoto.md')).toBeTruthy()
@@ -3215,16 +3448,16 @@ test('a conversation reopened after a pinned one is still drawn in its own field
 
   fireEvent.click(await screen.findByRole('button', { name: new RegExp(OLDER.question) }))
   await waitFor(() =>
-    expect(screen.getByLabelText('Upload into').textContent).toBe('travel'),
+    expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
   )
   fireEvent.click(await screen.findByRole('button', { name: new RegExp(earlier.question) }))
   await waitFor(() =>
-    expect(screen.getByRole('combobox', { name: /upload into/i })).toBeTruthy(),
+    expect(railField()).not.toBeNull(),
   )
   await flushed()
 
   expect(
-    (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+    railField(),
   ).toBe('fitness')
 })
 
@@ -3238,7 +3471,7 @@ test('answering a decision moves the rail to the field it settled', async () => 
 
   await waitFor(() =>
     expect(
-      (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+      railField(),
     ).toBe('travel'),
   )
 })
@@ -3276,13 +3509,9 @@ test('a listing that failed for a field left behind neither banners nor clears',
   render(<App />)
   await screen.findByText('notes.md')
 
-  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
-    target: { value: 'travel' },
-  })
+  pickPlugin('travel')
   await flushed()
-  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
-    target: { value: 'cora' },
-  })
+  fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
   expect(
     await screen.findByText('The knowledge base is temporarily unavailable.'),
   ).toBeTruthy()
@@ -3326,13 +3555,9 @@ test('a listing that failed for a field left behind raises no banner about it', 
   render(<App />)
   await screen.findByText('notes.md')
 
-  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
-    target: { value: 'travel' },
-  })
+  pickPlugin('travel')
   await flushed()
-  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
-    target: { value: 'cora' },
-  })
+  fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
   await flushed()
 
   release()

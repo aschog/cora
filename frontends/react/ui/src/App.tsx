@@ -4,7 +4,6 @@ import type {
   Citation,
   Decision,
   Fact,
-  Plugin,
   Proposal,
   Result,
   Session,
@@ -14,7 +13,9 @@ import type {
 import Answer from './components/Answer'
 import CitationModal from './components/CitationModal'
 import DocumentRail from './components/DocumentRail'
-import Header from './components/Header'
+import NewSession from './components/NewSession'
+import RailToggle from './components/RailToggle'
+import ScopePicker from './components/ScopePicker'
 import MemoryPanel from './components/MemoryPanel'
 import PlanPanel from './components/PlanPanel'
 import SessionsPanel from './components/SessionsPanel'
@@ -140,7 +141,6 @@ export default function App() {
      which used to take the question the reader had just asked with it. */
   const [flight, setFlight] = useState<{ thread: string; entry: Entry } | null>(null)
   const [documents, setDocuments] = useState<string[]>([])
-  const [plugins, setPlugins] = useState<Plugin[]>([])
   /* The fields this deployment offers, and the one this conversation is fixed to.
      `fixedPin` is whether a turn has written it into the thread's state — until one has,
      the pick is the reader's intention and the next question is what settles it. */
@@ -151,11 +151,8 @@ export default function App() {
      none lands. The server's answer rather than a constant here: it is one fact, and
      the page is not where it is decided. */
   const [anyField, setAnyField] = useState('')
-  /* Two of the four things the rail's field is settled from, and the only two the page
-     holds: what the reader picked for this conversation, and the field this
-     conversation's own turns were answered in. Both are the conversation's, so both are
-     dropped when it is left. */
-  const [picked, setPicked] = useState<string | null>(null)
+  /* The field this conversation's own turns were answered in. The conversation's, so it
+     is dropped when it is left. */
   const [answered, setAnswered] = useState<string | null>(null)
   const [facts, setFacts] = useState<Fact[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
@@ -205,13 +202,19 @@ export default function App() {
      belonging to none is answered in the default field. */
   const home = fields.length === 1 ? fields[0] : anyField
 
+  /** Whether the strip over the conversation is already naming the field, which is the
+   *  one case the rail leaves it unsaid. Both halves here rather than one in each
+   *  component: a rule split across two is a rule that can say no twice, and a field
+   *  named nowhere still takes the uploads. Fewer than two fields draws no strip, so a
+   *  pin under one of them is the rail's to say. */
+  const namedAbove = pin !== null && fields.length > 1
+
   /** Which field the rail shows and uploads into, in one expression rather than in the
-   *  several places that used to write it — a pin outranks a pick because a pinned
-   *  conversation has one field for good; a pick outranks the conversation's own turns
-   *  because the reader asking for a field is later news than the last answer; and a
-   *  conversation that has said nothing sits at home. Derived, so nothing can race it:
-   *  every writer below settles one of the inputs and none settles the answer. */
-  const field = pin ?? picked ?? answered ?? home
+   *  several places that used to write it — a pin outranks the conversation's own turns
+   *  because a pinned conversation has one field for good, and a conversation that has
+   *  said nothing sits at home. Derived, so nothing can race it: every writer below
+   *  settles one of the inputs and none settles the answer. */
+  const field = pin ?? answered ?? home
 
   /** What the page shows around the conversation, loaded together: one banner for all
    *  of it, and a load that goes through clears the last one's. Loading the badge on
@@ -225,10 +228,9 @@ export default function App() {
         cora.documents(field),
         cora.memory(),
         cora.sessions(),
-        cora.plugins(),
         cora.scopes(),
       ])
-        .then(([indexed, kept, before, loaded, offered]) => {
+        .then(([indexed, kept, before, offered]) => {
           /* The listing is per field and this load asked for the field the page was in
              when it started. A load the reader has moved past answers about a field the
              rail is no longer showing: its list must not land under the new one's name,
@@ -239,7 +241,6 @@ export default function App() {
           setDocuments(indexed)
           setFacts(kept)
           setSessions(before)
-          setPlugins(loaded)
           setFields(offered.available)
           setAnyField(offered.default)
           setTrouble(null)
@@ -497,7 +498,6 @@ export default function App() {
     setNotice(null)
     setPin(null)
     setFixedPin(false)
-    setPicked(null)
     setAnswered(null)
     refresh()
   }
@@ -697,7 +697,6 @@ export default function App() {
       /* A conversation nothing pinned is still in a field: routing settled one per turn
          and the last of them is where it stands. The pick goes with the conversation
          that made it. */
-      setPicked(null)
       setAnswered(answeredIn(kept.at(-1)?.result ?? { scopes: [] }))
     })
     if (outcome === 'unreadable') setTrouble(UNDRAWABLE)
@@ -721,20 +720,6 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header
-        plugins={plugins}
-        fields={fields}
-        pin={pin}
-        fixedPin={fixedPin}
-        onPin={(scope) => setPin(scope === '' ? null : scope)}
-        leftOpen={leftOpen}
-        rightOpen={rightOpen}
-        onToggleLeft={() => setLeftOpen((shown) => !shown)}
-        onToggleRight={() => setRightOpen((shown) => !shown)}
-        onNew={start}
-        canStart={somethingToLeave}
-      />
-
       <div className="banners" role="status" aria-label="Notices">
         {banners.map(({ which, said }) => (
           <div key={which} className="trouble">
@@ -744,23 +729,49 @@ export default function App() {
       </div>
 
       <div className="columns">
-        {leftOpen && (
-          <DocumentRail
-            documents={documents}
-            cited={cited}
-            fields={fields}
-            field={field}
-            anyField={anyField}
-            fixedField={pin !== null}
-            onField={setPicked}
-            onOpen={open}
-            onUpload={uploaded}
-            upload={notice}
-            onDismissUpload={() => setNotice(null)}
-          />
-        )}
+        {/* The rail is always drawn, folded or not: the control that folds it lives in it,
+            and a control that hides itself cannot be used to bring itself back. */}
+        <aside className={leftOpen ? 'rail-docs' : 'rail-docs shut'}>
+          <div className="rail-top">
+            <span className="brand-name">cora</span>
+            <RailToggle
+              side="left"
+              open={leftOpen}
+              label="Documents"
+              onToggle={() => setLeftOpen((shown) => !shown)}
+            />
+          </div>
+          {leftOpen && (
+            <>
+              <NewSession canStart={somethingToLeave} onNew={start} />
+              <DocumentRail
+                documents={documents}
+                cited={cited}
+                field={namedAbove ? null : field}
+                onOpen={open}
+                onUpload={uploaded}
+                upload={notice}
+                onDismissUpload={() => setNotice(null)}
+              />
+            </>
+          )}
+        </aside>
 
         <Answer
+          mode={
+            <ScopePicker
+              available={fields}
+              pin={pin}
+              fixed={fixedPin}
+              onPin={(scope) => {
+                setPin(scope === '' ? null : scope)
+                /* Asking for Chat is the reader saying no field is named, and the field
+                   a turn naming none runs in is the default one — so the field routing
+                   settled is news this outranks rather than falls back to. */
+                if (scope === '') setAnswered(null)
+              }}
+            />
+          }
           thread={thread}
           entries={conversation}
           asking={asking}
@@ -772,8 +783,17 @@ export default function App() {
           onChange={change}
         />
 
-        {rightOpen && (
-        <aside className="rail-panels">
+        <aside className={rightOpen ? 'rail-panels' : 'rail-panels shut'}>
+          <div className="rail-top">
+            <RailToggle
+              side="right"
+              open={rightOpen}
+              label="Plan & memory"
+              onToggle={() => setRightOpen((shown) => !shown)}
+            />
+          </div>
+          {rightOpen && (
+          <>
           <div className="tabs" role="tablist">
             {TABS.map((name) => (
               <button
@@ -814,8 +834,9 @@ export default function App() {
               }
             />
           )}
+          </>
+          )}
         </aside>
-        )}
       </div>
 
       {opened && <CitationModal citation={opened} onClose={() => setOpened(null)} />}

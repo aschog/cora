@@ -4,6 +4,7 @@ import { answerHtml } from '../answer'
 import { patch } from '../patch'
 import ApprovalCard from './ApprovalCard'
 import DecisionCard from './DecisionCard'
+import type { ReactNode } from 'react'
 import type { Citation } from '../api'
 import { unanswered } from '../App'
 import type { Entry } from '../App'
@@ -18,6 +19,9 @@ const ELSEWHERE =
   'cora is still answering a question in the conversation you left. It will be listed under SESSIONS when it lands.'
 
 type Props = {
+  /** What the conversation is answered in, drawn above it: the choice governs every turn
+   *  below it, so it stands over them rather than in a rail beside them. */
+  mode: ReactNode
   /** Which conversation is on screen. Following is that conversation's — a reader
    *  halfway up one has said nothing about the next, which opens on its newest turn. */
   thread: string
@@ -34,6 +38,7 @@ type Props = {
 }
 
 export default function Answer({
+  mode,
   thread,
   entries,
   asking,
@@ -81,6 +86,7 @@ export default function Answer({
 
   return (
     <main className="answer">
+      {mode}
       <div
         className="scroller"
         ref={scroller}

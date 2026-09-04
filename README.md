@@ -68,9 +68,10 @@ fitness scope's, the travel persona and its notes are travel's, while the medica
 and the injection screen are system-wide and hold whatever a turn is running as.
 
 With two fields named, cora reads each question and answers it in the one it belongs to —
-the trace says which, and a question that fits both stops the turn to ask. Pin the
-conversation to a field in the header and every later turn is answered in it, through a
-reload and a reopen: the pin is the thread's own state. A pin is set once, because a
+the trace says which, and a question that fits both stops the turn to ask. That is
+*Chat*, above the conversation. Name one field instead — *+ Plugin* lists the ones this
+deployment loaded — and every later turn is answered in it, through a reload and a
+reopen: the pin is the thread's own state. A pin is set once, because a
 thread that could change field is a thread whose earlier turns mean something else — a
 second field is a second conversation. Naming one scope leaves nothing to route between,
 which is how a single-field deployment stays one.
@@ -158,9 +159,9 @@ is read relative to where cora was started, and every file in it is code cora ru
 `CORA_DEBUG` logs which folder that was.
 `make plugins` prints what loaded: every plugin under where it came from, with its tools,
 its instructions and the points in a turn it subscribed to, and anything registered
-without a scope marked `system-wide`. The same listing is behind the plug icon on the
-page. A plugin declares which version of the contract it wants, and one cora does not
-offer is refused before its `extend` is called.
+without a scope marked `system-wide`. `GET /api/plugins` carries the same listing. A
+plugin declares which version of the contract it wants, and one cora does not offer is
+refused before its `extend` is called.
 
 A plugin reads its own settings from the environment, under its own name:
 `CORA_PLUGIN_FITNESS_UNITS=imperial` reaches `cora.plugins.fitness` as `units`. Cora's
