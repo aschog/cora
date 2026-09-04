@@ -205,17 +205,17 @@ test('each rail folds away and comes back, and its toggle says which it is', asy
 
   fireEvent.click(documents)
   expect(screen.queryByText('notes.md')).toBeNull()
-  expect(screen.getByRole('tab', { name: 'PLAN' })).toBeTruthy()
+  expect(screen.getByRole('tab', { name: 'STEPS' })).toBeTruthy()
   expect(documents.getAttribute('aria-pressed')).toBe('false')
 
   fireEvent.click(rail)
-  expect(screen.queryByRole('tab', { name: 'PLAN' })).toBeNull()
+  expect(screen.queryByRole('tab', { name: 'STEPS' })).toBeNull()
   expect(rail.getAttribute('aria-pressed')).toBe('false')
 
   fireEvent.click(documents)
   fireEvent.click(rail)
   expect(screen.getByText('notes.md')).toBeTruthy()
-  expect(screen.getByRole('tab', { name: 'PLAN' })).toBeTruthy()
+  expect(screen.getByRole('tab', { name: 'STEPS' })).toBeTruthy()
 })
 
 test('the rail carries the name and the controls, and folds down to its own toggle', async () => {
@@ -559,7 +559,7 @@ test('a conversation shows its own plan, not the plan of a turn left behind', as
   step.release()
   await flushed()
 
-  fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
   expect(screen.queryByText('After the reopen')).toBeNull()
   expect(screen.queryByText('Before the reopen')).toBeNull()
   // The request is still in flight, so cora is still answering one question.
@@ -889,7 +889,7 @@ test('the question in flight stays with the conversation it was asked in', async
   )
   expect(screen.getByText(/Working/)).toBeTruthy()
   expect(screen.queryByText(/still answering/)).toBeNull()
-  fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
   expect(screen.getByText(LIVE[0].summary)).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Ask' }).hasAttribute('disabled')).toBe(true)
 
@@ -1016,7 +1016,7 @@ test('the panels afterwards speak for the new session, not the one left behind',
 
   const panels = document.querySelector('.rail-panels') as HTMLElement
   expect(within(panels).queryByRole('heading', { name: 'notes.md' })).toBeNull()
-  fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
   expect(screen.queryByText(TURN.trace[0].summary)).toBeNull()
   expect(panels.querySelector('.plan-step')).toBeNull()
 })
@@ -2238,7 +2238,7 @@ test('a full page explains none of its own panels', async () => {
   expect(screen.getByRole('heading', { name: 'notes.md' })).toBeTruthy()
   expect(screen.queryByText(/cited passage/)).toBeNull()
 
-  for (const panel of ['PLAN', 'SESSIONS', 'MEMORY']) {
+  for (const panel of ['STEPS', 'SESSIONS', 'MEMORY']) {
     fireEvent.click(screen.getByRole('tab', { name: panel }))
     nothingExplains()
   }
@@ -2260,7 +2260,7 @@ test('a page with nothing in it yet draws the controls and no prose', async () =
   render(<App />)
   await screen.findByText('Add a document')
 
-  for (const panel of ['PLAN', 'SOURCE', 'SESSIONS', 'MEMORY']) {
+  for (const panel of ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY']) {
     fireEvent.click(screen.getByRole('tab', { name: panel }))
     nothingExplains()
   }
