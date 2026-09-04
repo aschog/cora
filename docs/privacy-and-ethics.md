@@ -170,9 +170,9 @@ the well-behaved-plugin case, which matters as much as the malicious one:
 - **the model.** A plugin can send anything it holds to the provider, either directly or
   by delegating a bounded loop of its own.
 
-`make plugins` prints exactly what each loaded plugin registered, and the plug icon on
-the page shows the same listing. That tells you what a plugin *claims*; only its source
-tells you what it does. Read the listing before you trust a plugin, and read the source
+`make plugins` prints exactly what each loaded plugin registered, and `GET /api/plugins`
+carries the same listing. That tells you what a plugin *claims*; only its source tells
+you what it does. Read the listing before you trust a plugin, and read the source
 if it came from someone you do not know.
 
 ### What cora enforces whatever a plugin does

@@ -290,5 +290,5 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
     make plugins
     ```
 
-    The same listing is behind the plug icon on the page. Both read the registrations
-    the running app holds, so neither can drift from what it describes.
+    `GET /api/plugins` carries the same listing. Both read the registrations the
+    running app holds, so neither can drift from what it describes.

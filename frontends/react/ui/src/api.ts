@@ -72,24 +72,6 @@ export type Session = { thread_id: string; opened_with: string }
  *  answered in. A deployment with no field is a bare cora and has nothing to pin. */
 export type Scopes = { available: string[]; default: string }
 
-/** One registration as the menu draws it. `scope: null` is a claim on every turn, and
- *  `note` is whatever else the registration says about itself — a tool that changes
- *  something outside cora says so there. Drawn as it arrives, so a note the page has
- *  never heard of reaches the reader anyway. */
-export type Contribution = {
-  kind: string
-  name: string
-  scope: string | null
-  note: string
-}
-
-export type Plugin = {
-  name: string
-  source: string
-  scopes: string[]
-  contributions: Contribution[]
-}
-
 const UNREADABLE = 'cora could not be reached.'
 const NO_CONTENT = 204
 
@@ -110,7 +92,6 @@ async function failure(response: Response): Promise<string> {
 
 export const documents = (scope: string) =>
   read<string[]>(`/api/documents?scope=${encodeURIComponent(scope)}`)
-export const plugins = () => read<Plugin[]>('/api/plugins')
 export const scopes = () => read<Scopes>('/api/scopes')
 export const memory = () => read<Fact[]>('/api/memory')
 export const sessions = () => read<Session[]>('/api/sessions')

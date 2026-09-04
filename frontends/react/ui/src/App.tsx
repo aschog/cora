@@ -4,7 +4,6 @@ import type {
   Citation,
   Decision,
   Fact,
-  Plugin,
   Proposal,
   Result,
   Session,
@@ -140,7 +139,6 @@ export default function App() {
      which used to take the question the reader had just asked with it. */
   const [flight, setFlight] = useState<{ thread: string; entry: Entry } | null>(null)
   const [documents, setDocuments] = useState<string[]>([])
-  const [plugins, setPlugins] = useState<Plugin[]>([])
   /* The fields this deployment offers, and the one this conversation is fixed to.
      `fixedPin` is whether a turn has written it into the thread's state — until one has,
      the pick is the reader's intention and the next question is what settles it. */
@@ -225,10 +223,9 @@ export default function App() {
         cora.documents(field),
         cora.memory(),
         cora.sessions(),
-        cora.plugins(),
         cora.scopes(),
       ])
-        .then(([indexed, kept, before, loaded, offered]) => {
+        .then(([indexed, kept, before, offered]) => {
           /* The listing is per field and this load asked for the field the page was in
              when it started. A load the reader has moved past answers about a field the
              rail is no longer showing: its list must not land under the new one's name,
@@ -239,7 +236,6 @@ export default function App() {
           setDocuments(indexed)
           setFacts(kept)
           setSessions(before)
-          setPlugins(loaded)
           setFields(offered.available)
           setAnyField(offered.default)
           setTrouble(null)
@@ -722,7 +718,6 @@ export default function App() {
   return (
     <div className="app">
       <Header
-        plugins={plugins}
         fields={fields}
         pin={pin}
         fixedPin={fixedPin}

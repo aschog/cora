@@ -77,20 +77,6 @@ const OLDER = {
 
 const served: Record<string, unknown> = {
   '/api/documents': ['notes.md'],
-  '/api/plugins': [
-    {
-      name: 'fitness',
-      source: 'cora.plugins.fitness',
-      scopes: ['fitness'],
-      contributions: [
-        { kind: 'instructions', name: '', scope: 'fitness', note: '' },
-        { kind: 'tool', name: 'bmr', scope: 'fitness', note: '' },
-        { kind: 'tool', name: 'book_it', scope: 'fitness', note: 'has an effect' },
-        { kind: 'handler', name: 'screen', scope: null, note: '' },
-      ],
-    },
-    { name: 'quiet', source: '/tmp/quiet.py', scopes: [], contributions: [] },
-  ],
   '/api/scopes': { available: ['fitness', 'travel'], default: 'cora' },
   '/api/memory': [{ key: 'f1', text: 'No burpees.' }],
   '/api/sessions': [{ thread_id: 'old', opened_with: OLDER.question }],
@@ -138,20 +124,6 @@ test('the plan fills while the turn runs, then the answer lands with its citatio
   render(<App />)
 
   expect(await screen.findByText('notes.md')).toBeTruthy()
-
-  /* The badge names the shell's plugin; the menu says where it came from and what it
-     registered, with a claim on every turn marked as one rather than left blank. */
-  fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
-  expect(screen.getByText('cora.plugins.fitness')).toBeTruthy()
-  expect(screen.getByText('bmr')).toBeTruthy()
-  expect(screen.getByText('screen')).toBeTruthy()
-  expect(screen.getByText('system-wide')).toBeTruthy()
-  expect(screen.getByText('registers nothing')).toBeTruthy()
-  /* What a plugin may *do* is why a reader opens this menu, and a tool that changes
-     something outside cora is the loudest thing it can say. Drawn off the note, so the
-     menu shows one it has never heard of rather than needing to know the words. */
-  expect(screen.getByText('has an effect')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
@@ -2213,7 +2185,7 @@ const nothingExplains = () =>
   EXPLANATIONS.forEach((said) => expect(screen.queryByText(said)).toBeNull())
 
 test('a full page explains none of its own panels', async () => {
-  /* Documents, steps, facts, a plugin and a past conversation — every panel with something
+  /* Documents, steps, facts and a past conversation — every panel with something
      in it, and the reader is told about none of them. */
   render(<App />)
   await screen.findByText('notes.md')
@@ -2235,12 +2207,10 @@ test('a full page explains none of its own panels', async () => {
     fireEvent.click(screen.getByRole('tab', { name: panel }))
     nothingExplains()
   }
-  fireEvent.click(screen.getByRole('button', { name: /fitness/ }))
-  nothingExplains()
 })
 
 test('a page with nothing in it yet draws the controls and no prose', async () => {
-  /* A bare cora: no document, no plugin, no field to pin a conversation to. */
+  /* A bare cora: no document, and no field to pin a conversation to. */
   vi.stubGlobal(
     'fetch',
     vi.fn(
@@ -2254,10 +2224,6 @@ test('a page with nothing in it yet draws the controls and no prose', async () =
   )
   render(<App />)
   await screen.findByText('Add a document')
-
-  fireEvent.click(screen.getByRole('button', { name: /bare cora/ }))
-  expect(screen.getByText('No plugin is loaded.')).toBeTruthy()
-  fireEvent.click(screen.getByRole('button', { name: /bare cora/ }))
 
   for (const panel of ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY']) {
     fireEvent.click(screen.getByRole('tab', { name: panel }))

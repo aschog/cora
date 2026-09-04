@@ -158,9 +158,9 @@ is read relative to where cora was started, and every file in it is code cora ru
 `CORA_DEBUG` logs which folder that was.
 `make plugins` prints what loaded: every plugin under where it came from, with its tools,
 its instructions and the points in a turn it subscribed to, and anything registered
-without a scope marked `system-wide`. The same listing is behind the plug icon on the
-page. A plugin declares which version of the contract it wants, and one cora does not
-offer is refused before its `extend` is called.
+without a scope marked `system-wide`. `GET /api/plugins` carries the same listing. A
+plugin declares which version of the contract it wants, and one cora does not offer is
+refused before its `extend` is called.
 
 A plugin reads its own settings from the environment, under its own name:
 `CORA_PLUGIN_FITNESS_UNITS=imperial` reaches `cora.plugins.fitness` as `units`. Cora's

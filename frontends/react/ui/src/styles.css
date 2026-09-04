@@ -145,31 +145,6 @@ button {
   letter-spacing: -0.01em;
   margin-left: calc(var(--s3) * -1 + 2px);
 }
-
-.plugin-badge {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 16px 8px 12px;
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
-  border-radius: var(--pill);
-  font-size: 14px;
-  color: var(--text);
-}
-
-.plugin-badge:hover {
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.plugin-badge .micro {
-  color: var(--accent-text);
-}
-
-.plugin-badge-name {
-  font-weight: 600;
-}
-
 /* ── left rail ── */
 .rail-docs {
   flex: 0 1 232px;
@@ -952,11 +927,6 @@ button {
   color: var(--n500);
 }
 
-/* ── what the deployment loaded ── */
-.plugin-wrap {
-  position: relative;
-}
-
 /* ── the field a conversation is in ── */
 .scope-wrap {
   display: flex;
@@ -999,96 +969,6 @@ button {
 .scope-note {
   font-size: 12px;
   color: var(--n600);
-}
-
-.plugin-badge .plug {
-  color: var(--accent);
-}
-
-.plugin-badge-name {
-  font-weight: 600;
-  letter-spacing: 0.01em;
-}
-
-.plugin-badge-caret {
-  color: var(--n600);
-  font-size: 11px;
-}
-
-.plugin-menu {
-  position: absolute;
-  top: calc(100% + 8px);
-  left: 0;
-  z-index: 20;
-  min-width: 300px;
-  padding: var(--s2);
-  background: rgba(24, 29, 38, 0.86);
-  backdrop-filter: blur(20px);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09), var(--shadow-lg);
-  border-radius: 16px;
-}
-
-.plugin-option {
-  padding: 8px;
-  border-radius: var(--radius);
-  font-size: 14px;
-}
-
-.plugin-option-name {
-  font-weight: 600;
-}
-
-.plugin-option-blurb {
-  padding: 0 8px;
-  font-size: 12.5px;
-  color: var(--n700);
-}
-
-.plugin-option-fields {
-  padding: 0 8px;
-  font-size: 12.5px;
-  color: var(--text);
-}
-
-.plugin-registrations {
-  margin: 6px 0 0;
-  padding: 0 8px;
-  list-style: none;
-}
-
-.plugin-registration {
-  display: grid;
-  grid-template-columns: 84px 1fr auto auto;
-  gap: 8px;
-  padding: 2px 0;
-  font-size: 12.5px;
-  color: var(--n700);
-}
-
-.plugin-registration-kind {
-  color: var(--n600);
-}
-
-.plugin-registration-name {
-  color: var(--text);
-}
-
-/* A registration no scope can switch off is a claim on every turn, so it reads as one
-   rather than as a blank where a field would be. */
-.plugin-registration-everywhere {
-  font-weight: 600;
-  color: var(--text);
-}
-
-/* What else a registration says about itself — a tool that changes something outside
-   cora. Magenta by the palette's own rule: amber has one job and it is the passage an
-   answer quotes, while magenta is what the page uses for consequence, which is exactly
-   what an effect is. It is the line a reader deciding whether to load a plugin came
-   here to find. */
-.plugin-registration-note {
-  padding-left: 8px;
-  font-weight: 600;
-  color: var(--magenta);
 }
 
 .plan-origin {
