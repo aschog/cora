@@ -52,7 +52,6 @@ export default function Header({
       <RailToggle side="left" open={leftOpen} label="Documents" onToggle={onToggleLeft} />
 
       <span className="brand-name">cora</span>
-      <span className="micro">DOCUMENT AGENT</span>
 
       <div className="plugin-wrap" ref={wrap}>
         <button
