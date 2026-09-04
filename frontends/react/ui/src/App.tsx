@@ -12,7 +12,8 @@ import type {
 } from './api'
 import Answer from './components/Answer'
 import CitationModal from './components/CitationModal'
-import DeleteModal from './components/DeleteModal'
+import ConfirmModal from './components/ConfirmModal'
+import type { Asked } from './components/ConfirmModal'
 import DocumentRail from './components/DocumentRail'
 import NewSession from './components/NewSession'
 import RailToggle from './components/RailToggle'
@@ -123,6 +124,19 @@ const answeredAt = (found: Entry, call: string, approved?: boolean) =>
 
 const UNDRAWABLE = 'That conversation could not be read.'
 
+/* What each question says is lost, and what is not — the half a reader cannot see for
+   themselves. Written here, beside the rails that raise them. */
+const SESSION_GOES =
+  'The thread and its plan are removed. Your documents and saved memory are ' +
+  "untouched — this can't be undone."
+const FACT_GOES =
+  'cora stops using this in its answers. Your documents and your conversations are ' +
+  "untouched — this can't be undone."
+const EVERYTHING_GOES =
+  'Every fact cora has been told is forgotten. Your documents and your conversations ' +
+  "are untouched — this can't be undone."
+
+
 /** One line the page says about itself, and which of them it is. */
 type Banner = { which: string; said: string }
 
@@ -171,9 +185,12 @@ export default function App() {
   const [working, setWorking] = useState<string | null>(null)
   const [read, setRead] = useState<{ document: string; scope: string } | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
-  /* The conversation a delete has been asked about, and nothing more: the question is
-     put over the page, and until it is answered nothing has been asked of cora. */
-  const [deleting, setDeleting] = useState<Session | null>(null)
+  /* What the page has stopped to have confirmed, and what to do once it is: the question
+     stands over the page, and until it is answered nothing has been asked of cora. One
+     slot, because one question stands at a time — and it carries the act, so each rail
+     says its own words rather than the modal knowing everyone's. */
+  const [confirming, setConfirming] =
+    useState<(Asked & { act: () => void }) | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
   /* What the last upload did. Its own state, because it is not trouble and a refresh
      going through does not take it away: a duplicate upload is answered with `0` chunks,
@@ -534,16 +551,14 @@ export default function App() {
    *  go: the stow is what a reload comes back through, and a conversation that is gone is
    *  nowhere to come back to. The list is redrawn by the refresh every write here goes
    *  through. */
-  const discard = (session: Session) => {
-    setDeleting(null)
-    return cora
+  const discard = (session: Session) =>
+    cora
       .deleteSession(session.thread_id)
       .then(() => {
         forgetIf(session.thread_id)
         return refresh()
       })
       .catch(reportTo(setTrouble))
-  }
 
   /** A card answered, either kind. The turn is already on the page, so the rest of it
    *  lands on the entry that raised the card rather than after it.
@@ -845,17 +860,45 @@ export default function App() {
               here={thread}
               working={working}
               onOpen={reopen}
-              onDelete={setDeleting}
+              onDelete={(session) =>
+                setConfirming({
+                  head: 'DELETE SESSION',
+                  subject: session.opened_with,
+                  said: SESSION_GOES,
+                  confirm: 'Delete session',
+                  act: () => void discard(session),
+                })
+              }
             />
           )}
           {tab === 'MEMORY' && (
             <MemoryPanel
               facts={facts}
-              onForget={(key) =>
-                cora.forget(key).then(refresh).catch(reportTo(setTrouble))
+              onForget={(fact) =>
+                setConfirming({
+                  head: 'FORGET THIS',
+                  subject: fact.text,
+                  said: FACT_GOES,
+                  confirm: 'Forget it',
+                  act: () =>
+                    void cora
+                      .forget(fact.key)
+                      .then(refresh)
+                      .catch(reportTo(setTrouble)),
+                })
               }
               onForgetEverything={() =>
-                cora.forgetEverything().then(refresh).catch(reportTo(setTrouble))
+                setConfirming({
+                  head: 'FORGET EVERYTHING',
+                  subject: 'Everything cora remembers about you',
+                  said: EVERYTHING_GOES,
+                  confirm: 'Forget everything',
+                  act: () =>
+                    void cora
+                      .forgetEverything()
+                      .then(refresh)
+                      .catch(reportTo(setTrouble)),
+                })
               }
             />
           )}
@@ -865,11 +908,17 @@ export default function App() {
       </div>
 
       {opened && <CitationModal citation={opened} onClose={() => setOpened(null)} />}
-      {deleting && (
-        <DeleteModal
-          opened={deleting.opened_with}
-          onConfirm={() => void discard(deleting)}
-          onCancel={() => setDeleting(null)}
+      {confirming && (
+        <ConfirmModal
+          {...confirming}
+          /* The question comes down as it is answered and the act runs after, so a
+             banner the act raises is not cleared by the card closing. */
+          onConfirm={() => {
+            const going = confirming.act
+            setConfirming(null)
+            going()
+          }}
+          onCancel={() => setConfirming(null)}
         />
       )}
     </div>

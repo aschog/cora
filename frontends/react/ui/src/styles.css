@@ -15,8 +15,9 @@
   --accent-ring: #274571;
   --magenta: #e05a9c;
   /* The one warm pair in a blue palette, and it has one job: the passage an answer quotes.
-     Blue is what the page uses for something to click, magenta for something destructive,
-     so a quotation drawn in either says what it is not. */
+     Blue is what the page uses for something to click, so a quotation drawn in it would
+     read as one. Nothing destructive is drawn in either any more — a delete is a quiet
+     icon until it is reached for, and what confirms it is a button like any other. */
   --amber: #d29922;
   --amber-tint: #241a08;
   /* A question the page is waiting on. Its own pair, because amber above has one job and
@@ -632,17 +633,7 @@ button {
   white-space: pre-wrap;
 }
 
-/* memory */
-.destructive {
-  font-size: 12.5px;
-  color: var(--magenta);
-}
-
-.destructive:hover {
-  color: var(--accent-hover);
-}
-
-/* sessions */
+/* sessions + memory */
 /* A delete is an icon at the end of its row, quiet until it is reached for: a rail of
    controls shouting for attention is a rail nobody reads. */
 .row-delete {
@@ -691,21 +682,23 @@ button {
   gap: var(--s2);
 }
 
-.saved-card {
-  padding: 10px var(--s3);
-  background: var(--surface);
+/* The shape a conversation's row has, around a fact instead. */
+.saved-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 7px 8px;
+  margin-left: -8px;
   border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
 }
 
-.saved-head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s2);
+.saved-row:hover {
+  background: var(--n300);
 }
 
 .saved-text {
   flex: 1;
+  min-width: 0;
   font-size: 14px;
   line-height: 1.35;
 }
