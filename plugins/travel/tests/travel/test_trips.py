@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 import httpx
@@ -14,6 +15,7 @@ from cora.plugins.travel.trips import (
     SEARCH,
     UNREACHABLE,
     UNREADABLE,
+    KeptOut,
     Search,
     _query,
     _schema,
@@ -381,3 +383,46 @@ def test_the_searches_go_to_the_real_service_unless_told_otherwise() -> None:
     Search(KEY, service).flights(**ROUTE, **WEEK)
 
     assert service.urls == [SEARCH]
+
+
+@pytest.mark.parametrize(
+    "given",
+    [
+        {"nights": "seven"},
+        {"stride_days": "weekly"},
+        {"window_start": "September"},
+        {"stops": "none"},
+    ],
+)
+def test_an_argument_the_model_wrote_badly_is_a_sentence_not_a_crash(
+    given: dict[str, Any],
+) -> None:
+    """The model is a trust boundary like any other: what it writes is checked, and
+    what fails the check comes back as something the turn can answer around."""
+    search, service = searching(flights(240))
+
+    with pytest.raises(ToolRefusal):
+        search.flights(**ROUTE, **{**WEEK, **given})
+
+    assert service.queries == [], "nothing was asked of the service"
+
+
+def test_the_key_is_kept_out_of_the_clients_own_request_log() -> None:
+    """httpx logs the whole URL at INFO, and the key rides in the query string — so it
+    would reach the operator's console the moment a deployment turns logging up."""
+    logged = logging.LogRecord(
+        "httpx",
+        logging.INFO,
+        "",
+        0,
+        'HTTP Request: %s %s "%s %d %s"',
+        ("GET", httpx.URL(f"{SEARCH}?api_key={KEY}"), "HTTP/1.1", 200, "OK"),
+        None,
+    )
+
+    assert KeptOut().filter(logged)
+    assert KEY not in logged.getMessage()
+    assert "api_key=REDACTED" in logged.getMessage(), (
+        "the client logs its URL as its own object, not as a string"
+    )
+    assert "200" in logged.getMessage(), "the status stays a number its format needs"

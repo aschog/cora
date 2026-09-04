@@ -7,6 +7,8 @@ than by the model.
 """
 
 import datetime
+import logging
+import re
 from collections.abc import Callable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
@@ -33,6 +35,35 @@ an hourly allowance, so a window sampled daily is widened rather than run."""
 STRIDE = 7
 WORKERS = 4
 DEFAULTS = {"currency": "EUR"}
+
+KEY_IN_A_URL = re.compile(r"(api_key=)[^&\s]+")
+UNSPENT = "REDACTED"
+
+
+class KeptOut(logging.Filter):
+    """The key, taken back out of the client's own request log.
+
+    httpx logs the whole URL at INFO and the service takes its credential in the query
+    string, so a deployment that turns logging up would find the key in its console.
+    A filter rather than a silenced logger: what is useful about that line stays.
+    Numbers are left as they are, because the same line carries a status code its own
+    format string needs as one; everything else is read as text, since the URL arrives
+    as the client's own object rather than as a string.
+    """
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        record.args = tuple(
+            written
+            if isinstance(written, int | float)
+            else KEY_IN_A_URL.sub(rf"\1{UNSPENT}", str(written))
+            for written in record.args or ()
+        )
+        return True
+
+
+logging.getLogger("httpx").addFilter(KeptOut())
+"""Installed once, when this module is first imported — which is when a deployment has
+said it wants these tools, and before any client of theirs exists."""
 
 UNREACHABLE = (
     "I could not reach the search service just now, so I have no prices to give you. "
@@ -196,13 +227,38 @@ def _query(
 
     A field the traveller did not state is left out rather than sent empty, because an
     empty parameter is a filter to the service and an absent one is not.
+
+    Raises:
+        ToolRefusal: A value the model wrote cannot be written into the query — a
+            sentence rather than whatever `int` would have raised from inside a row.
     """
     query: dict[str, Any] = {"api_key": key}
     for asked in fields:
         value = given.get(asked.name)
-        if asked.sends_as and value is not None:
+        if not asked.sends_as or value is None:
+            continue
+        try:
             query[asked.sends_as] = asked.write(value)
+        except (TypeError, ValueError) as unwritable:
+            raise ToolRefusal(
+                f"'{value}' is not something I can search on for {asked.name}."
+            ) from unwritable
     return query
+
+
+def _whole(given: Any, called: str) -> int:
+    """One number the model wrote, read.
+
+    Raises:
+        ToolRefusal: It is not a whole number. The model is a trust boundary like any
+            other, so what it writes is checked here rather than raised from `int`.
+    """
+    try:
+        return int(given)
+    except (TypeError, ValueError) as unreadable:
+        raise ToolRefusal(
+            f"'{given}' is not a whole number I can read for {called}."
+        ) from unreadable
 
 
 def _day(given: Any, called: str) -> datetime.date:
@@ -230,7 +286,7 @@ def departures(given: Mapping[str, Any]) -> tuple[list[datetime.date], int]:
     """
     start = _day(given["window_start"], "window_start")
     end = _day(given["window_end"], "window_end")
-    nights = int(given["nights"])
+    nights = _whole(given["nights"], "nights")
     last = end - datetime.timedelta(days=nights)
     if last < start:
         raise ToolRefusal(
@@ -238,7 +294,7 @@ def departures(given: Mapping[str, Any]) -> tuple[list[datetime.date], int]:
                 nights=nights, start=start.isoformat(), end=end.isoformat()
             )
         )
-    stride = max(1, int(given.get("stride_days") or STRIDE))
+    stride = max(1, _whole(given.get("stride_days") or STRIDE, "stride_days"))
     span = (last - start).days
     if span // stride + 1 > CANDIDATES:
         stride = span // (CANDIDATES - 1) + 1
@@ -283,7 +339,7 @@ class Search:
         """
         asked = {**DEFAULTS, **given}
         days, _ = departures(asked)
-        nights = int(asked["nights"])
+        nights = _whole(asked["nights"], "nights")
         currency = str(asked["currency"])
         base = _query(FLIGHT_FIELDS, asked, self.key) | {
             "engine": "google_flights",

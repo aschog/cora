@@ -192,7 +192,9 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
 
    A credential is a setting like any other, and it is yours to keep out of the answer:
    put it on the request and never in what you return, because a tool's result is read
-   by the model and written to the trace. Register the tool it belongs to only where
+   by the model and written to the trace. Check where your HTTP client logs, too: a
+   credential that travels in a query string is in the URL, and a client that logs the
+   URL it fetched will put it in the operator's console. Register the tool it belongs to only where
    the setting is actually set — the travel plugin offers its two price searches only
    when `CORA_PLUGIN_TRAVEL_SERPAPI_KEY` is there, because a tool the model can call
    and that can only fail is worse than one it was never offered.
