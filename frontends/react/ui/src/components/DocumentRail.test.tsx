@@ -1,21 +1,24 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import DocumentRail from './DocumentRail'
 
 afterEach(cleanup)
 
-const rail = (documents: string[], cited: string[]) =>
-  render(
+const rail = (documents: string[], cited: string[], onDelete = vi.fn()) => {
+  const drawn = render(
     <DocumentRail
       documents={documents}
       cited={new Set(cited)}
       field="cora"
       onOpen={vi.fn()}
       onUpload={vi.fn()}
+      onDelete={onDelete}
       upload={null}
       onDismissUpload={vi.fn()}
     />,
   )
+  return { ...drawn, onDelete }
+}
 
 /* The state the App-level tests cannot reach: their fixture serves one document, and citing
    it is what makes the rail openable — so a rail holding both a cited and an uncited
@@ -65,6 +68,7 @@ test('what an upload did is announced in that same region', () => {
       field="cora"
       onOpen={vi.fn()}
       onUpload={vi.fn()}
+      onDelete={vi.fn()}
       upload={{ said: '“notes.md” is already in your documents.', wrong: true }}
       onDismissUpload={vi.fn()}
     />,
@@ -75,3 +79,29 @@ test('what an upload did is announced in that same region', () => {
   ).toContain('already in your documents')
 })
 
+
+test('each document carries the control the other rails carry, named for it', () => {
+  /* One shape across the three rails: a document, a conversation and a fact are each a
+     row with a control at the end of it. The name is the document, not the verb — a
+     column of identical icons would otherwise say nothing about which is which. */
+  const { onDelete } = rail(['notes.md', 'plan.md'], ['notes.md'])
+
+  const control = screen.getByRole('button', { name: 'Delete notes.md' })
+  expect(control.querySelector('svg')).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Delete plan.md' })).toBeTruthy()
+
+  fireEvent.click(control)
+
+  expect(onDelete).toHaveBeenCalledWith('notes.md')
+})
+
+test('an uncited document can still be deleted, though it cannot be opened', () => {
+  /* The row is disabled unless this answer cited it, so the control sits beside that
+     button rather than inside it — otherwise the only deletable documents would be the
+     ones the last answer happened to quote. */
+  const { onDelete } = rail(['notes.md', 'plan.md'], ['notes.md'])
+
+  fireEvent.click(screen.getByRole('button', { name: 'Delete plan.md' }))
+
+  expect(onDelete).toHaveBeenCalledWith('plan.md')
+})

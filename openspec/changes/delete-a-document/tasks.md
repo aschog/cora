@@ -44,12 +44,13 @@ by a person reading it. The page's items are `vitest`, the rest are `pytest`.
 
 ## 6. The rail
 
-- [ ] 6.1 Each listed document drawing the control the other rails draw, named for it
-- [ ] 6.2 The control asking rather than deleting, with nothing asked of cora
-- [ ] 6.3 A confirmed question deleting that document and redrawing the list without it
-- [ ] 6.4 Keeping the document deleting nothing, and asking again next time
-- [ ] 6.5 The source panel cleared where what it was reading is what went
-- [ ] 6.6 A delete that fails saying so, with the document still listed
+- [x] 6.1 Each listed document drawing the control the other rails draw, named for it
+- [x] 6.7 An uncited document deletable, though its row cannot be opened
+- [x] 6.2 The control asking rather than deleting, with nothing asked of cora
+- [x] 6.3 A confirmed question deleting that document and redrawing the list without it
+- [x] 6.4 Keeping the document deleting nothing, and asking again next time
+- [x] 6.5 The source panel cleared where what it was reading is what went
+- [x] 6.6 A delete that fails saying so, with the document still listed
 
 ## 7. Done
 

@@ -126,6 +126,10 @@ const UNDRAWABLE = 'That conversation could not be read.'
 
 /* What each question says is lost, and what is not — the half a reader cannot see for
    themselves. Written here, beside the rails that raise them. */
+const DOCUMENT_GOES =
+  'Its passages leave the index and its file leaves the field, so no answer can be ' +
+  'drawn from it again. Answers already given keep their citations, and say the ' +
+  "document is gone when you open one. This can't be undone."
 const SESSION_GOES =
   'The thread and its plan are removed. Your documents and saved memory are ' +
   "untouched — this can't be undone."
@@ -530,6 +534,17 @@ export default function App() {
    *  is stamped for the same reason: a refusal from a conversation they have left must not
    *  clear news about an upload that worked in this one. The refresh and the refusal's own
    *  sentence are not stamped — a document is added, or refused, wherever they are. */
+  /** A document deleted, and the panel reading it let go of: it would otherwise draw a
+   *  file the field no longer holds, under a name nothing can open. */
+  const erase = (name: string) =>
+    cora
+      .deleteDocument(field, name)
+      .then(() => {
+        setRead((shown) => (shown?.document === name ? null : shown))
+        return refresh()
+      })
+      .catch(reportTo(setTrouble))
+
   const uploaded = (file: File) => {
     const from = here.current
     return cora
@@ -784,6 +799,15 @@ export default function App() {
                 field={namedAbove ? null : field}
                 onOpen={open}
                 onUpload={uploaded}
+                onDelete={(name) =>
+                  setConfirming({
+                    head: 'DELETE DOCUMENT',
+                    subject: name,
+                    said: DOCUMENT_GOES,
+                    confirm: 'Delete document',
+                    act: () => void erase(name),
+                  })
+                }
                 upload={notice}
                 onDismissUpload={() => setNotice(null)}
               />

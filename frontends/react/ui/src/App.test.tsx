@@ -4072,3 +4072,116 @@ test('that question confirmed empties the rail', async () => {
   expect(screen.queryByText(ALSO.text)).toBeNull()
   expect(memory.asked).toEqual(['/api/memory'])
 })
+
+
+/** The documents rail's own fixture: what the field lists, minus what has been deleted. */
+const indexing = (...names: string[]) => {
+  let held = names
+  const asked: string[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        asked.push(path)
+        held = held.filter(
+          (name) => name !== decodeURIComponent(path.split('/').pop() ?? ''),
+        )
+        return { ok: true, status: 204 } as unknown as Response
+      }
+      if (route(path) === '/api/documents')
+        return { ok: true, json: async () => held } as unknown as Response
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+  return { asked }
+}
+
+const deletingDocument = (name: string) =>
+  screen.getByRole('button', { name: `Delete ${name}` })
+
+test('a document is deleted only once i have said so', async () => {
+  const documents = indexing('notes.md', 'plan.md')
+  render(<App />)
+  await screen.findByText('plan.md')
+
+  fireEvent.click(deletingDocument('plan.md'))
+
+  // The control asks; nothing has been asked of cora yet.
+  expect(screen.getByRole('dialog', { name: 'DELETE DOCUMENT' })).toBeTruthy()
+  expect(screen.getByText(/Answers already given keep their citations/)).toBeTruthy()
+  expect(documents.asked).toEqual([])
+
+  fireEvent.click(screen.getByRole('button', { name: 'Delete document' }))
+
+  await waitFor(() => expect(screen.queryByText('plan.md')).toBeNull())
+  expect(documents.asked).toEqual(['/api/documents/cora/plan.md'])
+  expect(screen.getByText('notes.md')).toBeTruthy()
+})
+
+test('keeping a document deletes nothing, and asks again next time', async () => {
+  const documents = indexing('notes.md')
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.click(deletingDocument('notes.md'))
+  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+
+  expect(documents.asked).toEqual([])
+  expect(screen.getByText('notes.md')).toBeTruthy()
+
+  fireEvent.click(deletingDocument('notes.md'))
+  expect(screen.getByRole('dialog')).toBeTruthy()
+})
+
+test('the source panel lets go of the document that was deleted', async () => {
+  /* The panel is reading a file that is gone: left as it was, it would draw a document
+     the field no longer holds, under a name nothing can open. */
+  indexing('notes.md')
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  fireEvent.click(screen.getByRole('button', { name: 'notes.md' }))
+  expect(await screen.findByRole('heading', { name: 'notes.md' })).toBeTruthy()
+
+  fireEvent.click(deletingDocument('notes.md'))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete document' }))
+
+  await waitFor(() =>
+    expect(screen.queryByRole('heading', { name: 'notes.md' })).toBeNull(),
+  )
+})
+
+test('a document delete that fails says so, and the document is still listed', async () => {
+  const unreachable = 'The knowledge base is temporarily unavailable.'
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE')
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({ error: unreachable }),
+        } as unknown as Response
+      if (route(path) === '/api/documents')
+        return { ok: true, json: async () => ['notes.md'] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.click(deletingDocument('notes.md'))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete document' }))
+
+  expect(await screen.findByText(unreachable)).toBeTruthy()
+  expect(screen.getByText('notes.md')).toBeTruthy()
+})

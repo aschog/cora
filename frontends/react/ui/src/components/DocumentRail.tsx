@@ -1,3 +1,4 @@
+import DeleteControl from './DeleteControl'
 import UploadNotice from './UploadNotice'
 import type { Notice } from './UploadNotice'
 
@@ -11,6 +12,7 @@ type Props = {
   field: string | null
   onOpen: (document: string) => void
   onUpload: (file: File) => void
+  onDelete: (document: string) => void
   /** What the last upload did. It is drawn here rather than over the conversation: it is
    *  news about this list, raised by the control directly above it. */
   upload: Notice | null
@@ -23,6 +25,7 @@ export default function DocumentRail({
   field,
   onOpen,
   onUpload,
+  onDelete,
   upload,
   onDismissUpload,
 }: Props) {
@@ -67,15 +70,20 @@ export default function DocumentRail({
 
       <div className="doc-list">
         {documents.map((name) => (
-          <button
-            key={name}
-            className={cited.has(name) ? 'doc-row cited' : 'doc-row'}
-            disabled={!cited.has(name)}
-            onClick={() => onOpen(name)}
-          >
-            <span className="doc-bar" />
-            <span className="doc-name">{name}</span>
-          </button>
+          /* The control sits beside the row rather than inside it: the row is disabled
+             unless this answer cited the document, and a delete nested in it would only
+             reach the documents the last answer happened to quote. */
+          <div key={name} className="doc-line">
+            <button
+              className={cited.has(name) ? 'doc-row cited' : 'doc-row'}
+              disabled={!cited.has(name)}
+              onClick={() => onOpen(name)}
+            >
+              <span className="doc-bar" />
+              <span className="doc-name">{name}</span>
+            </button>
+            <DeleteControl what={name} onDelete={() => onDelete(name)} />
+          </div>
         ))}
       </div>
     </>

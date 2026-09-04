@@ -200,6 +200,14 @@ button {
   display: none;
 }
 
+/* The row and its control, side by side: the row is disabled unless this answer cited
+   the document, so the control cannot live inside it. */
+.doc-line {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
 .doc-list {
   display: flex;
   flex-direction: column;
@@ -210,7 +218,8 @@ button {
   display: flex;
   align-items: stretch;
   gap: var(--s2);
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 7px 8px;
   margin-left: -8px;
   text-align: left;
