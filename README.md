@@ -117,6 +117,20 @@ caveat. This is the one thing in cora that needs a key: set
 never offered — a tool that can only fail is worse than a tool that was never there.
 Prices are what the aggregator showed, not a seat held for you, and the answer says so.
 
+You can drive all of that with no account and no network.
+`scripts/fake_search_service.py` answers in the same two shapes and makes its prices out
+of the dates it is asked about, so a window really does have a cheapest week in it:
+
+```sh
+uv run python scripts/fake_search_service.py    # in its own terminal
+export CORA_PLUGIN_TRAVEL_SERPAPI_KEY=anything
+export CORA_PLUGIN_TRAVEL_SEARCH_URL=http://127.0.0.1:8909/search
+```
+
+`CORA_PLUGIN_TRAVEL_SEARCH_URL` is where the searches go, and the real service is where
+they go unless you say otherwise — nothing in the plugin branches on it, so what you are
+driving is the code that ships.
+
 And it acts, but only when you say so. A tool that declares it changes something outside
 cora does not run on the model's word: the turn stops, the page shows the call — what the
 tool says it does, and the arguments the model wrote — and nothing happens until you

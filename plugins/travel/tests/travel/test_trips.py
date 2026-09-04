@@ -11,6 +11,7 @@ from cora.plugins.travel.trips import (
     NOTHING_FLYING,
     NOWHERE_TO_STAY,
     REFUSED,
+    SEARCH,
     UNREACHABLE,
     UNREADABLE,
     Search,
@@ -51,9 +52,11 @@ class Service:
     def __init__(self, reply: Any) -> None:
         self._reply = reply
         self.queries: list[dict[str, Any]] = []
+        self.urls: list[str] = []
 
     def get(self, url: str, *, params: dict[str, Any]) -> Answer:
         self.queries.append(dict(params))
+        self.urls.append(url)
         body = self._reply(params) if callable(self._reply) else self._reply
         if isinstance(body, httpx.HTTPError):
             raise body
@@ -359,3 +362,22 @@ def test_both_searches_are_declared_as_returning_what_cora_did_not_write() -> No
     assert not any(tool.effect for tool in (flying, staying))
     assert len(_schema(FLIGHT_FIELDS)["properties"]) == len(FLIGHT_FIELDS)
     assert MOST == 3
+
+
+def test_where_the_searches_are_sent_is_the_deployments_to_say() -> None:
+    """So a deployment with no key, no account and no network can still drive the real
+    plugin against something that answers in the same shapes."""
+    service = Service(flights(240))
+    search = Search(KEY, service, url="http://127.0.0.1:8909/search")
+
+    search.flights(**ROUTE, **WEEK)
+
+    assert service.urls == ["http://127.0.0.1:8909/search"]
+
+
+def test_the_searches_go_to_the_real_service_unless_told_otherwise() -> None:
+    service = Service(flights(240))
+
+    Search(KEY, service).flights(**ROUTE, **WEEK)
+
+    assert service.urls == [SEARCH]

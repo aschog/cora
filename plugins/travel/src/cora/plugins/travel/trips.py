@@ -19,6 +19,11 @@ from cora.ports.plugin import Tool, ToolRefusal
 
 SEARCH = "https://serpapi.com/search"
 SETTING = "serpapi_key"
+ENDPOINT = "search_url"
+"""What a deployment sets to send the searches somewhere else — a stand-in that answers
+in the same shapes, so the plugin can be driven with no account and no network. A
+setting rather than a flag: nothing branches on it, and the one address is still the
+one address."""
 TIMEOUT = 20.0
 MOST = 3
 """How many options come back. Three is what a person compares without a spreadsheet."""
@@ -267,6 +272,7 @@ class Search:
 
     key: str
     fetch: Fetcher = field(default_factory=lambda: _client())
+    url: str = SEARCH
 
     def flights(self, **given: Any) -> str:
         """The cheapest fares across every departure the window allows, on one line.
@@ -359,7 +365,7 @@ class Search:
                 query it is quoting carries the key.
         """
         try:
-            answer = self.fetch.get(SEARCH, params=query)
+            answer = self.fetch.get(self.url, params=query)
             answer.raise_for_status()
         except httpx.HTTPError as unreachable:
             raise ToolRefusal(UNREACHABLE) from unreachable
@@ -432,9 +438,14 @@ HOTELS_TOOL_DESCRIPTION = (
 )
 
 
-def trip_tools(key: str) -> tuple[Tool, ...]:
-    """Both searches over one client, declared as returning what cora did not write."""
-    search = Search(key)
+def trip_tools(key: str, url: str = SEARCH) -> tuple[Tool, ...]:
+    """Both searches over one client, declared as returning what cora did not write.
+
+    Args:
+        url: Where the searches go, for a deployment standing something else in front
+            of them.
+    """
+    search = Search(key, url=url)
     return (
         Tool(
             name=FLIGHTS_TOOL_NAME,

@@ -9,7 +9,7 @@ from cora.plugins.travel.researcher import (
     RESEARCH_TOOL_NAME,
     researching,
 )
-from cora.plugins.travel.trips import SETTING, trip_tools
+from cora.plugins.travel.trips import ENDPOINT, SEARCH, SETTING, trip_tools
 from cora.ports.host import Host
 
 SCOPE = "travel"
@@ -100,7 +100,8 @@ def extend(cora: Host) -> None:
         untrusted=True,
     )
     key = cora.settings.get(SETTING, "").strip()
-    for priced in trip_tools(key) if key else ():
+    endpoint = cora.settings.get(ENDPOINT, "").strip() or SEARCH
+    for priced in trip_tools(key, endpoint) if key else ():
         cora.register_tool(
             name=priced.name,
             description=priced.description,
