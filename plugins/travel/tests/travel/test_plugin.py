@@ -5,6 +5,11 @@ from cora.plugins.travel import CORPUS, INSTRUCTIONS, SCOPE, extend
 from cora.plugins.travel.forecast import FORECAST_TOOL_NAME
 from cora.plugins.travel.itinerary import ITINERARY_TOOL_NAME
 from cora.plugins.travel.researcher import RESEARCH_TOOL_NAME
+from cora.plugins.travel.trips import (
+    FLIGHTS_TOOL_NAME,
+    HOTELS_TOOL_NAME,
+    SETTING,
+)
 from cora.ports.host import INSTRUCTIONS as SAYS
 from cora.ports.host import TOOL as HAS
 from fakes import FakeOutput, host_for
@@ -99,3 +104,50 @@ def test_a_rounds_setting_that_is_not_a_number_is_refused_by_name_at_load() -> N
     assert "rounds" in said, "the setting they can act on is named"
     assert "three" in said, "and what they set it to"
     assert "cora.plugins.travel" in said
+
+
+def test_travel_offers_no_prices_where_a_deployment_set_no_key() -> None:
+    """The same rule saving follows: a tool the model can call and that can only fail
+    is worse than one it is never offered."""
+    host = host_for("cora.plugins.travel", output=FakeOutput())
+
+    extend(host)
+
+    tools = [entry.value.name for entry in host.registered if entry.kind == HAS]
+    assert FLIGHTS_TOOL_NAME not in tools
+    assert HOTELS_TOOL_NAME not in tools
+    assert FORECAST_TOOL_NAME in tools, "what needs no key is unaffected"
+
+
+@pytest.mark.parametrize("key", ["   ", ""])
+def test_a_key_that_is_blank_is_no_key_at_all(key: str) -> None:
+    host = host_for("cora.plugins.travel", settings={SETTING: key})
+
+    extend(host)
+
+    tools = [entry.value.name for entry in host.registered if entry.kind == HAS]
+    assert FLIGHTS_TOOL_NAME not in tools
+
+
+def test_both_searches_arrive_in_travels_own_field_once_a_key_is_set() -> None:
+    host = host_for(
+        "cora.plugins.travel", output=FakeOutput(), settings={SETTING: "a-key"}
+    )
+
+    extend(host)
+
+    priced = [
+        entry
+        for entry in host.registered
+        if entry.kind == HAS
+        and entry.value.name in (FLIGHTS_TOOL_NAME, HOTELS_TOOL_NAME)
+    ]
+    assert [entry.value.name for entry in priced] == [
+        FLIGHTS_TOOL_NAME,
+        HOTELS_TOOL_NAME,
+    ]
+    assert [entry.scope for entry in priced] == [SCOPE, SCOPE], (
+        "a turn about training is offered no prices"
+    )
+    assert all(entry.value.untrusted for entry in priced)
+    assert not any(entry.value.effect for entry in priced), "neither buys anything"

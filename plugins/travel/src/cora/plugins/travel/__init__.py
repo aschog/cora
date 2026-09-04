@@ -9,6 +9,7 @@ from cora.plugins.travel.researcher import (
     RESEARCH_TOOL_NAME,
     researching,
 )
+from cora.plugins.travel.trips import SETTING, trip_tools
 from cora.ports.host import Host
 
 SCOPE = "travel"
@@ -30,6 +31,11 @@ user's own documents.
   what is open, what the weather will do — rather than searching over and over
   yourself. Answer from the report it brings back, and if the report says it stopped
   early, say which part is still unresearched.
+- Search live prices when the answer turns on cost. Give the flight search a window —
+  an earliest start, a latest return and a number of nights — whenever the traveller
+  has not fixed the dates, and let it try the departures across it. Carry their budget
+  and any restriction into the search rather than filtering afterwards, and say the
+  prices are what the aggregator showed rather than a seat held for them.
 - Offer to save the itinerary once a plan is settled and the user wants it — the save
   is put to them for approval before it happens, so offer rather than announce, and say
   where the file went once it is done.
@@ -48,17 +54,18 @@ choose, and these are files they may choose.
 
 
 def extend(cora: Host) -> None:
-    """Instructions and three tools, all under the travel scope and none outside it.
+    """Instructions and up to five tools, all under travel and none outside it.
 
-    The first two are declared as returning material cora did not write: a service's
-    answer is not cora's words, and neither is a report the researcher built out of
-    documents and a forecast. The third changes something outside cora and says so, so
-    a call of it waits for the user. Nothing here is system-wide, so a turn about
-    training is offered no weather and no researcher.
+    Four are declared as returning material cora did not write: a service's answer is
+    not cora's words, and neither is a report the researcher built out of documents and
+    a forecast. The last changes something outside cora and says so, so a call of it
+    waits for the user. Nothing here is system-wide, so a turn about training is offered
+    no weather, no researcher and no prices.
 
-    Saving is offered only where the deployment configured somewhere to write. A tool
-    the model can call and that can only fail is worse than one it is never offered —
-    the same reason cora offers no `remember` without a memory.
+    Two of them are offered only where the deployment set a key for the search service,
+    and saving only where it configured somewhere to write. A tool the model can call
+    and that can only fail is worse than one it is never offered — the same reason cora
+    offers no `remember` without a memory.
 
     Raises:
         PluginLoadError: The rounds setting is not a whole number. Raised as one of
@@ -92,6 +99,16 @@ def extend(cora: Host) -> None:
         scope=SCOPE,
         untrusted=True,
     )
+    key = cora.settings.get(SETTING, "").strip()
+    for priced in trip_tools(key) if key else ():
+        cora.register_tool(
+            name=priced.name,
+            description=priced.description,
+            parameter_schema=priced.parameter_schema,
+            run=priced.run,
+            scope=SCOPE,
+            untrusted=priced.untrusted,
+        )
     if cora.output is None:
         return
     saving = itinerary_tool(cora.output)
