@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import * as cora from '../api'
 
-export const UNKEPT =
-  'This document was indexed before cora kept its text, so it cannot be opened.'
+/** One sentence for either way a document is not there: deleted, or indexed before cora
+ *  kept any text. Both read as nothing, so guessing between them would sometimes be a
+ *  lie — and a reader who clicked `[1]` is owed the same sentence either way. */
+export const UNKEPT = 'cora does not hold this document, so it cannot be opened.'
 
 /**
  * The kept text of an upload, or why it cannot be read. Both answers live here so that

@@ -36,10 +36,11 @@ by a person reading it. The page's items are `vitest`, the rest are `pytest`.
 
 ## 5. The endpoint
 
-- [ ] 5.1 `DELETE /api/documents/{scope}/{name}` answering `204`, with the name off the listing
-- [ ] 5.2 A field this deployment never loaded refused, as every route taking a field does
-- [ ] 5.3 A store that went away answering `503` and its own sentence
-- [ ] 5.4 A citation into a deleted document answering the sentence that covers both cases
+- [x] 5.1 `DELETE /api/documents/{scope}/{name}` answering `204`, with the name off the listing
+- [x] 5.2 A field this deployment never loaded refused, as every route taking a field does
+- [x] 5.3 A store that went away answering `503` and its own sentence
+- [x] 5.4 A citation into a deleted document answering the sentence that covers both cases
+- [x] 5.5 A name nothing was uploaded under answering `204` rather than `404`
 
 ## 6. The rail
 

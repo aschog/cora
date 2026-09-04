@@ -2,6 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import SourcePanel from './SourcePanel'
 import type { Citation } from '../api'
+import { UNKEPT } from './DocumentBody'
 
 const KEPT = 'Sleep matters. The rest of the document follows.'
 
@@ -40,7 +41,7 @@ test('a passage whose text was never kept says so rather than drawing an empty p
      cannot be read: the reader is told, and the panel does not sit blank. */
   render(<SourcePanel document="notes.md" source={null} citations={[cited('')]} />)
 
-  expect(screen.getByText(/indexed before cora kept its text/)).toBeTruthy()
+  expect(screen.getByText(UNKEPT)).toBeTruthy()
   expect(screen.queryByText(/The rest of the document follows/)).toBeNull()
 })
 

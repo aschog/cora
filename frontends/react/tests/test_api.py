@@ -22,18 +22,29 @@ from app_builder import assembled, indexed
 from cora.app.assembly import App
 from cora.domain.chat_result import ChatResult
 from cora.domain.conversation import Turn
-from cora.domain.errors import ConversationStoreError, MemoryStoreError
+from cora.domain.errors import (
+    ConversationStoreError,
+    MemoryStoreError,
+    RetrievalError,
+)
 from cora.engine.ingestion import DEFAULT_MAX_BYTES
 from cora.frontends.react.api import (
     MAX_REQUEST_BYTES,
     NO_LENGTH,
     OVER_CEILING,
     REFUSALS,
+    UNKEPT,
     UNREADABLE_UPLOAD,
     api,
 )
 from cora.ports.host import DEFAULT_SCOPE
-from fakes import FailingConversations, FailingMemory, FakeConversations, FakeMemory
+from fakes import (
+    FailingConversations,
+    FailingMemory,
+    FailingRetriever,
+    FakeConversations,
+    FakeMemory,
+)
 from fixture_plugins import make_plugin, make_tool
 
 NOTES = b"Squats stall on sleep, not on volume. The block holds intensity."
@@ -97,6 +108,18 @@ def test_a_passage_reads_back_from_the_upload_its_span_was_measured_in() -> None
 
     assert kept.status_code == 200
     assert kept.json()["text"] == NOTES.decode()
+
+
+def test_a_passage_whose_document_is_gone_says_so_however_it_went() -> None:
+    """One sentence for both: the store cannot tell a document that was deleted from one
+    whose text was never kept, because both read as nothing."""
+    missing = client(assembled()).get(
+        f"/api/uploads/{DEFAULT_SCOPE}/nothingwaskeptunderthis"
+    )
+
+    assert missing.status_code == 404
+    assert missing.json()["error"] == UNKEPT
+    assert "deleted" not in UNKEPT and "never" not in UNKEPT
 
 
 def test_an_upload_never_kept_says_so_rather_than_serving_an_empty_document() -> None:
@@ -547,6 +570,48 @@ def test_a_passage_opens_from_its_own_field_and_no_other() -> None:
         client.get(f"/api/uploads/{TRAVEL}/{upload}").json()["text"] == KYOTO.decode()
     )
     assert client.get(f"/api/uploads/{FITNESS}/{upload}").status_code == 404
+
+
+def test_a_document_is_deleted_by_its_name_and_leaves_the_listing() -> None:
+    app = assembled()
+    client = _scoped(app)
+    for name, data in (("kyoto.md", KYOTO), ("notes.md", NOTES)):
+        client.post(
+            "/api/documents",
+            files={"file": (name, data, "text/markdown")},
+            data={"scope": TRAVEL},
+        )
+
+    deleted = client.delete(f"/api/documents/{TRAVEL}/kyoto.md")
+
+    assert deleted.status_code == 204
+    assert client.get(f"/api/documents?scope={TRAVEL}").json() == ["notes.md"]
+    upload = hashlib.sha256(KYOTO).hexdigest()
+    assert client.get(f"/api/uploads/{TRAVEL}/{upload}").status_code == 404
+
+
+def test_deleting_in_a_field_nobody_loaded_is_refused() -> None:
+    """The name is the client's, and it reaches a collection the store would create for
+    it — the same door every route taking a field stands behind."""
+    refused = _scoped(assembled()).delete("/api/documents/invented/notes.md")
+
+    assert refused.status_code == 400
+    assert TRAVEL in refused.json()["error"]
+
+
+def test_deleting_a_document_a_store_cannot_reach_reports_its_own_message() -> None:
+    app = assembled(retriever=FailingRetriever(RetrievalError()))
+
+    failed = _scoped(app).delete(f"/api/documents/{TRAVEL}/notes.md")
+
+    assert failed.status_code == 503
+    assert failed.json()["error"] == RetrievalError().user_message
+
+
+def test_deleting_a_document_nothing_holds_is_done_rather_than_missing() -> None:
+    deleted = _scoped(assembled()).delete(f"/api/documents/{TRAVEL}/never-here.md")
+
+    assert deleted.status_code == 204
 
 
 def test_the_listing_refuses_a_field_nobody_loaded() -> None:

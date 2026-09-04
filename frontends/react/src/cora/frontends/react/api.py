@@ -69,6 +69,11 @@ def api(
     routes: list[Route | Mount] = [
         Route("/api/documents", _documents(app, scopes), methods=["GET"]),
         Route("/api/documents", _ingest(app, scopes), methods=["POST"]),
+        Route(
+            "/api/documents/{scope}/{name}",
+            _delete_document(app, scopes),
+            methods=["DELETE"],
+        ),
         Route("/api/ask", _ask(app, scopes), methods=["POST"]),
         Route("/api/resume", _resume(app), methods=["POST"]),
         Route("/api/approve", _approve(app), methods=["POST"]),
@@ -168,6 +173,30 @@ def _documents(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], An
         return JSONResponse(app.knowledge_base.list_sources(scope))
 
     return listed
+
+
+def _delete_document(
+    app: App, scopes: tuple[str, ...] = ()
+) -> Callable[[Request], Any]:
+    """A document deleted from one field, both halves of it, through the one call that
+    drops both.
+
+    The field is refused here as it is on every route that takes one: the name is the
+    client's, and a field nobody loaded would reach a collection the store creates for
+    being asked. A name nothing was uploaded under is a request already satisfied.
+    """
+
+    def one(request: Request) -> Response:
+        named = request.path_params["scope"]
+        scope = _field(named, scopes)
+        if scope is None:
+            return JSONResponse(
+                {"error": _no_such_field(named, scopes)}, status_code=REFUSED
+            )
+        app.knowledge_base.forget(scope, request.path_params["name"])
+        return Response(status_code=NO_CONTENT)
+
+    return one
 
 
 def _field(named: str, scopes: tuple[str, ...]) -> str | None:
@@ -499,7 +528,10 @@ def _upload(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
     return read
 
 
-UNKEPT = "That passage's document was never kept, so it cannot be opened."
+UNKEPT = "cora does not hold that passage's document, so it cannot be opened."
+"""One sentence for either way a document is not there. The store cannot tell a
+deleted document from one whose text was never kept — both read as nothing — so what
+the reader is told is true of both rather than guessing between them."""
 
 
 def _sessions(app: App) -> Callable[[Request], Any]:
