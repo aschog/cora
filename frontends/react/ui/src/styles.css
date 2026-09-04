@@ -39,10 +39,6 @@
 
   /* Glass: a panel is the ground lifted, not a different colour. Stated once so the
      two rails, the menu and the composer cannot drift apart. */
-  --glass: rgba(255, 255, 255, 0.045);
-  --glass-edge: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
-  --glass-lift: 0 18px 44px rgba(0, 0, 0, 0.45);
-  --glass-blur: blur(18px) saturate(140%);
   --sunken: rgba(0, 0, 0, 0.28);
   --pill: 999px;
   --panel-radius: 18px;
@@ -126,8 +122,6 @@ button {
   align-items: stretch;
   flex: 1;
   min-height: 0;
-  gap: var(--s3);
-  padding: var(--s3);
 }
 
 /* ── what a rail holds above its own content ── */
@@ -148,17 +142,20 @@ button {
   font-weight: 600;
   letter-spacing: -0.01em;
 }
-/* ── left rail ── */
+/* ── the rails ── */
+/* Flush to the edge of the page and the full height of it, told apart from the
+   conversation by a hairline. The glow the shell paints belongs to the middle. */
+.rail-docs,
+.rail-panels {
+  padding: var(--s4);
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.22);
+}
+
 .rail-docs {
   flex: 0 1 232px;
   min-width: 180px;
-  padding: var(--s4);
-  overflow-y: auto;
-  background: var(--glass);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-edge), var(--glass-lift);
-  border-radius: var(--panel-radius);
+  border-right: 1px solid var(--hairline);
 }
 
 .rail-heading {
@@ -500,17 +497,10 @@ button {
   color: var(--bg);
 }
 
-/* ── right rail ── */
 .rail-panels {
   flex: 0 1 360px;
   min-width: 268px;
-  padding: var(--s4);
-  overflow-y: auto;
-  background: var(--glass);
-  backdrop-filter: var(--glass-blur);
-  -webkit-backdrop-filter: var(--glass-blur);
-  box-shadow: var(--glass-edge), var(--glass-lift);
-  border-radius: var(--panel-radius);
+  border-left: 1px solid var(--hairline);
 }
 
 .tabs {
@@ -857,12 +847,23 @@ button {
 }
 
 /* ── the rails fold away ── */
+/* Folded, a rail is not a narrower rail: it is gone, and only the control that brings
+   it back stays — standing on the page rather than on a panel of its own. */
 .rail-docs.shut,
 .rail-panels.shut {
   flex: 0 0 auto;
   min-width: 0;
-  padding: var(--s2);
+  padding: var(--s3);
   overflow: hidden;
+  background: none;
+  border: 0;
+}
+
+.rail-docs.shut .rail-top,
+.rail-panels.shut .rail-top {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  margin-bottom: 0;
 }
 
 .rail-toggle {
