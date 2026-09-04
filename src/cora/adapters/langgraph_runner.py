@@ -199,6 +199,12 @@ class LangGraphRunner:
         held = (saved or {}).get("channel_values", {}).get("pin")
         return held or None
 
+    def forget(self, thread_id: str) -> None:
+        """The thread dropped through the checkpointer's own delete, which every saver
+        answers: what a checkpoint is made of is LangGraph's business, and cora writing
+        sql against its tables would be cora holding a shape it was not given."""
+        self.checkpointer.delete_thread(thread_id)
+
     def _streamed(
         self, opening: Any, thread_id: str, on_text: TextSink
     ) -> Iterator[AgentState]:

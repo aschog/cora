@@ -199,6 +199,23 @@ class Agent:
         """
         return self.runner.pending(thread_id)
 
+    def forget(self, thread_id: str) -> None:
+        """Delete a conversation: its turns, and the thread they were answered on.
+
+        Both halves through one call, because a conversation whose record is gone and
+        whose thread is not still holds a pin, what the model was told, and possibly a
+        turn parked mid-question — reachable, and listed nowhere. The thread goes first,
+        so a failure halfway leaves the conversation listed and deletable again rather
+        than kept where nobody can find it. A cora with no place to record turns has
+        only the thread to drop.
+
+        Raises:
+            ConversationStoreError: The turns could not be dropped.
+        """
+        self.runner.forget(thread_id)
+        if self.conversations is not None:
+            self.conversations.forget(thread_id)
+
     def pinned(self, thread_id: str) -> str | None:
         """The scope this conversation was fixed to, or nothing.
 

@@ -20,19 +20,19 @@ reading it.
 
 ## 3. The thread the model answered on
 
-- [ ] 3.1 A deleted thread holding no pin, where it was pinned before
-- [ ] 3.2 A deleted thread waiting on nothing, where a turn was parked in it
-- [ ] 3.3 Resuming a deleted thread refused as a thread waiting on nothing is
-- [ ] 3.4 A thread nobody has asked anything on deleted without complaint
-- [ ] 3.5 The same over the file-backed checkpointer, which is what a deployment deletes
+- [x] 3.1 A deleted thread holding no pin, where it was pinned before
+- [x] 3.2 A deleted thread waiting on nothing, where a turn was parked in it
+- [x] 3.3 Resuming a deleted thread refused as a thread waiting on nothing is
+- [x] 3.4 A thread nobody has asked anything on deleted without complaint
+- [x] 3.5 The same over the file-backed checkpointer, which is what a deployment deletes
       from
 
 ## 4. One call that drops both halves
 
-- [ ] 4.1 Deleting a conversation dropping its record and its thread in one call
-- [ ] 4.2 A drop that fails on the thread leaving the conversation listed, so deleting
+- [x] 4.1 Deleting a conversation dropping its record and its thread in one call
+- [x] 4.2 A drop that fails on the thread leaving the conversation listed, so deleting
       again finishes it
-- [ ] 4.3 A cora assembled with no place to record turns deleting without complaint
+- [x] 4.3 A cora assembled with no place to record turns deleting without complaint
 
 ## 5. The endpoint
 

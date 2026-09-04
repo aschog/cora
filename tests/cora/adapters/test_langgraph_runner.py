@@ -749,6 +749,76 @@ def test_a_thread_that_never_stopped_is_waiting_on_nothing() -> None:
     assert runner.pending(THREAD) is None
 
 
+def test_a_forgotten_thread_holds_no_pin() -> None:
+    runner = _runner(model=_always(_replies))
+    list(runner.run({"question": WANTED, "pin": "fitness"}, THREAD))
+    assert runner.pinned(THREAD) == "fitness"
+
+    runner.forget(THREAD)
+
+    assert runner.pinned(THREAD) is None
+
+
+def test_a_forgotten_thread_is_waiting_on_nothing() -> None:
+    runner = _stopping()
+    list(runner.run({"question": WANTED}, THREAD))
+    assert runner.pending(THREAD) is not None
+
+    runner.forget(THREAD)
+
+    assert runner.pending(THREAD) is None
+
+
+def test_resuming_a_forgotten_thread_is_refused_as_a_thread_waiting_on_nothing() -> (
+    None
+):
+    """The card was answered after its conversation was deleted, which is the same
+    nothing as a card clicked twice."""
+    runner = _stopping()
+    list(runner.run({"question": WANTED}, THREAD))
+    runner.forget(THREAD)
+
+    with pytest.raises(NothingToResumeError):
+        list(runner.resume("75 kg", THREAD))
+
+
+def test_forgetting_one_thread_leaves_the_others() -> None:
+    runner = _runner(model=_always(_replies))
+    list(runner.run({"question": WANTED, "pin": "fitness"}, "kept"))
+    list(runner.run({"question": WANTED, "pin": "travel"}, "gone"))
+
+    runner.forget("gone")
+
+    assert runner.pinned("kept") == "fitness"
+
+
+def test_forgetting_a_thread_nobody_has_asked_anything_on_is_not_an_error() -> None:
+    runner = _runner(model=_always(_replies))
+
+    runner.forget(THREAD)
+
+    assert runner.pinned(THREAD) is None
+
+
+def test_a_thread_is_forgotten_out_of_the_file_a_deployment_keeps_it_in(
+    tmp_path: Path,
+) -> None:
+    """The checkpointer a deployment runs is the file-backed one, and it is the one a
+    delete has to reach: in memory a thread dies with the process anyway."""
+    path = str(tmp_path / "conversations.sqlite")
+    first = langgraph_for(
+        **_walk(_always(_replies)), max_tool_rounds=ROUNDS, checkpoints_at=path
+    )
+    list(first.run({"question": WANTED, "pin": "fitness"}, THREAD))
+
+    first.forget(THREAD)
+
+    second = langgraph_for(
+        **_walk(_always(_replies)), max_tool_rounds=ROUNDS, checkpoints_at=path
+    )
+    assert second.pinned(THREAD) is None
+
+
 def test_a_turn_that_stops_to_ask_still_gets_its_whole_round_budget() -> None:
     """The pause costs a superstep of its own, so a limit sized for rounds alone would
     make a turn that stopped to check look like a runaway one."""

@@ -117,6 +117,15 @@ class GraphRunner(Protocol):
         """
         ...
 
+    def forget(self, thread_id: str) -> None:
+        """Drop everything a thread holds: its pin, its transcript, its parked turn.
+
+        A thread nobody has asked anything on is not an error. A thread forgotten while
+        a turn was parked in it is waiting on nothing, so resuming it is refused as any
+        thread waiting on nothing is.
+        """
+        ...
+
     def pinned(self, thread_id: str) -> str | None:
         """The scope this thread was pinned to, or nothing.
 
