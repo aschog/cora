@@ -83,7 +83,6 @@ NOTES = ModelReply(text="They say the maples turn in November [1].")
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(strict=True, reason="the delete is not built yet")
 def test_a_document_i_delete_is_searched_and_cited_no_more(
     tmp_path: Path,
     make_chroma: "Callable[[], ChromaRetriever]",

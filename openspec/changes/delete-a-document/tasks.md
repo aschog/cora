@@ -53,4 +53,5 @@ by a person reading it. The page's items are `vitest`, the rest are `pytest`.
 
 ## 7. Done
 
-- [ ] 7.1 Drop 1.1's `xfail` marker and watch the outer test pass
+- [x] 7.1 Drop 1.1's `xfail` marker and watch the outer test pass — ticked with group
+      5, which is where the outer test's own surface was finished
