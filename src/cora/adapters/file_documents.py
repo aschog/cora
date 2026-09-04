@@ -61,6 +61,14 @@ class FileDocuments:
             return found.read_text(encoding="utf-8")
         return None
 
+    @_translate_errors
+    def forget(self, scope: str, upload: str) -> None:
+        head = _head(upload)
+        if head is None or not BARE_NAME.match(scope):
+            return
+        for found in sorted((self._root / scope).glob(f"*-{head}.md")):
+            found.unlink()
+
     def _folder(self, scope: str) -> Path:
         if not BARE_NAME.match(scope):
             raise DocumentStoreError()

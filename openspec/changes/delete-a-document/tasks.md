@@ -19,11 +19,11 @@ by a person reading it. The page's items are `vitest`, the rest are `pytest`.
 
 ## 3. One upload's file leaves the directory
 
-- [ ] 3.1 A forgotten upload's file gone, and its text read back as nothing
-- [ ] 3.2 The other uploads' files left where they are
-- [ ] 3.3 An upload no file was kept for forgotten without complaint
-- [ ] 3.4 A scope that could walk out of the root refused, as it is on the way in
-- [ ] 3.5 A store that cannot be written raising the failure this adapter translates
+- [x] 3.1 A forgotten upload's file gone, and its text read back as nothing
+- [x] 3.2 The other uploads' files left where they are
+- [x] 3.3 An upload no file was kept for forgotten without complaint
+- [x] 3.4 A scope that could walk out of the root refused, as it is on the way in
+- [x] 3.5 A store that cannot be written raising the failure this adapter translates
 
 ## 4. One call over both halves
 

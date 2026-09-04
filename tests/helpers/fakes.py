@@ -197,8 +197,12 @@ class FakeDocuments:
     def read(self, scope: str, upload: str) -> str | None:
         return self._kept.get((scope, upload))
 
-    def forget(self, scope: str) -> None:
-        """Every file of one field gone, as a directory emptied behind cora's back."""
+    def forget(self, scope: str, upload: str) -> None:
+        self._kept.pop((scope, upload), None)
+
+    def emptied(self, scope: str) -> None:
+        """Every file of one field gone, as a directory emptied behind cora's back.
+        Named apart from `forget`, which is the port's own verb for one upload."""
         self._kept = {key: text for key, text in self._kept.items() if key[0] != scope}
 
 
@@ -212,6 +216,9 @@ class KeepsNothingDocuments(FakeDocuments):
 
 class FailingDocuments(FakeDocuments):
     def read(self, scope: str, upload: str) -> str | None:
+        raise DocumentStoreError
+
+    def forget(self, scope: str, upload: str) -> None:
         raise DocumentStoreError
 
 

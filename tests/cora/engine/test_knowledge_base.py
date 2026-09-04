@@ -344,7 +344,7 @@ def test_a_passage_whose_file_is_gone_is_left_out(
     kb: KnowledgeBase, documents: FakeDocuments
 ) -> None:
     kb.add_file(PLAN, "plan.md", scope=FITNESS)
-    documents.forget(FITNESS)
+    documents.emptied(FITNESS)
 
     with running_in(frozenset({FITNESS})):
         assert kb.search("intensity", k=5) == []
@@ -357,7 +357,7 @@ def test_a_missing_file_costs_its_own_place_and_not_the_one_below_it(
     the unreadable passages are dropped spends a place on a passage nobody gets."""
     kb.add_file(KYOTO, "kyoto.md", scope=TRAVEL)
     kb.add_file(PLAN, "plan.md", scope=FITNESS)
-    documents.forget(TRAVEL)
+    documents.emptied(TRAVEL)
 
     with running_in(frozenset({FITNESS, TRAVEL})):
         [hit] = kb.search(KYOTO.decode(), k=1)

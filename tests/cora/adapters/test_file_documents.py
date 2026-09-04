@@ -54,6 +54,75 @@ def test_an_upload_never_kept_reads_as_nothing(tmp_path: Path) -> None:
     assert _store(tmp_path).read(FITNESS, UPLOAD) is None
 
 
+def test_a_forgotten_upload_leaves_no_file_and_reads_as_nothing(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    store.keep(FITNESS, UPLOAD, "protein.md", TEXT)
+
+    store.forget(FITNESS, UPLOAD)
+
+    assert store.read(FITNESS, UPLOAD) is None
+    assert list((tmp_path / FITNESS).glob("*.md")) == []
+
+
+def test_forgetting_one_upload_leaves_the_other_files_where_they_are(
+    tmp_path: Path,
+) -> None:
+    """One filename twice is two files, and each holds the text its own passages were
+    measured in: forgetting one must not take the other."""
+    store = _store(tmp_path)
+    store.keep(FITNESS, UPLOAD, "protein.md", TEXT)
+    store.keep(FITNESS, ANOTHER, "protein.md", OTHER)
+    store.keep(TRAVEL, UPLOAD, "protein.md", TEXT)
+
+    store.forget(FITNESS, UPLOAD)
+
+    assert store.read(FITNESS, ANOTHER) == OTHER
+    assert store.read(TRAVEL, UPLOAD) == TEXT
+
+
+def test_forgetting_an_upload_no_file_was_kept_for_is_not_an_error(
+    tmp_path: Path,
+) -> None:
+    """The index went first, so this store may be asked for a file that was never
+    written — and being asked twice is the second ask already done."""
+    store = _store(tmp_path)
+
+    store.forget(FITNESS, UPLOAD)
+
+    assert store.read(FITNESS, UPLOAD) is None
+
+
+def test_a_scope_that_walks_out_of_the_root_forgets_nothing(tmp_path: Path) -> None:
+    """The same guard `read` holds, on the way out: a field name reaches here from a
+    request, and one that resolves outside the root must delete nothing."""
+    root = tmp_path / "documents"
+    store = FileDocuments.at(str(root))
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    kept = outside / f"secret-{UPLOAD[:12]}.md"
+    kept.write_text("another field's text")
+
+    store.forget("../elsewhere", UPLOAD)
+
+    assert kept.exists()
+
+
+def test_a_file_that_cannot_be_deleted_raises(tmp_path: Path) -> None:
+    """The store says what happened rather than reporting a delete that did not: a
+    directory nothing may be removed from is the failure this translates."""
+    store = _store(tmp_path)
+    store.keep(FITNESS, UPLOAD, "protein.md", TEXT)
+    folder = tmp_path / FITNESS
+    folder.chmod(0o500)
+    try:
+        with pytest.raises(DocumentStoreError):
+            store.forget(FITNESS, UPLOAD)
+    finally:
+        folder.chmod(0o700)
+
+
 def test_a_scope_that_is_not_a_bare_name_is_refused(tmp_path: Path) -> None:
     """The name reaches here from an upload, so a field that walks out of the root is
     refused before anything is written."""

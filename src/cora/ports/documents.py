@@ -31,6 +31,18 @@ class Documents(Protocol):
         """
         ...
 
+    def forget(self, scope: str, upload: str) -> None:
+        """Drop the text kept for one upload in this scope.
+
+        An upload nothing was kept for is not an error: the index is dropped first, so
+        this may be asked about a passage whose text was never written. Nothing outside
+        the scope's own directory is touched, however the scope is named.
+
+        Raises:
+            DocumentStoreError: The text could not be dropped.
+        """
+        ...
+
     def read(self, scope: str, upload: str) -> str | None:
         """The text kept for an upload in this scope, or nothing if none was.
 
