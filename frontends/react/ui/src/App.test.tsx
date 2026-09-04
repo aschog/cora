@@ -3860,6 +3860,9 @@ const deletable = (
 const deleteControl = () =>
   screen.getByRole('button', { name: `Delete ${GONE.opened_with}` })
 
+const confirm = () =>
+  fireEvent.click(screen.getByRole('button', { name: 'Delete session' }))
+
 test('a conversation deleted from the list leaves the list', async () => {
   const asked = deletable()
   render(<App />)
@@ -3868,11 +3871,35 @@ test('a conversation deleted from the list leaves the list', async () => {
 
   fireEvent.click(deleteControl())
 
+  // The control asks; nothing has been asked of cora yet.
+  expect(screen.getByRole('dialog')).toBeTruthy()
+  expect(asked.deleted).toEqual([])
+
+  confirm()
+
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: GONE.opened_with })).toBeNull(),
   )
   expect(asked.deleted).toEqual(['/api/sessions/gone'])
   expect(screen.getByRole('button', { name: OLDER.question })).toBeTruthy()
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+
+test('keeping a conversation deletes nothing, and asks again next time', async () => {
+  const asked = deletable()
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  await screen.findByRole('button', { name: GONE.opened_with })
+
+  fireEvent.click(deleteControl())
+  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+
+  expect(asked.deleted).toEqual([])
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(screen.getByRole('button', { name: GONE.opened_with })).toBeTruthy()
+
+  fireEvent.click(deleteControl())
+  expect(screen.getByRole('dialog')).toBeTruthy()
 })
 
 test('a delete that fails says so, and the conversation is still listed', async () => {
@@ -3889,6 +3916,7 @@ test('a delete that fails says so, and the conversation is still listed', async 
   await screen.findByRole('button', { name: GONE.opened_with })
 
   fireEvent.click(deleteControl())
+  confirm()
 
   expect(await screen.findByText(unreachable)).toBeTruthy()
   expect(screen.getByRole('button', { name: GONE.opened_with })).toBeTruthy()
@@ -3918,6 +3946,7 @@ test('the card stowed for a deleted conversation is let go with it', async () =>
   await screen.findByText(OLDER.result.answer)
 
   fireEvent.click(deleteControl())
+  confirm()
 
   await waitFor(() => expect(globalThis.sessionStorage.getItem('cora.parked')).toBeNull())
 })

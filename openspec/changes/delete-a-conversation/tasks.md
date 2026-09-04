@@ -57,15 +57,17 @@ reading it.
 - [x] 7.1 Drop 1.1's `xfail` marker and watch the outer test pass — ticked with group
       5, which is where the outer test's own surface was finished
 
-## 8. Uncovered by a gesture, drawn as an icon
+## 8. Asked about first, drawn as an icon
 
-Review feedback, after 7.1: a delete offered outright is one click from gone, and a word
-per row is noise in a narrow rail.
+Review feedback, after 7.1: a delete offered outright is one click from gone, a word per
+row is noise in a narrow rail, and the memory rail was the same row with another
+spelling.
 
-- [x] 8.1 A leftward gesture on a row uncovering its delete, with nothing deleted by it
-- [x] 8.2 The uncovered control deleting the conversation whose row it came out of
-- [x] 8.3 A gesture back covering it again, with nothing deleted
-- [x] 8.4 The row of the conversation being read not answering the gesture
-- [x] 8.5 The row following the pointer while the gesture is under way
-- [x] 8.6 The control drawn as an icon, named for the conversation it deletes
-- [x] 8.7 A press on the control not reading as a gesture, so the row stays where it was
+- [x] 8.1 The control asking rather than deleting, with nothing asked of cora yet
+- [x] 8.2 A confirmed question deleting the conversation it named
+- [x] 8.3 Keeping the conversation deleting nothing, and asking again next time
+- [x] 8.4 The question naming the conversation and saying what is left untouched
+- [x] 8.5 Escape and the page behind the question both reading as keeping it
+- [x] 8.6 The control drawn as an icon, named for the row it would delete
+- [x] 8.7 The conversation being read marked in the list
+- [x] 8.8 A fact forgotten by that same control, in the memory rail

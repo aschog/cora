@@ -12,6 +12,7 @@ import type {
 } from './api'
 import Answer from './components/Answer'
 import CitationModal from './components/CitationModal'
+import DeleteModal from './components/DeleteModal'
 import DocumentRail from './components/DocumentRail'
 import NewSession from './components/NewSession'
 import RailToggle from './components/RailToggle'
@@ -170,6 +171,9 @@ export default function App() {
   const [working, setWorking] = useState<string | null>(null)
   const [read, setRead] = useState<{ document: string; scope: string } | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
+  /* The conversation a delete has been asked about, and nothing more: the question is
+     put over the page, and until it is answered nothing has been asked of cora. */
+  const [deleting, setDeleting] = useState<Session | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
   /* What the last upload did. Its own state, because it is not trouble and a refresh
      going through does not take it away: a duplicate upload is answered with `0` chunks,
@@ -526,17 +530,20 @@ export default function App() {
   const recall = (thread_id: string) =>
     loaded(thread_id, (kept) => setEntries(recorded(kept)))
 
-  /** A conversation deleted, and the card stowed for it let go: the stow is what a
-   *  reload comes back through, and a conversation that is gone is nowhere to come back
-   *  to. The list is redrawn by the refresh every write here goes through. */
-  const discard = (session: Session) =>
-    cora
+  /** A conversation deleted, once the reader has said so, and the card stowed for it let
+   *  go: the stow is what a reload comes back through, and a conversation that is gone is
+   *  nowhere to come back to. The list is redrawn by the refresh every write here goes
+   *  through. */
+  const discard = (session: Session) => {
+    setDeleting(null)
+    return cora
       .deleteSession(session.thread_id)
       .then(() => {
         forgetIf(session.thread_id)
         return refresh()
       })
       .catch(reportTo(setTrouble))
+  }
 
   /** A card answered, either kind. The turn is already on the page, so the rest of it
    *  lands on the entry that raised the card rather than after it.
@@ -838,7 +845,7 @@ export default function App() {
               here={thread}
               working={working}
               onOpen={reopen}
-              onDelete={discard}
+              onDelete={setDeleting}
             />
           )}
           {tab === 'MEMORY' && (
@@ -858,6 +865,13 @@ export default function App() {
       </div>
 
       {opened && <CitationModal citation={opened} onClose={() => setOpened(null)} />}
+      {deleting && (
+        <DeleteModal
+          opened={deleting.opened_with}
+          onConfirm={() => void discard(deleting)}
+          onCancel={() => setDeleting(null)}
+        />
+      )}
     </div>
   )
 }

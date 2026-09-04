@@ -51,28 +51,27 @@ conversation's opening line, which is what a tidier list would otherwise want.
 - The endpoint is shaped like forgetting a fact — `DELETE`, no body, `204`, and a store
   that went away is the 503 that shape already gives.
 
-**The delete is uncovered by a gesture, not offered outright.**
+**The delete is confirmed over the page.**
 
-- The row slides under the pointer and snaps open or shut when it is let go.
-- Uncovering is the confirmation: the gesture asks, the control answers, and no
-  overlay stands over the page.
-- Rejected: deleting when the drag passes a threshold — one careless flick loses a
-  conversation, and there is no undo.
-- Rejected: a dialog — a modal for one row of a rail, and the reader has already said
-  which conversation by dragging its row.
-- The control stays in the page and named, so a keyboard reaches it and the gesture is
-  what reveals it rather than what permits it.
+- A fact can be told again, and a conversation cannot, so this one is asked about.
+- The overlay is the shell the cited-source modal already uses: a dialog role, Escape
+  and the backdrop as the ways out.
+- What it says is what is lost *and* what is not: the documents and the memory stay,
+  which is the thing a reader cannot see for themselves.
+- Rejected: a gesture on the row — a delete nobody can make with a keyboard, and one
+  careless flick from gone.
+- Rejected: the browser's own `confirm` — it blocks the page, cannot be read by the
+  page's own tests, and says nothing about what is lost.
 
-**The control is an icon, named for its conversation.**
+**One delete control, drawn as an icon, in both rails.**
 
-- A word per row repeated down a narrow rail reads as noise.
+- A word per row repeated down a narrow rail reads as noise, and the two rails were
+  already the same shape with two spellings.
 - Drawn inline, as the rail's own toggle is: no dependency for one glyph.
-- The accessible name is the conversation, not the verb, so it says which one is about
-  to go — and that name is what the page's tests reach it by.
-- The row is one line high, whatever the question's length, so the list is a column of
-  rows rather than blocks of prose — the whole question is a hover away.
-- What covers the control is the width of the row, not a colour painted over it: the
-  delete sits past the right edge and the row's own overflow clips it.
+- The accessible name is the row — the conversation, or the fact — not the verb, so a
+  column of identical icons still says which is which.
+- Nothing destructive is drawn in the palette's warm pair any more: the icon is quiet
+  until it is reached for, and the button that confirms is a button like any other.
 
 **The page follows the rule the list already has.**
 

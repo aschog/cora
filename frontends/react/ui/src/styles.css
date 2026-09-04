@@ -15,8 +15,9 @@
   --accent-ring: #274571;
   --magenta: #e05a9c;
   /* The one warm pair in a blue palette, and it has one job: the passage an answer quotes.
-     Blue is what the page uses for something to click, magenta for something destructive,
-     so a quotation drawn in either says what it is not. */
+     Blue is what the page uses for something to click, so a quotation drawn in it would
+     read as one. Nothing destructive is drawn in either — a delete is a quiet icon until
+     it is hovered, and the one that confirms it is a button like any other. */
   --amber: #d29922;
   --amber-tint: #241a08;
   /* A question the page is waiting on. Its own pair, because amber above has one job and
@@ -633,13 +634,46 @@ button {
 }
 
 /* sessions + memory */
-.destructive {
-  font-size: 12.5px;
-  color: var(--magenta);
+/* A delete is an icon at the end of its row, quiet until it is reached for: a rail of
+   controls shouting for attention is a rail nobody reads. */
+.row-delete {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  color: var(--n500);
 }
 
-.destructive:hover {
-  color: var(--accent-hover);
+.row-delete:hover,
+.row-delete:focus-visible {
+  color: var(--text);
+}
+
+/* A control that says no, and one that goes ahead. Neither is red: what the reader is
+   about to lose is said in the words above them, and a colour cannot say it. */
+.quiet,
+.loud {
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 13.5px;
+}
+
+.quiet {
+  color: var(--n700);
+  background: var(--n300);
+}
+
+.quiet:hover {
+  color: var(--text);
+}
+
+.loud {
+  color: #fff;
+  background: var(--accent);
+}
+
+.loud:hover {
+  background: var(--accent-hover);
 }
 
 .saved-list {
@@ -648,21 +682,22 @@ button {
   gap: var(--s2);
 }
 
-.saved-card {
-  padding: 10px var(--s3);
-  background: var(--surface);
+.saved-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 7px 8px;
+  margin-left: -8px;
   border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
 }
 
-.saved-head {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s2);
+.saved-row:hover {
+  background: var(--n300);
 }
 
 .saved-text {
   flex: 1;
+  min-width: 0;
   font-size: 14px;
   line-height: 1.35;
 }
@@ -820,38 +855,23 @@ button {
 }
 
 .session-row {
-  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: 7px 8px;
+  margin-left: -8px;
   border-radius: var(--radius);
 }
 
-/* What a gesture moves: the row and the delete beyond its right edge, together, so the
-   control is uncovered by the row sliding off it rather than by anything being drawn. */
-.session-slide {
-  display: flex;
-  align-items: stretch;
-  width: calc(100% + 56px);
-  touch-action: pan-y;
-  transition: transform 120ms ease-out;
+.session-row:hover {
+  background: var(--n300);
 }
 
-.session-delete {
-  flex: 0 0 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--magenta);
-}
-
-.session-delete:hover {
-  color: var(--accent-hover);
-}
-
-/* A keyboard cannot make the gesture, so the control taking focus draws the row back
-   itself. Its own focus and not the row's: focus lands on the conversation as soon as a
-   pointer presses it, and a row that flew open on that would fight the drag. The inline
-   transform is the gesture's, which is why this has to shout over it. */
-.session-row:has(.session-delete:focus-visible) .session-slide {
-  transform: translateX(-56px) !important;
+/* The conversation on the page, marked where the reader's eye lands: they are reading it
+   already, so this is only where they are in the list. */
+.session-row.here {
+  background: var(--accent-tint);
+  box-shadow: -3px 0 0 var(--accent);
 }
 
 .session {
@@ -862,26 +882,37 @@ button {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  padding: 7px 8px;
-  margin-left: -8px;
-  border-radius: var(--radius);
   text-align: left;
   font-size: 14px;
   line-height: 1.35;
   color: var(--text);
 }
 
-.session:hover:not(:disabled) {
-  background: var(--n300);
-}
-
 .session:disabled {
-  color: var(--n600);
+  color: var(--text);
   cursor: default;
 }
 
 .forget-all {
   margin-top: var(--s3);
+}
+
+.modal.narrow {
+  width: min(420px, 100%);
+}
+
+.modal-said {
+  margin-top: var(--s3);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--n700);
+}
+
+.modal-answers {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2);
+  margin-top: var(--s4);
 }
 
 /* ── the conversation is a column inside its own scroller ── */

@@ -23,8 +23,10 @@ grows.
 - `src/cora/adapters/langgraph_runner.py` — over the checkpointer's own `delete_thread`
 - `src/cora/engine/agent.py` — the one call that drops both halves
 - `frontends/react/src/cora/frontends/react/api.py` — `DELETE /api/sessions/{thread_id}`
-- `frontends/react/ui/src/` — the button, the request behind it, and the stow it clears
+- `frontends/react/ui/src/` — the icon, the question it raises, the request behind it, and the stow it clears
+- `frontends/react/ui/src/components/MemoryPanel.tsx` — the same row and the same control
 - `README.md` — that a deleted conversation is gone from both stores
 - Left alone: what the list holds and how a conversation is reopened, neither of which changes
 - Left alone: memory and documents, which belong to the user and the field, not the thread
 - Left alone: deleting every conversation at once, which no story asks for
+- Left alone: what the list says about each conversation, which is its own story

@@ -34,36 +34,36 @@ list, and its turns SHALL no longer be readable.
 - **WHEN** the list is drawn
 - **THEN** each delete control is named for the conversation it would delete
 
-### Requirement: The delete is uncovered by a leftward gesture
+### Requirement: Deleting a conversation is asked about first
 
-A listed conversation SHALL keep its delete control covered until a leftward gesture on
-that row uncovers it. The gesture SHALL uncover and delete nothing itself, and a
-gesture back SHALL cover it again. The control SHALL stay reachable without a pointer,
-so a delete is never a gesture nobody can make.
+Deleting SHALL be confirmed before it happens. The system SHALL put the question over
+the page, naming the conversation and saying what is lost and what is not. Nothing SHALL
+be deleted until it is confirmed, and keeping the conversation SHALL leave it exactly as
+it was.
 
-#### Scenario: A leftward gesture uncovers the delete
+#### Scenario: The control asks rather than deletes
 
 - **GIVEN** a listed conversation the reader has left
-- **WHEN** the row is drawn leftward
-- **THEN** its delete control is uncovered, and nothing has been deleted
+- **WHEN** its delete control is used
+- **THEN** the reader is asked, and nothing has been deleted
 
-#### Scenario: The uncovered control is what deletes
+#### Scenario: The question says what is lost
 
-- **GIVEN** a row drawn leftward
-- **WHEN** the control it uncovered is used
-- **THEN** that conversation is deleted
+- **GIVEN** that question open
+- **WHEN** it is read
+- **THEN** it names the conversation, and says the documents and the memory are untouched
 
-#### Scenario: A gesture back covers it again
+#### Scenario: A confirmed delete happens
 
-- **GIVEN** a row drawn leftward
-- **WHEN** it is drawn back
-- **THEN** the control is covered, and nothing has been deleted
+- **GIVEN** that question open
+- **WHEN** it is confirmed
+- **THEN** the conversation is deleted and gone from the list
 
-#### Scenario: A row in use does not answer the gesture
+#### Scenario: Keeping the conversation deletes nothing
 
-- **GIVEN** the conversation open on the page
-- **WHEN** its row is drawn leftward
-- **THEN** nothing is uncovered
+- **GIVEN** that question open
+- **WHEN** the reader keeps the conversation instead
+- **THEN** nothing is deleted, and it is still listed
 
 ### Requirement: Deleting a conversation deletes the thread it ran on
 

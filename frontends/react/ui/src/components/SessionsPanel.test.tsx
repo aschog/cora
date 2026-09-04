@@ -26,31 +26,7 @@ const panel = (working: string | null = null) => {
 const deleting = (session: Session) =>
   screen.queryByRole('button', { name: `Delete ${session.opened_with}` })
 
-/** The row that slides, which is the part a gesture moves and the part that covers the
- *  delete behind it. Read by the conversation it holds. */
-const row = (session: Session) =>
-  screen.getByRole('button', { name: session.opened_with }).parentElement!
-
-/** A gesture across a row, in pixels: negative is leftward. Let go at the end, which is
- *  where the row snaps open or shut. */
-const drawn = (session: Session, by: number) => {
-  const sliding = row(session)
-  fireEvent.pointerDown(sliding, { clientX: 200, pointerId: 1 })
-  fireEvent.pointerMove(sliding, { clientX: 200 + by, pointerId: 1 })
-  fireEvent.pointerUp(sliding, { clientX: 200 + by, pointerId: 1 })
-}
-
-const offset = (session: Session) => row(session).style.transform
-
-/** A press, as a pointer makes one: the click a reader sees arrives after the same two
- *  events a gesture is made of, and the row must not read that as a gesture. */
-const pressed = (control: HTMLElement) => {
-  fireEvent.pointerDown(control, { clientX: 240, pointerId: 1 })
-  fireEvent.pointerUp(control, { clientX: 240, pointerId: 1 })
-  fireEvent.click(control)
-}
-
-test('a listed conversation is deleted by its own control', () => {
+test("a listed conversation's own control asks for it to be deleted", () => {
   const deleted = panel()
 
   fireEvent.click(deleting(OTHER)!)
@@ -85,63 +61,11 @@ test('the control is an icon, named for the conversation it deletes', () => {
   expect(deleting(OTHER)!.querySelector('svg')).toBeTruthy()
 })
 
-test('a leftward gesture uncovers the delete, and deletes nothing itself', () => {
-  /* The gesture is the asking: it says which conversation, and the control that comes
-     out from under the row is what answers. Nothing is lost by dragging. */
-  const deleted = panel()
-
-  drawn(OTHER, -70)
-
-  expect(offset(OTHER)).toBe('translateX(-56px)')
-  expect(deleted).not.toHaveBeenCalled()
-})
-
-test('the control the gesture uncovered is what deletes', () => {
-  const deleted = panel()
-
-  drawn(OTHER, -70)
-  pressed(deleting(OTHER)!)
-
-  expect(deleted).toHaveBeenCalledWith(OTHER)
-  /* Pressing the control is not a gesture: a row that shut under the press would read
-     as the drag undoing itself. */
-  expect(offset(OTHER)).toBe('translateX(-56px)')
-})
-
-test('a gesture back covers the delete again', () => {
-  const deleted = panel()
-  drawn(OTHER, -70)
-
-  drawn(OTHER, 70)
-
-  expect(offset(OTHER)).toBe('translateX(0px)')
-  expect(deleted).not.toHaveBeenCalled()
-})
-
-test('the row of the conversation being read does not answer the gesture', () => {
+test('the conversation being read is marked in the list', () => {
+  /* Its row is where the reader is, so the list says so rather than leaving them to
+     work it out from which row does nothing when clicked. */
   panel()
 
-  drawn(HERE, -70)
-
-  expect(offset(HERE)).toBe('translateX(0px)')
-})
-
-test('the row follows the pointer while the gesture is under way', () => {
-  /* A row that only moves once the finger is lifted is a row that reads as broken
-     while the gesture is being made. */
-  panel()
-  const sliding = row(OTHER)
-
-  fireEvent.pointerDown(sliding, { clientX: 200, pointerId: 1 })
-  fireEvent.pointerMove(sliding, { clientX: 180, pointerId: 1 })
-
-  expect(offset(OTHER)).toBe('translateX(-20px)')
-})
-
-test('a gesture too small to be one leaves the row where it was', () => {
-  panel()
-
-  drawn(OTHER, -8)
-
-  expect(offset(OTHER)).toBe('translateX(0px)')
+  const row = screen.getByRole('button', { name: HERE.opened_with }).parentElement!
+  expect(row.className).toContain('here')
 })
