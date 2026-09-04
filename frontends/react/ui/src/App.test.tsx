@@ -3171,6 +3171,20 @@ test('the field list closes on Escape, and hands the trigger its focus back', as
   expect(document.activeElement).toBe(trigger)
 })
 
+test('picking a field closes the list, and hands the trigger its focus back', async () => {
+  /* The other way out of the list is using it. The button that was pressed goes away with
+     the list it was in, so a reader who picked with the keyboard is left on nothing unless
+     the focus is put back — the same place Escape puts it. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  fireEvent.click(within(screen.getByRole('list')).getByRole('button', { name: 'fitness' }))
+
+  expect(screen.queryByRole('list')).toBeNull()
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'fitness' }))
+})
+
 test('the strip says which field it is running in, and the list which one is picked', async () => {
   /* The state has to be on the control, not only in its colour: `Chat` says whether any
      field is named, the trigger says which, and the list marks it. */

@@ -51,13 +51,18 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
     return () => document.removeEventListener('mousedown', away)
   }, [open])
 
-  /* The menu stands over the conversation, so shutting it has to be reachable from the
-     keyboard that opened it — and the focus goes back where it came from, or a reader
-     who escapes the menu is left nowhere. */
-  const escape = (event: { key: string }) => {
-    if (event.key !== 'Escape') return
+  /* The list stands over the conversation, so both ways out of it — abandoning it and
+     using it — put the focus back where it came from. The button that was pressed is
+     unmounted with the list it was in, and a reader who picked from the keyboard is left
+     on nothing otherwise. Turning away is the exception: that reader is already elsewhere.
+   */
+  const shut = () => {
     setOpen(false)
     trigger.current?.focus()
+  }
+
+  const escape = (event: { key: string }) => {
+    if (event.key === 'Escape') shut()
   }
 
   if (available.length === 0) return null
@@ -119,7 +124,7 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
                     aria-current={pin === scope}
                     onClick={() => {
                       onPin(scope)
-                      setOpen(false)
+                      shut()
                     }}
                   >
                     {scope}
