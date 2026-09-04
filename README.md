@@ -76,6 +76,15 @@ thread that could change field is a thread whose earlier turns mean something el
 second field is a second conversation. Naming one scope leaves nothing to route between,
 which is how a single-field deployment stays one.
 
+A conversation you are finished with is deleted from the list under *SESSIONS*, from the
+control at the end of its row — which asks first, and says what is lost and what is not.
+Deleting takes both halves of it: the turns you came back through, and the thread they
+were answered on — its pin, what the model was told, and any question it stopped on.
+One is not deletable without the other, because a record that is gone and a thread that
+is not is a conversation listed nowhere and still there. The one you are reading offers
+no delete, and neither does one cora is still answering a question in: you leave the
+first, and wait for the second.
+
 A field owns its documents. Each one cora ingests is kept as a Markdown file of its
 cleaned text, under a directory named for the field it was uploaded into: `travel` holds
 `kyoto-8f21c0a4e9d3.md`, the upload's hash in the name so one filename uploaded twice is

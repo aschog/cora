@@ -5,6 +5,7 @@ import pytest
 from app_builder import assembled
 from cora.domain.agent_state import AgentState
 from cora.domain.approval import Approval, Proposed
+from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Turn
 from cora.domain.decision import Decision, Option, Pending, TurnPaused
@@ -43,7 +44,9 @@ class _StubRunner:
         waiting: Pending | None = None,
         after: tuple[AgentState, ...] = (),
         pin: str | None = None,
+        forgetting: Exception | None = None,
     ) -> None:
+        self.forgetting = forgetting
         self.found = found or {}
         self.states = states
         self.then = then
@@ -55,6 +58,7 @@ class _StubRunner:
         self.thread_id: str | None = None
         self.chosen: Settled = None
         self.resumes = 0
+        self.forgotten: list[str] = []
 
     def run(
         self, state: AgentState, thread_id: str, on_text: TextSink = unheard
@@ -80,6 +84,13 @@ class _StubRunner:
 
     def pending(self, thread_id: str) -> Pending | None:
         return self.waiting
+
+    def forget(self, thread_id: str) -> None:
+        if self.forgetting is not None:
+            raise self.forgetting
+        self.forgotten.append(thread_id)
+        self.pin = None
+        self.waiting = None
 
     def pinned(self, thread_id: str) -> str | None:
         return self.pin
@@ -471,3 +482,51 @@ def test_a_turn_says_which_field_it_was_answered_in() -> None:
     answered = app.agent.answer("How early?", "t1")
 
     assert answered.scopes == ("travel",)
+
+
+def test_forgetting_a_conversation_drops_its_turns_and_its_thread() -> None:
+    """One call over both halves: a conversation whose record is gone and whose thread
+    is not has a pin, a transcript and possibly a parked turn nobody can see."""
+    conversations = FakeConversations()
+    conversations.record(
+        THREAD,
+        Turn(question="How much protein?", result=ChatResult(answer="1.6 g per kg.")),
+    )
+    runner = _StubRunner(pin="fitness")
+    agent = Agent(runner=runner, conversations=conversations)
+
+    agent.forget(THREAD)
+
+    assert conversations.turns(THREAD) == ()
+    assert runner.forgotten == [THREAD]
+    assert runner.pinned(THREAD) is None
+
+
+def test_a_conversation_whose_thread_will_not_drop_stays_in_the_list() -> None:
+    """The thread goes first, so a drop that fails halfway leaves the conversation
+    where the reader can ask for it again — the other order fails to a thread nobody
+    can reach."""
+    conversations = FakeConversations()
+    conversations.record(
+        THREAD,
+        Turn(question="How much protein?", result=ChatResult(answer="1.6 g per kg.")),
+    )
+    agent = Agent(
+        runner=_StubRunner(forgetting=GraphRunError()), conversations=conversations
+    )
+
+    with pytest.raises(GraphRunError):
+        agent.forget(THREAD)
+
+    assert [session.thread_id for session in conversations.sessions()] == [THREAD]
+
+
+def test_forgetting_a_conversation_where_nothing_is_recorded_is_not_an_error() -> None:
+    """A cora with no place to record turns still has a thread to drop, and dropping
+    what it never kept is already done — the reading every panel here takes."""
+    runner = _StubRunner()
+    agent = Agent(runner=runner)
+
+    agent.forget(THREAD)
+
+    assert runner.forgotten == [THREAD]

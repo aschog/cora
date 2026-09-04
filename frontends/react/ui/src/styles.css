@@ -632,7 +632,7 @@ button {
   white-space: pre-wrap;
 }
 
-/* sessions + memory */
+/* memory */
 .destructive {
   font-size: 12.5px;
   color: var(--magenta);
@@ -640,6 +640,49 @@ button {
 
 .destructive:hover {
   color: var(--accent-hover);
+}
+
+/* sessions */
+/* A delete is an icon at the end of its row, quiet until it is reached for: a rail of
+   controls shouting for attention is a rail nobody reads. */
+.row-delete {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  color: var(--n500);
+}
+
+.row-delete:hover,
+.row-delete:focus-visible {
+  color: var(--text);
+}
+
+/* A control that says no, and one that goes ahead. Neither is red: what the reader is
+   about to lose is said in the words above them, and a colour cannot say it. */
+.quiet,
+.loud {
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 13.5px;
+}
+
+.quiet {
+  color: var(--n700);
+  background: var(--n300);
+}
+
+.quiet:hover {
+  color: var(--text);
+}
+
+.loud {
+  color: #fff;
+  background: var(--accent);
+}
+
+.loud:hover {
+  background: var(--accent-hover);
 }
 
 .saved-list {
@@ -819,28 +862,65 @@ button {
   gap: 2px;
 }
 
-.session {
-  width: 100%;
+.session-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
   padding: 7px 8px;
   margin-left: -8px;
   border-radius: var(--radius);
+}
+
+.session-row:hover {
+  background: var(--n300);
+}
+
+/* The conversation on the page, marked where the reader's eye lands: they are reading it
+   already, so this is only where they are in the list. */
+.session-row.here {
+  background: var(--accent-tint);
+  box-shadow: -3px 0 0 var(--accent);
+}
+
+.session {
+  flex: 1;
+  min-width: 0;
+  /* One line each, so the list is a column of rows rather than blocks of prose in
+     whatever height each question happens to want. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   text-align: left;
   font-size: 14px;
   line-height: 1.35;
   color: var(--text);
 }
 
-.session:hover:not(:disabled) {
-  background: var(--n300);
-}
-
 .session:disabled {
-  color: var(--n600);
+  color: var(--text);
   cursor: default;
 }
 
 .forget-all {
   margin-top: var(--s3);
+}
+
+.modal.narrow {
+  width: min(420px, 100%);
+}
+
+.modal-said {
+  margin-top: var(--s3);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--n700);
+}
+
+.modal-answers {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2);
+  margin-top: var(--s4);
 }
 
 /* ── the conversation is a column inside its own scroller ── */

@@ -176,6 +176,37 @@ def test_a_thread_never_recorded_is_empty_rather_than_missing() -> None:
     assert turns.json() == []
 
 
+def test_a_conversation_is_deleted_by_its_thread_and_leaves_the_listing() -> None:
+    conversations = FakeConversations()
+    conversations.record("t1", Turn(question="First?", result=ChatResult(answer="a")))
+    conversations.record("t2", Turn(question="Second?", result=ChatResult(answer="b")))
+    with client(assembled(conversations=conversations)) as reader:
+        deleted = reader.delete("/api/sessions/t2")
+
+        assert deleted.status_code == 204
+        assert [
+            session["thread_id"] for session in reader.get("/api/sessions").json()
+        ] == ["t1"]
+        assert reader.get("/api/sessions/t2").json() == []
+
+
+def test_deleting_a_conversation_a_store_cannot_reach_reports_its_own_message() -> None:
+    app = assembled(conversations=FailingConversations())
+
+    failed = client(app).delete("/api/sessions/t1")
+
+    assert failed.status_code == 503
+    assert failed.json()["error"] == ConversationStoreError().user_message
+
+
+def test_deleting_a_conversation_with_no_store_behind_it_is_done() -> None:
+    """The reading the panels take: a deployment with no place to record turns has
+    nothing to delete, which is a request already satisfied."""
+    deleted = client(assembled()).delete("/api/sessions/t1")
+
+    assert deleted.status_code == 204
+
+
 def test_a_conversation_store_that_cannot_be_read_reports_its_own_message() -> None:
     app = assembled(conversations=FailingConversations())
 

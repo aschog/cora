@@ -77,6 +77,10 @@ class SqliteConversations:
             for row in rows
         )
 
+    @_translate_errors
+    def forget(self, thread_id: str) -> None:
+        self._connection.execute("delete from turns where thread = ?", (thread_id,))
+
     def close(self) -> None:
         self._connection.close()
 

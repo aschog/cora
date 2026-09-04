@@ -687,6 +687,22 @@ def test_a_decision_for_a_thread_waiting_on_nothing_is_refused() -> None:
     assert refused.json()["error"]
 
 
+def test_a_card_answered_after_its_conversation_was_deleted_is_refused() -> None:
+    """The turn was parked in a thread that no longer exists, which is the same nothing
+    as a card clicked twice — and it must not run half a turn against a deleted one."""
+    app = assembled(chat_model=_stopping())
+    with TestClient(api(app)) as reader:
+        reader.post("/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"})
+        assert reader.delete("/api/sessions/t1").status_code == 204
+
+        refused = reader.post(
+            "/api/resume", json={"thread_id": "t1", "answer": "75 kg"}
+        )
+
+    assert refused.status_code == 400
+    assert refused.json()["error"]
+
+
 def test_a_decision_with_no_conversation_is_refused_like_a_question_with_none() -> None:
     with TestClient(api(assembled(chat_model=_stopping()))) as reader:
         refused = reader.post("/api/resume", json={"answer": "75 kg"})

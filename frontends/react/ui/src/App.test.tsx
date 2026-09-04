@@ -2735,7 +2735,7 @@ test('a reopened conversation is drawn in the field it was pinned to', async () 
   await screen.findByText('notes.md')
 
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
-  fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
+  fireEvent.click(screen.getByRole('button', { name: OLDER.question }))
 
   /* The pin outlived the page because it is the thread's own state, not the page's. */
   await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('travel'))
@@ -2889,7 +2889,7 @@ test('a pinned conversation uploads into its own field', async () => {
   render(<App />)
   await screen.findByText('notes.md')
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
-  fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
+  fireEvent.click(screen.getByRole('button', { name: OLDER.question }))
   await waitFor(() =>
     expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
   )
@@ -2916,7 +2916,7 @@ test('leaving a pinned conversation returns the rail to the default field', asyn
   render(<App />)
   await screen.findByText('notes.md')
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
-  fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
+  fireEvent.click(screen.getByRole('button', { name: OLDER.question }))
   await waitFor(() =>
     expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
   )
@@ -3273,7 +3273,7 @@ test('a pinned conversation is named over the conversation, and not twice', asyn
   render(<App />)
   await screen.findByText('notes.md')
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
-  fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
+  fireEvent.click(screen.getByRole('button', { name: OLDER.question }))
 
   await waitFor(() =>
     expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
@@ -3359,7 +3359,7 @@ test('reopening an unpinned conversation draws it in the field it was answered i
   await screen.findByText('notes.md')
 
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
-  fireEvent.click(await screen.findByRole('button', { name: new RegExp(earlier.question) }))
+  fireEvent.click(await screen.findByRole('button', { name: earlier.question }))
 
   await waitFor(() =>
     expect(
@@ -3446,11 +3446,11 @@ test('a conversation reopened after a pinned one is still drawn in its own field
   await screen.findByText('notes.md')
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
 
-  fireEvent.click(await screen.findByRole('button', { name: new RegExp(OLDER.question) }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   await waitFor(() =>
     expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
   )
-  fireEvent.click(await screen.findByRole('button', { name: new RegExp(earlier.question) }))
+  fireEvent.click(await screen.findByRole('button', { name: earlier.question }))
   await waitFor(() =>
     expect(railField()).not.toBeNull(),
   )
@@ -3811,4 +3811,142 @@ test('an approved call whose tool then failed is not shown as having happened', 
   expect(await screen.findByText(/could not write that file/)).toBeTruthy()
   expect(screen.getByText('You approved it.')).toBeTruthy()
   expect(screen.queryByText(/it happened/)).toBeNull()
+})
+
+
+const GONE = { thread_id: 'gone', opened_with: 'A question asked twice' }
+const CARD = {
+  asked: 'What is my BMR?',
+  decision: {
+    question: 'Which weight should I use?',
+    options: [{ label: '75 kg', note: 'coach notes' }],
+    decline: 'Neither',
+  },
+  proposal: null,
+}
+
+/** Two conversations, and what is served about them once one of them is deleted. */
+const listing = (deleted: string[]): Record<string, unknown> => ({
+  ...served,
+  '/api/sessions': [
+    { thread_id: 'old', opened_with: OLDER.question },
+    GONE,
+  ].filter((session) => !deleted.includes(session.thread_id)),
+})
+
+const deletable = (
+  answer: (path: string) => Response | null = () => null,
+): { deleted: string[] } => {
+  const deleted: string[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        const said = answer(path)
+        if (said) return said
+        deleted.push(path)
+        return { ok: true, status: 204 } as unknown as Response
+      }
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      const body = listing(deleted.map((each) => each.split('/').pop()!))[route(path)]
+      return { ok: true, json: async () => body ?? [] } as unknown as Response
+    }),
+  )
+  return { deleted }
+}
+
+const deleteControl = () =>
+  screen.getByRole('button', { name: `Delete ${GONE.opened_with}` })
+
+const confirm = () =>
+  fireEvent.click(screen.getByRole('button', { name: 'Delete session' }))
+
+test('a conversation deleted from the list leaves the list', async () => {
+  const asked = deletable()
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  await screen.findByRole('button', { name: GONE.opened_with })
+
+  fireEvent.click(deleteControl())
+
+  // The control asks; nothing has been asked of cora yet.
+  expect(screen.getByRole('dialog')).toBeTruthy()
+  expect(asked.deleted).toEqual([])
+
+  confirm()
+
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: GONE.opened_with })).toBeNull(),
+  )
+  expect(asked.deleted).toEqual(['/api/sessions/gone'])
+  expect(screen.getByRole('button', { name: OLDER.question })).toBeTruthy()
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
+
+test('keeping a conversation deletes nothing, and asks again next time', async () => {
+  const asked = deletable()
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  await screen.findByRole('button', { name: GONE.opened_with })
+
+  fireEvent.click(deleteControl())
+  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+
+  expect(asked.deleted).toEqual([])
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(screen.getByRole('button', { name: GONE.opened_with })).toBeTruthy()
+
+  fireEvent.click(deleteControl())
+  expect(screen.getByRole('dialog')).toBeTruthy()
+})
+
+test('a delete that fails says so, and the conversation is still listed', async () => {
+  /* Nothing was deleted, so nothing on the page may read as deleted: the row stands,
+     and the reader is told why rather than left to notice it came back. */
+  const unreachable = 'The conversation store is temporarily unavailable.'
+  deletable(() => ({
+    ok: false,
+    status: 503,
+    json: async () => ({ error: unreachable }),
+  }) as unknown as Response)
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  await screen.findByRole('button', { name: GONE.opened_with })
+
+  fireEvent.click(deleteControl())
+  confirm()
+
+  expect(await screen.findByText(unreachable)).toBeTruthy()
+  expect(screen.getByRole('button', { name: GONE.opened_with })).toBeTruthy()
+})
+
+test('the card stowed for a deleted conversation is let go with it', async () => {
+  /* The stow is what a reload comes back through. Left behind, it would take the page
+     into a conversation that no longer exists, holding a card nothing can answer. */
+  globalThis.sessionStorage.setItem('cora.parked', GONE.thread_id)
+  deletable()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') return { ok: true, status: 204 } as unknown as Response
+      if (route(path) === `/api/sessions/${GONE.thread_id}/pending`)
+        return { ok: true, json: async () => CARD } as unknown as Response
+      const body = listing([])[route(path)]
+      return { ok: true, json: async () => body ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  // The page came back into the parked conversation, so the reader has to leave it
+  // before the row can be deleted at all.
+  expect(await screen.findByText(CARD.decision.question)).toBeTruthy()
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+
+  fireEvent.click(deleteControl())
+  confirm()
+
+  await waitFor(() => expect(globalThis.sessionStorage.getItem('cora.parked')).toBeNull())
 })

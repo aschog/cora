@@ -102,6 +102,11 @@ export const passage = (scope: string, upload: string) =>
     `/api/uploads/${encodeURIComponent(scope)}/${encodeURIComponent(upload)}`,
   ).then((kept) => kept.text)
 
+/** Delete one conversation: the turns recorded under it, and the thread they were
+ *  answered on. One request, because a conversation whose record is gone and whose
+ *  thread is not still holds a pin, a transcript and possibly a turn nobody can see. */
+export const deleteSession = (thread: string) => discard(`/api/sessions/${thread}`)
+
 export const forget = (key: string) => discard(`/api/memory/${key}`)
 
 export const forgetEverything = () => discard('/api/memory')
