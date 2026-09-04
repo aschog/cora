@@ -119,6 +119,13 @@ const KEPT = 'Sleep, not volume. The rest of the document follows.'
  *  per field now, and the fixture serves one set of documents whichever is asked for. */
 const route = (path: string) => path.split('?')[0]
 
+/** Naming a field is two clicks: the segment that asks which, then the plugin. */
+const pickPlugin = (name: string) => {
+  fireEvent.click(screen.getByRole('radio', { name: 'Plugin' }))
+  const listed = screen.getByRole('listbox', { name: 'Answer in' })
+  fireEvent.click(within(listed).getByRole('option', { name }))
+}
+
 
 test('the plan fills while the turn runs, then the answer lands with its citation', async () => {
   render(<App />)
@@ -211,7 +218,7 @@ test('the rail carries the name and the controls, and folds down to its own togg
   const rail = documents.closest('aside')!
   expect(rail.textContent).toContain('cora')
   expect(rail.textContent).toContain('New session')
-  expect(rail.textContent).toContain('Answer in')
+  expect(rail.textContent).not.toContain('Chat')
 
   fireEvent.click(documents)
 
@@ -219,7 +226,8 @@ test('the rail carries the name and the controls, and folds down to its own togg
   expect(rail.textContent).toContain('cora')
   expect(screen.getByRole('button', { name: 'Documents' })).toBeTruthy()
   expect(screen.queryByText('New session')).toBeNull()
-  expect(screen.queryByText('Answer in')).toBeNull()
+  // The field the conversation runs in is the conversation's, so folding the rail keeps it.
+  expect(screen.getByRole('radio', { name: 'Chat' })).toBeTruthy()
 })
 
 
@@ -2679,7 +2687,7 @@ test('a conversation is pinned to a field, and keeps it', async () => {
 
   /* Unpinned, cora reads every question. The pick binds what comes next, so it is the
      next question that carries it. */
-  fireEvent.change(screen.getByLabelText('Answer in'), { target: { value: 'fitness' } })
+  pickPlugin('fitness')
   expect(screen.getByText(/next question/)).toBeTruthy()
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -2694,7 +2702,7 @@ test('a conversation is pinned to a field, and keeps it', async () => {
   ])
   /* The pin is in the thread's state now, so the control stops being a choice: a second
      field is a second conversation, and the reason is on the page for a screen reader. */
-  expect(screen.queryByRole('combobox')).toBeNull()
+  expect(screen.queryByRole('radio')).toBeNull()
   expect(screen.getByLabelText('Answer in').textContent).toBe('fitness')
   expect(screen.getByText(/Start a new one/)).toBeTruthy()
 })
@@ -2719,7 +2727,7 @@ test('a reopened conversation is drawn in the field it was pinned to', async () 
 
   /* The pin outlived the page because it is the thread's own state, not the page's. */
   await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('travel'))
-  expect(screen.queryByRole('combobox')).toBeNull()
+  expect(screen.queryByRole('radio')).toBeNull()
 })
 
 test('the picker says what the thread holds, not what the reader picked', async () => {
@@ -2759,7 +2767,7 @@ test('the picker says what the thread holds, not what the reader picked', async 
   render(<App />)
   await screen.findByText('notes.md')
 
-  fireEvent.change(screen.getByLabelText('Answer in'), { target: { value: 'fitness' } })
+  pickPlugin('fitness')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
   })
@@ -2769,7 +2777,7 @@ test('the picker says what the thread holds, not what the reader picked', async 
   /* The turn failed, but it was admitted — so the thread is in that field now, and the
      control says so rather than offering a choice that would be refused. */
   await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
-  expect(screen.queryByRole('combobox')).toBeNull()
+  expect(screen.queryByRole('radio')).toBeNull()
 })
 
 
@@ -2793,7 +2801,7 @@ test('a scope read that failed leaves the pin the page already knows about', asy
   render(<App />)
   await screen.findByText('notes.md')
 
-  fireEvent.change(screen.getByLabelText('Answer in'), { target: { value: 'fitness' } })
+  pickPlugin('fitness')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
   })
@@ -2811,7 +2819,7 @@ test('a scope read that failed leaves the pin the page already knows about', asy
   /* The read failed; the field the thread holds is not news the page has, so it keeps
      what it had rather than inventing a choice. */
   await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
-  expect(screen.queryByRole('combobox')).toBeNull()
+  expect(screen.queryByRole('radio')).toBeNull()
 })
 
 test('the rail lists and uploads into the field it is set to', async () => {

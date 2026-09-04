@@ -743,12 +743,6 @@ export default function App() {
           {leftOpen && (
             <>
               <NewSession canStart={somethingToLeave} onNew={start} />
-              <ScopePicker
-                available={fields}
-                pin={pin}
-                fixed={fixedPin}
-                onPin={(scope) => setPin(scope === '' ? null : scope)}
-              />
               <DocumentRail
                 documents={documents}
                 cited={cited}
@@ -767,6 +761,14 @@ export default function App() {
         </aside>
 
         <Answer
+          mode={
+            <ScopePicker
+              available={fields}
+              pin={pin}
+              fixed={fixedPin}
+              onPin={(scope) => setPin(scope === '' ? null : scope)}
+            />
+          }
           thread={thread}
           entries={conversation}
           asking={asking}

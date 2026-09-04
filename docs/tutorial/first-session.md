@@ -34,9 +34,9 @@ from `.env` instead, so put both there rather than exporting them.
 ## 3. Pick a field, or let cora pick
 
 With two fields loaded, cora reads each question and answers it in the one it belongs
-to — the *PLAN* tab says which, and a question that fits both stops to ask you. If the
-conversation is about one field, pin it in the rail: every later turn is answered in
-that field, and it survives a reload. A pin is set once, so a second field means a new
+to — the *PLAN* tab says which, and a question that fits both stops to ask you. That
+is *Chat*, above the conversation. If it is about one field, pick it under *+ Plugin*:
+every later turn is answered in it, and it survives a reload. A pin is set once, so a second field means a new
 session.
 
 Give travel something to answer from by uploading the notes it ships, in

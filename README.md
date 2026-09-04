@@ -68,9 +68,10 @@ fitness scope's, the travel persona and its notes are travel's, while the medica
 and the injection screen are system-wide and hold whatever a turn is running as.
 
 With two fields named, cora reads each question and answers it in the one it belongs to —
-the trace says which, and a question that fits both stops the turn to ask. Pin the
-conversation to a field in the rail and every later turn is answered in it, through a
-reload and a reopen: the pin is the thread's own state. A pin is set once, because a
+the trace says which, and a question that fits both stops the turn to ask. That is
+*Chat*, above the conversation. Name one field instead — *+ Plugin* lists the ones this
+deployment loaded — and every later turn is answered in it, through a reload and a
+reopen: the pin is the thread's own state. A pin is set once, because a
 thread that could change field is a thread whose earlier turns mean something else — a
 second field is a second conversation. Naming one scope leaves nothing to route between,
 which is how a single-field deployment stays one.
