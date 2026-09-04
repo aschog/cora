@@ -98,6 +98,51 @@ def test_a_conversation_that_spoke_last_is_the_newest(tmp_path: Path) -> None:
     assert [session.thread_id for session in store.sessions()] == ["older", "newer"]
 
 
+def test_a_forgotten_conversation_has_no_turns(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    store.record(THREAD, TURN)
+
+    store.forget(THREAD)
+
+    assert store.turns(THREAD) == ()
+
+
+def test_forgetting_one_conversation_leaves_the_others(tmp_path: Path) -> None:
+    """The thread named and no other: a delete that took a neighbour with it would take
+    a conversation the reader never asked about."""
+    store = _store(tmp_path)
+    store.record("kept", TURN)
+    store.record(
+        "gone", Turn(question="And creatine?", result=ChatResult(answer="5 g"))
+    )
+
+    store.forget("gone")
+
+    assert store.turns("kept") == (TURN,)
+    assert store.sessions() == (Session(thread_id="kept", opened_with=ASKED),)
+
+
+def test_forgetting_a_conversation_nothing_was_recorded_under_is_not_an_error(
+    tmp_path: Path,
+) -> None:
+    """The page can ask twice, and the second ask is the first one already done."""
+    store = _store(tmp_path)
+
+    store.forget(THREAD)
+
+    assert store.sessions() == ()
+
+
+def test_a_driver_failure_forgetting_surfaces_as_an_adapter_error(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    store.close()
+
+    with pytest.raises(ConversationStoreError):
+        store.forget(THREAD)
+
+
 def test_a_driver_failure_surfaces_as_an_adapter_error(tmp_path: Path) -> None:
     store = _store(tmp_path)
     store.close()

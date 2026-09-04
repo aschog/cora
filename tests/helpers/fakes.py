@@ -342,6 +342,11 @@ class FakeConversations:
     def turns(self, thread_id: str) -> tuple[Turn, ...]:
         return tuple(self._recorded.get(thread_id, ()))
 
+    def forget(self, thread_id: str) -> None:
+        self._recorded.pop(thread_id, None)
+        if thread_id in self._spoke:
+            self._spoke.remove(thread_id)
+
     def sessions(self) -> tuple[Session, ...]:
         return tuple(
             Session(thread_id=thread, opened_with=self._recorded[thread][0].question)
@@ -359,6 +364,9 @@ class FailingConversations:
         raise self.error
 
     def turns(self, thread_id: str) -> tuple[Turn, ...]:
+        raise self.error
+
+    def forget(self, thread_id: str) -> None:
         raise self.error
 
     def sessions(self) -> tuple[Session, ...]:

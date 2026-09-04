@@ -12,10 +12,10 @@ reading it.
 
 ## 2. The record of the turns
 
-- [ ] 2.1 One thread's turns deleted, and read back as none
-- [ ] 2.2 The other threads' turns untouched, and still listed
-- [ ] 2.3 A thread nothing was recorded under deleted without complaint
-- [ ] 2.4 A store that cannot be written raising the failure this adapter already
+- [x] 2.1 One thread's turns deleted, and read back as none
+- [x] 2.2 The other threads' turns untouched, and still listed
+- [x] 2.3 A thread nothing was recorded under deleted without complaint
+- [x] 2.4 A store that cannot be written raising the failure this adapter already
       translates
 
 ## 3. The thread the model answered on

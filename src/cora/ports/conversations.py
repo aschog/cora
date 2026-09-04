@@ -27,6 +27,17 @@ class Conversations(Protocol):
         """
         ...
 
+    def forget(self, thread_id: str) -> None:
+        """Drop every turn of one thread, leaving the others alone.
+
+        A thread nothing was recorded under is not an error: what was asked for is
+        already true of it.
+
+        Raises:
+            ConversationStoreError: The turns could not be dropped.
+        """
+        ...
+
     def sessions(self) -> tuple[Session, ...]:
         """Every thread that has recorded a turn, newest first.
 
