@@ -820,28 +820,25 @@ button {
 }
 
 .session-row {
-  position: relative;
   overflow: hidden;
   border-radius: var(--radius);
 }
 
-/* What a gesture moves, and what covers the delete until it is made. Its own background,
-   so the control behind it is hidden rather than merely overlapped. */
+/* What a gesture moves: the row and the delete beyond its right edge, together, so the
+   control is uncovered by the row sliding off it rather than by anything being drawn. */
 .session-slide {
-  position: relative;
-  z-index: 1;
-  background: var(--surface);
+  display: flex;
+  align-items: stretch;
+  width: calc(100% + 56px);
   touch-action: pan-y;
   transition: transform 120ms ease-out;
 }
 
 .session-delete {
-  position: absolute;
-  inset: 0 0 0 auto;
+  flex: 0 0 56px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 56px;
   color: var(--magenta);
 }
 
@@ -849,7 +846,7 @@ button {
   color: var(--accent-hover);
 }
 
-/* A keyboard cannot make the gesture, so the control drawing focus draws the row back
+/* A keyboard cannot make the gesture, so the control taking focus draws the row back
    itself. Its own focus and not the row's: focus lands on the conversation as soon as a
    pointer presses it, and a row that flew open on that would fight the drag. The inline
    transform is the gesture's, which is why this has to shout over it. */
@@ -858,7 +855,13 @@ button {
 }
 
 .session {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+  /* One line each, so the list is a column of rows rather than blocks of prose in
+     whatever height each question happens to want. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   padding: 7px 8px;
   margin-left: -8px;
   border-radius: var(--radius);

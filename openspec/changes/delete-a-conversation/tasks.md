@@ -68,3 +68,4 @@ per row is noise in a narrow rail.
 - [x] 8.4 The row of the conversation being read not answering the gesture
 - [x] 8.5 The row following the pointer while the gesture is under way
 - [x] 8.6 The control drawn as an icon, named for the conversation it deletes
+- [x] 8.7 A press on the control not reading as a gesture, so the row stays where it was

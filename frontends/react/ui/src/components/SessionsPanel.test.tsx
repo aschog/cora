@@ -42,6 +42,14 @@ const drawn = (session: Session, by: number) => {
 
 const offset = (session: Session) => row(session).style.transform
 
+/** A press, as a pointer makes one: the click a reader sees arrives after the same two
+ *  events a gesture is made of, and the row must not read that as a gesture. */
+const pressed = (control: HTMLElement) => {
+  fireEvent.pointerDown(control, { clientX: 240, pointerId: 1 })
+  fireEvent.pointerUp(control, { clientX: 240, pointerId: 1 })
+  fireEvent.click(control)
+}
+
 test('a listed conversation is deleted by its own control', () => {
   const deleted = panel()
 
@@ -92,9 +100,12 @@ test('the control the gesture uncovered is what deletes', () => {
   const deleted = panel()
 
   drawn(OTHER, -70)
-  fireEvent.click(deleting(OTHER)!)
+  pressed(deleting(OTHER)!)
 
   expect(deleted).toHaveBeenCalledWith(OTHER)
+  /* Pressing the control is not a gesture: a row that shut under the press would read
+     as the drag undoing itself. */
+  expect(offset(OTHER)).toBe('translateX(-56px)')
 })
 
 test('a gesture back covers the delete again', () => {

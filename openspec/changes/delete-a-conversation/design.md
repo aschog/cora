@@ -69,6 +69,10 @@ conversation's opening line, which is what a tidier list would otherwise want.
 - Drawn inline, as the rail's own toggle is: no dependency for one glyph.
 - The accessible name is the conversation, not the verb, so it says which one is about
   to go — and that name is what the page's tests reach it by.
+- The row is one line high, whatever the question's length, so the list is a column of
+  rows rather than blocks of prose — the whole question is a hover away.
+- What covers the control is the width of the row, not a colour painted over it: the
+  delete sits past the right edge and the row's own overflow clips it.
 
 **The page follows the rule the list already has.**
 
