@@ -81,6 +81,14 @@ Nothing here is encrypted, and nothing is deleted on your behalf. `.cora/` is co
 bookkeeping and a deployment may delete it to start clean; `cora-output` is deliberately
 outside it, because a file you approved is yours rather than cora's.
 
+What you *can* delete yourself, from the page and one at a time, is each of the three:
+a conversation, a remembered fact, and an uploaded document. Each asks before it goes,
+each says what it takes and what it leaves, and each takes everything of the thing it
+names — a conversation's turns and the thread they ran on, a document's passages and the
+file behind them. None of them is undoable, and none of them reaches back into what is
+already written: an answer keeps the citations it was given, and says so when you open
+one whose document is gone.
+
 Your API key is read from the environment. It is never written to any of these, and never
 logged.
 
@@ -89,7 +97,7 @@ logged.
 The prompt is assembled fresh each turn: cora's own brief, then the loaded plugins'
 instructions for that field, then your remembered facts, then the conversation, then the
 tool results. Nothing else. cora holds no profile of you beyond the facts you asked it to
-keep, and you can read and delete those from the page.
+keep, and you can read and delete those from the page — one at a time, or all of them.
 
 A question the screen refuses never reaches the model at all — where a screen is
 loaded, which is the first thing the next section is about.

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import * as cora from '../api'
 
-/** One sentence for either way a document is not there: deleted, or indexed before cora
- *  kept any text. Both read as nothing, so guessing between them would sometimes be a
- *  lie — and a reader who clicked `[1]` is owed the same sentence either way. */
-export const UNKEPT = 'cora does not hold this document, so it cannot be opened.'
+/** One sentence for every way a passage's document cannot be read: deleted, indexed
+ *  before cora kept any text, or cited by an index that names no field to look in. All
+ *  three arrive as nothing, so guessing between them would sometimes be a lie — and a
+ *  reader who clicked `[1]` is owed the same sentence as one who opened the rail. */
+export const UNKEPT = 'cora cannot open this document.'
 
 /**
  * The kept text of an upload, or why it cannot be read. Both answers live here so that

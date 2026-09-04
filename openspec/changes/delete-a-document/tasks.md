@@ -56,3 +56,15 @@ by a person reading it. The page's items are `vitest`, the rest are `pytest`.
 
 - [x] 7.1 Drop 1.1's `xfail` marker and watch the outer test pass — ticked with group
       5, which is where the outer test's own surface was finished
+
+## 8. Review findings
+
+The review's own list, each routed back through the loop: one behaviour, two tests that
+ticked a criterion without defending it.
+
+- [x] 8.1 A delete confirmed after a landing turn moved the field naming the field the
+      rail was showing, and redrawing the field it is showing now
+- [x] 8.2 The traversal guard's test failing with the guard removed, which it did not
+- [x] 8.3 The deleted-citation criterion proven by a test that deletes something
+- [x] 8.4 A refused delete leaving its sentence on the page, which the redraw was
+      clearing

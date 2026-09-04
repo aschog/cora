@@ -96,17 +96,24 @@ def test_forgetting_an_upload_no_file_was_kept_for_is_not_an_error(
 
 def test_a_scope_that_walks_out_of_the_root_forgets_nothing(tmp_path: Path) -> None:
     """The same guard `read` holds, on the way out: a field name reaches here from a
-    request, and one that resolves outside the root must delete nothing."""
+    request, and one that resolves outside the root must delete nothing.
+
+    The root and the field are written first, or the walk fails on a path component
+    that does not exist and the guard is never the thing that held.
+    """
     root = tmp_path / "documents"
     store = FileDocuments.at(str(root))
+    store.keep(FITNESS, ANOTHER, "notes.md", TEXT)
     outside = tmp_path / "elsewhere"
     outside.mkdir()
     kept = outside / f"secret-{UPLOAD[:12]}.md"
     kept.write_text("another field's text")
 
     store.forget("../elsewhere", UPLOAD)
+    store.forget("fitness/../../elsewhere", UPLOAD)
 
-    assert kept.exists()
+    assert kept.exists(), "the guard did not hold"
+    assert store.read(FITNESS, ANOTHER) == TEXT
 
 
 def test_a_file_that_cannot_be_deleted_raises(tmp_path: Path) -> None:

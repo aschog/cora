@@ -110,24 +110,34 @@ def test_a_passage_reads_back_from_the_upload_its_span_was_measured_in() -> None
     assert kept.json()["text"] == NOTES.decode()
 
 
-def test_a_passage_whose_document_is_gone_says_so_however_it_went() -> None:
-    """One sentence for both: the store cannot tell a document that was deleted from one
-    whose text was never kept, because both read as nothing."""
+def test_a_citation_into_a_deleted_document_says_the_document_is_gone() -> None:
+    """An answer already given keeps its citation, and opening it says so. The same
+    sentence as an upload nothing was ever kept for: the store cannot tell the two
+    apart, because both read as nothing."""
+    app = assembled()
+    client = _scoped(app)
+    client.post(
+        "/api/documents",
+        files={"file": ("kyoto.md", KYOTO, "text/markdown")},
+        data={"scope": TRAVEL},
+    )
+    upload = hashlib.sha256(KYOTO).hexdigest()
+    assert client.get(f"/api/uploads/{TRAVEL}/{upload}").status_code == 200
+
+    assert client.delete(f"/api/documents/{TRAVEL}/kyoto.md").status_code == 204
+
+    opened = client.get(f"/api/uploads/{TRAVEL}/{upload}")
+    assert opened.status_code == 404
+    assert opened.json()["error"] == UNKEPT
+
+
+def test_an_upload_never_kept_says_what_a_deleted_one_says() -> None:
     missing = client(assembled()).get(
         f"/api/uploads/{DEFAULT_SCOPE}/nothingwaskeptunderthis"
     )
 
     assert missing.status_code == 404
     assert missing.json()["error"] == UNKEPT
-    assert "deleted" not in UNKEPT and "never" not in UNKEPT
-
-
-def test_an_upload_never_kept_says_so_rather_than_serving_an_empty_document() -> None:
-    missing = client(assembled()).get(
-        f"/api/uploads/{DEFAULT_SCOPE}/nothingwaskeptunderthis"
-    )
-
-    assert missing.status_code == 404
 
 
 def test_the_memory_endpoint_lists_the_facts_oldest_first() -> None:

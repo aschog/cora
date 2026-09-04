@@ -3,7 +3,8 @@
 ## Purpose
 
 Where the text behind a citation is kept: one readable file per source, under the field
-that owns it, and what a search of one field is allowed to see.
+that owns it, what a search of one field is allowed to see, and what deleting one of
+those documents takes with it.
 
 ## Requirements
 

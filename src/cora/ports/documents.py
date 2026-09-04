@@ -36,7 +36,9 @@ class Documents(Protocol):
 
         An upload nothing was kept for is not an error: the index is dropped first, so
         this may be asked about a passage whose text was never written. Nothing outside
-        the scope's own directory is touched, however the scope is named.
+        the scope's own directory is touched, however the scope is named — a scope this
+        store could not keep a document under drops nothing and says nothing, because
+        there is nothing of it here to drop.
 
         Raises:
             DocumentStoreError: The text could not be dropped.

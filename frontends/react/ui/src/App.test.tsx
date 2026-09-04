@@ -356,7 +356,7 @@ test('an answer never lands on a conversation that was replaced while it ran', a
 
   /* And the panels the answer would have steered are left alone too: a document the
      abandoned turn cited is not this conversation's to show, and showing it says
-     something false about it — that its text was never kept, when the truth is that
+     something false about it — that cora cannot open it, when the truth is that
      nothing here cites it. */
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   const panels = document.querySelector('.rail-panels') as HTMLElement
@@ -4184,4 +4184,86 @@ test('a document delete that fails says so, and the document is still listed', a
 
   expect(await screen.findByText(unreachable)).toBeTruthy()
   expect(screen.getByText('notes.md')).toBeTruthy()
+})
+
+
+test('a delete confirmed after the field moved names the field the rail was showing', async () => {
+  /* The question can stand for as long as the reader takes, and the field under it moves
+     without a click: a turn landing settles which field the conversation was answered in.
+     What is deleted must be what they were looking at when they asked to delete it. */
+  const asked: string[] = []
+  const answeredElsewhere = {
+    answer: 'Book it early.',
+    citations: [],
+    trace: [],
+    scopes: ['travel'],
+  }
+  const held: Record<string, unknown> = {
+    ...served,
+    '/api/scopes': { available: ['fitness', 'travel'], default: 'cora' },
+  }
+  /* Per field, as the real listing is: what lands under the rail's heading is then a
+     claim about which field the page thinks it is showing. */
+  const listed: Record<string, string[]> = {
+    cora: ['notes.md'],
+    travel: ['kyoto.md'],
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        asked.push(path)
+        return { ok: true, status: 204 } as unknown as Response
+      }
+      if (route(path) === '/api/documents') {
+        const which = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => listed[which] ?? [] } as unknown as Response
+      }
+      if (path === '/api/ask') {
+        const frames =
+          frame('step', LIVE[0]) + frame('turn', answeredElsewhere)
+        const encoder = new TextEncoder()
+        let sent = false
+        return {
+          ok: true,
+          body: {
+            getReader: () => ({
+              cancel: async () => {},
+              read: async () =>
+                sent
+                  ? { done: true, value: undefined }
+                  : ((sent = true), { done: false, value: encoder.encode(frames) }),
+            }),
+          },
+        } as unknown as Response
+      }
+      return { ok: true, json: async () => held[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  // Asked while the rail is at the home field, and the question is opened there.
+  fireEvent.click(deletingDocument('notes.md'))
+  expect(screen.getByRole('dialog')).toBeTruthy()
+
+  // The turn lands answered in another field, so the rail moves under the open question.
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'How early should I book?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await waitFor(() => expect(railField()).toBe('travel'))
+
+  fireEvent.click(screen.getByRole('button', { name: 'Delete document' }))
+
+  await waitFor(() => expect(asked).toHaveLength(1))
+  expect(asked).toEqual(['/api/documents/cora/notes.md'])
+
+  /* And the listing that follows the delete is the field the rail says it is showing:
+     a load asked for the field the question was raised in would land the wrong list
+     under the wrong heading. */
+  await flushed()
+  expect(railField()).toBe('travel')
+  expect(screen.getByText('kyoto.md')).toBeTruthy()
+  expect(screen.queryByText('notes.md')).toBeNull()
 })
