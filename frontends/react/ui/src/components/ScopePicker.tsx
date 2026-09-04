@@ -72,18 +72,16 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
   if (available.length < 2) return null
 
   /* Settled by a turn, there is nothing left to pick: the strip becomes the name it
-     settled on. A control that can no longer be used is not drawn as one. */
+     settled on. A control that can no longer be used is not drawn as one — and why it
+     cannot is written under the strip, where the promise it replaces was written. A
+     description hung off a name nobody can focus is a description nobody is read. */
   if (fixed && pin !== null)
     return (
       <div className="modes">
         <div className="mode-strip" role="group" aria-label={ANSWER_IN}>
-          <span className="mode settled" aria-describedby="scope-why">
-            {pin}
-          </span>
+          <span className="mode settled">{pin}</span>
         </div>
-        <span id="scope-why" className="told-not-shown">
-          {ONE_WAY}
-        </span>
+        <span className="scope-note">{ONE_WAY}</span>
       </div>
     )
 

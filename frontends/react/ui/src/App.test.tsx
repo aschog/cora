@@ -2712,7 +2712,11 @@ test('a conversation is pinned to a field, and keeps it', async () => {
      field is a second conversation, and the reason is on the page for a screen reader. */
   expect(screen.queryByRole('list')).toBeNull()
   expect(screen.getByLabelText('Answer in').textContent).toBe('fitness')
-  expect(screen.getByText(/Start a new one/)).toBeTruthy()
+  /* And the reason is read rather than clipped. It stands where the promise it replaces
+     stood: a control that has become a fact owes the reader the fact, and a description
+     hung off an unfocusable name reaches nobody either way. */
+  const why = screen.getByText(/Start a new one/)
+  expect(why.classList.contains('told-not-shown')).toBe(false)
 })
 
 test('a reopened conversation is drawn in the field it was pinned to', async () => {
