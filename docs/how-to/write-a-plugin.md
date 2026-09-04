@@ -190,6 +190,13 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    own `CORA_` variables are a separate namespace, and two plugins whose module paths
    end in the same segment are refused rather than sharing one.
 
+   A credential is a setting like any other, and it is yours to keep out of the answer:
+   put it on the request and never in what you return, because a tool's result is read
+   by the model and written to the trace. Register the tool it belongs to only where
+   the setting is actually set — the travel plugin offers its two price searches only
+   when `CORA_PLUGIN_TRAVEL_SERPAPI_KEY` is there, because a tool the model can call
+   and that can only fail is worse than one it was never offered.
+
 7. **Let a tool run a turn of its own.** `cora.delegate` runs a bounded loop with the
    model, offered the tools you pass it and cora's document search:
 

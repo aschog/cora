@@ -105,6 +105,18 @@ forecast has none, so the answer says it in cora's own prose and the trace is th
 of the call. A service that is down costs the turn that one call — a friendly sentence,
 and the conversation intact.
 
+And it prices what it plans. Give it a route, a budget and a month you might go rather
+than a date you have fixed, and it comes back with the three cheapest fares and the
+three cheapest places to stay, each priced and dated. A window is a search rather than a
+lookup — the service wants a departure date, so cora tries one candidate a week across
+the range and keeps the best of all of them, widening the interval rather than quietly
+searching less when the range is long. Your budget and your restrictions go *into* the
+search, so an option you ruled out is one you never see rather than one shown with a
+caveat. This is the one thing in cora that needs a key: set
+`CORA_PLUGIN_TRAVEL_SERPAPI_KEY` and the two searches appear, set nothing and they are
+never offered — a tool that can only fail is worse than a tool that was never there.
+Prices are what the aggregator showed, not a seat held for you, and the answer says so.
+
 And it acts, but only when you say so. A tool that declares it changes something outside
 cora does not run on the model's word: the turn stops, the page shows the call — what the
 tool says it does, and the arguments the model wrote — and nothing happens until you

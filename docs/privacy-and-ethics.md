@@ -31,7 +31,17 @@ whichever upstream model you named, and its terms are the ones that apply.
 
 **A service a plugin calls.** The travel plugin fetches forecasts in two calls: the
 place name goes to `geocoding-api.open-meteo.com`, and the coordinates that comes back
-with, plus your dates, go to `api.open-meteo.com`. It needs no credential. Every other outbound call in this
+with, plus your dates, go to `api.open-meteo.com`. It needs no credential.
+
+The same plugin prices a trip through `serpapi.com`, which is a search proxy over what
+Google shows for flights and hotels. That call carries more about you than a forecast
+does: where you are flying from, where you are going, the dates you are considering and
+the ceiling you set. It carries a key, so the searches are attributable to whoever holds
+the account. cora offers the two searches only where a deployment set
+`CORA_PLUGIN_TRAVEL_SERPAPI_KEY`, so a deployment that sets nothing makes no such call —
+and what SerpApi keeps is theirs to state, not cora's.
+
+Every other outbound call in this
 repository belongs to a plugin you chose to load, and a plugin can call anything —
 see [what loading a plugin costs](#what-loading-a-plugin-costs-in-trust).
 
