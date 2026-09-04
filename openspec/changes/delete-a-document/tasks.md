@@ -9,13 +9,13 @@ by a person reading it. The page's items are `vitest`, the rest are `pytest`.
 
 ## 2. One upload's passages leave the index
 
-- [ ] 2.1 A forgotten upload's passages coming back from no query of that field
-- [ ] 2.2 The field's listing dropping the name that upload was the last of
-- [ ] 2.3 The other uploads of that field untouched
-- [ ] 2.4 An upload nothing indexed forgotten without complaint
-- [ ] 2.5 Which uploads a name covers, answered for one name uploaded twice
-- [ ] 2.6 A name nothing was uploaded under covering none
-- [ ] 2.7 A store that cannot be reached raising the failure this adapter translates
+- [x] 2.1 A forgotten upload's passages coming back from no query of that field
+- [x] 2.2 The field's listing dropping the name that upload was the last of
+- [x] 2.3 The other uploads of that field untouched
+- [x] 2.4 An upload nothing indexed forgotten without complaint
+- [x] 2.5 Which uploads a name covers, answered for one name uploaded twice
+- [x] 2.6 A name nothing was uploaded under covering none
+- [x] 2.7 A store that cannot be reached raising the failure this adapter translates
 
 ## 3. One upload's file leaves the directory
 

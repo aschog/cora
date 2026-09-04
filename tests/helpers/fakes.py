@@ -111,6 +111,22 @@ class FakeRetriever:
             dict.fromkeys(r.chunk.source for r in self._records if r.scope == scope)
         )
 
+    def forget(self, scope: str, file_hash: str) -> None:
+        self._records = [
+            r
+            for r in self._records
+            if not (r.scope == scope and r.file_hash == file_hash)
+        ]
+
+    def uploads(self, scope: str, source: str) -> list[str]:
+        return list(
+            dict.fromkeys(
+                r.file_hash
+                for r in self._records
+                if r.scope == scope and r.chunk.source == source
+            )
+        )
+
     def contains(self, scope: str, file_hash: str) -> bool:
         return any(r.file_hash == file_hash and r.scope == scope for r in self._records)
 
@@ -289,6 +305,12 @@ class FailingRetriever:
         raise self.error
 
     def contains(self, scope: str, file_hash: str) -> bool:
+        raise self.error
+
+    def forget(self, scope: str, file_hash: str) -> None:
+        raise self.error
+
+    def uploads(self, scope: str, source: str) -> list[str]:
         raise self.error
 
 

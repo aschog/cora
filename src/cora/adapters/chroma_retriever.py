@@ -105,6 +105,24 @@ class ChromaRetriever:
         )
 
     @_translate_errors
+    def forget(self, scope: str, file_hash: str) -> None:
+        self._of(scope).delete(where={"file_hash": file_hash})
+
+    @_translate_errors
+    def uploads(self, scope: str, source: str) -> list[str]:
+        """Read off the metadata, because that is the only place the mapping is: a
+        filename is one entry in a listing and one or more uploads underneath it."""
+        metadatas = (
+            self._of(scope).get(where={"source": source}, include=["metadatas"])[
+                "metadatas"
+            ]
+            or []
+        )
+        return list(
+            dict.fromkeys(cast(str, metadata["file_hash"]) for metadata in metadatas)
+        )
+
+    @_translate_errors
     def contains(self, scope: str, file_hash: str) -> bool:
         found = self._of(scope).get(where={"file_hash": file_hash}, limit=1)
         return len(found["ids"]) > 0

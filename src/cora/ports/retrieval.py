@@ -75,6 +75,23 @@ class Retriever(Protocol):
         """
         ...
 
+    def forget(self, scope: str, file_hash: str) -> None:
+        """Drop every passage of one upload from one field.
+
+        An upload nothing indexed is not an error: what was asked for is already true
+        of it. The other uploads of that filename are left — the bytes name an upload,
+        and a passage's offsets are only meaningful against the text it arrived as.
+        """
+        ...
+
+    def uploads(self, scope: str, source: str) -> list[str]:
+        """Every upload this field holds passages of under one filename.
+
+        The mapping from what a listing shows to what a store forgets, which lives here
+        because the passages carry both. A name nothing was uploaded under covers none.
+        """
+        ...
+
     def contains(self, scope: str, file_hash: str) -> bool:
         """Whether this upload has already been indexed in this field.
 
