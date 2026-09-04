@@ -2879,7 +2879,7 @@ test('a pinned conversation uploads into its own field', async () => {
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
   fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
   await waitFor(() =>
-    expect(screen.getByLabelText('YOUR DOCUMENTS').textContent).toBe('travel'),
+    expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
   )
 
   upload('kyoto.md')
@@ -2906,7 +2906,7 @@ test('leaving a pinned conversation returns the rail to the default field', asyn
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
   fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
   await waitFor(() =>
-    expect(screen.getByLabelText('YOUR DOCUMENTS').textContent).toBe('travel'),
+    expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
   )
 
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
@@ -3202,7 +3202,7 @@ test('a conversation reopened after a pinned one is still drawn in its own field
 
   fireEvent.click(await screen.findByRole('button', { name: new RegExp(OLDER.question) }))
   await waitFor(() =>
-    expect(screen.getByLabelText('YOUR DOCUMENTS').textContent).toBe('travel'),
+    expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
   )
   fireEvent.click(await screen.findByRole('button', { name: new RegExp(earlier.question) }))
   await waitFor(() =>

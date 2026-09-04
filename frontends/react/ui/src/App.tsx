@@ -740,7 +740,7 @@ export default function App() {
               <DocumentRail
                 documents={documents}
                 cited={cited}
-                field={field}
+                field={pin === null ? field : null}
                 onOpen={open}
                 onUpload={uploaded}
                 upload={notice}

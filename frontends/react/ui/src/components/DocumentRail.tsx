@@ -4,10 +4,11 @@ import type { Notice } from './UploadNotice'
 type Props = {
   documents: string[]
   cited: Set<string>
-  /** The field this rail lists and uploads into. Stated, not offered: the strip above the
-   *  conversation is what picks a field, and routing can settle one nobody picked — so
-   *  the rail says where an upload lands rather than leaving it to be guessed. */
-  field: string
+  /** The field this rail lists and uploads into, or nothing where the strip above the
+   *  conversation already names it. Stated, not offered, and only where saying it adds
+   *  something: routing can settle a field nobody picked, and that is the one case
+   *  where an upload would otherwise land somewhere unannounced. */
+  field: string | null
   onOpen: (document: string) => void
   onUpload: (file: File) => void
   /** What the last upload did. It is drawn here rather than over the conversation: it is
@@ -31,9 +32,11 @@ export default function DocumentRail({
         <span className="micro" id="rail-field">
           YOUR DOCUMENTS
         </span>
-        <span className="field-fixed" aria-labelledby="rail-field">
-          {field}
-        </span>
+        {field !== null && (
+          <span className="field-fixed" aria-labelledby="rail-field">
+            {field}
+          </span>
+        )}
       </div>
 
       <label className="upload">
