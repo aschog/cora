@@ -3950,3 +3950,57 @@ test('the card stowed for a deleted conversation is let go with it', async () =>
 
   await waitFor(() => expect(globalThis.sessionStorage.getItem('cora.parked')).toBeNull())
 })
+
+
+const FACT = { key: 'f1', text: 'No burpees.' }
+const ALSO = { key: 'f2', text: 'Four sessions a week.' }
+
+/** The memory rail's own fixture: what cora holds, minus whatever has been forgotten,
+ *  so a rail that says a fact is gone is a rail the store agrees with. */
+const remembering = (...facts: { key: string; text: string }[]) => {
+  let held = facts
+  const asked: string[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        asked.push(path)
+        held =
+          path === '/api/memory'
+            ? []
+            : held.filter((fact) => fact.key !== path.slice('/api/memory/'.length))
+        return { ok: true, status: 204 } as unknown as Response
+      }
+      if (route(path) === '/api/memory')
+        return { ok: true, json: async () => held } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+  return { asked }
+}
+
+const forgetting = (fact: { text: string }) =>
+  screen.getByRole('button', { name: `Delete ${fact.text}` })
+
+test.fails('a fact is forgotten only once i have said so', async () => {
+  const memory = remembering(FACT)
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'MEMORY' }))
+  await screen.findByText(FACT.text)
+
+  // The control asks; nothing has been asked of cora yet.
+  fireEvent.click(forgetting(FACT))
+  expect(screen.getByRole('dialog')).toBeTruthy()
+  expect(memory.asked).toEqual([])
+
+  // Keeping it leaves the fact exactly where it was.
+  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+  expect(memory.asked).toEqual([])
+  expect(screen.getByText(FACT.text)).toBeTruthy()
+
+  fireEvent.click(forgetting(FACT))
+  fireEvent.click(screen.getByRole('button', { name: 'Forget it' }))
+
+  await waitFor(() => expect(memory.asked).toEqual(['/api/memory/f1']))
+  await waitFor(() => expect(screen.queryByText(FACT.text)).toBeNull())
+})
