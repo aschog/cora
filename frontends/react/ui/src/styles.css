@@ -127,23 +127,26 @@ button {
   flex: 1;
   min-height: 0;
   gap: var(--s3);
-  padding: 0 var(--s3) var(--s3);
+  padding: var(--s3);
 }
 
-/* ── header ── */
-.header {
-  flex: 0 0 auto;
+/* ── what a rail holds above its own content ── */
+.rail-top {
   display: flex;
   align-items: center;
-  gap: var(--s3);
-  padding: var(--s3) var(--s4);
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+
+.rail-panels .rail-top {
+  justify-content: flex-end;
 }
 
 .brand-name {
   font-size: 22px;
   font-weight: 600;
   letter-spacing: -0.01em;
-  margin-left: calc(var(--s3) * -1 + 2px);
 }
 /* ── left rail ── */
 .rail-docs {
@@ -854,6 +857,14 @@ button {
 }
 
 /* ── the rails fold away ── */
+.rail-docs.shut,
+.rail-panels.shut {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: var(--s2);
+  overflow: hidden;
+}
+
 .rail-toggle {
   display: flex;
   align-items: center;
@@ -897,7 +908,8 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-left: auto;
+  width: 100%;
+  margin-bottom: var(--s4);
   padding: 9px 20px 9px 16px;
   background: rgba(255, 255, 255, 0.06);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
@@ -930,8 +942,10 @@ button {
 /* ── the field a conversation is in ── */
 .scope-wrap {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--s1);
+  margin-bottom: var(--s4);
 }
 
 .scope-label {
@@ -942,6 +956,7 @@ button {
 }
 
 .scope-pick {
+  width: 100%;
   padding: 7px 10px;
   background: rgba(255, 255, 255, 0.06);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);

@@ -13,14 +13,16 @@ import type {
 import Answer from './components/Answer'
 import CitationModal from './components/CitationModal'
 import DocumentRail from './components/DocumentRail'
-import Header from './components/Header'
+import NewSession from './components/NewSession'
+import RailToggle from './components/RailToggle'
+import ScopePicker from './components/ScopePicker'
 import MemoryPanel from './components/MemoryPanel'
 import PlanPanel from './components/PlanPanel'
 import SessionsPanel from './components/SessionsPanel'
 import SourcePanel from './components/SourcePanel'
 import type { Notice } from './components/UploadNotice'
 
-const TABS = ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
+const TABS = ['PLAN', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
 type Tab = (typeof TABS)[number]
 
 export type Entry = {
@@ -131,7 +133,7 @@ const newThread = () =>
   globalThis.crypto?.randomUUID?.() ?? String(Math.random()).slice(2)
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('STEPS')
+  const [tab, setTab] = useState<Tab>('PLAN')
   const [thread, setThread] = useState<string>(newThread)
   const [entries, setEntries] = useState<Entry[]>([])
   /* The turn being asked, and the conversation it is being asked in. Not one of
@@ -379,7 +381,7 @@ export default function App() {
     setWorking(on)
     setLost(null)
     setLive({ thread: on, steps: taken })
-    setTab('STEPS')
+    setTab('PLAN')
     const id = ++asked.current
     setFlight({
       thread: on,
@@ -561,7 +563,7 @@ export default function App() {
     }
     setWorking(on)
     setLive({ thread: on, steps: taken })
-    setTab('STEPS')
+    setTab('PLAN')
     at((found) => ({
       ...answering(found),
       changing: false,
@@ -717,19 +719,6 @@ export default function App() {
 
   return (
     <div className="app">
-      <Header
-        fields={fields}
-        pin={pin}
-        fixedPin={fixedPin}
-        onPin={(scope) => setPin(scope === '' ? null : scope)}
-        leftOpen={leftOpen}
-        rightOpen={rightOpen}
-        onToggleLeft={() => setLeftOpen((shown) => !shown)}
-        onToggleRight={() => setRightOpen((shown) => !shown)}
-        onNew={start}
-        canStart={somethingToLeave}
-      />
-
       <div className="banners" role="status" aria-label="Notices">
         {banners.map(({ which, said }) => (
           <div key={which} className="trouble">
@@ -739,21 +728,43 @@ export default function App() {
       </div>
 
       <div className="columns">
-        {leftOpen && (
-          <DocumentRail
-            documents={documents}
-            cited={cited}
-            fields={fields}
-            field={field}
-            anyField={anyField}
-            fixedField={pin !== null}
-            onField={setPicked}
-            onOpen={open}
-            onUpload={uploaded}
-            upload={notice}
-            onDismissUpload={() => setNotice(null)}
-          />
-        )}
+        {/* The rail is always drawn, folded or not: the control that folds it lives in it,
+            and a control that hides itself cannot be used to bring itself back. */}
+        <aside className={leftOpen ? 'rail-docs' : 'rail-docs shut'}>
+          <div className="rail-top">
+            <span className="brand-name">cora</span>
+            <RailToggle
+              side="left"
+              open={leftOpen}
+              label="Documents"
+              onToggle={() => setLeftOpen((shown) => !shown)}
+            />
+          </div>
+          {leftOpen && (
+            <>
+              <NewSession canStart={somethingToLeave} onNew={start} />
+              <ScopePicker
+                available={fields}
+                pin={pin}
+                fixed={fixedPin}
+                onPin={(scope) => setPin(scope === '' ? null : scope)}
+              />
+              <DocumentRail
+                documents={documents}
+                cited={cited}
+                fields={fields}
+                field={field}
+                anyField={anyField}
+                fixedField={pin !== null}
+                onField={setPicked}
+                onOpen={open}
+                onUpload={uploaded}
+                upload={notice}
+                onDismissUpload={() => setNotice(null)}
+              />
+            </>
+          )}
+        </aside>
 
         <Answer
           thread={thread}
@@ -767,8 +778,17 @@ export default function App() {
           onChange={change}
         />
 
-        {rightOpen && (
-        <aside className="rail-panels">
+        <aside className={rightOpen ? 'rail-panels' : 'rail-panels shut'}>
+          <div className="rail-top">
+            <RailToggle
+              side="right"
+              open={rightOpen}
+              label="Plan & memory"
+              onToggle={() => setRightOpen((shown) => !shown)}
+            />
+          </div>
+          {rightOpen && (
+          <>
           <div className="tabs" role="tablist">
             {TABS.map((name) => (
               <button
@@ -783,7 +803,7 @@ export default function App() {
             ))}
           </div>
 
-          {tab === 'STEPS' && (
+          {tab === 'PLAN' && (
             <PlanPanel
               steps={live?.thread === thread ? live.steps : lastTrace(entries)}
             />
@@ -809,8 +829,9 @@ export default function App() {
               }
             />
           )}
+          </>
+          )}
         </aside>
-        )}
       </div>
 
       {opened && <CitationModal citation={opened} onClose={() => setOpened(null)} />}

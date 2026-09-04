@@ -45,7 +45,7 @@ export default function DocumentRail({
   const settled = fixedField || fields.length === 1
 
   return (
-    <aside className="rail-docs">
+    <>
       <div className="micro rail-heading">YOUR DOCUMENTS</div>
 
       {fields.length > 0 && (
@@ -123,6 +123,6 @@ export default function DocumentRail({
           </button>
         ))}
       </div>
-    </aside>
+    </>
   )
 }

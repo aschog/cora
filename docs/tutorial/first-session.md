@@ -34,8 +34,8 @@ from `.env` instead, so put both there rather than exporting them.
 ## 3. Pick a field, or let cora pick
 
 With two fields loaded, cora reads each question and answers it in the one it belongs
-to — the *STEPS* tab says which, and a question that fits both stops to ask you. If the
-conversation is about one field, pin it in the header: every later turn is answered in
+to — the *PLAN* tab says which, and a question that fits both stops to ask you. If the
+conversation is about one field, pin it in the rail: every later turn is answered in
 that field, and it survives a reload. A pin is set once, so a second field means a new
 session.
 
@@ -51,7 +51,7 @@ a turn answers from the field it runs in, so a document put in the other one is 
 document it will not find. Then ask about it: answers cite the passages they used. Click
 a `[1]` in an answer and that document opens with the cited passage highlighted, read
 back out of the Markdown file cora kept it as. The steps appear as cora takes them,
-under the *STEPS* tab on the right: what it decided, which tool it ran and what came
+under the *PLAN* tab on the right: what it decided, which tool it ran and what came
 back. A
 question that needs no documents is answered without searching them.
 

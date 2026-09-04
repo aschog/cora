@@ -190,17 +190,36 @@ test('each rail folds away and comes back, and its toggle says which it is', asy
 
   fireEvent.click(documents)
   expect(screen.queryByText('notes.md')).toBeNull()
-  expect(screen.getByRole('tab', { name: 'STEPS' })).toBeTruthy()
+  expect(screen.getByRole('tab', { name: 'PLAN' })).toBeTruthy()
   expect(documents.getAttribute('aria-pressed')).toBe('false')
 
   fireEvent.click(rail)
-  expect(screen.queryByRole('tab', { name: 'STEPS' })).toBeNull()
+  expect(screen.queryByRole('tab', { name: 'PLAN' })).toBeNull()
   expect(rail.getAttribute('aria-pressed')).toBe('false')
 
   fireEvent.click(documents)
   fireEvent.click(rail)
   expect(screen.getByText('notes.md')).toBeTruthy()
-  expect(screen.getByRole('tab', { name: 'STEPS' })).toBeTruthy()
+  expect(screen.getByRole('tab', { name: 'PLAN' })).toBeTruthy()
+})
+
+test('the rail carries the name and the controls, and folds down to its own toggle', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const documents = screen.getByRole('button', { name: 'Documents' })
+  const rail = documents.closest('aside')!
+  expect(rail.textContent).toContain('cora')
+  expect(rail.textContent).toContain('New session')
+  expect(rail.textContent).toContain('Answer in')
+
+  fireEvent.click(documents)
+
+  // Folded, the name and the way back stay; everything the rail was holding goes.
+  expect(rail.textContent).toContain('cora')
+  expect(screen.getByRole('button', { name: 'Documents' })).toBeTruthy()
+  expect(screen.queryByText('New session')).toBeNull()
+  expect(screen.queryByText('Answer in')).toBeNull()
 })
 
 
@@ -524,7 +543,7 @@ test('a conversation shows its own plan, not the plan of a turn left behind', as
   step.release()
   await flushed()
 
-  fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
   expect(screen.queryByText('After the reopen')).toBeNull()
   expect(screen.queryByText('Before the reopen')).toBeNull()
   // The request is still in flight, so cora is still answering one question.
@@ -854,7 +873,7 @@ test('the question in flight stays with the conversation it was asked in', async
   )
   expect(screen.getByText(/Working/)).toBeTruthy()
   expect(screen.queryByText(/still answering/)).toBeNull()
-  fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
   expect(screen.getByText(LIVE[0].summary)).toBeTruthy()
   expect(screen.getByRole('button', { name: 'Ask' }).hasAttribute('disabled')).toBe(true)
 
@@ -867,7 +886,7 @@ test('the question in flight stays with the conversation it was asked in', async
   )
 })
 
-test('the header offers a way to start a new session', async () => {
+test('the rail offers a way to start a new session', async () => {
   render(<App />)
   await screen.findByText('notes.md')
 
@@ -981,7 +1000,7 @@ test('the panels afterwards speak for the new session, not the one left behind',
 
   const panels = document.querySelector('.rail-panels') as HTMLElement
   expect(within(panels).queryByRole('heading', { name: 'notes.md' })).toBeNull()
-  fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'PLAN' }))
   expect(screen.queryByText(TURN.trace[0].summary)).toBeNull()
   expect(panels.querySelector('.plan-step')).toBeNull()
 })
@@ -2203,7 +2222,7 @@ test('a full page explains none of its own panels', async () => {
   expect(screen.getByRole('heading', { name: 'notes.md' })).toBeTruthy()
   expect(screen.queryByText(/cited passage/)).toBeNull()
 
-  for (const panel of ['STEPS', 'SESSIONS', 'MEMORY']) {
+  for (const panel of ['PLAN', 'SESSIONS', 'MEMORY']) {
     fireEvent.click(screen.getByRole('tab', { name: panel }))
     nothingExplains()
   }
@@ -2225,7 +2244,7 @@ test('a page with nothing in it yet draws the controls and no prose', async () =
   render(<App />)
   await screen.findByText('Add a document')
 
-  for (const panel of ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY']) {
+  for (const panel of ['PLAN', 'SOURCE', 'SESSIONS', 'MEMORY']) {
     fireEvent.click(screen.getByRole('tab', { name: panel }))
     nothingExplains()
   }
