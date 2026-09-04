@@ -10,8 +10,8 @@ when there is nothing to drop, and a list that cannot delete the conversation it
 being read through.
 
 **Non-Goals** — deleting every conversation at once. Deleting one turn out of a
-conversation. A dialog over the page, which the gesture below stands in for. Editing a
-conversation's opening line, which is what a tidier list would otherwise want.
+conversation. The memory rail, which takes the same row and the same question in its own
+change. Editing a conversation's opening line, which a tidier list would otherwise want.
 
 ## Decisions
 
@@ -63,15 +63,16 @@ conversation's opening line, which is what a tidier list would otherwise want.
 - Rejected: the browser's own `confirm` — it blocks the page, cannot be read by the
   page's own tests, and says nothing about what is lost.
 
-**One delete control, drawn as an icon, in both rails.**
+**The delete control is an icon, and its own component.**
 
-- A word per row repeated down a narrow rail reads as noise, and the two rails were
-  already the same shape with two spellings.
+- A word per row repeated down a narrow rail reads as noise.
 - Drawn inline, as the rail's own toggle is: no dependency for one glyph.
-- The accessible name is the row — the conversation, or the fact — not the verb, so a
-  column of identical icons still says which is which.
-- Nothing destructive is drawn in the palette's warm pair any more: the icon is quiet
-  until it is reached for, and the button that confirms is a button like any other.
+- The accessible name is the conversation, not the verb, so a column of identical icons
+  still says which is which.
+- Neither this nor the button that confirms it is drawn in the palette's warm pair: what
+  is lost is said in words, and a colour cannot say it.
+- Its own component because the memory rail takes the same row next, in its own change —
+  which is also where `forget` stops being a word in magenta.
 
 **The page follows the rule the list already has.**
 

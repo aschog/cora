@@ -59,9 +59,9 @@ reading it.
 
 ## 8. Asked about first, drawn as an icon
 
-Review feedback, after 7.1: a delete offered outright is one click from gone, a word per
-row is noise in a narrow rail, and the memory rail was the same row with another
-spelling.
+Review feedback, after 7.1: a delete offered outright is one click from gone, and a word
+per row is noise in a narrow rail. The memory rail takes the same row and the same
+question in its own change, after this one.
 
 - [x] 8.1 The control asking rather than deleting, with nothing asked of cora yet
 - [x] 8.2 A confirmed question deleting the conversation it named
@@ -70,4 +70,3 @@ spelling.
 - [x] 8.5 Escape and the page behind the question both reading as keeping it
 - [x] 8.6 The control drawn as an icon, named for the row it would delete
 - [x] 8.7 The conversation being read marked in the list
-- [x] 8.8 A fact forgotten by that same control, in the memory rail
