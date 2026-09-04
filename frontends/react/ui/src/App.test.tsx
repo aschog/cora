@@ -3046,6 +3046,82 @@ test('an unpinned turn leaves the rail in the field it was answered in', async (
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
 })
 
+test('Chat is a way back to the default field, not only away from a pin', async () => {
+  /* Routing leaves the field it settled standing, so the rail follows a turn into
+     `travel`. Asking for Chat is the reader saying no field is named — and the default
+     field is the field a turn naming none runs in, so that is where it has to land.
+     Without this, one routed turn puts the default field out of reach for the life of
+     the conversation, `New session` being the only way out. */
+  const routed = { answer: 'Book it early.', citations: [], trace: [], scopes: ['travel'] }
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['kyoto.md'] }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/ask') return oneTurn(routed)
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
+      }
+      const body = served[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'How early?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Book it early/)
+  await waitFor(() =>
+    expect(screen.getByLabelText('YOUR DOCUMENTS').textContent).toBe('travel'),
+  )
+
+  fireEvent.click(screen.getByRole('radio', { name: 'Chat' }))
+
+  await waitFor(() =>
+    expect(screen.getByLabelText('YOUR DOCUMENTS').textContent).toBe('cora'),
+  )
+  expect(await screen.findByText('notes.md')).toBeTruthy()
+})
+
+test('a pinned conversation is named over the conversation, and not twice', async () => {
+  /* The strip says the field a pinned conversation is in, so the rail saying it again
+     would be the same fact drawn in two places — and two places is where they drift. */
+  const pinned: Record<string, unknown> = {
+    ...served,
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      const body = pinned[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
+
+  await waitFor(() =>
+    expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
+  )
+  expect(screen.queryByLabelText('YOUR DOCUMENTS')).toBeNull()
+})
+
+test('the rail names no field before the deployment has said which there are', async () => {
+  /* `anyField` is the server's answer and arrives with the rest of the page. Until it
+     does the field is the empty string, and a pill drawn around it is a pill with
+     nothing in it. */
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
+  render(<App />)
+
+  await screen.findByText('YOUR DOCUMENTS')
+  expect(screen.queryByLabelText('YOUR DOCUMENTS')).toBeNull()
+})
+
 test('a resumed answer does not move the rail of the conversation the reader moved to', async () => {
   /* The answer itself is correctly not landed when the reader has moved on. The field
      it was answered in must not land either: a rail flipped to another conversation's

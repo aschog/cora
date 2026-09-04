@@ -756,7 +756,13 @@ export default function App() {
               available={fields}
               pin={pin}
               fixed={fixedPin}
-              onPin={(scope) => setPin(scope === '' ? null : scope)}
+              onPin={(scope) => {
+                setPin(scope === '' ? null : scope)
+                /* Asking for Chat is the reader saying no field is named, and the field
+                   a turn naming none runs in is the default one — so the field routing
+                   settled is news this outranks rather than falls back to. */
+                if (scope === '') setAnswered(null)
+              }}
             />
           }
           thread={thread}

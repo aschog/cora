@@ -32,7 +32,7 @@ export default function DocumentRail({
         <span className="micro" id="rail-field">
           YOUR DOCUMENTS
         </span>
-        {field !== null && (
+        {field && (
           <span className="field-fixed" aria-labelledby="rail-field">
             {field}
           </span>
