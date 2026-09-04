@@ -28,16 +28,12 @@ export default function DocumentRail({
 }: Props) {
   return (
     <>
-      <div className="rail-heading">
-        <span className="micro" id="rail-field">
-          YOUR DOCUMENTS
-        </span>
-        {field && (
-          <span className="field-fixed" aria-labelledby="rail-field">
-            {field}
-          </span>
-        )}
-      </div>
+      {/* A term and its value, so the heading names the field natively rather than through
+          an `aria-labelledby` on a `span`, which carries no role for a name to land on. */}
+      <dl className="rail-heading">
+        <dt className="micro">YOUR DOCUMENTS</dt>
+        {field && <dd className="field-fixed">{field}</dd>}
+      </dl>
 
       <label className="upload">
         <span>＋</span>

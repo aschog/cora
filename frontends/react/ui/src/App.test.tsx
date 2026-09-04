@@ -121,9 +121,8 @@ const route = (path: string) => path.split('?')[0]
 
 /** Naming a field is two clicks: the segment that asks which, then the plugin. */
 const pickPlugin = (name: string) => {
-  fireEvent.click(screen.getByRole('radio', { name: 'Plugin' }))
-  const listed = screen.getByRole('listbox', { name: 'Answer in' })
-  fireEvent.click(within(listed).getByRole('option', { name }))
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  fireEvent.click(screen.getByRole('menuitemradio', { name }))
 }
 
 
@@ -227,7 +226,7 @@ test('the rail carries the name and the controls, and folds down to its own togg
   expect(screen.getByRole('button', { name: 'Documents' })).toBeTruthy()
   expect(screen.queryByText('New session')).toBeNull()
   // The field the conversation runs in is the conversation's, so folding the rail keeps it.
-  expect(screen.getByRole('radio', { name: 'Chat' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Chat' })).toBeTruthy()
 })
 
 
@@ -2702,7 +2701,7 @@ test('a conversation is pinned to a field, and keeps it', async () => {
   ])
   /* The pin is in the thread's state now, so the control stops being a choice: a second
      field is a second conversation, and the reason is on the page for a screen reader. */
-  expect(screen.queryByRole('radio')).toBeNull()
+  expect(screen.queryByRole('menuitemradio')).toBeNull()
   expect(screen.getByLabelText('Answer in').textContent).toBe('fitness')
   expect(screen.getByText(/Start a new one/)).toBeTruthy()
 })
@@ -2727,7 +2726,7 @@ test('a reopened conversation is drawn in the field it was pinned to', async () 
 
   /* The pin outlived the page because it is the thread's own state, not the page's. */
   await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('travel'))
-  expect(screen.queryByRole('radio')).toBeNull()
+  expect(screen.queryByRole('menuitemradio')).toBeNull()
 })
 
 test('the picker says what the thread holds, not what the reader picked', async () => {
@@ -2777,7 +2776,7 @@ test('the picker says what the thread holds, not what the reader picked', async 
   /* The turn failed, but it was admitted — so the thread is in that field now, and the
      control says so rather than offering a choice that would be refused. */
   await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
-  expect(screen.queryByRole('radio')).toBeNull()
+  expect(screen.queryByRole('menuitemradio')).toBeNull()
 })
 
 
@@ -2819,7 +2818,7 @@ test('a scope read that failed leaves the pin the page already knows about', asy
   /* The read failed; the field the thread holds is not news the page has, so it keeps
      what it had rather than inventing a choice. */
   await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
-  expect(screen.queryByRole('radio')).toBeNull()
+  expect(screen.queryByRole('menuitemradio')).toBeNull()
 })
 
 test('the rail lists and uploads into the field it is set to', async () => {
@@ -2913,7 +2912,7 @@ test('leaving a pinned conversation returns the rail to the default field', asyn
 
   await waitFor(() =>
     expect(
-      screen.getByLabelText('YOUR DOCUMENTS').textContent,
+      screen.getByRole('definition').textContent,
     ).toBe('cora'),
   )
 })
@@ -2990,7 +2989,7 @@ test('a single loaded field is where uploads go', async () => {
   )
   render(<App />)
   await waitFor(() =>
-    expect(screen.getByLabelText('YOUR DOCUMENTS').textContent).toBe('fitness'),
+    expect(screen.getByRole('definition').textContent).toBe('fitness'),
   )
 
   upload('plan.md')
@@ -3075,15 +3074,70 @@ test('Chat is a way back to the default field, not only away from a pin', async 
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
   await screen.findByText(/Book it early/)
   await waitFor(() =>
-    expect(screen.getByLabelText('YOUR DOCUMENTS').textContent).toBe('travel'),
+    expect(screen.getByRole('definition').textContent).toBe('travel'),
   )
 
-  fireEvent.click(screen.getByRole('radio', { name: 'Chat' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
 
   await waitFor(() =>
-    expect(screen.getByLabelText('YOUR DOCUMENTS').textContent).toBe('cora'),
+    expect(screen.getByRole('definition').textContent).toBe('cora'),
   )
   expect(await screen.findByText('notes.md')).toBeTruthy()
+})
+
+test('the field list closes on Escape, and hands the trigger its focus back', async () => {
+  /* An overlay stands over the conversation, so a reader who opens it and changes their
+     mind has to be able to shut it. Without a key that does, a keyboard is a way in and
+     no way out. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const trigger = screen.getByRole('button', { name: 'Plugin' })
+  fireEvent.click(trigger)
+  expect(screen.getByRole('menu')).toBeTruthy()
+
+  fireEvent.keyDown(trigger, { key: 'Escape' })
+
+  expect(screen.queryByRole('menu')).toBeNull()
+  expect(document.activeElement).toBe(trigger)
+})
+
+test('the strip says which field it is running in, and the list which one is picked', async () => {
+  /* The state has to be on the control, not only in its colour: `Chat` says whether any
+     field is named, the trigger says which, and the list marks it. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  expect(screen.getByRole('button', { name: 'Chat' }).getAttribute('aria-pressed')).toBe(
+    'true',
+  )
+
+  pickPlugin('fitness')
+
+  expect(screen.getByRole('button', { name: 'Chat' }).getAttribute('aria-pressed')).toBe(
+    'false',
+  )
+  const named = screen.getByRole('button', { name: 'fitness' })
+  expect(named.getAttribute('aria-pressed')).toBe('true')
+  expect(screen.queryByRole('menu')).toBeNull()
+
+  fireEvent.click(named)
+  const marked = screen
+    .getAllByRole('menuitemradio')
+    .filter((each) => each.getAttribute('aria-checked') === 'true')
+  expect(marked.map((each) => each.textContent)).toEqual(['fitness'])
+})
+
+test('the field list closes when the reader turns to something else', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  expect(screen.getByRole('menu')).toBeTruthy()
+
+  fireEvent.mouseDown(screen.getByPlaceholderText(/Ask a question/))
+
+  expect(screen.queryByRole('menu')).toBeNull()
 })
 
 test('a pinned conversation is named over the conversation, and not twice', async () => {
@@ -3108,7 +3162,7 @@ test('a pinned conversation is named over the conversation, and not twice', asyn
   await waitFor(() =>
     expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
   )
-  expect(screen.queryByLabelText('YOUR DOCUMENTS')).toBeNull()
+  expect(screen.queryByRole('definition')).toBeNull()
 })
 
 test('the rail names no field before the deployment has said which there are', async () => {
@@ -3119,7 +3173,7 @@ test('the rail names no field before the deployment has said which there are', a
   render(<App />)
 
   await screen.findByText('YOUR DOCUMENTS')
-  expect(screen.queryByLabelText('YOUR DOCUMENTS')).toBeNull()
+  expect(screen.queryByRole('definition')).toBeNull()
 })
 
 test('a resumed answer does not move the rail of the conversation the reader moved to', async () => {
@@ -3142,7 +3196,7 @@ test('a resumed answer does not move the rail of the conversation the reader mov
   await flushed()
 
   expect(
-    screen.getByLabelText('YOUR DOCUMENTS').textContent,
+    screen.getByRole('definition').textContent,
   ).toBe('cora')
 })
 
@@ -3193,7 +3247,7 @@ test('reopening an unpinned conversation draws it in the field it was answered i
 
   await waitFor(() =>
     expect(
-      screen.getByLabelText('YOUR DOCUMENTS').textContent,
+      screen.getByRole('definition').textContent,
     ).toBe('travel'),
   )
   expect(await screen.findByText('kyoto.md')).toBeTruthy()
@@ -3282,12 +3336,12 @@ test('a conversation reopened after a pinned one is still drawn in its own field
   )
   fireEvent.click(await screen.findByRole('button', { name: new RegExp(earlier.question) }))
   await waitFor(() =>
-    expect(screen.getByLabelText('YOUR DOCUMENTS')).toBeTruthy(),
+    expect(screen.getByRole('definition')).toBeTruthy(),
   )
   await flushed()
 
   expect(
-    screen.getByLabelText('YOUR DOCUMENTS').textContent,
+    screen.getByRole('definition').textContent,
   ).toBe('fitness')
 })
 
@@ -3301,7 +3355,7 @@ test('answering a decision moves the rail to the field it settled', async () => 
 
   await waitFor(() =>
     expect(
-      screen.getByLabelText('YOUR DOCUMENTS').textContent,
+      screen.getByRole('definition').textContent,
     ).toBe('travel'),
   )
 })
@@ -3341,7 +3395,7 @@ test('a listing that failed for a field left behind neither banners nor clears',
 
   pickPlugin('travel')
   await flushed()
-  fireEvent.click(screen.getByRole('radio', { name: 'Chat' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
   expect(
     await screen.findByText('The knowledge base is temporarily unavailable.'),
   ).toBeTruthy()
@@ -3387,7 +3441,7 @@ test('a listing that failed for a field left behind raises no banner about it', 
 
   pickPlugin('travel')
   await flushed()
-  fireEvent.click(screen.getByRole('radio', { name: 'Chat' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
   await flushed()
 
   release()

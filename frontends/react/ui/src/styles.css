@@ -37,8 +37,8 @@
   --s6: 40px;
   --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
 
-  /* Glass: a panel is the ground lifted, not a different colour. Stated once so the
-     two rails, the menu and the composer cannot drift apart. */
+  /* A panel is the ground sunk, not a different colour. Stated once so the rails, the
+     menu and the composer cannot drift apart. */
   --sunken: rgba(0, 0, 0, 0.28);
   --pill: 999px;
   --panel-radius: 18px;
@@ -156,6 +156,12 @@ button {
   flex: 0 1 232px;
   min-width: 180px;
   border-right: 1px solid var(--hairline);
+}
+
+.rail-heading,
+.rail-heading dt,
+.rail-heading dd {
+  margin: 0;
 }
 
 .rail-heading {
@@ -449,7 +455,7 @@ button {
   transition: box-shadow 140ms ease-out;
 }
 
-/* The glow says "typing here"; at rest the composer is one more glass edge. The ring
+/* The glow says "typing here"; at rest the composer is one more sunken edge. The ring
    is the pill's own, so the input inside it never draws a second one. */
 .composer:focus-within {
   box-shadow:
@@ -982,7 +988,7 @@ button {
   color: var(--accent);
 }
 
-.mode[aria-checked='true'] {
+.mode[aria-pressed='true'] {
   background: rgba(255, 255, 255, 0.09);
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
   color: var(--text);
@@ -1026,7 +1032,7 @@ button {
   background: rgba(255, 255, 255, 0.07);
 }
 
-.mode-option[aria-selected='true'] {
+.mode-option[aria-checked='true'] {
   color: var(--accent-text);
   font-weight: 600;
 }
@@ -1216,9 +1222,7 @@ button {
   margin-top: 0;
 }
 
-/* The field a document goes into, above the control that adds one — the rail shows the
-   field it uploads into, so the two read as one thing. */
-
+/* The field a document goes into, stated beside the heading of the list it lands in. */
 .field-fixed {
   padding: 5px 10px;
   background: rgba(255, 255, 255, 0.06);

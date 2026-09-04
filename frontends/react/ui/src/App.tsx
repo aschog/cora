@@ -202,6 +202,12 @@ export default function App() {
      belonging to none is answered in the default field. */
   const home = fields.length === 1 ? fields[0] : anyField
 
+  /** Whether the strip over the conversation is already naming the field, which is the
+   *  one case the rail leaves it unsaid. Both halves here rather than one in each
+   *  component: a rule split across two is a rule that can say no twice, and a field
+   *  named nowhere still takes the uploads. */
+  const namedAbove = pin !== null && fields.length > 0
+
   /** Which field the rail shows and uploads into, in one expression rather than in the
    *  several places that used to write it — a pin outranks the conversation's own turns
    *  because a pinned conversation has one field for good, and a conversation that has
@@ -740,7 +746,7 @@ export default function App() {
               <DocumentRail
                 documents={documents}
                 cited={cited}
-                field={pin === null ? field : null}
+                field={namedAbove ? null : field}
                 onOpen={open}
                 onUpload={uploaded}
                 upload={notice}

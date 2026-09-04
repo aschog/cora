@@ -13,6 +13,7 @@ type Props = {
 const CHAT = 'Chat'
 const PICK = 'Plugin'
 const ANSWER_IN = 'Answer in'
+const TRIGGER = 'mode-plugin'
 const ONE_WAY = 'A conversation keeps the field it is pinned to. Start a new one for another.'
 const FROM_NEXT = 'From your next question on.'
 
@@ -24,7 +25,11 @@ const FROM_NEXT = 'From your next question on.'
  *
  * Two segments whatever a deployment loaded, because the choice a reader makes is between
  * letting cora route and naming a field, not between eight fields. Which field is the
- * second question, and the list answers it.
+ * second question, and the menu answers it.
+ *
+ * `Chat` is a toggle and the second segment is a menu button, rather than both being
+ * halves of one radio group: a control that is also a disclosure cannot be a radio, whose
+ * whole claim is that it is one of a set of values with nothing behind it.
  *
  * A pin picked here is not written anywhere yet: it lives in the thread's own state, and
  * only a turn writes there. `fixed` is what says a turn has.
@@ -32,6 +37,7 @@ const FROM_NEXT = 'From your next question on.'
 export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -42,11 +48,19 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
     return () => document.removeEventListener('mousedown', away)
   }, [open])
 
+  /* The menu stands over the conversation, so shutting it has to be reachable from the
+     keyboard that opened it — and the focus goes back where it came from, or a reader
+     who escapes the menu is left nowhere. */
+  const escape = (event: { key: string }) => {
+    if (event.key !== 'Escape') return
+    setOpen(false)
+    trigger.current?.focus()
+  }
+
   if (available.length === 0) return null
 
   /* Settled by a turn, there is nothing left to pick: the strip becomes the name it
-     settled on. A control that can no longer be used is not drawn as one — the same
-     move the rail's `Upload into` makes. */
+     settled on. A control that can no longer be used is not drawn as one. */
   if (fixed && pin !== null)
     return (
       <div className="modes">
@@ -63,11 +77,10 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
 
   return (
     <div className="modes">
-      <div className="mode-strip" role="radiogroup" aria-label={ANSWER_IN}>
+      <div className="mode-strip" role="group" aria-label={ANSWER_IN}>
         <button
-          role="radio"
           className="mode"
-          aria-checked={pin === null}
+          aria-pressed={pin === null}
           onClick={() => {
             setOpen(false)
             onPin('')
@@ -75,12 +88,13 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
         >
           {CHAT}
         </button>
-        <div className="mode-wrap" ref={wrap}>
+        <div className="mode-wrap" ref={wrap} onKeyDown={escape}>
           <button
-            role="radio"
+            ref={trigger}
+            id={TRIGGER}
             className="mode"
-            aria-checked={pin !== null}
-            aria-haspopup="listbox"
+            aria-pressed={pin !== null}
+            aria-haspopup="menu"
             aria-expanded={open}
             onClick={() => setOpen((shown) => !shown)}
           >
@@ -94,13 +108,13 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
             )}
           </button>
           {open && (
-            <ul className="mode-menu" role="listbox" aria-label={ANSWER_IN}>
+            <ul className="mode-menu" role="menu" aria-labelledby={TRIGGER}>
               {available.map((scope) => (
-                <li key={scope}>
+                <li key={scope} role="none">
                   <button
-                    role="option"
+                    role="menuitemradio"
                     className="mode-option"
-                    aria-selected={pin === scope}
+                    aria-checked={pin === scope}
                     onClick={() => {
                       onPin(scope)
                       setOpen(false)
@@ -114,9 +128,7 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
           )}
         </div>
       </div>
-      <span className={pin === null ? 'told-not-shown' : 'scope-note'}>
-        {pin === null ? '' : FROM_NEXT}
-      </span>
+      {pin !== null && <span className="scope-note">{FROM_NEXT}</span>}
     </div>
   )
 }
