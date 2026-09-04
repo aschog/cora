@@ -151,11 +151,8 @@ export default function App() {
      none lands. The server's answer rather than a constant here: it is one fact, and
      the page is not where it is decided. */
   const [anyField, setAnyField] = useState('')
-  /* Two of the four things the rail's field is settled from, and the only two the page
-     holds: what the reader picked for this conversation, and the field this
-     conversation's own turns were answered in. Both are the conversation's, so both are
-     dropped when it is left. */
-  const [picked, setPicked] = useState<string | null>(null)
+  /* The field this conversation's own turns were answered in. The conversation's, so it
+     is dropped when it is left. */
   const [answered, setAnswered] = useState<string | null>(null)
   const [facts, setFacts] = useState<Fact[]>([])
   const [sessions, setSessions] = useState<Session[]>([])
@@ -206,12 +203,11 @@ export default function App() {
   const home = fields.length === 1 ? fields[0] : anyField
 
   /** Which field the rail shows and uploads into, in one expression rather than in the
-   *  several places that used to write it — a pin outranks a pick because a pinned
-   *  conversation has one field for good; a pick outranks the conversation's own turns
-   *  because the reader asking for a field is later news than the last answer; and a
-   *  conversation that has said nothing sits at home. Derived, so nothing can race it:
-   *  every writer below settles one of the inputs and none settles the answer. */
-  const field = pin ?? picked ?? answered ?? home
+   *  several places that used to write it — a pin outranks the conversation's own turns
+   *  because a pinned conversation has one field for good, and a conversation that has
+   *  said nothing sits at home. Derived, so nothing can race it: every writer below
+   *  settles one of the inputs and none settles the answer. */
+  const field = pin ?? answered ?? home
 
   /** What the page shows around the conversation, loaded together: one banner for all
    *  of it, and a load that goes through clears the last one's. Loading the badge on
@@ -495,7 +491,6 @@ export default function App() {
     setNotice(null)
     setPin(null)
     setFixedPin(false)
-    setPicked(null)
     setAnswered(null)
     refresh()
   }
@@ -695,7 +690,6 @@ export default function App() {
       /* A conversation nothing pinned is still in a field: routing settled one per turn
          and the last of them is where it stands. The pick goes with the conversation
          that made it. */
-      setPicked(null)
       setAnswered(answeredIn(kept.at(-1)?.result ?? { scopes: [] }))
     })
     if (outcome === 'unreadable') setTrouble(UNDRAWABLE)
@@ -746,11 +740,7 @@ export default function App() {
               <DocumentRail
                 documents={documents}
                 cited={cited}
-                fields={fields}
                 field={field}
-                anyField={anyField}
-                fixedField={pin !== null}
-                onField={setPicked}
                 onOpen={open}
                 onUpload={uploaded}
                 upload={notice}

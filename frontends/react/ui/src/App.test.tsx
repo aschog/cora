@@ -2846,9 +2846,7 @@ test('the rail lists and uploads into the field it is set to', async () => {
   render(<App />)
   await screen.findByText('notes.md')
 
-  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
-    target: { value: 'travel' },
-  })
+  pickPlugin('travel')
 
   expect(await screen.findByText('kyoto.md')).toBeTruthy()
   expect(screen.queryByText('notes.md')).toBeNull()
@@ -2881,7 +2879,7 @@ test('a pinned conversation uploads into its own field', async () => {
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
   fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
   await waitFor(() =>
-    expect(screen.getByLabelText('Upload into').textContent).toBe('travel'),
+    expect(screen.getByLabelText('YOUR DOCUMENTS').textContent).toBe('travel'),
   )
 
   upload('kyoto.md')
@@ -2908,15 +2906,14 @@ test('leaving a pinned conversation returns the rail to the default field', asyn
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
   fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
   await waitFor(() =>
-    expect(screen.getByLabelText('Upload into').textContent).toBe('travel'),
+    expect(screen.getByLabelText('YOUR DOCUMENTS').textContent).toBe('travel'),
   )
 
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
   await waitFor(() =>
     expect(
-      (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement)
-        .value,
+      screen.getByLabelText('YOUR DOCUMENTS').textContent,
     ).toBe('cora'),
   )
 })
@@ -2960,9 +2957,7 @@ test('a filename in two fields never opens the other field’s copy', async () =
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
   await screen.findByText(/From the default field/)
 
-  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
-    target: { value: 'travel' },
-  })
+  pickPlugin('travel')
   await waitFor(() =>
     expect(
       screen.getByRole('button', { name: 'notes.md' }).hasAttribute('disabled'),
@@ -2973,9 +2968,9 @@ test('a filename in two fields never opens the other field’s copy', async () =
   expect(opened).toEqual([])
 })
 
-test('a single loaded field is where uploads go, with nothing to choose', async () => {
-  /* Routing has nothing to choose between, so every turn runs in that field — a rail
-     offering the default one beside it would take documents no turn could ever cite. */
+test('a single loaded field is where uploads go', async () => {
+  /* Routing has nothing to choose between, so every turn runs in that field — and the
+     rail states it, because an upload landing anywhere else could never be cited. */
   let into: string | null = null
   const one: Record<string, unknown> = {
     ...served,
@@ -2995,9 +2990,8 @@ test('a single loaded field is where uploads go, with nothing to choose', async 
   )
   render(<App />)
   await waitFor(() =>
-    expect(screen.getByLabelText('Upload into').textContent).toBe('fitness'),
+    expect(screen.getByLabelText('YOUR DOCUMENTS').textContent).toBe('fitness'),
   )
-  expect(screen.queryByRole('combobox', { name: /upload into/i })).toBeNull()
 
   upload('plan.md')
 
@@ -3072,7 +3066,7 @@ test('a resumed answer does not move the rail of the conversation the reader mov
   await flushed()
 
   expect(
-    (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+    screen.getByLabelText('YOUR DOCUMENTS').textContent,
   ).toBe('cora')
 })
 
@@ -3123,7 +3117,7 @@ test('reopening an unpinned conversation draws it in the field it was answered i
 
   await waitFor(() =>
     expect(
-      (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+      screen.getByLabelText('YOUR DOCUMENTS').textContent,
     ).toBe('travel'),
   )
   expect(await screen.findByText('kyoto.md')).toBeTruthy()
@@ -3208,16 +3202,16 @@ test('a conversation reopened after a pinned one is still drawn in its own field
 
   fireEvent.click(await screen.findByRole('button', { name: new RegExp(OLDER.question) }))
   await waitFor(() =>
-    expect(screen.getByLabelText('Upload into').textContent).toBe('travel'),
+    expect(screen.getByLabelText('YOUR DOCUMENTS').textContent).toBe('travel'),
   )
   fireEvent.click(await screen.findByRole('button', { name: new RegExp(earlier.question) }))
   await waitFor(() =>
-    expect(screen.getByRole('combobox', { name: /upload into/i })).toBeTruthy(),
+    expect(screen.getByLabelText('YOUR DOCUMENTS')).toBeTruthy(),
   )
   await flushed()
 
   expect(
-    (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+    screen.getByLabelText('YOUR DOCUMENTS').textContent,
   ).toBe('fitness')
 })
 
@@ -3231,7 +3225,7 @@ test('answering a decision moves the rail to the field it settled', async () => 
 
   await waitFor(() =>
     expect(
-      (screen.getByRole('combobox', { name: /upload into/i }) as HTMLSelectElement).value,
+      screen.getByLabelText('YOUR DOCUMENTS').textContent,
     ).toBe('travel'),
   )
 })
@@ -3269,13 +3263,9 @@ test('a listing that failed for a field left behind neither banners nor clears',
   render(<App />)
   await screen.findByText('notes.md')
 
-  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
-    target: { value: 'travel' },
-  })
+  pickPlugin('travel')
   await flushed()
-  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
-    target: { value: 'cora' },
-  })
+  fireEvent.click(screen.getByRole('radio', { name: 'Chat' }))
   expect(
     await screen.findByText('The knowledge base is temporarily unavailable.'),
   ).toBeTruthy()
@@ -3319,13 +3309,9 @@ test('a listing that failed for a field left behind raises no banner about it', 
   render(<App />)
   await screen.findByText('notes.md')
 
-  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
-    target: { value: 'travel' },
-  })
+  pickPlugin('travel')
   await flushed()
-  fireEvent.change(screen.getByRole('combobox', { name: /upload into/i }), {
-    target: { value: 'cora' },
-  })
+  fireEvent.click(screen.getByRole('radio', { name: 'Chat' }))
   await flushed()
 
   release()
