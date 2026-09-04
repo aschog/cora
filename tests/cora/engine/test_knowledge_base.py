@@ -414,3 +414,89 @@ def test_a_passage_whose_file_was_cut_short_is_left_out(
 
     with running_in(frozenset({FITNESS})):
         assert kb.search("intensity", k=5) == []
+
+
+def test_forgetting_a_document_drops_its_passages_and_its_file(
+    kb: KnowledgeBase, documents: FakeDocuments, retriever: FakeRetriever
+) -> None:
+    """One call over both halves: a document gone from one of them is still half there
+    — listed and unopenable, or a file nothing can reach."""
+    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    kb.add_file(KYOTO, "kyoto.md", scope=FITNESS)
+
+    kb.forget(FITNESS, "plan.md")
+
+    assert kb.list_sources(FITNESS) == ["kyoto.md"]
+    assert documents.read(FITNESS, sha256(PLAN).hexdigest()) is None
+    with running_in(frozenset({FITNESS})):
+        assert [hit.chunk.source for hit in kb.search("intensity", k=5)] == ["kyoto.md"]
+
+
+def test_forgetting_a_name_uploaded_twice_takes_both_uploads(
+    kb: KnowledgeBase, documents: FakeDocuments
+) -> None:
+    """The rail lists a name and the stores keep uploads, so one row may be two
+    documents: what the reader deleted is the row."""
+    edited = PLAN + b" And it deloads in the fifth."
+    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    kb.add_file(edited, "plan.md", scope=FITNESS)
+
+    kb.forget(FITNESS, "plan.md")
+
+    assert kb.list_sources(FITNESS) == []
+    assert documents.read(FITNESS, sha256(PLAN).hexdigest()) is None
+    assert documents.read(FITNESS, sha256(edited).hexdigest()) is None
+
+
+def test_another_field_keeps_its_own_copy_of_a_deleted_document(
+    kb: KnowledgeBase, documents: FakeDocuments
+) -> None:
+    """A field owns its documents, so the same file in two of them is two documents."""
+    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    kb.add_file(PLAN, "plan.md", scope=TRAVEL)
+
+    kb.forget(FITNESS, "plan.md")
+
+    assert kb.list_sources(TRAVEL) == ["plan.md"]
+    assert documents.read(TRAVEL, sha256(PLAN).hexdigest()) == PLAN.decode()
+
+
+def test_the_index_is_dropped_before_the_file(kb: KnowledgeBase) -> None:
+    """Ingestion keeps the text and then indexes it, so a passage is never citable
+    before it is openable. Deleting runs that backwards: a failure halfway leaves a
+    file nothing can reach, rather than a document listed with its text gone."""
+    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    broken = KnowledgeBase(
+        embedder=kb.embedder,
+        retriever=kb.retriever,
+        loaders=kb.loaders,
+        documents=FailingDocuments(),
+    )
+
+    with pytest.raises(DocumentStoreError):
+        broken.forget(FITNESS, "plan.md")
+
+    assert broken.list_sources(FITNESS) == [], "the index went first"
+
+
+def test_a_deleted_document_is_indexed_again_when_it_is_uploaded_again(
+    kb: KnowledgeBase, documents: FakeDocuments
+) -> None:
+    """The way back from a mistake: the bytes name the upload, and nothing that would
+    make them look already-indexed is left behind."""
+    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    kb.forget(FITNESS, "plan.md")
+
+    added = kb.add_file(PLAN, "plan.md", scope=FITNESS)
+
+    assert added > 0
+    assert kb.list_sources(FITNESS) == ["plan.md"]
+    assert documents.read(FITNESS, sha256(PLAN).hexdigest()) == PLAN.decode()
+
+
+def test_forgetting_a_name_nothing_was_uploaded_under_is_not_an_error(
+    kb: KnowledgeBase,
+) -> None:
+    kb.forget(FITNESS, "never-uploaded.md")
+
+    assert kb.list_sources(FITNESS) == []

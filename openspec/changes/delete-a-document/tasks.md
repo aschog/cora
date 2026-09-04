@@ -27,11 +27,12 @@ by a person reading it. The page's items are `vitest`, the rest are `pytest`.
 
 ## 4. One call over both halves
 
-- [ ] 4.1 Deleting a name dropping its passages and its file in one call
-- [ ] 4.2 A name uploaded twice taking both uploads with it
-- [ ] 4.3 The index dropped before the file, so a failure leaves nothing reachable
-- [ ] 4.4 The same field's other documents, and another field's copy, both untouched
-- [ ] 4.5 A deleted document indexed again when the same file is uploaded
+- [x] 4.1 Deleting a name dropping its passages and its file in one call
+- [x] 4.2 A name uploaded twice taking both uploads with it
+- [x] 4.3 The index dropped before the file, so a failure leaves nothing reachable
+- [x] 4.4 The same field's other documents, and another field's copy, both untouched
+- [x] 4.5 A deleted document indexed again when the same file is uploaded
+- [x] 4.6 A name nothing was uploaded under forgotten without complaint
 
 ## 5. The endpoint
 
