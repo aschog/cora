@@ -12,9 +12,9 @@ on.
 
 ### Requirement: A conversation can be deleted from the list
 
-The system SHALL offer, for each conversation it lists, a way to delete that one. A
-deleted conversation SHALL be gone from the list, and its turns SHALL no longer be
-readable.
+The system SHALL offer, for each conversation it lists, a way to delete that one, named
+for the conversation it would delete. A deleted conversation SHALL be gone from the
+list, and its turns SHALL no longer be readable.
 
 #### Scenario: A deleted conversation leaves the list
 
@@ -27,6 +27,43 @@ readable.
 - **GIVEN** a conversation with two recorded turns
 - **WHEN** it is deleted
 - **THEN** reading that conversation's turns finds none
+
+#### Scenario: Each control says which conversation it deletes
+
+- **GIVEN** two listed conversations
+- **WHEN** the list is drawn
+- **THEN** each delete control is named for the conversation it would delete
+
+### Requirement: The delete is uncovered by a leftward gesture
+
+A listed conversation SHALL keep its delete control covered until a leftward gesture on
+that row uncovers it. The gesture SHALL uncover and delete nothing itself, and a
+gesture back SHALL cover it again. The control SHALL stay reachable without a pointer,
+so a delete is never a gesture nobody can make.
+
+#### Scenario: A leftward gesture uncovers the delete
+
+- **GIVEN** a listed conversation the reader has left
+- **WHEN** the row is drawn leftward
+- **THEN** its delete control is uncovered, and nothing has been deleted
+
+#### Scenario: The uncovered control is what deletes
+
+- **GIVEN** a row drawn leftward
+- **WHEN** the control it uncovered is used
+- **THEN** that conversation is deleted
+
+#### Scenario: A gesture back covers it again
+
+- **GIVEN** a row drawn leftward
+- **WHEN** it is drawn back
+- **THEN** the control is covered, and nothing has been deleted
+
+#### Scenario: A row in use does not answer the gesture
+
+- **GIVEN** the conversation open on the page
+- **WHEN** its row is drawn leftward
+- **THEN** nothing is uncovered
 
 ### Requirement: Deleting a conversation deletes the thread it ran on
 

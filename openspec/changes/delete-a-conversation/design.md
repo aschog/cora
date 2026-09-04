@@ -10,7 +10,7 @@ when there is nothing to drop, and a list that cannot delete the conversation it
 being read through.
 
 **Non-Goals** — deleting every conversation at once. Deleting one turn out of a
-conversation. A confirmation step, which forgetting a fact does not have. Editing a
+conversation. A dialog over the page, which the gesture below stands in for. Editing a
 conversation's opening line, which is what a tidier list would otherwise want.
 
 ## Decisions
@@ -50,6 +50,25 @@ conversation's opening line, which is what a tidier list would otherwise want.
 - No step, no trace, no graph run: nothing is being answered, so there is nothing to walk.
 - The endpoint is shaped like forgetting a fact — `DELETE`, no body, `204`, and a store
   that went away is the 503 that shape already gives.
+
+**The delete is uncovered by a gesture, not offered outright.**
+
+- The row slides under the pointer and snaps open or shut when it is let go.
+- Uncovering is the confirmation: the gesture asks, the control answers, and no
+  overlay stands over the page.
+- Rejected: deleting when the drag passes a threshold — one careless flick loses a
+  conversation, and there is no undo.
+- Rejected: a dialog — a modal for one row of a rail, and the reader has already said
+  which conversation by dragging its row.
+- The control stays in the page and named, so a keyboard reaches it and the gesture is
+  what reveals it rather than what permits it.
+
+**The control is an icon, named for its conversation.**
+
+- A word per row repeated down a narrow rail reads as noise.
+- Drawn inline, as the rail's own toggle is: no dependency for one glyph.
+- The accessible name is the conversation, not the verb, so it says which one is about
+  to go — and that name is what the page's tests reach it by.
 
 **The page follows the rule the list already has.**
 

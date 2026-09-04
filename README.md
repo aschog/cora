@@ -76,8 +76,9 @@ thread that could change field is a thread whose earlier turns mean something el
 second field is a second conversation. Naming one scope leaves nothing to route between,
 which is how a single-field deployment stays one.
 
-A conversation you are finished with is deleted from the list under *SESSIONS*, and
-that deletes both halves of it: the turns you came back through, and the thread they
+A conversation you are finished with is deleted from the list under *SESSIONS*: draw its
+row leftward and the delete comes out from under it, so a conversation goes when you
+have said which one and then said so. That deletes both halves of it: the turns you came back through, and the thread they
 were answered on — its pin, what the model was told, and any question it stopped on.
 One is not deletable without the other, because a record that is gone and a thread that
 is not is a conversation listed nowhere and still there. The one you are reading offers

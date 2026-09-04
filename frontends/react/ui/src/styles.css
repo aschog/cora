@@ -820,9 +820,41 @@ button {
 }
 
 .session-row {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+
+/* What a gesture moves, and what covers the delete until it is made. Its own background,
+   so the control behind it is hidden rather than merely overlapped. */
+.session-slide {
+  position: relative;
+  z-index: 1;
+  background: var(--surface);
+  touch-action: pan-y;
+  transition: transform 120ms ease-out;
+}
+
+.session-delete {
+  position: absolute;
+  inset: 0 0 0 auto;
   display: flex;
-  align-items: baseline;
-  gap: var(--s2);
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  color: var(--magenta);
+}
+
+.session-delete:hover {
+  color: var(--accent-hover);
+}
+
+/* A keyboard cannot make the gesture, so the control drawing focus draws the row back
+   itself. Its own focus and not the row's: focus lands on the conversation as soon as a
+   pointer presses it, and a row that flew open on that would fight the drag. The inline
+   transform is the gesture's, which is why this has to shout over it. */
+.session-row:has(.session-delete:focus-visible) .session-slide {
+  transform: translateX(-56px) !important;
 }
 
 .session {

@@ -56,3 +56,15 @@ reading it.
 
 - [x] 7.1 Drop 1.1's `xfail` marker and watch the outer test pass — ticked with group
       5, which is where the outer test's own surface was finished
+
+## 8. Uncovered by a gesture, drawn as an icon
+
+Review feedback, after 7.1: a delete offered outright is one click from gone, and a word
+per row is noise in a narrow rail.
+
+- [x] 8.1 A leftward gesture on a row uncovering its delete, with nothing deleted by it
+- [x] 8.2 The uncovered control deleting the conversation whose row it came out of
+- [x] 8.3 A gesture back covering it again, with nothing deleted
+- [x] 8.4 The row of the conversation being read not answering the gesture
+- [x] 8.5 The row following the pointer while the gesture is under way
+- [x] 8.6 The control drawn as an icon, named for the conversation it deletes
