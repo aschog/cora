@@ -47,7 +47,8 @@ here pins the conversation, so do this in one you are willing to keep in travel.
 ## 4. Ask it something
 
 Upload a document (txt/md/pdf) in the documents rail on the left. It lands in the field
-the rail names beside *YOUR DOCUMENTS*, and the rail lists that field's documents — a
+the conversation is running in — whichever *+ Plugin* is showing, or the one beside
+*YOUR DOCUMENTS* while that says *Chat* — and the rail lists that field's documents. A
 turn answers from the field it runs in, so a document put in the other one is a document
 it will not find. Then ask about it: answers cite the passages they used. Click
 a `[1]` in an answer and that document opens with the cited passage highlighted, read

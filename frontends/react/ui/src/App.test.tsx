@@ -125,6 +125,15 @@ const pickPlugin = (name: string) => {
   fireEvent.click(screen.getByRole('menuitemradio', { name }))
 }
 
+/** The field the rail says it lists and uploads into, or `null` where it names none.
+ *  Read off the heading row, because that is where a reader reads it: the heading names
+ *  the list and the field follows it, with no ARIA in between. `null` rather than an
+ *  empty string, so a field drawn with nothing in it is not read as no field drawn. */
+const railField = () => {
+  const row = screen.getByRole('heading', { name: 'YOUR DOCUMENTS' }).parentElement!
+  return row.childElementCount > 1 ? row.lastElementChild!.textContent : null
+}
+
 
 test('the plan fills while the turn runs, then the answer lands with its citation', async () => {
   render(<App />)
@@ -2912,7 +2921,7 @@ test('leaving a pinned conversation returns the rail to the default field', asyn
 
   await waitFor(() =>
     expect(
-      screen.getByRole('definition').textContent,
+      railField(),
     ).toBe('cora'),
   )
 })
@@ -2989,7 +2998,7 @@ test('a single loaded field is where uploads go', async () => {
   )
   render(<App />)
   await waitFor(() =>
-    expect(screen.getByRole('definition').textContent).toBe('fitness'),
+    expect(railField()).toBe('fitness'),
   )
 
   upload('plan.md')
@@ -3074,15 +3083,45 @@ test('Chat is a way back to the default field, not only away from a pin', async 
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
   await screen.findByText(/Book it early/)
   await waitFor(() =>
-    expect(screen.getByRole('definition').textContent).toBe('travel'),
+    expect(railField()).toBe('travel'),
   )
 
   fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
 
   await waitFor(() =>
-    expect(screen.getByRole('definition').textContent).toBe('cora'),
+    expect(railField()).toBe('cora'),
   )
   expect(await screen.findByText('notes.md')).toBeTruthy()
+})
+
+test('a pinned conversation the page cannot list the fields of is still named somewhere', async () => {
+  /* The strip needs the loaded fields to draw itself and a pin needs only the thread, so
+     a scopes read that failed leaves a conversation pinned with no strip to say so. A
+     parked card is picked up outside the load that failed, which is how the page reaches
+     that state. The rail is what names the field then — otherwise the field taking the
+     uploads is named nowhere. */
+  globalThis.sessionStorage.setItem('cora.parked', 'old')
+  const half: Record<string, unknown> = {
+    '/api/sessions/old': [OLDER],
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (route(path) === '/api/scopes')
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({ error: 'No.' }),
+        } as unknown as Response
+      const body = half[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
+    }),
+  )
+  render(<App />)
+
+  await waitFor(() => expect(railField()).toBe('travel'))
+  expect(screen.queryByRole('button', { name: 'Chat' })).toBeNull()
 })
 
 test('the field list closes on Escape, and hands the trigger its focus back', async () => {
@@ -3162,7 +3201,7 @@ test('a pinned conversation is named over the conversation, and not twice', asyn
   await waitFor(() =>
     expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
   )
-  expect(screen.queryByRole('definition')).toBeNull()
+  expect(railField()).toBeNull()
 })
 
 test('the rail names no field before the deployment has said which there are', async () => {
@@ -3173,7 +3212,7 @@ test('the rail names no field before the deployment has said which there are', a
   render(<App />)
 
   await screen.findByText('YOUR DOCUMENTS')
-  expect(screen.queryByRole('definition')).toBeNull()
+  expect(railField()).toBeNull()
 })
 
 test('a resumed answer does not move the rail of the conversation the reader moved to', async () => {
@@ -3196,7 +3235,7 @@ test('a resumed answer does not move the rail of the conversation the reader mov
   await flushed()
 
   expect(
-    screen.getByRole('definition').textContent,
+    railField(),
   ).toBe('cora')
 })
 
@@ -3247,7 +3286,7 @@ test('reopening an unpinned conversation draws it in the field it was answered i
 
   await waitFor(() =>
     expect(
-      screen.getByRole('definition').textContent,
+      railField(),
     ).toBe('travel'),
   )
   expect(await screen.findByText('kyoto.md')).toBeTruthy()
@@ -3336,12 +3375,12 @@ test('a conversation reopened after a pinned one is still drawn in its own field
   )
   fireEvent.click(await screen.findByRole('button', { name: new RegExp(earlier.question) }))
   await waitFor(() =>
-    expect(screen.getByRole('definition')).toBeTruthy(),
+    expect(railField()).not.toBeNull(),
   )
   await flushed()
 
   expect(
-    screen.getByRole('definition').textContent,
+    railField(),
   ).toBe('fitness')
 })
 
@@ -3355,7 +3394,7 @@ test('answering a decision moves the rail to the field it settled', async () => 
 
   await waitFor(() =>
     expect(
-      screen.getByRole('definition').textContent,
+      railField(),
     ).toBe('travel'),
   )
 })

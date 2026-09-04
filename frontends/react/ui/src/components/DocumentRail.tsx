@@ -28,12 +28,14 @@ export default function DocumentRail({
 }: Props) {
   return (
     <>
-      {/* A term and its value, so the heading names the field natively rather than through
-          an `aria-labelledby` on a `span`, which carries no role for a name to land on. */}
-      <dl className="rail-heading">
-        <dt className="micro">YOUR DOCUMENTS</dt>
-        {field && <dd className="field-fixed">{field}</dd>}
-      </dl>
+      {/* The heading names the list, and the field follows it in reading order. No ARIA
+          between them: an association is what you reach for when the order cannot say it,
+          and here it can — a `dl` would claim the heading is a term, and leave a `dt`
+          with no `dd` in every state where no field is named. */}
+      <div className="rail-heading">
+        <h2 className="micro">YOUR DOCUMENTS</h2>
+        {field && <span className="field-fixed">{field}</span>}
+      </div>
 
       <label className="upload">
         <span>＋</span>

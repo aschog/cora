@@ -158,10 +158,9 @@ button {
   border-right: 1px solid var(--hairline);
 }
 
-.rail-heading,
-.rail-heading dt,
-.rail-heading dd {
-  margin: 0;
+.rail-heading h2 {
+  font-size: inherit;
+  font-weight: inherit;
 }
 
 .rail-heading {
