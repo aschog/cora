@@ -105,6 +105,32 @@ forecast has none, so the answer says it in cora's own prose and the trace is th
 of the call. A service that is down costs the turn that one call — a friendly sentence,
 and the conversation intact.
 
+And it prices what it plans. Give it a route, a budget and a month you might go rather
+than a date you have fixed, and it comes back with the three cheapest fares and the
+three cheapest places to stay, each priced and dated. A window is a search rather than a
+lookup — the service wants a departure date, so cora tries one candidate a week across
+the range and keeps the best of all of them, widening the interval rather than quietly
+searching less when the range is long. Your budget and your restrictions go *into* the
+search, so an option you ruled out is one you never see rather than one shown with a
+caveat. This is the one thing in cora that needs a key: set
+`CORA_PLUGIN_TRAVEL_SERPAPI_KEY` and the two searches appear, set nothing and they are
+never offered — a tool that can only fail is worse than a tool that was never there.
+Prices are what the aggregator showed, not a seat held for you, and the answer says so.
+
+You can drive all of that with no account and no network.
+`scripts/fake_search_service.py` answers in the same two shapes and makes its prices out
+of the dates it is asked about, so a window really does have a cheapest week in it:
+
+```sh
+uv run python scripts/fake_search_service.py    # in its own terminal
+export CORA_PLUGIN_TRAVEL_SERPAPI_KEY=anything
+export CORA_PLUGIN_TRAVEL_SEARCH_URL=http://127.0.0.1:8909/search
+```
+
+`CORA_PLUGIN_TRAVEL_SEARCH_URL` is where the searches go, and the real service is where
+they go unless you say otherwise — nothing in the plugin branches on it, so what you are
+driving is the code that ships.
+
 And it acts, but only when you say so. A tool that declares it changes something outside
 cora does not run on the model's word: the turn stops, the page shows the call — what the
 tool says it does, and the arguments the model wrote — and nothing happens until you
