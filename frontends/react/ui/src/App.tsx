@@ -129,6 +129,12 @@ const UNDRAWABLE = 'That conversation could not be read.'
 const SESSION_GOES =
   'The thread and its plan are removed. Your documents and saved memory are ' +
   "untouched — this can't be undone."
+const FACT_GOES =
+  'cora stops using this in its answers. Your documents and your conversations are ' +
+  "untouched — this can't be undone."
+const EVERYTHING_GOES =
+  'Every fact cora has been told is forgotten. Your documents and your conversations ' +
+  "are untouched — this can't be undone."
 
 
 /** One line the page says about itself, and which of them it is. */
@@ -868,11 +874,31 @@ export default function App() {
           {tab === 'MEMORY' && (
             <MemoryPanel
               facts={facts}
-              onForget={(key) =>
-                cora.forget(key).then(refresh).catch(reportTo(setTrouble))
+              onForget={(fact) =>
+                setConfirming({
+                  head: 'FORGET THIS',
+                  subject: fact.text,
+                  said: FACT_GOES,
+                  confirm: 'Forget it',
+                  act: () =>
+                    void cora
+                      .forget(fact.key)
+                      .then(refresh)
+                      .catch(reportTo(setTrouble)),
+                })
               }
               onForgetEverything={() =>
-                cora.forgetEverything().then(refresh).catch(reportTo(setTrouble))
+                setConfirming({
+                  head: 'FORGET EVERYTHING',
+                  subject: 'Everything cora remembers about you',
+                  said: EVERYTHING_GOES,
+                  confirm: 'Forget everything',
+                  act: () =>
+                    void cora
+                      .forgetEverything()
+                      .then(refresh)
+                      .catch(reportTo(setTrouble)),
+                })
               }
             />
           )}

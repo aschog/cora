@@ -17,18 +17,18 @@ reading it.
 
 ## 3. The memory rail asks
 
-- [ ] 3.1 The control on a fact's row asking rather than forgetting
-- [ ] 3.2 A confirmed question forgetting that one fact
-- [ ] 3.3 Keeping the fact forgetting nothing, and asking again next time
-- [ ] 3.4 Forgetting everything asking first, naming every fact rather than one
-- [ ] 3.5 That question confirmed emptying the rail
+- [x] 3.1 The control on a fact's row asking rather than forgetting
+- [x] 3.2 A confirmed question forgetting that one fact
+- [x] 3.3 Keeping the fact forgetting nothing, and asking again next time
+- [x] 3.4 Forgetting everything asking first, naming every fact rather than one
+- [x] 3.5 That question confirmed emptying the rail
 
 ## 4. The row is the conversation's row
 
-- [ ] 4.1 A fact's control drawn as the icon, named for the fact it would forget
-- [ ] 4.2 The rail holding no word `forget` on a row
-- [ ] 4.3 Forgetting everything offered only where there is anything to forget
+- [x] 4.1 A fact's control drawn as the icon, named for the fact it would forget
+- [x] 4.2 The rail holding no word `forget` on a row
+- [x] 4.3 Forgetting everything offered only where there is anything to forget
 
 ## 5. Done
 
-- [ ] 5.1 Drop 1.1's `test.fails` and watch the outer test pass
+- [x] 5.1 Drop 1.1's `test.fails` and watch the outer test pass

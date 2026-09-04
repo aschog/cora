@@ -3981,7 +3981,7 @@ const remembering = (...facts: { key: string; text: string }[]) => {
 const forgetting = (fact: { text: string }) =>
   screen.getByRole('button', { name: `Delete ${fact.text}` })
 
-test.fails('a fact is forgotten only once i have said so', async () => {
+test('a fact is forgotten only once i have said so', async () => {
   const memory = remembering(FACT)
   render(<App />)
   fireEvent.click(screen.getByRole('tab', { name: 'MEMORY' }))
@@ -4002,4 +4002,73 @@ test.fails('a fact is forgotten only once i have said so', async () => {
 
   await waitFor(() => expect(memory.asked).toEqual(['/api/memory/f1']))
   await waitFor(() => expect(screen.queryByText(FACT.text)).toBeNull())
+})
+
+
+const ALSO = { key: 'f2', text: 'Four sessions a week.' }
+
+const memoryRail = async (...facts: { key: string; text: string }[]) => {
+  const memory = remembering(...facts)
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'MEMORY' }))
+  await screen.findByText(facts[0].text)
+  return memory
+}
+
+test('the control on a fact asks rather than forgetting it', async () => {
+  const memory = await memoryRail(FACT)
+
+  fireEvent.click(forgetting(FACT))
+
+  expect(screen.getByRole('dialog', { name: 'FORGET THIS' })).toBeTruthy()
+  expect(screen.getByText(/documents and your conversations are untouched/)).toBeTruthy()
+  expect(memory.asked).toEqual([])
+})
+
+test('a confirmed question forgets that one fact', async () => {
+  const memory = await memoryRail(FACT, ALSO)
+
+  fireEvent.click(forgetting(FACT))
+  fireEvent.click(screen.getByRole('button', { name: 'Forget it' }))
+
+  await waitFor(() => expect(screen.queryByText(FACT.text)).toBeNull())
+  expect(memory.asked).toEqual(['/api/memory/f1'])
+  expect(screen.getByText(ALSO.text)).toBeTruthy()
+})
+
+test('keeping a fact forgets nothing, and asks again next time', async () => {
+  const memory = await memoryRail(FACT)
+
+  fireEvent.click(forgetting(FACT))
+  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+
+  expect(memory.asked).toEqual([])
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(screen.getByText(FACT.text)).toBeTruthy()
+
+  fireEvent.click(forgetting(FACT))
+  expect(screen.getByRole('dialog')).toBeTruthy()
+})
+
+test('forgetting everything asks about every fact rather than one', async () => {
+  /* The most destructive control in either rail, and the one that was a single click. */
+  const memory = await memoryRail(FACT, ALSO)
+
+  fireEvent.click(screen.getByRole('button', { name: 'forget everything' }))
+
+  expect(screen.getByRole('dialog', { name: 'FORGET EVERYTHING' })).toBeTruthy()
+  expect(screen.getByText(/Every fact cora has been told/)).toBeTruthy()
+  expect(memory.asked).toEqual([])
+  expect(screen.getByText(FACT.text)).toBeTruthy()
+})
+
+test('that question confirmed empties the rail', async () => {
+  const memory = await memoryRail(FACT, ALSO)
+
+  fireEvent.click(screen.getByRole('button', { name: 'forget everything' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Forget everything' }))
+
+  await waitFor(() => expect(screen.queryByText(FACT.text)).toBeNull())
+  expect(screen.queryByText(ALSO.text)).toBeNull()
+  expect(memory.asked).toEqual(['/api/memory'])
 })

@@ -1,28 +1,31 @@
 import type { Fact } from '../api'
+import DeleteControl from './DeleteControl'
 
 type Props = {
   facts: Fact[]
-  onForget: (key: string) => void
+  /** The whole fact, not its key: what is about to go is put to the reader in its own
+   *  words, and only the fact carries them. */
+  onForget: (fact: Fact) => void
   onForgetEverything: () => void
 }
 
-export default function MemoryPanel({ facts, onForget, onForgetEverything }: Props) {
+export default function MemoryPanel({
+  facts,
+  onForget,
+  onForgetEverything,
+}: Props) {
   return (
     <div>
       <div className="saved-list">
         {facts.map((fact) => (
-          <div key={fact.key} className="saved-card">
-            <div className="saved-head">
-              <span className="saved-text">{fact.text}</span>
-              <button className="destructive" onClick={() => onForget(fact.key)}>
-                forget
-              </button>
-            </div>
+          <div key={fact.key} className="saved-row">
+            <span className="saved-text">{fact.text}</span>
+            <DeleteControl what={fact.text} onDelete={() => onForget(fact)} />
           </div>
         ))}
       </div>
       {facts.length > 0 && (
-        <button className="destructive forget-all" onClick={onForgetEverything}>
+        <button className="quiet forget-all" onClick={onForgetEverything}>
           forget everything
         </button>
       )}

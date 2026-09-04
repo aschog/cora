@@ -85,6 +85,12 @@ is not is a conversation listed nowhere and still there. The one you are reading
 no delete, and neither does one cora is still answering a question in: you leave the
 first, and wait for the second.
 
+A fact under *MEMORY* goes the same way: the same control at the end of its row, the same
+question first — and forgetting everything is asked about too, because it is the most
+destructive thing either rail offers. What a question says is what is lost *and* what is
+not: forgetting a fact leaves your documents and your conversations alone, and deleting a
+conversation leaves your documents and what cora remembers alone.
+
 A field owns its documents. Each one cora ingests is kept as a Markdown file of its
 cleaned text, under a directory named for the field it was uploaded into: `travel` holds
 `kyoto-8f21c0a4e9d3.md`, the upload's hash in the name so one filename uploaded twice is
