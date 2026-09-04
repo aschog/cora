@@ -2660,7 +2660,7 @@ test('a conversation is pinned to a field, and keeps it', async () => {
 
   /* Unpinned, cora reads every question. The pick binds what comes next, so it is the
      next question that carries it. */
-  fireEvent.change(screen.getByLabelText('Field'), { target: { value: 'fitness' } })
+  fireEvent.change(screen.getByLabelText('Answer in'), { target: { value: 'fitness' } })
   expect(screen.getByText(/next question/)).toBeTruthy()
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -2676,7 +2676,7 @@ test('a conversation is pinned to a field, and keeps it', async () => {
   /* The pin is in the thread's state now, so the control stops being a choice: a second
      field is a second conversation, and the reason is on the page for a screen reader. */
   expect(screen.queryByRole('combobox')).toBeNull()
-  expect(screen.getByLabelText('Field').textContent).toBe('fitness')
+  expect(screen.getByLabelText('Answer in').textContent).toBe('fitness')
   expect(screen.getByText(/Start a new one/)).toBeTruthy()
 })
 
@@ -2699,7 +2699,7 @@ test('a reopened conversation is drawn in the field it was pinned to', async () 
   fireEvent.click(screen.getByRole('button', { name: new RegExp(OLDER.question) }))
 
   /* The pin outlived the page because it is the thread's own state, not the page's. */
-  await waitFor(() => expect(screen.getByLabelText('Field').textContent).toBe('travel'))
+  await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('travel'))
   expect(screen.queryByRole('combobox')).toBeNull()
 })
 
@@ -2740,7 +2740,7 @@ test('the picker says what the thread holds, not what the reader picked', async 
   render(<App />)
   await screen.findByText('notes.md')
 
-  fireEvent.change(screen.getByLabelText('Field'), { target: { value: 'fitness' } })
+  fireEvent.change(screen.getByLabelText('Answer in'), { target: { value: 'fitness' } })
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
   })
@@ -2749,7 +2749,7 @@ test('the picker says what the thread holds, not what the reader picked', async 
 
   /* The turn failed, but it was admitted — so the thread is in that field now, and the
      control says so rather than offering a choice that would be refused. */
-  await waitFor(() => expect(screen.getByLabelText('Field').textContent).toBe('fitness'))
+  await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
   expect(screen.queryByRole('combobox')).toBeNull()
 })
 
@@ -2774,13 +2774,13 @@ test('a scope read that failed leaves the pin the page already knows about', asy
   render(<App />)
   await screen.findByText('notes.md')
 
-  fireEvent.change(screen.getByLabelText('Field'), { target: { value: 'fitness' } })
+  fireEvent.change(screen.getByLabelText('Answer in'), { target: { value: 'fitness' } })
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: 'Why am I stalling?' },
   })
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
   turn.release()
-  await waitFor(() => expect(screen.getByLabelText('Field').textContent).toBe('fitness'))
+  await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
 
   reachable = false
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -2791,7 +2791,7 @@ test('a scope read that failed leaves the pin the page already knows about', asy
 
   /* The read failed; the field the thread holds is not news the page has, so it keeps
      what it had rather than inventing a choice. */
-  await waitFor(() => expect(screen.getByLabelText('Field').textContent).toBe('fitness'))
+  await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
   expect(screen.queryByRole('combobox')).toBeNull()
 })
 

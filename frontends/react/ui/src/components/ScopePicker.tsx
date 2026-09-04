@@ -8,7 +8,7 @@ type Props = {
   onPin: (scope: string) => void
 }
 
-const UNPINNED = 'cora reads each question'
+const UNPINNED = 'cora'
 const ONE_WAY = 'A conversation keeps the field it is pinned to. Start a new one for another.'
 const FROM_NEXT = 'From your next question on.'
 
@@ -29,11 +29,11 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
           reads out — an orphaned `for` would leave the field with no name at all. */}
       {fixed && pin !== null ? (
         <span className="scope-label" id="scope-field">
-          Field
+          Answer in
         </span>
       ) : (
         <label className="scope-label" htmlFor="scope-pin">
-          Field
+          Answer in
         </label>
       )}
       {fixed && pin !== null ? (
