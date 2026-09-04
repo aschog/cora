@@ -36,11 +36,11 @@ reading it.
 
 ## 5. The endpoint
 
-- [ ] 5.1 `DELETE /api/sessions/{thread_id}` answering `204`, with the conversation off
+- [x] 5.1 `DELETE /api/sessions/{thread_id}` answering `204`, with the conversation off
       the listing
-- [ ] 5.2 The same request against a store that went away answering `503` and its
+- [x] 5.2 The same request against a store that went away answering `503` and its
       sentence
-- [ ] 5.3 Deleting the thread a turn is parked in, then resuming it, refused
+- [x] 5.3 Deleting the thread a turn is parked in, then resuming it, refused
 
 ## 6. The list on the page
 
@@ -54,4 +54,5 @@ reading it.
 
 ## 7. Done
 
-- [ ] 7.1 Drop 1.1's `xfail` marker and watch the outer test pass
+- [x] 7.1 Drop 1.1's `xfail` marker and watch the outer test pass — ticked with group
+      5, which is where the outer test's own surface was finished

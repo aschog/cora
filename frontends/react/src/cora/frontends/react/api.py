@@ -75,6 +75,7 @@ def api(
         Route("/api/uploads/{scope}/{upload}", _upload(app, scopes), methods=["GET"]),
         Route("/api/sessions", _sessions(app), methods=["GET"]),
         Route("/api/sessions/{thread_id}", _turns(app), methods=["GET"]),
+        Route("/api/sessions/{thread_id}", _delete(app), methods=["DELETE"]),
         Route("/api/sessions/{thread_id}/pending", _pending(app), methods=["GET"]),
         Route("/api/sessions/{thread_id}/scope", _scope(app), methods=["GET"]),
         Route("/api/memory", _memory(app), methods=["GET"]),
@@ -520,6 +521,21 @@ def _turns(app: App) -> Callable[[Request], Any]:
         return JSONResponse([payloads.turn(each) for each in turns])
 
     return kept
+
+
+def _delete(app: App) -> Callable[[Request], Any]:
+    """A conversation deleted, both halves of it, through the one call that drops both.
+
+    Shaped like forgetting a fact: no body, and nothing to say beyond that it is done.
+    A deployment recording no turns still has a thread to drop, so this is never a
+    request that finds nothing to do.
+    """
+
+    def one(request: Request) -> Response:
+        app.agent.forget(request.path_params["thread_id"])
+        return Response(status_code=NO_CONTENT)
+
+    return one
 
 
 def _memory(app: App) -> Callable[[Request], Any]:

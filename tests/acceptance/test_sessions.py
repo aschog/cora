@@ -39,7 +39,6 @@ def _listed(page: TestClient) -> list[str]:
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(strict=True, reason="the delete is not built yet")
 def test_a_conversation_i_delete_is_gone_from_both_stores(
     tmp_path: pathlib.Path,
 ) -> None:
