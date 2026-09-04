@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 
 type Props = {
-  /** The fields this deployment offers. None is a bare cora, and the picker is absent. */
+  /** The fields this deployment offers. Fewer than two is nothing to route between, and
+   *  the picker is absent. */
   available: string[]
   /** The field this conversation is fixed to, or nothing while cora reads each question. */
   pin: string | null
@@ -65,7 +66,10 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
     if (event.key === 'Escape') shut()
   }
 
-  if (available.length === 0) return null
+  /* One field is not a choice: both segments answer in it, and naming it would fix the
+     thread to it for good in exchange for nothing. None is a bare cora. Either way the
+     rail is what says which field the documents are in. */
+  if (available.length < 2) return null
 
   /* Settled by a turn, there is nothing left to pick: the strip becomes the name it
      settled on. A control that can no longer be used is not drawn as one. */

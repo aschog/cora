@@ -3001,9 +3001,38 @@ test('a single loaded field is where uploads go', async () => {
     expect(railField()).toBe('fitness'),
   )
 
+  /* Nothing to route between is nothing to choose between: both segments would answer in
+     the one field, and naming it would fix the thread to it for good in exchange for
+     nothing. A choice that changes no answer is not a choice. */
+  expect(screen.queryByRole('button', { name: 'Chat' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Plugin' })).toBeNull()
+
   upload('plan.md')
 
   await waitFor(() => expect(into).toBe('fitness'))
+})
+
+test('a single loaded field a conversation is already pinned to is still named somewhere', async () => {
+  /* A thread pinned when the deployment loaded two fields survives it loading one, and the
+     strip that would say so is gone with the choice. The rail names it then, the same way
+     it does when the fields could not be listed at all. */
+  globalThis.sessionStorage.setItem('cora.parked', 'old')
+  const one: Record<string, unknown> = {
+    ...served,
+    '/api/scopes': { available: ['travel'], default: 'cora' },
+    '/api/sessions/old': [OLDER],
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async (path: string) =>
+        ({ ok: true, json: async () => one[route(path)] ?? [] }) as unknown as Response,
+    ),
+  )
+  render(<App />)
+
+  await waitFor(() => expect(railField()).toBe('travel'))
 })
 
 test('an unpinned turn leaves the rail in the field it was answered in', async () => {
