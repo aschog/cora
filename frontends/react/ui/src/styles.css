@@ -98,7 +98,8 @@ button {
 }
 
 ::selection {
-  background: var(--accent-tint);
+  background: var(--accent-ring);
+  color: var(--text);
 }
 
 .micro {
