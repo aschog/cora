@@ -122,7 +122,7 @@ const route = (path: string) => path.split('?')[0]
 /** Naming a field is two clicks: the segment that asks which, then the plugin. */
 const pickPlugin = (name: string) => {
   fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
-  fireEvent.click(screen.getByRole('menuitemradio', { name }))
+  fireEvent.click(within(screen.getByRole('list')).getByRole('button', { name }))
 }
 
 /** The field the rail says it lists and uploads into, or `null` where it names none.
@@ -2710,7 +2710,7 @@ test('a conversation is pinned to a field, and keeps it', async () => {
   ])
   /* The pin is in the thread's state now, so the control stops being a choice: a second
      field is a second conversation, and the reason is on the page for a screen reader. */
-  expect(screen.queryByRole('menuitemradio')).toBeNull()
+  expect(screen.queryByRole('list')).toBeNull()
   expect(screen.getByLabelText('Answer in').textContent).toBe('fitness')
   expect(screen.getByText(/Start a new one/)).toBeTruthy()
 })
@@ -2735,7 +2735,7 @@ test('a reopened conversation is drawn in the field it was pinned to', async () 
 
   /* The pin outlived the page because it is the thread's own state, not the page's. */
   await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('travel'))
-  expect(screen.queryByRole('menuitemradio')).toBeNull()
+  expect(screen.queryByRole('list')).toBeNull()
 })
 
 test('the picker says what the thread holds, not what the reader picked', async () => {
@@ -2785,7 +2785,7 @@ test('the picker says what the thread holds, not what the reader picked', async 
   /* The turn failed, but it was admitted — so the thread is in that field now, and the
      control says so rather than offering a choice that would be refused. */
   await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
-  expect(screen.queryByRole('menuitemradio')).toBeNull()
+  expect(screen.queryByRole('list')).toBeNull()
 })
 
 
@@ -2827,7 +2827,7 @@ test('a scope read that failed leaves the pin the page already knows about', asy
   /* The read failed; the field the thread holds is not news the page has, so it keeps
      what it had rather than inventing a choice. */
   await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
-  expect(screen.queryByRole('menuitemradio')).toBeNull()
+  expect(screen.queryByRole('list')).toBeNull()
 })
 
 test('the rail lists and uploads into the field it is set to', async () => {
@@ -3094,6 +3094,34 @@ test('Chat is a way back to the default field, not only away from a pin', async 
   expect(await screen.findByText('notes.md')).toBeTruthy()
 })
 
+test('the note about a pin is absent until there is a pin to note', async () => {
+  /* "From your next question on." is what a pick promises. Standing under a strip with
+     nothing picked, it promises something about a pin the reader has not set. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  expect(screen.queryByText(/next question/)).toBeNull()
+
+  pickPlugin('fitness')
+
+  expect(screen.getByText(/next question/)).toBeTruthy()
+})
+
+test('the segment that opens the list says what it opens, and whether it is open', async () => {
+  /* The list is a region this button discloses, so the button is where a reader finds
+     out that there is one and whether it is showing. */
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const trigger = screen.getByRole('button', { name: 'Plugin' })
+  expect(trigger.getAttribute('aria-expanded')).toBe('false')
+
+  fireEvent.click(trigger)
+
+  expect(trigger.getAttribute('aria-expanded')).toBe('true')
+  expect(trigger.getAttribute('aria-controls')).toBe(screen.getByRole('list').id)
+})
+
 test('a pinned conversation the page cannot list the fields of is still named somewhere', async () => {
   /* The strip needs the loaded fields to draw itself and a pin needs only the thread, so
      a scopes read that failed leaves a conversation pinned with no strip to say so. A
@@ -3133,11 +3161,13 @@ test('the field list closes on Escape, and hands the trigger its focus back', as
 
   const trigger = screen.getByRole('button', { name: 'Plugin' })
   fireEvent.click(trigger)
-  expect(screen.getByRole('menu')).toBeTruthy()
+  expect(screen.getByRole('list')).toBeTruthy()
 
-  fireEvent.keyDown(trigger, { key: 'Escape' })
+  fireEvent.keyDown(within(screen.getByRole('list')).getByRole('button', { name: 'travel' }), {
+    key: 'Escape',
+  })
 
-  expect(screen.queryByRole('menu')).toBeNull()
+  expect(screen.queryByRole('list')).toBeNull()
   expect(document.activeElement).toBe(trigger)
 })
 
@@ -3158,12 +3188,12 @@ test('the strip says which field it is running in, and the list which one is pic
   )
   const named = screen.getByRole('button', { name: 'fitness' })
   expect(named.getAttribute('aria-pressed')).toBe('true')
-  expect(screen.queryByRole('menu')).toBeNull()
+  expect(screen.queryByRole('list')).toBeNull()
 
   fireEvent.click(named)
-  const marked = screen
-    .getAllByRole('menuitemradio')
-    .filter((each) => each.getAttribute('aria-checked') === 'true')
+  const marked = within(screen.getByRole('list'))
+    .getAllByRole('button')
+    .filter((each) => each.getAttribute('aria-current') === 'true')
   expect(marked.map((each) => each.textContent)).toEqual(['fitness'])
 })
 
@@ -3172,11 +3202,11 @@ test('the field list closes when the reader turns to something else', async () =
   await screen.findByText('notes.md')
 
   fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
-  expect(screen.getByRole('menu')).toBeTruthy()
+  expect(screen.getByRole('list')).toBeTruthy()
 
   fireEvent.mouseDown(screen.getByPlaceholderText(/Ask a question/))
 
-  expect(screen.queryByRole('menu')).toBeNull()
+  expect(screen.queryByRole('list')).toBeNull()
 })
 
 test('a pinned conversation is named over the conversation, and not twice', async () => {

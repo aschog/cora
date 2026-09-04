@@ -14,6 +14,7 @@ const CHAT = 'Chat'
 const PICK = 'Plugin'
 const ANSWER_IN = 'Answer in'
 const TRIGGER = 'mode-plugin'
+const LIST = 'mode-fields'
 const ONE_WAY = 'A conversation keeps the field it is pinned to. Start a new one for another.'
 const FROM_NEXT = 'From your next question on.'
 
@@ -27,9 +28,11 @@ const FROM_NEXT = 'From your next question on.'
  * letting cora route and naming a field, not between eight fields. Which field is the
  * second question, and the menu answers it.
  *
- * `Chat` is a toggle and the second segment is a menu button, rather than both being
+ * `Chat` is a toggle and the second segment discloses a list, rather than both being
  * halves of one radio group: a control that is also a disclosure cannot be a radio, whose
- * whole claim is that it is one of a set of values with nothing behind it.
+ * whole claim is that it is one of a set of values with nothing behind it. The list is a
+ * list of buttons and says no more than that — `menu` and `listbox` are composite widgets
+ * whose arrow keys a reader is then entitled to, and buttons in a list need none.
  *
  * A pin picked here is not written anywhere yet: it lives in the thread's own state, and
  * only a turn writes there. `fixed` is what says a turn has.
@@ -94,8 +97,8 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
             id={TRIGGER}
             className="mode"
             aria-pressed={pin !== null}
-            aria-haspopup="menu"
             aria-expanded={open}
+            aria-controls={LIST}
             onClick={() => setOpen((shown) => !shown)}
           >
             {pin ?? (
@@ -108,13 +111,12 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
             )}
           </button>
           {open && (
-            <ul className="mode-menu" role="menu" aria-labelledby={TRIGGER}>
+            <ul id={LIST} className="mode-menu">
               {available.map((scope) => (
-                <li key={scope} role="none">
+                <li key={scope}>
                   <button
-                    role="menuitemradio"
                     className="mode-option"
-                    aria-checked={pin === scope}
+                    aria-current={pin === scope}
                     onClick={() => {
                       onPin(scope)
                       setOpen(false)
