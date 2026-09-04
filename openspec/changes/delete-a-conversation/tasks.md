@@ -44,13 +44,13 @@ reading it.
 
 ## 6. The list on the page
 
-- [ ] 6.1 Each listed conversation drawing a delete, and the request going out for the
+- [x] 6.1 Each listed conversation drawing a delete, and the request going out for the
       one clicked
-- [ ] 6.2 The conversation open on the page drawing none
-- [ ] 6.3 A conversation cora is still answering a question in drawing none
-- [ ] 6.4 The list redrawn after a delete, without the conversation deleted
-- [ ] 6.5 A delete that fails saying so, with the conversation still listed
-- [ ] 6.6 The card stowed for a deleted conversation let go, so a reload opens a new one
+- [x] 6.2 The conversation open on the page drawing none
+- [x] 6.3 A conversation cora is still answering a question in drawing none
+- [x] 6.4 The list redrawn after a delete, without the conversation deleted
+- [x] 6.5 A delete that fails saying so, with the conversation still listed
+- [x] 6.6 The card stowed for a deleted conversation let go, so a reload opens a new one
 
 ## 7. Done
 

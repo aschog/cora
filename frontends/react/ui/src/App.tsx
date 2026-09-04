@@ -526,6 +526,18 @@ export default function App() {
   const recall = (thread_id: string) =>
     loaded(thread_id, (kept) => setEntries(recorded(kept)))
 
+  /** A conversation deleted, and the card stowed for it let go: the stow is what a
+   *  reload comes back through, and a conversation that is gone is nowhere to come back
+   *  to. The list is redrawn by the refresh every write here goes through. */
+  const discard = (session: Session) =>
+    cora
+      .deleteSession(session.thread_id)
+      .then(() => {
+        forgetIf(session.thread_id)
+        return refresh()
+      })
+      .catch(reportTo(setTrouble))
+
   /** A card answered, either kind. The turn is already on the page, so the rest of it
    *  lands on the entry that raised the card rather than after it.
    *
@@ -821,7 +833,13 @@ export default function App() {
             />
           )}
           {tab === 'SESSIONS' && (
-            <SessionsPanel sessions={sessions} here={thread} onOpen={reopen} />
+            <SessionsPanel
+              sessions={sessions}
+              here={thread}
+              working={working}
+              onOpen={reopen}
+              onDelete={discard}
+            />
           )}
           {tab === 'MEMORY' && (
             <MemoryPanel
