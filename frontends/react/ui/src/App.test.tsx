@@ -3953,7 +3953,6 @@ test('the card stowed for a deleted conversation is let go with it', async () =>
 
 
 const FACT = { key: 'f1', text: 'No burpees.' }
-const ALSO = { key: 'f2', text: 'Four sessions a week.' }
 
 /** The memory rail's own fixture: what cora holds, minus whatever has been forgotten,
  *  so a rail that says a fact is gone is a rail the store agrees with. */

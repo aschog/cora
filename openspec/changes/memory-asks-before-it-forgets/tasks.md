@@ -10,10 +10,10 @@ reading it.
 
 ## 2. The question, told what to say
 
-- [ ] 2.1 The question drawing the words it was handed: its kind, its subject, what is
+- [x] 2.1 The question drawing the words it was handed: its kind, its subject, what is
       lost, and what going ahead is called
-- [ ] 2.2 Confirming and keeping each answering the caller that raised it
-- [ ] 2.3 Escape and the page behind the question both reading as keeping it
+- [x] 2.2 Confirming and keeping each answering the caller that raised it
+- [x] 2.3 Escape and the page behind the question both reading as keeping it
 
 ## 3. The memory rail asks
 
