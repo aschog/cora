@@ -36,6 +36,7 @@ from cora.engine.steps import (
     CHOSE_NOTHING,
     CORA_PREAMBLE,
     DECLINED_CALL,
+    GATHERS,
     MEMORY_RULE,
     NOTHING_CHOSEN,
     REMEMBERED_HEADING,
@@ -1792,6 +1793,37 @@ def test_the_gate_settles_every_proposal_of_a_round_before_any_of_it_runs() -> N
         ("cancel_it", False),
     ]
     assert [message.tool_call_id for message in contributed["messages"]] == ["c2"]
+
+
+def test_a_tool_that_gathers_is_offered_to_the_model_saying_so() -> None:
+    """A model shown a required argument it cannot supply asks in prose, which is right
+    about every other tool and wrong about this one: the card is what asks, and a call
+    nobody made never reaches it."""
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    ModelStep(
+        chat_model=model,
+        tools=(),
+        max_history_turns=4,
+        registry=_offering(_gathering()),
+    )({"brief": "b", "question": "q"})
+
+    assert model.last_tools is not None
+    [offered] = model.last_tools
+    assert offered.description == DOES + GATHERS
+
+
+def test_a_tool_that_gathers_nothing_is_offered_as_its_own_words() -> None:
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    ModelStep(
+        chat_model=model,
+        tools=(),
+        max_history_turns=4,
+        registry=_offering(_acting()),
+    )({"brief": "b", "question": "q"})
+
+    assert model.last_tools is not None
+    [offered] = model.last_tools
+    assert offered.description == DOES
 
 
 # ── the gate fills in what a tool asked the reader for ──

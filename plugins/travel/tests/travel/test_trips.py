@@ -468,6 +468,18 @@ def test_what_the_model_already_wrote_arrives_on_the_card_filled_in() -> None:
     assert origin.value == "BER"
 
 
+def test_a_day_is_asked_for_as_a_day_rather_than_as_a_string_to_get_right() -> None:
+    """The format reaches the model in the schema and the reader as the control the card
+    draws, so nobody has to type `YYYY-MM-DD` correctly."""
+    card = _asks({})
+
+    dated = {
+        field.name for field in card.fields if field.schema.get("format") == "date"
+    }
+    assert dated == {"window_start", "window_end"}
+    assert _schema(HOTEL_FIELDS)["properties"]["check_in"]["format"] == "date"
+
+
 def test_the_submit_waits_for_the_card_and_the_way_out_does_not() -> None:
     search, not_now = _asks({}).actions
 

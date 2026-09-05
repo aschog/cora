@@ -489,8 +489,16 @@ class ModelStep:
 
         A tool out of scope is not offered rather than offered and refused: the model
         is told what it can do, and a list it cannot use is a list it will try.
+
+        One that gathers is offered saying so. A model shown a required argument it
+        cannot supply asks in prose, which is the right thing to do about every other
+        tool and the wrong thing about this one — the card is what asks, and it is never
+        reached by a call nobody made.
         """
-        return (*self.tools, *self.registry.tools(scoped(state)))
+        return tuple(
+            _gathers(tool)
+            for tool in (*self.tools, *self.registry.tools(scoped(state)))
+        )
 
     def _prompt(self, state: AgentState) -> tuple[Message, ...]:
         return prompt_from(
@@ -519,6 +527,24 @@ class AnswerStep:
             message for message in _this_turn(state) if message.role == "assistant"
         ]
         return {"answer": rounds[-1].content if rounds else ""}
+
+
+GATHERS = (
+    "\n\nCall this even when you cannot fill in every argument: it asks the user for "
+    "whatever is missing, and runs on what they give. Do not ask them in prose instead."
+)
+"""What a tool that declares `asks` says to the model, over what it says about itself.
+
+Added by cora rather than left to whoever wrote the tool: a plugin that forgot the
+sentence would have a card the model never reaches, and the declaration is already the
+place the fact is stated once."""
+
+
+def _gathers(tool: Tool) -> Tool:
+    """The tool as the model is offered it, saying so if it gathers its arguments."""
+    if tool.asks is None:
+        return tool
+    return replace(tool, description=tool.description + GATHERS)
 
 
 REFUSED_CALL = "tool '{name}' was refused: {reason}"

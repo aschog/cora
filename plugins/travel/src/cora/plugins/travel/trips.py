@@ -99,6 +99,10 @@ class Field:
     `sends_as` is the service's own name for it, and blank where the field is the
     tool's own — a window is planned here and never sent. `write` is how the value is
     written into the query, for the fields whose meaning is not their digits.
+
+    `fmt` is JSON Schema's `format`, which says what kind of string this is: it reaches
+    the model in the schema and the reader as the control the card draws, so a day is a
+    date picker rather than a box to mistype `YYYY-MM-DD` into.
     """
 
     name: str
@@ -107,6 +111,7 @@ class Field:
     sends_as: str = ""
     write: Callable[[Any], Any] = str
     required: bool = False
+    fmt: str = ""
 
 
 def _from(lowest: Any) -> str:
@@ -138,6 +143,7 @@ FLIGHT_FIELDS = (
         "string",
         "Earliest day the trip could start, as YYYY-MM-DD.",
         required=True,
+        fmt="date",
     ),
     Field(
         "window_end",
@@ -145,6 +151,7 @@ FLIGHT_FIELDS = (
         "Latest day it could end, as YYYY-MM-DD. Where the dates are already fixed, "
         "this is the return date and only that one departure is tried.",
         required=True,
+        fmt="date",
     ),
     Field("nights", "integer", "How many nights away.", required=True),
     Field(
@@ -183,6 +190,7 @@ HOTEL_FIELDS = (
         "First night, as YYYY-MM-DD.",
         "check_in_date",
         required=True,
+        fmt="date",
     ),
     Field(
         "check_out",
@@ -190,6 +198,7 @@ HOTEL_FIELDS = (
         "Morning of departure, as YYYY-MM-DD.",
         "check_out_date",
         required=True,
+        fmt="date",
     ),
     Field("max_price", "integer", "The most the whole stay may cost.", "max_price"),
     Field(
@@ -213,7 +222,11 @@ def _schema(fields: Sequence[Field]) -> dict[str, Any]:
     return {
         "type": "object",
         "properties": {
-            asked.name: {"type": asked.type, "description": asked.description}
+            asked.name: {
+                "type": asked.type,
+                "description": asked.description,
+                **({"format": asked.fmt} if asked.fmt else {}),
+            }
             for asked in fields
         },
         "required": [asked.name for asked in fields if asked.required],
