@@ -572,7 +572,7 @@
   <path d="M 2660.7 3652 L 3034.7 3652" class="send"/>
   <text x="2847.7" y="3645" class="said" text-anchor="middle">approve(card)</text>
   <path d="M 3034.7 3686 L 2660.7 3686" class="back"/>
-  <text x="2847.7" y="3679" class="answer" text-anchor="middle">answer</text>
+  <text x="2847.7" y="3679" class="answer" text-anchor="middle">written</text>
   <path d="M 2660.7 3752 L 2686.7 3752 L 2686.7 3770 L 2665.7 3770" class="send"/>
   <text x="2696.7" y="3757" class="said" text-anchor="start">_effecting(outstanding, state)</text>
   <path d="M 2660.7 3798 L 2686.7 3798 L 2686.7 3816 L 2665.7 3816" class="send"/>
@@ -690,7 +690,7 @@
   <path d="M 2660.7 6415 L 3034.7 6415" class="send"/>
   <text x="2847.7" y="6408" class="said" text-anchor="middle">approve(card)</text>
   <path d="M 3034.7 6449 L 2660.7 6449" class="back"/>
-  <text x="2847.7" y="6442" class="answer" text-anchor="middle">answer</text>
+  <text x="2847.7" y="6442" class="answer" text-anchor="middle">written</text>
   <path d="M 2660.7 6515 L 2686.7 6515 L 2686.7 6533 L 2665.7 6533" class="send"/>
   <text x="2696.7" y="6520" class="said" text-anchor="start">_effecting(outstanding, state)</text>
   <path d="M 2660.7 6561 L 2686.7 6561 L 2686.7 6579 L 2665.7 6579" class="send"/>
