@@ -2,14 +2,15 @@ import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'rea
 import type { MouseEvent } from 'react'
 import { answerHtml } from '../answer'
 import { patch } from '../patch'
-import ApprovalCard from './ApprovalCard'
-import DecisionCard from './DecisionCard'
+import PauseCard from './PauseCard'
 import type { ReactNode } from 'react'
 import type { Citation } from '../api'
-import { unanswered } from '../App'
+import { reopenable, unanswered } from '../App'
 import type { Entry } from '../App'
+import type { Offered } from '../api'
 
 const WORKING = 'Working…'
+const CHANGE = 'Change'
 const DECIDING = 'cora is waiting on your answer above.'
 /** How close to the end still counts as reading the newest turn. A line of slack, so the
  *  fraction of a pixel a browser leaves behind at the bottom does not read as scrolling
@@ -32,9 +33,13 @@ type Props = {
   askingElsewhere: boolean
   onAsk: (question: string) => void
   onCite: (citation: Citation) => void
-  onDecide: (entry: Entry, chosen: string | null) => void
-  onApprove: (entry: Entry, call: string, approved: boolean) => void
-  onChange: (entry: Entry) => void
+  onTake: (
+    entry: Entry,
+    at: number,
+    action: Offered,
+    values: Record<string, unknown>,
+  ) => void
+  onChange: (entry: Entry, at: number) => void
 }
 
 export default function Answer({
@@ -45,8 +50,7 @@ export default function Answer({
   askingElsewhere,
   onAsk,
   onCite,
-  onDecide,
-  onApprove,
+  onTake,
   onChange,
 }: Props) {
   const [question, setQuestion] = useState('')
@@ -111,25 +115,19 @@ export default function Answer({
                 </span>
                 <span className="who">cora</span>
               </div>
-              {entry.decision && (
-                <DecisionCard
-                  decision={entry.decision}
-                  chosen={entry.chosen}
-                  changing={!!entry.changing}
-                  onChoose={(chosen) => onDecide(entry, chosen)}
-                  onChange={() => onChange(entry)}
-                />
-              )}
-              {/* One card per effect the turn proposed, in the order it proposed
-                  them: a round may ask for two, and each is answered on its own. */}
-              {(entry.proposals ?? []).map((each) => (
-                <ApprovalCard
-                  key={each.proposal.call_id}
-                  proposal={each.proposal}
-                  approved={each.approved}
-                  onSettle={(approved) =>
-                    onApprove(entry, each.proposal.call_id, approved)
+              {/* One card per stop the turn made, in the order it made them: a round
+                  may stop twice, and each card is answered on its own. */}
+              {(entry.cards ?? []).map((shown, at) => (
+                <PauseCard
+                  key={at}
+                  card={shown.card}
+                  taken={entry.changing === at ? undefined : shown.taken}
+                  again={
+                    shown.taken !== undefined && reopenable(shown)
+                      ? { label: CHANGE, onPick: () => onChange(entry, at) }
+                      : undefined
                   }
+                  onTake={(action, values) => onTake(entry, at, action, values)}
                 />
               ))}
               {/* What went wrong comes first, because it is the news whatever else the
@@ -215,10 +213,8 @@ const outcome = (entry?: Entry) =>
   entry &&
   (entry.answer ??
     entry.error ??
-    (entry.decision || entry.proposals
-      ? `${entry.chosen}/${(entry.proposals ?? [])
-          .map((each) => each.approved)
-          .join(',')}`
+    (entry.cards
+      ? entry.cards.map((shown) => shown.taken?.label).join(',')
       : '…'))
 
 /** The answer is rendered markdown, so its citations are buttons in that HTML rather

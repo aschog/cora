@@ -13,6 +13,7 @@ from cora.adapters.sqlite_conversations import SqliteConversations
 from cora.app.assembly import App, build
 from cora.app.config import DEFAULT_PLUGINS, Config
 from cora.app.log_config import DEBUG_HANDLER_NAME, FILE_HANDLER_NAME
+from cora.domain.card import Answer
 from cora.domain.chat_result import ChatResult
 from cora.domain.conversation import Turn
 from cora.domain.decision import TurnPaused
@@ -839,7 +840,7 @@ def test_a_round_that_asks_and_remembers_runs_the_write_once() -> None:
 
     with pytest.raises(TurnPaused):
         app.agent.answer("What is my BMR?", THREAD)
-    result = app.agent.resume("75 kg", THREAD)
+    result = app.agent.resume(Answer(action="75 kg"), THREAD)
 
     assert result.answer == "1,730 kcal."
     assert memory.writes == 1

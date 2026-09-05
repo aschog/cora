@@ -109,6 +109,7 @@ def extend(cora: Host) -> None:
             run=priced.run,
             scope=SCOPE,
             untrusted=priced.untrusted,
+            asks=priced.asks,
         )
     if cora.output is None:
         return

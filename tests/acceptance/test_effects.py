@@ -77,17 +77,17 @@ def test_an_effect_happens_only_after_i_approve_it(tmp_path: pathlib.Path) -> No
         waiting = reader.get(f"/api/sessions/{THREAD}/pending").json()
         before = sorted(path.name for path in output.rglob("*") if path.is_file())
         approved = reader.post(
-            "/api/approve",
-            json={"thread_id": THREAD, "call_id": "s1", "approved": True},
+            "/api/resume", json={"thread_id": THREAD, "answer": "s1"}
         )
 
-    proposal = proposed["proposal"]
-    assert proposal["tool"] == ITINERARY_TOOL_NAME
-    assert proposal["does"], "the card says what the call would do"
-    assert proposal["arguments"]["title"] == TITLE
+    card = proposed["card"]
+    read = {field["name"]: field["value"] for field in card["fields"]}
+    assert read["tool"] == ITINERARY_TOOL_NAME
+    assert card["prompt"], "the card says what the call would do"
+    assert read["title"] == TITLE
+    assert not any(field["editable"] for field in card["fields"])
     assert not _of(asked.text, "turn"), "a proposed effect is not an answered turn"
-    assert waiting["proposal"]["call_id"] == "s1"
-    assert waiting["decision"] is None, "it stopped on a proposal, not on a decision"
+    assert waiting["card"]["actions"][0]["answer"] == "s1"
     assert before == [], "nothing outside cora changed while the turn waited"
 
     [turn] = _of(approved.text, "turn")
@@ -116,8 +116,7 @@ def test_declining_changes_nothing_and_the_model_is_told_it_did_not_happen(
             "/api/ask", json={"question": DECLINED_QUESTION, "thread_id": THREAD}
         )
         declined = reader.post(
-            "/api/approve",
-            json={"thread_id": THREAD, "call_id": "s1", "approved": False},
+            "/api/resume", json={"thread_id": THREAD, "answer": None}
         )
 
     [turn] = _of(declined.text, "turn")
@@ -145,9 +144,8 @@ def test_a_plugin_that_takes_part_everywhere_it_may_cannot_switch_the_gate_off(
     with pytest.raises(TurnPaused) as stopped:
         app.agent.answer(QUESTION, THREAD)
 
-    proposal = stopped.value.pending.proposal
-    assert proposal is not None
-    assert proposal.tool == ITINERARY_TOOL_NAME
+    card = stopped.value.pending.card
+    assert ITINERARY_TOOL_NAME in [field.value for field in card.fields]
     assert list((tmp_path / "output").rglob("*")) == []
 
 

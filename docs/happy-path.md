@@ -53,6 +53,19 @@ from its first line when the turn is picked up, so a round of two effects stops 
 comes back with both answers in the order they were asked, and runs neither until both
 are settled — an effect that already happened can never run a second time.
 
+Filling a call in happens there too, and for the same reason. A tool may declare `asks`,
+which is handed the arguments the model wrote and answers with a card to put to the
+reader; the gate puts it, writes what they filled in over those arguments, and re-issues
+the call so the tools are handed values a person stated. Ahead of the proposals, so a
+call that both asks and acts is approved as it will really be made.
+
+Whatever the turn stopped on — a question between remembered values, a call awaiting
+approval, a form to fill — reaches the page as one `Card`: a prompt, its fields and its
+actions. One pause port over all three, because what parks a run is the card and nothing
+else, and one renderer on the page, which knows none of the three apart. A field carries
+the JSON Schema it was read out of, so a plugin's own card is drawn without the page
+having been told about it.
+
 Four points inside that walk are open to a plugin — the question being screened, the
 brief being settled, a tool call about to run, a tool result coming back. A handler
 subscribed to one is handed a frozen value and answers with a refusal, an amendment or

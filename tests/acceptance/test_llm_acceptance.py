@@ -14,6 +14,7 @@ import pytest
 from starlette.testclient import TestClient
 
 from cora.app.assembly import App, build
+from cora.domain.card import Answer
 from cora.domain.decision import TurnPaused
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
@@ -280,14 +281,13 @@ def test_a_real_model_asks_which_value_to_use_instead_of_picking_one(
     with pytest.raises(TurnPaused) as stopped:
         app.agent.answer(NEEDS_A_WEIGHT, DECIDING)
 
-    decision = stopped.value.pending.decision
-    assert decision is not None
-    offered = " ".join(option.label for option in decision.options)
+    card = stopped.value.pending.card
+    offered = " ".join(action.label for action in card.actions)
     assert {"77", "75", "85"} <= set(re.findall(r"\d+", offered)), (
-        f"the model asked about something other than the three it holds: {decision}"
+        f"the model asked about something other than the three it holds: {card}"
     )
 
-    answered = app.agent.resume("75 kg", DECIDING)
+    answered = app.agent.resume(Answer(action="75 kg"), DECIDING)
 
     assert answered.answer.strip(), "the resumed turn came back with nothing"
     rested_on = answered.answer + " ".join(step.summary for step in answered.trace)

@@ -3,7 +3,7 @@
 import logging
 from dataclasses import dataclass
 
-from cora.adapters.langgraph_runner import approving, interrupting, langgraph_for
+from cora.adapters.langgraph_runner import interrupting, langgraph_for
 from cora.adapters.loaders import LOADERS
 from cora.app.config import (
     DEFAULT_HISTORY_TURNS,
@@ -165,7 +165,7 @@ def assemble(
                 max_history_turns=history_turns,
                 registry=registry,
             ).writing_to,
-            gate=GateStep(tools=tools, registry=registry, approve=approving),
+            gate=GateStep(tools=tools, registry=registry, approve=interrupting),
             tools=ToolStep(
                 tool_runtime=ToolRuntime(tools=tools, registry=registry),
                 registry=registry,

@@ -5,7 +5,6 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 
 from cora.domain.agent_state import AgentState
-from cora.domain.approval import Approval
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import cited
 from cora.domain.conversation import Turn
@@ -122,56 +121,17 @@ class Agent:
 
     def resume(
         self,
-        chosen: str | None,
-        thread_id: str,
-        on_step: Callable[[TraceStep], None] = _ignore,
-        on_text: TextSink = unheard,
-    ) -> ChatResult:
-        """The rest of a turn that stopped to ask, on the label the user picked.
-
-        Or on nothing, if they declined. The question is read off the pause rather than
-        passed in, because the turn it belongs to is the one already parked on this
-        thread and no caller should be able to record it under a different one.
-
-        Raises:
-            NothingToResumeError: This thread is not waiting on anything.
-            TurnPaused: The rest of the turn stopped again.
-            GraphRunError: The walk came back with no answer to give.
-            AdapterError: As in `answer` — the rest of a turn fails the same ways.
-        """
-        return self._picked_up(chosen, thread_id, on_step, on_text)
-
-    def approve(
-        self,
-        approval: Approval,
-        thread_id: str,
-        on_step: Callable[[TraceStep], None] = _ignore,
-        on_text: TextSink = unheard,
-    ) -> ChatResult:
-        """The rest of a turn that stopped to propose an effect, on the answer given.
-
-        The approval carries the call it settles, so a round that proposed two effects
-        cannot have one of them answered by the other's yes. Whether it is an approval
-        of the call that was actually proposed is the gate's to check: an answer arrives
-        from outside the run, and anything that is not this call's yes is a decline.
-
-        Raises:
-            NothingToResumeError: This thread is not waiting on anything.
-            TurnPaused: The rest of the turn stopped again — a round proposing a second
-                effect stops for that one too.
-            GraphRunError: The walk came back with no answer to give.
-            AdapterError: As in `answer` — the rest of a turn fails the same ways.
-        """
-        return self._picked_up(approval, thread_id, on_step, on_text)
-
-    def _picked_up(
-        self,
         answer: Settled,
         thread_id: str,
-        on_step: Callable[[TraceStep], None],
-        on_text: TextSink,
+        on_step: Callable[[TraceStep], None] = _ignore,
+        on_text: TextSink = unheard,
     ) -> ChatResult:
-        """One parked turn, continued on whatever settles it.
+        """The rest of a turn that stopped, on the action the user took.
+
+        The answer carries whatever the card it settles needs: the option picked, the
+        id of the call approved, the values filled in. Whether it settles the card that
+        was actually put is the stopping step's to check — an answer arrives from
+        outside the run, and anything that does not fit the card is a decline.
 
         The question is read off the pause rather than passed in, because the turn it
         belongs to is the one already parked on this thread and no caller should be able
@@ -179,6 +139,10 @@ class Agent:
 
         Raises:
             NothingToResumeError: This thread is not waiting on anything.
+            TurnPaused: The rest of the turn stopped again — a round proposing a second
+                effect stops for that one too.
+            GraphRunError: The walk came back with no answer to give.
+            AdapterError: As in `answer` — the rest of a turn fails the same ways.
         """
         waiting = self.runner.pending(thread_id)
         if waiting is None:

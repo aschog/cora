@@ -16,6 +16,7 @@ from typing import Any
 
 import httpx
 
+from cora.domain.card import ActionOffered, Card, fields_of, missing_from
 from cora.plugins.travel.forecast import Fetcher
 from cora.ports.plugin import Tool, ToolRefusal
 
@@ -494,6 +495,47 @@ HOTELS_TOOL_DESCRIPTION = (
 )
 
 
+FLIGHTS_ASKED = "Give me the trip and I'll price the flights."
+STAY_ASKED = "Give me the stay and I'll price it."
+SEARCH_IT = "Search"
+NOT_NOW = "Not now"
+NOTHING_BOOKED = "Nothing is booked without a second confirmation."
+SEARCHING = "You gave me the trip."
+NOT_SEARCHING = "You did not give me the trip, so nothing was searched."
+
+
+def _asking(
+    fields: Sequence[Field], prompt: str
+) -> Callable[[dict[str, Any]], Card | None]:
+    """The card this search puts up when the model could not say what to search for.
+
+    Built from the search's own schema, so the fields the reader fills are the fields
+    the service is sent and the two cannot drift. A call that already names everything
+    required raises nothing: the reader is asked when there is something to ask.
+    """
+    schema = _schema(fields)
+
+    def asks(arguments: dict[str, Any]) -> Card | None:
+        if not missing_from(schema, arguments):
+            return None
+        return Card(
+            prompt=prompt,
+            fields=fields_of(schema, arguments),
+            actions=(
+                ActionOffered(
+                    label=SEARCH_IT,
+                    answer=SEARCH_IT,
+                    note=NOTHING_BOOKED,
+                    needs_valid=True,
+                    settled=SEARCHING,
+                ),
+                ActionOffered(label=NOT_NOW, answer=None, settled=NOT_SEARCHING),
+            ),
+        )
+
+    return asks
+
+
 def trip_tools(key: str, url: str = SEARCH) -> tuple[Tool, ...]:
     """Both searches over one client, declared as returning what cora did not write.
 
@@ -509,6 +551,7 @@ def trip_tools(key: str, url: str = SEARCH) -> tuple[Tool, ...]:
             parameter_schema=_schema(FLIGHT_FIELDS),
             run=search.flights,
             untrusted=True,
+            asks=_asking(FLIGHT_FIELDS, FLIGHTS_ASKED),
         ),
         Tool(
             name=HOTELS_TOOL_NAME,
@@ -516,5 +559,6 @@ def trip_tools(key: str, url: str = SEARCH) -> tuple[Tool, ...]:
             parameter_schema=_schema(HOTEL_FIELDS),
             run=search.stays,
             untrusted=True,
+            asks=_asking(HOTEL_FIELDS, STAY_ASKED),
         ),
     )

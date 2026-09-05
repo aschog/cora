@@ -1,7 +1,7 @@
 """The state one turn of the agent accumulates."""
 
 import operator
-from typing import Annotated, TypedDict
+from typing import Annotated, Any, TypedDict
 
 from cora.domain.citations import Citation
 from cora.domain.trace import TraceStep
@@ -36,6 +36,11 @@ class AgentState(TypedDict, total=False):
     more than one. It exists because the step that asks the reader which was meant is
     replayed when the turn is picked up, so what it asks about has to be a read of state
     rather than a second reading of the question.
+
+    `filled` is what the user wrote into a call's card, by the id of the call they were
+    asked about. State rather than transcript, because a call the model made is what the
+    model said: an assistant message cora forged to carry the user's values would read
+    as a round nobody spent.
     """
 
     question: str
@@ -48,5 +53,6 @@ class AgentState(TypedDict, total=False):
     candidates: list[str]
     pin: str
     pinning: str
+    filled: dict[str, dict[str, Any]]
     brief: str
     answer: str

@@ -15,8 +15,8 @@ from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
 from cora.domain.agent_state import AgentState
-from cora.domain.approval import Approval, Proposed
-from cora.domain.decision import Decision, Pending
+from cora.domain.card import Answer, Asks
+from cora.domain.decision import Pending
 from cora.domain.errors import NothingToResumeError, ToolLoopLimitError
 from cora.domain.trace import step_kinds
 from cora.ports.chat_model import TextSink, unheard
@@ -36,10 +36,6 @@ GATE = "gate"
 `cora.ports.graph`: the router's vocabulary is what a graph engine is told, and these
 are where this engine put the steps it was handed."""
 SUPERSTEPS_PER_ROUND = 3
-DECLINED = "\x00declined"
-"""How choosing nothing travels back into the run. `Command(resume=None)` is not a
-resume LangGraph accepts — it reads as an empty command — so a decline has to carry a
-value of its own, and this one is not a label any model could have written."""
 HEADROOM = 2
 """Supersteps to spare, over the limit the longest walk of a turn was measured to need.
 
@@ -63,7 +59,10 @@ CHECKPOINTED_DATA = (
     ("cora.domain.decision", "Decision"),
     ("cora.domain.decision", "Option"),
     ("cora.domain.approval", "Proposed"),
-    ("cora.domain.approval", "Approval"),
+    ("cora.domain.card", "Card"),
+    ("cora.domain.card", "FieldAsked"),
+    ("cora.domain.card", "ActionOffered"),
+    ("cora.domain.card", "Answer"),
 )
 """What a thread's state is made of besides its trace. Named because the alternative is
 LangGraph's default — deserialise anything and log a warning saying it will be blocked
@@ -110,26 +109,18 @@ def recursion_limit_for(max_tool_rounds: int, steps: int) -> int:
     return SUPERSTEPS_PER_ROUND * max_tool_rounds + steps + HEADROOM
 
 
-def interrupting(decision: Decision) -> str | None:
-    """The engine's `Pause`, bound to LangGraph's: the run is parked in the
-    checkpointer carrying the decision, and the label chosen arrives here when someone
-    picks it up. Nothing chosen comes back as nothing."""
-    chosen = interrupt(decision)
-    if not isinstance(chosen, str) or chosen == DECLINED:
-        return None
-    return chosen
+def interrupting(asks: Asks) -> Answer | None:
+    """The engine's `Answered`, bound to LangGraph's: the run is parked in the
+    checkpointer carrying what it stopped on, and what the reader did arrives here when
+    someone picks it up.
 
-
-def approving(proposed: Proposed) -> Approval | None:
-    """The engine's `Approve`, bound to LangGraph's, as `interrupting` is its `Pause`.
-
-    Called once per proposal, so a node putting two of them parks twice and the answers
-    come back in the order they were asked — LangGraph counts the interrupts of a task
-    and replays the ones already settled. Anything back that is not an approval is
-    nothing, and the gate reads nothing as a decline.
+    Called once per card, so a node putting two of them parks twice and the answers come
+    back in the order they were asked — LangGraph counts the interrupts of a task and
+    replays the ones already settled. Anything back that is not an answer is nothing,
+    and every step reads nothing as a decline.
     """
-    answered = interrupt(proposed)
-    return answered if isinstance(answered, Approval) else None
+    answered = interrupt(asks)
+    return answered if isinstance(answered, Answer) else None
 
 
 @dataclass(frozen=True)
@@ -160,32 +151,28 @@ class LangGraphRunner:
         of its own."""
         if self.pending(thread_id) is None:
             raise NothingToResumeError
-        picked = DECLINED if answer is None else answer
-        yield from self._streamed(Command(resume=picked), thread_id, on_text)
+        yield from self._streamed(Command(resume=answer), thread_id, on_text)
 
     def pending(self, thread_id: str) -> Pending | None:
         """What the thread is waiting on, read off the checkpoint rather than the
         stream: a run that parks simply stops yielding, so the pause is not something a
         caller can see go past.
 
-        Either shape, because either step may be the one that stopped — and the first
-        outstanding interrupt of either kind is the one being answered, since a node
-        puts its next proposal only once the one before it came back."""
+        Whatever shape stopped it, because every one of them has a card — and the first
+        outstanding interrupt is the one being answered, since a node puts its next card
+        only once the one before it came back."""
         parked = self._graph(unheard).get_state(self._config(thread_id))
         waiting = next(
             (
                 found.value
                 for found in parked.interrupts
-                if isinstance(found.value, Decision | Proposed)
+                if isinstance(found.value, Asks)
             ),
             None,
         )
         if waiting is None:
             return None
-        asked = parked.values.get("question", "")
-        if isinstance(waiting, Proposed):
-            return Pending(asked=asked, proposal=waiting)
-        return Pending(asked=asked, decision=waiting)
+        return Pending(asked=parked.values.get("question", ""), card=waiting.card)
 
     def pinned(self, thread_id: str) -> str | None:
         """The thread's pin, read straight off the checkpointer.

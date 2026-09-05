@@ -4,7 +4,8 @@ from dataclasses import dataclass, replace
 import pytest
 
 from cora.domain.agent_state import AgentState
-from cora.domain.approval import Approval, Proposed
+from cora.domain.approval import Proposed
+from cora.domain.card import ActionOffered, Answer, Asks, Card, FieldAsked
 from cora.domain.chunk import Chunk
 from cora.domain.citations import Citable, Citation, Context
 from cora.domain.decision import Decision, Option
@@ -40,6 +41,7 @@ from cora.engine.steps import (
     REMEMBERED_HEADING,
     ROUTED,
     ROUTING_RULE,
+    UNFILLED_CALL,
     UNREAD,
     AnswerStep,
     AskStep,
@@ -51,6 +53,7 @@ from cora.engine.steps import (
     RouteStep,
     ScreenStep,
     ToolStep,
+    _requested_calls,
 )
 from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import CORA, refuse_nothing_to_answer
@@ -70,7 +73,7 @@ from cora.ports.host import (
     Subscription,
 )
 from cora.ports.memory import Memory
-from cora.ports.pause import Approve
+from cora.ports.pause import Answered
 from cora.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult
 from cora.ports.retrieval import RetrievedChunk
 from fakes import (
@@ -809,8 +812,8 @@ def test_the_rules_tell_the_model_to_remember_only_when_it_is_asked() -> None:
 def _replied(
     *calls: ToolCall, text: str = "The sum is 3.", rounds: int = 1
 ) -> AgentState:
-    """A turn that has had `rounds` model calls, the last of them this reply. Rounds
-    are counted off the transcript, so a test states them by saying what was said."""
+    """A turn that has had `rounds` model calls, the last of them this reply. Rounds are
+    counted off the trace, so a test states them by saying what the model decided."""
     earlier = [
         Message(role="assistant", content=f"round {number}")
         for number in range(1, rounds)
@@ -820,7 +823,9 @@ def _replied(
             *earlier,
             Message(role="assistant", content=text, tool_calls=calls),
         ],
+        "trace": [ModelDecision() for _ in range(rounds)],
         "turn_start": 0,
+        "trace_start": 0,
     }
 
 
@@ -1028,16 +1033,16 @@ def _ask_call(call_id: str = "a1", **arguments: object) -> ToolCall:
 
 
 class _Chosen:
-    """A pause that answers with whatever it was handed, and keeps the decision it was
-    shown so a test can read what the reader would have been asked."""
+    """A pause that answers with whatever it was handed, and keeps what it was shown so
+    a test can read what the reader would have been asked."""
 
     def __init__(self, answer: str | None) -> None:
         self.answer = answer
-        self.shown: Decision | None = None
+        self.shown: Asks | None = None
 
-    def __call__(self, decision: Decision) -> str | None:
-        self.shown = decision
-        return self.answer
+    def __call__(self, asks: Asks) -> Answer:
+        self.shown = asks
+        return Answer(action=self.answer)
 
 
 def test_a_reply_calling_ask_user_routes_to_the_ask() -> None:
@@ -1661,9 +1666,10 @@ def _proposing(*names: str) -> AgentState:
     return {"messages": [Message(role="assistant", content="", tool_calls=calls)]}
 
 
-def _yes(*call_ids: str) -> Approve:
-    def approve(proposed: Proposed) -> Approval:
-        return Approval(call_id=proposed.call_id, approved=proposed.call_id in call_ids)
+def _yes(*call_ids: str) -> Answered:
+    def approve(asks: Asks) -> Answer:
+        named = asks.card.actions[0].answer
+        return Answer(action=named if named in call_ids else None)
 
     return approve
 
@@ -1671,11 +1677,11 @@ def _yes(*call_ids: str) -> Approve:
 def test_the_gate_puts_an_effecting_call_to_the_user_as_the_tool_describes_it() -> None:
     """What is approved is this call and not the idea of it, so the proposal carries the
     tool's own words and the arguments the model wrote."""
-    seen: list[Proposed] = []
+    seen: list[Asks] = []
 
-    def approve(proposed: Proposed) -> Approval:
-        seen.append(proposed)
-        return Approval(call_id=proposed.call_id, approved=True)
+    def approve(asks: Asks) -> Answer:
+        seen.append(asks)
+        return Answer(action=asks.card.actions[0].answer)
 
     GateStep(registry=_offering(_acting()), approve=approve)(_proposing(BOOKED))
 
@@ -1719,17 +1725,21 @@ def test_a_round_that_proposes_no_effect_is_not_stopped_and_contributes_nothing(
 ):
     """A tool that declares nothing runs in the round it was asked for. The gate stands
     on the path either way and passes such a round straight through."""
-    stopped: list[Proposed] = []
+    stopped: list[Asks] = []
 
-    def approve(proposed: Proposed) -> Approval:
-        stopped.append(proposed)
-        return Approval(call_id=proposed.call_id, approved=True)
+    def approve(asks: Asks) -> Answer:
+        stopped.append(asks)
+        return Answer(action=asks.card.actions[0].answer)
 
     gate = GateStep(
         registry=_offering(_acting("look_it_up", effect=False)), approve=approve
     )
 
-    assert gate(_proposing("look_it_up")) == {"messages": [], "trace": []}
+    assert gate(_proposing("look_it_up")) == {
+        "messages": [],
+        "trace": [],
+        "filled": {},
+    }
     assert stopped == []
 
 
@@ -1738,7 +1748,11 @@ def test_a_call_naming_no_registered_tool_passes_the_gate_untouched() -> None:
     effect it can vouch for. It is refused where a call always was — at the tools."""
     gate = GateStep(registry=_offering(_acting()), approve=_yes())
 
-    assert gate(_proposing("no_such_tool")) == {"messages": [], "trace": []}
+    assert gate(_proposing("no_such_tool")) == {
+        "messages": [],
+        "trace": [],
+        "filled": {},
+    }
 
 
 def test_an_answer_that_is_not_an_approval_of_this_call_is_read_as_a_decline() -> None:
@@ -1778,3 +1792,161 @@ def test_the_gate_settles_every_proposal_of_a_round_before_any_of_it_runs() -> N
         ("cancel_it", False),
     ]
     assert [message.tool_call_id for message in contributed["messages"]] == ["c2"]
+
+
+# ── the gate fills in what a tool asked the reader for ──
+
+ASKING = "ask_first"
+FILL_IN = "Give me the trip."
+TRIP = Card(
+    prompt=FILL_IN,
+    fields=(FieldAsked(name="origin", required=True),),
+    actions=(
+        ActionOffered(label="Search", answer="Search", needs_valid=True),
+        ActionOffered(label="Not now", answer=None),
+    ),
+)
+
+
+def _gathering(effect: bool = False) -> Tool:
+    return Tool(
+        name=ASKING,
+        description=DOES,
+        parameter_schema={"type": "object"},
+        run=lambda **_: "searched",
+        effect=effect,
+        asks=lambda arguments: None if arguments.get("origin") else TRIP,
+    )
+
+
+def _filled(origin: str | None) -> Answered:
+    def answer(asks: Asks) -> Answer:
+        if origin is None:
+            return Answer(action=None)
+        return Answer(action="Search", values={"origin": origin})
+
+    return answer
+
+
+def test_a_tool_that_asks_puts_its_card_before_the_call_is_made() -> None:
+    """A card built by the tool out of its own schema, put by the gate — which runs no
+    tool, so nothing has happened while the reader fills it in."""
+    seen: list[Asks] = []
+
+    def answer(asks: Asks) -> Answer:
+        seen.append(asks)
+        return Answer(action="Search", values={"origin": "BER"})
+
+    GateStep(registry=_offering(_gathering()), approve=answer)(_proposing(ASKING))
+
+    assert [asks.card for asks in seen] == [TRIP]
+
+
+def test_the_values_the_reader_wrote_are_what_the_tools_are_handed() -> None:
+    """What runs is what a person stated. Contributed as state rather than written into
+    the transcript: a call the model made is what the model said."""
+    state = _proposing(ASKING)
+    contributed = GateStep(registry=_offering(_gathering()), approve=_filled("BER"))(
+        state
+    )
+
+    assert contributed["messages"] == [], "nothing settles a call that is about to run"
+    assert contributed["filled"] == {"c1": {"origin": "BER"}}
+    # The keys a step contributes; `messages` accumulates in the graph, so it is left
+    # as it stands rather than replaced by the empty list the gate returned.
+    [call] = _requested_calls({**state, "filled": contributed["filled"]})
+    assert call.arguments == {"what": ASKING, "origin": "BER"}
+    assert call.call_id == "c1", "the call is the one the model made, filled in"
+
+
+def test_a_tool_told_everything_it_needs_is_never_put_to_the_reader() -> None:
+    gate = GateStep(registry=_offering(_gathering()), approve=_filled("BER"))
+
+    contributed = gate(
+        {
+            "messages": [
+                Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=(
+                        ToolCall(
+                            name=ASKING, arguments={"origin": "LIS"}, call_id="c1"
+                        ),
+                    ),
+                )
+            ]
+        }
+    )
+
+    assert contributed == {"messages": [], "trace": [], "filled": {}}
+
+
+def test_a_card_the_reader_gave_nothing_to_leaves_the_call_unrun() -> None:
+    """A tool that asked and was told nothing is not run on the arguments it asked
+    about: the round is told so, and still has an answer to give."""
+    contributed = GateStep(registry=_offering(_gathering()), approve=_filled(None))(
+        _proposing(ASKING)
+    )
+
+    [told] = contributed["messages"]
+    assert told.tool_call_id == "c1"
+    assert told.content == UNFILLED_CALL.format(name=ASKING)
+
+
+def test_a_filled_call_that_also_declares_an_effect_still_passes_the_gate() -> None:
+    """Filling one in is not approving it: the gate proposes the call it is about to
+    make, with the values the reader gave it."""
+    seen: list[Asks] = []
+
+    def answer(asks: Asks) -> Answer:
+        seen.append(asks)
+        if isinstance(asks, Card):
+            return Answer(action="Search", values={"origin": "BER"})
+        return Answer(action=None)
+
+    contributed = GateStep(registry=_offering(_gathering(effect=True)), approve=answer)(
+        _proposing(ASKING)
+    )
+
+    [_, proposed] = seen
+    assert isinstance(proposed, Proposed)
+    assert proposed.arguments == {"what": ASKING, "origin": "BER"}
+    assert contributed["trace"] == [
+        EffectSettled(tool=ASKING, does=DOES, approved=False)
+    ]
+
+
+def test_an_action_the_card_never_offered_leaves_the_call_unfilled() -> None:
+    """Whatever came back reached the run from outside it, so it is read rather than
+    trusted: an action nobody offered is nobody having filled the card in."""
+    contributed = GateStep(
+        registry=_offering(_gathering()),
+        approve=lambda _: Answer(action="Book it", values={"origin": "BER"}),
+    )(_proposing(ASKING))
+
+    assert contributed["filled"] == {}
+    [told] = contributed["messages"]
+    assert told.content == UNFILLED_CALL.format(name=ASKING)
+
+
+def test_a_value_for_a_field_the_card_never_offered_is_dropped() -> None:
+    """A card names which fields are the reader's, so a value for anything else cannot
+    be written over the argument it was shown beside."""
+    contributed = GateStep(
+        registry=_offering(_gathering()),
+        approve=lambda _: Answer(
+            action="Search", values={"origin": "BER", "what": "something else"}
+        ),
+    )(_proposing(ASKING))
+
+    assert contributed["filled"] == {"c1": {"origin": "BER"}}
+
+
+def test_a_call_the_user_filled_in_is_read_with_their_values_from_then_on() -> None:
+    """Every reader of the round is owed the call as it stands rather than as it was
+    written: the tools run it, and the trace shows it, with what they wrote."""
+    state: AgentState = {**_proposing(ASKING), "filled": {"c1": {"origin": "LIS"}}}
+
+    [call] = _requested_calls(state)
+
+    assert call.arguments == {"what": ASKING, "origin": "LIS"}

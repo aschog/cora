@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from cora.domain.agent_state import AgentState
-from cora.domain.approval import Approval
+from cora.domain.card import Answer
 from cora.domain.decision import Pending
 from cora.ports.chat_model import TextSink, unheard
 
@@ -48,10 +48,10 @@ class NamedStep(Protocol):
         ...
 
 
-Settled = str | Approval | None
-"""What travels back into a parked turn: a label off a card, an approval bound to one
-call, or nothing at all. One type because one thread stops one way at a time and the
-caller picking it up hands over whichever it was asked for."""
+Settled = Answer
+"""What travels back into a parked turn: the action taken off the card, and whatever
+the reader wrote into it. One type because one card is what a thread stops on, whether
+the action was picked, approved or submitted."""
 
 Route = Callable[[AgentState], str]
 ModelFor = Callable[[TextSink], Step]
@@ -95,9 +95,9 @@ class GraphRunner(Protocol):
         """The same turn, picked up from where it stopped.
 
         Args:
-            answer: The label the user chose, the approval they gave, or nothing if they
-                declined. Each step that can stop checks what came back to it, so an
-                answer of the other kind settles nothing it was not asked.
+            answer: The action the user took, and the values they wrote. Each step that
+                can stop checks what came back to it, so an answer naming something it
+                did not offer settles nothing.
             thread_id: The thread whose turn is parked.
             on_text: As in `run` — the rest of the turn is written to this caller.
 

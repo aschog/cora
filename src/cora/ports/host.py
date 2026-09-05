@@ -5,6 +5,7 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any, Protocol
 
+from cora.domain.card import Card
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
 from cora.ports.memory import Memory
@@ -175,6 +176,7 @@ class Host(Protocol):
         scope: str | None = None,
         untrusted: bool = False,
         effect: bool = False,
+        asks: Callable[[dict[str, Any]], Card | None] | None = None,
     ) -> None:
         """Offer the model one more thing it can do, as `Tool` describes one.
 
@@ -187,6 +189,10 @@ class Host(Protocol):
             effect: Whether calling it changes something outside cora. Such a tool is
                 never offered to a delegated loop, so an effect stays in the turn the
                 user is watching, and the listing says the plugin has one.
+            asks: What to put to the user before this call is made, given the arguments
+                the model wrote — or nothing, to run as called. What they fill in is
+                written over those arguments, so the tool is called once and with values
+                a person stated.
         """
         ...
 

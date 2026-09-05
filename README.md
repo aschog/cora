@@ -29,7 +29,8 @@ A plugin contributes three things, and may bring only one of them:
 - **what cora can do** — a tool, named and given a schema, that the model may call —
   declared, where it reaches outside cora, so what it returns is labelled, and where it
   changes something out there, so the listing says so, no sub-agent is offered it, and a
-  call of it waits for you
+  call of it waits for you — and able to ask you for what the model could not supply,
+  as a card built out of the schema it already declared
 - **what cora is** — instructions heading its section of the brief
 - **what cora does as a turn runs** — a handler at a named point in it: refusing the
   question, amending the brief, refusing one tool call, wrapping what a tool returned
@@ -75,6 +76,13 @@ reopen: the pin is the thread's own state. A pin is set once, because a
 thread that could change field is a thread whose earlier turns mean something else — a
 second field is a second conversation. Naming one scope leaves nothing to route between,
 which is how a single-field deployment stays one.
+
+Everything cora stops for is one card. A question between two remembered weights, a
+call it is about to make that changes something outside itself, a form it needs filled
+in — the same prompt, fields and buttons, drawn by one thing on the page that knows
+none of those three apart. A field carries the JSON Schema it came from and the page
+draws the control that schema describes, so a plugin adds a card the page has never
+seen without touching the page: the card is data cora sends, not code anybody shipped.
 
 A conversation you are finished with is deleted from the list under *SESSIONS*, from the
 control at the end of its row — which asks first, and says what is lost and what is not.
@@ -131,7 +139,10 @@ and the conversation intact.
 
 And it prices what it plans. Give it a route, a budget and a month you might go rather
 than a date you have fixed, and it comes back with the three cheapest fares and the
-three cheapest places to stay, each priced and dated. A window is a search rather than a
+three cheapest places to stay, each priced and dated. Ask it for prices without saying
+where from or when, and it stops and asks you: a card of the search's own fields, dates
+as date pickers, and a button that stays shut until the trip is filled in. Nothing
+reaches the service until you submit it, and what is priced is what you wrote. A window is a search rather than a
 lookup — the service wants a departure date, so cora tries one candidate a week across
 the range and keeps the best of all of them, widening the interval rather than quietly
 searching less when the range is long. Your budget and your restrictions go *into* the

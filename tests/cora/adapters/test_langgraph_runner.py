@@ -9,14 +9,14 @@ from langgraph.checkpoint.memory import InMemorySaver
 from cora.adapters.langgraph_runner import (
     HEADROOM,
     LangGraphRunner,
-    approving,
     checkpointed_types,
     interrupting,
     langgraph_for,
     recursion_limit_for,
 )
 from cora.domain.agent_state import AgentState
-from cora.domain.approval import Approval, Proposed
+from cora.domain.approval import Proposed
+from cora.domain.card import Answer
 from cora.domain.chunk import Chunk
 from cora.domain.citations import Citation
 from cora.domain.errors import (
@@ -706,17 +706,19 @@ def test_a_run_that_stops_to_ask_parks_what_it_stopped_on() -> None:
     waiting = runner.pending(THREAD)
     assert waiting is not None
     assert waiting.asked == WANTED
-    assert waiting.decision is not None
-    assert waiting.decision.question == ASKED_AT_THE_NODE
-    assert [option.label for option in waiting.decision.options] == ["77 kg", "75 kg"]
-    assert waiting.decision.decline == "Neither"
+    assert waiting.card.prompt == ASKED_AT_THE_NODE
+    assert [action.label for action in waiting.card.actions] == [
+        "77 kg",
+        "75 kg",
+        "Neither",
+    ]
 
 
 def test_resuming_hands_the_answer_back_into_the_step_that_asked() -> None:
     runner = _stopping()
     list(runner.run({"question": WANTED}, THREAD))
 
-    final = list(runner.resume("75 kg", THREAD))[-1]
+    final = list(runner.resume(Answer(action="75 kg"), THREAD))[-1]
 
     assert final["answer"] == "done"
     assert _answers(final) == ("75 kg",)
@@ -727,7 +729,7 @@ def test_declining_arrives_at_the_step_as_nothing_chosen() -> None:
     runner = _stopping()
     list(runner.run({"question": WANTED}, THREAD))
 
-    final = list(runner.resume(None, THREAD))[-1]
+    final = list(runner.resume(Answer(), THREAD))[-1]
 
     assert _answers(final) == (NOTHING_CHOSEN,)
     assert final["answer"] == "done"
@@ -740,7 +742,7 @@ def test_resuming_a_thread_with_nothing_parked_is_refused_as_a_core_error() -> N
     runner = _stopping()
 
     with pytest.raises(NothingToResumeError):
-        list(runner.resume("75 kg", THREAD))
+        list(runner.resume(Answer(action="75 kg"), THREAD))
 
 
 def test_a_thread_that_never_stopped_is_waiting_on_nothing() -> None:
@@ -779,7 +781,7 @@ def test_resuming_a_forgotten_thread_is_refused_as_a_thread_waiting_on_nothing()
     runner.forget(THREAD)
 
     with pytest.raises(NothingToResumeError):
-        list(runner.resume("75 kg", THREAD))
+        list(runner.resume(Answer(action="75 kg"), THREAD))
 
 
 def test_forgetting_one_thread_leaves_the_others() -> None:
@@ -825,7 +827,7 @@ def test_a_turn_that_stops_to_ask_still_gets_its_whole_round_budget() -> None:
     runner = _stopping(rounds=1)
     list(runner.run({"question": WANTED}, THREAD))
 
-    final = list(runner.resume("75 kg", THREAD))[-1]
+    final = list(runner.resume(Answer(action="75 kg"), THREAD))[-1]
 
     assert final["answer"] == "done"
 
@@ -858,7 +860,7 @@ def test_a_turn_that_keeps_asking_is_stopped_by_the_round_budget() -> None:
     list(runner.run({"question": "q"}, THREAD))
 
     with pytest.raises(ToolLoopLimitError):
-        list(runner.resume("77 kg", THREAD))
+        list(runner.resume(Answer(action="77 kg"), THREAD))
 
     assert rounds == 2, "exactly the rounds the budget allows, and no more"
 
@@ -988,7 +990,7 @@ def test_a_resumed_turn_does_not_run_the_tool_that_ran_before_it_stopped() -> No
 
     assert ran == ["add"], "the pause came after the tool of the first round"
 
-    final = list(runner.resume("75 kg", THREAD))[-1]
+    final = list(runner.resume(Answer(action="75 kg"), THREAD))[-1]
 
     assert ran == ["add"], "and the resumed turn did not run it a second time"
     assert final["answer"] == "done"
@@ -1135,7 +1137,7 @@ def test_a_turn_that_asks_and_then_overspends_trips_the_core_s_limit() -> None:
     list(runner.run({"question": WANTED}, THREAD))
 
     with pytest.raises(ToolLoopLimitError) as spent:
-        list(runner.resume("77 kg", THREAD))
+        list(runner.resume(Answer(action="77 kg"), THREAD))
 
     assert spent.value.__cause__ is None
 
@@ -1162,7 +1164,7 @@ def test_a_resumed_turn_writes_the_working_step_s_marker_only_once() -> None:
     runner = _stopping()
     list(runner.run({"question": WANTED}, THREAD))
 
-    final = list(runner.resume("75 kg", THREAD))[-1]
+    final = list(runner.resume(Answer(action="75 kg"), THREAD))[-1]
 
     assert _entered(final) == [SCREEN, WORK, ANSWER]
 
@@ -1256,7 +1258,7 @@ def _gated(*names: str) -> tuple[LangGraphRunner, list[str]]:
         loop=Loop(
             marker=Named(WORK),
             model=_always(_proposes(*names)),
-            gate=GateStep(tools=tools, approve=approving),
+            gate=GateStep(tools=tools, approve=interrupting),
             tools=running,
             ask=_nothing,
             router=Router(max_tool_rounds=ROUNDS),
@@ -1278,9 +1280,9 @@ def test_a_proposed_effect_parks_the_turn_before_its_tool_runs() -> None:
 
     assert ran == [], "nothing outside cora ran while the turn waited"
     assert waiting is not None
-    assert waiting.decision is None
-    assert waiting.proposal == Proposed(
-        call_id="c1", tool=BOOKED, does=BOOKING, arguments={}
+    assert (
+        waiting.card
+        == Proposed(call_id="c1", tool=BOOKED, does=BOOKING, arguments={}).card
     )
 
 
@@ -1288,7 +1290,7 @@ def test_an_approved_effect_runs_once_and_the_turn_answers() -> None:
     runner, ran = _gated(BOOKED)
     list(runner.run({"question": "book it"}, THREAD))
 
-    final = list(runner.resume(Approval(call_id="c1", approved=True), THREAD))[-1]
+    final = list(runner.resume(Answer(action="c1"), THREAD))[-1]
 
     assert ran == [BOOKED]
     assert final["answer"] == "done"
@@ -1299,7 +1301,7 @@ def test_a_declined_effect_never_runs_and_the_turn_still_answers() -> None:
     runner, ran = _gated(BOOKED)
     list(runner.run({"question": "book it"}, THREAD))
 
-    final = list(runner.resume(Approval(call_id="c1", approved=False), THREAD))[-1]
+    final = list(runner.resume(Answer(), THREAD))[-1]
 
     assert ran == []
     assert final["answer"] == "done"
@@ -1316,14 +1318,13 @@ def test_two_effects_in_one_round_are_both_settled_before_either_runs() -> None:
 
     list(runner.run({"question": "book and cancel"}, THREAD))
     first = runner.pending(THREAD)
-    list(runner.resume(Approval(call_id="c1", approved=True), THREAD))
+    list(runner.resume(Answer(action="c1"), THREAD))
     second = runner.pending(THREAD)
     ran_between = list(ran)
-    final = list(runner.resume(Approval(call_id="c2", approved=True), THREAD))[-1]
+    final = list(runner.resume(Answer(action="c2"), THREAD))[-1]
 
-    assert first is not None and first.proposal is not None
-    assert second is not None and second.proposal is not None
-    assert (first.proposal.call_id, second.proposal.call_id) == ("c1", "c2")
+    assert first is not None and second is not None
+    assert (first.card.actions[0].answer, second.card.actions[0].answer) == ("c1", "c2")
     assert ran_between == [], "settling the second is not running the first"
     assert ran == [BOOKED, CANCELLED]
     assert final["answer"] == "done"
@@ -1332,9 +1333,9 @@ def test_two_effects_in_one_round_are_both_settled_before_either_runs() -> None:
 def test_one_approved_and_one_declined_runs_only_the_one_that_was() -> None:
     runner, ran = _gated(BOOKED, CANCELLED)
     list(runner.run({"question": "book and cancel"}, THREAD))
-    list(runner.resume(Approval(call_id="c1", approved=True), THREAD))
+    list(runner.resume(Answer(action="c1"), THREAD))
 
-    final = list(runner.resume(Approval(call_id="c2", approved=False), THREAD))[-1]
+    final = list(runner.resume(Answer(), THREAD))[-1]
 
     assert ran == [BOOKED]
     told = [
@@ -1353,7 +1354,7 @@ def test_a_label_arriving_at_the_gate_is_read_as_a_decline() -> None:
     runner, ran = _gated(BOOKED)
     list(runner.run({"question": "book it"}, THREAD))
 
-    list(runner.resume("yes please", THREAD))
+    list(runner.resume(Answer(action="yes please"), THREAD))
 
     assert ran == []
 
@@ -1364,4 +1365,5 @@ def test_a_proposal_is_what_a_thread_is_carried_through_a_checkpoint_as() -> Non
     named = checkpointed_types()
 
     assert ("cora.domain.approval", "Proposed") in named
-    assert ("cora.domain.approval", "Approval") in named
+    assert ("cora.domain.card", "Card") in named
+    assert ("cora.domain.card", "Answer") in named

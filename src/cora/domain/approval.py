@@ -3,6 +3,15 @@
 from dataclasses import dataclass, field
 from typing import Any
 
+from cora.domain.card import ActionOffered, Answer, Card, FieldAsked
+
+APPROVE = "Approve"
+DECLINE = "Decline"
+APPROVED = "You approved it."
+DECLINED = "You declined it. Nothing outside cora was changed."
+TOOL = "tool"
+"""The field the call's own name stands in, above the arguments it was written with."""
+
 
 @dataclass(frozen=True)
 class Proposed:
@@ -19,29 +28,36 @@ class Proposed:
     does: str = ""
     arguments: dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def card(self) -> Card:
+        """This, as the reader is shown it: the call laid out, and nothing writable.
 
-@dataclass(frozen=True)
-class Approval:
-    """The answer to one proposal: this call, and whether it may run.
-
-    Its own type rather than an option on a `Decision`, because a label is bound to
-    nothing — the second effect of a round would have no way of saying which of the two
-    it settled. `approved` defaults to false: a shape arriving half-built refuses.
-    """
-
-    call_id: str
-    approved: bool = False
+        The tool and every argument are fields the reader reads, because what is
+        approved is this call and not the idea of it. The yes carries the call's own id,
+        so a round that proposed two effects cannot have one settled by the other's.
+        """
+        return Card(
+            prompt=self.does,
+            fields=(
+                FieldAsked(name=TOOL, value=self.tool, editable=False),
+                *(
+                    FieldAsked(name=name, value=value, editable=False)
+                    for name, value in self.arguments.items()
+                ),
+            ),
+            actions=(
+                ActionOffered(label=APPROVE, answer=self.call_id, settled=APPROVED),
+                ActionOffered(label=DECLINE, answer=None, settled=DECLINED),
+            ),
+        )
 
 
 def approves(proposed: Proposed, answer: object) -> bool:
     """Whether what came back is an approval of this very call.
 
     The answer reached the run from outside it, so it is read rather than trusted:
-    anything that is not this call's own yes leaves the call unapproved, which is what
-    makes a decline the default and not an outcome someone has to remember to send.
+    anything that is not this call's own id leaves the call unapproved, which is what
+    makes a decline the default and not an outcome someone has to remember to send. A
+    label is bound to nothing, so the id is what an approve action carries.
     """
-    return (
-        isinstance(answer, Approval)
-        and answer.call_id == proposed.call_id
-        and answer.approved
-    )
+    return isinstance(answer, Answer) and answer.action == proposed.call_id

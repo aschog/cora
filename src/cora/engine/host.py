@@ -10,6 +10,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator, SchemaError
 
+from cora.domain.card import Card
 from cora.domain.citations import Citable
 from cora.domain.errors import PluginLoadError
 from cora.engine.events import EVENTS
@@ -168,6 +169,7 @@ class PluginHost:
         scope: str | None = None,
         untrusted: bool = False,
         effect: bool = False,
+        asks: Callable[[dict[str, Any]], Card | None] | None = None,
     ) -> None:
         """Offer the model one more thing it can do.
 
@@ -197,6 +199,7 @@ class PluginHost:
                 run=run,
                 untrusted=untrusted,
                 effect=effect,
+                asks=asks,
             ),
             scope,
         )

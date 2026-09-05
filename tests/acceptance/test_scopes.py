@@ -5,6 +5,7 @@ import pytest
 
 from app_builder import assembled
 from cora.app.assembly import App
+from cora.domain.card import Answer
 from cora.domain.chat_result import ChatResult
 from cora.domain.decision import TurnPaused
 from cora.domain.errors import InputRejectedError, ScopePinnedError
@@ -197,13 +198,12 @@ def test_a_question_that_fits_two_fields_is_put_to_the_user() -> None:
     with pytest.raises(TurnPaused) as stopped:
         app.agent.answer("What should I take on a walking holiday?", THREAD)
 
-    asked = stopped.value.pending.decision
-    assert asked is not None
-    assert asked.question == WHICH_FIELD
-    assert [option.label for option in asked.options] == [FITNESS, TRAVEL]
-    assert asked.options[0].note == "You are a fitness coach."
+    card = stopped.value.pending.card
+    assert card.prompt == WHICH_FIELD
+    assert [action.label for action in card.actions[:2]] == [FITNESS, TRAVEL]
+    assert card.actions[0].note == "You are a fitness coach."
 
-    resumed = app.agent.resume(TRAVEL, THREAD)
+    resumed = app.agent.resume(Answer(action=TRAVEL), THREAD)
 
     assert resumed.answer == "Walk it in a day."
     assert _focus(resumed) == ScopeSettled(scope=TRAVEL, how=CHOSEN)
@@ -219,7 +219,7 @@ def test_the_field_the_reader_chose_survives_the_step_being_replayed() -> None:
 
     with pytest.raises(TurnPaused):
         app.agent.answer("What should I take on a walking holiday?", THREAD)
-    resumed = app.agent.resume(TRAVEL, THREAD)
+    resumed = app.agent.resume(Answer(action=TRAVEL), THREAD)
 
     assert resumed.answer == "Book it early."
     assert _focus(resumed) == ScopeSettled(scope=TRAVEL, how=CHOSEN)
@@ -232,7 +232,7 @@ def test_choosing_no_field_answers_the_question_plainly() -> None:
 
     with pytest.raises(TurnPaused):
         app.agent.answer("What should I take on a walking holiday?", THREAD)
-    resumed = app.agent.resume(None, THREAD)
+    resumed = app.agent.resume(Answer(), THREAD)
 
     assert resumed.answer == "Plainly, then."
     assert _focus(resumed) == ScopeSettled(

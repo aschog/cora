@@ -656,9 +656,9 @@ def _is_frozen_dataclass(kind: type) -> bool:
 
 
 def _states_a_shape(kind: type) -> bool:
-    """The three things in the domain that are not values: the abstract bases a payload
-    or a trace step is declared by, the state a step returns keys of, and the pause that
-    is raised.
+    """The four things in the domain that are not values: the abstract bases a payload
+    or a trace step is declared by, the state a step returns keys of, the pause that is
+    raised, and a protocol, which states a shape and holds none.
 
     Each is asked of the thing itself rather than of a list of names. `isabstract` is
     false for a base that declares no abstract method, so a marker base would be
@@ -669,6 +669,7 @@ def _states_a_shape(kind: type) -> bool:
         inspect.isabstract(kind)
         or typing.is_typeddict(kind)
         or issubclass(kind, BaseException)
+        or bool(getattr(kind, "_is_protocol", False))
     )
 
 

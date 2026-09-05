@@ -1,37 +1,25 @@
-"""How a run stops to ask the user something, and what a shell that cannot answers."""
+"""How a run stops to put a card to the user, and what a shell that cannot answers."""
 
 from collections.abc import Callable
 
-from cora.domain.approval import Approval, Proposed
-from cora.domain.decision import Decision
+from cora.domain.card import Answer, Asks
 
-Pause = Callable[[Decision], str | None]
+Answered = Callable[[Asks], Answer | None]
 """How a step stops the run and waits. It travels *in*, like `TextSink`, because only
-whatever is driving the graph can park a run and pick it up again — the engine states
-the decision and is handed back the label chosen, or nothing at all if the user
-declined."""
+whatever is driving the graph can park a run and pick it up again — the engine puts
+what it stopped on, and is handed back the action taken and what was written, or
+nothing at all if the user declined.
+
+One port over every way a turn can stop. What parks a run is the card, and a decision,
+a proposal and a form all have one: a second port would be the same mechanism written
+twice, and a third would be it written three times."""
 
 
-def declined(_: Decision) -> None:
-    """Decline every decision the moment it is raised.
+def declined(_: Asks) -> None:
+    """Decline every card the moment it is put.
 
-    The pause of a caller that cannot stop and ask, so a shell with no card to draw
-    still gets its answer. Every slot that takes a `Pause` defaults to this, which is
+    The answer of a caller that cannot stop and ask, so a shell with no card to draw
+    still gets its turn — and changes nothing outside cora, because a proposal put to
+    this one is refused. Every slot that takes an `Answered` defaults to it, which is
     what keeps a run that cannot be interrupted from hanging on one.
-    """
-
-
-Approve = Callable[[Proposed], Approval | None]
-"""How the gate stops the run and waits for a yes or a no. It travels *in* for the same
-reason `Pause` does — only whatever drives the graph can park a run — and it is its own
-slot rather than the same one, because what it puts is a call and what it is handed back
-is bound to that call rather than to a card."""
-
-
-def refused(_: Proposed) -> None:
-    """Refuse every proposal the moment it is put.
-
-    The approve of a caller that cannot stop and ask, so a shell with no card to draw
-    changes nothing outside cora. Every slot that takes an `Approve` defaults to this:
-    a run that cannot be interrupted must decline rather than act.
     """

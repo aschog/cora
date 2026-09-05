@@ -112,6 +112,40 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    no such tool then, the way cora offers no `remember` without a memory. A tool that
    can only fail is worse than one the model is never offered.
 
+   **Ask the user for what the model could not supply.** A tool may declare `asks`: a
+   function handed the arguments as written, answering with the card to put to the
+   reader — or with `None` to run as called. Build the card out of the schema you
+   already declared, so the two cannot drift:
+
+   ```python
+   from cora.domain.card import ActionOffered, Card, fields_of, missing_from
+
+   SCHEMA = {"type": "object",
+             "properties": {"origin": {"type": "string"},
+                            "depart": {"type": "string", "format": "date"}},
+             "required": ["origin", "depart"]}
+
+   def asks(arguments: dict) -> Card | None:
+       if not missing_from(SCHEMA, arguments):
+           return None
+       return Card(prompt="Give me the trip and I'll price it.",
+                   fields=fields_of(SCHEMA, arguments),
+                   actions=(ActionOffered(label="Search", answer="Search",
+                                          needs_valid=True),
+                            ActionOffered(label="Not now", answer=None)))
+
+   cora.register_tool(name="price_it", parameter_schema=SCHEMA, ..., asks=asks)
+   ```
+
+   A card is a prompt, fields to fill and actions to take, and the page draws whatever
+   you hand it: a field's own JSON Schema picks the control, so a date is a date picker
+   and a short `enum` is a row of choices, with no frontend of yours anywhere. An
+   action's `answer` is what comes back when it is taken, `None` is the way out, and
+   `needs_valid` holds it closed until every required field is filled. What the reader
+   writes is written over the arguments, and your `run` is called once, with the values
+   a person stated. Take nothing back but a card: it is data, never code, and the page
+   draws every part of it as text.
+
 4. **Take part in the turn.** A handler subscribes to a named point in it, is handed
    one frozen value, and answers by returning — a refusal, an amendment, or `None` for
    neither. The four points are `cora.ports.host`'s, and they differ in what a return

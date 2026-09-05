@@ -31,37 +31,43 @@ export type Result = {
 
 export type Turn = { question: string; result: Result }
 
-export type Option = { label: string; note: string }
-
-/** What cora stopped to have settled, in its own words. */
-export type Decision = { question: string; options: Option[]; decline: string }
-
-/** One call cora is about to make that would change something outside it: what the tool
- *  says it does, and the arguments the model wrote, so what is approved is this call and
- *  not the idea of it. `call_id` is what an answer is bound to — a round may propose two
- *  effects, and neither may be settled by the other's yes. */
-export type Proposal = {
-  call_id: string
-  tool: string
-  does: string
-  arguments: Record<string, unknown>
+/** One value on a card. `schema` is the JSON Schema the control is drawn from — the
+ *  same schema a tool declares its parameters in. `editable` is false for a call put up
+ *  to be read rather than filled. */
+export type Asked = {
+  name: string
+  schema: Record<string, unknown>
+  value: unknown
+  editable: boolean
+  required: boolean
 }
+
+/** One way off a card. `answer` is what travels back when it is taken, and `null` is the
+ *  way out — a decline, or none of them. `needs_valid` holds it closed until every
+ *  required field holds a value, and `settled` is what the card says once it was taken —
+ *  blank where the action has nothing of its own to say. */
+export type Offered = {
+  label: string
+  answer: string | null
+  note: string
+  needs_valid: boolean
+  settled: string
+}
+
+/** What a stopped turn puts to the reader, whichever way it stopped. One shape over a
+ *  decision, a proposal and a form to fill: the page draws it from this alone and knows
+ *  nothing of what stopped the turn. */
+export type Card = { prompt: string; fields: Asked[]; actions: Offered[] }
 
 /** A turn parked on something the reader has to settle, with the question that opened
  *  it — a paused turn is in no store, so this is the only thing a card can be drawn
- *  under. Exactly one of the two is filled: a thread stops one way at a time, and which
- *  way it stopped is which card the page draws. */
-export type Pending = {
-  asked: string
-  decision: Decision | null
-  proposal: Proposal | null
-}
+ *  under. */
+export type Pending = { asked: string; card: Card }
 
 /** How a turn ends: with an answer, or with something for the reader to settle. */
 export type Reply = Result | Pending
 
-/* Read off `asked`, which only a parked turn carries: the other two keys are each filled
-   in one kind of pause and null in the other, so neither of them tells the two apart. */
+/* Read off `asked`, which only a parked turn carries. */
 export const paused = (reply: Reply): reply is Pending => 'asked' in reply
 
 export type Fact = { key: string; text: string }
@@ -176,40 +182,24 @@ export async function ask(
 }
 
 /**
- * The rest of a turn that stopped to ask, on the label the reader picked — or on `null`,
- * which is declining. A second request rather than an answer written back up the first
- * one: a stream only goes one way, and the pause is parked where the turn was left.
+ * The rest of a turn that stopped, on the action the reader took and what they wrote.
+ * A second request rather than an answer written back up the first one: a stream only
+ * goes one way, and the pause is parked where the turn was left.
+ *
+ * One call over every kind of card. `action` is the taken action's own `answer`, and
+ * `null` is the way out; `values` is what the writable fields hold, and a card of none
+ * settles on the action alone.
  */
 export async function resume(
   thread: string,
-  answer: string | null,
-  onStep: (step: Step) => void,
+  action: string | null,
+  values: Record<string, unknown> = {},
+  onStep: (step: Step) => void = () => {},
   onText: (piece: string) => void = () => {},
   onAside: () => void = () => {},
 ): Promise<Reply> {
   return streamed(
-    await post('/api/resume', { thread_id: thread, answer }),
-    onStep,
-    onText,
-    onAside,
-  )
-}
-
-/**
- * The rest of a turn that stopped to propose an effect, on the reader's yes or no. The
- * call is named, because the answer is bound to it and not to whichever effect happened
- * to be outstanding.
- */
-export async function approve(
-  thread: string,
-  call: string,
-  approved: boolean,
-  onStep: (step: Step) => void,
-  onText: (piece: string) => void = () => {},
-  onAside: () => void = () => {},
-): Promise<Reply> {
-  return streamed(
-    await post('/api/approve', { thread_id: thread, call_id: call, approved }),
+    await post('/api/resume', { thread_id: thread, answer: action, values }),
     onStep,
     onText,
     onAside,

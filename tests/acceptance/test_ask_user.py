@@ -64,13 +64,14 @@ def test_a_fact_recalled_three_ways_stops_the_turn_and_the_pick_answers_it() -> 
 
     [paused] = _of(asked.text, "paused")
     assert paused["asked"] == QUESTION
-    assert paused["decision"]["question"] == ASKED
-    assert [option["label"] for option in paused["decision"]["options"]] == [
+    assert paused["card"]["prompt"] == ASKED
+    assert paused["card"]["fields"] == [], "there is nothing to fill in, only to pick"
+    assert [action["label"] for action in paused["card"]["actions"]] == [
         "77 kg",
         "75 kg",
         "85 kg",
+        DECLINE,
     ]
-    assert paused["decision"]["decline"] == DECLINE
     assert not _of(asked.text, "turn"), "a paused turn is not an answered one"
 
     [turn] = _of(resumed.text, "turn")

@@ -2,10 +2,11 @@
 
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from typing import Protocol
+from typing import Any, Protocol
 
 from cora.domain.agent_state import AgentState
 from cora.domain.approval import Proposed, approves
+from cora.domain.card import Answer, Card
 from cora.domain.citations import Citable, Citation
 from cora.domain.decision import Decision, Option
 from cora.domain.errors import AdapterError, CoreError, ToolLoopLimitError
@@ -36,7 +37,7 @@ from cora.ports.host import (
     SCREENING,
 )
 from cora.ports.memory import Fact, Memory
-from cora.ports.pause import Approve, Pause, declined, refused
+from cora.ports.pause import Answered, declined
 from cora.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult
 
 
@@ -353,7 +354,7 @@ class FocusStep:
 
     registry: Registry = field(default_factory=Registry)
     memory: Memory | None = None
-    pause: Pause = declined
+    pause: Answered = declined
 
     def __call__(self, state: AgentState) -> AgentState:
         """Restate the brief for this turn, under this turn's scopes and no others.
@@ -382,16 +383,15 @@ class FocusStep:
         against the card it was offered on: `AskStep` is the other, through `_offered`,
         so that rule moves in two places until a pause has one owner.
         """
-        chosen = self.pause(
-            Decision(
-                question=WHICH_FIELD,
-                options=tuple(
-                    Option(label=scope, note=self.registry.outline(scope))
-                    for scope in contested
-                ),
-                decline=NEITHER_FIELD,
-            )
+        fork = Decision(
+            question=WHICH_FIELD,
+            options=tuple(
+                Option(label=scope, note=self.registry.outline(scope))
+                for scope in contested
+            ),
+            decline=NEITHER_FIELD,
         )
+        chosen = _taken(fork, self.pause(fork))
         if chosen in contested:
             return _focused((str(chosen),), CHOSEN)
         return _focused((DEFAULT_SCOPE,), NOTHING_CHOSEN_FIELD)
@@ -648,6 +648,14 @@ what to do next: the model is owed a way on, and the turn still has an answer to
 The story asks the answer to say what it did not do, and this is where it is asked for —
 a brief cannot say it, because a brief does not know which call."""
 
+UNFILLED_CALL = (
+    "tool '{name}' was not run: it asked the user for what was missing and they gave "
+    "nothing. Answer without it, and say plainly what you still need."
+)
+"""What the model is told about a call the user was asked to fill in and did not. Worded
+as what happened rather than as what somebody did, for the reason `DECLINED_CALL` is,
+and followed by the way on: the turn still has an answer to give."""
+
 
 @dataclass(frozen=True)
 class GateStep:
@@ -666,7 +674,7 @@ class GateStep:
 
     tools: tuple[Tool, ...] = ()
     registry: Registry = field(default_factory=Registry)
-    approve: Approve = refused
+    approve: Answered = declined
 
     def __call__(self, state: AgentState) -> AgentState:
         """Put every effect this round proposed to the user, and settle the declines.
@@ -683,7 +691,8 @@ class GateStep:
         """
         messages: list[Message] = []
         trace: list[TraceStep] = []
-        for call, tool in self._effecting(state):
+        outstanding, filled = self._asked_for(_requested_calls(state), state, messages)
+        for call, tool in self._effecting(outstanding, state):
             # A copy of the arguments, for the reason `ToolStep._ran` copies them: a
             # dict inside a frozen call is changeable, and whatever answers the gate
             # reaches it from outside the run. What was approved has to be what runs.
@@ -706,23 +715,66 @@ class GateStep:
                     tool_call_id=call.call_id,
                 )
             )
-        return {"messages": messages, "trace": trace}
+        return {"messages": messages, "trace": trace, "filled": filled}
 
-    def _effecting(self, state: AgentState) -> tuple[tuple[ToolCall, Tool], ...]:
-        """This round's outstanding calls that declared an effect, with their tools.
+    def _asked_for(
+        self, calls: tuple[ToolCall, ...], state: AgentState, messages: list[Message]
+    ) -> tuple[tuple[ToolCall, ...], dict[str, dict[str, Any]]]:
+        """The round's calls, with every one that asks the user filled in by them.
+
+        Done here rather than in a step of its own for the reason the gate is a step at
+        all: it runs no tool, so a resumed node replays it for free — and a call whose
+        arguments the user wrote still has to pass the gate before it is proposed.
+
+        What they wrote is contributed as state rather than written into the transcript:
+        a call the model made is what the model said, and an assistant message cora
+        forged to carry the user's values would be a round nobody spent. The trace shows
+        the call as it really runs, which is where the reader reads it.
+        """
+        offered = self._offered(state)
+        outstanding: list[ToolCall] = []
+        filled: dict[str, dict[str, Any]] = {}
+        for call in calls:
+            tool = offered.get(call.name)
+            card = tool.asks(deepcopy(call.arguments)) if tool and tool.asks else None
+            if card is None:
+                outstanding.append(call)
+                continue
+            written = _written(card, self.approve(card))
+            if written is None:
+                messages.append(
+                    Message(
+                        role="tool",
+                        content=UNFILLED_CALL.format(name=call.name),
+                        tool_call_id=call.call_id,
+                    )
+                )
+                continue
+            filled[call.call_id] = written
+            outstanding.append(replace(call, arguments={**call.arguments, **written}))
+        return tuple(outstanding), filled
+
+    def _effecting(
+        self, calls: tuple[ToolCall, ...], state: AgentState
+    ) -> tuple[tuple[ToolCall, Tool], ...]:
+        """The round's outstanding calls that declared an effect, with their tools.
 
         Paired with the tool because the proposal is worded out of it: what the user is
         shown is what the tool says it does, not a sentence cora wrote about the name.
         """
-        offered = {
+        offered = self._offered(state)
+        return tuple(
+            (call, tool)
+            for call in calls
+            if (tool := offered.get(call.name)) is not None and tool.effect
+        )
+
+    def _offered(self, state: AgentState) -> dict[str, Tool]:
+        """Every tool this turn may call, by name — cora's own and the scoped ones."""
+        return {
             tool.name: tool
             for tool in (*self.tools, *self.registry.tools(scoped(state)))
         }
-        return tuple(
-            (call, tool)
-            for call in _requested_calls(state)
-            if (tool := offered.get(call.name)) is not None and tool.effect
-        )
 
 
 @dataclass(frozen=True)
@@ -734,7 +786,7 @@ class AskStep:
     a second time on the way back.
     """
 
-    pause: Pause = declined
+    pause: Answered = declined
 
     def __call__(self, state: AgentState) -> AgentState:
         """Put the round's question to the user, and answer the call with the choice.
@@ -755,7 +807,7 @@ class AskStep:
             return _settled(
                 call, asked="", said=str(refused), outcome=str(refused), failed=True
             )
-        chosen = _offered(decision, self.pause(decision))
+        chosen = _taken(decision, self.pause(decision))
         return _settled(
             call,
             asked=decision.question,
@@ -821,11 +873,15 @@ def _remembered(facts: tuple[Fact, ...]) -> tuple[str, ...]:
 
 
 def _requested_calls(state: AgentState) -> tuple[ToolCall, ...]:
-    """The round's calls that nothing has answered yet.
+    """The round's calls that nothing has answered yet, as they will really be made.
 
     The last assistant message asked for them and a `tool` message settles one, so a
     round whose question has already been put to the user arrives at the tools with that
     call spoken for — and the tools run only what is left of the round.
+
+    A call the user filled in carries their values rather than the model's: the gate put
+    the card and recorded what came back, and every reader of the round from there on is
+    owed the call as it stands rather than as it was written.
     """
     asked: tuple[ToolCall, ...] = ()
     answered: set[str] = set()
@@ -834,7 +890,14 @@ def _requested_calls(state: AgentState) -> tuple[ToolCall, ...]:
             asked, answered = message.tool_calls, set()
         elif message.tool_call_id is not None:
             answered.add(message.tool_call_id)
-    return tuple(call for call in asked if call.call_id not in answered)
+    filled = state.get("filled", {})
+    return tuple(
+        replace(call, arguments={**call.arguments, **filled[call.call_id]})
+        if call.call_id in filled
+        else call
+        for call in asked
+        if call.call_id not in answered
+    )
 
 
 def _already_asked(state: AgentState) -> bool:
@@ -850,18 +913,33 @@ def _already_asked(state: AgentState) -> bool:
     )
 
 
-def _offered(decision: Decision, chosen: str | None) -> str | None:
-    """Only a label that was on the card counts as a choice.
+def _written(card: Card, answer: Answer | None) -> dict[str, Any] | None:
+    """What the reader filled in, out of what came back — or nothing, if they left.
+
+    Read rather than trusted, the way `_taken` reads a label: the answer reached the run
+    from outside it, so an action the card never offered is nobody leaving it filled in,
+    and a value for a field it put up to be read is dropped rather than written over the
+    argument it was shown beside.
+    """
+    if answer is None or answer.action is None:
+        return None
+    if answer.action not in {action.answer for action in card.actions}:
+        return None
+    offered = {field.name for field in card.fields if field.editable}
+    return {name: value for name, value in answer.values.items() if name in offered}
+
+
+def _taken(decision: Decision, answer: Answer | None) -> str | None:
+    """Only an action that was on the card counts as a choice.
 
     Whatever answered the pause reached the run from outside it, and a value nobody
     offered would be arbitrary text arriving as a tool result — the one message class a
     round is not told to distrust.
     """
-    if chosen is None:
+    if answer is None or answer.action is None:
         return None
-    if any(option.label == chosen for option in decision.options):
-        return chosen
-    return None
+    offered = {action.answer for action in decision.card.actions}
+    return answer.action if answer.action in offered else None
 
 
 def _settled(

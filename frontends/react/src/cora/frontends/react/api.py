@@ -25,7 +25,7 @@ from starlette.routing import Match, Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from cora.app.assembly import App
-from cora.domain.approval import Approval
+from cora.domain.card import Answer, Card
 from cora.domain.chat_result import ChatResult
 from cora.domain.decision import TurnPaused
 from cora.domain.errors import AdapterError, CoreError, NothingToResumeError
@@ -76,7 +76,6 @@ def api(
         ),
         Route("/api/ask", _ask(app, scopes), methods=["POST"]),
         Route("/api/resume", _resume(app), methods=["POST"]),
-        Route("/api/approve", _approve(app), methods=["POST"]),
         Route("/api/uploads/{scope}/{upload}", _upload(app, scopes), methods=["GET"]),
         Route("/api/sessions", _sessions(app), methods=["GET"]),
         Route("/api/sessions/{thread_id}", _turns(app), methods=["GET"]),
@@ -290,13 +289,13 @@ MAX_ASK_BYTES = MAX_INPUT_CHARS * ESCAPED_CHARACTER_BYTES + 1024
 around the two. Whether the question is too long is the engine's rule — this is only how
 much cora reads to find out."""
 TOO_LONG_TO_ASK = "That question is longer than cora reads."
-NOT_A_DECISION = "A decision needs the conversation it belongs to."
-NOT_AN_APPROVAL = (
-    "An approval needs the conversation, the call it answers, and a yes or a no."
+NOT_A_DECISION = (
+    "Settling a card needs the conversation it belongs to, and the action taken."
 )
-"""What a malformed approval is refused with. All three, because an approval bound to
-nothing is not one: a missing call id would settle whichever effect happened to be
-outstanding, and a missing answer must not read as either."""
+"""What a malformed answer is refused with. Both, because an answer bound to nothing is
+not one: a missing action would settle whichever card happened to be outstanding, and
+must not read as a decline either."""
+NOT_FILLED_IN = "The values written into a card have to be a JSON object."
 NO_SUCH_SCOPE = (
     "cora is not running that field, so a conversation cannot be pinned to it."
 )
@@ -357,9 +356,13 @@ def _ask(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
 
 
 def _resume(app: App) -> Callable[[Request], Any]:
-    """The rest of a turn that stopped to ask. A second request rather than an answer
-    written back up the first one: the stream only goes one way, and the pause is parked
-    in the checkpointer, which is what makes picking it up an ordinary turn."""
+    """The rest of a turn that stopped, on the action the reader took and what they
+    wrote. A second request rather than an answer written back up the first one: the
+    stream only goes one way, and the pause is parked in the checkpointer, which is what
+    makes picking it up an ordinary turn.
+
+    One route over every kind of card. What settles a decision, an approval and a filled
+    form is the same two things, and a second route would be this one written twice."""
 
     async def picked(request: Request) -> Response:
         body = await _read_within(request, MAX_ASK_BYTES)
@@ -371,60 +374,37 @@ def _resume(app: App) -> Callable[[Request], Any]:
             return JSONResponse({"error": NOT_A_DECISION}, status_code=REFUSED)
         if not isinstance(answered, dict):
             return JSONResponse({"error": NOT_A_DECISION}, status_code=REFUSED)
-        thread_id, chosen = answered.get("thread_id"), answered.get("answer")
+        thread_id, action = answered.get("thread_id"), answered.get("answer")
         # `answer` must be *said*, even to say nothing: a body that leaves it out reads
         # the same as one that declines, so a client with a typo in the field silently
         # tells the model the reader rejected every option.
         if "answer" not in answered:
             return JSONResponse({"error": NOT_A_DECISION}, status_code=REFUSED)
-        if not _said(thread_id) or not (chosen is None or _said(chosen)):
+        if not _said(thread_id) or not (action is None or _said(action)):
             return JSONResponse({"error": NOT_A_DECISION}, status_code=REFUSED)
-        if await run_in_threadpool(app.agent.pending, thread_id) is None:
+        values = answered.get("values", {})
+        if not isinstance(values, dict):
+            return JSONResponse({"error": NOT_FILLED_IN}, status_code=REFUSED)
+        waiting = await run_in_threadpool(app.agent.pending, thread_id)
+        if waiting is None:
             raise NothingToResumeError
+        settled = Answer(action=action, values=_writable(waiting.card, values))
         return _streaming(
-            lambda report, write: app.agent.resume(chosen, thread_id, report, write)
+            lambda report, write: app.agent.resume(settled, thread_id, report, write)
         )
 
     return picked
 
 
-def _approve(app: App) -> Callable[[Request], Any]:
-    """The rest of a turn that stopped to propose an effect. Its own route rather than
-    `resume` widened: what it carries is bound to one call, and a body that answered the
-    wrong shape would be read by the gate as a decline — which is safe, and silent."""
+def _writable(card: Card, values: dict[str, Any]) -> dict[str, Any]:
+    """What the reader was actually offered to write, out of what they sent.
 
-    async def answered(request: Request) -> Response:
-        body = await _read_within(request, MAX_ASK_BYTES)
-        if body is None:
-            return JSONResponse({"error": TOO_LONG_TO_ASK}, status_code=TOO_LARGE)
-        try:
-            given = json.loads(body)
-        except ValueError:
-            return JSONResponse({"error": NOT_AN_APPROVAL}, status_code=REFUSED)
-        if not isinstance(given, dict):
-            return JSONResponse({"error": NOT_AN_APPROVAL}, status_code=REFUSED)
-        thread_id, call_id = given.get("thread_id"), given.get("call_id")
-        approved = given.get("approved")
-        # `approved` has to be a boolean and not merely truthy: a client sending the
-        # string "false" would otherwise authorise the very effect it meant to refuse.
-        if not _said(thread_id) or not _said(call_id):
-            return JSONResponse({"error": NOT_AN_APPROVAL}, status_code=REFUSED)
-        if not isinstance(approved, bool):
-            return JSONResponse({"error": NOT_AN_APPROVAL}, status_code=REFUSED)
-        # Not merely "something is pending": an approval reaching the ask step would be
-        # read as a decline — safe, and silent. A mis-routed request is refused where
-        # whoever sent it can still see it.
-        waiting = await run_in_threadpool(app.agent.pending, thread_id)
-        if waiting is None:
-            raise NothingToResumeError
-        if waiting.proposal is None:
-            return JSONResponse({"error": NOT_AN_APPROVAL}, status_code=REFUSED)
-        settled = Approval(call_id=call_id, approved=approved)
-        return _streaming(
-            lambda report, write: app.agent.approve(settled, thread_id, report, write)
-        )
-
-    return answered
+    A card names the fields it asks for and marks which of them are the reader's; a
+    value for anything else reached the run from outside it and is dropped, so a request
+    cannot write an argument the card put up to be read.
+    """
+    offered = {field.name for field in card.fields if field.editable}
+    return {name: value for name, value in values.items() if name in offered}
 
 
 def _pending(app: App) -> Callable[[Request], Any]:
