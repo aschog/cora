@@ -98,6 +98,15 @@ class LoggingRetriever:
         """Straight through: a list of filenames says nothing a log needs."""
         return self.inner.sources(scope)
 
+    def forget(self, scope: str, file_hash: str) -> None:
+        """Logged: a passage leaving the index changes every answer that cited it."""
+        log.debug("forgetting: upload %s from %s", truncate(file_hash), scope)
+        self.inner.forget(scope, file_hash)
+
+    def uploads(self, scope: str, source: str) -> list[str]:
+        """Straight through: a list of uploads says nothing a log needs."""
+        return self.inner.uploads(scope, source)
+
     def contains(self, scope: str, file_hash: str) -> bool:
         """Straight through."""
         return self.inner.contains(scope, file_hash)

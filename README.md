@@ -101,6 +101,14 @@ once and a citation opens onto something you can read yourself. A search sees th
 its turn is running in and no other, and the rail lists and uploads into the field it is
 set to. `CORA_DOCUMENTS_PATH` moves the root; a second field is a directory under it.
 
+A document you are finished with is deleted from the rail, from the same control the
+other two rails carry — and it asks first. That takes both halves of it: its passages
+out of the index, and the file its citations opened onto. The rail lists a name and the
+stores keep uploads, so deleting a name takes every upload of it in that field, and the
+same file in another field is left where it is. Answers already given keep their
+citations and say the document is gone when you open one. Upload it again and it is
+indexed again, which is the way back from a mistake.
+
 The travel plugin ships its notes as files under
 `plugins/travel/src/cora/plugins/travel/corpus/`; upload them in the documents rail,
 with `travel` picked as the field, to give it something to answer from.

@@ -70,6 +70,104 @@ def test_chroma_reads_back_sources_and_contains(
     assert not chroma_retriever.contains(DEFAULT_SCOPE, "h3")
 
 
+def test_a_forgotten_upload_comes_back_from_no_query(
+    chroma_retriever: "ChromaRetriever", make_chunk: Callable[..., Chunk]
+) -> None:
+    embedder = FakeEmbedder()
+    kept = [make_chunk("a", source="one.txt", index=0)]
+    going = [make_chunk("b", source="two.txt", index=0)]
+    chroma_retriever.add(DEFAULT_SCOPE, kept, embedder.embed(["a"]), file_hash="h1")
+    chroma_retriever.add(DEFAULT_SCOPE, going, embedder.embed(["b"]), file_hash="h2")
+
+    chroma_retriever.forget(DEFAULT_SCOPE, "h2")
+
+    hits = chroma_retriever.query(DEFAULT_SCOPE, embedder.embed(["b"])[0], k=10)
+    assert [hit.chunk.upload for hit in hits] == ["h1"]
+    assert chroma_retriever.sources(DEFAULT_SCOPE) == ["one.txt"]
+    assert not chroma_retriever.contains(DEFAULT_SCOPE, "h2")
+
+
+def test_forgetting_one_upload_leaves_the_other_uploads_of_its_name(
+    chroma_retriever: "ChromaRetriever", make_chunk: Callable[..., Chunk]
+) -> None:
+    """The bytes name an upload, so one filename twice is two of them: forgetting the
+    first must not take the second, whose passages are measured in its own text."""
+    embedder = FakeEmbedder()
+    chroma_retriever.add(
+        DEFAULT_SCOPE,
+        [make_chunk("a", source="one.txt", index=0)],
+        embedder.embed(["a"]),
+        file_hash="h1",
+    )
+    chroma_retriever.add(
+        DEFAULT_SCOPE,
+        [make_chunk("b", source="one.txt", index=0)],
+        embedder.embed(["b"]),
+        file_hash="h2",
+    )
+
+    chroma_retriever.forget(DEFAULT_SCOPE, "h1")
+
+    assert chroma_retriever.contains(DEFAULT_SCOPE, "h2")
+    assert chroma_retriever.sources(DEFAULT_SCOPE) == ["one.txt"]
+
+
+def test_forgetting_an_upload_nothing_indexed_is_not_an_error(
+    chroma_retriever: "ChromaRetriever",
+) -> None:
+    chroma_retriever.forget(DEFAULT_SCOPE, "never-indexed")
+
+    assert chroma_retriever.sources(DEFAULT_SCOPE) == []
+
+
+def test_the_uploads_of_one_name_are_read_back_by_that_name(
+    chroma_retriever: "ChromaRetriever", make_chunk: Callable[..., Chunk]
+) -> None:
+    """What the rail lists is a name, and what either store forgets is an upload: this
+    is the mapping between them, and only the index holds it."""
+    embedder = FakeEmbedder()
+    chroma_retriever.add(
+        DEFAULT_SCOPE,
+        [
+            make_chunk("a", source="one.txt", index=0),
+            make_chunk("b", source="one.txt", index=1),
+        ],
+        embedder.embed(["a", "b"]),
+        file_hash="h1",
+    )
+    chroma_retriever.add(
+        DEFAULT_SCOPE,
+        [make_chunk("c", source="one.txt", index=0)],
+        embedder.embed(["c"]),
+        file_hash="h2",
+    )
+    chroma_retriever.add(
+        DEFAULT_SCOPE,
+        [make_chunk("d", source="two.txt", index=0)],
+        embedder.embed(["d"]),
+        file_hash="h3",
+    )
+
+    assert sorted(chroma_retriever.uploads(DEFAULT_SCOPE, "one.txt")) == ["h1", "h2"]
+    assert chroma_retriever.uploads(DEFAULT_SCOPE, "two.txt") == ["h3"]
+
+
+def test_a_name_nothing_was_uploaded_under_covers_no_uploads(
+    chroma_retriever: "ChromaRetriever",
+) -> None:
+    assert chroma_retriever.uploads(DEFAULT_SCOPE, "nothing.txt") == []
+
+
+def test_a_field_chroma_will_not_name_surfaces_as_retrieval_error_on_forgetting(
+    chroma_retriever: "ChromaRetriever",
+) -> None:
+    with pytest.raises(RetrievalError):
+        chroma_retriever.forget("a..b", "h1")
+
+    with pytest.raises(RetrievalError):
+        chroma_retriever.uploads("a..b", "one.txt")
+
+
 def test_chroma_records_persist_across_a_fresh_client(
     make_chroma: "Callable[[], ChromaRetriever]", make_chunk: Callable[..., Chunk]
 ) -> None:

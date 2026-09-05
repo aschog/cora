@@ -76,6 +76,30 @@ class KnowledgeBase:
         text, _ = ingest(data, filename, self.loaders)
         self.documents.keep(scope, file_hash, filename, text)
 
+    def forget(self, scope: str, name: str) -> None:
+        """Delete a document from one field: its passages, and the file behind them.
+
+        The name is what the field lists, and one name may be several uploads — the
+        bytes name an upload, so the same filename twice is two documents under one
+        entry. All of them go, because the one entry is what the reader deleted.
+
+        Each upload's passages leave the index before its file leaves the directory,
+        which is `add_file`'s order run backwards. A failure between the two then leaves
+        a file nothing can reach, and the next upload of those bytes overwrites it — the
+        other order leaves a document still listed, whose passages every search silently
+        drops and whose citations open onto nothing.
+
+        A field owns its documents, so the same file ingested into another field is left
+        where it is. A name nothing was uploaded under is not an error.
+
+        Raises:
+            RetrievalError: The index could not be read or written.
+            DocumentStoreError: A file could not be deleted.
+        """
+        for upload in self.retriever.uploads(scope, name):
+            self.retriever.forget(scope, upload)
+            self.documents.forget(scope, upload)
+
     def text(self, scope: str, upload: str) -> str | None:
         """The text one upload arrived as, or nothing if it was never kept.
 

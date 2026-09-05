@@ -102,6 +102,12 @@ export const passage = (scope: string, upload: string) =>
     `/api/uploads/${encodeURIComponent(scope)}/${encodeURIComponent(upload)}`,
   ).then((kept) => kept.text)
 
+/** Delete one document from one field: its passages out of the index, and the file its
+ *  citations opened onto. The name is what the field lists, and one name may be several
+ *  uploads — all of them go, because the one entry is what the reader deleted. */
+export const deleteDocument = (scope: string, name: string) =>
+  discard(`/api/documents/${encodeURIComponent(scope)}/${encodeURIComponent(name)}`)
+
 /** Delete one conversation: the turns recorded under it, and the thread they were
  *  answered on. One request, because a conversation whose record is gone and whose
  *  thread is not still holds a pin, a transcript and possibly a turn nobody can see. */

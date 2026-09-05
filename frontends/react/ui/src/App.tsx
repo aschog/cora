@@ -126,6 +126,10 @@ const UNDRAWABLE = 'That conversation could not be read.'
 
 /* What each question says is lost, and what is not — the half a reader cannot see for
    themselves. Written here, beside the rails that raise them. */
+const DOCUMENT_GOES =
+  'Its passages leave the index and its file leaves the field, so no answer can be ' +
+  'drawn from it again. Answers already given keep their citations, and say the ' +
+  "document is gone when you open one. This can't be undone."
 const SESSION_GOES =
   'The thread and its plan are removed. Your documents and saved memory are ' +
   "untouched — this can't be undone."
@@ -190,7 +194,7 @@ export default function App() {
      slot, because one question stands at a time — and it carries the act, so each rail
      says its own words rather than the modal knowing everyone's. */
   const [confirming, setConfirming] =
-    useState<(Asked & { act: () => void }) | null>(null)
+    useState<(Asked & { act: () => Promise<void> }) | null>(null)
   const [trouble, setTrouble] = useState<string | null>(null)
   /* What the last upload did. Its own state, because it is not trouble and a refresh
      going through does not take it away: a duplicate upload is answered with `0` chunks,
@@ -523,6 +527,16 @@ export default function App() {
     refresh()
   }
 
+  /** A document deleted, and the panel reading it let go of: it would otherwise draw a
+   *  file the field no longer holds, under a name nothing can open. The field is passed
+   *  rather than read here: the question that raised this may have stood while a turn
+   *  landed and moved the rail, and what is deleted is the field the reader was looking
+   *  at when they asked. */
+  const erase = (scope: string, name: string) =>
+    cora
+      .deleteDocument(scope, name)
+      .then(() => setRead((shown) => (shown?.document === name ? null : shown)))
+
   /** An upload the reader started and then left behind. Ingestion takes seconds and
    *  nothing stops them opening another conversation while it runs, so the notice is
    *  stamped with the one they started it in — news about a desk they have left is not
@@ -552,13 +566,7 @@ export default function App() {
    *  nowhere to come back to. The list is redrawn by the refresh every write here goes
    *  through. */
   const discard = (session: Session) =>
-    cora
-      .deleteSession(session.thread_id)
-      .then(() => {
-        forgetIf(session.thread_id)
-        return refresh()
-      })
-      .catch(reportTo(setTrouble))
+    cora.deleteSession(session.thread_id).then(() => forgetIf(session.thread_id))
 
   /** A card answered, either kind. The turn is already on the page, so the rest of it
    *  lands on the entry that raised the card rather than after it.
@@ -784,6 +792,15 @@ export default function App() {
                 field={namedAbove ? null : field}
                 onOpen={open}
                 onUpload={uploaded}
+                onDelete={(name) =>
+                  setConfirming({
+                    head: 'DELETE DOCUMENT',
+                    subject: name,
+                    said: DOCUMENT_GOES,
+                    confirm: 'Delete document',
+                    act: () => erase(field, name),
+                  })
+                }
                 upload={notice}
                 onDismissUpload={() => setNotice(null)}
               />
@@ -866,7 +883,7 @@ export default function App() {
                   subject: session.opened_with,
                   said: SESSION_GOES,
                   confirm: 'Delete session',
-                  act: () => void discard(session),
+                  act: () => discard(session),
                 })
               }
             />
@@ -880,11 +897,7 @@ export default function App() {
                   subject: fact.text,
                   said: FACT_GOES,
                   confirm: 'Forget it',
-                  act: () =>
-                    void cora
-                      .forget(fact.key)
-                      .then(refresh)
-                      .catch(reportTo(setTrouble)),
+                  act: () => cora.forget(fact.key),
                 })
               }
               onForgetEverything={() =>
@@ -893,11 +906,7 @@ export default function App() {
                   subject: 'Everything cora remembers about you',
                   said: EVERYTHING_GOES,
                   confirm: 'Forget everything',
-                  act: () =>
-                    void cora
-                      .forgetEverything()
-                      .then(refresh)
-                      .catch(reportTo(setTrouble)),
+                  act: () => cora.forgetEverything(),
                 })
               }
             />
@@ -912,11 +921,17 @@ export default function App() {
         <ConfirmModal
           {...confirming}
           /* The question comes down as it is answered and the act runs after, so a
-             banner the act raises is not cleared by the card closing. */
+             banner the failure raises is not cleared by the card closing.
+             The redraw and the refusal both belong here rather than in the act. The
+             redraw, because a question may stand while a landing turn moves the field
+             under it: this `refresh` asks about the field the rail is showing now,
+             where the act's own would land the old field's listing under the new
+             field's heading. The refusal, because nothing changed — a redraw would
+             clear the sentence that says so. */
           onConfirm={() => {
             const going = confirming.act
             setConfirming(null)
-            going()
+            void going().then(refresh, reportTo(setTrouble))
           }}
           onCancel={() => setConfirming(null)}
         />

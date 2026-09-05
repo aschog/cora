@@ -2,6 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import CitationModal from './CitationModal'
 import type { Citation } from '../api'
+import { UNKEPT } from './DocumentBody'
 
 const KEPT = 'Sleep matters. The rest of the document follows.'
 
@@ -39,7 +40,7 @@ test('a passage whose text was never kept says so rather than opening onto nothi
      reader nothing about why. */
   render(<CitationModal citation={cited('')} onClose={() => {}} />)
 
-  expect(screen.getByText(/indexed before cora kept its text/)).toBeTruthy()
+  expect(screen.getByText(UNKEPT)).toBeTruthy()
 })
 
 test('a citation that names no field says so rather than asking for a broken address', () => {
@@ -50,5 +51,5 @@ test('a citation that names no field says so rather than asking for a broken add
     <CitationModal citation={{ ...cited('u1'), scope: '' }} onClose={vi.fn()} />,
   )
 
-  expect(screen.getByText(/indexed before cora kept its text/)).toBeTruthy()
+  expect(screen.getByText(UNKEPT)).toBeTruthy()
 })

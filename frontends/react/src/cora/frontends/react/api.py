@@ -69,6 +69,11 @@ def api(
     routes: list[Route | Mount] = [
         Route("/api/documents", _documents(app, scopes), methods=["GET"]),
         Route("/api/documents", _ingest(app, scopes), methods=["POST"]),
+        Route(
+            "/api/documents/{scope}/{name}",
+            _delete_document(app, scopes),
+            methods=["DELETE"],
+        ),
         Route("/api/ask", _ask(app, scopes), methods=["POST"]),
         Route("/api/resume", _resume(app), methods=["POST"]),
         Route("/api/approve", _approve(app), methods=["POST"]),
@@ -162,12 +167,39 @@ def _documents(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], An
         named = request.query_params.get("scope", "")
         scope = _field(named, scopes)
         if scope is None:
-            return JSONResponse(
-                {"error": _no_such_field(named, scopes)}, status_code=REFUSED
-            )
+            return _refusal(named, scopes)
         return JSONResponse(app.knowledge_base.list_sources(scope))
 
     return listed
+
+
+def _delete_document(
+    app: App, scopes: tuple[str, ...] = ()
+) -> Callable[[Request], Any]:
+    """A document deleted from one field, both halves of it, through the one call that
+    drops both.
+
+    The field is refused here as it is on every route that takes one: the name is the
+    client's, and a field nobody loaded would reach a collection the store creates for
+    being asked. A name nothing was uploaded under is a request already satisfied.
+    """
+
+    def one(request: Request) -> Response:
+        named = request.path_params["scope"]
+        scope = _field(named, scopes)
+        if scope is None:
+            return _refusal(named, scopes)
+        app.knowledge_base.forget(scope, request.path_params["name"])
+        return Response(status_code=NO_CONTENT)
+
+    return one
+
+
+def _refusal(named: str, scopes: tuple[str, ...]) -> JSONResponse:
+    """What a route answers a field nobody loaded with. Written once because four routes
+    take a field and every one of them must refuse it the same way — a route that
+    refused differently would be the one worth getting at."""
+    return JSONResponse({"error": _no_such_field(named, scopes)}, status_code=REFUSED)
 
 
 def _field(named: str, scopes: tuple[str, ...]) -> str | None:
@@ -202,9 +234,7 @@ def _ingest(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
             data = await uploaded.read()
         scope = _field(named, scopes)
         if scope is None:
-            return JSONResponse(
-                {"error": _no_such_field(named, scopes)}, status_code=REFUSED
-            )
+            return _refusal(named, scopes)
         chunks = await run_in_threadpool(
             app.knowledge_base.add_file, data, filename, scope
         )
@@ -488,9 +518,7 @@ def _upload(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
         named = request.path_params["scope"]
         scope = _field(named, scopes)
         if scope is None:
-            return JSONResponse(
-                {"error": _no_such_field(named, scopes)}, status_code=REFUSED
-            )
+            return _refusal(named, scopes)
         text = app.knowledge_base.text(scope, request.path_params["upload"])
         if text is None:
             return JSONResponse({"error": UNKEPT}, status_code=404)
@@ -499,7 +527,10 @@ def _upload(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
     return read
 
 
-UNKEPT = "That passage's document was never kept, so it cannot be opened."
+UNKEPT = "cora cannot open that passage's document."
+"""One sentence for either way a document is not there. The store cannot tell a
+deleted document from one whose text was never kept — both read as nothing — so what
+the reader is told is true of both rather than guessing between them."""
 
 
 def _sessions(app: App) -> Callable[[Request], Any]:
