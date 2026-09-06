@@ -47,10 +47,12 @@ SCREENING = "screen"
 BRIEFING = "brief"
 CALLING = "tool_call"
 RETURNING = "tool_result"
+ANSWERING = "answer"
 """The points in a turn a handler can be subscribed to, under the names a plugin writes:
-the question being screened, the brief being settled, a tool call about to run, and a
-tool result coming back. A name is contract, which is why it is here; what a handler's
-return *means* at each is `cora.engine.events`, which is not."""
+the question being screened, the brief being settled, a tool call about to run, a tool
+result coming back, and the answer settled and not yet handed over. A name is contract,
+which is why it is here; what a handler's return *means* at each is
+`cora.engine.events`, which is not."""
 
 Handler = Callable[[Any], Any]
 """What a handler is: one frozen value in, and one decision out.
@@ -233,7 +235,7 @@ class Host(Protocol):
         """Take part in the turn at one of the points this module names.
 
         Args:
-            event: One of `SCREENING`, `BRIEFING`, `CALLING`, `RETURNING`.
+            event: One of `SCREENING`, `BRIEFING`, `CALLING`, `RETURNING`, `ANSWERING`.
             handle: What runs there, as `Handler` describes one.
             scope: Where it runs. `None` runs it in every turn, and no scope can
                 switch that off — which is what screening for injection needs.

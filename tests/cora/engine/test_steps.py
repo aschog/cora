@@ -19,6 +19,7 @@ from cora.domain.errors import (
 from cora.domain.trace import (
     CardFilled,
     EffectSettled,
+    HandlerRan,
     ModelDecision,
     ScopeSettled,
     StepEntered,
@@ -79,6 +80,7 @@ from cora.engine.validation import CORA, refuse_nothing_to_answer
 from cora.ports.chat_model import Aside, Message, ModelReply, Piece, Written
 from cora.ports.graph import ASK, DONE, TOOLS, Step
 from cora.ports.host import (
+    ANSWERING,
     BRIEFING,
     CALLING,
     DEFAULT_SCOPE,
@@ -1532,7 +1534,7 @@ def test_the_answering_step_settles_the_answer_the_last_round_reached() -> None:
         }
     )
 
-    assert settled == {"answer": "The sum is 3."}
+    assert settled == {"answer": "The sum is 3.", "trace": []}
 
 
 def test_no_round_settles_the_answer_by_being_the_last_one() -> None:
@@ -1561,7 +1563,7 @@ def test_a_turn_that_reached_no_round_settles_nothing_of_the_one_before_it() -> 
         }
     )
 
-    assert settled == {"answer": ""}
+    assert settled == {"answer": "", "trace": []}
 
 
 def test_the_step_a_failure_first_came_out_of_is_the_one_it_keeps() -> None:
@@ -2570,3 +2572,65 @@ def test_what_a_plugin_kept_is_not_emptied_at_the_top_of_a_turn() -> None:
     contributed = ScreenStep()({"question": "and now?", "kept": {"keeper": {"a": "b"}}})
 
     assert "kept" not in contributed
+
+
+def _answering(handle: Handler, scope: str | None = None) -> Registry:
+    return Registry(
+        (
+            Registration(
+                module="checker",
+                kind=HANDLER,
+                value=Subscription(event=ANSWERING, handle=handle),
+                scope=scope,
+            ),
+        )
+    )
+
+
+def _settled(registry: Registry, said: str = "Call 555-0134.") -> AgentState:
+    return AnswerStep(registry=registry)(
+        {"messages": [Message(role="assistant", content=said)]}
+    )
+
+
+def test_a_handler_is_offered_the_answer_and_what_it_returns_is_settled() -> None:
+    contributed = _settled(_answering(lambda answer: answer.replace("555-0134", "x")))
+
+    assert contributed["answer"] == "Call x."
+
+
+def test_a_handler_that_returns_nothing_leaves_the_answer_as_it_was() -> None:
+    assert _settled(_answering(lambda answer: None))["answer"] == "Call 555-0134."
+
+
+def test_a_handler_that_changed_the_answer_is_on_the_trace() -> None:
+    contributed = _settled(_answering(lambda answer: "redacted"))
+
+    [ran] = contributed["trace"]
+    assert isinstance(ran, HandlerRan)
+    assert ran.event == ANSWERING
+    assert ran.outcome == "changed the answer"
+
+
+def test_a_handler_subscribed_to_another_scope_never_sees_the_answer() -> None:
+    registry = _answering(lambda answer: "redacted", scope="elsewhere")
+
+    contributed = AnswerStep(registry=registry)(
+        {"messages": [Message(role="assistant", content="stands")], "scopes": ["here"]}
+    )
+
+    assert contributed["answer"] == "stands"
+
+
+def test_a_system_wide_handler_sees_the_answer_whatever_the_turn_ran_as() -> None:
+    registry = _answering(lambda answer: "redacted")
+
+    contributed = AnswerStep(registry=registry)(
+        {"messages": [Message(role="assistant", content="stands")], "scopes": ["here"]}
+    )
+
+    assert contributed["answer"] == "redacted"
+
+
+def test_an_answer_nothing_is_subscribed_to_is_settled_as_it_stands() -> None:
+    assert _settled(Registry())["answer"] == "Call 555-0134."

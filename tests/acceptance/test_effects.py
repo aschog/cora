@@ -16,6 +16,7 @@ from cora.plugins.travel import SCOPE
 from cora.plugins.travel.itinerary import ITINERARY_TOOL_NAME
 from cora.ports.chat_model import ModelReply
 from cora.ports.host import (
+    ANSWERING,
     BRIEFING,
     CALLING,
     RETURNING,
@@ -158,5 +159,5 @@ def _taking_part(cora: Host) -> None:
     is: a refusing event reads anything at all as a refusal, and an amending one reads
     nothing as leaving the value alone.
     """
-    for event in (SCREENING, BRIEFING, CALLING, RETURNING):
+    for event in (SCREENING, BRIEFING, CALLING, RETURNING, ANSWERING):
         cora.register_handler(event=event, handle=lambda *_, **__: None)

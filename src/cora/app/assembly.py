@@ -173,7 +173,7 @@ def assemble(
             ask=AskStep(pause=interrupting),
             router=Router(max_tool_rounds=max_tool_rounds),
         ),
-        after=(Named(ANSWER, AnswerStep()),),
+        after=(Named(ANSWER, AnswerStep(registry=registry)),),
         max_tool_rounds=max_tool_rounds,
     )
     return App(

@@ -38,6 +38,7 @@ from cora.engine.scoping import running_in
 from cora.ports.chat_model import Aside, ChatModel, Message, TextSink, unheard
 from cora.ports.graph import ASK, DONE, TOOLS, Step
 from cora.ports.host import (
+    ANSWERING,
     BRIEFING,
     CALLING,
     DEFAULT_SCOPE,
@@ -553,18 +554,35 @@ class AnswerStep:
 
     The round the turn ended on is the answer; the rounds before it asked for tools,
     and what they wrote was thinking.
+
+    What it settles is offered to the handlers before it is contributed, so a plugin may
+    hand back a different answer — and the citations are read off what they returned,
+    because they are read off the answer after the walk.
     """
 
+    registry: Registry = field(default_factory=Registry)
+
     def __call__(self, state: AgentState) -> AgentState:
-        """Settle the answer from the last round of this turn.
+        """Settle the answer from the last round of this turn, as the handlers leave it.
 
         A turn that reached no round at all answers with nothing, which is what a
-        state short of a model reply honestly holds.
+        state short of a model reply honestly holds — and is offered to the handlers
+        like any other, because a plugin watching what cora says is watching that too.
         """
         rounds = [
             message for message in _this_turn(state) if message.role == "assistant"
         ]
-        return {"answer": rounds[-1].content if rounds else ""}
+        settled = rounds[-1].content if rounds else ""
+        scopes = scoped(state)
+        trace: list[TraceStep] = []
+        answer = dispatch(
+            ANSWERING,
+            settled,
+            self.registry.handlers(ANSWERING, scopes),
+            trace,
+            scopes,
+        )
+        return {"answer": answer, "trace": trace}
 
 
 GATHERS = (

@@ -16,6 +16,7 @@ from cora.domain.errors import CoreError, InputRejectedError
 from cora.domain.trace import HandlerRan, TraceStep
 from cora.engine.scoping import here, running_in
 from cora.ports.host import (
+    ANSWERING,
     BRIEFING,
     CALLING,
     RETURNING,
@@ -100,6 +101,11 @@ EVENTS: Mapping[str, Kind] = {
         amended="changed a tool result",
         broke="could not change a tool result",
         holds=ToolResult,
+    ),
+    ANSWERING: Amending(
+        amended="changed the answer",
+        broke="could not change the answer",
+        holds=str,
     ),
 }
 """Every point in a turn a plugin can take part in, and what it does there."""
