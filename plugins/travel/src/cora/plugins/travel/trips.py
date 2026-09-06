@@ -601,14 +601,13 @@ def _asking(
     return asks
 
 
-def trip_tools(key: str, url: str = SEARCH) -> tuple[Tool, ...]:
+def trip_tools(search: Search) -> tuple[Tool, ...]:
     """Both searches over one client, declared as returning what cora did not write.
 
     Args:
-        url: Where the searches go, for a deployment standing something else in front
-            of them.
+        search: The client the plugin built, shared with the planner — a second one
+            would parse the certificate bundle again and reuse no connection.
     """
-    search = Search(key, url=url)
     return (
         Tool(
             name=FLIGHTS_TOOL_NAME,

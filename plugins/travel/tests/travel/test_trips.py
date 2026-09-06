@@ -362,7 +362,7 @@ def test_every_departure_failing_is_the_failure_rather_than_an_empty_answer() ->
 
 
 def test_both_searches_are_declared_as_returning_what_cora_did_not_write() -> None:
-    flying, staying = trip_tools(KEY)
+    flying, staying = trip_tools(Search(KEY))
 
     assert [tool.untrusted for tool in (flying, staying)] == [True, True]
     assert not any(tool.effect for tool in (flying, staying))
@@ -436,7 +436,7 @@ def test_the_key_is_kept_out_of_the_clients_own_request_log() -> None:
 
 
 def _asks(arguments: dict[str, Any]) -> Any:
-    flying, _ = trip_tools(KEY)
+    flying, _ = trip_tools(Search(KEY))
     assert flying.asks is not None
     return flying.asks(arguments)
 
@@ -494,7 +494,7 @@ def test_a_search_told_everything_it_needs_asks_nothing() -> None:
 
 
 def test_the_stay_search_asks_on_its_own_schema_and_not_the_flights_one() -> None:
-    _, staying = trip_tools(KEY)
+    _, staying = trip_tools(Search(KEY))
     assert staying.asks is not None
     card = staying.asks({})
 

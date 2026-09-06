@@ -3,13 +3,20 @@ import pathlib
 from cora.domain.errors import PluginLoadError
 from cora.plugins.travel.forecast import forecast_tool
 from cora.plugins.travel.itinerary import itinerary_tool
+from cora.plugins.travel.planner import planning_tools
 from cora.plugins.travel.researcher import (
     RESEARCH_SCHEMA,
     RESEARCH_TOOL_DESCRIPTION,
     RESEARCH_TOOL_NAME,
     researching,
 )
-from cora.plugins.travel.trips import ENDPOINT, SEARCH, SETTING, trip_tools
+from cora.plugins.travel.trips import (
+    ENDPOINT,
+    SEARCH,
+    SETTING,
+    Search,
+    trip_tools,
+)
 from cora.ports.host import Host
 
 SCOPE = "travel"
@@ -103,7 +110,19 @@ def extend(cora: Host) -> None:
     )
     key = cora.settings.get(SETTING, "").strip()
     endpoint = cora.settings.get(ENDPOINT, "").strip() or SEARCH
-    for priced in trip_tools(key, endpoint) if key else ():
+    # One client for the two searches and the planner, so a trip that prices three
+    # departures and three stays parses the certificate bundle once.
+    searching = Search(key, url=endpoint) if key else None
+    for planning in planning_tools(cora, searching, weather=fetching.run):
+        cora.register_tool(
+            name=planning.name,
+            description=planning.description,
+            parameter_schema=planning.parameter_schema,
+            run=planning.run,
+            scope=SCOPE,
+            untrusted=planning.untrusted,
+        )
+    for priced in trip_tools(searching) if searching is not None else ():
         cora.register_tool(
             name=priced.name,
             description=priced.description,
@@ -115,7 +134,7 @@ def extend(cora: Host) -> None:
         )
     if cora.output is None:
         return
-    saving = itinerary_tool(cora.output)
+    saving = itinerary_tool(cora.output, cora)
     cora.register_tool(
         name=saving.name,
         description=saving.description,

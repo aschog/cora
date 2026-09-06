@@ -4,6 +4,7 @@ from cora.domain.errors import PluginLoadError
 from cora.plugins.travel import CORPUS, INSTRUCTIONS, SCOPE, extend
 from cora.plugins.travel.forecast import FORECAST_TOOL_NAME
 from cora.plugins.travel.itinerary import ITINERARY_TOOL_NAME
+from cora.plugins.travel.planner import PLAN_TOOL_NAME, REVISE_TOOL_NAME
 from cora.plugins.travel.researcher import RESEARCH_TOOL_NAME
 from cora.plugins.travel.trips import (
     FLIGHTS_TOOL_DESCRIPTION,
@@ -12,7 +13,6 @@ from cora.plugins.travel.trips import (
     HOTELS_TOOL_NAME,
     SETTING,
 )
-from cora.ports.host import INSTRUCTIONS as SAYS
 from cora.ports.host import TOOL as HAS
 from fakes import FakeOutput, host_for
 
@@ -77,16 +77,13 @@ def test_everything_travel_registers_belongs_to_its_own_scope() -> None:
 
     extend(host)
 
-    assert [(entry.kind, entry.scope) for entry in host.registered] == [
-        (SAYS, SCOPE),
-        (HAS, SCOPE),
-        (HAS, SCOPE),
-        (HAS, SCOPE),
-    ]
+    assert {entry.scope for entry in host.registered} == {SCOPE}
     tools = [entry.value for entry in host.registered if entry.kind == HAS]
     assert [tool.name for tool in tools] == [
         FORECAST_TOOL_NAME,
         RESEARCH_TOOL_NAME,
+        PLAN_TOOL_NAME,
+        REVISE_TOOL_NAME,
         ITINERARY_TOOL_NAME,
     ]
     assert [tool.name for tool in tools if tool.effect] == [ITINERARY_TOOL_NAME], (
@@ -95,7 +92,9 @@ def test_everything_travel_registers_belongs_to_its_own_scope() -> None:
     assert [tool.name for tool in tools if tool.untrusted] == [
         FORECAST_TOOL_NAME,
         RESEARCH_TOOL_NAME,
-    ], "a service's answer is not cora's words, and neither is a report built on one"
+        PLAN_TOOL_NAME,
+        REVISE_TOOL_NAME,
+    ], "a service's answer is not cora's words, and neither is a plan built on one"
 
 
 def test_travel_offers_no_way_of_saving_where_a_deployment_configured_nowhere() -> None:
