@@ -1,7 +1,7 @@
 ## Why
 
-A row the reader has already confirmed away stays in its list until the store answers, so
-the click reads as having missed.
+A row the reader confirmed away stays listed until the store answers, so the click reads
+as having missed.
 
 ## What Changes
 

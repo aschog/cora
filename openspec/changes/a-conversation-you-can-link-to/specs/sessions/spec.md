@@ -24,7 +24,7 @@ A conversation that could not be read SHALL NOT be named there.
 
 - **GIVEN** a conversation whose turns cannot be read
 - **WHEN** the reader opens it
-- **THEN** the page says so, and the address names no conversation
+- **THEN** the page says so, and the address does not name it
 
 ### Requirement: A conversation is named once it has answered, not before
 
@@ -79,8 +79,8 @@ it. An address the page itself just wrote SHALL NOT be read back as a request.
 
 ### Requirement: Starting over takes the conversation out of the address
 
-Leaving a conversation SHALL clear the address, because the conversation replacing it is
-in no store and has nothing to link to.
+Leaving a conversation SHALL clear the address. The conversation replacing it is in no
+store, and has nothing to link to.
 
 #### Scenario: A new conversation is nameless
 
@@ -90,8 +90,8 @@ in no store and has nothing to link to.
 
 ### Requirement: A card left open outranks the address
 
-Where a card was left open in one conversation and the address names another, the page
-SHALL open in the conversation holding the card.
+Where a card was left open in one conversation, the page SHALL open there. It SHALL do
+so though the address names another conversation.
 
 #### Scenario: The card is what the page comes back to
 
@@ -102,8 +102,8 @@ SHALL open in the conversation holding the card.
 
 ### Requirement: An address that could mean another path names no conversation
 
-The page SHALL refuse a thread from the address that is not made of letters, digits and
-dashes, and SHALL escape every thread it puts into the path of a request.
+The page SHALL refuse an address thread not made of letters, digits and dashes. It
+SHALL escape every thread it puts into the path of a request.
 
 #### Scenario: A path climbed out of is refused
 

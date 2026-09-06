@@ -1,7 +1,7 @@
 ## Why
 
-One part of the page failing to draw unmounts the whole of it, leaving the reader a blank
-window and nothing saying what happened.
+A part of the page that fails to draw unmounts all of it, leaving a blank window and no
+explanation.
 
 ## What Changes
 

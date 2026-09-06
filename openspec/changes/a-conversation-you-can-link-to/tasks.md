@@ -1,10 +1,10 @@
-Written alongside the code rather than ahead of it: this change was retrofitted onto work
-already done and reviewed, so the list is a record of the tests that hold it. Every item
-names a test that exists and fails if its behaviour is removed.
+Written alongside the code rather than ahead of it: the change was retrofitted onto
+reviewed work. The list is a record of the tests that hold it. Every item names a test
+that exists and fails if its behaviour is removed.
 
 ## 1. The outer test
 
-- [x] 1.1 Write the functional test where opening a conversation names it in the address and a page opened at that address opens in it.
+- [x] 1.1 Write the outer test: opening a conversation names it, and a page at that address opens in it.
 
 ## 2. Reading an address
 
@@ -13,6 +13,7 @@ names a test that exists and fails if its behaviour is removed.
 - [x] 2.3 Write a test that a thread decoding to `../memory` names no conversation.
 - [x] 2.4 Write a test that a thread of letters, digits and dashes is read back whichever way it was minted.
 - [x] 2.5 Write a test that an address that decodes to nothing names no conversation.
+- [x] 2.6 Write a test that a refused address asks the store for nothing.
 
 ## 3. Writing an address
 
@@ -29,6 +30,7 @@ names a test that exists and fails if its behaviour is removed.
 - [x] 4.3 Write a test that a conversation the reader started is named once it has answered.
 - [x] 4.4 Write a test that an answer landing in a conversation the reader left does not name it.
 - [x] 4.5 Write a test that a card left open outranks the address.
+- [x] 4.6 Write a test that a conversation paused on its first question is named once the card settles.
 
 ## 5. The outer test again
 

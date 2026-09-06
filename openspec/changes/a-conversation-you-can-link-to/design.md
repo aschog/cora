@@ -1,7 +1,7 @@
 ## Context
 
-The page is one screen with no addresses, so the conversation on it is invisible to the
-browser and to anyone the reader sends a link to.
+The page has one address for everything, so the conversation on it cannot be linked to
+or reloaded into.
 
 ## The seam
 
@@ -29,16 +29,16 @@ browser and to anyone the reader sends a link to.
 - Only an answer records a conversation: a paused turn is in no store, a failed one in
   no record.
 - So the turn reports the thread it just recorded, and the page names it then.
-- The report is re-checked against where the reader is, because the re-read before it is
-  awaited and they can leave while it runs.
+- The report is re-checked against where the reader is.
+- The re-read before it is awaited, and the reader can leave while it runs.
 
 ## The stow outranks the address
 
 - A thread parked on its first question is listed under no session.
 - The stow is its only route back; the address names something SESSIONS already lists.
 - Between the two, the stow is what is lost, so it wins.
-- Narrowing this to unlisted threads only would need the page to know, before it opens
-  anything, whether the stowed thread has ever answered.
+- Narrowing this to unlisted threads would need the page to know more, sooner.
+- Whether the stowed thread ever answered is a round trip it does not have.
 
 ## What the address may hold
 

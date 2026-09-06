@@ -1,10 +1,10 @@
-Written alongside the code rather than ahead of it: this change was retrofitted onto work
-already done and reviewed, so the list is a record of the tests that hold it. Every item
-names a test that exists and fails if its behaviour is removed.
+Written alongside the code rather than ahead of it: the change was retrofitted onto
+reviewed work. The list is a record of the tests that hold it. Every item names a test
+that exists and fails if its behaviour is removed.
 
 ## 1. The outer test
 
-- [x] 1.1 Write the functional test where a store answers with a shape a panel cannot read, and the reader is told that panel could not be drawn while the conversation stays on screen.
+- [x] 1.1 Write the functional test where a panel fed an unreadable shape says so and the conversation survives.
 
 ## 2. The boundary itself
 
@@ -12,6 +12,7 @@ names a test that exists and fails if its behaviour is removed.
 - [x] 2.2 Write a test that what did not throw is drawn as it was.
 - [x] 2.3 Write a test that trying again draws children that no longer throw.
 - [x] 2.4 Write a test that trying again over children that still throw says so again.
+- [x] 2.5 Write a test that what threw reaches the console.
 
 ## 3. Where they go
 

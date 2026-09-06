@@ -131,7 +131,8 @@ export const deleteDocument = (scope: string, name: string) =>
 export const deleteSession = (thread: string) =>
   discard(`/api/sessions/${encodeURIComponent(thread)}`)
 
-export const forget = (key: string) => discard(`/api/memory/${key}`)
+export const forget = (key: string) =>
+  discard(`/api/memory/${encodeURIComponent(key)}`)
 
 export const forgetEverything = () => discard('/api/memory')
 

@@ -1,7 +1,7 @@
 ## Why
 
-Every conversation has the same address, so none of them can be linked to, reloaded into,
-or left by pressing back.
+Every conversation has the same address, so none can be linked to, reloaded into, or
+left by pressing back.
 
 ## What Changes
 

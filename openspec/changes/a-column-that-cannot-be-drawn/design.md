@@ -1,7 +1,7 @@
 ## Context
 
-React unmounts the whole tree under an uncaught render error, so a bad offset in one
-citation costs the reader the entire window.
+React unmounts the whole tree under an uncaught render error, so one bad citation costs
+the whole window.
 
 ## The seam
 

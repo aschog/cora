@@ -69,3 +69,38 @@ test('trying again draws what threw, so a panel is not broken until the page is 
   expect(screen.getByText('the document')).toBeTruthy()
   expect(screen.queryByRole('alert')).toBeNull()
 })
+
+test('trying again over children that still throw says so again', () => {
+  /* The honest outcome: nothing was mended, so the reader is told the same sentence
+     rather than shown a blank or a crash. The boundary must survive its own retry. */
+  quietly(() =>
+    render(
+      <ErrorBoundary said={SAID}>
+        <Throws when />
+      </ErrorBoundary>,
+    ),
+  )
+  expect(screen.getByRole('alert')).toBeTruthy()
+
+  quietly(() => fireEvent.click(screen.getByRole('button', { name: 'Try again' })))
+
+  expect(screen.getByRole('alert').textContent).toContain(SAID)
+})
+
+test('what threw reaches the console, which is the only record of it', () => {
+  /* The reader gets a sentence; whoever is debugging gets the throw and the tree it came
+     from. Muted here as everywhere — but muted is not unasserted. */
+  const said = vi.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    render(
+      <ErrorBoundary said={SAID}>
+        <Throws when />
+      </ErrorBoundary>,
+    )
+    expect(
+      said.mock.calls.some(([first]) => first === 'cora could not draw the page:'),
+    ).toBe(true)
+  } finally {
+    said.mockRestore()
+  }
+})

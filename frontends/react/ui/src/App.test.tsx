@@ -4573,3 +4573,107 @@ test('a scopes read that failed recovers, though the fields never change', async
   // And the picker the failed read left empty is drawn again.
   expect(screen.getByRole('button', { name: 'Plugin' })).toBeTruthy()
 })
+
+test('a conversation that paused on its first question is named once the card settles', async () => {
+  /* The ask path returned at the pause without naming anything — a paused turn is in no
+     store. The resume is the only route by which this conversation ever becomes
+     something to link to, so it is the path that has to write the address. */
+  vi.stubGlobal('crypto', { randomUUID: () => 'fresh1' })
+  stopping()
+  const asked = await stopped()
+  expect(globalThis.location.hash).toBe('')
+
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/1,730 kcal/)
+
+  await waitFor(() => expect(globalThis.location.hash).toBe('#/c/fresh1'))
+})
+
+test('an answer landing in a conversation the reader left does not move the address', async () => {
+  /* The address names the conversation they are in. A turn finishing somewhere else must
+     not write its own thread over that — the reader would be yanked back into a
+     conversation they deliberately left. */
+  vi.stubGlobal('crypto', { randomUUID: () => 'here' })
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(LIVE[0].summary)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  expect(globalThis.location.hash).toBe('#/c/old')
+
+  turn.release()
+  await flushed()
+
+  expect(globalThis.location.hash).toBe('#/c/old')
+})
+
+test('an address that could mean another path asks the store for nothing', async () => {
+  /* Refusing to draw it is half the point. The other half is that no request is built
+     from it: a path that resolves to another endpoint must not be fetched at all. */
+  globalThis.history.replaceState(
+    null,
+    '',
+    globalThis.location.pathname + '#/c/..%2Fmemory',
+  )
+
+  render(<App />)
+  await screen.findByText('notes.md')
+  await flushed()
+
+  const asked = vi.mocked(globalThis.fetch).mock.calls.map(([path]) => String(path))
+  expect(asked.filter((path) => path.startsWith('/api/sessions/'))).toEqual([])
+})
+
+test('a passage on screen is asked for again after a delete, and its absence is drawn', async () => {
+  /* The text is held under its upload, and nothing else ever re-asks: a document an
+     effect deleted would otherwise be drawn from what was held for as long as the page
+     stays open. The re-read after a write is what evicts it. */
+  let gone = false
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return gone
+          ? ({
+              ok: false,
+              status: 404,
+              json: async () => ({ error: 'cora cannot open this document.' }),
+            } as unknown as Response)
+          : ({ ok: true, json: async () => ({ text: KEPT }) } as unknown as Response)
+      if (init?.method === 'DELETE')
+        return { ok: true, status: 204 } as unknown as Response
+      if (route(path) === '/api/documents')
+        return {
+          ok: true,
+          json: async () => ['notes.md', 'other.md'],
+        } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  await screen.findByText(/the document follows/)
+
+  /* Deleted out from under the panel — another document goes, and the re-read that
+     follows any write is what re-asks for this one. */
+  gone = true
+  fireEvent.click(screen.getByRole('button', { name: 'Delete other.md' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Delete document' }))
+
+  expect(await screen.findByText('cora cannot open this document.')).toBeTruthy()
+  expect(screen.queryByText(/the document follows/)).toBeNull()
+})

@@ -1,6 +1,6 @@
-Written alongside the code rather than ahead of it: this change was retrofitted onto work
-already done and reviewed, so the list is a record of the tests that hold it. Every item
-names a test that exists and fails if its behaviour is removed.
+Written alongside the code rather than ahead of it: the change was retrofitted onto
+reviewed work. The list is a record of the tests that hold it. Every item names a test
+that exists and fails if its behaviour is removed.
 
 ## 1. The outer test
 
@@ -22,6 +22,7 @@ names a test that exists and fails if its behaviour is removed.
 
 - [x] 4.1 Write a test that the listing is read again after a delete, however it answered.
 - [x] 4.2 Write a test that the re-read does not clear the sentence a refused delete wrote.
+- [x] 4.3 Write a test that a delete that goes through clears the sentence before it.
 
 ## 5. The outer test again
 

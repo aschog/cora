@@ -4,15 +4,16 @@ so that a fault in one rail does not take the conversation I am reading with it.
 
 ## Purpose
 
-What the screen does when part of it throws while being drawn. A fault is bounded by the
-column it happened in, and said in a sentence rather than shown as an empty window.
+What the screen does when part of it throws while being drawn. A fault is bounded by
+the column it happened in. It is said in a sentence rather than shown as an empty
+window.
 
 ## ADDED Requirements
 
 ### Requirement: A part of the page that cannot be drawn is replaced by a sentence
 
-Where a column or a panel throws while rendering, the page SHALL draw a sentence naming
-what could not be drawn, in place of it and of nothing else.
+Where a column or a panel throws while rendering, the page SHALL draw a sentence in its
+place. The sentence SHALL name what could not be drawn, and SHALL replace nothing else.
 
 #### Scenario: A panel that throws says so
 
@@ -39,7 +40,7 @@ rails and the controls outside that column remain usable.
 
 ### Requirement: A panel that broke is left behind by moving to another
 
-The strip that chooses between panels SHALL stay outside what it chooses, and moving to
+The strip that chooses between panels SHALL stay outside what it chooses. Moving to
 another panel SHALL draw that panel rather than the sentence.
 
 #### Scenario: Switching tabs escapes it
@@ -50,8 +51,8 @@ another panel SHALL draw that panel rather than the sentence.
 
 ### Requirement: Trying again re-draws what threw
 
-The sentence SHALL offer to draw the part again, and taking it SHALL re-draw the
-children rather than reload the page.
+The sentence SHALL offer to draw the part again. Taking it SHALL re-draw the children
+rather than reload the page.
 
 #### Scenario: What was mended is drawn
 

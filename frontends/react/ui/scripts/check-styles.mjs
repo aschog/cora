@@ -72,7 +72,10 @@ for (const sheet of modules) {
 }
 /* Read off the components rather than off the sheets: a name may be declared in a module
    *and* left in the global sheet, which is fine while the global one is what is drawn.
-   What is not fine is the global sheet naming a class only a module now declares. */
+   What is not fine is the global sheet naming a class only a module now declares.
+   Blind spot: a literal drawn through `joined('x', …)` or a ternary is not seen here, so
+   such a class reads as undrawn and question 2 raises a false positive naming it. That
+   fails loud at lint rather than silently in the page, which is the acceptable side. */
 const literals = new Set()
 for (const file of source) {
   const text = readFileSync(file, 'utf8')

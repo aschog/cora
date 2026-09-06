@@ -1,7 +1,7 @@
 ## Context
 
-Three rails offer the same act — delete a row the reader has confirmed — and each waited
-for a round trip before the list showed it gone.
+Three rails delete a confirmed row, and each waited for a round trip before the list
+showed it gone.
 
 ## The seam
 
