@@ -6,9 +6,13 @@ KEEP_TOOL = "keep_note"
 READ_TOOL = "read_note"
 NOTE = "note"
 NOTHING = "nothing was kept"
+AT_LOAD = "written while loading"
 
 
 def extend(cora: Host) -> None:
+    # Dropped: there is no conversation to keep it for while a plugin is loading.
+    cora.state.keep(NOTE, AT_LOAD)
+
     def keep(text: str) -> str:
         cora.state.keep(NOTE, text)
         return f"kept {text}"

@@ -1403,3 +1403,101 @@ def test_a_proposal_is_what_a_thread_is_carried_through_a_checkpoint_as() -> Non
     assert ("cora.domain.approval", "Proposed") in named
     assert ("cora.domain.card", "Card") in named
     assert ("cora.domain.card", "Answer") in named
+
+
+def _keeping(kept: dict[str, dict[str, str]]) -> Step:
+    def step(state: AgentState) -> AgentState:
+        return {"messages": _said("assistant", "answered"), "kept": kept}
+
+    return step
+
+
+def _reading(seen: list[dict[str, dict[str, str]]]) -> Step:
+    def step(state: AgentState) -> AgentState:
+        seen.append(state.get("kept", {}))
+        return {"messages": _said("assistant", "answered")}
+
+    return step
+
+
+def _keeping_and_reading(
+    seen: list[dict[str, dict[str, str]]], kept: dict[str, dict[str, str]]
+) -> Step:
+    def step(state: AgentState) -> AgentState:
+        seen.append(state.get("kept", {}))
+        return {"messages": _said("assistant", "answered"), "kept": kept}
+
+    return step
+
+
+def test_what_a_plugin_kept_on_one_turn_the_next_turn_arrives_with() -> None:
+    seen: list[dict[str, dict[str, str]]] = []
+    runner = langgraph_for(
+        **_walk(_always(_keeping_and_reading(seen, {"keeper": {"note": "Kyoto"}}))),
+        max_tool_rounds=ROUNDS,
+    )
+
+    list(runner.run({"question": "first"}, THREAD))
+    list(runner.run({"question": "second"}, THREAD))
+
+    assert seen == [{}, {"keeper": {"note": "Kyoto"}}]
+
+
+def test_what_a_plugin_kept_is_read_back_in_a_second_runner_over_one_file(
+    tmp_path: Path,
+) -> None:
+    """A deployment that checkpoints to a file gets a plugin's own state back after the
+    process that wrote it is gone, as it gets the exchange back."""
+    path = str(tmp_path / "conversations.sqlite")
+    seen: list[dict[str, dict[str, str]]] = []
+
+    first = langgraph_for(
+        **_walk(_always(_keeping({"keeper": {"note": "Kyoto"}}))),
+        max_tool_rounds=ROUNDS,
+        checkpoints_at=path,
+    )
+    list(first.run({"question": "first"}, THREAD))
+
+    second = langgraph_for(
+        **_walk(_always(_reading(seen))),
+        max_tool_rounds=ROUNDS,
+        checkpoints_at=path,
+    )
+    list(second.run({"question": "second"}, THREAD))
+
+    assert seen == [{"keeper": {"note": "Kyoto"}}]
+
+
+def test_a_forgotten_thread_keeps_nothing_a_plugin_kept_in_it(tmp_path: Path) -> None:
+    path = str(tmp_path / "conversations.sqlite")
+    seen: list[dict[str, dict[str, str]]] = []
+    runner = langgraph_for(
+        **_walk(_always(_keeping({"keeper": {"note": "Kyoto"}}))),
+        max_tool_rounds=ROUNDS,
+        checkpoints_at=path,
+    )
+    list(runner.run({"question": "first"}, THREAD))
+
+    runner.forget(THREAD)
+    reader = langgraph_for(
+        **_walk(_always(_reading(seen))),
+        max_tool_rounds=ROUNDS,
+        checkpoints_at=path,
+    )
+    list(reader.run({"question": "second"}, THREAD))
+
+    assert seen == [{}]
+
+
+def test_two_threads_keep_a_plugin_s_values_apart() -> None:
+    seen: list[dict[str, dict[str, str]]] = []
+    runner = langgraph_for(
+        **_walk(_always(_keeping({"keeper": {"note": "Kyoto"}}))),
+        max_tool_rounds=ROUNDS,
+    )
+    list(runner.run({"question": "first"}, THREAD))
+
+    reader = langgraph_for(**_walk(_always(_reading(seen))), max_tool_rounds=ROUNDS)
+    list(reader.run({"question": "elsewhere"}, "another"))
+
+    assert seen == [{}]

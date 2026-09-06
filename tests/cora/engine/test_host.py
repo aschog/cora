@@ -1078,3 +1078,15 @@ def test_a_plugin_writing_outside_a_call_keeps_nothing() -> None:
 
     with keeping.bound({}):
         assert host.state.read("note") is None
+
+
+def test_a_loop_delegated_inside_a_call_keeps_under_the_same_conversation() -> None:
+    host = host_for(MODULE, model=_answering(ModelReply(text="done.")))
+    kept: dict[str, dict[str, str]] = {}
+
+    with keeping.bound(kept):
+        host.state.keep("note", "Kyoto")
+        host.delegate("Look it up.")
+
+        assert host.state.read("note") == "Kyoto"
+    assert kept == {["fixture_plugins", "valid"][-1]: {"note": "Kyoto"}}
