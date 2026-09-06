@@ -89,4 +89,6 @@ but a call, which would be a handler stopping a turn.
 
 - No port changes: the pause port already carries a card out and a record back.
 - The plugin contract's version is untouched — this adds nothing a plugin declares.
-- No diagram is regenerated: no domain type is added and no step is renamed.
+- No domain type is added, so the class diagram stands.
+- The round diagram is regenerated: the ask step gained the call that builds the card,
+  and the guard reads that drawing against the source it is drawn from.
