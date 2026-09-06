@@ -13,6 +13,7 @@ from jsonschema import Draft202012Validator, SchemaError
 from cora.domain.card import Card
 from cora.domain.citations import Citable
 from cora.domain.errors import PluginLoadError
+from cora.engine import keeping
 from cora.engine.events import EVENTS
 from cora.engine.nesting import collecting, read_untrusted, took
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
@@ -27,6 +28,7 @@ from cora.ports.host import (
     TOOL,
     Handler,
     Registration,
+    State,
     Subscription,
     name_of,
 )
@@ -147,6 +149,16 @@ class PluginHost:
         answers for material cora does not vouch for.
         """
         return _Reading(self.index)
+
+    @property
+    def state(self) -> State:
+        """What this plugin kept for the conversation this turn is answering on.
+
+        Namespaced under the name cora loaded it as, so two plugins choosing one name
+        keep two values. Reachable while one of this plugin's tool calls is running,
+        and outside one it reads nothing and keeps nothing.
+        """
+        return _Keeping(name_of(self.module))
 
     @property
     def log(self) -> logging.Logger:
@@ -414,6 +426,26 @@ class _Reading:
         """The passages the index holds, and a note that this call has read some."""
         read_untrusted()
         return self.index.search(query, k)
+
+
+@dataclass(frozen=True)
+class _Keeping:
+    """One plugin's own keys, in whatever conversation the work now belongs to.
+
+    The name is held here rather than passed in by the plugin, because only the host
+    knows which plugin is asking — the same reason a log line and a setting are named
+    here.
+    """
+
+    plugin: str
+
+    def read(self, name: str) -> str | None:
+        """What this plugin kept under this name, or nothing."""
+        return keeping.read(self.plugin, name)
+
+    def keep(self, name: str, value: str | None) -> None:
+        """Keep this text under this name, or drop the name given nothing."""
+        keeping.keep(self.plugin, name, value)
 
 
 def _read(result: ToolResult, read_documents: bool = False) -> Read:

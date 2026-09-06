@@ -71,6 +71,35 @@ class Subscription:
     handle: Handler
 
 
+class State(Protocol):
+    """What one plugin kept for the conversation a turn is answering on.
+
+    Names are the plugin's own: two plugins choosing one name keep two values, and
+    neither can read the other's. What is kept lasts as long as the conversation does
+    and goes when it is deleted — it is not what cora knows about the user, which is
+    `Memory` and outlives every conversation.
+
+    Text, because what a plugin keeps is the plugin's own to read back. A shape richer
+    than that would make cora the reader of it.
+
+    Reachable while a tool call of this plugin's is running, which is where a plugin's
+    own code runs inside a turn. Outside one there is no conversation to keep anything
+    for, so a read comes back with nothing and a write is dropped.
+    """
+
+    def read(self, name: str) -> str | None:
+        """What was kept under this name, or nothing where nothing was."""
+        ...
+
+    def keep(self, name: str, value: str | None) -> None:
+        """Keep `value` under this name for the rest of this conversation.
+
+        Args:
+            value: The text to keep. `None` drops the name.
+        """
+        ...
+
+
 @dataclass(frozen=True)
 class Registration:
     """One thing a plugin registered, and the module that registered it.
@@ -260,6 +289,11 @@ class Host(Protocol):
     @property
     def settings(self) -> Mapping[str, str]:
         """This plugin's own settings, read from the environment under its own name."""
+        ...
+
+    @property
+    def state(self) -> State:
+        """What this plugin kept for the conversation this turn is answering on."""
         ...
 
     def delegate(self, task: str, tools: tuple[Tool, ...] = (), rounds: int = 3) -> str:

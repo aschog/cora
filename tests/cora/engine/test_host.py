@@ -7,6 +7,7 @@ import pytest
 from cora.domain.card import ActionOffered, Card
 from cora.domain.chunk import Chunk
 from cora.domain.errors import PluginLoadError
+from cora.engine import keeping
 from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.host import (
     DELEGATE_BRIEF,
@@ -1017,3 +1018,63 @@ def test_a_plugin_is_handed_the_output_location_rather_than_a_path_of_its_own() 
 
     assert host_for(output=output).output is output
     assert host_for().output is None, "a deployment that configured none has none"
+
+
+def test_a_plugin_keeps_and_reads_under_its_own_name() -> None:
+    host = host_for(MODULE)
+
+    with keeping.bound({}):
+        host.state.keep("note", "Kyoto in May")
+
+        assert host.state.read("note") == "Kyoto in May"
+
+
+def test_a_plugin_reads_nothing_under_a_name_it_never_kept() -> None:
+    with keeping.bound({}):
+        assert host_for(MODULE).state.read("note") is None
+
+
+def test_a_plugin_keeping_nothing_under_a_name_drops_it() -> None:
+    host = host_for(MODULE)
+
+    with keeping.bound({}):
+        host.state.keep("note", "Kyoto in May")
+        host.state.keep("note", None)
+
+        assert host.state.read("note") is None
+
+
+def test_two_plugins_keeping_one_name_each_read_back_their_own() -> None:
+    keeper = host_for(MODULE)
+    other = host_for("acme.plugins.birds")
+
+    with keeping.bound({}):
+        keeper.state.keep("note", "Kyoto in May")
+        other.state.keep("note", "a wren")
+
+        assert keeper.state.read("note") == "Kyoto in May"
+        assert other.state.read("note") == "a wren"
+
+
+def test_a_plugin_names_a_key_and_never_a_conversation() -> None:
+    host = host_for(MODULE)
+
+    with keeping.bound({}):
+        host.state.keep("note", "one")
+    with keeping.bound({}):
+        second = host.state.read("note")
+
+    assert second is None
+
+
+def test_a_plugin_reading_outside_a_call_reads_nothing() -> None:
+    assert host_for(MODULE).state.read("note") is None
+
+
+def test_a_plugin_writing_outside_a_call_keeps_nothing() -> None:
+    host = host_for(MODULE)
+
+    host.state.keep("note", "Kyoto in May")
+
+    with keeping.bound({}):
+        assert host.state.read("note") is None
