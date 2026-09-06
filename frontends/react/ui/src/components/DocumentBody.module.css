@@ -1,0 +1,22 @@
+.doc-panel {
+  margin-top: var(--s3);
+  padding: var(--s4);
+  background: var(--sunken);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.doc-para {
+  color: var(--n600);
+  white-space: pre-wrap;
+}
+
+.doc-passage {
+  padding: 2px 4px;
+  color: var(--text);
+  background: var(--amber-tint);
+  box-shadow: -3px 0 0 var(--amber);
+  white-space: pre-wrap;
+}

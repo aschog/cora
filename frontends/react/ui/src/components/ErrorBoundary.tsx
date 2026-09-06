@@ -1,5 +1,6 @@
 import { Component } from 'react'
 import type { ErrorInfo, ReactNode } from 'react'
+import styles from './ErrorBoundary.module.css'
 
 type Props = {
   /** What this part of the page is, in the sentence the reader gets instead of it. */
@@ -37,11 +38,11 @@ export default class ErrorBoundary extends Component<Props, State> {
   render() {
     if (!this.state.failed) return this.props.children
     return (
-      <div className="broke" role="alert">
+      <div className={styles.broke} role="alert">
         <p>{this.props.said}</p>
         <button
           type="button"
-          className="broke-again"
+          className={styles.brokeAgain}
           onClick={() => this.setState({ failed: false })}
         >
           Try again

@@ -5,6 +5,7 @@ import CitationModal from './CitationModal'
 import type { Citation } from '../api'
 import { UNKEPT } from '../hooks/usePassage'
 import WithStore from '../test/withStore'
+import bodyCss from '../components/DocumentBody.module.css'
 
 /** Every render here goes through the store the passage read is held in — the component
  *  under test asks for it the same way the page does. */
@@ -37,7 +38,7 @@ test('the cited passage opens over the conversation, marked', async () => {
   render(<CitationModal citation={cited('u1')} onClose={() => {}} />)
 
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(document.querySelector('.doc-passage')?.textContent).toBe('Sleep ')
+  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe('Sleep ')
 })
 
 test('a passage whose text was never kept says so rather than opening onto nothing', () => {

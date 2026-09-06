@@ -1,0 +1,15 @@
+.modal-head {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+}
+
+.modal-close {
+  margin-left: auto;
+  font-size: 15px;
+  color: var(--n600);
+}
+
+.modal-close:hover {
+  color: var(--accent-text);
+}

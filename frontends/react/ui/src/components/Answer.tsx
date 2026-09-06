@@ -8,6 +8,7 @@ import type { Citation } from '../api'
 import { reopenable, unanswered } from '../entry'
 import type { Entry } from '../entry'
 import type { Offered } from '../api'
+import styles from './Answer.module.css'
 
 const WORKING = 'Working…'
 const CHANGE = 'Change'
@@ -93,10 +94,10 @@ export default function Answer({
   }
 
   return (
-    <main className="answer">
+    <main className={styles.answer}>
       {mode}
       <div
-        className="scroller"
+        className={styles.scroller}
         ref={scroller}
         onScroll={() => {
           const shown = scroller.current
@@ -105,19 +106,19 @@ export default function Answer({
               shown.scrollHeight - shown.scrollTop - shown.clientHeight <= NEAR_BOTTOM
         }}
       >
-        <div className="turn-column">
+        <div className={styles.turnColumn}>
           {/* Keyed by the turn's own id. Ids repeat across conversations — every
               reopened thread numbers its turns from -1 — so React reconciles one
               conversation's second turn onto another's. Nothing rides on that while a
               turn holds no state of its own and `Written` memoises on the answer. */}
           {entries.map((entry) => (
-            <div key={entry.id} className="turn">
-              <p className="said">{entry.question}</p>
-              <div className="from-cora">
-                <span className="avatar" aria-hidden="true">
+            <div key={entry.id} className={styles.turn}>
+              <p className={styles.said}>{entry.question}</p>
+              <div className={styles.fromCora}>
+                <span className={styles.avatar} aria-hidden="true">
                   c
                 </span>
-                <span className="who">cora</span>
+                <span className={styles.who}>cora</span>
               </div>
               {/* One card per stop the turn made, in the order it made them: a round
                   may stop twice, and each card is answered on its own. */}
@@ -143,7 +144,7 @@ export default function Answer({
               {entry.error ? (
                 <p className="trouble">{entry.error}</p>
               ) : unanswered(entry) ? null : entry.pending && !entry.answer ? (
-                <p className="working">{WORKING}</p>
+                <p className={styles.working}>{WORKING}</p>
               ) : (
                 <Written entry={entry} onCite={onCite} />
               )}
@@ -154,8 +155,8 @@ export default function Answer({
 
       {/* Outside the scroller, so it is always there to type in; the conversation
           passes behind it. */}
-      <div className="composer-dock">
-        <div className="composer">
+      <div className={styles.composerDock}>
+        <div className={styles.composer}>
           <input
             value={question}
             placeholder="Ask a question…"
@@ -164,7 +165,7 @@ export default function Answer({
             onKeyDown={(e) => e.key === 'Enter' && send()}
           />
           <button
-            className="composer-ask"
+            className={styles.composerAsk}
             aria-label="Ask"
             onClick={send}
             disabled={asking || parked}
@@ -172,8 +173,8 @@ export default function Answer({
             →
           </button>
         </div>
-        {askingElsewhere && <p className="composer-note">{ELSEWHERE}</p>}
-        {parked && <p className="composer-note">{DECIDING}</p>}
+        {askingElsewhere && <p className={styles.composerNote}>{ELSEWHERE}</p>}
+        {parked && <p className={styles.composerNote}>{DECIDING}</p>}
       </div>
     </main>
   )
@@ -203,7 +204,7 @@ const Written = memo(function Written({
   }, [html])
   return (
     <div
-      className="answer-body"
+      className={styles.answerBody}
       ref={body}
       onClick={(e) => opened(e, entry.citations, onCite)}
     />

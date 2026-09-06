@@ -1,0 +1,22 @@
+.loud {
+  color: #fff;
+  background: var(--accent);
+}
+
+.loud:hover {
+  background: var(--accent-hover);
+}
+
+.modal-said {
+  margin-top: var(--s3);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--n700);
+}
+
+.modal-answers {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2);
+  margin-top: var(--s4);
+}

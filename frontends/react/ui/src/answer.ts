@@ -1,5 +1,8 @@
 import MarkdownIt from 'markdown-it'
 import type { Citation } from './api'
+/* The button is written as markup rather than drawn as a component, so the class has to
+   be read out of the module by hand — the same one the answer's own styles come from. */
+import styles from './components/Answer.module.css'
 
 /**
  * What counts as a citation, and it is the rule the answer was written under: a run of
@@ -55,7 +58,7 @@ function clickable(text: string, known: Set<number>): string {
         const number = Number(digits)
         if (!known.has(number)) return `[${digits}]`
         return (
-          `<button class="cite" data-cite="${number}" ` +
+          `<button class="${styles.cite}" data-cite="${number}" ` +
           `aria-label="Open cited source ${number}">${number}</button>`
         )
       })

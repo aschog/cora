@@ -2,6 +2,7 @@ import { render } from '@testing-library/react'
 import { afterEach, expect, test } from 'vitest'
 import { cleanup } from '@testing-library/react'
 import DocumentBody from './DocumentBody'
+import bodyCss from '../components/DocumentBody.module.css'
 
 afterEach(cleanup)
 
@@ -25,7 +26,7 @@ test('passages arrive in citation order, not in document order', () => {
      than `[2]`. Merging without ordering first drops every passage that precedes the
      one it happens to see first — the panel then counts two and marks one. */
   const marks = shown([{ start: 6, end: 8 }, { start: 0, end: 2 }]).querySelectorAll(
-    '.doc-passage',
+    `.${bodyCss.docPassage}`,
   )
 
   expect([...marks].map((mark) => mark.textContent)).toEqual(['AB', 'GH'])
@@ -33,7 +34,7 @@ test('passages arrive in citation order, not in document order', () => {
 
 test('overlapping passages read as the one passage they cover', () => {
   const marks = shown([{ start: 0, end: 6 }, { start: 4, end: 9 }]).querySelectorAll(
-    '.doc-passage',
+    `.${bodyCss.docPassage}`,
   )
 
   expect(marks).toHaveLength(1)
@@ -42,7 +43,7 @@ test('overlapping passages read as the one passage they cover', () => {
 
 test('passages that do not touch stay two passages', () => {
   const marks = shown([{ start: 0, end: 2 }, { start: 6, end: 8 }]).querySelectorAll(
-    '.doc-passage',
+    `.${bodyCss.docPassage}`,
   )
 
   expect([...marks].map((mark) => mark.textContent)).toEqual(['AB', 'GH'])
@@ -52,12 +53,12 @@ test('a passage running past the end marks to the end rather than throwing', () 
   const container = shown([{ start: 8, end: 99 }])
 
   expect(container.textContent).toBe(TEXT)
-  expect(container.querySelector('.doc-passage')?.textContent).toBe('IJ')
+  expect(container.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe('IJ')
 })
 
 test('a document with nothing cited in it is still the document', () => {
   const container = shown([])
 
   expect(container.textContent).toBe(TEXT)
-  expect(container.querySelector('.doc-passage')).toBeNull()
+  expect(container.querySelector(`.${bodyCss.docPassage}`)).toBeNull()
 })

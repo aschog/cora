@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import DocumentRail from './DocumentRail'
+import railCss from '../components/DocumentRail.module.css'
 
 afterEach(cleanup)
 
@@ -48,7 +49,7 @@ test('a rail with nothing indexed draws the upload control alone', () => {
 
   expect(screen.getByText('Add a document')).toBeTruthy()
   expect(screen.queryByText(/Nothing indexed yet/)).toBeNull()
-  expect(container.querySelectorAll('.doc-row')).toHaveLength(0)
+  expect(container.querySelectorAll(`.${railCss.docRow}`)).toHaveLength(0)
 })
 
 /* A live region has to be in the DOM before its content changes for a screen reader to

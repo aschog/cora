@@ -27,6 +27,8 @@ import MemoryPanel from './components/MemoryPanel'
 import PlanPanel from './components/PlanPanel'
 import SessionsPanel from './components/SessionsPanel'
 import SourcePanel from './components/SourcePanel'
+import styles from './App.module.css'
+import { joined } from './joined'
 
 const TABS = ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
 type Tab = (typeof TABS)[number]
@@ -234,8 +236,8 @@ function Page() {
   }
 
   return (
-    <div className="app">
-      <div className="banners" role="status" aria-label="Notices">
+    <div className={styles.app}>
+      <div className={styles.banners} role="status" aria-label="Notices">
         {banners.map(({ which, said }) => (
           <div key={which} className="trouble">
             {said}
@@ -243,12 +245,12 @@ function Page() {
         ))}
       </div>
 
-      <div className="columns">
+      <div className={styles.columns}>
         {/* The rail is always drawn, folded or not: the control that folds it lives in it,
             and a control that hides itself cannot be used to bring itself back. */}
-        <aside className={leftOpen ? 'rail-docs' : 'rail-docs shut'}>
-          <div className="rail-top">
-            <span className="brand-name">cora</span>
+        <aside className={joined(styles.railDocs, !leftOpen && styles.shut)}>
+          <div className={styles.railTop}>
+            <span className={styles.brandName}>cora</span>
             <RailToggle
               side="left"
               open={leftOpen}
@@ -323,8 +325,8 @@ function Page() {
           />
         </ErrorBoundary>
 
-        <aside className={rightOpen ? 'rail-panels' : 'rail-panels shut'}>
-          <div className="rail-top">
+        <aside className={joined(styles.railPanels, !rightOpen && styles.shut)}>
+          <div className={styles.railTop}>
             <RailToggle
               side="right"
               open={rightOpen}
@@ -334,13 +336,13 @@ function Page() {
           </div>
           {rightOpen && (
             <>
-              <div className="tabs" role="tablist">
+              <div className={styles.tabs} role="tablist">
                 {TABS.map((name) => (
                   <button
                     key={name}
                     role="tab"
                     aria-selected={tab === name}
-                    className={tab === name ? 'tab active' : 'tab'}
+                    className={joined(styles.tab, tab === name && styles.active)}
                     onClick={() => setTab(name)}
                   >
                     {name}

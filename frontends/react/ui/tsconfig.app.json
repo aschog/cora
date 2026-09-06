@@ -2,6 +2,9 @@
   "compilerOptions": {
     "target": "ES2022",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    // `*.module.css` resolves to the map of its class names, which is what the
+    // components import. Vite ships the declaration; nothing here can state it.
+    "types": ["vite/client"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",

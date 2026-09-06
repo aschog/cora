@@ -1,4 +1,6 @@
 import { useEffect } from 'react'
+import styles from './ConfirmModal.module.css'
+import dialog from './dialog.module.css'
 
 /** One question the page stops to have answered, in the words of whoever raised it. */
 export type Asked = {
@@ -33,22 +35,22 @@ export default function ConfirmModal({
   }, [onCancel])
 
   return (
-    <div className="overlay" onClick={onCancel}>
+    <div className={dialog.overlay} onClick={onCancel}>
       <div
-        className="modal narrow"
+        className={`${dialog.modal} ${styles.narrow}`}
         role="dialog"
         aria-modal="true"
         aria-label={head}
         onClick={(event) => event.stopPropagation()}
       >
         <div className="micro">{head}</div>
-        <div className="modal-title">{subject}</div>
-        <p className="modal-said">{said}</p>
-        <div className="modal-answers">
+        <div className={dialog.modalTitle}>{subject}</div>
+        <p className={styles.modalSaid}>{said}</p>
+        <div className={styles.modalAnswers}>
           <button className="quiet" onClick={onCancel}>
             Keep it
           </button>
-          <button className="loud" onClick={onConfirm}>
+          <button className={styles.loud} onClick={onConfirm}>
             {confirm}
           </button>
         </div>

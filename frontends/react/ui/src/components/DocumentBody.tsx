@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import styles from './DocumentBody.module.css'
 
 export type Span = { start: number; end: number }
 
@@ -27,7 +28,11 @@ export default function DocumentBody({ text, spans, scrollToFirst }: Props) {
         cut.push(<span key={`t${n}`}>{text.slice(read, span.start)}</span>)
       }
       cut.push(
-        <mark className="doc-passage" key={`m${n}`} ref={n === 0 ? first : undefined}>
+        <mark
+          className={styles.docPassage}
+          key={`m${n}`}
+          ref={n === 0 ? first : undefined}
+        >
           {text.slice(span.start, span.end)}
         </mark>,
       )
@@ -40,7 +45,7 @@ export default function DocumentBody({ text, spans, scrollToFirst }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, where])
 
-  return <div className="doc-panel doc-para">{pieces}</div>
+  return <div className={`${styles.docPanel} ${styles.docPara}`}>{pieces}</div>
 }
 
 /**

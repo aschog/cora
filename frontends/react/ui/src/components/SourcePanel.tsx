@@ -1,6 +1,7 @@
 import type { Citation } from '../api'
 import DocumentBody from './DocumentBody'
 import { usePassage } from '../hooks/usePassage'
+import styles from './SourcePanel.module.css'
 
 type Props = {
   document: string | null
@@ -18,7 +19,7 @@ export default function SourcePanel({ document, source, citations }: Props) {
 
   return (
     <div>
-      <h2 className="source-title">{document}</h2>
+      <h2 className={styles.sourceTitle}>{document}</h2>
       {citations.length === 0 && (
         <div className="micro">not cited in this answer</div>
       )}

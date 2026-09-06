@@ -1,6 +1,11 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import App from './App'
+import answerCss from './components/Answer.module.css'
+import appCss from './App.module.css'
+import bodyCss from './components/DocumentBody.module.css'
+import planCss from './components/PlanPanel.module.css'
+import noticeCss from './components/UploadNotice.module.css'
 
 /**
  * The steps that arrive *while* the turn runs say something the finished turn does not.
@@ -265,7 +270,7 @@ test('a document the answer cited opens in the source panel, marked at the passa
   )
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
   expect(screen.getByRole('heading', { name: 'notes.md' })).toBeTruthy()
-  expect(container.querySelector('.doc-passage')?.textContent).toBe(
+  expect(container.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(
     KEPT.slice(0, 6),
   )
 })
@@ -306,7 +311,7 @@ test('a document cited in an earlier turn is not marked for this one', async () 
 
   // Still openable: the text is there to read, with nothing marked in it.
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(document.querySelector('.doc-passage')).toBeNull()
+  expect(document.querySelector(`.${bodyCss.docPassage}`)).toBeNull()
 })
 
 /** A turn that cites nothing. */
@@ -362,7 +367,7 @@ test('an answer never lands on a conversation that was replaced while it ran', a
      something false about it — that cora cannot open it, when the truth is that
      nothing here cites it. */
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
-  const panels = document.querySelector('.rail-panels') as HTMLElement
+  const panels = document.querySelector(`.${appCss.railPanels}`) as HTMLElement
   expect(within(panels).queryByText('notes.md')).toBeNull()
   expect(within(panels).queryByRole('heading', { name: 'notes.md' })).toBeNull()
 })
@@ -378,7 +383,7 @@ test('the conversation follows what just happened, answered or failed', async ()
      bottom. */
   const { container } = render(<App />)
   await screen.findByText('notes.md')
-  const scroller = container.querySelector('.scroller') as HTMLElement
+  const scroller = container.querySelector(`.${answerCss.scroller}`) as HTMLElement
   atTheBottom(scroller)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -438,7 +443,7 @@ test('a turn that fails says so where the answer would have been, and is scrolle
   )
   const { container } = render(<App />)
   await screen.findByText('notes.md')
-  const scroller = container.querySelector('.scroller') as HTMLElement
+  const scroller = container.querySelector(`.${answerCss.scroller}`) as HTMLElement
   atTheBottom(scroller)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -624,7 +629,7 @@ test('a filename uploaded twice is read at the upload this answer cited', async 
 
   expect(await screen.findByText(/the copy the answer cited/)).toBeTruthy()
   expect(screen.queryByText(/nobody is reading this copy/)).toBeNull()
-  expect(container.querySelector('.doc-passage')?.textContent).toBe(SECOND.slice(0, 5))
+  expect(container.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(SECOND.slice(0, 5))
 })
 
 test('a question in flight does not un-cite the answer still on screen', async () => {
@@ -644,7 +649,7 @@ test('a question in flight does not un-cite the answer still on screen', async (
 
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
+  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(KEPT.slice(0, 6))
 
   turn = held()
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -656,7 +661,7 @@ test('a question in flight does not un-cite the answer still on screen', async (
   // Back to the passage while cora works: the answer above it has not changed.
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
+  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(KEPT.slice(0, 6))
 })
 
 test('a turn that failed does not un-cite the answer still on screen', async () => {
@@ -676,7 +681,7 @@ test('a turn that failed does not un-cite the answer still on screen', async () 
 
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
+  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(KEPT.slice(0, 6))
 
   turn = held()
   vi.stubGlobal(
@@ -699,7 +704,7 @@ test('a turn that failed does not un-cite the answer still on screen', async () 
 
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
+  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(KEPT.slice(0, 6))
 })
 
 test('an answer returning to the conversation it was asked in is not dropped', async () => {
@@ -756,7 +761,7 @@ test('an answer returning to the conversation it was asked in is not dropped', a
 
   expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
   // Once in the conversation — the other one on the page is the session it names.
-  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
     ['Why am I stalling?'],
   )
 })
@@ -877,7 +882,7 @@ test('the question in flight stays with the conversation it was asked in', async
 
   // In the other conversation the running turn is not on the page at all: it is not
   // this conversation's question, and it is not being asked here.
-  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
     [OLDER.question],
   )
   expect(screen.queryByText(/Working/)).toBeNull()
@@ -887,7 +892,7 @@ test('the question in flight stays with the conversation it was asked in', async
 
   // Back in the conversation the turn is running in: its question, its plan, and a
   // composer whose disabling the plan explains.
-  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
     [EARLIER.question, 'Why am I stalling?'],
   )
   expect(screen.getByText(/Working/)).toBeTruthy()
@@ -900,7 +905,7 @@ test('the question in flight stays with the conversation it was asked in', async
   turn.release()
 
   expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
-  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
     [EARLIER.question, 'Why am I stalling?'],
   )
 })
@@ -1017,11 +1022,11 @@ test('the panels afterwards speak for the new session, not the one left behind',
 
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
-  const panels = document.querySelector('.rail-panels') as HTMLElement
+  const panels = document.querySelector(`.${appCss.railPanels}`) as HTMLElement
   expect(within(panels).queryByRole('heading', { name: 'notes.md' })).toBeNull()
   fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
   expect(screen.queryByText(TURN.trace[0].summary)).toBeNull()
-  expect(panels.querySelector('.plan-step')).toBeNull()
+  expect(panels.querySelector(`.${planCss.planStep}`)).toBeNull()
 })
 
 test('an answer to the conversation left behind does not land on the new session', async () => {
@@ -1343,7 +1348,7 @@ test('a question left running that fails says so, rather than never arriving', a
   // Said about the conversation, not *in* the empty one: the failed turn is not dragged
   // onto a page it was never asked on.
   expect(screen.queryByText('Why am I stalling?')).toBeNull()
-  expect(document.querySelector('.turn')).toBeNull()
+  expect(document.querySelector(`.${answerCss.turn}`)).toBeNull()
 
   // Until the reader asks the next question, which is them moving on from it.
   turn = held()
@@ -1618,7 +1623,7 @@ test('a turn that succeeded is not drawn as failed by the re-read that follows i
   expect(screen.queryByText(/is not a function/)).toBeNull()
   expect(screen.queryByText(/conversation you left/)).toBeNull()
   // Once in the conversation — the other one on the page is the session it names.
-  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
     ['Why am I stalling?'],
   )
 })
@@ -1874,7 +1879,7 @@ test('the conversation follows the answer down as it is written', async () => {
     frame('turn', TURN),
   ]
   await asked(parts, parts.length - 1)
-  const scroller = document.querySelector('.scroller') as HTMLElement
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
   await screen.findByText('Sleep, not volume.')
 
   atTheBottom(scroller)
@@ -1894,7 +1899,7 @@ test('a reader who has scrolled up is left there as the answer grows', async () 
     frame('turn', TURN),
   ]
   await asked(parts, 1)
-  const scroller = document.querySelector('.scroller') as HTMLElement
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
   await screen.findByText('Sleep,')
   scrolledUp(scroller)
 
@@ -1910,7 +1915,7 @@ test('a conversation reopened shows its newest turn, however the reader had scro
      statement about the next, which opens on the turn it left off at like any other. */
   render(<App />)
   await screen.findByText('notes.md')
-  const scroller = document.querySelector('.scroller') as HTMLElement
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
   scrolledUp(scroller)
 
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
@@ -1927,7 +1932,7 @@ test('a reader who scrolls back to the bottom is followed again', async () => {
     frame('turn', TURN),
   ]
   await asked(parts, 1)
-  const scroller = document.querySelector('.scroller') as HTMLElement
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
   await screen.findByText('Sleep,')
   scrolledUp(scroller)
   scroller.scrollTop = 4200
@@ -1943,7 +1948,7 @@ test('asking a question scrolls to it from wherever the reader had scrolled to',
   /* Following is the reader's to give up, and asking is them giving it back: the question
      they just typed is the one thing that belongs on screen. */
   await asked([frame('turn', TURN)], 1)
-  const scroller = document.querySelector('.scroller') as HTMLElement
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
   await screen.findByText(/Working/)
   scrolledUp(scroller)
 
@@ -2067,11 +2072,15 @@ test('an upload that indexed nothing is drawn as the outcome it is', async () =>
 
   upload('notes.md')
   const duplicate = await screen.findByText('“notes.md” is already in your documents.')
-  expect(duplicate.closest('.upload-notice')?.className).toContain('wrong')
+  expect(duplicate.closest(`.${noticeCss.uploadNotice}`)?.className).toContain(
+    noticeCss.wrong,
+  )
 
   upload('notes.md')
   const added = await screen.findByText('Added “notes.md” — 12 passages.')
-  expect(added.closest('.upload-notice')?.className).not.toContain('wrong')
+  expect(added.closest(`.${noticeCss.uploadNotice}`)?.className).not.toContain(
+    noticeCss.wrong,
+  )
 })
 
 test('the reader can shut what an upload said', async () => {
@@ -2092,8 +2101,8 @@ test('what an upload did is drawn beside the list it changed', async () => {
   upload('notes.md')
 
   const said = await screen.findByText('Added “notes.md” — 12 passages.')
-  expect(said.closest('.rail-docs')).toBeTruthy()
-  expect(document.querySelector('.banners')?.textContent).toBe('')
+  expect(said.closest(`.${appCss.railDocs}`)).toBeTruthy()
+  expect(document.querySelector(`.${appCss.banners}`)?.textContent).toBe('')
 })
 
 test('an upload that fails says so, and takes the last one’s notice away', async () => {
@@ -2595,7 +2604,7 @@ test('a card arriving brings the conversation down to it', async () => {
   stopping()
   render(<App />)
   await screen.findByText('notes.md')
-  const scroller = document.querySelector('.scroller') as HTMLElement
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
   atTheBottom(scroller)
 
   askAbout()

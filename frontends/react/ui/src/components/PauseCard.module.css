@@ -1,0 +1,188 @@
+/* ── a question waiting on the reader ── */
+.decision {
+  padding: var(--s3) var(--s4) var(--s4);
+  border: 1px solid var(--pause-edge);
+  border-radius: 14px;
+  background: var(--pause-tint);
+}
+
+.decision-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 var(--s3);
+}
+
+.decision-dot {
+  color: var(--pause);
+  font-size: 9px;
+  line-height: 1;
+}
+
+.decision-question {
+  margin: 0 0 var(--s3);
+  font-size: 16px;
+  line-height: 1.35;
+  text-wrap: pretty;
+}
+
+.decision-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.decision-option {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  width: 100%;
+  padding: 12px var(--s3);
+  text-align: left;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+
+.decision-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px var(--pause-edge);
+}
+
+.decision-label {
+  font-weight: 600;
+}
+
+.decision-note {
+  flex: 1;
+  font-size: 13.5px;
+  line-height: 1.3;
+  color: var(--n700);
+}
+
+.decision-resolved {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.decision-settled {
+  flex: 1;
+  text-wrap: pretty;
+}
+
+.decision-change {
+  flex: none;
+  font-size: 14px;
+  color: var(--accent-text);
+}
+
+.decision-change:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+/* ── what a card asks the reader to fill in ── */
+
+/* Drawn open or settled: what the reader answered on is part of the record, not only
+   that they did. A grid rather than a list, so the names line up down the card however
+   long the values beside them run. */
+.card-fields {
+  display: grid;
+  gap: var(--s3);
+  margin: 0 0 var(--s3);
+  font-size: 13.5px;
+}
+
+.card-field {
+  display: grid;
+  gap: 6px;
+}
+
+.card-name {
+  color: var(--n600);
+}
+
+/* A value the reader reads rather than writes — an argument of a call put up for
+   approval. As it arrived: an itinerary is lines, and one flattened onto a single line
+   is a value the reader cannot check. Long ones scroll inside the card rather than
+   making the conversation scroll sideways. */
+.card-read {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-height: 11rem;
+  overflow-y: auto;
+}
+
+.card-input {
+  width: 100%;
+  padding: 10px var(--s3);
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+}
+
+/* A field the card cannot be submitted without, marked where the reader answers it
+   rather than by a glyph beside the words — the control says it, and a screen reader
+   reads it out. */
+.card-input:required {
+  box-shadow: inset 0 0 0 1px var(--pause-edge);
+}
+
+.card-check {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--pause);
+}
+
+.card-input:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--pause-edge);
+}
+
+/* A short enumeration, drawn as the choices themselves: three of them are quicker to
+   read as three than as a control that hides two. */
+.card-choices {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+}
+
+.card-choice {
+  flex: 1;
+  padding: 8px var(--s3);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--n700);
+}
+
+.card-choice:hover {
+  color: var(--text);
+}
+
+.card-choice.picked {
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* An action the card is not filled in for yet. Dimmed rather than hidden: what it is
+   waiting for is written beside it, and a control that vanished would say nothing. */
+.decision-option:disabled {
+  cursor: default;
+  color: var(--n600);
+}
+
+.decision-option:disabled:hover {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}

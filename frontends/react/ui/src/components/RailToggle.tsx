@@ -1,3 +1,6 @@
+import styles from './RailToggle.module.css'
+import { joined } from '../joined'
+
 type Props = { side: 'left' | 'right'; open: boolean; label: string; onToggle: () => void }
 
 /** The rail's own outline, filled on the side it stands. */
@@ -6,7 +9,7 @@ export default function RailToggle({ side, open, label, onToggle }: Props) {
   const rule = side === 'left' ? 7.8 : 12.2
   return (
     <button
-      className={open ? 'rail-toggle open' : 'rail-toggle'}
+      className={joined(styles.railToggle, open && styles.open)}
       title={label}
       aria-label={label}
       aria-pressed={open}

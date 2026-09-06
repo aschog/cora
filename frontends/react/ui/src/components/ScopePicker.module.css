@@ -1,0 +1,94 @@
+/* ── the field a conversation is in ── */
+/* Above the conversation and centred on it, because the choice governs every turn under
+   it. Every option is a segment rather than a line in a menu: what the page is running
+   as is not something a reader should have to open something to see. */
+.modes {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s1);
+  padding: var(--s3) var(--s3) 0;
+}
+
+.mode-strip {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 2px;
+  padding: 3px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--pill);
+}
+
+.mode {
+  padding: 6px 16px;
+  border-radius: var(--pill);
+  font-size: 14px;
+  color: var(--n600);
+}
+
+.mode:hover {
+  color: var(--text);
+}
+
+.mode-plus {
+  padding-right: 6px;
+  font-weight: 400;
+  color: var(--accent);
+}
+
+.mode[aria-pressed='true'] {
+  background: rgba(255, 255, 255, 0.09);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.mode-wrap {
+  position: relative;
+  display: flex;
+}
+
+/* Which field, once the reader has said they want one named. Above the conversation the
+   strip stands on, so it covers the turn nothing has been decided about yet. */
+.mode-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  z-index: 6;
+  transform: translateX(-50%);
+  min-width: 160px;
+  padding: 5px;
+  background: var(--surface);
+  box-shadow:
+    inset 0 0 0 1px var(--hairline),
+    0 18px 44px rgba(0, 0, 0, 0.5);
+  border-radius: 12px;
+}
+
+.mode-menu li {
+  list-style: none;
+}
+
+.mode-option {
+  width: 100%;
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: left;
+  color: var(--text);
+}
+
+.mode-option:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.mode-option[aria-current='true'] {
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.scope-note {
+  font-size: 12px;
+  color: var(--n600);
+}

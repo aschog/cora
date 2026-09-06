@@ -1,0 +1,17 @@
+.rail-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--pill);
+  color: var(--n500);
+}
+
+.rail-toggle.open {
+  color: var(--accent);
+}
+
+.rail-toggle:hover {
+  background: rgba(255, 255, 255, 0.07);
+}

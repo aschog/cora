@@ -5,6 +5,7 @@ import SourcePanel from './SourcePanel'
 import type { Citation } from '../api'
 import { UNKEPT } from '../hooks/usePassage'
 import WithStore from '../test/withStore'
+import bodyCss from '../components/DocumentBody.module.css'
 
 /** Every render here goes through the store the passage read is held in — the component
  *  under test asks for it the same way the page does. */
@@ -58,7 +59,7 @@ test('a document with its text kept is shown under its name, and marked', async 
 
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
   expect(screen.getByRole('heading', { name: 'notes.md' })).toBeTruthy()
-  expect(container.querySelector('.doc-passage')?.textContent).toBe('Sleep ')
+  expect(container.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe('Sleep ')
   expect(screen.queryByText('not cited in this answer')).toBeNull()
 })
 
