@@ -2,7 +2,7 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import CitationModal from './CitationModal'
 import type { Citation } from '../api'
-import { UNKEPT } from './DocumentBody'
+import { UNKEPT } from '../hooks/usePassage'
 
 const KEPT = 'Sleep matters. The rest of the document follows.'
 

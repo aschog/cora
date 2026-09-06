@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import type { Citation } from '../api'
-import DocumentBody, { usePassage } from './DocumentBody'
+import DocumentBody from './DocumentBody'
+import { usePassage } from '../hooks/usePassage'
 
 type Props = { citation: Citation; onClose: () => void }
 

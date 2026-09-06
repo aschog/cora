@@ -4,7 +4,7 @@ import type { Session, Turn } from '../api'
 import type { Entry } from '../entry'
 import { carded, parkedOn, recorded, unanswered } from '../entry'
 import { message } from '../fail'
-import { forget, forgetIf, stow } from '../parked'
+import { forget, forgetIf, stow, stowed } from '../parked'
 
 /** What became of a load: drawn on the page, dropped for a later one (or a store that
  *  could not be read, which says so itself), or read and undrawable. */
@@ -22,7 +22,11 @@ const newThread = () =>
  *  can be built before the ones that own those.
  */
 export function useConversation(setTrouble: (said: string | null) => void) {
-  const [thread, setThread] = useState<string>(newThread)
+  /* A card left open outlives the page it was drawn on, so the page opens in the
+     conversation it was left in. Read as this state's first value rather than set from an
+     effect: a thread minted only to be replaced on the next render is one every read
+     that ran in between belongs to. */
+  const [thread, setThread] = useState<string>(() => stowed() ?? newThread())
   const [entries, setEntries] = useState<Entry[]>([])
   /* Which conversation the reader is in, written where it changes rather than during a
      render: `setThread` schedules a render, so a ref assigned while rendering still

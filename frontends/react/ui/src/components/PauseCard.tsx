@@ -1,10 +1,10 @@
 import { useState } from 'react'
 import type { Asked, Card, Offered } from '../api'
 
-export const WAITING = 'Paused · needs your input'
-export const SETTLED = 'Settled · your answer'
+const WAITING = 'Paused · needs your input'
+const SETTLED = 'Settled · your answer'
 export const FILL_IN_FIRST = 'Fill it in first.'
-export const took = (action: Offered) => action.settled || `You chose ${action.label}.`
+const took = (action: Offered) => action.settled || `You chose ${action.label}.`
 
 type Props = {
   card: Card

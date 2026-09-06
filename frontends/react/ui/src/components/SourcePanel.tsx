@@ -1,5 +1,6 @@
 import type { Citation } from '../api'
-import DocumentBody, { usePassage } from './DocumentBody'
+import DocumentBody from './DocumentBody'
+import { usePassage } from '../hooks/usePassage'
 
 type Props = {
   document: string | null

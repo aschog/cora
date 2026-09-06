@@ -68,10 +68,14 @@ export default function Answer({
     following.current = true
   }, [thread])
 
+  /* What the last turn has become — asked, answered, failed. Named rather than written
+     into the dependency array, so the rule that checks those can read it. */
+  const latest = outcome(entries[entries.length - 1])
+
   useEffect(() => {
     const shown = scroller.current
     if (shown && following.current) shown.scrollTop = shown.scrollHeight
-  }, [entries.length, outcome(entries[entries.length - 1])])
+  }, [entries.length, latest])
 
   /* cora is parked on a question in this conversation, so there is one thing to do and
      it is not typing: two open questions on one thread would be two answers to one

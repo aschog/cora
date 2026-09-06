@@ -67,7 +67,6 @@ export default function App() {
     setEntries,
     here,
     loads,
-    enter,
     recall,
     start,
     reopen,
@@ -121,13 +120,15 @@ export default function App() {
     }
   }
 
-  /* A card left open outlives the page it was drawn on: the conversation it was open in
-     is picked back up, and the question with it. */
+  /* A card left open outlives the page it was drawn on. The thread is already the one it
+     was left in — `useConversation` opens there — so what is left is reading its turns
+     and the question it stopped on back. Once, on the page being drawn. */
   useEffect(() => {
-    const waiting = stowed()
-    if (!waiting) return
-    enter(waiting)
-    void enterConversation({ thread_id: waiting, opened_with: '' })
+    /* Every write this makes is behind an `await` — the store is read first and nothing
+       is set until it answers — which is the callback the rule asks for and cannot see
+       through an async call. */
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (stowed()) void enterConversation({ thread_id: thread, opened_with: '' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

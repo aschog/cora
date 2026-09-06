@@ -1,41 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import * as cora from '../api'
-
-/** One sentence for every way a passage's document cannot be read: deleted, indexed
- *  before cora kept any text, or cited by an index that names no field to look in. All
- *  three arrive as nothing, so guessing between them would sometimes be a lie — and a
- *  reader who clicked `[1]` is owed the same sentence as one who opened the rail. */
-export const UNKEPT = 'cora cannot open this document.'
-
-/**
- * The kept text of an upload, or why it cannot be read. Both answers live here so that
- * every way of opening a passage gives the same one: a citation from an index written
- * before cora kept any text names no upload, and a reader who clicked `[1]` deserves
- * that sentence as much as a reader who opened the document in the rail.
- */
-export function usePassage(source: { scope: string; upload: string } | null) {
-  const [text, setText] = useState<string | null>(null)
-  const [trouble, setTrouble] = useState<string | null>(null)
-
-  useEffect(() => {
-    setText(null)
-    setTrouble(null)
-    if (!source) {
-      setTrouble(UNKEPT)
-      return
-    }
-    let current = true
-    cora
-      .passage(source.scope, source.upload)
-      .then((kept) => current && setText(kept))
-      .catch((failed) => current && setTrouble(String(failed.message ?? failed)))
-    return () => {
-      current = false
-    }
-  }, [source?.scope, source?.upload])
-
-  return { text, trouble }
-}
+import { useEffect, useRef } from 'react'
 
 export type Span = { start: number; end: number }
 
