@@ -5,6 +5,7 @@ with nothing configured, which is what keeps the story demonstrable. Two calls, 
 the service resolves a place name and forecasts coordinates at separate addresses.
 """
 
+import re
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
@@ -16,6 +17,7 @@ GEOCODING = "https://geocoding-api.open-meteo.com/v1/search"
 FORECAST = "https://api.open-meteo.com/v1/forecast"
 MEASURES = "temperature_2m_max,temperature_2m_min,weather_code"
 TIMEOUT = 10.0
+A_DATE = re.compile(r"\d{4}-\d{2}-\d{2}")
 
 UNREACHABLE = (
     "I could not reach the forecast service just now, so I have no forecast to give "
@@ -271,3 +273,21 @@ def forecast_tool() -> Tool:
         run=Forecast(),
         untrusted=True,
     )
+
+
+def skies(line: str) -> dict[str, str]:
+    """A forecast line read back as a word for the sky, by ISO date.
+
+    Beside `_days`, which writes it: a reader of this shape belongs next to its writer,
+    or the two drift. Anything unreadable is left out rather than guessed at, which
+    makes a rule over it one that cannot fail rather than one that fails wrongly.
+    """
+    read: dict[str, str] = {}
+    for part in line.split(";"):
+        # The place heads the first day, so the date is what ends the left-hand side.
+        named, _, rest = part.strip().partition(": ")
+        day = A_DATE.search(named)
+        sky = rest.rpartition(", ")[2].strip()
+        if day is not None and sky:
+            read[day.group()] = sky
+    return read
