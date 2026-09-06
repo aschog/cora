@@ -13,6 +13,8 @@ from jsonschema import Draft202012Validator, SchemaError
 from cora.domain.card import Card
 from cora.domain.citations import Citable
 from cora.domain.errors import PluginLoadError
+from cora.domain.trace import WorkShown
+from cora.engine import keeping
 from cora.engine.events import EVENTS
 from cora.engine.nesting import collecting, read_untrusted, took
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
@@ -27,6 +29,7 @@ from cora.ports.host import (
     TOOL,
     Handler,
     Registration,
+    State,
     Subscription,
     name_of,
 )
@@ -149,6 +152,16 @@ class PluginHost:
         return _Reading(self.index)
 
     @property
+    def state(self) -> State:
+        """What this plugin kept for the conversation this turn is answering on.
+
+        Namespaced under the name cora loaded it as, so two plugins choosing one name
+        keep two values. Reachable while one of this plugin's tool calls is running,
+        and outside one it reads nothing and keeps nothing.
+        """
+        return _Keeping(name_of(self.module))
+
+    @property
     def log(self) -> logging.Logger:
         """A logger named for this plugin, so its lines say which plugin wrote them.
 
@@ -239,6 +252,15 @@ class PluginHost:
         if not isinstance(instructions, str):
             raise PluginLoadError(self.module, "instructions must be a string")
         self._record(INSTRUCTIONS, instructions, scope)
+
+    def show(self, did: str, detail: str = "", failed: bool = False) -> None:
+        """Put one line of this plugin's own work on the trace of the call it is in.
+
+        The plugin is not a parameter: the name is this host's, which is what makes a
+        line unforgeable. Outside a call `took` has nothing to report to and drops it,
+        so nothing here has to know whether a turn is running.
+        """
+        took(WorkShown(plugin=self.module, did=did, detail=detail, failed=failed))
 
     def delegate(self, task: str, tools: tuple[Tool, ...] = (), rounds: int = 3) -> str:
         """Run a bounded loop of the model's own, and answer with what it wrote.
@@ -414,6 +436,26 @@ class _Reading:
         """The passages the index holds, and a note that this call has read some."""
         read_untrusted()
         return self.index.search(query, k)
+
+
+@dataclass(frozen=True)
+class _Keeping:
+    """One plugin's own keys, in whatever conversation the work now belongs to.
+
+    The name is held here rather than passed in by the plugin, because only the host
+    knows which plugin is asking — the same reason a log line and a setting are named
+    here.
+    """
+
+    plugin: str
+
+    def read(self, name: str) -> str | None:
+        """What this plugin kept under this name, or nothing."""
+        return keeping.read(self.plugin, name)
+
+    def keep(self, name: str, value: str | None) -> None:
+        """Keep this text under this name, or drop the name given nothing."""
+        keeping.keep(self.plugin, name, value)
 
 
 def _read(result: ToolResult, read_documents: bool = False) -> Read:

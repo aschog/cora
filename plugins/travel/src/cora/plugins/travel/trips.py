@@ -18,6 +18,7 @@ import httpx
 
 from cora.domain.card import ActionOffered, Card, fields_of, missing_from
 from cora.plugins.travel.forecast import Fetcher
+from cora.plugins.travel.plan import Priced
 from cora.ports.plugin import Tool, ToolRefusal
 
 SEARCH = "https://serpapi.com/search"
@@ -321,10 +322,27 @@ def departures(given: Mapping[str, Any]) -> tuple[list[datetime.date], int]:
 
 @dataclass(frozen=True)
 class Offer:
-    """One thing that can be bought, and the one line it reads as."""
+    """One thing that can be bought, over the dates it covers, and its one line.
+
+    The dates are what let a fare be paired with a stay for its own week: a window is
+    priced one departure at a time, and an offer that did not carry its own days could
+    only be read as a sentence.
+    """
 
     price: float
     line: str
+    start: datetime.date
+    end: datetime.date
+
+    def priced(self, currency: str) -> Priced:
+        """The same offer as the plan holds one."""
+        return Priced(
+            price=self.price,
+            currency=currency,
+            start=self.start,
+            end=self.end,
+            line=self.line,
+        )
 
 
 def _listed(head: str, offers: Sequence[Offer]) -> str:
@@ -344,8 +362,11 @@ class Search:
     fetch: Fetcher = field(default_factory=lambda: _client())
     url: str = SEARCH
 
-    def flights(self, **given: Any) -> str:
-        """The cheapest fares across every departure the window allows, on one line.
+    def fares(self, **given: Any) -> list[Offer]:
+        """Every fare the window turned up, each carrying the days it covers.
+
+        The structured half of `flights`: the planner pairs one of these with a stay
+        for its own week, and the sentence a model reads is built over the same list.
 
         Raises:
             ToolRefusal: The window holds no trip, every departure failed, or the
@@ -372,10 +393,23 @@ class Search:
         ]
         if not offers:
             raise refused[0] if refused else ToolRefusal(NOTHING_FLYING)
+        return offers
+
+    def flights(self, **given: Any) -> str:
+        """The cheapest fares across every departure the window allows, on one line.
+
+        Raises:
+            ToolRefusal: As `fares`, which is what this reads out.
+        """
+        offers = self.fares(**given)
+        # Counted off the window rather than off what came back: a departure the
+        # service choked on was still tried, and saying otherwise would quietly
+        # report a narrower search than the one that ran.
+        days, _ = departures({**DEFAULTS, **given})
         return _listed(f"tried {len(days)} departures", offers)
 
-    def stays(self, **given: Any) -> str:
-        """The cheapest places to stay for one set of dates, on one line.
+    def rooms(self, **given: Any) -> list[Offer]:
+        """Every place to stay the service found for one set of dates.
 
         One call and no fan-out: the dates are settled by the time somewhere to sleep
         is worth pricing.
@@ -386,6 +420,8 @@ class Search:
         """
         asked = {**DEFAULTS, **given}
         currency = str(asked["currency"])
+        check_in = _day(asked["check_in"], "check_in")
+        check_out = _day(asked["check_out"], "check_out")
         found = self._read(
             _query(HOTEL_FIELDS, asked, self.key) | {"engine": "google_hotels"}
         )
@@ -393,10 +429,21 @@ class Search:
         if not isinstance(listed, list):
             raise ToolRefusal(UNREADABLE)
         offers = [
-            offer for place in listed if (offer := _stay(place, currency)) is not None
+            offer
+            for place in listed
+            if (offer := _stay(place, currency, check_in, check_out)) is not None
         ]
         if not offers:
             raise ToolRefusal(NOWHERE_TO_STAY)
+        return offers
+
+    def stays(self, **given: Any) -> str:
+        """The cheapest places to stay for one set of dates, on one line.
+
+        Raises:
+            ToolRefusal: As `rooms`, which is what this reads out.
+        """
+        offers = self.rooms(**given)
         return _listed(f"{min(len(offers), MOST)} of {len(offers)} stays", offers)
 
     def _fares(
@@ -474,10 +521,14 @@ def _fare(
             f"{out.isoformat()} to {back.isoformat()}: {airline}, {changes}, "
             f"{currency} {price:g}"
         ),
+        start=out,
+        end=back,
     )
 
 
-def _stay(place: Any, currency: str) -> Offer | None:
+def _stay(
+    place: Any, currency: str, check_in: datetime.date, check_out: datetime.date
+) -> Offer | None:
     """One place to stay as a line, or nothing where the entry is not one."""
     if not isinstance(place, dict):
         return None
@@ -490,6 +541,8 @@ def _stay(place: Any, currency: str) -> Offer | None:
     return Offer(
         price=float(price),
         line=f"{name}{f', {kind}' if kind else ''}, {currency} {price:g} for the stay",
+        start=check_in,
+        end=check_out,
     )
 
 
@@ -548,14 +601,13 @@ def _asking(
     return asks
 
 
-def trip_tools(key: str, url: str = SEARCH) -> tuple[Tool, ...]:
+def trip_tools(search: Search) -> tuple[Tool, ...]:
     """Both searches over one client, declared as returning what cora did not write.
 
     Args:
-        url: Where the searches go, for a deployment standing something else in front
-            of them.
+        search: The client the plugin built, shared with the planner — a second one
+            would parse the certificate bundle again and reuse no connection.
     """
-    search = Search(key, url=url)
     return (
         Tool(
             name=FLIGHTS_TOOL_NAME,

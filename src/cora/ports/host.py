@@ -47,10 +47,12 @@ SCREENING = "screen"
 BRIEFING = "brief"
 CALLING = "tool_call"
 RETURNING = "tool_result"
+ANSWERING = "answer"
 """The points in a turn a handler can be subscribed to, under the names a plugin writes:
-the question being screened, the brief being settled, a tool call about to run, and a
-tool result coming back. A name is contract, which is why it is here; what a handler's
-return *means* at each is `cora.engine.events`, which is not."""
+the question being screened, the brief being settled, a tool call about to run, a tool
+result coming back, and the answer settled and not yet handed over. A name is contract,
+which is why it is here; what a handler's return *means* at each is
+`cora.engine.events`, which is not."""
 
 Handler = Callable[[Any], Any]
 """What a handler is: one frozen value in, and one decision out.
@@ -69,6 +71,35 @@ class Subscription:
 
     event: str
     handle: Handler
+
+
+class State(Protocol):
+    """What one plugin kept for the conversation a turn is answering on.
+
+    Names are the plugin's own: two plugins choosing one name keep two values, and
+    neither can read the other's. What is kept lasts as long as the conversation does
+    and goes when it is deleted — it is not what cora knows about the user, which is
+    `Memory` and outlives every conversation.
+
+    Text, because what a plugin keeps is the plugin's own to read back. A shape richer
+    than that would make cora the reader of it.
+
+    Reachable while a tool call of this plugin's is running, which is where a plugin's
+    own code runs inside a turn. Outside one there is no conversation to keep anything
+    for, so a read comes back with nothing and a write is dropped.
+    """
+
+    def read(self, name: str) -> str | None:
+        """What was kept under this name, or nothing where nothing was."""
+        ...
+
+    def keep(self, name: str, value: str | None) -> None:
+        """Keep `value` under this name for the rest of this conversation.
+
+        Args:
+            value: The text to keep. `None` drops the name.
+        """
+        ...
 
 
 @dataclass(frozen=True)
@@ -204,7 +235,7 @@ class Host(Protocol):
         """Take part in the turn at one of the points this module names.
 
         Args:
-            event: One of `SCREENING`, `BRIEFING`, `CALLING`, `RETURNING`.
+            event: One of `SCREENING`, `BRIEFING`, `CALLING`, `RETURNING`, `ANSWERING`.
             handle: What runs there, as `Handler` describes one.
             scope: Where it runs. `None` runs it in every turn, and no scope can
                 switch that off — which is what screening for injection needs.
@@ -218,6 +249,22 @@ class Host(Protocol):
 
         Args:
             scope: Where the section appears. `None` puts it in every brief.
+        """
+        ...
+
+    def show(self, did: str, detail: str = "", failed: bool = False) -> None:
+        """Say what this plugin's own code just did, as one line on the trace.
+
+        Cora fills in which plugin said it, so a line can never be signed with another
+        plugin's name. It lands among the steps of the tool call it was said inside,
+        beside the rounds a delegated loop reports there. Said outside a call there is
+        nothing to report to, and it is dropped.
+
+        Args:
+            did: The line the reader sees, in the plugin's own words.
+            detail: What is behind the line, for a reader who opens it.
+            failed: Whether what it describes went wrong. A failed line is still shown,
+                and does not end the turn.
         """
         ...
 
@@ -260,6 +307,11 @@ class Host(Protocol):
     @property
     def settings(self) -> Mapping[str, str]:
         """This plugin's own settings, read from the environment under its own name."""
+        ...
+
+    @property
+    def state(self) -> State:
+        """What this plugin kept for the conversation this turn is answering on."""
         ...
 
     def delegate(self, task: str, tools: tuple[Tool, ...] = (), rounds: int = 3) -> str:

@@ -1,5 +1,7 @@
 """The outer test for story 11."""
 
+import datetime
+import json
 import pathlib
 
 import pytest
@@ -13,9 +15,12 @@ from cora.domain.decision import TurnPaused
 from cora.engine.steps import DECLINED_CALL
 from cora.frontends.react.api import api
 from cora.plugins.travel import SCOPE
-from cora.plugins.travel.itinerary import ITINERARY_TOOL_NAME
+from cora.plugins.travel.itinerary import ITINERARY_TOOL_NAME, flat
+from cora.plugins.travel.plan import Day, Plan
+from cora.plugins.travel.planner import PLAN_TOOL_NAME
 from cora.ports.chat_model import ModelReply
 from cora.ports.host import (
+    ANSWERING,
     BRIEFING,
     CALLING,
     RETURNING,
@@ -30,8 +35,49 @@ from sse import frames
 THREAD = "the-trip-i-approve-of"
 QUESTION = "Save the three days in Kyoto we worked out."
 TITLE = "kyoto-three-days"
-ITINERARY = "Day 1 — Fushimi Inari at dawn.\nDay 2 — Arashiyama.\nDay 3 — Nishiki."
 ANSWER = "Saved it — the three days are on disk now."
+
+
+DEPART = datetime.date(2026, 9, 7)
+SHAPE = json.dumps(
+    [
+        {"on": "2026-09-07", "doing": ["Fushimi Inari at dawn"]},
+        {"on": "2026-09-08", "doing": ["Arashiyama"]},
+        {"on": "2026-09-09", "doing": ["Nishiki"]},
+    ]
+)
+PLANNED = Plan(
+    origin="BER",
+    destination="Kyoto",
+    depart=DEPART,
+    back=DEPART + datetime.timedelta(days=3),
+    days=(
+        Day(on=DEPART, doing=("Fushimi Inari at dawn",)),
+        Day(on=DEPART + datetime.timedelta(days=1), doing=("Arashiyama",)),
+        Day(on=DEPART + datetime.timedelta(days=2), doing=("Nishiki",)),
+    ),
+)
+ITINERARY = "Fushimi Inari at dawn"
+
+
+def _planning() -> ModelReply:
+    """The turn plans first, because what may be saved is what cora verified — with no
+    search service the days are planned and the trip is unpriced, which is enough."""
+    return ModelReply(
+        tool_calls=(
+            ToolCall(
+                name=PLAN_TOOL_NAME,
+                arguments={
+                    "origin": "BER",
+                    "destination": "Kyoto",
+                    "window_start": DEPART.isoformat(),
+                    "window_end": (DEPART + datetime.timedelta(days=3)).isoformat(),
+                    "nights": 3,
+                },
+                call_id="p1",
+            ),
+        )
+    )
 
 
 def _saving() -> ModelReply:
@@ -39,11 +85,20 @@ def _saving() -> ModelReply:
         tool_calls=(
             ToolCall(
                 name=ITINERARY_TOOL_NAME,
-                arguments={"title": TITLE, "itinerary": ITINERARY},
+                arguments={"title": TITLE, **flat(PLANNED)},
                 call_id="s1",
             ),
         )
     )
+
+
+def _plans_then_saves(answer: str) -> ScriptedChatModel:
+    return ScriptedChatModel(
+        [_planning(), SHAPE_REPLY, _saving(), ModelReply(text=answer)]
+    )
+
+
+SHAPE_REPLY = ModelReply(text=SHAPE)
 
 
 def _travel() -> Extension:
@@ -69,7 +124,7 @@ def test_an_effect_happens_only_after_i_approve_it(tmp_path: pathlib.Path) -> No
     """The criterion: cora says what it is about to do, nothing outside it changes while
     the turn waits, and the approval is on the trace beside the call it authorised."""
     output = tmp_path / "output"
-    model = ScriptedChatModel([_saving(), ModelReply(text=ANSWER)])
+    model = _plans_then_saves(ANSWER)
     with TestClient(api(_app(model, output))) as reader:
         asked = reader.post(
             "/api/ask", json={"question": QUESTION, "thread_id": THREAD}
@@ -111,7 +166,7 @@ def test_declining_changes_nothing_and_the_model_is_told_it_did_not_happen(
     call never runs, and the turn is still answered — with the model told plainly that
     the thing it asked for did not happen, so it can say so."""
     output = tmp_path / "output"
-    model = ScriptedChatModel([_saving(), ModelReply(text="I have not saved it.")])
+    model = _plans_then_saves("I have not saved it.")
     with TestClient(api(_app(model, output))) as reader:
         reader.post(
             "/api/ask", json={"question": DECLINED_QUESTION, "thread_id": THREAD}
@@ -134,7 +189,7 @@ def test_a_plugin_that_takes_part_everywhere_it_may_cannot_switch_the_gate_off(
     refuse a call or amend a result, and there is nothing it can return that lets one
     through unasked — because nothing a handler returns can pause a turn either."""
     everywhere = Extension(module="fixture_plugins.everywhere", extend=_taking_part)
-    model = ScriptedChatModel([_saving(), ModelReply(text=ANSWER)])
+    model = _plans_then_saves(ANSWER)
     app = assembled(
         chat_model=model,
         plugins=(_travel(), everywhere),
@@ -158,5 +213,5 @@ def _taking_part(cora: Host) -> None:
     is: a refusing event reads anything at all as a refusal, and an amending one reads
     nothing as leaving the value alone.
     """
-    for event in (SCREENING, BRIEFING, CALLING, RETURNING):
+    for event in (SCREENING, BRIEFING, CALLING, RETURNING, ANSWERING):
         cora.register_handler(event=event, handle=lambda *_, **__: None)

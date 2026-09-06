@@ -9,7 +9,13 @@ from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
 from cora.domain.errors import ConversationStoreError
-from cora.domain.trace import MemoryUnread, ModelDecision, StepEntered, ToolUse
+from cora.domain.trace import (
+    MemoryUnread,
+    ModelDecision,
+    StepEntered,
+    ToolUse,
+    WorkShown,
+)
 
 THREAD = "9f1c0f7a-0d5e-4a3a-9d0f-1b2c3d4e5f60"
 ASKED = "How much protein should I eat?"
@@ -289,3 +295,15 @@ def test_a_recorded_turn_keeps_the_field_it_was_answered_in(tmp_path: Path) -> N
 
     [kept] = _store(tmp_path).turns("t1")
     assert kept.result.scopes == ("travel",)
+
+
+def test_a_plugin_s_own_line_comes_back_out_of_the_store_as_it_went_in(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    shown = WorkShown(plugin="acme", did="counted 3 wrens", detail="wren", failed=True)
+    turn = Turn(question=ASKED, result=ChatResult(answer="three", trace=(shown,)))
+
+    store.record(THREAD, turn)
+
+    assert store.turns(THREAD) == (turn,)

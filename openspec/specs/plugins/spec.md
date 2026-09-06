@@ -546,3 +546,196 @@ read from the plugin's own settings.
 - **WHEN** the researcher runs
 - **THEN** what it may spend follows that number, and the host's own ceiling still
   bounds it
+
+### Requirement: A plugin keeps what it worked out, for the length of a conversation
+
+A plugin SHALL be able to keep text under a name of its choosing, and read it back on a
+later turn of the same conversation. A name nothing was kept under SHALL read as
+nothing, rather than as a failure.
+
+#### Scenario: What one turn kept, the next turn reads
+
+- **GIVEN** a plugin whose tool keeps a value under a name
+- **WHEN** a later turn of that conversation calls a tool that reads the name
+- **THEN** the value it kept comes back
+
+#### Scenario: Another conversation reads nothing
+
+- **GIVEN** a plugin that kept a value in one conversation
+- **WHEN** its tool reads that name in a second conversation
+- **THEN** nothing comes back, and the first conversation still holds its value
+
+#### Scenario: A name nothing was kept under
+
+- **GIVEN** a plugin that has kept nothing
+- **WHEN** its tool reads any name
+- **THEN** nothing comes back and the turn answers
+
+#### Scenario: Keeping nothing under a name drops it
+
+- **GIVEN** a plugin that kept a value under a name
+- **WHEN** its tool keeps nothing under that same name
+- **THEN** a later read of it comes back with nothing
+
+### Requirement: What a plugin keeps is its own
+
+Names SHALL be held per plugin. One plugin SHALL NOT read or overwrite what another
+kept, whichever name either chose.
+
+#### Scenario: Two plugins use the same name
+
+- **GIVEN** two plugins that each keep a different value under the name `plan`
+- **WHEN** each reads `plan` in the same conversation
+- **THEN** each reads back its own value
+
+### Requirement: A plugin outside a turn keeps nothing
+
+Reading or writing outside a tool call SHALL come back with nothing and record nothing,
+because there is no conversation for it to belong to.
+
+#### Scenario: A plugin writes while it is being loaded
+
+- **GIVEN** a plugin that keeps a value inside its own `extend`
+- **WHEN** a turn later reads that name
+- **THEN** nothing comes back, and loading the plugin did not fail
+
+### Requirement: What a plugin kept goes when the conversation goes
+
+Deleting a conversation SHALL delete what its plugins kept in it, as it deletes the
+turns and the thread they were answered on.
+
+#### Scenario: A deleted conversation keeps nothing behind
+
+- **GIVEN** a conversation in which a plugin kept a value
+- **WHEN** that conversation is deleted
+- **THEN** a new conversation on that thread reads nothing under the name
+
+#### Scenario: Deleting one conversation leaves another alone
+
+- **GIVEN** two conversations in which the same plugin kept different values
+- **WHEN** one of them is deleted
+- **THEN** the other still reads back its own value
+
+### Requirement: A plugin says what it did, and the reader reads it
+
+A plugin SHALL be able to contribute one line saying what it just did, with detail
+behind it for a reader who opens it. The line SHALL name the plugin that took it.
+
+#### Scenario: A plugin's own work is on the trace
+
+- **GIVEN** a plugin whose tool says what it did while the call runs
+- **WHEN** the turn is answered
+- **THEN** the trace carries that line, naming the plugin
+
+#### Scenario: The detail is behind the line
+
+- **GIVEN** a plugin that says what it did and gives detail with it
+- **WHEN** the reader opens that step
+- **THEN** the detail it gave is what they read
+
+### Requirement: What a plugin shows lands under the call it happened in
+
+A line a plugin contributes during a tool call SHALL appear among that call's own steps,
+beside the rounds a delegated loop reports there.
+
+#### Scenario: Shown under the call, not beside it
+
+- **GIVEN** a plugin whose tool shows two lines and delegates a loop once
+- **WHEN** the turn is answered
+- **THEN** all three stand under that one call, and none beside it
+
+#### Scenario: Shown outside a call is dropped
+
+- **GIVEN** a plugin that shows a line while it is being loaded
+- **WHEN** a turn is answered afterwards
+- **THEN** the trace carries no such line, and loading the plugin did not fail
+
+### Requirement: A plugin cannot sign another plugin's name
+
+The name on the line SHALL be the name cora loaded that plugin under, whatever the
+plugin passes.
+
+#### Scenario: A plugin names itself something else
+
+- **GIVEN** a plugin that tries to show a line under another plugin's name
+- **WHEN** the turn is answered
+- **THEN** the line names the plugin that showed it
+
+### Requirement: A plugin may show that something went wrong
+
+A plugin SHALL be able to mark what it shows as having failed, and the trace SHALL show
+it as a failed step without ending the turn.
+
+#### Scenario: A failed line is shown as failed
+
+- **GIVEN** a plugin whose loop shows a line marked as gone wrong
+- **WHEN** the turn is answered
+- **THEN** that step reads as failed and the turn still answers
+
+### Requirement: A plugin sees the answer before the reader does
+
+A plugin SHALL be able to subscribe to the answer being settled, and SHALL be given it
+as text. What it hands back SHALL be what the reader is given, and handing back nothing
+SHALL leave the answer as it was.
+
+#### Scenario: An answer is redacted before it is handed over
+
+- **GIVEN** a plugin subscribed to the answer, replacing a phone number with a marker
+- **WHEN** a turn answers with a phone number in it
+- **THEN** the reader is given the answer with the marker, and the number is nowhere in it
+
+#### Scenario: A handler that changes nothing changes nothing
+
+- **GIVEN** a plugin subscribed to the answer that hands back nothing
+- **WHEN** a turn answers
+- **THEN** the reader is given the answer exactly as the model wrote it
+
+### Requirement: Amendments to the answer chain in load order
+
+Each subscribed handler SHALL be given what the one before it returned, so two plugins
+both change the answer and neither undoes the other.
+
+#### Scenario: Two plugins each change the answer
+
+- **GIVEN** one plugin that redacts and a second that appends a notice, loaded in that order
+- **WHEN** a turn answers
+- **THEN** the reader is given an answer that is both redacted and carries the notice
+
+### Requirement: A broken check costs the turn nothing
+
+A handler that raises, or that hands back something that is not text, SHALL be dropped
+and the turn SHALL still answer.
+
+#### Scenario: A handler raises
+
+- **GIVEN** a plugin subscribed to the answer whose handler raises
+- **WHEN** a turn answers
+- **THEN** the reader is given the answer, and the trace says that plugin could not change it
+
+#### Scenario: A handler hands back something that is not text
+
+- **GIVEN** a plugin subscribed to the answer that hands back a number
+- **WHEN** a turn answers
+- **THEN** the answer stands unchanged and the trace records the failure
+
+### Requirement: The citations follow the answer that was amended
+
+Citations SHALL be read off the answer as it was amended. A claim removed by a handler
+SHALL take its citation with it.
+
+#### Scenario: A redacted sentence drops its citation
+
+- **GIVEN** an answer citing two passages, and a plugin that removes the sentence carrying the second
+- **WHEN** the turn is answered
+- **THEN** the reader is given one citation, and it is the one still cited
+
+### Requirement: The trace names the plugin that changed the answer
+
+A handler that changes the answer SHALL appear on the trace, named for its plugin, as a
+handler at any other point does.
+
+#### Scenario: A reader sees who changed it
+
+- **GIVEN** a plugin that redacted the answer
+- **WHEN** the reader opens the trace
+- **THEN** a step names that plugin and says it changed the answer

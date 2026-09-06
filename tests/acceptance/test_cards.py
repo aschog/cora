@@ -20,6 +20,7 @@ from cora.plugins.travel.trips import (
     FLIGHTS_TOOL_NAME,
     SEARCH_IT,
     SETTING,
+    Search,
     trip_tools,
 )
 from cora.ports.chat_model import ModelReply
@@ -118,7 +119,7 @@ def test_the_real_assembly_offers_the_search_with_nothing_required() -> None:
 def test_the_search_still_takes_exactly_what_it_always_took() -> None:
     """What the tool requires is unchanged: the card is built from the registered
     schema and every call is run against it, so the strip is the model's view alone."""
-    [flights, _] = trip_tools("a-key")
+    [flights, _] = trip_tools(Search("a-key"))
 
     assert "origin" in flights.parameter_schema["required"]
 

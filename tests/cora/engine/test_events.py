@@ -4,11 +4,13 @@ import pytest
 
 from cora.domain.errors import InputRejectedError
 from cora.domain.trace import TraceStep
-from cora.engine.events import UNCHECKED, UNSCREENED, dispatch
+from cora.engine.events import EVENTS, UNCHECKED, UNSCREENED, Amending, dispatch
 from cora.ports.host import (
+    ANSWERING,
     BRIEFING,
     CALLING,
     HANDLER,
+    RETURNING,
     SCREENING,
     Handler,
     Registration,
@@ -173,3 +175,16 @@ def test_a_refusal_that_is_not_a_sentence_still_refuses_and_says_nothing_of_it()
     [named] = trace
     assert named.failed
     assert "bool" in named.detail
+
+
+def test_the_answer_is_a_point_whose_handlers_amend_it() -> None:
+    """A new point in the turn is an entry in the table, and the table is what says
+    what a handler's return means there."""
+    kind = EVENTS[ANSWERING]
+
+    assert isinstance(kind, Amending)
+    assert kind.holds is str
+
+
+def test_every_point_a_plugin_may_subscribe_to_is_in_the_table() -> None:
+    assert set(EVENTS) == {SCREENING, BRIEFING, CALLING, RETURNING, ANSWERING}

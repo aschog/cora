@@ -7,6 +7,8 @@ import pytest
 from cora.domain.card import ActionOffered, Card
 from cora.domain.chunk import Chunk
 from cora.domain.errors import PluginLoadError
+from cora.domain.trace import ModelDecision, WorkShown
+from cora.engine import keeping
 from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.host import (
     DELEGATE_BRIEF,
@@ -1017,3 +1019,126 @@ def test_a_plugin_is_handed_the_output_location_rather_than_a_path_of_its_own() 
 
     assert host_for(output=output).output is output
     assert host_for().output is None, "a deployment that configured none has none"
+
+
+def test_a_plugin_keeps_and_reads_under_its_own_name() -> None:
+    host = host_for(MODULE)
+
+    with keeping.bound({}):
+        host.state.keep("note", "Kyoto in May")
+
+        assert host.state.read("note") == "Kyoto in May"
+
+
+def test_a_plugin_reads_nothing_under_a_name_it_never_kept() -> None:
+    with keeping.bound({}):
+        assert host_for(MODULE).state.read("note") is None
+
+
+def test_a_plugin_keeping_nothing_under_a_name_drops_it() -> None:
+    host = host_for(MODULE)
+
+    with keeping.bound({}):
+        host.state.keep("note", "Kyoto in May")
+        host.state.keep("note", None)
+
+        assert host.state.read("note") is None
+
+
+def test_two_plugins_keeping_one_name_each_read_back_their_own() -> None:
+    keeper = host_for(MODULE)
+    other = host_for("acme.plugins.birds")
+
+    with keeping.bound({}):
+        keeper.state.keep("note", "Kyoto in May")
+        other.state.keep("note", "a wren")
+
+        assert keeper.state.read("note") == "Kyoto in May"
+        assert other.state.read("note") == "a wren"
+
+
+def test_a_plugin_names_a_key_and_never_a_conversation() -> None:
+    host = host_for(MODULE)
+
+    with keeping.bound({}):
+        host.state.keep("note", "one")
+    with keeping.bound({}):
+        second = host.state.read("note")
+
+    assert second is None
+
+
+def test_a_plugin_reading_outside_a_call_reads_nothing() -> None:
+    assert host_for(MODULE).state.read("note") is None
+
+
+def test_a_plugin_writing_outside_a_call_keeps_nothing() -> None:
+    host = host_for(MODULE)
+
+    host.state.keep("note", "Kyoto in May")
+
+    with keeping.bound({}):
+        assert host.state.read("note") is None
+
+
+def test_a_loop_delegated_inside_a_call_keeps_under_the_same_conversation() -> None:
+    host = host_for(MODULE, model=_answering(ModelReply(text="done.")))
+    kept: dict[str, dict[str, str]] = {}
+
+    with keeping.bound(kept):
+        host.state.keep("note", "Kyoto")
+        host.delegate("Look it up.")
+
+        assert host.state.read("note") == "Kyoto"
+    assert kept == {["fixture_plugins", "valid"][-1]: {"note": "Kyoto"}}
+
+
+def test_a_plugin_shows_what_it_did_to_the_call_it_is_in() -> None:
+    host = host_for(MODULE)
+
+    with collecting() as taken:
+        host.show("counted 3 wrens", detail="wren, wren, wren")
+
+    [shown] = taken.steps
+    assert shown.summary == f"{MODULE} counted 3 wrens"
+    assert shown.detail == "wren, wren, wren"
+    assert not shown.failed
+
+
+def test_a_plugin_may_show_that_something_went_wrong() -> None:
+    host = host_for(MODULE)
+
+    with collecting() as taken:
+        host.show("lost count", failed=True)
+
+    assert taken.steps[0].failed
+
+
+def test_a_line_is_signed_with_the_name_cora_loaded_the_plugin_under() -> None:
+    """Whatever the plugin writes into the line, the signature is cora's own."""
+    host = host_for(MODULE)
+
+    with collecting() as taken:
+        host.show("acme.plugins.birds counted 3 wrens")
+
+    [shown] = taken.steps
+    assert isinstance(shown, WorkShown)
+    assert shown.plugin == MODULE
+
+
+def test_a_plugin_cannot_contribute_a_kind_of_step_that_is_not_its_own() -> None:
+    host = host_for(MODULE)
+
+    with collecting() as taken:
+        host.show(ModelDecision(detail="thinking"))  # ty: ignore[invalid-argument-type]
+
+    assert [type(step) for step in taken.steps] == [WorkShown]
+
+
+def test_a_line_shown_outside_a_call_is_dropped() -> None:
+    host_for(MODULE).show("counted 3 wrens")
+
+    with collecting() as taken:
+        pass
+
+    assert taken.steps == []

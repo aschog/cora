@@ -19,11 +19,13 @@ from cora.domain.errors import (
 from cora.domain.trace import (
     CardFilled,
     EffectSettled,
+    HandlerRan,
     ModelDecision,
     ScopeSettled,
     StepEntered,
     ToolUse,
 )
+from cora.engine import keeping
 from cora.engine.ask_tool import (
     ASK_FOR_TOOL_NAME,
     ASK_TOOL_NAME,
@@ -78,6 +80,7 @@ from cora.engine.validation import CORA, refuse_nothing_to_answer
 from cora.ports.chat_model import Aside, Message, ModelReply, Piece, Written
 from cora.ports.graph import ASK, DONE, TOOLS, Step
 from cora.ports.host import (
+    ANSWERING,
     BRIEFING,
     CALLING,
     DEFAULT_SCOPE,
@@ -1531,7 +1534,7 @@ def test_the_answering_step_settles_the_answer_the_last_round_reached() -> None:
         }
     )
 
-    assert settled == {"answer": "The sum is 3."}
+    assert settled == {"answer": "The sum is 3.", "trace": []}
 
 
 def test_no_round_settles_the_answer_by_being_the_last_one() -> None:
@@ -1560,7 +1563,7 @@ def test_a_turn_that_reached_no_round_settles_nothing_of_the_one_before_it() -> 
         }
     )
 
-    assert settled == {"answer": ""}
+    assert settled == {"answer": "", "trace": []}
 
 
 def test_the_step_a_failure_first_came_out_of_is_the_one_it_keeps() -> None:
@@ -2448,3 +2451,186 @@ def test_a_call_nobody_filled_in_is_told_as_it_always_was() -> None:
     )["messages"]
 
     assert told.content == "priced it"
+
+
+def _keeper(name: str = "keep", note: str = "note", text: str | None = "Kyoto") -> Tool:
+    """A tool that keeps something while its own call runs, as a plugin's does."""
+
+    def run() -> str:
+        keeping.keep("keeper", note, text)
+        return f"kept {text}"
+
+    return Tool(
+        name=name,
+        description="Keep a note.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=run,
+    )
+
+
+def _reader(name: str = "read", note: str = "note") -> Tool:
+    """A tool that reads what its plugin kept, and says so."""
+
+    def run() -> str:
+        return keeping.read("keeper", note) or "nothing"
+
+    return Tool(
+        name=name,
+        description="Read a note.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=run,
+    )
+
+
+def _call(name: str, call_id: str = "c1") -> ToolCall:
+    return ToolCall(name=name, arguments={}, call_id=call_id)
+
+
+def test_what_a_call_kept_is_in_the_state_the_step_contributes() -> None:
+    step = ToolStep(ToolRuntime(tools=(_keeper(),)))
+
+    contributed = step(_asked(_call("keep")))
+
+    assert contributed["kept"] == {"keeper": {"note": "Kyoto"}}
+
+
+def test_a_call_reads_what_was_kept_before_the_round_began() -> None:
+    step = ToolStep(ToolRuntime(tools=(_reader(),)))
+    state = _asked(_call("read")) | {"kept": {"keeper": {"note": "Nara"}}}
+
+    read = step(state)["trace"][0]
+
+    assert read.detail == "Nara"
+
+
+def test_what_an_earlier_call_kept_a_later_call_of_the_round_reads() -> None:
+    step = ToolStep(ToolRuntime(tools=(_keeper(), _reader())))
+
+    trace = step(_asked(_call("keep", "c1"), _call("read", "c2")))["trace"]
+
+    assert trace[1].detail == "Kyoto"
+
+
+def test_a_call_that_kept_nothing_leaves_what_was_kept_before_it() -> None:
+    step = ToolStep(ToolRuntime(tools=(_reader(),)))
+    state = _asked(_call("read")) | {"kept": {"keeper": {"note": "Nara"}}}
+
+    assert step(state)["kept"] == {"keeper": {"note": "Nara"}}
+
+
+def test_keeping_nothing_under_a_name_drops_it_from_the_state() -> None:
+    step = ToolStep(ToolRuntime(tools=(_keeper(text=None),)))
+    state = _asked(_call("keep")) | {"kept": {"keeper": {"note": "Nara"}}}
+
+    assert step(state)["kept"] == {"keeper": {}}
+
+
+def test_what_a_call_kept_does_not_reach_the_state_a_turn_arrived_with() -> None:
+    """The dictionary the channel holds is deep-copied, so a call cannot write into the
+    state behind the step's back and leave the contributed value meaningless."""
+    step = ToolStep(ToolRuntime(tools=(_keeper(),)))
+    arrived: dict[str, dict[str, str]] = {"keeper": {"note": "Nara"}}
+
+    step(_asked(_call("keep")) | {"kept": arrived})
+
+    assert arrived == {"keeper": {"note": "Nara"}}
+
+
+def test_a_call_that_refused_keeps_what_it_wrote_before_it_refused() -> None:
+    def run() -> str:
+        keeping.keep("keeper", "note", "Kyoto")
+        raise ToolRefusal("not today")
+
+    refusing = Tool(
+        name="keep",
+        description="Keep a note and then refuse.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=run,
+    )
+    step = ToolStep(ToolRuntime(tools=(refusing,)))
+
+    assert step(_asked(_call("keep")))["kept"] == {"keeper": {"note": "Kyoto"}}
+
+
+def test_the_binding_is_reset_once_the_round_is_over() -> None:
+    step = ToolStep(ToolRuntime(tools=(_keeper(),)))
+
+    step(_asked(_call("keep")))
+
+    assert keeping.read("keeper", "note") is None
+
+
+def test_a_turn_that_kept_nothing_contributes_what_it_arrived_with() -> None:
+    step = ToolStep(ToolRuntime(tools=(add_tool(),)))
+
+    assert step(_asked(_add_call("c1")))["kept"] == {}
+
+
+def test_what_a_plugin_kept_is_not_emptied_at_the_top_of_a_turn() -> None:
+    """The opposite of `filled`: a card's values belong to one turn, and what a plugin
+    kept belongs to the conversation."""
+    contributed = ScreenStep()({"question": "and now?", "kept": {"keeper": {"a": "b"}}})
+
+    assert "kept" not in contributed
+
+
+def _answering(handle: Handler, scope: str | None = None) -> Registry:
+    return Registry(
+        (
+            Registration(
+                module="checker",
+                kind=HANDLER,
+                value=Subscription(event=ANSWERING, handle=handle),
+                scope=scope,
+            ),
+        )
+    )
+
+
+def _settled(registry: Registry, said: str = "Call 555-0134.") -> AgentState:
+    return AnswerStep(registry=registry)(
+        {"messages": [Message(role="assistant", content=said)]}
+    )
+
+
+def test_a_handler_is_offered_the_answer_and_what_it_returns_is_settled() -> None:
+    contributed = _settled(_answering(lambda answer: answer.replace("555-0134", "x")))
+
+    assert contributed["answer"] == "Call x."
+
+
+def test_a_handler_that_returns_nothing_leaves_the_answer_as_it_was() -> None:
+    assert _settled(_answering(lambda answer: None))["answer"] == "Call 555-0134."
+
+
+def test_a_handler_that_changed_the_answer_is_on_the_trace() -> None:
+    contributed = _settled(_answering(lambda answer: "redacted"))
+
+    [ran] = contributed["trace"]
+    assert isinstance(ran, HandlerRan)
+    assert ran.event == ANSWERING
+    assert ran.outcome == "changed the answer"
+
+
+def test_a_handler_subscribed_to_another_scope_never_sees_the_answer() -> None:
+    registry = _answering(lambda answer: "redacted", scope="elsewhere")
+
+    contributed = AnswerStep(registry=registry)(
+        {"messages": [Message(role="assistant", content="stands")], "scopes": ["here"]}
+    )
+
+    assert contributed["answer"] == "stands"
+
+
+def test_a_system_wide_handler_sees_the_answer_whatever_the_turn_ran_as() -> None:
+    registry = _answering(lambda answer: "redacted")
+
+    contributed = AnswerStep(registry=registry)(
+        {"messages": [Message(role="assistant", content="stands")], "scopes": ["here"]}
+    )
+
+    assert contributed["answer"] == "redacted"
+
+
+def test_an_answer_nothing_is_subscribed_to_is_settled_as_it_stands() -> None:
+    assert _settled(Registry())["answer"] == "Call 555-0134."

@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from cora.plugins.travel.forecast import UNREACHABLE, UNREADABLE, Forecast
+from cora.plugins.travel.forecast import UNREACHABLE, UNREADABLE, Forecast, skies
 from cora.ports.plugin import ToolRefusal
 
 LISBON = {
@@ -223,3 +223,13 @@ def test_the_real_service_answers_a_forecast_for_a_place_it_knows() -> None:
 
     assert "Lisbon" in said
     assert "°C" in said
+
+
+def test_a_forecast_line_reads_back_as_a_sky_for_each_day() -> None:
+    line = "Lisbon — 2026-09-07: 25/18°C, clear sky; 2026-09-08: 20/15°C, heavy rain"
+
+    assert skies(line) == {"2026-09-07": "clear sky", "2026-09-08": "heavy rain"}
+
+
+def test_a_line_that_is_not_a_forecast_reads_back_as_nothing() -> None:
+    assert skies("could not reach the service") == {}

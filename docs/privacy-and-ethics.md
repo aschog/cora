@@ -171,9 +171,10 @@ Through the contract it is offered, a plugin contributes four things:
 - **instructions** — text that heads its section of the model's brief, which the model
   then follows
 - **tools** — named functions the model may call, with arguments the model writes
-- **handlers** — code at one of four points in a turn (`screen`, `brief`, `tool_call`,
-  `tool_result`) that can refuse the question, amend the brief, refuse a call, or change
-  what a tool returned before the model sees it
+- **handlers** — code at one of five points in a turn (`screen`, `brief`, `tool_call`,
+  `tool_result`, `answer`) that can refuse the question, amend the brief, refuse a call,
+  change what a tool returned before the model sees it, or replace the answer that is
+  recorded and handed back
 - **effects** — tools declared as changing something outside cora
 
 And this is what cora *hands* a plugin, through the contract rather than around it —
@@ -186,6 +187,15 @@ the well-behaved-plugin case, which matters as much as the malicious one:
   *outside* cora, and cora's own stores are inside it.
 - **the model.** A plugin can send anything it holds to the provider, either directly or
   by delegating a bounded loop of its own.
+- **a place to keep things.** A plugin can keep text under names of its own for the
+  length of one conversation, read it back on a later turn, and it goes when that
+  conversation is deleted. Its names are its own — no plugin reads another's — and it is
+  the conversation's rather than the user's, which is what separates it from what cora
+  remembers.
+- **a line on the trace.** A plugin can say what its own code did, under the call it was
+  said inside. Cora signs the line with the plugin's name, so one plugin cannot write
+  under another's — but what the line *says* is the plugin's own, and a reader takes it
+  at face value.
 
 `make plugins` prints exactly what each loaded plugin registered, and `GET /api/plugins`
 carries the same listing. That tells you what a plugin *claims*; only its source tells

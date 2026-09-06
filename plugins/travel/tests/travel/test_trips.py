@@ -362,7 +362,7 @@ def test_every_departure_failing_is_the_failure_rather_than_an_empty_answer() ->
 
 
 def test_both_searches_are_declared_as_returning_what_cora_did_not_write() -> None:
-    flying, staying = trip_tools(KEY)
+    flying, staying = trip_tools(Search(KEY))
 
     assert [tool.untrusted for tool in (flying, staying)] == [True, True]
     assert not any(tool.effect for tool in (flying, staying))
@@ -436,7 +436,7 @@ def test_the_key_is_kept_out_of_the_clients_own_request_log() -> None:
 
 
 def _asks(arguments: dict[str, Any]) -> Any:
-    flying, _ = trip_tools(KEY)
+    flying, _ = trip_tools(Search(KEY))
     assert flying.asks is not None
     return flying.asks(arguments)
 
@@ -494,7 +494,7 @@ def test_a_search_told_everything_it_needs_asks_nothing() -> None:
 
 
 def test_the_stay_search_asks_on_its_own_schema_and_not_the_flights_one() -> None:
-    _, staying = trip_tools(KEY)
+    _, staying = trip_tools(Search(KEY))
     assert staying.asks is not None
     card = staying.asks({})
 
@@ -503,3 +503,50 @@ def test_the_stay_search_asks_on_its_own_schema_and_not_the_flights_one() -> Non
     assert [field.name for field in card.fields] == [
         asked.name for asked in HOTEL_FIELDS
     ]
+
+
+def test_the_fares_across_a_window_come_back_as_offers_carrying_their_dates() -> None:
+    search, _ = searching(flights(240))
+
+    [offer] = search.fares(**ROUTE, **WEEK)
+
+    assert offer.price == 240
+    assert offer.start.isoformat() == "2026-09-08"
+    assert offer.end.isoformat() == "2026-09-15"
+
+
+def test_the_fares_of_a_window_are_every_departure_tried() -> None:
+    search, service = searching(flights(240))
+
+    found = search.fares(**ROUTE, **WINDOW)
+
+    assert len({offer.start for offer in found}) == len(service.queries)
+
+
+def test_the_rooms_for_one_stay_come_back_as_offers_carrying_their_dates() -> None:
+    search, _ = searching(stays(("Baixa", 480.0)))
+
+    [offer] = search.rooms(**STAY)
+
+    assert offer.price == 480.0
+    assert offer.start.isoformat() == "2026-09-08"
+    assert offer.end.isoformat() == "2026-09-15"
+
+
+def test_a_window_holding_no_trip_refuses_before_the_service_is_asked() -> None:
+    search, service = searching(flights(240))
+
+    with pytest.raises(ToolRefusal):
+        search.fares(
+            **ROUTE, window_start="2026-09-08", window_end="2026-09-09", nights=7
+        )
+
+    assert service.queries == []
+
+
+def test_the_listed_flights_still_read_as_they_did(monkeypatch: Any) -> None:
+    """The formatting half over the structured one: the sentence a model reads is
+    unchanged by the planner being able to reach the offers behind it."""
+    search, _ = searching(flights(240, 310))
+
+    assert "EUR 240" in search.flights(**ROUTE, **WEEK)

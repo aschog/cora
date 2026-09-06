@@ -62,8 +62,8 @@ def _flights(asked: dict[str, str]) -> dict[str, Any]:
 
 def _nights(asked: dict[str, str]) -> int:
     try:
-        first = datetime.date.fromisoformat(asked["check_in"])
-        last = datetime.date.fromisoformat(asked["check_out"])
+        first = datetime.date.fromisoformat(asked["check_in_date"])
+        last = datetime.date.fromisoformat(asked["check_out_date"])
     except (KeyError, ValueError):
         return 7
     return max(1, (last - first).days)
@@ -77,7 +77,7 @@ def _hotels(asked: dict[str, str]) -> dict[str, Any]:
     for name, stars in HOTELS:
         if stars not in allowed:
             continue
-        total = _price(f"{asked.get('check_in', '')}{name}", 45, 160) * stay
+        total = _price(f"{asked.get('check_in_date', '')}{name}", 45, 160) * stay
         if ceiling and total > ceiling:
             continue
         found.append(

@@ -21,6 +21,7 @@ from cora.domain.trace import (
     TraceStep,
 )
 from cora.domain.transcript import prompt_from
+from cora.engine import keeping
 from cora.engine.ask_tool import (
     ASK_FOR_TOOL_NAME,
     ASK_TOOL_NAME,
@@ -37,6 +38,7 @@ from cora.engine.scoping import running_in
 from cora.ports.chat_model import Aside, ChatModel, Message, TextSink, unheard
 from cora.ports.graph import ASK, DONE, TOOLS, Step
 from cora.ports.host import (
+    ANSWERING,
     BRIEFING,
     CALLING,
     DEFAULT_SCOPE,
@@ -552,18 +554,35 @@ class AnswerStep:
 
     The round the turn ended on is the answer; the rounds before it asked for tools,
     and what they wrote was thinking.
+
+    What it settles is offered to the handlers before it is contributed, so a plugin may
+    hand back a different answer — and the citations are read off what they returned,
+    because they are read off the answer after the walk.
     """
 
+    registry: Registry = field(default_factory=Registry)
+
     def __call__(self, state: AgentState) -> AgentState:
-        """Settle the answer from the last round of this turn.
+        """Settle the answer from the last round of this turn, as the handlers leave it.
 
         A turn that reached no round at all answers with nothing, which is what a
-        state short of a model reply honestly holds.
+        state short of a model reply honestly holds — and is offered to the handlers
+        like any other, because a plugin watching what cora says is watching that too.
         """
         rounds = [
             message for message in _this_turn(state) if message.role == "assistant"
         ]
-        return {"answer": rounds[-1].content if rounds else ""}
+        settled = rounds[-1].content if rounds else ""
+        scopes = scoped(state)
+        trace: list[TraceStep] = []
+        answer = dispatch(
+            ANSWERING,
+            settled,
+            self.registry.handlers(ANSWERING, scopes),
+            trace,
+            scopes,
+        )
+        return {"answer": answer, "trace": trace}
 
 
 GATHERS = (
@@ -691,12 +710,20 @@ class ToolStep:
     def _round(self, state: AgentState, scopes: frozenset[str]) -> AgentState:
         known = tuple(state.get("citations", ()))
         filled = state.get("filled", {})
+        # Deep-copied, because the inner dictionaries are the ones the channel is
+        # holding: a plugin writing into a shared one would change the turn's state
+        # behind this step and leave what it contributes saying nothing new.
+        kept = deepcopy(state.get("kept", {}))
         messages: list[Message] = []
         trace: list[TraceStep] = []
         added: list[Citation] = []
         for call in _requested_calls(state):
             after: list[TraceStep] = []
-            result, inside = self._ran(call, scopes, trace, after)
+            # Bound per call, so what one call kept the next one reads and the binding
+            # is gone by the time anything outside the round runs. A loop delegated
+            # inside the call is inside this, and keeps under the same conversation.
+            with keeping.bound(kept):
+                result, inside = self._ran(call, scopes, trace, after)
             citable = result.payload if isinstance(result.payload, Citable) else None
             if citable is None:
                 read = Read(
@@ -713,7 +740,14 @@ class ToolStep:
             messages.append(told(result, read))
             trace.append(used(call, result, read, tuple(inside.steps)))
             trace.extend(after)
-        return {"messages": messages, "trace": trace, "citations": added}
+        # The whole of it rather than what this round wrote: the key carries no reducer,
+        # so what is contributed replaces what the channel held.
+        return {
+            "messages": messages,
+            "trace": trace,
+            "citations": added,
+            "kept": kept,
+        }
 
     def _ran(
         self,
