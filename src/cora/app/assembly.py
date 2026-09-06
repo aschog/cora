@@ -61,8 +61,6 @@ from cora.ports.output import Output
 from cora.ports.plugin import Tool
 from cora.ports.retrieval import Retriever
 
-DEFAULT_COLLECTION = "documents"
-
 log = logging.getLogger(__name__)
 
 
@@ -277,7 +275,7 @@ def _coras_own_tools(
     )
 
 
-def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
+def build(config: Config) -> App:
     """The real app: every slot filled from configuration, ready to answer.
 
     The adapters are imported here rather than at the top, so importing `cora.app` costs
@@ -301,7 +299,7 @@ def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:
     from cora.adapters.sqlite_store_memory import SqliteStoreMemory
 
     enable_debug_logs(config.debug, config.log_path)
-    retriever = ChromaRetriever(path=config.db_path, collection=collection)
+    retriever = ChromaRetriever(path=config.db_path, collection="documents")
     # Read off what loaded rather than off what the deployment typed: a plugin dropped
     # in the folder was named by nobody, and settings keyed by `CORA_PLUGINS` would
     # hand it an empty slice under a name it does not have.

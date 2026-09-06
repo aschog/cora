@@ -172,13 +172,10 @@ def test_the_cheapest_three_are_taken_across_departures_not_within_one() -> None
 
 
 def test_departures_are_a_week_apart_unless_a_closer_sampling_is_asked_for() -> None:
-    every_week, _ = departures({**WINDOW, "window_end": "2026-09-15"})
-    every_day, stride = departures(
-        {**WINDOW, "window_end": "2026-09-15", "stride_days": 1}
-    )
+    every_week = departures({**WINDOW, "window_end": "2026-09-15"})
+    every_day = departures({**WINDOW, "window_end": "2026-09-15", "stride_days": 1})
 
     assert [day.isoformat() for day in every_week] == ["2026-09-01", "2026-09-08"]
-    assert stride == 1
     assert len(every_day) == 8, "every day the trip could start on, inside the window"
 
 

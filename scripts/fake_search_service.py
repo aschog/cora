@@ -35,7 +35,6 @@ def _price(seed: str, low: int, spread: int) -> int:
 
 def _flights(asked: dict[str, str]) -> dict[str, Any]:
     out = asked.get("outbound_date", "2026-01-01")
-    back = asked.get("return_date", out)
     ceiling = int(asked.get("max_price", 0)) or None
     legs = 1 if asked.get("stops") == "1" else 2
     offers = []
@@ -45,16 +44,8 @@ def _flights(asked: dict[str, str]) -> dict[str, Any]:
             continue
         offers.append(
             {
-                "flights": [
-                    {
-                        "airline": carrier,
-                        "flight_number": f"{carrier[:2].upper()} 1{index}0",
-                    }
-                ]
-                * (1 if index % 2 else legs),
+                "flights": [{"airline": carrier}] * (1 if index % 2 else legs),
                 "price": fare,
-                "departure_date": out,
-                "return_date": back,
             }
         )
     return {"best_flights": offers[:2], "other_flights": offers[2:]}
@@ -84,8 +75,7 @@ def _hotels(asked: dict[str, str]) -> dict[str, Any]:
             {
                 "name": name,
                 "hotel_class": f"{stars}-star hotel",
-                "overall_rating": 3.5 + stars / 10,
-                "total_rate": {"lowest": f"€{total}", "extracted_lowest": total},
+                "total_rate": {"extracted_lowest": total},
             }
         )
     return {"properties": found}

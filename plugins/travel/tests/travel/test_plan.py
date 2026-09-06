@@ -52,19 +52,12 @@ def test_a_priced_plan_totals_its_fare_and_its_stay() -> None:
     assert _plan().total == 420.0
 
 
-def test_a_plan_with_no_fare_and_no_stay_is_unpriced() -> None:
-    unpriced = _plan(fare=None, stay=None)
-
-    assert unpriced.unpriced
-    assert unpriced.total is None
+def test_a_plan_with_no_fare_and_no_stay_has_no_total() -> None:
+    assert _plan(fare=None, stay=None).total is None
 
 
-def test_a_plan_priced_on_one_side_only_is_still_unpriced() -> None:
-    assert _plan(stay=None).unpriced
-
-
-def test_a_priced_plan_is_not_unpriced() -> None:
-    assert not _plan().unpriced
+def test_a_plan_priced_on_one_side_only_has_no_total() -> None:
+    assert _plan(stay=None).total is None
 
 
 def test_a_plan_round_trips_through_its_schema_unchanged() -> None:

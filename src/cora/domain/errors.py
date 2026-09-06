@@ -34,12 +34,11 @@ class IngestionError(CoreError):
     user because a refusal about one upload has to say which.
     """
 
-    reason = "the file could not be ingested."
+    reason: str
 
     def __init__(self, filename: str) -> None:
-        """Name the file in the message, and keep it for whoever handles the failure."""
+        """Name the file in the message."""
         super().__init__(f"Could not process '{filename}': {self.reason}")
-        self.filename = filename
 
 
 class UnsupportedFileTypeError(IngestionError):
@@ -89,7 +88,6 @@ class PluginLoadError(CoreError):
     def __init__(self, plugin_name: str, reason: str) -> None:
         """Name the plugin and why it was refused — both reach the user."""
         super().__init__(f"Plugin '{plugin_name}' could not be loaded: {reason}.")
-        self.plugin_name = plugin_name
 
 
 class InputRejectedError(CoreError):
@@ -111,7 +109,6 @@ class ScopePinnedError(CoreError):
             f"This conversation is pinned to {pinned}. Start a new one for another "
             f"field."
         )
-        self.pinned = pinned
 
 
 class ConfigurationError(CoreError):
@@ -127,7 +124,7 @@ class AdapterError(CoreError):
     from a library reaches a shell — and the original is kept as the cause for the log.
     """
 
-    message = "The document service is temporarily unavailable. Please try again."
+    message: str
 
     def __init__(self) -> None:
         """Take no message.

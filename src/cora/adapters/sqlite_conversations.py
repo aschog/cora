@@ -4,7 +4,7 @@ import sqlite3
 from collections.abc import Callable
 from dataclasses import asdict
 from functools import wraps
-from typing import Any, get_origin, get_type_hints
+from typing import Any
 
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
@@ -124,22 +124,13 @@ def _as_step(step: TraceStep) -> dict[str, Any]:
 
 
 def _step(data: dict[str, Any]) -> TraceStep:
-    """JSON has one sequence and a dataclass may want a tuple, so what a field is
-    restored as is read off the kind's own declaration rather than guessed. The steps
-    taken inside a step are restored as steps, however deep they go."""
+    """The steps taken inside a step are restored as steps, however deep they go; every
+    other field is handed over as it arrived, and the kind's own `__post_init__` holds
+    the tuples it declares."""
     kind = {step.__name__: step for step in step_kinds()}[data["kind"]]
-    declared = get_type_hints(kind)
     return kind(
         **{
-            name: _restored(name, value, declared)
+            name: tuple(_step(child) for child in value) if name == STEPS else value
             for name, value in data["fields"].items()
         }
     )
-
-
-def _restored(name: str, value: Any, declared: dict[str, Any]) -> Any:
-    if name == STEPS:
-        return tuple(_step(child) for child in value)
-    if isinstance(value, list) and get_origin(declared.get(name)) is tuple:
-        return tuple(value)
-    return value

@@ -184,7 +184,6 @@ export function useConversation(setTrouble: (said: string | null) => void) {
     setEntries,
     here,
     loads,
-    enter,
     recall,
     start,
     reopen,

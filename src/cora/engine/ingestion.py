@@ -1,5 +1,6 @@
 """What a document has to be before it is indexed, and what it is refused for."""
 
+import re
 from pathlib import Path
 from typing import NamedTuple
 
@@ -10,10 +11,22 @@ from cora.domain.errors import (
     UnsupportedFileTypeError,
 )
 from cora.engine.chunker import chunk_text
-from cora.engine.cleaning import clean_text
 from cora.ports.loading import Loaders
 
 DEFAULT_MAX_BYTES = 10 * 1024 * 1024
+
+_BLANK_LINES = re.compile(r"\n{3,}")
+
+
+def clean_text(text: str) -> str:
+    """Text with its line endings normalised and its blank runs collapsed.
+
+    This is the text every offset is measured in, so it is what gets kept beside the
+    index: a citation into the uploaded bytes would point somewhere else.
+    """
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    text = _BLANK_LINES.sub("\n\n", text)
+    return text.strip()
 
 
 class Ingested(NamedTuple):

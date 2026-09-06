@@ -28,7 +28,7 @@ export type Entry = {
 }
 
 /** One card a turn stopped on, and the action the reader took once they have taken one. */
-export type Shown = { card: Card; taken?: Offered }
+type Shown = { card: Card; taken?: Offered }
 
 /** A turn stopped on a card nobody has answered yet. Exported because the page has two
  *  things to do about one: draw the card as open, and refuse the composer — two open

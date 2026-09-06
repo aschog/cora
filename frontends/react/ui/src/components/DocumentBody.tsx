@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import styles from './DocumentBody.module.css'
 import { joined } from '../joined'
 
-export type Span = { start: number; end: number }
+type Span = { start: number; end: number }
 
 type Props = {
   text: string
