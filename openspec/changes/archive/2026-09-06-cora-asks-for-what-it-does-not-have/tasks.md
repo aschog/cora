@@ -59,6 +59,6 @@ throughout, as the boundary it is — the last item is the one that is not.
 
 - [x] 6.0 The round diagram regenerated, and its guard green
 - [x] 6.1 The outer test passing with its `xfail` marker gone
-- [ ] 6.2 **Manual, Phase 4.** A real model stopping on a card for "I want to go to
+- [x] 6.2 **Manual, Phase 4.** A real model stopping on a card for "I want to go to
       Madrid" rather than answering with questions — in a *fresh* conversation, because
       a thread that already answered in prose teaches itself to keep doing it

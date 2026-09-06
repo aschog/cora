@@ -77,7 +77,7 @@ prose, held by a person reading it. The page's items are `vitest`, the rest are 
 - [x] 10.8 The instructions sending the searches at a trip being planned, not at a price
 - [x] 10.9 Neither search's description telling the model to settle values before calling
 - [x] 10.11 The rules saying an empty search ends only the reading, never the turn
-- [ ] 10.10 **Manual, Phase 4.** A real model in the travel scope stopping on the card
+- [x] 10.10 **Manual, Phase 4.** A real model in the travel scope stopping on the card
       for "I want to go to Madrid" rather than answering with questions — asked in a
       *fresh* conversation, because a thread that already answered in prose teaches
       itself to keep doing it
