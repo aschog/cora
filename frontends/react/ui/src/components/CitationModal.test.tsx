@@ -1,8 +1,14 @@
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render as draw, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import CitationModal from './CitationModal'
 import type { Citation } from '../api'
 import { UNKEPT } from '../hooks/usePassage'
+import WithStore from '../test/withStore'
+
+/** Every render here goes through the store the passage read is held in — the component
+ *  under test asks for it the same way the page does. */
+const render = (ui: ReactElement) => draw(<WithStore>{ui}</WithStore>)
 
 const KEPT = 'Sleep matters. The rest of the document follows.'
 

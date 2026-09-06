@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as cora from './api'
 import type { Citation, Session } from './api'
 import { answeredIn, lastTrace } from './entry'
@@ -48,8 +49,34 @@ const EVERYTHING_GOES =
 /** One line the page says about itself, and which of them it is. */
 type Banner = { which: string; said: string }
 
+/** What the rails are read through. `retry: false` because cora is one process on the
+ *  other end of localhost: a read that failed did not lose a packet, and three silent
+ *  attempts would only delay the sentence that says so. Refetching is what a turn, an
+ *  upload or a delete asks for — not what the window regaining focus asks for, which
+ *  would redraw the rails under a reader who was reading them. */
+const newStore = () =>
+  new QueryClient({
+    defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+  })
+
+/** The page, and the store its rails are read out of. Two components because the store
+ *  cannot be read by the one that provides it — and the provider is here rather than
+ *  beside the root so that the page is one thing to draw, in a test as much as in a
+ *  browser. */
 export default function App() {
+  const [store] = useState(newStore)
+  return (
+    <QueryClientProvider client={store}>
+      <Page />
+    </QueryClientProvider>
+  )
+}
+
+function Page() {
   const [tab, setTab] = useState<Tab>('STEPS')
+  /* What the page itself could not do, as opposed to what it could not read: an upload
+     that was refused, a conversation that would not open, a delete that failed. The
+     rails carry their own, and the banner below is both. */
   const [trouble, setTrouble] = useState<string | null>(null)
   const [opened, setOpened] = useState<Citation | null>(null)
   /* What the page has stopped to have confirmed, and what to do once it is: the question
@@ -75,11 +102,25 @@ export default function App() {
     discard,
   } = useConversation(setTrouble)
   const { pin, fixedPin, answered, pick, held, reset, setAnswered } = usePin(here)
-  const { documents, facts, sessions, fields, field, namedAbove, refresh } = useRails({
-    pin,
-    answered,
-    setTrouble,
-  })
+  const {
+    documents,
+    facts,
+    sessions,
+    fields,
+    field,
+    namedAbove,
+    trouble: railTrouble,
+    refresh: reread,
+  } = useRails({ pin, answered })
+
+  /** Everything the rails hold, read again — and what the page itself could not do let
+   *  go of as it is. A reader asking for the listings again has moved past the upload
+   *  that was refused, and the read that follows says for itself whether it went
+   *  through. */
+  const refresh = useCallback(async () => {
+    setTrouble(null)
+    await reread()
+  }, [reread])
   const { read, setRead, cited, sourceOf, passagesIn } = useSource(entries, field)
   const { notice, setNotice, upload, erase } = useDocuments({
     field,
@@ -140,7 +181,9 @@ export default function App() {
    *  What became of an upload is not here: it belongs beside the list it changed — which
    *  leaves both of these trouble, so the strip has one look rather than a tone each. */
   const banners = [
-    { which: 'load', said: trouble },
+    /* What the page could not do outranks what it could not read: the reader just tried
+       something, and that answer is the one they are waiting for. */
+    { which: 'load', said: trouble ?? railTrouble },
     { which: 'lost', said: lost && lost.thread !== thread ? lost.said : null },
   ].filter((banner): banner is Banner => Boolean(banner.said))
 
