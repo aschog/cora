@@ -2325,15 +2325,43 @@ test('an upload that failed in a conversation left behind keeps this one’s not
 
 // ── a question waiting on the reader ──
 
-const DECISION = {
-  question: 'Which bodyweight should I treat as current?',
-  options: [
+/** A decision as the backend puts it: no fields, one action per option, and the way out
+ *  as an action like the rest. Written out here rather than imported, because what the
+ *  page is tested against is the payload and not the code that builds it. */
+const asks = (
+  prompt: string,
+  options: { label: string; note?: string }[],
+  decline: string,
+) => ({
+  prompt,
+  fields: [],
+  actions: [
+    ...options.map((each) => ({
+      label: each.label,
+      answer: each.label,
+      note: each.note ?? '',
+      needs_valid: false,
+      settled: '',
+    })),
+    {
+      label: decline,
+      answer: null,
+      note: '',
+      needs_valid: false,
+      settled: 'You chose none of them.',
+    },
+  ],
+})
+
+const DECISION = asks(
+  'Which bodyweight should I treat as current?',
+  [
     { label: '77 kg', note: 'intake form, 17 Aug' },
     { label: '75 kg', note: 'coach notes, February' },
   ],
-  decline: 'Do not use any of them',
-}
-const PAUSED = { asked: 'What is my BMR?', decision: DECISION, proposal: null }
+  'Do not use any of them',
+)
+const PAUSED = { asked: 'What is my BMR?', card: DECISION }
 const WEIGHED = {
   answer: 'At 75 kg your BMR is about 1,730 kcal.',
   citations: [],
@@ -2428,10 +2456,10 @@ test('a turn that stops to ask draws the question and every way out of it', asyn
 
   const asked = await stopped()
 
-  expect(within(asked).getByText(DECISION.question)).toBeTruthy()
+  expect(within(asked).getByText(DECISION.prompt)).toBeTruthy()
   expect(within(asked).getByRole('button', { name: /77 kg/ })).toBeTruthy()
   expect(within(asked).getByRole('button', { name: /75 kg/ })).toBeTruthy()
-  expect(within(asked).getByRole('button', { name: DECISION.decline })).toBeTruthy()
+  expect(within(asked).getByRole('button', { name: DECISION.actions[2].label })).toBeTruthy()
 })
 
 test('an option says where it came from, beside the value itself', async () => {
@@ -2442,7 +2470,9 @@ test('an option says where it came from, beside the value itself', async () => {
   expect(within(asked).getByText('coach notes, February')).toBeTruthy()
 })
 
-test('picking an option finishes the turn, and the answer takes the card away', async () => {
+test('picking an option finishes the turn, and the card stops offering any', async () => {
+  /* The prompt stays: a settled card that no longer says what it was about is a line
+     of an answer with nothing to read it against. What goes is the choosing. */
   const sent = stopping()
   const asked = await stopped()
 
@@ -2450,7 +2480,8 @@ test('picking an option finishes the turn, and the answer takes the card away', 
 
   expect(await screen.findByText(/1,730 kcal/)).toBeTruthy()
   expect(of(sent, '/api/resume')[0].body.answer).toBe('75 kg')
-  expect(screen.queryByText(DECISION.question)).toBeNull()
+  expect(screen.getByText(DECISION.prompt)).toBeTruthy()
+  expect(screen.queryByRole('button', { name: /77 kg/ })).toBeNull()
 })
 
 test('the line left behind names what was chosen', async () => {
@@ -2471,7 +2502,7 @@ test('a card that has been answered is not still called paused', async () => {
 
   expect(screen.getByRole('group', { name: /Settled/ })).toBeTruthy()
   expect(screen.queryByRole('group', { name: /Paused/ })).toBeNull()
-  expect(screen.queryByText(/needs your decision/)).toBeNull()
+  expect(screen.queryByText(/needs your input/)).toBeNull()
 })
 
 test('a card put back up is waiting again, and says so', async () => {
@@ -2489,7 +2520,7 @@ test('choosing none of them is sent as choosing nothing, and still answers', asy
   const sent = stopping()
   const asked = await stopped()
 
-  fireEvent.click(within(asked).getByRole('button', { name: DECISION.decline }))
+  fireEvent.click(within(asked).getByRole('button', { name: DECISION.actions[2].label }))
 
   expect(await screen.findByText(/1,730 kcal/)).toBeTruthy()
   expect(of(sent, '/api/resume')[0].body.answer).toBeNull()
@@ -2528,7 +2559,7 @@ test('a card left open comes back when the page does', async () => {
   cleanup()
   render(<App />)
 
-  expect(await screen.findByText(DECISION.question)).toBeTruthy()
+  expect(await screen.findByText(DECISION.prompt)).toBeTruthy()
 })
 
 test('a card the conversation moved past does not come back', async () => {
@@ -2541,7 +2572,7 @@ test('a card the conversation moved past does not come back', async () => {
   render(<App />)
   await screen.findByText('notes.md')
 
-  expect(screen.queryByText(DECISION.question)).toBeNull()
+  expect(screen.queryByText(DECISION.prompt)).toBeNull()
 })
 
 test('the composer says why it is unavailable while a card waits', async () => {
@@ -2620,7 +2651,7 @@ test('starting over leaves the parked card behind', async () => {
   render(<App />)
   await screen.findByText('notes.md')
 
-  expect(screen.queryByText(DECISION.question)).toBeNull()
+  expect(screen.queryByText(DECISION.prompt)).toBeNull()
 })
 
 
@@ -2649,7 +2680,7 @@ test('a card parked in an unrecorded conversation is not lost by reading another
   cleanup()
   render(<App />)
 
-  expect(await screen.findByText(DECISION.question)).toBeTruthy()
+  expect(await screen.findByText(DECISION.prompt)).toBeTruthy()
 })
 
 test('a decision that could not be sent is still answerable, and says what went wrong', async () => {
@@ -3571,17 +3602,50 @@ test('a listing that failed for a field left behind raises no banner about it', 
 
 // ── an effect waiting on the reader's word ──
 
-const PROPOSAL = {
-  call_id: 'c1',
-  tool: 'save_itinerary',
-  does: 'Save an itinerary as a Markdown file the user keeps.',
-  arguments: { title: 'Kyoto, three days' },
-}
-const PROPOSED = {
-  asked: 'Save the Kyoto days.',
-  decision: null,
-  proposal: PROPOSAL,
-}
+/** A proposal as the backend puts it: the call laid out as fields nobody may write, and
+ *  a yes carrying the call's own id so two effects cannot settle each other. */
+const proposes = (
+  call_id: string,
+  tool: string,
+  does: string,
+  args: Record<string, unknown>,
+) => ({
+  prompt: does,
+  fields: [
+    { name: 'tool', schema: {}, value: tool, editable: false, required: false },
+    ...Object.entries(args).map(([name, value]) => ({
+      name,
+      schema: {},
+      value,
+      editable: false,
+      required: false,
+    })),
+  ],
+  actions: [
+    {
+      label: 'Approve',
+      answer: call_id,
+      note: '',
+      needs_valid: false,
+      settled: 'You approved it.',
+    },
+    {
+      label: 'Decline',
+      answer: null,
+      note: '',
+      needs_valid: false,
+      settled: 'You declined it. Nothing outside cora was changed.',
+    },
+  ],
+})
+
+const PROPOSAL = proposes(
+  'c1',
+  'save_itinerary',
+  'Save an itinerary as a Markdown file the user keeps.',
+  { title: 'Kyoto, three days' },
+)
+const PROPOSED = { asked: 'Save the Kyoto days.', card: PROPOSAL }
 const SAVED = {
   answer: 'Saved it to cora-output/kyoto-three-days.md.',
   citations: [],
@@ -3597,7 +3661,7 @@ const proposing = (pending: unknown = null): Sent[] => {
       if (init?.body && typeof init.body === 'string')
         sent.push({ path, body: JSON.parse(init.body) })
       if (path === '/api/ask') return stream(frame('paused', PROPOSED))
-      if (path === '/api/approve') return stream(frame('turn', SAVED))
+      if (path === '/api/resume') return stream(frame('turn', SAVED))
       if (path.endsWith('/pending'))
         return { ok: true, json: async () => pending } as unknown as Response
       return {
@@ -3621,7 +3685,7 @@ test('a turn that proposes an effect draws what it would do and the call itself'
 
   const asked = await proposed()
 
-  expect(within(asked).getByText(PROPOSAL.does)).toBeTruthy()
+  expect(within(asked).getByText(PROPOSAL.prompt)).toBeTruthy()
   expect(within(asked).getByText('save_itinerary')).toBeTruthy()
   expect(within(asked).getByText('Kyoto, three days')).toBeTruthy()
   expect(within(asked).getByRole('button', { name: 'Approve' })).toBeTruthy()
@@ -3644,10 +3708,10 @@ test('approving names the call it answers, and the turn finishes', async () => {
   fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
 
   expect(await screen.findByText(/kyoto-three-days\.md/)).toBeTruthy()
-  expect(of(sent, '/api/approve')[0].body).toEqual({
+  expect(of(sent, '/api/resume')[0].body).toEqual({
     thread_id: expect.any(String),
-    call_id: 'c1',
-    approved: true,
+    answer: 'c1',
+    values: {},
   })
 })
 
@@ -3670,7 +3734,7 @@ test('declining says nothing outside cora changed, and the turn still answers', 
   fireEvent.click(within(asked).getByRole('button', { name: 'Decline' }))
 
   expect(await screen.findByText(/You declined it/)).toBeTruthy()
-  expect(of(sent, '/api/approve')[0].body.approved).toBe(false)
+  expect(of(sent, '/api/resume')[0].body.answer).toBeNull()
 })
 
 test('an approved effect offers no way of putting the card back up', async () => {
@@ -3692,7 +3756,7 @@ test('a proposal left open comes back when the page does', async () => {
   cleanup()
   render(<App />)
 
-  expect(await screen.findByText(PROPOSAL.does)).toBeTruthy()
+  expect(await screen.findByText(PROPOSAL.prompt)).toBeTruthy()
   expect(await screen.findByRole('button', { name: 'Approve' })).toBeTruthy()
 })
 
@@ -3705,7 +3769,6 @@ test('a decision settled and then an effect proposed leaves one card open, not t
     vi.fn(async (path: string) => {
       if (path === '/api/ask') return stream(frame('paused', PAUSED))
       if (path === '/api/resume') return stream(frame('paused', PROPOSED))
-      if (path === '/api/approve') return stream(frame('turn', SAVED))
       if (path.endsWith('/pending'))
         return { ok: true, json: async () => null } as unknown as Response
       return {
@@ -3719,17 +3782,17 @@ test('a decision settled and then an effect proposed leaves one card open, not t
   fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
 
   expect(await screen.findByText(/You chose 75 kg/)).toBeTruthy()
-  expect(screen.getByText(PROPOSAL.does)).toBeTruthy()
+  expect(screen.getByText(PROPOSAL.prompt)).toBeTruthy()
   expect(screen.getAllByRole('group', { name: /Paused/ })).toHaveLength(1)
   expect(screen.getAllByRole('group', { name: /Settled/ })).toHaveLength(1)
 })
 
-const CANCELLING = {
-  call_id: 'c2',
-  tool: 'cancel_booking',
-  does: 'Cancel a booking, which cannot be undone.',
-  arguments: { reference: 'BK-4471' },
-}
+const CANCELLING = proposes(
+  'c2',
+  'cancel_booking',
+  'Cancel a booking, which cannot be undone.',
+  { reference: 'BK-4471' },
+)
 
 /** A round that proposes two effects: answering the first puts the second up. */
 const proposingTwo = (): Sent[] => {
@@ -3741,9 +3804,9 @@ const proposingTwo = (): Sent[] => {
       if (init?.body && typeof init.body === 'string')
         sent.push({ path, body: JSON.parse(init.body) })
       if (path === '/api/ask') return stream(frame('paused', PROPOSED))
-      if (path === '/api/approve')
+      if (path === '/api/resume')
         return ++answers === 1
-          ? stream(frame('paused', { ...PROPOSED, proposal: CANCELLING }))
+          ? stream(frame('paused', { ...PROPOSED, card: CANCELLING }))
           : stream(frame('turn', SAVED))
       if (path.endsWith('/pending'))
         return { ok: true, json: async () => null } as unknown as Response
@@ -3765,7 +3828,7 @@ test('the second effect of a round is answerable, and the first stays settled', 
 
   fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
 
-  expect(await screen.findByText(CANCELLING.does)).toBeTruthy()
+  expect(await screen.findByText(CANCELLING.prompt)).toBeTruthy()
   expect(screen.getByText(/You approved it/)).toBeTruthy()
   expect(screen.getByText('Kyoto, three days')).toBeTruthy()
   expect(screen.getAllByRole('group', { name: /Paused/ })).toHaveLength(1)
@@ -3777,13 +3840,12 @@ test('answering the second effect names its own call, and finishes the turn', as
   const sent = proposingTwo()
   const asked = await proposed()
   fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
-  await screen.findByText(CANCELLING.does)
+  await screen.findByText(CANCELLING.prompt)
 
   fireEvent.click(screen.getByRole('button', { name: 'Decline' }))
 
   expect(await screen.findByText(/kyoto-three-days\.md/)).toBeTruthy()
-  expect(of(sent, '/api/approve').map((each) => each.body.call_id)).toEqual(['c1', 'c2'])
-  expect(of(sent, '/api/approve')[1].body.approved).toBe(false)
+  expect(of(sent, '/api/resume').map((each) => each.body.answer)).toEqual(['c1', null])
   expect(screen.getAllByRole('group', { name: /Settled/ })).toHaveLength(2)
 })
 
@@ -3795,7 +3857,7 @@ test('an approved call whose tool then failed is not shown as having happened', 
     'fetch',
     vi.fn(async (path: string) => {
       if (path === '/api/ask') return stream(frame('paused', PROPOSED))
-      if (path === '/api/approve') return stream(frame('turn', failed))
+      if (path === '/api/resume') return stream(frame('turn', failed))
       if (path.endsWith('/pending'))
         return { ok: true, json: async () => null } as unknown as Response
       return {
@@ -3817,12 +3879,7 @@ test('an approved call whose tool then failed is not shown as having happened', 
 const GONE = { thread_id: 'gone', opened_with: 'A question asked twice' }
 const CARD = {
   asked: 'What is my BMR?',
-  decision: {
-    question: 'Which weight should I use?',
-    options: [{ label: '75 kg', note: 'coach notes' }],
-    decline: 'Neither',
-  },
-  proposal: null,
+  card: asks('Which weight should I use?', [{ label: '75 kg', note: 'coach notes' }], 'Neither'),
 }
 
 /** Two conversations, and what is served about them once one of them is deleted. */
@@ -3940,7 +3997,7 @@ test('the card stowed for a deleted conversation is let go with it', async () =>
   render(<App />)
   // The page came back into the parked conversation, so the reader has to leave it
   // before the row can be deleted at all.
-  expect(await screen.findByText(CARD.decision.question)).toBeTruthy()
+  expect(await screen.findByText(CARD.card.prompt)).toBeTruthy()
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
   fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   await screen.findByText(OLDER.result.answer)

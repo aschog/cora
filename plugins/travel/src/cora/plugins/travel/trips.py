@@ -16,6 +16,7 @@ from typing import Any
 
 import httpx
 
+from cora.domain.card import ActionOffered, Card, fields_of, missing_from
 from cora.plugins.travel.forecast import Fetcher
 from cora.ports.plugin import Tool, ToolRefusal
 
@@ -98,6 +99,10 @@ class Field:
     `sends_as` is the service's own name for it, and blank where the field is the
     tool's own — a window is planned here and never sent. `write` is how the value is
     written into the query, for the fields whose meaning is not their digits.
+
+    `fmt` is JSON Schema's `format`, which says what kind of string this is: it reaches
+    the model in the schema and the reader as the control the card draws, so a day is a
+    date picker rather than a box to mistype `YYYY-MM-DD` into.
     """
 
     name: str
@@ -106,6 +111,7 @@ class Field:
     sends_as: str = ""
     write: Callable[[Any], Any] = str
     required: bool = False
+    fmt: str = ""
 
 
 def _from(lowest: Any) -> str:
@@ -137,6 +143,7 @@ FLIGHT_FIELDS = (
         "string",
         "Earliest day the trip could start, as YYYY-MM-DD.",
         required=True,
+        fmt="date",
     ),
     Field(
         "window_end",
@@ -144,6 +151,7 @@ FLIGHT_FIELDS = (
         "Latest day it could end, as YYYY-MM-DD. Where the dates are already fixed, "
         "this is the return date and only that one departure is tried.",
         required=True,
+        fmt="date",
     ),
     Field("nights", "integer", "How many nights away.", required=True),
     Field(
@@ -182,6 +190,7 @@ HOTEL_FIELDS = (
         "First night, as YYYY-MM-DD.",
         "check_in_date",
         required=True,
+        fmt="date",
     ),
     Field(
         "check_out",
@@ -189,6 +198,7 @@ HOTEL_FIELDS = (
         "Morning of departure, as YYYY-MM-DD.",
         "check_out_date",
         required=True,
+        fmt="date",
     ),
     Field("max_price", "integer", "The most the whole stay may cost.", "max_price"),
     Field(
@@ -212,7 +222,11 @@ def _schema(fields: Sequence[Field]) -> dict[str, Any]:
     return {
         "type": "object",
         "properties": {
-            asked.name: {"type": asked.type, "description": asked.description}
+            asked.name: {
+                "type": asked.type,
+                "description": asked.description,
+                **({"format": asked.fmt} if asked.fmt else {}),
+            }
             for asked in fields
         },
         "required": [asked.name for asked in fields if asked.required],
@@ -481,17 +495,57 @@ def _stay(place: Any, currency: str) -> Offer | None:
 
 FLIGHTS_TOOL_NAME = "search_flights"
 FLIGHTS_TOOL_DESCRIPTION = (
-    "Search live flight prices and return the cheapest few. Give a window rather than "
-    "two dates when the traveller has not fixed them — an earliest start, a latest "
-    "return and a number of nights — and several departures across it are tried. "
-    "Where the dates are fixed, set the window to exactly those dates."
+    "Search live flight prices and return the cheapest few. A window is an earliest "
+    "start, a latest return and a number of nights, and several departures across it "
+    "are tried. Where the dates are fixed, the window is exactly those two dates."
 )
 HOTELS_TOOL_NAME = "search_hotels"
 HOTELS_TOOL_DESCRIPTION = (
     "Search live accommodation prices for one set of dates and return the cheapest "
-    "few. Call it once the dates are settled. A budget or a minimum star rating is "
-    "applied by the search itself, so what comes back is already within them."
+    "few. A budget or a minimum star rating is applied by the search itself, so what "
+    "comes back is already within them."
 )
+
+
+FLIGHTS_ASKED = "Give me the trip and I'll price the flights."
+STAY_ASKED = "Give me the stay and I'll price it."
+SEARCH_IT = "Search"
+NOT_NOW = "Not now"
+NOTHING_BOOKED = "Nothing is booked without a second confirmation."
+SEARCHING = "You gave me the trip."
+NOT_SEARCHING = "You did not give me the trip, so nothing was searched."
+
+
+def _asking(
+    fields: Sequence[Field], prompt: str
+) -> Callable[[dict[str, Any]], Card | None]:
+    """The card this search puts up when the model could not say what to search for.
+
+    Built from the search's own schema, so the fields the reader fills are the fields
+    the service is sent and the two cannot drift. A call that already names everything
+    required raises nothing: the reader is asked when there is something to ask.
+    """
+    schema = _schema(fields)
+
+    def asks(arguments: dict[str, Any]) -> Card | None:
+        if not missing_from(schema, arguments):
+            return None
+        return Card(
+            prompt=prompt,
+            fields=fields_of(schema, arguments),
+            actions=(
+                ActionOffered(
+                    label=SEARCH_IT,
+                    answer=SEARCH_IT,
+                    note=NOTHING_BOOKED,
+                    needs_valid=True,
+                    settled=SEARCHING,
+                ),
+                ActionOffered(label=NOT_NOW, answer=None, settled=NOT_SEARCHING),
+            ),
+        )
+
+    return asks
 
 
 def trip_tools(key: str, url: str = SEARCH) -> tuple[Tool, ...]:
@@ -509,6 +563,7 @@ def trip_tools(key: str, url: str = SEARCH) -> tuple[Tool, ...]:
             parameter_schema=_schema(FLIGHT_FIELDS),
             run=search.flights,
             untrusted=True,
+            asks=_asking(FLIGHT_FIELDS, FLIGHTS_ASKED),
         ),
         Tool(
             name=HOTELS_TOOL_NAME,
@@ -516,5 +571,6 @@ def trip_tools(key: str, url: str = SEARCH) -> tuple[Tool, ...]:
             parameter_schema=_schema(HOTEL_FIELDS),
             run=search.stays,
             untrusted=True,
+            asks=_asking(HOTEL_FIELDS, STAY_ASKED),
         ),
     )

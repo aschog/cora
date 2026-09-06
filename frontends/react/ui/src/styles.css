@@ -1092,7 +1092,9 @@ button {
   min-width: 160px;
   padding: 5px;
   background: var(--surface);
-  box-shadow: inset 0 0 0 1px var(--hairline), 0 18px 44px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    inset 0 0 0 1px var(--hairline),
+    0 18px 44px rgba(0, 0, 0, 0.5);
   border-radius: 12px;
 }
 
@@ -1200,16 +1202,6 @@ button {
   color: var(--n700);
 }
 
-.decision-decline {
-  margin-top: var(--s3);
-  font-size: 13.5px;
-  color: var(--n600);
-}
-
-.decision-decline:hover {
-  color: var(--text);
-}
-
 .decision-resolved {
   display: flex;
   align-items: baseline;
@@ -1234,73 +1226,107 @@ button {
   text-decoration: underline;
 }
 
-/* ── an effect waiting on the reader's word ── */
+/* ── what a card asks the reader to fill in ── */
 
-/* The call as it was really made, drawn open or settled: what the reader approved is
-   part of the record, not only that they did. A grid rather than a list, so the names
-   line up down the left and a long value wraps against its own name. */
-.approval-call {
+/* Drawn open or settled: what the reader answered on is part of the record, not only
+   that they did. A grid rather than a list, so the names line up down the card however
+   long the values beside them run. */
+.card-fields {
   display: grid;
-  gap: 6px;
+  gap: var(--s3);
   margin: 0 0 var(--s3);
-  padding: var(--s3);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.04);
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
   font-size: 13.5px;
 }
 
-.approval-call > div {
+.card-field {
   display: grid;
-  grid-template-columns: minmax(4.5rem, max-content) 1fr;
-  gap: var(--s3);
-  align-items: baseline;
+  gap: 6px;
 }
 
-.approval-call dt {
+.card-name {
   color: var(--n600);
-  font-variant-numeric: tabular-nums;
 }
 
-.approval-call dd {
-  margin: 0;
-  /* As the model wrote it: an itinerary is lines, and a value flattened onto one is a
-     value the reader cannot check. Long ones scroll inside the card rather than making
-     the conversation scroll sideways. */
+/* A value the reader reads rather than writes — an argument of a call put up for
+   approval. As it arrived: an itinerary is lines, and one flattened onto a single line
+   is a value the reader cannot check. Long ones scroll inside the card rather than
+   making the conversation scroll sideways. */
+.card-read {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   max-height: 11rem;
   overflow-y: auto;
 }
 
-.approval-tool dd {
-  font-family: ui-monospace, 'SF Mono', Menlo, monospace;
-  font-weight: 600;
-}
-
-.approval-actions {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s4);
-}
-
-/* The one control on the card that makes something happen outside cora, so it is the
-   one that looks like it: declining is the quiet way out, beside it. */
-.approval-approve {
-  padding: 10px var(--s4);
+.card-input {
+  width: 100%;
+  padding: 10px var(--s3);
+  border: 0;
   border-radius: 10px;
-  font-weight: 600;
-  color: var(--accent-text);
-  background: rgba(255, 255, 255, 0.06);
+  font: inherit;
+  font-size: 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+}
+
+/* A field the card cannot be submitted without, marked where the reader answers it
+   rather than by a glyph beside the words — the control says it, and a screen reader
+   reads it out. */
+.card-input:required {
   box-shadow: inset 0 0 0 1px var(--pause-edge);
 }
 
-.approval-approve:hover {
-  background: rgba(255, 255, 255, 0.1);
+.card-check {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--pause);
 }
 
-.approval .decision-decline {
-  margin-top: 0;
+.card-input:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--pause-edge);
+}
+
+/* A short enumeration, drawn as the choices themselves: three of them are quicker to
+   read as three than as a control that hides two. */
+.card-choices {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+}
+
+.card-choice {
+  flex: 1;
+  padding: 8px var(--s3);
+  border-radius: 8px;
+  font-size: 14px;
+  color: var(--n700);
+}
+
+.card-choice:hover {
+  color: var(--text);
+}
+
+.card-choice.picked {
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+/* An action the card is not filled in for yet. Dimmed rather than hidden: what it is
+   waiting for is written beside it, and a control that vanished would say nothing. */
+.decision-option:disabled {
+  cursor: default;
+  color: var(--n600);
+}
+
+.decision-option:disabled:hover {
+  background: rgba(255, 255, 255, 0.04);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
 }
 
 /* The field a document goes into, stated beside the heading of the list it lands in. */

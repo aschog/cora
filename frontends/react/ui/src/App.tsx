@@ -1,15 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as cora from './api'
-import type {
-  Citation,
-  Decision,
-  Fact,
-  Proposal,
-  Result,
-  Session,
-  Step,
-  Turn,
-} from './api'
+import type { Card, Citation, Fact, Result, Session, Step, Turn } from './api'
 import Answer from './components/Answer'
 import CitationModal from './components/CitationModal'
 import ConfirmModal from './components/ConfirmModal'
@@ -39,19 +30,14 @@ export type Entry = {
   trace: Step[]
   /** Asked, not yet answered: the question is on the page while cora works on it. */
   pending?: boolean
-  /** The question cora stopped on: a card while it is open, and afterwards the line that
-   *  says what it settled. */
-  decision?: Decision
-  /** What the reader picked — `null` is choosing none of them. Absent is a card still
-   *  waiting on them. */
-  chosen?: string | null
-  /** The effects this turn proposed, in the order it proposed them. A list because a
-   *  round may ask for two, while it may ask the reader at most one question — so the
-   *  first of them keeps its answer instead of being replaced by the second. */
-  proposals?: Waiting[]
-  /** The card put back up: picking now asks a new question, because the turn it belonged
-   *  to has already gone on. */
-  changing?: boolean
+  /** What cora stopped on, in the order it stopped: a card while it is open, and
+   *  afterwards the line that says what the reader did about it. A list because a round
+   *  may stop twice, and the first card keeps its answer instead of being replaced by
+   *  the second. */
+  cards?: Shown[]
+  /** Which card is back up: taking an action now asks a new question, because the turn
+   *  it belonged to has already gone on. */
+  changing?: number
 }
 
 const PARKED = 'cora.parked'
@@ -88,39 +74,40 @@ const stowed = () => {
 /** What a different pick asks for, once the turn that raised the question has moved on. */
 const correction = (label: string) => `Use ${label} instead.`
 
-/** One effect a turn proposed, and the reader's answer once they have given it. */
-export type Waiting = { proposal: Proposal; approved?: boolean }
+/** One card a turn stopped on, and the action the reader took once they have taken one. */
+export type Shown = { card: Card; taken?: cora.Offered }
 
-/** A turn stopped on a card nobody has answered yet, whichever kind it is. Exported
- *  because the page has two things to do about one: draw the card as open, and refuse
- *  the composer — two open questions on one thread would be two answers to one turn. */
+/** A turn stopped on a card nobody has answered yet. Exported because the page has two
+ *  things to do about one: draw the card as open, and refuse the composer — two open
+ *  questions on one thread would be two answers to one turn. */
 export const unanswered = (entry: Entry) =>
-  (!!entry.decision && entry.chosen === undefined) ||
-  (entry.proposals ?? []).some((each) => each.approved === undefined)
+  (entry.cards ?? []).some((shown) => shown.taken === undefined)
 
-/** Whether a parked turn carries anything to draw a card from, however it arrived. */
-const stops = (waiting: cora.Pending) => !!(waiting.decision || waiting.proposal)
+/** Whether what came back is really a turn parked on a card. Typed as one, but it
+ *  arrived over the network: a page that read a card off something else would draw an
+ *  empty one, and stow a conversation with no question in it. */
+const parkedOn = (waiting: cora.Pending | null): waiting is cora.Pending =>
+  !!waiting?.card
 
-/** The turn with the card it has just stopped on put on it. A decision replaces the one
- *  before it, because a turn may ask the reader at most once. A proposal is appended,
- *  because a round may propose two: the answer to the first is the record of what cora
- *  was allowed to do, and replacing it would lose that and leave the second unanswerable.
- *  Read in one place, so the three sites that put a card on the page cannot disagree. */
-const carded = (found: Entry, waiting: cora.Pending): Entry =>
-  waiting.decision
-    ? { ...found, decision: waiting.decision, chosen: undefined }
-    : waiting.proposal
-      ? {
-          ...found,
-          proposals: [...(found.proposals ?? []), { proposal: waiting.proposal }],
-        }
-      : found
+/** The turn with the card it has just stopped on put on it. Appended, because a round
+ *  may stop twice: the answer to the first is the record of what cora was allowed to do,
+ *  and replacing it would lose that and leave the second unanswerable. Read in one
+ *  place, so the three sites that put a card on the page cannot disagree. */
+const carded = (found: Entry, waiting: cora.Pending): Entry => ({
+  ...found,
+  cards: [...(found.cards ?? []), { card: waiting.card }],
+})
 
-/** This turn's proposals with the one call named answered, or put back to waiting. */
-const answeredAt = (found: Entry, call: string, approved?: boolean) =>
-  (found.proposals ?? []).map((each) =>
-    each.proposal.call_id === call ? { ...each, approved } : each,
+/** This turn's cards with the one at `at` answered, or put back to waiting. */
+const takenAt = (found: Entry, at: number, taken?: cora.Offered) =>
+  (found.cards ?? []).map((shown, index) =>
+    index === at ? { ...shown, taken } : shown,
   )
+
+/** Whether a card can be put back up. A card of no fields asked the reader to choose
+ *  between values cora already had, and choosing again costs nothing; one that laid out
+ *  a call or a form did something, and offering to change it would say otherwise. */
+export const reopenable = (shown: Shown) => shown.card.fields.length === 0
 
 const UNDRAWABLE = 'That conversation could not be read.'
 
@@ -139,7 +126,6 @@ const FACT_GOES =
 const EVERYTHING_GOES =
   'Every fact cora has been told is forgotten. Your documents and your conversations ' +
   "are untouched — this can't be undone."
-
 
 /** One line the page says about itself, and which of them it is. */
 type Banner = { which: string; said: string }
@@ -193,8 +179,9 @@ export default function App() {
      stands over the page, and until it is answered nothing has been asked of cora. One
      slot, because one question stands at a time — and it carries the act, so each rail
      says its own words rather than the modal knowing everyone's. */
-  const [confirming, setConfirming] =
-    useState<(Asked & { act: () => Promise<void> }) | null>(null)
+  const [confirming, setConfirming] = useState<
+    (Asked & { act: () => Promise<void> }) | null
+  >(null)
   const [trouble, setTrouble] = useState<string | null>(null)
   /* What the last upload did. Its own state, because it is not trouble and a refresh
      going through does not take it away: a duplicate upload is answered with `0` chunks,
@@ -245,37 +232,34 @@ export default function App() {
    *  of it, and a load that goes through clears the last one's. Loading the badge on
    *  its own raced that banner — a page that could not find out which plugin is loaded
    *  would say `bare cora` and then clear the only warning that it was guessing. */
-  const refresh = useCallback(
-    () => {
-      const asked = field
-      shown.current = asked
-      return Promise.all([
-        cora.documents(field),
-        cora.memory(),
-        cora.sessions(),
-        cora.scopes(),
-      ])
-        .then(([indexed, kept, before, offered]) => {
-          /* The listing is per field and this load asked for the field the page was in
+  const refresh = useCallback(() => {
+    const asked = field
+    shown.current = asked
+    return Promise.all([
+      cora.documents(field),
+      cora.memory(),
+      cora.sessions(),
+      cora.scopes(),
+    ])
+      .then(([indexed, kept, before, offered]) => {
+        /* The listing is per field and this load asked for the field the page was in
              when it started. A load the reader has moved past answers about a field the
              rail is no longer showing: its list must not land under the new one's name,
              and neither must its news — clearing the banner would hide a failure the
              field on the page is still in, and raising one would report a field that is
              no longer drawn. The same race every other read here guards against. */
-          if (shown.current !== asked) return
-          setDocuments(indexed)
-          setFacts(kept)
-          setSessions(before)
-          setFields(offered.available)
-          setAnyField(offered.default)
-          setTrouble(null)
-        })
-        .catch((failed) => {
-          if (shown.current === asked) reportTo(setTrouble)(failed)
-        })
-    },
-    [field],
-  )
+        if (shown.current !== asked) return
+        setDocuments(indexed)
+        setFacts(kept)
+        setSessions(before)
+        setFields(offered.available)
+        setAnyField(offered.default)
+        setTrouble(null)
+      })
+      .catch((failed) => {
+        if (shown.current === asked) reportTo(setTrouble)(failed)
+      })
+  }, [field])
 
   useEffect(() => {
     refresh()
@@ -306,8 +290,7 @@ export default function App() {
   const cited = citedDocuments(entries, field)
   /** What the conversation column shows: its recorded turns, and the one being asked in
    *  it. A turn in flight elsewhere is that conversation's, and is not drawn here. */
-  const conversation =
-    flight?.thread === thread ? [...entries, flight.entry] : entries
+  const conversation = flight?.thread === thread ? [...entries, flight.entry] : entries
 
   /** The document as this conversation last had it, in the field the rail is showing.
    *  A filename names nothing on its own — one name can cover a document in each field,
@@ -370,7 +353,10 @@ export default function App() {
    *  reader is waiting for. Every load is a race with them: they can open another
    *  conversation while this one is in flight, or the same one again — and the response
    *  that arrives last is not the conversation they asked for last. */
-  const loaded = async (thread_id: string, apply: (kept: Turn[]) => void): Promise<Load> => {
+  const loaded = async (
+    thread_id: string,
+    apply: (kept: Turn[]) => void,
+  ): Promise<Load> => {
     const wanted = ++loads.current
     let kept: Turn[]
     try {
@@ -447,7 +433,7 @@ export default function App() {
       if (cora.paused(reply)) {
         // The turn is on the page now rather than in flight: it is waiting on the
         // reader, and what they answer lands on it where it stands.
-        if (stops(reply)) {
+        if (parkedOn(reply)) {
           stow(on)
           if (here.current === on) {
             setEntries((said) => [
@@ -610,7 +596,7 @@ export default function App() {
     setTab('STEPS')
     at((found) => ({
       ...answering(found),
-      changing: false,
+      changing: undefined,
       pending: true,
       error: undefined,
     }))
@@ -630,7 +616,9 @@ export default function App() {
         },
       )
       if (cora.paused(reply)) {
-        if (stops(reply)) at((found) => ({ ...carded(found, reply), pending: false }))
+        if (parkedOn(reply)) {
+          at((found) => ({ ...carded(found, reply), pending: false }))
+        }
         return
       }
       forget()
@@ -654,45 +642,46 @@ export default function App() {
     }
   }
 
-  const decide = (entry: Entry, chosen: string | null) =>
+  /** One card settled, named by where it stands on the turn, so a round that stopped
+   *  twice cannot have one card answered by the other's action. */
+  const answer = (
+    entry: Entry,
+    at: number,
+    action: cora.Offered,
+    values: Record<string, unknown>,
+  ) =>
     settle(
       entry,
-      (found) => ({ ...found, chosen }),
-      (found) => ({ ...found, chosen: undefined }),
+      (found) => ({ ...found, cards: takenAt(found, at, action) }),
+      (found) => ({ ...found, cards: takenAt(found, at) }),
       (onStep, onText, onAside) =>
-        cora.resume(thread, chosen, onStep, onText, onAside),
+        cora.resume(thread, action.answer, values, onStep, onText, onAside),
     )
 
-  /** One effect approved or declined, named by the call it answers so a round that
-   *  proposed two cannot have one settled by the other's answer. There is no putting
-   *  this card back up: a decision answered one way can be asked again the other, and
-   *  an effect that has happened cannot be taken back. */
-  const approve = (entry: Entry, call: string, yes: boolean) =>
-    void settle(
-      entry,
-      (found) => ({ ...found, proposals: answeredAt(found, call, yes) }),
-      (found) => ({ ...found, proposals: answeredAt(found, call) }),
-      (onStep, onText, onAside) =>
-        cora.approve(thread, call, yes, onStep, onText, onAside),
-    )
-
-  /** A pick. On a card still waiting it finishes the turn; on one the reader put back up
-   *  it asks a new question, because the turn that raised it has already gone on and
-   *  what it did cannot be taken back. */
-  const decided = (entry: Entry, chosen: string | null) => {
-    if (!entry.changing) {
-      void decide(entry, chosen)
+  /** An action taken. On a card still waiting it finishes the turn; on one the reader
+   *  put back up it asks a new question, because the turn that raised it has already
+   *  gone on and what it did cannot be taken back. */
+  const taken = (
+    entry: Entry,
+    at: number,
+    action: cora.Offered,
+    values: Record<string, unknown>,
+  ) => {
+    if (entry.changing !== at) {
+      void answer(entry, at, action, values)
       return
     }
     setEntries((said) =>
-      said.map((each) => (each.id === entry.id ? { ...each, changing: false } : each)),
+      said.map((each) =>
+        each.id === entry.id ? { ...each, changing: undefined } : each,
+      ),
     )
-    if (chosen !== null) void ask(correction(chosen))
+    if (action.answer !== null) void ask(correction(action.label))
   }
 
-  const change = (entry: Entry) =>
+  const change = (entry: Entry, at: number) =>
     setEntries((said) =>
-      said.map((each) => (each.id === entry.id ? { ...each, changing: true } : each)),
+      said.map((each) => (each.id === entry.id ? { ...each, changing: at } : each)),
     )
 
   /** What a conversation is still parked on, drawn after its turns: it is in no store,
@@ -700,9 +689,9 @@ export default function App() {
   const parked = async (thread_id: string) => {
     const waiting = await cora.pending(thread_id).catch(() => null)
     if (here.current !== thread_id) return
-    /* A payload with nothing to settle in it is not a pause, however it arrived: the
-       card is drawn from what stopped the turn or not at all. */
-    if (!waiting || !stops(waiting)) {
+    /* Nothing parked, the read failed, or what came back is not a pause: either way
+       there is no card to draw. */
+    if (!parkedOn(waiting)) {
       forgetIf(thread_id)
       return
     }
@@ -829,8 +818,7 @@ export default function App() {
           askingElsewhere={working !== null && working !== thread}
           onAsk={ask}
           onCite={setOpened}
-          onDecide={decided}
-          onApprove={approve}
+          onTake={taken}
           onChange={change}
         />
 
@@ -844,74 +832,74 @@ export default function App() {
             />
           </div>
           {rightOpen && (
-          <>
-          <div className="tabs" role="tablist">
-            {TABS.map((name) => (
-              <button
-                key={name}
-                role="tab"
-                aria-selected={tab === name}
-                className={tab === name ? 'tab active' : 'tab'}
-                onClick={() => setTab(name)}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
+            <>
+              <div className="tabs" role="tablist">
+                {TABS.map((name) => (
+                  <button
+                    key={name}
+                    role="tab"
+                    aria-selected={tab === name}
+                    className={tab === name ? 'tab active' : 'tab'}
+                    onClick={() => setTab(name)}
+                  >
+                    {name}
+                  </button>
+                ))}
+              </div>
 
-          {tab === 'STEPS' && (
-            <PlanPanel
-              steps={live?.thread === thread ? live.steps : lastTrace(entries)}
-            />
-          )}
-          {tab === 'SOURCE' && (
-            <SourcePanel
-              document={read?.document ?? null}
-              source={read ? sourceOf(read) : null}
-              citations={read ? passagesIn(read) : []}
-            />
-          )}
-          {tab === 'SESSIONS' && (
-            <SessionsPanel
-              sessions={sessions}
-              here={thread}
-              working={working}
-              onOpen={reopen}
-              onDelete={(session) =>
-                setConfirming({
-                  head: 'DELETE SESSION',
-                  subject: session.opened_with,
-                  said: SESSION_GOES,
-                  confirm: 'Delete session',
-                  act: () => discard(session),
-                })
-              }
-            />
-          )}
-          {tab === 'MEMORY' && (
-            <MemoryPanel
-              facts={facts}
-              onForget={(fact) =>
-                setConfirming({
-                  head: 'FORGET THIS',
-                  subject: fact.text,
-                  said: FACT_GOES,
-                  confirm: 'Forget it',
-                  act: () => cora.forget(fact.key),
-                })
-              }
-              onForgetEverything={() =>
-                setConfirming({
-                  head: 'FORGET EVERYTHING',
-                  subject: 'Everything cora remembers about you',
-                  said: EVERYTHING_GOES,
-                  confirm: 'Forget everything',
-                  act: () => cora.forgetEverything(),
-                })
-              }
-            />
-          )}
-          </>
+              {tab === 'STEPS' && (
+                <PlanPanel
+                  steps={live?.thread === thread ? live.steps : lastTrace(entries)}
+                />
+              )}
+              {tab === 'SOURCE' && (
+                <SourcePanel
+                  document={read?.document ?? null}
+                  source={read ? sourceOf(read) : null}
+                  citations={read ? passagesIn(read) : []}
+                />
+              )}
+              {tab === 'SESSIONS' && (
+                <SessionsPanel
+                  sessions={sessions}
+                  here={thread}
+                  working={working}
+                  onOpen={reopen}
+                  onDelete={(session) =>
+                    setConfirming({
+                      head: 'DELETE SESSION',
+                      subject: session.opened_with,
+                      said: SESSION_GOES,
+                      confirm: 'Delete session',
+                      act: () => discard(session),
+                    })
+                  }
+                />
+              )}
+              {tab === 'MEMORY' && (
+                <MemoryPanel
+                  facts={facts}
+                  onForget={(fact) =>
+                    setConfirming({
+                      head: 'FORGET THIS',
+                      subject: fact.text,
+                      said: FACT_GOES,
+                      confirm: 'Forget it',
+                      act: () => cora.forget(fact.key),
+                    })
+                  }
+                  onForgetEverything={() =>
+                    setConfirming({
+                      head: 'FORGET EVERYTHING',
+                      subject: 'Everything cora remembers about you',
+                      said: EVERYTHING_GOES,
+                      confirm: 'Forget everything',
+                      act: () => cora.forgetEverything(),
+                    })
+                  }
+                />
+              )}
+            </>
           )}
         </aside>
       </div>
@@ -979,7 +967,13 @@ function lastTrace(entries: Entry[]): Step[] {
 /** What an upload did, in the words the page uses for what a document is made of. A store
  *  that already had those bytes indexes nothing and says so — the count is how the two
  *  outcomes differ, and it is the one thing the page used to throw away. */
-const ingested = ({ document, chunks }: { document: string; chunks: number }): Notice =>
+const ingested = ({
+  document,
+  chunks,
+}: {
+  document: string
+  chunks: number
+}): Notice =>
   chunks
     ? {
         said: `Added “${document}” — ${chunks} ${chunks === 1 ? 'passage' : 'passages'}.`,

@@ -3,7 +3,7 @@
 import logging
 from dataclasses import dataclass
 
-from cora.adapters.langgraph_runner import approving, interrupting, langgraph_for
+from cora.adapters.langgraph_runner import interrupting, langgraph_for
 from cora.adapters.loaders import LOADERS
 from cora.app.config import (
     DEFAULT_HISTORY_TURNS,
@@ -17,7 +17,7 @@ from cora.app.config import (
 from cora.app.log_config import enable_debug_logs
 from cora.domain.errors import PluginLoadError
 from cora.engine.agent import Agent
-from cora.engine.ask_tool import ask_tool
+from cora.engine.ask_tool import ask_for_tool, ask_tool
 from cora.engine.host import PluginHost
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.memory_tool import remember_tool
@@ -165,7 +165,7 @@ def assemble(
                 max_history_turns=history_turns,
                 registry=registry,
             ).writing_to,
-            gate=GateStep(tools=tools, registry=registry, approve=approving),
+            gate=GateStep(tools=tools, registry=registry, approve=interrupting),
             tools=ToolStep(
                 tool_runtime=ToolRuntime(tools=tools, registry=registry),
                 registry=registry,
@@ -269,7 +269,12 @@ def _coras_own_tools(
     to the model rather than a tool that quietly forgets.
     """
     remembering = (remember_tool(memory),) if memory is not None else ()
-    return (search_tool(context_source, top_k), *remembering, ask_tool())
+    return (
+        search_tool(context_source, top_k),
+        *remembering,
+        ask_tool(),
+        ask_for_tool(),
+    )
 
 
 def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:

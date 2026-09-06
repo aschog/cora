@@ -112,6 +112,61 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    no such tool then, the way cora offers no `remember` without a memory. A tool that
    can only fail is worse than one the model is never offered.
 
+   **Ask the user for what the model could not supply.** A tool may declare `asks`: a
+   function handed the arguments as written, answering with the card to put to the
+   reader — or with `None` to run as called. Build the card out of the schema you
+   already declared, so the two cannot drift:
+
+   ```python
+   from cora.domain.card import ActionOffered, Card, fields_of, missing_from
+
+   SCHEMA = {"type": "object",
+             "properties": {"origin": {"type": "string"},
+                            "depart": {"type": "string", "format": "date"}},
+             "required": ["origin", "depart"]}
+
+   def asks(arguments: dict) -> Card | None:
+       if not missing_from(SCHEMA, arguments):
+           return None
+       return Card(prompt="Give me the trip and I'll price it.",
+                   fields=fields_of(SCHEMA, arguments),
+                   actions=(ActionOffered(label="Search", answer="Search",
+                                          needs_valid=True),
+                            ActionOffered(label="Not now", answer=None)))
+
+   cora.register_tool(
+       name="price_it",
+       description="Price a trip.",
+       parameter_schema=SCHEMA,
+       run=price_it,
+       asks=asks,
+   )
+   ```
+
+   A card is a prompt, fields to fill and actions to take, and the page draws whatever
+   you hand it: a field's own JSON Schema picks the control, so a date is a date picker
+   and a short `enum` is a row of choices, with no frontend of yours anywhere. An
+   action's `answer` is what comes back when it is taken, `None` is the way out, and
+   `needs_valid` holds it closed until every required field is filled — a page
+   affordance, so write the tool to refuse a call it cannot run rather than trusting it.
+   What the reader writes is written over the arguments, and your `run` is called once,
+   with the values a person stated. Take nothing back but a card: it is data, never
+   code, and the page draws every part of it as text.
+
+   **Ask for everything you require.** Cora offers a gathering tool with nothing
+   required, because your card is what requires it — a schema telling the model it must
+   supply the values says the opposite of the sentence beside it. So leave nothing off
+   the card: an argument the schema requires and the card omits is one nobody supplies,
+   and the call is refused for want of it.
+
+   **`asks` has to be pure.** The step that puts your card is replayed every time the
+   turn is picked up, so cora calls `asks` again on each of them — always with the same
+   arguments, and expecting the same answer. One that reads a clock, a counter or a file
+   moves the question the reader already settled, and their answer lands on a different
+   one. Do nothing in it but read the arguments and build the card; `run` is where a
+   call has an effect. Break, or hand back something that is not a card, and the call is
+   refused rather than the turn lost — the model is told and answers around it.
+
 4. **Take part in the turn.** A handler subscribes to a named point in it, is handed
    one frozen value, and answers by returning — a refusal, an amendment, or `None` for
    neither. The four points are `cora.ports.host`'s, and they differ in what a return
@@ -129,9 +184,9 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    handler answering with something that is not a sentence refuses on cora's wording
    rather than on your value. A `RETURNING` handler is read for the payload and the
    error: the call id answers one call and is not yours to change. Two things `CALLING`
-   does not cover: an `ask_user` call, which the turn settles with the reader before the
-   tools run, and the arguments — you are handed a copy, so rewriting them changes
-   nothing.
+   does not cover: either of cora's asks — `ask_user` and `ask_user_for` — which the
+   turn settles with the reader before the tools run, and the arguments — you are handed
+   a copy, so rewriting them changes nothing.
 
    ```python
    def a_note_on_the_season(brief: str) -> str:

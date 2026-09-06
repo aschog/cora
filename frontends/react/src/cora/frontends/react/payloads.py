@@ -7,11 +7,11 @@ panel that draws it wants three keys whatever kind arrived.
 
 from typing import Any
 
-from cora.domain.approval import Proposed
+from cora.domain.card import ActionOffered, Card, FieldAsked
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
-from cora.domain.decision import Decision, Option, Pending
+from cora.domain.decision import Pending
 from cora.domain.trace import ToolUse, TraceStep
 from cora.engine.plugin_set import RESERVED_TOOL_NAMES
 from cora.ports.host import Listed
@@ -68,41 +68,43 @@ def turn(turn: Turn) -> dict[str, Any]:
     return {"question": turn.question, "result": result(turn.result)}
 
 
-def option(option: Option) -> dict[str, Any]:
-    return {"label": option.label, "note": option.note}
-
-
-def decision(decision: Decision) -> dict[str, Any]:
+def asked(field: FieldAsked) -> dict[str, Any]:
+    """One value on a card, with the schema the page draws its control from."""
     return {
-        "question": decision.question,
-        "options": [option(each) for each in decision.options],
-        "decline": decision.decline,
+        "name": field.name,
+        "schema": field.schema,
+        "value": field.value,
+        "editable": field.editable,
+        "required": field.required,
     }
 
 
-def proposal(proposed: Proposed) -> dict[str, Any]:
-    """One call waiting for the user's word: what it would do, and what it was asked
-    with. The arguments go over as the model wrote them, so the card shows the call
-    that is really proposed rather than a summary of it."""
+def action(action: ActionOffered) -> dict[str, Any]:
+    """One way off a card. `answer` is what travels back when it is taken, and `null`
+    is the way out — a decline, or none of them."""
     return {
-        "call_id": proposed.call_id,
-        "tool": proposed.tool,
-        "does": proposed.does,
-        "arguments": proposed.arguments,
+        "label": action.label,
+        "answer": action.answer,
+        "note": action.note,
+        "needs_valid": action.needs_valid,
+        "settled": action.settled,
+    }
+
+
+def card(card: Card) -> dict[str, Any]:
+    """What a stopped turn puts to the reader, whichever way it stopped. One shape, so
+    the page draws it from the payload rather than from what stopped the turn."""
+    return {
+        "prompt": card.prompt,
+        "fields": [asked(each) for each in card.fields],
+        "actions": [action(each) for each in card.actions],
     }
 
 
 def pending(pending: Pending) -> dict[str, Any]:
     """A turn parked on something to settle, with the question that opened it: a paused
-    turn is in no store, so the page has nothing else to draw the card under.
-
-    Both keys are always sent and exactly one of them is filled, so the page reads which
-    kind of card to draw off the payload rather than off the shape of it."""
-    return {
-        "asked": pending.asked,
-        "decision": None if pending.decision is None else decision(pending.decision),
-        "proposal": None if pending.proposal is None else proposal(pending.proposal),
-    }
+    turn is in no store, so the page has nothing else to draw the card under."""
+    return {"asked": pending.asked, "card": card(pending.card)}
 
 
 def fact(fact: Fact) -> dict[str, Any]:

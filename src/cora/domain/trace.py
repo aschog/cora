@@ -184,6 +184,34 @@ class HandlerRan(TraceStep):
 
 
 @dataclass(frozen=True)
+class CardFilled(TraceStep):
+    """The user was shown a call's own card, and filled it in or did not.
+
+    On the trace for the reason an approval is: cora stopped and asked, and a turn is
+    read back rather than guessed at. Giving nothing is not a failure — the call is not
+    run and the turn answers around it — so `failed` stays false either way.
+    """
+
+    tool: str = ""
+    fields: tuple[str, ...] = ()
+
+    @property
+    def summary(self) -> str:
+        """Who filled it in, in the second person: the reader did this."""
+        if not self.fields:
+            return f"You gave {self.tool} nothing"
+        return f"You filled in {self.tool}"
+
+    @property
+    def detail(self) -> str:
+        """Which fields they wrote, by name.
+
+        Not the values: a card may hold a budget, and the panel is read over a shoulder.
+        """
+        return ", ".join(self.fields)
+
+
+@dataclass(frozen=True)
 class EffectSettled(TraceStep):
     """The user was shown a call that would change something, and answered it.
 

@@ -7,12 +7,16 @@ import pytest
 from cora.plugins.travel.trips import (
     CANDIDATES,
     FLIGHT_FIELDS,
+    FLIGHTS_ASKED,
     HOTEL_FIELDS,
     MOST,
+    NOTHING_BOOKED,
     NOTHING_FLYING,
     NOWHERE_TO_STAY,
     REFUSED,
     SEARCH,
+    SEARCH_IT,
+    STAY_ASKED,
     UNREACHABLE,
     UNREADABLE,
     KeptOut,
@@ -426,3 +430,76 @@ def test_the_key_is_kept_out_of_the_clients_own_request_log() -> None:
         "the client logs its URL as its own object, not as a string"
     )
     assert "200" in logged.getMessage(), "the status stays a number its format needs"
+
+
+# ── the search asks for the trip it was not told ──
+
+
+def _asks(arguments: dict[str, Any]) -> Any:
+    flying, _ = trip_tools(KEY)
+    assert flying.asks is not None
+    return flying.asks(arguments)
+
+
+def test_a_search_told_no_route_asks_for_the_trip_on_its_own_schema() -> None:
+    """The fields the reader fills are the fields the service is sent, so the card and
+    the search cannot drift."""
+    card = _asks({})
+
+    assert card is not None
+    assert card.prompt == FLIGHTS_ASKED
+    assert [field.name for field in card.fields] == [
+        asked.name for asked in FLIGHT_FIELDS
+    ]
+    assert all(field.editable for field in card.fields)
+
+
+def test_the_card_says_which_of_its_fields_the_search_cannot_run_without() -> None:
+    card = _asks({})
+
+    required = {field.name for field in card.fields if field.required}
+    assert required == {asked.name for asked in FLIGHT_FIELDS if asked.required}
+
+
+def test_what_the_model_already_wrote_arrives_on_the_card_filled_in() -> None:
+    card = _asks({"origin": "BER"})
+
+    [origin] = [field for field in card.fields if field.name == "origin"]
+    assert origin.value == "BER"
+
+
+def test_a_day_is_asked_for_as_a_day_rather_than_as_a_string_to_get_right() -> None:
+    """The format reaches the model in the schema and the reader as the control the card
+    draws, so nobody has to type `YYYY-MM-DD` correctly."""
+    card = _asks({})
+
+    dated = {
+        field.name for field in card.fields if field.schema.get("format") == "date"
+    }
+    assert dated == {"window_start", "window_end"}
+    assert _schema(HOTEL_FIELDS)["properties"]["check_in"]["format"] == "date"
+
+
+def test_the_submit_waits_for_the_card_and_the_way_out_does_not() -> None:
+    search, not_now = _asks({}).actions
+
+    assert (search.answer, search.needs_valid) == (SEARCH_IT, True)
+    assert search.note == NOTHING_BOOKED
+    assert (not_now.answer, not_now.needs_valid) == (None, False)
+
+
+def test_a_search_told_everything_it_needs_asks_nothing() -> None:
+    """The reader is asked when there is something to ask, not on every call."""
+    assert _asks({**ROUTE, **WEEK}) is None
+
+
+def test_the_stay_search_asks_on_its_own_schema_and_not_the_flights_one() -> None:
+    _, staying = trip_tools(KEY)
+    assert staying.asks is not None
+    card = staying.asks({})
+
+    assert card is not None
+    assert card.prompt == STAY_ASKED
+    assert [field.name for field in card.fields] == [
+        asked.name for asked in HOTEL_FIELDS
+    ]

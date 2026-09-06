@@ -10,6 +10,7 @@ from typing import Any
 
 from jsonschema import Draft202012Validator, SchemaError
 
+from cora.domain.card import Card
 from cora.domain.citations import Citable
 from cora.domain.errors import PluginLoadError
 from cora.engine.events import EVENTS
@@ -47,8 +48,8 @@ spend a deployment's bill. It bounds a *call* — a round of the turn's own may 
 several, and a turn several rounds, so what a turn can spend on delegation is this times
 what `Router` allows it. Bounded, not small."""
 WITHHELD = (
-    "not offering %s to the delegated loop: a tool with an effect waits for the user, "
-    "and a sub-agent is not something the user is watching"
+    "not offering %s to the delegated loop: a tool that waits for the user cannot run "
+    "there, and a sub-agent is not something the user is watching"
 )
 """What a plugin is told when one of its tools is kept out of a loop it delegated. On
 the plugin's own logger, because it is that plugin's tool and that plugin's author who
@@ -168,6 +169,7 @@ class PluginHost:
         scope: str | None = None,
         untrusted: bool = False,
         effect: bool = False,
+        asks: Callable[[dict[str, Any]], Card | None] | None = None,
     ) -> None:
         """Offer the model one more thing it can do.
 
@@ -197,6 +199,7 @@ class PluginHost:
                 run=run,
                 untrusted=untrusted,
                 effect=effect,
+                asks=asks,
             ),
             scope,
         )
@@ -247,8 +250,8 @@ class PluginHost:
 
         Args:
             task: What the loop is being asked to do, as its first message.
-            tools: What it may call, on top of searching the documents. One declaring
-                an effect is withheld, and the plugin's logger says which.
+            tools: What it may call, on top of searching the documents. One that waits
+                for the user is withheld, and the plugin's logger says which.
             rounds: How many rounds it may spend, up to `MAX_DELEGATED_ROUNDS`. One
                 more than this reaches the model, the last with the tools still on the
                 table so a loop can answer in it. Ignored in a loop delegated from
@@ -349,12 +352,15 @@ class PluginHost:
         because they are never put in. The search is described as a reader that hands
         out no numbers is offered it, which is what this loop is.
 
-        A tool declaring an effect is withheld, however it got here: an effect waits
-        for the user's word, and a delegated loop is not something the user is
-        watching. That is what keeps a nested turn from needing a nested approval.
-        Withheld rather than refused, because a plugin may reasonably pass its scope's
-        whole tool list — and said out loud on the plugin's own logger, because an
-        author who is not told watches their tool never run.
+        A tool that waits for the user is withheld, however it got here: one declaring
+        an effect waits for their word, and one declaring `asks` waits for them to fill
+        its card in. Neither can happen here — the gate is a step of the turn and a
+        delegated loop has none, so a gathering tool offered here would be called with
+        the arguments missing and refused by its own schema. That is also what keeps a
+        nested turn from needing a nested approval. Withheld rather than refused,
+        because a plugin may reasonably pass its scope's whole tool list — and said out
+        loud on the plugin's own logger, because an author who is not told watches
+        their tool never run.
 
         Raises:
             ToolRefusal: A tool passed in takes the name cora's search already has.
@@ -367,10 +373,10 @@ class PluginHost:
                 f"a tool passed to delegate is named '{SEARCH_TOOL_NAME}', which is "
                 "cora's own search; rename it"
             )
-        withheld = [tool.name for tool in tools if tool.effect]
+        withheld = [tool.name for tool in tools if tool.effect or tool.asks]
         if withheld:
             self.log.info(WITHHELD, ", ".join(withheld))
-        reading = tuple(tool for tool in tools if not tool.effect)
+        reading = tuple(tool for tool in tools if not (tool.effect or tool.asks))
         return (search_tool(self.documents, self.top_k, cites=False), *reading)
 
     def _registered_tools(self) -> tuple[Tool, ...]:

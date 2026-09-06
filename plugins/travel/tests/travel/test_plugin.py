@@ -6,7 +6,9 @@ from cora.plugins.travel.forecast import FORECAST_TOOL_NAME
 from cora.plugins.travel.itinerary import ITINERARY_TOOL_NAME
 from cora.plugins.travel.researcher import RESEARCH_TOOL_NAME
 from cora.plugins.travel.trips import (
+    FLIGHTS_TOOL_DESCRIPTION,
     FLIGHTS_TOOL_NAME,
+    HOTELS_TOOL_DESCRIPTION,
     HOTELS_TOOL_NAME,
     SETTING,
 )
@@ -28,6 +30,43 @@ def test_the_instructions_state_the_domains_own_business() -> None:
         "the model offers the save; the gate is what happens next, not an excuse to "
         "announce a file as written"
     )
+
+
+def test_the_instructions_never_send_the_model_to_ask_in_prose() -> None:
+    """The searches ask for what they need, and a card is how they ask. An instruction
+    to ask for the same values in prose is the thing that beat the card twice."""
+    instructions = INSTRUCTIONS.lower()
+
+    assert "ask for the dates" not in instructions
+    assert "give the flight search a window" not in instructions
+    assert "asks the traveller for whatever it still needs" in instructions
+
+
+def test_the_instructions_send_the_searches_at_a_trip_not_only_at_a_price() -> None:
+    """A traveller who names a trip is planning one. Gating the search on a question
+    about cost left every other way of saying it answered in prose."""
+    instructions = INSTRUCTIONS.lower()
+
+    assert "when the answer turns on cost" not in instructions
+    assert "while a trip is being planned" in instructions
+    assert "carry their budget" in instructions, "the budget still goes into the search"
+
+
+def test_the_instructions_still_refuse_a_date_the_traveller_did_not_name() -> None:
+    """The one thing the deleted bullet was right about: nothing required is what the
+    model is now offered, so nothing but this stops it filling the window in itself."""
+    assert "never assume a season, a date or a trip length" in INSTRUCTIONS.lower()
+
+
+def test_neither_search_tells_the_model_to_settle_the_values_first() -> None:
+    """cora appends "call this even when you cannot fill in every argument" to both, so
+    a description that first spends three sentences saying the opposite reads as it."""
+    flights = FLIGHTS_TOOL_DESCRIPTION.lower()
+    hotels = HOTELS_TOOL_DESCRIPTION.lower()
+
+    assert "give a window rather than" not in flights
+    assert "call it once the dates are settled" not in hotels
+    assert "a window is an earliest start" in flights
 
 
 def test_everything_travel_registers_belongs_to_its_own_scope() -> None:

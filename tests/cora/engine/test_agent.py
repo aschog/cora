@@ -4,7 +4,8 @@ import pytest
 
 from app_builder import assembled
 from cora.domain.agent_state import AgentState
-from cora.domain.approval import Approval, Proposed
+from cora.domain.approval import Proposed
+from cora.domain.card import Answer
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Turn
@@ -18,7 +19,6 @@ from cora.domain.errors import (
 from cora.domain.trace import ModelDecision, StepEntered, ToolUse, TraceStep
 from cora.engine.agent import Agent
 from cora.ports.chat_model import ModelReply, Piece, TextSink, Written, unheard
-from cora.ports.graph import Settled
 from fakes import FailingConversations, FakeConversations, ScriptedChatModel
 from fixture_plugins import make_plugin
 
@@ -56,7 +56,7 @@ class _StubRunner:
         self.pin = pin
         self.seeded: AgentState | None = None
         self.thread_id: str | None = None
-        self.chosen: Settled = None
+        self.chosen: Answer | None = None
         self.resumes = 0
         self.forgotten: list[str] = []
 
@@ -73,7 +73,7 @@ class _StubRunner:
             raise self.then
 
     def resume(
-        self, answer: Settled, thread_id: str, on_text: TextSink = unheard
+        self, answer: Answer, thread_id: str, on_text: TextSink = unheard
     ) -> Iterator[AgentState]:
         self.chosen = answer
         self.resumes += 1
@@ -306,11 +306,11 @@ ASKED = "Which bodyweight should I treat as current?"
 QUESTION = "What is my BMR?"
 PARKED = Pending(
     asked=QUESTION,
-    decision=Decision(
+    card=Decision(
         question=ASKED,
         options=(Option(label="77 kg"), Option(label="75 kg", note="February")),
         decline="Neither",
-    ),
+    ).card,
 )
 
 
@@ -348,9 +348,9 @@ def test_resuming_finishes_the_turn_the_pause_belonged_to() -> None:
     kept = FakeConversations()
     runner = _StubRunner(waiting=PARKED, after=({"answer": "1,730 kcal."},))
 
-    result = Agent(runner, kept).resume("75 kg", THREAD)
+    result = Agent(runner, kept).resume(Answer(action="75 kg"), THREAD)
 
-    assert runner.chosen == "75 kg"
+    assert runner.chosen == Answer(action="75 kg")
     assert result.answer == "1,730 kcal."
     [recorded] = kept.turns(THREAD)
     assert recorded == Turn(question=QUESTION, result=result), (
@@ -361,44 +361,35 @@ def test_resuming_finishes_the_turn_the_pause_belonged_to() -> None:
 def test_declining_resumes_with_nothing_chosen() -> None:
     runner = _StubRunner(waiting=PARKED, after=({"answer": "Without a weight, then."},))
 
-    Agent(runner).resume(None, THREAD)
+    Agent(runner).resume(Answer(), THREAD)
 
-    assert runner.chosen is None
+    assert runner.chosen == Answer(action=None)
 
 
 def test_resuming_a_thread_that_is_waiting_on_nothing_is_refused() -> None:
     runner = _StubRunner({"answer": "done"})
 
     with pytest.raises(NothingToResumeError):
-        Agent(runner).resume("75 kg", THREAD)
+        Agent(runner).resume(Answer(action="75 kg"), THREAD)
 
     assert runner.resumes == 0
 
 
-def test_approving_carries_the_approval_into_the_parked_turn() -> None:
+def test_approving_carries_the_call_it_answers_into_the_parked_turn() -> None:
     """An approval and a label are picked up the same way — the difference is which step
     was waiting, and each of them checks what came back to it."""
-    yes = Approval(call_id="c1", approved=True)
+    yes = Answer(action="c1")
     runner = _StubRunner(
         waiting=Pending(
-            asked=QUESTION, proposal=Proposed(call_id="c1", tool="book_it")
+            asked=QUESTION, card=Proposed(call_id="c1", tool="book_it").card
         ),
         after=({"answer": "Booked."},),
     )
 
-    answered = Agent(runner).approve(yes, THREAD)
+    answered = Agent(runner).resume(yes, THREAD)
 
     assert runner.chosen == yes
     assert answered.answer == "Booked."
-
-
-def test_approving_a_thread_that_is_waiting_on_nothing_is_refused() -> None:
-    runner = _StubRunner({"answer": "done"})
-
-    with pytest.raises(NothingToResumeError):
-        Agent(runner).approve(Approval(call_id="c1", approved=True), THREAD)
-
-    assert runner.resumes == 0
 
 
 def test_a_thread_that_never_stopped_is_waiting_on_nothing() -> None:

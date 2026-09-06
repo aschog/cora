@@ -5,6 +5,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
+from cora.domain.card import Card
+
 
 class ToolRefusal(Exception):
     """Raised by a tool that will not run on the input it was given.
@@ -34,6 +36,21 @@ class Tool:
     `effect` says that calling it changes something outside cora — a file written, a
     booking made. A tool declaring one is never offered to a delegated loop, so an
     effect stays in the turn the user is watching rather than inside a call of it.
+
+    `asks` is how a tool gets what the model could not supply: given the arguments as
+    written, it returns the card to put to the user, or nothing to run as called. What
+    the reader fills in is written over those arguments before the tool sees them, so
+    the tool itself is called once and with values a person stated.
+
+    A tool declaring it is offered to the model with nothing required, because the card
+    is what requires it. So the card asks for every argument the schema requires: one it
+    leaves out is one nobody supplies, and the call is refused for want of it.
+
+    It must be a pure function of the arguments it is handed. The step that puts the
+    card is replayed every time the turn is picked up, so `asks` is called again on each
+    of them — one whose answer varies moves the pause the reader already settled onto a
+    different question, and the answer they gave lands on it. Nothing it does is a
+    record of anything: the tool's `run` is the only place a call has an effect.
     """
 
     name: str
@@ -42,6 +59,7 @@ class Tool:
     run: Callable[..., Any]
     untrusted: bool = False
     effect: bool = False
+    asks: Callable[[dict[str, Any]], "Card | None"] | None = None
 
 
 @dataclass(frozen=True)

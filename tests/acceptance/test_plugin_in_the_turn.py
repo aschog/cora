@@ -5,6 +5,7 @@ from collections.abc import Iterator
 import pytest
 
 from app_builder import assembled
+from cora.domain.card import Answer
 from cora.domain.decision import TurnPaused
 from cora.domain.errors import InputRejectedError
 from cora.domain.trace import TraceStep
@@ -155,7 +156,7 @@ def test_a_turn_resumed_after_a_pause_is_running_under_the_same_scopes() -> None
 
     with pytest.raises(TurnPaused):
         app.agent.answer(PROTEIN, THREAD, scopes=COACHING)
-    resumed = app.agent.resume("75 kg", THREAD)
+    resumed = app.agent.resume(Answer(action="75 kg"), THREAD)
 
     assert resumed.answer == "At 75 kg, aim for 120 g."
     assert BMI in _offered(model), "the resumed round is still a coach's"
