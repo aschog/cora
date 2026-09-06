@@ -262,8 +262,9 @@ fails when one is behind the source.
 ## Stack
 
 Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangGraph · LangChain over
-OpenRouter · Chroma · sentence-transformers · React over Starlette —
-with ruff, ty and pytest as quality gates. Runtime dependencies are added
+OpenRouter · Chroma · sentence-transformers · React over Starlette, with TanStack
+Query holding what the rails read — with ruff, ty and pytest as quality gates on the
+Python, and eslint, tsc and vitest on the page. Runtime dependencies are added
 feature-by-feature, story by story.
 
 ## The packages
@@ -282,3 +283,13 @@ uv run ruff format . && uv run ruff check . && uv run ty check
 
 The hook runs those four on commit and CI runs them on every push; commit messages
 follow [Conventional Commits](https://www.conventionalcommits.org).
+
+The page has its own four, which CI runs and the hook does not — they need Node, and a
+commit that touches no TypeScript should not wait for it:
+
+```sh
+npm --prefix frontends/react/ui run lint          # eslint, and the hook rules with it
+npx --prefix frontends/react/ui tsc -b            # type check
+npm --prefix frontends/react/ui test              # unit tier, happy-dom
+npm --prefix frontends/react/ui run test:browser  # the tier that needs a real cascade
+```

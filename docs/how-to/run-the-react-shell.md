@@ -24,3 +24,38 @@ server.
 
 A setting the shell cannot use is refused before anything is built, as one line on
 stderr and a non-zero exit.
+
+## The page's own gates
+
+Four, and CI runs all of them; the commit hook runs none, because they need Node and a
+commit that touches no TypeScript should not wait for it:
+
+```sh
+npm --prefix frontends/react/ui run lint          # eslint, and the hook rules with it
+npx --prefix frontends/react/ui tsc -b            # type check
+npm --prefix frontends/react/ui test              # unit tier, happy-dom
+npm --prefix frontends/react/ui run test:browser  # the tier that needs a real cascade
+```
+
+`lint` is the one no type checker can stand in for: the order hooks are called in, and a
+dependency array that has fallen behind the closure it belongs to.
+
+Styles are per component — `Answer.module.css` beside `Answer.tsx` — so a class reaches
+what the file it sits beside draws and nothing else. `src/styles.css` keeps what is
+genuinely everyone's: the colour and spacing tokens, the resets, and the few utilities
+several components share. A test that needs a class imports the module and reads the name
+off it, because the name in the file is not the name in the DOM.
+
+## The address bar
+
+A conversation you open is named in the address, as `#/c/<thread>`. That makes it a link
+you can send, a page you can reload back into, and something the back button walks. The
+hash rather than the path because the built page is served as static files with no
+fallback: `/c/<thread>` would ask the server for a file it does not have.
+
+Starting a new conversation takes it back out — a fresh thread is in no store and there is
+nothing to link to yet.
+
+A card left open still outranks the address on a reload. A conversation named there is
+listed under SESSIONS and is one click away; a thread parked on its first question has
+answered nothing, is listed nowhere, and is reachable by the stow and by nothing else.
