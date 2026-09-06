@@ -5,7 +5,7 @@ import { joined } from '../joined'
 
 const WAITING = 'Paused · needs your input'
 const SETTLED = 'Settled · your answer'
-export const FILL_IN_FIRST = 'Fill it in first.'
+const FILL_IN_FIRST = 'Fill it in first.'
 const took = (action: Offered) => action.settled || `You chose ${action.label}.`
 
 type Props = {

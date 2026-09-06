@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
-import PauseCard, { FILL_IN_FIRST } from './PauseCard'
+import PauseCard from './PauseCard'
 import type { Asked, Card, Offered } from '../api'
 
 afterEach(cleanup)
@@ -118,7 +118,7 @@ test('an action that waits is held while a required field is empty, and says why
 
   const search = screen.getByRole('button', { name: /Search/ })
   expect(search).toHaveProperty('disabled', true)
-  expect(within(search).getByText(FILL_IN_FIRST)).toBeTruthy()
+  expect(within(search).getByText('Fill it in first.')).toBeTruthy()
 })
 
 test('that same action is takeable once the required field holds a value', () => {

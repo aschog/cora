@@ -6,6 +6,3 @@ export const message = (failed: unknown) =>
  *  failure, and a request that lost its race says nothing either way. */
 export const aborted = (failed: unknown) =>
   failed instanceof DOMException && failed.name === 'AbortError'
-
-export const reportTo = (say: (said: string) => void) => (failed: unknown) =>
-  say(message(failed))

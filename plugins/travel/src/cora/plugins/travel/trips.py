@@ -290,8 +290,8 @@ def _day(given: Any, called: str) -> datetime.date:
         ) from unreadable
 
 
-def departures(given: Mapping[str, Any]) -> tuple[list[datetime.date], int]:
-    """Every departure this search will try, and how far apart they ended up.
+def departures(given: Mapping[str, Any]) -> list[datetime.date]:
+    """Every departure this search will try.
 
     Fixed dates are the same shape with no slack in it — a window whose last possible
     departure is its first yields one day, so there is no second code path for them.
@@ -313,11 +313,10 @@ def departures(given: Mapping[str, Any]) -> tuple[list[datetime.date], int]:
     span = (last - start).days
     if span // stride + 1 > CANDIDATES:
         stride = span // (CANDIDATES - 1) + 1
-    days = [
+    return [
         start + datetime.timedelta(days=step * stride)
         for step in range(span // stride + 1)
     ]
-    return days, stride
 
 
 @dataclass(frozen=True)
@@ -373,7 +372,7 @@ class Search:
                 service found nothing flying.
         """
         asked = {**DEFAULTS, **given}
-        days, _ = departures(asked)
+        days = departures(asked)
         nights = _whole(asked["nights"], "nights")
         currency = str(asked["currency"])
         base = _query(FLIGHT_FIELDS, asked, self.key) | {
@@ -405,7 +404,7 @@ class Search:
         # Counted off the window rather than off what came back: a departure the
         # service choked on was still tried, and saying otherwise would quietly
         # report a narrower search than the one that ran.
-        days, _ = departures({**DEFAULTS, **given})
+        days = departures({**DEFAULTS, **given})
         return _listed(f"tried {len(days)} departures", offers)
 
     def rooms(self, **given: Any) -> list[Offer]:

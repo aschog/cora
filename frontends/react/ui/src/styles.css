@@ -28,14 +28,12 @@
   --pause-tint: #14130d;
   --magenta-tint: #24121b;
   --radius: 2px;
-  --shadow-sm: 0 0 0 1px #1e2530;
   --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px #232a34;
   --s1: 5px;
   --s2: 10px;
   --s3: 15px;
   --s4: 20px;
   --s5: 30px;
-  --s6: 40px;
   --serif: 'Source Serif 4', Georgia, 'Times New Roman', serif;
 
   /* A panel is the ground sunk, not a different colour. Stated once so the rails, the

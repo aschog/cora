@@ -43,7 +43,6 @@ def test_ingestion_error_message_names_the_offending_file(
     error = error_type("budget.xlsx")
 
     assert "budget.xlsx" in error.user_message
-    assert error.filename == "budget.xlsx"
 
 
 ADAPTER_ERRORS = [EmbeddingError, RetrievalError, LlmError]

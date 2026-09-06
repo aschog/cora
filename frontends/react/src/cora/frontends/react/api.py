@@ -334,15 +334,9 @@ def _ask(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
     waiting for."""
 
     async def taken(request: Request) -> Response:
-        body = await _read_within(request, MAX_ASK_BYTES)
-        if body is None:
-            return JSONResponse({"error": TOO_LONG_TO_ASK}, status_code=TOO_LARGE)
-        try:
-            asked = json.loads(body)
-        except ValueError:
-            return JSONResponse({"error": NOT_A_QUESTION}, status_code=REFUSED)
-        if not isinstance(asked, dict):
-            return JSONResponse({"error": NOT_A_QUESTION}, status_code=REFUSED)
+        asked = await _json_object(request, NOT_A_QUESTION)
+        if isinstance(asked, JSONResponse):
+            return asked
         question, thread_id = asked.get("question"), asked.get("thread_id")
         if not _said(question) or not _said(thread_id):
             return JSONResponse({"error": NOT_A_QUESTION}, status_code=REFUSED)
@@ -371,15 +365,9 @@ def _resume(app: App) -> Callable[[Request], Any]:
     form is the same two things, and a second route would be this one written twice."""
 
     async def picked(request: Request) -> Response:
-        body = await _read_within(request, MAX_ASK_BYTES)
-        if body is None:
-            return JSONResponse({"error": TOO_LONG_TO_ASK}, status_code=TOO_LARGE)
-        try:
-            answered = json.loads(body)
-        except ValueError:
-            return JSONResponse({"error": NOT_A_DECISION}, status_code=REFUSED)
-        if not isinstance(answered, dict):
-            return JSONResponse({"error": NOT_A_DECISION}, status_code=REFUSED)
+        answered = await _json_object(request, NOT_A_DECISION)
+        if isinstance(answered, JSONResponse):
+            return answered
         thread_id, action = answered.get("thread_id"), answered.get("answer")
         # `answer` must be *said*, even to say nothing: a body that leaves it out reads
         # the same as one that declines, so a client with a typo in the field silently
@@ -460,6 +448,22 @@ async def _read_within(request: Request, ceiling: int) -> bytes | None:
         if len(read) > ceiling:
             return None
     return bytes(read)
+
+
+async def _json_object(request: Request, refusal: str) -> Any:
+    """The body as the one JSON object these routes take, or the `JSONResponse`
+    refusing it. `Any` because what the object holds is the caller's to check, half a
+    field at a time — the annotation a dict would earn is narrower than its readers."""
+    body = await _read_within(request, MAX_ASK_BYTES)
+    if body is None:
+        return JSONResponse({"error": TOO_LONG_TO_ASK}, status_code=TOO_LARGE)
+    try:
+        parsed = json.loads(body)
+    except ValueError:
+        return JSONResponse({"error": refusal}, status_code=REFUSED)
+    if not isinstance(parsed, dict):
+        return JSONResponse({"error": refusal}, status_code=REFUSED)
+    return parsed
 
 
 def _said(half: Any) -> bool:

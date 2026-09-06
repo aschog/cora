@@ -55,10 +55,6 @@ class Plan:
         return (self.back - self.depart).days
 
     @property
-    def unpriced(self) -> bool:
-        return self.fare is None or self.stay is None
-
-    @property
     def total(self) -> float | None:
         if self.fare is None or self.stay is None:
             return None

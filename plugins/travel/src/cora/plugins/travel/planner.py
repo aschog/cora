@@ -22,7 +22,7 @@ from cora.plugins.travel.plan import (
     priced_with,
     written,
 )
-from cora.plugins.travel.trips import Offer, Search
+from cora.plugins.travel.trips import Offer, Search, _day, _whole
 from cora.ports.host import Host
 from cora.ports.plugin import Tool, ToolRefusal
 
@@ -105,34 +105,19 @@ class Trip:
         return Asked(nights=self.nights, budget=self.budget)
 
 
-def _date(given: Any, called: str) -> datetime.date:
-    try:
-        return datetime.date.fromisoformat(str(given))
-    except ValueError as unreadable:
-        raise ToolRefusal(
-            f"'{given}' is not a date I can read for {called}; write it as YYYY-MM-DD."
-        ) from unreadable
-
-
 def _trip_from(given: dict[str, Any]) -> Trip:
     """The trip a call asked for.
 
     Raises:
         ToolRefusal: A date or a number cannot be read.
     """
-    try:
-        nights = int(given["nights"])
-    except (TypeError, ValueError) as unreadable:
-        raise ToolRefusal(
-            f"'{given.get('nights')}' is not a number of nights I can read."
-        ) from unreadable
     budget = given.get("budget")
     return Trip(
         origin=str(given["origin"]),
         destination=str(given["destination"]),
-        window_start=_date(given["window_start"], "window_start"),
-        window_end=_date(given["window_end"], "window_end"),
-        nights=nights,
+        window_start=_day(given["window_start"], "window_start"),
+        window_end=_day(given["window_end"], "window_end"),
+        nights=_whole(given["nights"], "nights"),
         budget=int(budget) if budget is not None else None,
         currency=str(given.get("currency", "EUR")),
         note=str(given.get("wants", "")),
@@ -492,14 +477,3 @@ def planning_tools(
             untrusted=True,
         ),
     )
-
-
-__all__ = [
-    "KEPT",
-    "PASSES",
-    "PLAN_TOOL_NAME",
-    "REVISE_TOOL_NAME",
-    "Planner",
-    "Trip",
-    "planning_tools",
-]
