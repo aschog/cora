@@ -139,10 +139,15 @@ export function useConversation(setTrouble: (said: string | null) => void) {
   /** What a conversation is still parked on, drawn after its turns: it is in no store,
    *  so nothing else on the page would bring it back. */
   const parked = async (thread_id: string) => {
-    const waiting = await cora.pending(thread_id, asking()).catch(() => null)
-    if (here.current !== thread_id) return
-    /* Nothing parked, the read failed, or what came back is not a pause: either way
-       there is no card to draw. */
+    /* `undefined` is a read that could not be made — refused, unreachable, or called off
+       because the reader opened another conversation. `null` is the store answering that
+       nothing is parked. The difference is the whole of what follows: only the second is
+       news about the card. */
+    const waiting = await cora.pending(thread_id, asking()).catch(() => undefined)
+    if (here.current !== thread_id || waiting === undefined) return
+    /* Told plainly there is nothing parked — or that what is parked is not a pause this
+       page can draw. Either way the stow is stale, and holding it would send every later
+       reload back to a conversation with no question in it. */
     if (!parkedOn(waiting)) {
       forgetIf(thread_id)
       return
