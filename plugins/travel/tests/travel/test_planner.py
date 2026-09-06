@@ -80,7 +80,7 @@ class Cora:
     def __init__(self, *shapes: str) -> None:
         self._shapes = list(shapes) or [SHAPE]
         self.tasks: list[str] = []
-        self.shown: list[tuple[str, bool]] = []
+        self.shown: list[tuple[str, str, bool]] = []
         self.kept: dict[str, str] = {}
 
     def delegate(self, task: str, tools: Any = (), rounds: int = 3) -> str:
@@ -88,7 +88,7 @@ class Cora:
         return self._shapes[min(len(self.tasks) - 1, len(self._shapes) - 1)]
 
     def show(self, did: str, detail: str = "", failed: bool = False) -> None:
-        self.shown.append((did, failed))
+        self.shown.append((did, detail, failed))
 
     @property
     def state(self) -> "Cora":
@@ -288,7 +288,7 @@ def test_the_planning_is_shown_on_the_trace() -> None:
 
     _planner(cora, Service()).plan(**TRIP)
 
-    assert any("priced" in did for did, _ in cora.shown)
+    assert any("priced" in did for did, _, _ in cora.shown)
 
 
 def test_a_pass_that_found_nothing_that_holds_is_shown_as_failed() -> None:
@@ -296,7 +296,7 @@ def test_a_pass_that_found_nothing_that_holds_is_shown_as_failed() -> None:
 
     _planner(cora, Service(stay=900.0)).plan(**TRIP)
 
-    assert any(failed for _, failed in cora.shown)
+    assert any(failed for _, _, failed in cora.shown)
 
 
 def test_an_unreadable_date_refuses_rather_than_planning_something_else() -> None:
@@ -466,3 +466,23 @@ def test_a_datetime_free_planner_needs_no_clock() -> None:
     read = _planner(cora, Service()).plan(**TRIP)
 
     assert datetime.date.today().isoformat() not in read
+
+
+def test_each_failed_check_is_shown_naming_the_rule_it_broke() -> None:
+    cora = Cora()
+
+    _planner(cora, Service(stay=900.0)).plan(**TRIP)
+
+    said = " ".join(detail for _, detail, failed in cora.shown if failed)
+    assert "over the 800 budget" in said
+
+
+def test_every_revision_is_shown_so_a_reader_can_count_them() -> None:
+    cora = Cora()
+
+    _planner(cora, Service(stay=900.0)).plan(**TRIP)
+
+    passes = [did for did, _, failed in cora.shown if failed]
+    assert len(passes) == PASSES + 1
+    assert passes[0].startswith("pass 1")
+    assert passes[-1].startswith(f"pass {PASSES + 1}")
