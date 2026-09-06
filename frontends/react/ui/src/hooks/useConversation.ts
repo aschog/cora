@@ -3,8 +3,9 @@ import * as cora from '../api'
 import type { Session, Turn } from '../api'
 import type { Entry } from '../entry'
 import { carded, parkedOn, recorded, unanswered } from '../entry'
-import { message } from '../fail'
+import { aborted, message } from '../fail'
 import { forget, forgetIf, stow, stowed } from '../parked'
+import { useOneAtATime } from './useOneAtATime'
 
 /** What became of a load: drawn on the page, dropped for a later one (or a store that
  *  could not be read, which says so itself), or read and undrawable. */
@@ -37,6 +38,11 @@ export function useConversation(setTrouble: (said: string | null) => void) {
      is waiting for, and it tells a turn whether the entry it belongs to is still there
      to land on. */
   const loads = useRef(0)
+  /* Two reads, called off separately: opening a conversation reads its turns and then
+     what it is parked on, and a reader who opens another wants both of the first
+     abandoned — but the second only starts once the first has landed. */
+  const reading = useOneAtATime()
+  const asking = useOneAtATime()
 
   /** Where the reader is, before a load that is about to put them there has landed: the
    *  reads that follow it guard on this, and a card picked up on mount has no other way
@@ -57,12 +63,14 @@ export function useConversation(setTrouble: (said: string | null) => void) {
     const wanted = ++loads.current
     let kept: Turn[]
     try {
-      kept = await cora.turns(thread_id)
+      kept = await cora.turns(thread_id, reading())
     } catch (failed) {
       // A load that lost the race has nothing to say either: its failure is about a
       // conversation that is not on the page. Reported from the read alone, so a failure
-      // inside `apply` is not dressed up as the store being unreachable.
-      if (loads.current === wanted) setTrouble(message(failed))
+      // inside `apply` is not dressed up as the store being unreachable — and never for a
+      // read this page called off, which is the reader moving on rather than a store that
+      // cannot be reached.
+      if (loads.current === wanted && !aborted(failed)) setTrouble(message(failed))
       return 'dropped'
     }
     if (loads.current !== wanted) return 'dropped'
@@ -122,7 +130,7 @@ export function useConversation(setTrouble: (said: string | null) => void) {
   /** What a conversation is still parked on, drawn after its turns: it is in no store,
    *  so nothing else on the page would bring it back. */
   const parked = async (thread_id: string) => {
-    const waiting = await cora.pending(thread_id).catch(() => null)
+    const waiting = await cora.pending(thread_id, asking()).catch(() => null)
     if (here.current !== thread_id) return
     /* Nothing parked, the read failed, or what came back is not a pause: either way
        there is no card to draw. */

@@ -96,16 +96,23 @@ async function failure(response: Response): Promise<string> {
   }
 }
 
-export const documents = (scope: string) =>
-  read<string[]>(`/api/documents?scope=${encodeURIComponent(scope)}`)
-export const scopes = () => read<Scopes>('/api/scopes')
-export const memory = () => read<Fact[]>('/api/memory')
-export const sessions = () => read<Session[]>('/api/sessions')
-export const turns = (thread: string) => read<Turn[]>(`/api/sessions/${thread}`)
+/* Every read takes the signal of the thing that wanted it. A page the reader has moved
+   past is a page whose requests are still on the wire: the answers were always dropped,
+   and this is what stops them being fetched at all. A write takes none — a delete the
+   reader asked for is not undone by them looking elsewhere. */
+export const documents = (scope: string, signal?: AbortSignal) =>
+  read<string[]>(`/api/documents?scope=${encodeURIComponent(scope)}`, { signal })
+export const scopes = (signal?: AbortSignal) => read<Scopes>('/api/scopes', { signal })
+export const memory = (signal?: AbortSignal) => read<Fact[]>('/api/memory', { signal })
+export const sessions = (signal?: AbortSignal) =>
+  read<Session[]>('/api/sessions', { signal })
+export const turns = (thread: string, signal?: AbortSignal) =>
+  read<Turn[]>(`/api/sessions/${thread}`, { signal })
 
-export const passage = (scope: string, upload: string) =>
+export const passage = (scope: string, upload: string, signal?: AbortSignal) =>
   read<{ text: string }>(
     `/api/uploads/${encodeURIComponent(scope)}/${encodeURIComponent(upload)}`,
+    { signal },
   ).then((kept) => kept.text)
 
 /** Delete one document from one field: its passages out of the index, and the file its
@@ -208,13 +215,15 @@ export async function resume(
 
 /** Which field a conversation is pinned to, or nothing. The pin is a key of the thread's
  *  own state, so this is what a reloaded page reads it back from. */
-export const pinned = (thread: string) =>
-  read<{ pin: string | null }>(`/api/sessions/${thread}/scope`).then((held) => held.pin)
+export const pinned = (thread: string, signal?: AbortSignal) =>
+  read<{ pin: string | null }>(`/api/sessions/${thread}/scope`, { signal }).then(
+    (held) => held.pin,
+  )
 
 /** What a conversation is waiting on, or nothing. A page that arrived after the pause
  *  has nowhere else to look: the turn is recorded only once it has an answer. */
-export const pending = (thread: string) =>
-  read<Pending | null>(`/api/sessions/${thread}/pending`)
+export const pending = (thread: string, signal?: AbortSignal) =>
+  read<Pending | null>(`/api/sessions/${thread}/pending`, { signal })
 
 const post = (path: string, body: unknown) =>
   fetch(path, {

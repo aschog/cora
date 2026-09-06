@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import * as cora from '../api'
 import type { Fact, Session } from '../api'
-import { reportTo } from '../fail'
+import { aborted, reportTo } from '../fail'
+import { useOneAtATime } from './useOneAtATime'
 
 /** What the page shows around the conversation. One hook rather than one per rail
  *  because it is one load: the four listings arrive together, under one banner, and a
@@ -27,6 +28,7 @@ export function useRails({
   const [anyField, setAnyField] = useState('')
   /* Which field the newest documents load asked about, so an older one cannot land. */
   const shown = useRef('')
+  const only = useOneAtATime()
 
   /* Where the rail sits when nothing else has spoken. One field loaded is a field
      routing cannot choose against, so every turn runs in it; with more than one, a turn
@@ -50,11 +52,12 @@ export function useRails({
   const refresh = useCallback(() => {
     const asked = field
     shown.current = asked
+    const signal = only()
     return Promise.all([
-      cora.documents(field),
-      cora.memory(),
-      cora.sessions(),
-      cora.scopes(),
+      cora.documents(field, signal),
+      cora.memory(signal),
+      cora.sessions(signal),
+      cora.scopes(signal),
     ])
       .then(([indexed, kept, before, offered]) => {
         /* The listing is per field and this load asked for the field the page was in
@@ -72,9 +75,13 @@ export function useRails({
         setTrouble(null)
       })
       .catch((failed) => {
+        /* A refresh the page called off is not trouble, and the guard alone would not
+           say so: a second refresh for the *same* field abandons the first without
+           moving `shown`, so the abort would land here reading as a failed load. */
+        if (aborted(failed)) return
         if (shown.current === asked) reportTo(setTrouble)(failed)
       })
-  }, [field, setTrouble])
+  }, [field, setTrouble, only])
 
   useEffect(() => {
     refresh()

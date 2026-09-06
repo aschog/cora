@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import * as cora from '../api'
+import { aborted } from '../fail'
 
 /** One sentence for every way a passage's document cannot be read: deleted, indexed
  *  before cora kept any text, or cited by an index that names no field to look in. All
@@ -36,24 +37,22 @@ export function usePassage(source: { scope: string; upload: string } | null) {
 
   useEffect(() => {
     if (scope === undefined || upload === undefined) return
-    let live = true
+    /* Called off when the reader opens another document, which both stops the read and
+       keeps its answer off the page — a rejected fetch runs no `then`, and the one
+       failure this must not report is the one the page itself caused. */
+    const stopping = new AbortController()
     cora
-      .passage(scope, upload)
-      .then(
-        (text) => live && setKept({ of: names(scope, upload), text, trouble: null }),
-      )
-      .catch(
-        (failed) =>
-          live &&
-          setKept({
-            of: names(scope, upload),
-            text: null,
-            trouble: String(failed.message ?? failed),
-          }),
-      )
-    return () => {
-      live = false
-    }
+      .passage(scope, upload, stopping.signal)
+      .then((text) => setKept({ of: names(scope, upload), text, trouble: null }))
+      .catch((failed) => {
+        if (aborted(failed)) return
+        setKept({
+          of: names(scope, upload),
+          text: null,
+          trouble: String(failed.message ?? failed),
+        })
+      })
+    return () => stopping.abort()
   }, [scope, upload])
 
   return {

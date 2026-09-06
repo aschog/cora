@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import type { RefObject } from 'react'
 import * as cora from '../api'
+import { useOneAtATime } from './useOneAtATime'
 
 /** Which field this conversation is fixed to, and which one its own turns were answered
  *  in. Both are the conversation's, so both are dropped when it is left — and neither is
@@ -15,6 +16,7 @@ export function usePin(here: RefObject<string>) {
   const [pin, setPin] = useState<string | null>(null)
   const [fixedPin, setFixedPin] = useState(false)
   const [answered, setAnswered] = useState<string | null>(null)
+  const reading = useOneAtATime()
 
   const pick = (scope: string) => {
     setPin(scope === '' ? null : scope)
@@ -30,7 +32,7 @@ export function usePin(here: RefObject<string>) {
     /* A read that failed is no news about the field: `undefined` leaves the control as it
        stands, where `null` would re-open a picker on a thread the engine has closed and
        get the reader's next pick refused over a field they can no longer see. */
-    const fixed = await cora.pinned(thread_id).catch(() => undefined)
+    const fixed = await cora.pinned(thread_id, reading()).catch(() => undefined)
     if (here.current !== thread_id || fixed === undefined) return
     setPin(fixed)
     setFixedPin(fixed !== null)
