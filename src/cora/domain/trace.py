@@ -184,6 +184,31 @@ class HandlerRan(TraceStep):
 
 
 @dataclass(frozen=True)
+class WorkShown(TraceStep):
+    """A plugin said what its own code just did, and this is the line it gave.
+
+    `plugin` is the module the deployment named, filled in by cora rather than by the
+    plugin: a line signed by whoever wrote it would let one plugin answer for another.
+    `did` is the line the reader sees and `detail` is what is behind it, both in the
+    plugin's own words — a reader takes them at face value, which is the trust that
+    loading the plugin already extended.
+
+    Flat, because a plugin's lines stand among the steps of the call they were said
+    inside, and a tree of its own is not something any plugin has yet needed.
+    """
+
+    plugin: str = ""
+    did: str = ""
+    detail: str = ""
+    failed: bool = False
+
+    @property
+    def summary(self) -> str:
+        """The plugin, and what it did — the plugin first, as a handler's line is."""
+        return f"{self.plugin} {self.did}"
+
+
+@dataclass(frozen=True)
 class CardFilled(TraceStep):
     """The user was shown a call's own card, and filled it in or did not.
 

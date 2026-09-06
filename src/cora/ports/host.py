@@ -250,6 +250,22 @@ class Host(Protocol):
         """
         ...
 
+    def show(self, did: str, detail: str = "", failed: bool = False) -> None:
+        """Say what this plugin's own code just did, as one line on the trace.
+
+        Cora fills in which plugin said it, so a line can never be signed with another
+        plugin's name. It lands among the steps of the tool call it was said inside,
+        beside the rounds a delegated loop reports there. Said outside a call there is
+        nothing to report to, and it is dropped.
+
+        Args:
+            did: The line the reader sees, in the plugin's own words.
+            detail: What is behind the line, for a reader who opens it.
+            failed: Whether what it describes went wrong. A failed line is still shown,
+                and does not end the turn.
+        """
+        ...
+
     @property
     def documents(self) -> ContextSource:
         """What the user uploaded, searchable as cora's own tool searches it.

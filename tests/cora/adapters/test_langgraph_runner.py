@@ -496,6 +496,7 @@ def test_the_allowlist_covers_every_kind_of_step_a_trace_can_hold() -> None:
         "ModelDecision",
         "MemoryUnread",
         "ToolUse",
+        "WorkShown",
     }, "the walk found fewer kinds than the engine ships"
 
 

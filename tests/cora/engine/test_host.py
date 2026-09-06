@@ -7,6 +7,7 @@ import pytest
 from cora.domain.card import ActionOffered, Card
 from cora.domain.chunk import Chunk
 from cora.domain.errors import PluginLoadError
+from cora.domain.trace import ModelDecision, WorkShown
 from cora.engine import keeping
 from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.host import (
@@ -1090,3 +1091,54 @@ def test_a_loop_delegated_inside_a_call_keeps_under_the_same_conversation() -> N
 
         assert host.state.read("note") == "Kyoto"
     assert kept == {["fixture_plugins", "valid"][-1]: {"note": "Kyoto"}}
+
+
+def test_a_plugin_shows_what_it_did_to_the_call_it_is_in() -> None:
+    host = host_for(MODULE)
+
+    with collecting() as taken:
+        host.show("counted 3 wrens", detail="wren, wren, wren")
+
+    [shown] = taken.steps
+    assert shown.summary == f"{MODULE} counted 3 wrens"
+    assert shown.detail == "wren, wren, wren"
+    assert not shown.failed
+
+
+def test_a_plugin_may_show_that_something_went_wrong() -> None:
+    host = host_for(MODULE)
+
+    with collecting() as taken:
+        host.show("lost count", failed=True)
+
+    assert taken.steps[0].failed
+
+
+def test_a_line_is_signed_with_the_name_cora_loaded_the_plugin_under() -> None:
+    """Whatever the plugin writes into the line, the signature is cora's own."""
+    host = host_for(MODULE)
+
+    with collecting() as taken:
+        host.show("acme.plugins.birds counted 3 wrens")
+
+    [shown] = taken.steps
+    assert isinstance(shown, WorkShown)
+    assert shown.plugin == MODULE
+
+
+def test_a_plugin_cannot_contribute_a_kind_of_step_that_is_not_its_own() -> None:
+    host = host_for(MODULE)
+
+    with collecting() as taken:
+        host.show(ModelDecision(detail="thinking"))  # ty: ignore[invalid-argument-type]
+
+    assert [type(step) for step in taken.steps] == [WorkShown]
+
+
+def test_a_line_shown_outside_a_call_is_dropped() -> None:
+    host_for(MODULE).show("counted 3 wrens")
+
+    with collecting() as taken:
+        pass
+
+    assert taken.steps == []

@@ -3,7 +3,7 @@ import pytest
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
-from cora.domain.trace import ModelDecision, ToolUse
+from cora.domain.trace import ModelDecision, ToolUse, WorkShown
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.plugin_set import RESERVED_TOOL_NAMES
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
@@ -181,3 +181,19 @@ def test_the_origin_of_a_built_in_names_no_act_only_one_of_them_performs() -> No
 
     assert searched == kept
     assert "retrieval" not in kept and "search" not in kept
+
+
+def test_a_plugin_s_own_line_reaches_the_page_in_the_shape_the_panel_knows() -> None:
+    """A kind the engine gained needs no change here: the wire reads a step off the base
+    class, and the panel draws whatever those keys hold."""
+    shown = payloads.step(
+        WorkShown(plugin="acme.plugins.birds", did="counted 3 wrens", detail="wren")
+    )
+
+    assert shown == {
+        "summary": "acme.plugins.birds counted 3 wrens",
+        "detail": "wren",
+        "failed": False,
+        "origin": "",
+        "steps": [],
+    }

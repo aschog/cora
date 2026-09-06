@@ -13,6 +13,7 @@ from jsonschema import Draft202012Validator, SchemaError
 from cora.domain.card import Card
 from cora.domain.citations import Citable
 from cora.domain.errors import PluginLoadError
+from cora.domain.trace import WorkShown
 from cora.engine import keeping
 from cora.engine.events import EVENTS
 from cora.engine.nesting import collecting, read_untrusted, took
@@ -251,6 +252,15 @@ class PluginHost:
         if not isinstance(instructions, str):
             raise PluginLoadError(self.module, "instructions must be a string")
         self._record(INSTRUCTIONS, instructions, scope)
+
+    def show(self, did: str, detail: str = "", failed: bool = False) -> None:
+        """Put one line of this plugin's own work on the trace of the call it is in.
+
+        The plugin is not a parameter: the name is this host's, which is what makes a
+        line unforgeable. Outside a call `took` has nothing to report to and drops it,
+        so nothing here has to know whether a turn is running.
+        """
+        took(WorkShown(plugin=self.module, did=did, detail=detail, failed=failed))
 
     def delegate(self, task: str, tools: tuple[Tool, ...] = (), rounds: int = 3) -> str:
         """Run a bounded loop of the model's own, and answer with what it wrote.
