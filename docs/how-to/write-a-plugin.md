@@ -178,6 +178,15 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    | `BRIEFING` | the brief the model is about to read | `str` | replaces it |
    | `CALLING` | a `ToolCall` about to run | `str` | refuses the call, and the model is told why |
    | `RETURNING` | the `ToolResult` that came back | `ToolResult` | replaces what the model is told |
+   | `ANSWERING` | the answer, settled and not yet handed over | `str` | replaces what the reader is given |
+
+   `ANSWERING` is where an answer is redacted or rewritten before the reader sees it.
+   It amends rather than refuses, so blocking one means handing back the sentence they
+   should read instead — the turn has already been spent, and throwing it away is a
+   worse answer than a substituted one. Citations are read off what you returned, so a
+   claim you removed takes its `[n]` with it. It fires once, on the answer, not on
+   every model call: the rounds before the last are thinking, and their prose is on the
+   trace, which a redaction here does not reach.
 
    Return the type in that column or `None`. Anything else is dropped exactly as a raise
    is — a `RETURNING` handler answering with a string changes nothing, and a `SCREENING`
@@ -241,6 +250,22 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
        cora.log.info("bird watching is on, in %s", units)
    ```
 
+   `cora.state` is what your plugin keeps between the turns of one conversation — a
+   plan it worked out, a count it is running, a form half filled in. Names are your
+   own, values are text, and a name nothing was kept under reads as nothing. It lasts
+   as long as the conversation and goes when it is deleted, which is what makes it a
+   different thing from `cora.memory` — that is what cora knows about the *user*, and
+   it outlives every conversation. Reachable while one of your tool calls is running;
+   outside one there is no conversation to keep anything for, so a read comes back with
+   nothing and a write is dropped.
+
+   ```python
+   def counted(cora: Host) -> str:
+       so_far = int(cora.state.read("wrens") or 0) + 1
+       cora.state.keep("wrens", str(so_far))
+       return f"{so_far} wrens this conversation"
+   ```
+
    `CORA_PLUGIN_BIRDS_UNITS=imperial` reaches `cora.plugins.birds` as `units`. Cora's
    own `CORA_` variables are a separate namespace, and two plugins whose module paths
    end in the same segment are refused rather than sharing one.
@@ -280,6 +305,19 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    numbers belong to the turn. Because it read the user's documents, its answer reaches
    cora's own model labelled untrusted, the same as a passage would.
 
+   Work your *own* code does leaves nothing on the trace unless you say so. `cora.show`
+   puts one line there — what you just did, detail behind it for a reader who opens it,
+   and whether it went wrong:
+
+   ```python
+   cora.show("priced 8 departures", detail="cheapest was 2026-09-08")
+   ```
+
+   Cora fills in which plugin said it, so a line can never carry another plugin's name.
+   It lands among the steps of the call it was said inside, beside a delegated loop's
+   rounds; said outside a call there is nothing to report to and it is dropped. A line
+   marked as gone wrong is shown as failed and does not end the turn.
+
 8. **Say which contract it wants.** cora offers one version at a time, and a plugin
    names the one it was written against:
 
@@ -298,7 +336,8 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
 
    **What is public** is everything `cora.ports.host` names: `Host` and its register
    calls — including a tool's `untrusted` and `effect` — `Host.output` and the `Output`
-   port it hands back, the four event names,
+   port it hands back, `Host.state` and the `State` port it hands back, `Host.show`,
+   the five event names,
    `CONTRACT`, `DEFAULT_SCOPE`, and the values a handler is handed — `ToolCall` and
    `ToolResult` from `cora.ports.plugin`, `ToolRefusal` to raise when a call cannot
    run, and `PluginLoadError` from `cora.domain.errors` to raise while registering when

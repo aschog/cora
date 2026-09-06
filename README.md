@@ -33,7 +33,8 @@ A plugin contributes three things, and may bring only one of them:
   as a card built out of the schema it already declared
 - **what cora is** — instructions heading its section of the brief
 - **what cora does as a turn runs** — a handler at a named point in it: refusing the
-  question, amending the brief, refusing one tool call, wrapping what a tool returned
+  question, amending the brief, refusing one tool call, wrapping what a tool returned,
+  or redacting the answer before the reader is given it
 
 With none loaded cora still answers: it searches its documents, remembers what it is
 told, asks when it cannot tell, and cites what it used. It changes nothing outside itself
@@ -145,9 +146,21 @@ forecast has none, so the answer says it in cora's own prose and the trace is th
 of the call. A service that is down costs the turn that one call — a friendly sentence,
 and the conversation intact.
 
-And it prices what it plans. Give it a route, a budget and a month you might go rather
-than a date you have fixed, and it comes back with the three cheapest fares and the
-three cheapest places to stay, each priced and dated. Name a trip without saying where
+And it plans, rather than describing a plan. Ask for three days somewhere in a month
+under a budget and it works out the steps itself: it asks the model what to do on each
+day, prices every week the window allows, pairs the cheapest few with a place to stay
+for their own dates, and then *checks* what it built — the stay covers every night, the
+return matches the check-out, the total is inside the budget, no date is empty, no
+outdoor day sits under a forecast that rules it out. A plan that fails a check is
+revised and searched again, twice, and then handed over with every rule it could not
+satisfy named. Nothing is quietly relaxed: a budget it cannot meet is said plainly, not
+raised. The plan is a shape cora holds rather than a paragraph, kept for the
+conversation, so *make it cheaper* revises what was verified instead of starting again —
+and saving it writes the plan that passed, refusing one that does not match.
+
+It also prices what it plans piece by piece. Give it a route, a budget and a month you
+might go rather than a date you have fixed, and it comes back with the three cheapest
+fares and the three cheapest places to stay, each priced and dated. Name a trip without saying where
 from or when, and it stops and asks you: a card of the search's own fields, dates
 as date pickers, and a button that stays shut until the trip is filled in. Nothing
 reaches the service until you submit it, and what is priced is what you wrote.
@@ -205,6 +218,14 @@ its instructions and the points in a turn it subscribed to, and anything registe
 without a scope marked `system-wide`. `GET /api/plugins` carries the same listing. A
 plugin declares which version of the contract it wants, and one cora does not offer is
 refused before its `extend` is called.
+
+A plugin keeps what it worked out. What it puts under a name of its own is there on the
+next turn of that conversation, rides the same checkpoint the rest of the turn does, and
+goes when the conversation is deleted — a plan it is still revising, a count it is
+running, a form half filled in. That is a different thing from what cora remembers,
+which is about the *user* and outlives every conversation. And its own work is on the
+trace: a plugin running a loop of its own says what it just did, in a line cora signs
+with the plugin's name, standing under the call it happened inside.
 
 A plugin reads its own settings from the environment, under its own name:
 `CORA_PLUGIN_FITNESS_UNITS=imperial` reaches `cora.plugins.fitness` as `units`. Cora's
