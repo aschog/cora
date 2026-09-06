@@ -65,48 +65,6 @@ class Plan:
         return self.fare.price + self.stay.price
 
 
-PRICED_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "price": {"type": "number"},
-        "currency": {"type": "string"},
-        "start": {"type": "string", "format": "date"},
-        "end": {"type": "string", "format": "date"},
-        "line": {"type": "string"},
-    },
-    "required": ["price", "currency", "start", "end", "line"],
-}
-
-PLAN_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "properties": {
-        "origin": {"type": "string", "description": "Where the trip starts."},
-        "destination": {"type": "string", "description": "Where it goes."},
-        "depart": {"type": "string", "format": "date"},
-        "back": {"type": "string", "format": "date"},
-        "days": {
-            "type": "array",
-            "items": {
-                "type": "object",
-                "properties": {
-                    "on": {"type": "string", "format": "date"},
-                    "doing": {"type": "array", "items": {"type": "string"}},
-                    "outdoor": {"type": "boolean"},
-                },
-                "required": ["on", "doing"],
-            },
-        },
-        "fare": PRICED_SCHEMA,
-        "stay": PRICED_SCHEMA,
-        "currency": {"type": "string"},
-    },
-    "required": ["origin", "destination", "depart", "back", "days"],
-}
-"""Said once and read twice: what a plan is written as, and what a tool taking one
-declares. A field somebody wants later is a line here rather than an edit in two places
-that drift."""
-
-
 def _day(on: datetime.date, doing: tuple[str, ...], outdoor: bool) -> dict[str, Any]:
     return {"on": on.isoformat(), "doing": list(doing), "outdoor": outdoor}
 

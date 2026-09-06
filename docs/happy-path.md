@@ -95,7 +95,7 @@ itself.
 
 The round it runs in binds the turn's field, and the search reads it rather than being
 handed it. That is what makes one rule out of four readers: cora's own search, a plugin
-reading `Host.documents`, a handler at any of the four points, and a loop delegated from
+reading `Host.documents`, a handler at any of the five points, and a loop delegated from
 inside a call all read the field the turn is in — and a plugin cannot see the turn it is
 running in, so a parameter would be one nobody could fill.
 

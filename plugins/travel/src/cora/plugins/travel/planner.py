@@ -42,6 +42,13 @@ REVISE_TOOL_DESCRIPTION = (
 
 KEPT = "plan"
 """What the plan is kept under, for the length of the conversation."""
+BUDGET_KEPT = "budget"
+"""What the plan was checked against, kept beside it.
+
+Beside rather than inside, because a budget is what the traveller *asked*, not part of
+the trip that came back — and a revision that names no new ceiling is a revision under
+the old one, never one under none.
+"""
 PASSES = 2
 """How many revisions the loop may make before it offers what it has.
 
@@ -199,13 +206,13 @@ class Planner:
 
     cora: Host
     search: Search | None = None
-    weather: Callable[[str], str] | None = None
+    weather: Callable[..., str] | None = None
 
     def plan(self, **given: Any) -> str:
         """Plan a whole trip and answer with it, however it came out.
 
         Raises:
-            ToolRefusal: The call cannot be read, or no shape could be worked out.
+            ToolRefusal: The call cannot be read.
         """
         return self._planned(_trip_from(given))
 
@@ -222,6 +229,12 @@ class Planner:
         window_start = given.get("window_start") or held.depart.isoformat()
         window_end = given.get("window_end") or held.back.isoformat()
         nights = given.get("nights") or held.nights
+        # A change that names no ceiling is a change under the one already stated:
+        # letting it fall away would relax a constraint the traveller gave.
+        asked_for = self.cora.state.read(BUDGET_KEPT)
+        budget = given.get("budget")
+        if budget is None and asked_for is not None:
+            budget = int(asked_for)
         return self._planned(
             _trip_from(
                 {
@@ -230,7 +243,7 @@ class Planner:
                     "window_start": window_start,
                     "window_end": window_end,
                     "nights": nights,
-                    "budget": given.get("budget"),
+                    "budget": budget,
                     "currency": held.currency,
                     "wants": change,
                 }
@@ -240,36 +253,48 @@ class Planner:
     def _planned(self, trip: Trip) -> str:
         """The loop: shape, search, score, check, revise — and stop on a check, never
         on anything the model said.
-
-        Raises:
-            ToolRefusal: No shape could be worked out at all.
         """
         forecast = self._forecast(trip)
         best: Plan | None = None
         failed: tuple[str, ...] = ()
+        latest: tuple[str, ...] = ()
         for attempt in range(PASSES + 1):
-            days = self._shape(trip, failed)
-            if not days and best is None and attempt == PASSES:
-                raise ToolRefusal(NO_PLAN)
+            days = self._shape(trip, latest)
+            closest: tuple[Plan, tuple[str, ...]] | None = None
             for plan in self._candidates(trip, days):
                 against = check(plan, trip.asked, forecast)
                 if not against:
                     self.cora.show(f"the plan holds after {attempt + 1} pass(es)")
-                    return self._kept(plan, ())
-                if best is None:
-                    best, failed = plan, against
+                    return self._kept(plan, trip)
+                if closest is None or len(against) < len(closest[1]):
+                    closest = (plan, against)
+            if closest is not None:
+                # This pass's own failures: what the next shape is asked to fix, and
+                # what the reader sees under this pass rather than under the first.
+                latest = closest[1]
+                if best is None or len(latest) < len(failed):
+                    best, failed = closest
             self.cora.show(
                 f"pass {attempt + 1} found no plan that holds",
-                detail="; ".join(failed),
+                detail="; ".join(latest),
                 failed=True,
             )
-        if best is None:
-            raise ToolRefusal(NO_PLAN)
-        return self._kept(best, failed)
+        # `_candidates` never comes back empty — it answers with the unpriced plan
+        # where it could price nothing — so the second arm is the type's and not a
+        # path a turn can take.
+        return _read_out(best, failed) if best is not None else NO_PLAN
 
-    def _kept(self, plan: Plan, failed: tuple[str, ...]) -> str:
+    def _kept(self, plan: Plan, trip: Trip) -> str:
+        """Keep the plan that held, and the ceiling it was checked against.
+
+        Only a plan that passed: what is saved is what was verified, and a revision that
+        could not be made to hold leaves the plan that could standing.
+        """
         self.cora.state.keep(KEPT, json.dumps(written(plan)))
-        return _read_out(plan, failed)
+        self.cora.state.keep(
+            BUDGET_KEPT, None if trip.budget is None else str(trip.budget)
+        )
+        return _read_out(plan, ())
 
     def _shape(self, trip: Trip, failed: Sequence[str]) -> tuple[Day, ...]:
         """The day-by-day shape, which is the one part of this that is judgement."""
@@ -292,7 +317,13 @@ class Planner:
         if self.weather is None:
             return None
         try:
-            return skies(self.weather(trip.destination))
+            return skies(
+                self.weather(
+                    trip.destination,
+                    trip.window_start.isoformat(),
+                    trip.window_end.isoformat(),
+                )
+            )
         except ToolRefusal:
             return None
 
@@ -441,7 +472,7 @@ REVISE_SCHEMA: dict[str, Any] = {
 def planning_tools(
     cora: Host,
     search: Search | None = None,
-    weather: Callable[[str], str] | None = None,
+    weather: Callable[..., str] | None = None,
 ) -> tuple[Tool, ...]:
     """The two tools that enter the loop, over one client where there is one."""
     planner = Planner(cora=cora, search=search, weather=weather)

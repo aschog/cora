@@ -34,7 +34,7 @@ A plugin contributes three things, and may bring only one of them:
 - **what cora is** — instructions heading its section of the brief
 - **what cora does as a turn runs** — a handler at a named point in it: refusing the
   question, amending the brief, refusing one tool call, wrapping what a tool returned,
-  or redacting the answer before the reader is given it
+  or replacing the answer that is recorded and handed back
 
 With none loaded cora still answers: it searches its documents, remembers what it is
 told, asks when it cannot tell, and cites what it used. It changes nothing outside itself

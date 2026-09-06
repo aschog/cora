@@ -63,13 +63,13 @@ choose, and these are files they may choose.
 
 
 def extend(cora: Host) -> None:
-    """Instructions and up to five tools, all under travel and none outside it.
+    """Instructions and up to seven tools, all under travel and none outside it.
 
-    Four are declared as returning material cora did not write: a service's answer is
+    Six are declared as returning material cora did not write: a service's answer is
     not cora's words, and neither is a report the researcher built out of documents and
-    a forecast. The last changes something outside cora and says so, so a call of it
-    waits for the user. Nothing here is system-wide, so a turn about training is offered
-    no weather, no researcher and no prices.
+    a forecast, nor a plan built out of both. The last changes something outside cora
+    and says so, so a call of it waits for the user. Nothing here is system-wide, so a
+    turn about training is offered no weather, no researcher, no prices and no plan.
 
     Two of them are offered only where the deployment set a key for the search service,
     and saving only where it configured somewhere to write. A tool the model can call

@@ -169,7 +169,7 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
 
 4. **Take part in the turn.** A handler subscribes to a named point in it, is handed
    one frozen value, and answers by returning — a refusal, an amendment, or `None` for
-   neither. The four points are `cora.ports.host`'s, and they differ in what a return
+   neither. The five points are `cora.ports.host`'s, and they differ in what a return
    means:
 
    | Event | Handed | Return | What returning it does |
@@ -180,7 +180,10 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    | `RETURNING` | the `ToolResult` that came back | `ToolResult` | replaces what the model is told |
    | `ANSWERING` | the answer, settled and not yet handed over | `str` | replaces what the reader is given |
 
-   `ANSWERING` is where an answer is redacted or rewritten before the reader sees it.
+   `ANSWERING` is where an answer is redacted or rewritten. It replaces what is
+   recorded, kept and handed back — but cora streams the model's text to the page as it
+   is written, so a reader watching the answer appear has already seen what you removed.
+   Treat it as changing the answer that is *kept*, not as holding one back.
    It amends rather than refuses, so blocking one means handing back the sentence they
    should read instead — the turn has already been spent, and throwing it away is a
    worse answer than a substituted one. Citations are read off what you returned, so a

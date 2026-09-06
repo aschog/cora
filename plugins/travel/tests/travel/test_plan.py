@@ -2,7 +2,6 @@ import datetime
 from typing import Any
 
 from cora.plugins.travel.plan import (
-    PLAN_SCHEMA,
     Day,
     Plan,
     Priced,
@@ -80,13 +79,3 @@ def test_an_unpriced_plan_round_trips_unchanged() -> None:
 
 def test_what_is_written_carries_its_dates_as_text() -> None:
     assert written(_plan())["depart"] == "2026-09-07"
-
-
-def test_the_schema_requires_the_parts_a_plan_cannot_be_read_without() -> None:
-    assert set(PLAN_SCHEMA["required"]) == {
-        "origin",
-        "destination",
-        "depart",
-        "back",
-        "days",
-    }

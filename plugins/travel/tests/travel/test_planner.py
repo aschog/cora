@@ -7,6 +7,7 @@ import pytest
 from cora.engine import keeping
 from cora.plugins.travel.plan import plan_from
 from cora.plugins.travel.planner import (
+    CANDIDATES,
     KEPT,
     PASSES,
     Planner,
@@ -48,9 +49,15 @@ class Service:
     """The search service written out, pricing a fare by its departure so a window has
     a cheapest week in it."""
 
-    def __init__(self, fares: dict[str, float] | None = None, stay: float = 240.0):
+    def __init__(
+        self,
+        fares: dict[str, float] | None = None,
+        stay: float = 240.0,
+        stays: dict[str, float] | None = None,
+    ):
         self.fares = fares or {}
         self.stay = stay
+        self.stays = stays or {}
         self.queries: list[dict[str, Any]] = []
 
     def get(self, url: str, *, params: dict[str, Any]) -> Answer:
@@ -60,13 +67,14 @@ class Service:
             return Answer(
                 {"best_flights": [{"flights": [{"airline": "TAP"}], "price": price}]}
             )
+        rate = self.stays.get(params.get("check_in_date", ""), self.stay)
         return Answer(
             {
                 "properties": [
                     {
                         "name": "Hotel Baixa",
                         "hotel_class": "3-star hotel",
-                        "total_rate": {"extracted_lowest": self.stay},
+                        "total_rate": {"extracted_lowest": rate},
                     }
                 ]
             }
@@ -140,13 +148,16 @@ def test_every_departure_of_the_window_is_priced() -> None:
 
 
 def test_only_the_cheapest_few_departures_are_paired_with_a_stay() -> None:
+    """More departures than candidates, so dropping the cap would show here."""
     cora = Cora()
     service = Service()
 
-    _planner(cora, service).plan(**TRIP)
+    _planner(cora, service).plan(**(TRIP | {"window_end": "2026-10-20"}))
 
     stays = [q for q in service.queries if q.get("engine") == "google_hotels"]
-    assert len(stays) <= 3
+    flights = [q for q in service.queries if q.get("engine") == "google_flights"]
+    assert len(flights) > CANDIDATES
+    assert len(stays) == CANDIDATES
 
 
 def test_a_plan_that_holds_stops_the_loop_on_its_first_pass() -> None:
@@ -206,7 +217,7 @@ def test_a_candidate_the_forecast_rules_out_is_passed_over_for_one_that_holds() 
     cora = Cora()
     wet = "Lisbon — 2026-09-02: 18/12°C, heavy rain"
 
-    read = _planner(cora, Service(), weather=lambda place: wet).plan(**TRIP)
+    read = _planner(cora, Service(), weather=lambda place, *window: wet).plan(**TRIP)
 
     assert "2026-09-01 to" not in read
     assert "the plan holds" in read
@@ -216,7 +227,7 @@ def test_an_outdoor_day_the_forecast_rules_out_is_named_when_none_holds() -> Non
     cora = Cora()
     wet = "; ".join(f"2026-09-{day:02d}: 18/12°C, heavy rain" for day in range(1, 23))
 
-    read = _planner(cora, Service(), weather=lambda place: wet).plan(**TRIP)
+    read = _planner(cora, Service(), weather=lambda place, *window: wet).plan(**TRIP)
 
     assert "rules out what is planned outdoors" in read
 
@@ -224,7 +235,7 @@ def test_an_outdoor_day_the_forecast_rules_out_is_named_when_none_holds() -> Non
 def test_a_forecast_that_cannot_be_had_costs_the_plan_one_rule_and_not_the_trip() -> (
     None
 ):
-    def down(place: str) -> str:
+    def down(place: str, *window: str) -> str:
         raise ToolRefusal("the forecast service is down")
 
     read = _planner(Cora(), Service(), weather=down).plan(**TRIP)
@@ -486,3 +497,102 @@ def test_every_revision_is_shown_so_a_reader_can_count_them() -> None:
     assert len(passes) == PASSES + 1
     assert passes[0].startswith("pass 1")
     assert passes[-1].startswith(f"pass {PASSES + 1}")
+
+
+def test_the_total_orders_the_candidates_and_not_the_fare_alone() -> None:
+    """The cheapest fare's week can hold the dearest room, and what is compared is what
+    the trip costs."""
+    cora = Cora()
+    service = Service(
+        fares={"2026-09-01": 100.0, "2026-09-08": 200.0},
+        stays={"2026-09-01": 900.0, "2026-09-08": 240.0},
+    )
+
+    read = _planner(cora, service).plan(**(TRIP | {"budget": 2000}))
+
+    assert "2026-09-08 to 2026-09-11" in read
+    assert "total: EUR 440" in read
+
+
+def test_a_revision_with_no_budget_keeps_the_one_it_was_checked_against() -> None:
+    """The first plan holds inside 800; the revised window holds only a dearer week,
+    and the ceiling the traveller stated is still what it is judged against."""
+    cora = Cora()
+    planner = _planner(
+        cora,
+        Service(fares={"2026-09-01": 100.0}, stays={"2026-09-01": 240.0}, stay=900.0),
+    )
+    planner.plan(**TRIP)
+
+    read = planner.revise(
+        "a week later", window_start="2026-09-08", window_end="2026-09-11"
+    )
+
+    assert "over the 800 budget" in read
+
+
+def test_a_revision_that_names_no_budget_still_searches_under_the_old_ceiling() -> None:
+    cora = Cora()
+    service = Service()
+    planner = _planner(cora, service)
+    planner.plan(**TRIP)
+    service.queries.clear()
+
+    planner.revise("a week later")
+
+    flights = [q for q in service.queries if q.get("engine") == "google_flights"]
+    assert all(q.get("max_price") == "800" for q in flights)
+
+
+def test_a_later_pass_that_gets_closer_is_the_one_offered() -> None:
+    """The closest plan reached, not the first near-miss: a revision that fixed the
+    empty day is a better answer even while the budget still fails."""
+    empty = json.dumps([{"on": "2026-09-01", "doing": []}])
+    cora = Cora(empty, SHAPE, SHAPE)
+
+    read = _planner(cora, Service(stay=900.0)).plan(**TRIP)
+
+    assert "nothing is planned" not in read
+    assert "over the 800 budget" in read
+
+
+def test_each_pass_is_shown_with_the_failures_that_pass_found() -> None:
+    empty = json.dumps([{"on": "2026-09-01", "doing": []}])
+    cora = Cora(empty, SHAPE, SHAPE)
+
+    _planner(cora, Service(stay=900.0)).plan(**TRIP)
+
+    said = [detail for _, detail, failed in cora.shown if failed]
+    assert "nothing is planned" in said[0]
+    assert "nothing is planned" not in said[-1]
+
+
+def test_a_revision_that_cannot_hold_leaves_the_kept_plan_standing() -> None:
+    cora = Cora()
+    planner = _planner(cora, Service())
+    planner.plan(**TRIP)
+    held = cora.kept[KEPT]
+
+    planner.revise("much cheaper", budget=100)
+
+    assert cora.kept[KEPT] == held
+
+
+def test_a_plan_that_never_held_is_not_kept_for_the_save_to_write() -> None:
+    cora = Cora()
+
+    _planner(cora, Service(stay=900.0)).plan(**TRIP)
+
+    assert KEPT not in cora.kept
+
+
+def test_the_forecast_is_asked_about_the_window_the_trip_is_in() -> None:
+    asked: list[tuple[str, ...]] = []
+
+    def weather(place: str, start: str = "", end: str = "") -> str:
+        asked.append((place, start, end))
+        return ""
+
+    _planner(Cora(), Service(), weather=weather).plan(**TRIP)
+
+    assert asked == [("Lisbon", "2026-09-01", "2026-09-22")]

@@ -14,6 +14,7 @@ from cora.adapters.file_output import FileOutput
 from cora.domain.card import Answer
 from cora.domain.decision import TurnPaused
 from cora.domain.trace import HandlerRan
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.plugins.travel import SCOPE
 from cora.plugins.travel.itinerary import ITINERARY_TOOL_NAME
 from cora.ports.chat_model import ModelReply
@@ -149,6 +150,15 @@ def test_a_redacted_sentence_takes_its_citation_with_it() -> None:
             chat_model=ScriptedChatModel(
                 [
                     ModelReply(
+                        tool_calls=(
+                            ToolCall(
+                                name=SEARCH_TOOL_NAME,
+                                arguments={"query": "tram"},
+                                call_id="q1",
+                            ),
+                        )
+                    ),
+                    ModelReply(
                         text="Tram 28 runs east [1]. Also the market shuts [2]."
                     ),
                 ]
@@ -158,11 +168,11 @@ def test_a_redacted_sentence_takes_its_citation_with_it() -> None:
         ("tram.md", b"Tram 28 runs from Martim Moniz to the east of the city."),
         ("market.md", b"The market closes on Mondays and reopens on Tuesday."),
     )
-    app.knowledge_base.search("tram", k=2)
 
     answered = app.agent.answer(QUESTION, THREAD)
 
     assert answered.answer == "Tram 28 runs east [1]."
+    assert [citation.number for citation in answered.citations] == [1]
 
 
 def test_a_turn_that_stopped_and_was_picked_up_checks_its_answer_once(
