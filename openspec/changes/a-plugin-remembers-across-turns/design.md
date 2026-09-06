@@ -10,58 +10,65 @@ plugin, and dropped with the conversation it belonged to.
 
 **Non-Goals** — a store keyed by the user, which is what cora's memory already is. A
 shape richer than text, which would make cora the reader of what a plugin kept. A quota,
-because a plugin is code the deployment chose to run. State a handler can reach, until
-a handler needs it.
+because a plugin is code the deployment chose to run. State a handler can reach, until a
+handler needs it.
 
 ## Decisions
 
-**The conversation is bound around the call, the way its fields already are.**
+**It rides the turn's state, because the checkpointer already keeps one per thread.**
 
-- `cora.engine.scoping` gains the thread beside the scopes, bound at the one place the
-  scopes are bound, so nothing new decides when a plugin is inside a turn.
-- `AgentState` carries the thread, seeded where the question is, because a step reads
-  state and never the runner's config.
-- Rejected: binding it around the whole run — the stream is a generator, and a context
-  entered across a yield leaks into whoever is iterating.
+- `AgentState` gains one key, and the saver a deployment already configured persists it
+  beside the messages and the trace.
+- Deleting a conversation drops the thread, and what rode on it goes without a line of
+  code.
+- Values are text, so the serialiser needs no entry in the checkpointed types.
+- Rejected: a port and a sqlite adapter of its own — a second thing keyed by thread,
+  which the checkpointer is, and a second thing to delete in step with the first.
 
-**A port, because the confinement is cora's rather than each plugin's.**
+**The key is never seeded per turn, which is the bug this shape invites.**
 
-- `State` is two verbs: read a name, and keep text under one, where keeping nothing
-  drops it.
-- The plugin names a key and never a conversation, so no plugin can read another
-  conversation by guessing at its id.
-- Rejected: handing a plugin a directory — every plugin would write the same keying and
-  confinement check, and each would be a different bug.
+- `filled` is emptied at the top of each turn because it belongs to one; this does the
+  opposite, and a test says so.
+
+**A call reads a snapshot and its writes are collected, as a card's values are.**
+
+- The tool step binds what plugins kept before the call and collects what the call
+  wrote, the way `cora.engine.nesting` collects the steps a call took.
+- It merges them into state when the call is done, as the gate step merges a card's
+  values into `filled` before it.
+- A delegated loop inside the call sees the same snapshot, because it is inside the same
+  binding.
+- Rejected: a tool returning a state update — cora calls tools by keyword and reads a
+  payload, and threading LangGraph's `Command` into that would put the graph in the
+  plugin contract.
+
+**No thread id reaches a plugin, and none needs to.**
+
+- The state is already this conversation's by the time the step holds it, so a plugin
+  names a key and never a conversation.
 
 **The host namespaces, because only the host knows which plugin is asking.**
 
-- `PluginHost` already knows its module, and already reads settings under that name.
-- The store sees a key the host built, so a plugin cannot spell its way into another's.
+- `PluginHost` holds the module it was built for, and already reads settings under that
+  name.
 
-**It is kept where the conversation's turns are kept.**
-
-- One sqlite file holds the turns, the checkpoints and now this, so a deployment that
-  deletes it loses a whole conversation rather than half of one.
-- `Agent.forget` drops it beside the turns and the thread, which is the rule that file
-  already states.
-
-**Nothing is kept outside a turn.**
+**Nothing is kept outside a tool call.**
 
 - A read comes back with nothing and a write is dropped, as `took` drops a step taken
   outside a call.
-- Rejected: raising — a plugin doing housekeeping at load would fail the deployment for
-  it.
+- Rejected: raising — a plugin doing housekeeping at load would fail the deployment.
 
 ## Risks / Trade-offs
 
+- What a plugin keeps grows the checkpoint, and a plugin that writes a lot makes every
+  later turn's state larger.
 - Text values mean a plugin serialises its own shape, which is a parse it has to defend.
-- A conversation that is never deleted keeps what its plugins wrote for as long as it
-  lives, which is the same promise its turns have.
 - Two turns of one conversation answering at once could overwrite each other, which cora
   does not offer today and does not start to here.
 
 ## Ports, guards and diagrams
 
-- New port `cora.ports.state`, and `Host.state` as added surface, so `CONTRACT` stands.
-- The component map is regenerated, because assembly binds one more adapter.
-- The architecture guard is unchanged: a protocol states a shape and holds no data.
+- `Host.state` as added surface, so `CONTRACT` stands where it is.
+- No new port and no new adapter, so the component map is unchanged.
+- The domain class diagram is regenerated, because `AgentState` gains a key.
+- The round diagram is regenerated, because the tool step gains a binding it follows.
