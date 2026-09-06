@@ -5,24 +5,31 @@
 
 const AT = '#/c/'
 
-/** Which conversation the address names, or nothing. A thread id is a UUID the page
- *  minted, so anything that could not be one is a hash meaning something else. */
+/** What a thread may be made of. Checked rather than assumed: the address is the one
+ *  input to this page that anybody can write, and what it holds goes into the path of a
+ *  request — `..%2Fmemory` decodes to `../memory`, which the browser resolves to another
+ *  endpoint whose answer would then be drawn as this conversation's turns.
+ *
+ *  Letters, digits and dashes: what `crypto.randomUUID` produces, and what the fallback
+ *  for a browser without it produces too. Not the UUID shape itself, because the page
+ *  mints one of those and cora is what decides the other. Nothing here can be a `.`, a
+ *  `/` or an escape, so nothing read out of the address can mean a different path. */
+const THREAD = /^[A-Za-z0-9-]+$/
+
+/** Which conversation the address names, or nothing. */
 export function threadInUrl(
   hash: string = globalThis.location?.hash ?? '',
 ): string | null {
   if (!hash.startsWith(AT)) return null
-  /* Read as written, before decoding: a `/` in the address is a second segment and this
-     route has one, while a `/` in the *name* arrived as `%2F` and is part of it. Decoding
-     first cannot tell those apart, and would refuse the name for the address's syntax. */
-  const named = hash.slice(AT.length)
-  if (named.length === 0 || named.includes('/')) return null
+  let named: string
   try {
-    return decodeURIComponent(named)
+    named = decodeURIComponent(hash.slice(AT.length))
   } catch {
     /* A hand-edited address can hold a `%` that decodes to nothing. It names no
        conversation, which is what an address the page did not write usually is. */
     return null
   }
+  return THREAD.test(named) ? named : null
 }
 
 /**

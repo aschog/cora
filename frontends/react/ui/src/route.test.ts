@@ -52,10 +52,30 @@ test('a conversation opened twice is one entry, so back goes back', () => {
   expect(globalThis.history.length).toBe(depth)
 })
 
-test('a name with characters the address would eat survives the round trip', () => {
-  showThread('a thread/with?awkward#parts')
+test('an address that could mean another path names no conversation', () => {
+  /* Whatever is in that slot goes into the path of a request. `..%2Fmemory` decodes to
+     `../memory`, which the browser resolves to a different endpoint entirely — and its
+     answer would then be drawn as this conversation's turns. The address is the one input
+     to this page anybody can write, so it is checked here, once, rather than trusted by
+     every reader of it. */
+  for (const named of ['..%2Fmemory', '..%2F..%2Fetc', '.', '..', 'a%2Fb', 'a b', 'a.b']) {
+    at(`#/c/${named}`)
+    expect(threadInUrl()).toBeNull()
+  }
+})
 
-  expect(threadInUrl()).toBe('a thread/with?awkward#parts')
+test('a thread the page minted is read back as one, however it was minted', () => {
+  /* `crypto.randomUUID` where the browser has it, and a run of digits where it does not.
+     Both are threads this page made, and refusing either would leave a conversation
+     unnameable on the browsers that mint it that way. */
+  for (const named of [
+    'ec2f3426-b2b5-4886-9f40-0d1d9c0f2a11',
+    'EC2F3426-B2B5-4886-9F40-0D1D9C0F2A11',
+    '84019273640192',
+  ]) {
+    at(`#/c/${named}`)
+    expect(threadInUrl()).toBe(named)
+  }
 })
 
 test('an address that decodes to nothing names no conversation', () => {

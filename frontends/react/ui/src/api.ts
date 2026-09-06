@@ -106,8 +106,12 @@ export const scopes = (signal?: AbortSignal) => read<Scopes>('/api/scopes', { si
 export const memory = (signal?: AbortSignal) => read<Fact[]>('/api/memory', { signal })
 export const sessions = (signal?: AbortSignal) =>
   read<Session[]>('/api/sessions', { signal })
+/* Every thread reaching a path is escaped on the way in — here, and in the three below
+   that take one. The router already refuses an address that could mean a different path,
+   and this is the same guard at the other end: one place every caller routes through,
+   rather than a rule each new one has to know. */
 export const turns = (thread: string, signal?: AbortSignal) =>
-  read<Turn[]>(`/api/sessions/${thread}`, { signal })
+  read<Turn[]>(`/api/sessions/${encodeURIComponent(thread)}`, { signal })
 
 export const passage = (scope: string, upload: string, signal?: AbortSignal) =>
   read<{ text: string }>(
@@ -124,7 +128,8 @@ export const deleteDocument = (scope: string, name: string) =>
 /** Delete one conversation: the turns recorded under it, and the thread they were
  *  answered on. One request, because a conversation whose record is gone and whose
  *  thread is not still holds a pin, a transcript and possibly a turn nobody can see. */
-export const deleteSession = (thread: string) => discard(`/api/sessions/${thread}`)
+export const deleteSession = (thread: string) =>
+  discard(`/api/sessions/${encodeURIComponent(thread)}`)
 
 export const forget = (key: string) => discard(`/api/memory/${key}`)
 
@@ -216,14 +221,16 @@ export async function resume(
 /** Which field a conversation is pinned to, or nothing. The pin is a key of the thread's
  *  own state, so this is what a reloaded page reads it back from. */
 export const pinned = (thread: string, signal?: AbortSignal) =>
-  read<{ pin: string | null }>(`/api/sessions/${thread}/scope`, { signal }).then(
+  read<{ pin: string | null }>(`/api/sessions/${encodeURIComponent(thread)}/scope`, {
+    signal,
+  }).then(
     (held) => held.pin,
   )
 
 /** What a conversation is waiting on, or nothing. A page that arrived after the pause
  *  has nowhere else to look: the turn is recorded only once it has an answer. */
 export const pending = (thread: string, signal?: AbortSignal) =>
-  read<Pending | null>(`/api/sessions/${thread}/pending`, { signal })
+  read<Pending | null>(`/api/sessions/${encodeURIComponent(thread)}/pending`, { signal })
 
 const post = (path: string, body: unknown) =>
   fetch(path, {
