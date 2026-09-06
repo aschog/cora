@@ -141,6 +141,10 @@ function Control({
       </div>
     )
   const choices = field.schema.enum
+  const kind = input(field.schema)
+  /* A date's change fires once, on a complete pick; a text field's fires per keystroke.
+     That is the whole of why the field is let go for one and not the other. */
+  const picker = kind === 'date' || kind === 'datetime-local'
   return (
     <label className={styles.cardField}>
       {label}
@@ -157,10 +161,16 @@ function Control({
       ) : (
         <input
           className={styles.cardInput}
-          type={input(field.schema)}
+          type={kind}
           required={field.required}
           value={value === null || value === undefined ? '' : String(value)}
-          onChange={(event) => onWrite(read(field.schema, event.target.value))}
+          onChange={(event) => {
+            onWrite(read(field.schema, event.target.value))
+            /* A controlled date input keeps its native popup open: the value is written
+               back onto the still-focused field, and the browser reads that as the picker
+               still in use. Letting the field go dismisses it, on Safari as on Chrome. */
+            if (picker) event.currentTarget.blur()
+          }}
         />
       )}
     </label>

@@ -268,3 +268,29 @@ test('a card written with markup is drawn as text, and none of it runs', () => {
   expect(document.querySelector('img')).toBeNull()
   expect(document.querySelector('b')).toBeNull()
 })
+
+test('picking a date lets the field go, so the native popup closes', () => {
+  /* A controlled date input keeps its picker open when the value is written back onto
+     the still-focused field — Safari and Chrome both. Letting the field go on a complete
+     pick is what dismisses it. */
+  drawn({ fields: [field('depart', { type: 'string', format: 'date' })] })
+  const input = screen.getByLabelText('depart')
+  input.focus()
+  expect(document.activeElement).toBe(input)
+
+  fireEvent.change(input, { target: { value: '2026-09-13' } })
+
+  expect(document.activeElement).not.toBe(input)
+})
+
+test('typing into a text field does not let it go, so a word is not cut off', () => {
+  /* The mirror: a text field's change fires per keystroke, and letting go there would
+     eject the reader mid-word. Only a date picker closes on change. */
+  drawn({ fields: [field('note', { type: 'string' })] })
+  const input = screen.getByLabelText('note')
+  input.focus()
+
+  fireEvent.change(input, { target: { value: 'Lis' } })
+
+  expect(document.activeElement).toBe(input)
+})
