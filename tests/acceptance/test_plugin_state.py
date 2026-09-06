@@ -4,8 +4,6 @@ The plugin, its registration and both whole turns are the real ones; the model i
 scripted, which is the boundary a stub is for.
 """
 
-import pytest
-
 from app_builder import assembled
 from cora.domain.trace import ToolUse
 from cora.engine.plugin_registry import load_plugins
@@ -29,7 +27,6 @@ def _calling(name: str, **arguments: str) -> ModelReply:
     )
 
 
-@pytest.mark.xfail(strict=True)
 def test_what_one_turn_kept_the_next_turn_reads_back() -> None:
     app = assembled(
         chat_model=ScriptedChatModel(

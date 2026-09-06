@@ -41,6 +41,13 @@ class AgentState(TypedDict, total=False):
     asked about. State rather than transcript, because a call the model made is what the
     model said: an assistant message cora forged to carry the user's values would read
     as a round nobody spent.
+
+    `kept` is what each loaded plugin kept, under the name cora loaded it as and then
+    under its own names. The one key here belonging to the *conversation* rather than to
+    a turn, `pin` aside: it is never seeded, because a plugin that worked something out
+    last turn is a plugin that has it this turn. Text, so it travels through a
+    checkpoint as data the serialiser already carries, and what the text means is the
+    plugin's own.
     """
 
     question: str
@@ -54,5 +61,6 @@ class AgentState(TypedDict, total=False):
     pin: str
     pinning: str
     filled: dict[str, dict[str, Any]]
+    kept: dict[str, dict[str, str]]
     brief: str
     answer: str

@@ -24,6 +24,7 @@ from cora.domain.trace import (
     StepEntered,
     ToolUse,
 )
+from cora.engine import keeping
 from cora.engine.ask_tool import (
     ASK_FOR_TOOL_NAME,
     ASK_TOOL_NAME,
@@ -2448,3 +2449,124 @@ def test_a_call_nobody_filled_in_is_told_as_it_always_was() -> None:
     )["messages"]
 
     assert told.content == "priced it"
+
+
+def _keeper(name: str = "keep", note: str = "note", text: str | None = "Kyoto") -> Tool:
+    """A tool that keeps something while its own call runs, as a plugin's does."""
+
+    def run() -> str:
+        keeping.keep("keeper", note, text)
+        return f"kept {text}"
+
+    return Tool(
+        name=name,
+        description="Keep a note.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=run,
+    )
+
+
+def _reader(name: str = "read", note: str = "note") -> Tool:
+    """A tool that reads what its plugin kept, and says so."""
+
+    def run() -> str:
+        return keeping.read("keeper", note) or "nothing"
+
+    return Tool(
+        name=name,
+        description="Read a note.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=run,
+    )
+
+
+def _call(name: str, call_id: str = "c1") -> ToolCall:
+    return ToolCall(name=name, arguments={}, call_id=call_id)
+
+
+def test_what_a_call_kept_is_in_the_state_the_step_contributes() -> None:
+    step = ToolStep(ToolRuntime(tools=(_keeper(),)))
+
+    contributed = step(_asked(_call("keep")))
+
+    assert contributed["kept"] == {"keeper": {"note": "Kyoto"}}
+
+
+def test_a_call_reads_what_was_kept_before_the_round_began() -> None:
+    step = ToolStep(ToolRuntime(tools=(_reader(),)))
+    state = _asked(_call("read")) | {"kept": {"keeper": {"note": "Nara"}}}
+
+    read = step(state)["trace"][0]
+
+    assert read.detail == "Nara"
+
+
+def test_what_an_earlier_call_kept_a_later_call_of_the_round_reads() -> None:
+    step = ToolStep(ToolRuntime(tools=(_keeper(), _reader())))
+
+    trace = step(_asked(_call("keep", "c1"), _call("read", "c2")))["trace"]
+
+    assert trace[1].detail == "Kyoto"
+
+
+def test_a_call_that_kept_nothing_leaves_what_was_kept_before_it() -> None:
+    step = ToolStep(ToolRuntime(tools=(_reader(),)))
+    state = _asked(_call("read")) | {"kept": {"keeper": {"note": "Nara"}}}
+
+    assert step(state)["kept"] == {"keeper": {"note": "Nara"}}
+
+
+def test_keeping_nothing_under_a_name_drops_it_from_the_state() -> None:
+    step = ToolStep(ToolRuntime(tools=(_keeper(text=None),)))
+    state = _asked(_call("keep")) | {"kept": {"keeper": {"note": "Nara"}}}
+
+    assert step(state)["kept"] == {"keeper": {}}
+
+
+def test_what_a_call_kept_does_not_reach_the_state_a_turn_arrived_with() -> None:
+    """The dictionary the channel holds is deep-copied, so a call cannot write into the
+    state behind the step's back and leave the contributed value meaningless."""
+    step = ToolStep(ToolRuntime(tools=(_keeper(),)))
+    arrived: dict[str, dict[str, str]] = {"keeper": {"note": "Nara"}}
+
+    step(_asked(_call("keep")) | {"kept": arrived})
+
+    assert arrived == {"keeper": {"note": "Nara"}}
+
+
+def test_a_call_that_refused_keeps_what_it_wrote_before_it_refused() -> None:
+    def run() -> str:
+        keeping.keep("keeper", "note", "Kyoto")
+        raise ToolRefusal("not today")
+
+    refusing = Tool(
+        name="keep",
+        description="Keep a note and then refuse.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=run,
+    )
+    step = ToolStep(ToolRuntime(tools=(refusing,)))
+
+    assert step(_asked(_call("keep")))["kept"] == {"keeper": {"note": "Kyoto"}}
+
+
+def test_the_binding_is_reset_once_the_round_is_over() -> None:
+    step = ToolStep(ToolRuntime(tools=(_keeper(),)))
+
+    step(_asked(_call("keep")))
+
+    assert keeping.read("keeper", "note") is None
+
+
+def test_a_turn_that_kept_nothing_contributes_what_it_arrived_with() -> None:
+    step = ToolStep(ToolRuntime(tools=(add_tool(),)))
+
+    assert step(_asked(_add_call("c1")))["kept"] == {}
+
+
+def test_what_a_plugin_kept_is_not_emptied_at_the_top_of_a_turn() -> None:
+    """The opposite of `filled`: a card's values belong to one turn, and what a plugin
+    kept belongs to the conversation."""
+    contributed = ScreenStep()({"question": "and now?", "kept": {"keeper": {"a": "b"}}})
+
+    assert "kept" not in contributed

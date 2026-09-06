@@ -21,6 +21,7 @@ from cora.domain.trace import (
     TraceStep,
 )
 from cora.domain.transcript import prompt_from
+from cora.engine import keeping
 from cora.engine.ask_tool import (
     ASK_FOR_TOOL_NAME,
     ASK_TOOL_NAME,
@@ -691,12 +692,20 @@ class ToolStep:
     def _round(self, state: AgentState, scopes: frozenset[str]) -> AgentState:
         known = tuple(state.get("citations", ()))
         filled = state.get("filled", {})
+        # Deep-copied, because the inner dictionaries are the ones the channel is
+        # holding: a plugin writing into a shared one would change the turn's state
+        # behind this step and leave what it contributes saying nothing new.
+        kept = deepcopy(state.get("kept", {}))
         messages: list[Message] = []
         trace: list[TraceStep] = []
         added: list[Citation] = []
         for call in _requested_calls(state):
             after: list[TraceStep] = []
-            result, inside = self._ran(call, scopes, trace, after)
+            # Bound per call, so what one call kept the next one reads and the binding
+            # is gone by the time anything outside the round runs. A loop delegated
+            # inside the call is inside this, and keeps under the same conversation.
+            with keeping.bound(kept):
+                result, inside = self._ran(call, scopes, trace, after)
             citable = result.payload if isinstance(result.payload, Citable) else None
             if citable is None:
                 read = Read(
@@ -713,7 +722,14 @@ class ToolStep:
             messages.append(told(result, read))
             trace.append(used(call, result, read, tuple(inside.steps)))
             trace.extend(after)
-        return {"messages": messages, "trace": trace, "citations": added}
+        # The whole of it rather than what this round wrote: the key carries no reducer,
+        # so what is contributed replaces what the channel held.
+        return {
+            "messages": messages,
+            "trace": trace,
+            "citations": added,
+            "kept": kept,
+        }
 
     def _ran(
         self,
