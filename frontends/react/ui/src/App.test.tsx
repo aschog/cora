@@ -4539,3 +4539,37 @@ test('a panel that throws costs that panel, not the conversation beside it', asy
     quiet.mockRestore()
   }
 })
+
+test('a scopes read that failed recovers, though the fields never change', async () => {
+  /* Which fields a deployment offers is settled when the process starts, so nothing a
+     turn does can change it — which is an argument for never asking twice, and it is
+     wrong. A read that failed leaves no fields, no picker and a banner, and re-asking is
+     the only way out of that. So it stays in the refresh with the other three, and the
+     cost is one small request a turn. */
+  const broken = { error: 'The plugin registry is temporarily unavailable.' }
+  let reachable = false
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/scopes' && !reachable)
+        return { ok: false, status: 503, json: async () => broken } as unknown as Response
+      if (path === '/api/ask') return answering()
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+
+  render(<App />)
+  expect(await screen.findByText(broken.error)).toBeTruthy()
+
+  reachable = true
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'anything' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+
+  await screen.findByText(TURN.trace[0].summary)
+  expect(screen.queryByText(broken.error)).toBeNull()
+  // And the picker the failed read left empty is drawn again.
+  expect(screen.getByRole('button', { name: 'Plugin' })).toBeTruthy()
+})

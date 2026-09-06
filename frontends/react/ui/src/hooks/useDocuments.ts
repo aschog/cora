@@ -73,7 +73,13 @@ export function useDocuments({
   const erase = (scope: string, name: string) =>
     cora
       .deleteDocument(scope, name)
-      .then(() => setRead((shown) => (shown?.document === name ? null : shown)))
+      /* The field as well as the name: one name covers a document in each field, so
+         deleting `kyoto.md` from travel must not close a panel reading the fitness one. */
+      .then(() =>
+        setRead((shown) =>
+          shown?.document === name && shown?.scope === scope ? null : shown,
+        ),
+      )
 
   return { notice, setNotice, upload, erase }
 }

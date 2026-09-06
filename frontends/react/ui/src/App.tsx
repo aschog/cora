@@ -58,7 +58,12 @@ type Banner = { which: string; said: string }
  *  other end of localhost: a read that failed did not lose a packet, and three silent
  *  attempts would only delay the sentence that says so. Refetching is what a turn, an
  *  upload or a delete asks for — not what the window regaining focus asks for, which
- *  would redraw the rails under a reader who was reading them. */
+ *  would redraw the rails under a reader who was reading them.
+ *
+ *  Read rather than suspended on. `use()` and a Suspense boundary would draw a fallback
+ *  per rail while it loads, and the page has one banner for all four on purpose: a
+ *  boundary is where an error stops, so suspending the rails would put their failures in
+ *  four places and leave the rule that they are told once with nowhere to live. */
 const newStore = () =>
   new QueryClient({
     defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
@@ -207,7 +212,10 @@ function Page() {
     const asked = routed
     if (asked === followed.current) return
     followed.current = asked
-    if (asked === null || asked === thread) return
+    /* `here.current` rather than `thread`: `enter()` writes the ref synchronously while
+       the state behind it is scheduled, so there is a window where this would see the new
+       address against the old conversation and re-enter a load already running. */
+    if (asked === null || asked === here.current) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void enterConversation({ thread_id: asked, opened_with: '' })
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -429,14 +437,10 @@ function Page() {
       {confirming && (
         <ConfirmModal
           {...confirming}
-          /* The question comes down as it is answered and the act runs after, so a
-             banner the failure raises is not cleared by the card closing.
-             The redraw and the refusal both belong here rather than in the act. The
-             redraw, because a question may stand while a landing turn moves the field
-             under it: this `refresh` asks about the field the rail is showing now,
-             where the act's own would land the old field's listing under the new
-             field's heading. The refusal, because nothing changed — a redraw would
-             clear the sentence that says so. */
+          /* The question comes down as it is answered and the row goes with it; what
+             the store says about it lands after. Neither the redraw nor the sentence is
+             written here any more — `useRemoving` owns both, because the rollback and
+             the sentence that explains it have to be the same step. */
           onConfirm={() => {
             const going = confirming
             setConfirming(null)

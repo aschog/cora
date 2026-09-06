@@ -318,5 +318,5 @@ export function useTurn({
       said.map((each) => (each.id === entry.id ? { ...each, changing: at } : each)),
     )
 
-  return { flight, live, working, lost, setLost, ask, take, change }
+  return { flight, live, working, lost, ask, take, change }
 }

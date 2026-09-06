@@ -41,6 +41,31 @@ test('starting over takes the conversation out of the address', () => {
   expect(threadInUrl()).toBeNull()
 })
 
+test('a conversation opened is an entry, so back leaves it', () => {
+  /* The other half of the test below, and the one that actually pins `pushState`: without
+     it, `showThread` could be a `replaceState` and both would still pass — a router the
+     back button walks past is not one. */
+  at('#/c/one')
+  const depth = globalThis.history.length
+
+  showThread('two')
+
+  expect(globalThis.history.length).toBe(depth + 1)
+})
+
+test('a conversation acquiring a name replaces the entry it is standing on', () => {
+  /* The reader did not go anywhere: the page they are on became linkable. Pushing would
+     leave a back button that returns to the same page under no name — a press that looks
+     broken. */
+  at('')
+  const depth = globalThis.history.length
+
+  showThread('one', { replacing: true })
+
+  expect(globalThis.history.length).toBe(depth)
+  expect(threadInUrl()).toBe('one')
+})
+
 test('a conversation opened twice is one entry, so back goes back', () => {
   /* Writing the same address again is an entry that goes nowhere: the reader presses
      back, lands on the address they are already at, and nothing happens. */

@@ -8,6 +8,12 @@ import { message } from '../fail'
 export type Removal = {
   send: () => Promise<void>
   from: readonly unknown[]
+  /* `never` as the argument so that every listing's own updater is assignable — a
+     function is assignable to one taking a narrower argument, and nothing is narrower
+     than this. It buys the four call sites their real types and costs this one: nothing
+     ties `without` to what `from` actually holds, so pairing a sessions key with a
+     `string[]` updater type-checks and throws when it runs. The four are written side by
+     side in `App.tsx`, which is the only thing keeping them honest. */
   without: (held: never) => unknown
 }
 
@@ -45,6 +51,10 @@ export function useRemoving({
       held.setQueryData(going.from, going.without)
       return { before }
     },
+    /* Same as an upload and a turn: what went through clears what the page last could
+       not do. Written here rather than left to the re-read, which must not touch it —
+       the failure below is the one thing the re-read runs after. */
+    onSuccess: () => setTrouble(null),
     onError: (failed, going, was) => {
       held.setQueryData(going.from, was?.before)
       setTrouble(message(failed))
