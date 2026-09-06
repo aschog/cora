@@ -128,3 +128,144 @@ conversation that is gone.
 - **GIVEN** a page that left a question open in a conversation, then deleted it
 - **WHEN** the page is reloaded
 - **THEN** it opens a new conversation rather than the deleted one's card
+
+### Requirement: The conversation being read is named in the address
+
+The page SHALL write the conversation it is showing into the address, once it is drawn.
+A conversation that could not be read SHALL NOT be named there.
+
+#### Scenario: Opening a conversation names it
+
+- **GIVEN** a conversation listed under SESSIONS
+- **WHEN** the reader opens it
+- **THEN** the address names that conversation
+
+#### Scenario: A conversation that would not open is not named
+
+- **GIVEN** a conversation whose turns cannot be read
+- **WHEN** the reader opens it
+- **THEN** the page says so, and the address does not name it
+
+### Requirement: A conversation is named once it has answered, not before
+
+A conversation the reader started SHALL be named in the address when its first turn
+lands. Until then it is in no store, and there is nothing to name.
+
+#### Scenario: A fresh conversation is unnamed
+
+- **GIVEN** a page opened with no conversation in the address
+- **WHEN** the reader has asked nothing
+- **THEN** the address names no conversation
+
+#### Scenario: The first answer names it
+
+- **GIVEN** a conversation the reader started
+- **WHEN** its first question is answered
+- **THEN** the address names that conversation
+
+#### Scenario: Naming it does not take the reader anywhere
+
+- **GIVEN** a turn answered in a conversation the reader has since left
+- **WHEN** it lands
+- **THEN** the address still names the conversation they are in
+
+### Requirement: A page opened at an address opens in what it names
+
+The page SHALL read the address when it is drawn, and open in the conversation named
+there.
+
+#### Scenario: A link opens the conversation it points at
+
+- **GIVEN** an address naming a recorded conversation
+- **WHEN** the page is opened at it
+- **THEN** that conversation's turns are what the reader is shown
+
+### Requirement: The address changing under the page is a request
+
+The page SHALL open the conversation the address names when the address changes beneath
+it. An address the page itself just wrote SHALL NOT be read back as a request.
+
+#### Scenario: Back returns to the conversation before
+
+- **GIVEN** a reader who has opened one conversation and then another
+- **WHEN** the address returns to the first
+- **THEN** the first conversation is what they are shown
+
+#### Scenario: Opening one does not open it twice
+
+- **GIVEN** a conversation opened from SESSIONS
+- **WHEN** the address the page wrote for it is read back
+- **THEN** its turns are read once
+
+### Requirement: Starting over takes the conversation out of the address
+
+Leaving a conversation SHALL clear the address. The conversation replacing it is in no
+store, and has nothing to link to.
+
+#### Scenario: A new conversation is nameless
+
+- **GIVEN** a reader in a conversation the address names
+- **WHEN** they start a new one
+- **THEN** the address names no conversation, and its turns are gone from the page
+
+### Requirement: A card left open outranks the address
+
+Where a card was left open in one conversation, the page SHALL open there. It SHALL do
+so though the address names another conversation.
+
+#### Scenario: The card is what the page comes back to
+
+- **GIVEN** a card left open in a conversation listed under no session
+- **AND** an address naming a different, recorded conversation
+- **WHEN** the page is drawn
+- **THEN** the card is what the reader is shown
+
+### Requirement: An address that could mean another path names no conversation
+
+The page SHALL refuse an address thread not made of letters, digits and dashes. It
+SHALL escape every thread it puts into the path of a request.
+
+#### Scenario: A path climbed out of is refused
+
+- **GIVEN** an address whose thread decodes to `../memory`
+- **WHEN** the page reads it
+- **THEN** it names no conversation, and no request is made for it
+
+#### Scenario: A thread this page minted is read back
+
+- **GIVEN** an address naming a thread of letters, digits and dashes
+- **WHEN** the page reads it
+- **THEN** that thread is the conversation it opens
+
+### Requirement: A conversation leaves the list when the reader confirms it
+
+The list SHALL stop showing a conversation as soon as the reader confirms deleting it,
+before the store has answered.
+
+#### Scenario: The row goes before the store answers
+
+- **GIVEN** a conversation the reader has confirmed deleting
+- **WHEN** the store has not yet answered
+- **THEN** the list no longer shows it, and shows the others
+
+### Requirement: A conversation the store would not delete comes back, with the reason
+
+Where the store refuses the delete, the conversation SHALL be listed again and the page
+SHALL say why. A row reappearing is never the only account of what happened.
+
+#### Scenario: Refused, so it is listed again
+
+- **GIVEN** a conversation the reader confirmed deleting
+- **WHEN** the store refuses
+- **THEN** it is listed again, and the page says why
+
+### Requirement: What went through is confirmed by the store
+
+After a delete, the page SHALL read the listing again rather than keep its own account of
+what changed.
+
+#### Scenario: The list is read again either way
+
+- **GIVEN** a delete the reader confirmed
+- **WHEN** the store has answered, however it answered
+- **THEN** the list the reader is shown is the one the store gave
