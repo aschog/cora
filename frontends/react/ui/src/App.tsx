@@ -146,6 +146,11 @@ function Page() {
     recall,
     pin,
     held,
+    /* A conversation the reader started becomes linkable the moment it has answered:
+       until then it is in no store, and afterwards it is listed like any other. Replacing
+       the entry rather than pushing one — they did not go anywhere, the page they are on
+       acquired a name. */
+    named: (thread_id) => showThread(thread_id, { replacing: true }),
     setAnswered,
     setRead,
     setTab,

@@ -25,6 +25,7 @@ export function useTurn({
   recall,
   pin,
   held,
+  named,
   setAnswered,
   setRead,
   setTab,
@@ -37,6 +38,10 @@ export function useTurn({
   recall: (thread_id: string) => Promise<Load>
   pin: string | null
   held: (thread_id: string) => Promise<void>
+  /** This conversation now exists in the store. Only an answer records one — a turn that
+   *  paused is parked nowhere and a turn that failed is recorded nowhere — so this is the
+   *  moment it becomes something to name, link to and come back to. */
+  named: (thread_id: string) => void
   setAnswered: Dispatch<SetStateAction<string | null>>
   setRead: Dispatch<SetStateAction<Read | null>>
   setTab: (tab: 'STEPS') => void
@@ -149,6 +154,11 @@ export function useTurn({
         }
         setRead((current) => openedBy(reply) ?? current)
         setAnswered((standing) => answeredIn(reply) ?? standing)
+        /* Asked again rather than taken from the check above: the re-read is awaited, and
+           the reader can leave while it runs. The address names the conversation they are
+           in, so writing this one's into it would take them back to a conversation they
+           left — which is the one thing the guards around a landing reply exist to stop. */
+        if (here.current === on) named(on)
       }
     } catch (failed) {
       // A failure is recorded nowhere, so it exists only on the page it was asked from —
@@ -249,6 +259,7 @@ export function useTurn({
       if (here.current === on) {
         setRead((current) => openedBy(reply) ?? current)
         setAnswered((standing) => answeredIn(reply) ?? standing)
+        named(on)
       }
     } catch (failed) {
       /* Nothing was settled, so the card says nothing was: it goes back to waiting and

@@ -4370,3 +4370,68 @@ test('starting over takes the conversation out of the address', async () => {
   await waitFor(() => expect(globalThis.location.hash).toBe(''))
   expect(screen.queryByText(OLDER.result.answer)).toBeNull()
 })
+
+test('a card is only forgotten when the store says there is none', async () => {
+  /* A thread parked on its *first* question has answered nothing, so it is listed under
+     no session and the stow is the only route back to it. A read that could not be made
+     is no news about whether a card is waiting — clearing the stow on it throws away the
+     one thing that could have brought the question back. */
+  globalThis.sessionStorage.setItem('cora.parked', 'old')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path.endsWith('/pending'))
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({ error: 'cora is having a moment.' }),
+        } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+
+  render(<App />)
+  await screen.findByText(OLDER.result.answer)
+  await flushed()
+
+  expect(globalThis.sessionStorage.getItem('cora.parked')).toBe('old')
+})
+
+test('a card is forgotten when the store says there is none', async () => {
+  /* The other half: told plainly that nothing is parked, the stow is stale and holding
+     it would send every later reload back to a conversation with no question in it. */
+  globalThis.sessionStorage.setItem('cora.parked', 'old')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => null } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+
+  render(<App />)
+  await screen.findByText(OLDER.result.answer)
+
+  await waitFor(() =>
+    expect(globalThis.sessionStorage.getItem('cora.parked')).toBeNull(),
+  )
+})
+
+test('a conversation you started is named in the address once it has answered', async () => {
+  /* Asking is the commonest way to be in a conversation, and until the first turn lands
+     there is nothing to name: the thread is in no store. Once it has answered it is
+     recorded and listed, so it is linkable, reloadable and something to press back out
+     of — the same as one opened from SESSIONS. */
+  render(<App />)
+  expect(globalThis.location.hash).toBe('')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Should I train fasted?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  await waitFor(() => expect(globalThis.location.hash).toMatch(/^#\/c\/.+/))
+})

@@ -32,15 +32,27 @@ export function threadInUrl(
  * A new entry rather than a replacement, so the back button walks the conversations the
  * reader opened. Written only when it changes: assigning the same hash again is a second
  * entry that goes nowhere, and back would then do nothing the first time it is pressed.
+ *
+ * @param replacing Whether this is the page it is already on acquiring a name rather
+ *   than the reader going somewhere. A conversation's first answer records it, and it
+ *   becomes linkable where it stands — pushing an entry for that would leave a back
+ *   button that goes to the same page under no name, which is a press that does nothing.
  */
-export function showThread(thread_id: string | null) {
+export function showThread(thread_id: string | null, { replacing = false } = {}) {
   const wanted = thread_id === null ? '' : AT + encodeURIComponent(thread_id)
   if ((globalThis.location?.hash ?? '') === wanted) return
-  if (wanted === '') {
-    /* Clearing the hash by assignment leaves a bare `#` in the address and fires no
-       change. The path is written back without one instead. */
+  /* Assignment is the only one of the three that fires `hashchange` by itself, and
+     clearing the hash that way leaves a bare `#` in the address. So the other two write
+     the whole address and say so — what reads it is a subscription, and a change it is
+     not told about is one it goes on contradicting. */
+  if (wanted === '' || replacing) {
     const { pathname, search } = globalThis.location
-    globalThis.history?.pushState(null, '', pathname + search)
+    const address = pathname + search + wanted
+    /* Leaving a conversation is the reader going somewhere and keeps its entry, so back
+       returns to the one they left. A conversation acquiring a name is not, and replaces
+       the entry it is already standing on. */
+    if (replacing) globalThis.history?.replaceState(null, '', address)
+    else globalThis.history?.pushState(null, '', address)
     globalThis.dispatchEvent(new HashChangeEvent('hashchange'))
     return
   }
