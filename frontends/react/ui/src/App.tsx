@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as cora from './api'
-import type { Citation, Session } from './api'
+import type { Citation, Fact, Session } from './api'
 import { answeredIn, lastTrace } from './entry'
-import { reportTo } from './fail'
 import { stowed } from './parked'
 import { useConversation } from './hooks/useConversation'
 import { useDocuments } from './hooks/useDocuments'
 import { usePin } from './hooks/usePin'
-import { useRails } from './hooks/useRails'
+import { rail, useRails } from './hooks/useRails'
+import { useRemoving } from './hooks/useRemoving'
+import type { Removal } from './hooks/useRemoving'
 import { useSource } from './hooks/useSource'
 import { useTurn } from './hooks/useTurn'
 import Answer from './components/Answer'
@@ -83,9 +84,7 @@ function Page() {
      stands over the page, and until it is answered nothing has been asked of cora. One
      slot, because one question stands at a time — and it carries the act, so each rail
      says its own words rather than the modal knowing everyone's. */
-  const [confirming, setConfirming] = useState<
-    (Asked & { act: () => Promise<void> }) | null
-  >(null)
+  const [confirming, setConfirming] = useState<(Asked & Removal) | null>(null)
   const [leftOpen, setLeftOpen] = useState(true)
   const [rightOpen, setRightOpen] = useState(true)
 
@@ -121,6 +120,9 @@ function Page() {
     setTrouble(null)
     await reread()
   }, [reread])
+  /* Deleting is the one act the reader has already confirmed, so the row goes at the
+     moment they say so — and comes back, with a sentence, if the store refuses. */
+  const removing = useRemoving({ reread, setTrouble })
   const { read, setRead, cited, sourceOf, passagesIn } = useSource(entries, field)
   const { notice, setNotice, upload, erase } = useDocuments({
     field,
@@ -252,7 +254,10 @@ function Page() {
                     subject: name,
                     said: DOCUMENT_GOES,
                     confirm: 'Delete document',
-                    act: () => erase(field, name),
+                    send: () => erase(field, name),
+                    from: rail.documents(field),
+                    without: (listed: string[]) =>
+                      listed.filter((each) => each !== name),
                   })
                 }
                 upload={notice}
@@ -338,7 +343,10 @@ function Page() {
                         subject: session.opened_with,
                         said: SESSION_GOES,
                         confirm: 'Delete session',
-                        act: () => discard(session),
+                        send: () => discard(session),
+                        from: rail.sessions,
+                        without: (listed: Session[]) =>
+                          listed.filter((each) => each.thread_id !== session.thread_id),
                       })
                     }
                   />
@@ -352,7 +360,10 @@ function Page() {
                         subject: fact.text,
                         said: FACT_GOES,
                         confirm: 'Forget it',
-                        act: () => cora.forget(fact.key),
+                        send: () => cora.forget(fact.key),
+                        from: rail.memory,
+                        without: (listed: Fact[]) =>
+                          listed.filter((each) => each.key !== fact.key),
                       })
                     }
                     onForgetEverything={() =>
@@ -361,7 +372,9 @@ function Page() {
                         subject: 'Everything cora remembers about you',
                         said: EVERYTHING_GOES,
                         confirm: 'Forget everything',
-                        act: () => cora.forgetEverything(),
+                        send: () => cora.forgetEverything(),
+                        from: rail.memory,
+                        without: () => [],
                       })
                     }
                   />
@@ -385,9 +398,9 @@ function Page() {
              field's heading. The refusal, because nothing changed — a redraw would
              clear the sentence that says so. */
           onConfirm={() => {
-            const going = confirming.act
+            const going = confirming
             setConfirming(null)
-            void going().then(refresh, reportTo(setTrouble))
+            removing.mutate(going)
           }}
           onCancel={() => setConfirming(null)}
         />

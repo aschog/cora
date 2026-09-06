@@ -13,7 +13,7 @@ import { message } from '../fail'
  *  together below. Each keeps its own, so a load that goes through clears its own news
  *  and not the warning another one raised — which is the failure the single banner used
  *  to hide. */
-const rail = {
+export const rail = {
   /* Under the field it asked about, so the listing for one is never the listing drawn
      for another. The bare name matches every field's, which is what a refresh wants:
      the reader may go back to a field a turn changed while they were elsewhere. */

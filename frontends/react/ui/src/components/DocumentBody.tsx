@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 
 export type Span = { start: number; end: number }
 
@@ -14,20 +14,31 @@ export default function DocumentBody({ text, spans, scrollToFirst }: Props) {
     if (scrollToFirst) first.current?.scrollIntoView({ block: 'center' })
   }, [scrollToFirst, text, where])
 
-  const marked = merged(spans, text.length)
-
-  const pieces: React.ReactNode[] = []
-  let read = 0
-  marked.forEach((span, n) => {
-    if (span.start > read) pieces.push(<span key={`t${n}`}>{text.slice(read, span.start)}</span>)
-    pieces.push(
-      <mark className="doc-passage" key={`m${n}`} ref={n === 0 ? first : undefined}>
-        {text.slice(span.start, span.end)}
-      </mark>,
-    )
-    read = Math.max(read, span.end)
-  })
-  pieces.push(<span key="tail">{text.slice(read)}</span>)
+  /* A whole document cut into spans on every render is the one expensive thing the page
+     does, and most renders change neither the text nor where it is marked — a turn
+     landing, a rail folding, a banner appearing. Held against the two values the cutting
+     actually reads: the text, and where the marks fall in it. */
+  const pieces = useMemo(() => {
+    const marked = merged(spans, text.length)
+    const cut: React.ReactNode[] = []
+    let read = 0
+    marked.forEach((span, n) => {
+      if (span.start > read) {
+        cut.push(<span key={`t${n}`}>{text.slice(read, span.start)}</span>)
+      }
+      cut.push(
+        <mark className="doc-passage" key={`m${n}`} ref={n === 0 ? first : undefined}>
+          {text.slice(span.start, span.end)}
+        </mark>,
+      )
+      read = Math.max(read, span.end)
+    })
+    cut.push(<span key="tail">{text.slice(read)}</span>)
+    return cut
+    /* `where` rather than `spans`: the array is built fresh by the panel on every render
+       and would never compare equal, which is the same as not holding it at all. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, where])
 
   return <div className="doc-panel doc-para">{pieces}</div>
 }
