@@ -1,5 +1,7 @@
 import type { Session } from '../api'
 import DeleteControl from './DeleteControl'
+import styles from './SessionsPanel.module.css'
+import { joined } from '../joined'
 
 type Props = {
   sessions: Session[]
@@ -20,7 +22,7 @@ export default function SessionsPanel({
   onDelete,
 }: Props) {
   return (
-    <div className="session-list">
+    <div className={styles.sessionList}>
       {sessions.map((session) => {
         /* A row in use offers no delete: the conversation on the page cannot be
            deleted, and neither can one still being answered in. */
@@ -28,10 +30,10 @@ export default function SessionsPanel({
         return (
           <div
             key={session.thread_id}
-            className={session.thread_id === here ? 'session-row here' : 'session-row'}
+            className={joined(styles.sessionRow, session.thread_id === here && styles.here)}
           >
             <button
-              className="session"
+              className={styles.session}
               /* The line is clamped so every row is one line high, and the whole
                  question is a hover away rather than lost. */
               title={session.opened_with}

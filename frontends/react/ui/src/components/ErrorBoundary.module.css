@@ -1,0 +1,31 @@
+/* What is drawn where a column threw while rendering. Padded like a panel rather than
+   dressed as trouble: the banners above are about a request that failed, and this is
+   about the page itself — the reader is looking at a hole where something was. */
+.broke {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s2);
+  padding: var(--s3);
+  border-radius: var(--radius);
+  background: var(--surface);
+  box-shadow: -3px 0 0 var(--magenta);
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.broke-again {
+  padding: 5px 12px;
+  border: 0;
+  border-radius: var(--pill);
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  font: inherit;
+  font-size: 13px;
+  color: var(--accent-text);
+  cursor: pointer;
+}
+
+.broke-again:hover {
+  background: rgba(255, 255, 255, 0.12);
+}

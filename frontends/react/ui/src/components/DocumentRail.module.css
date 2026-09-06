@@ -1,0 +1,106 @@
+.rail-heading h2 {
+  font-size: inherit;
+  font-weight: inherit;
+}
+
+.rail-heading {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+
+.upload {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: var(--s3);
+  padding: 10px;
+  border: 1px dashed var(--n400);
+  border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--n700);
+  cursor: pointer;
+}
+
+.upload:hover {
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
+.upload:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.upload input {
+  display: none;
+}
+
+/* The row and its control, side by side: the row is disabled unless this answer cited
+   the document, so the control cannot live inside it. */
+.doc-line {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.doc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.doc-row {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s2);
+  flex: 1;
+  min-width: 0;
+  padding: 7px 8px;
+  margin-left: -8px;
+  text-align: left;
+  border-radius: var(--radius);
+  font-size: 14px;
+  color: var(--n600);
+}
+
+.doc-row:hover:not(:disabled) {
+  background: var(--n300);
+}
+
+.doc-row:disabled {
+  cursor: default;
+}
+
+.doc-row.cited {
+  color: var(--text);
+}
+
+.doc-bar {
+  flex: 0 0 3px;
+  width: 3px;
+  background: transparent;
+}
+
+.doc-row.cited .doc-bar {
+  background: var(--accent);
+}
+
+.doc-name {
+  flex: 1;
+  line-height: 1.3;
+}
+
+/* The field a document goes into, stated beside the heading of the list it lands in. */
+.field-fixed {
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  border-radius: var(--pill);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent-text);
+}

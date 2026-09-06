@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, test } from 'vitest'
 import PlanPanel from './PlanPanel'
 import type { Step } from '../api'
+import planCss from '../components/PlanPanel.module.css'
 
 const step = (summary: string, steps: Step[] = []): Step => ({
   summary,
@@ -22,7 +23,9 @@ test('a step that ran work of its own shows that work under it', () => {
   const { container } = render(<PlanPanel steps={[call]} />)
   fireEvent.click(screen.getByText(call.summary))
 
-  const inside = container.querySelectorAll('.plan-inside .plan-step-label')
+  const inside = container.querySelectorAll(
+    `.${planCss.planInside} .${planCss.planStepLabel}`,
+  )
   expect([...inside].map((node) => node.textContent)).toEqual([
     'Decided to call search_documents',
     'search_documents(query="squats") → 1 passage',
@@ -34,7 +37,7 @@ test('a step that ran nothing of its own opens onto nothing', () => {
 
   fireEvent.click(screen.getByText('Decided no tool was needed'))
 
-  expect(container.querySelector('.plan-inside')).toBeNull()
+  expect(container.querySelector(`.${planCss.planInside}`)).toBeNull()
 })
 
 test('the steps are numbered as the turn took them', () => {
@@ -42,7 +45,7 @@ test('the steps are numbered as the turn took them', () => {
     <PlanPanel steps={[step('first'), step('second')]} />,
   )
 
-  const numbers = container.querySelectorAll('.plan-step-n')
+  const numbers = container.querySelectorAll(`.${planCss.planStepN}`)
   expect([...numbers].map((node) => node.textContent)).toEqual(['1', '2'])
 })
 
@@ -52,7 +55,7 @@ test('a detail the line above already reads out is not drawn twice', () => {
   const { container } = render(<PlanPanel steps={[call]} />)
   fireEvent.click(screen.getByText(call.summary))
 
-  expect(container.querySelector('.plan-result')).toBeNull()
+  expect(container.querySelector(`.${planCss.planResult}`)).toBeNull()
 })
 
 test('a detail that says more than the line above is drawn', () => {
@@ -64,7 +67,7 @@ test('a detail that says more than the line above is drawn', () => {
   const { container } = render(<PlanPanel steps={[call]} />)
   fireEvent.click(screen.getByText(call.summary))
 
-  expect(container.querySelector('.plan-result')?.textContent).toBe(
+  expect(container.querySelector(`.${planCss.planResult}`)?.textContent).toBe(
     '[1] notes.md: squats stall on sleep',
   )
 })

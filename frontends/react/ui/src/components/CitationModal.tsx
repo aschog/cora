@@ -1,6 +1,9 @@
 import { useEffect } from 'react'
 import type { Citation } from '../api'
-import DocumentBody, { usePassage } from './DocumentBody'
+import DocumentBody from './DocumentBody'
+import { usePassage } from '../hooks/usePassage'
+import styles from './CitationModal.module.css'
+import dialog from './dialog.module.css'
 
 type Props = { citation: Citation; onClose: () => void }
 
@@ -23,26 +26,26 @@ export default function CitationModal({ citation, onClose }: Props) {
   }, [onClose])
 
   return (
-    <div className="overlay" onClick={onClose}>
+    <div className={dialog.overlay} onClick={onClose}>
       <div
-        className="modal"
+        className={dialog.modal}
         role="dialog"
         aria-modal="true"
         aria-label={citation.document}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="modal-head">
+        <div className={styles.modalHead}>
           <div>
             <div className="micro">CITED SOURCE</div>
-            <div className="modal-title">{citation.document}</div>
+            <div className={dialog.modalTitle}>{citation.document}</div>
           </div>
-          <button className="modal-close" onClick={onClose} aria-label="Close">
+          <button className={styles.modalClose} onClick={onClose} aria-label="Close">
             ✕
           </button>
         </div>
         {trouble && <div className="trouble">{trouble}</div>}
         {text !== null && (
-          <DocumentBody text={text} spans={[citation]} scrollToFirst />
+          <DocumentBody text={text} spans={[citation]} scrollToFirst flat />
         )}
       </div>
     </div>

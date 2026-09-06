@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import type { Asked, Card, Offered } from '../api'
+import styles from './PauseCard.module.css'
+import { joined } from '../joined'
 
-export const WAITING = 'Paused · needs your input'
-export const SETTLED = 'Settled · your answer'
+const WAITING = 'Paused · needs your input'
+const SETTLED = 'Settled · your answer'
 export const FILL_IN_FIRST = 'Fill it in first.'
-export const took = (action: Offered) => action.settled || `You chose ${action.label}.`
+const took = (action: Offered) => action.settled || `You chose ${action.label}.`
 
 type Props = {
   card: Card
@@ -42,21 +44,21 @@ export default function PauseCard({ card, taken, again, onTake }: Props) {
   const state = open ? WAITING : SETTLED
   const short = !complete(card, written)
   return (
-    <div className="decision" role="group" aria-label={state}>
-      <p className="decision-head micro">
+    <div className={styles.decision} role="group" aria-label={state}>
+      <p className={`${styles.decisionHead} micro`}>
         <span
-          className={open ? 'decision-dot' : 'decision-dot settled'}
+          className={joined(styles.decisionDot, !open && styles.settled)}
           aria-hidden="true"
         >
           ●
         </span>
         {state}
       </p>
-      <p className="decision-question">{card.prompt}</p>
+      <p className={styles.decisionQuestion}>{card.prompt}</p>
       {/* Drawn open or settled: a reader coming back to the conversation is owed what
           they answered on, not only that they did. */}
       {card.fields.length > 0 && (
-        <div className="card-fields">
+        <div className={styles.cardFields}>
           {card.fields.map((field) => (
             <Control
               key={field.name}
@@ -71,19 +73,19 @@ export default function PauseCard({ card, taken, again, onTake }: Props) {
         </div>
       )}
       {open ? (
-        <div className="decision-options">
+        <div className={styles.decisionOptions}>
           {card.actions.map((action, at) => {
             const held = action.needs_valid && short
             return (
               <button
                 key={at}
-                className="decision-option"
+                className={styles.decisionOption}
                 disabled={held}
                 onClick={() => onTake(action, written)}
               >
-                <span className="decision-label">{action.label}</span>
+                <span className={styles.decisionLabel}>{action.label}</span>
                 {(held || action.note) && (
-                  <span className="decision-note">
+                  <span className={styles.decisionNote}>
                     {held ? FILL_IN_FIRST : action.note}
                   </span>
                 )}
@@ -92,10 +94,10 @@ export default function PauseCard({ card, taken, again, onTake }: Props) {
           })}
         </div>
       ) : (
-        <p className="decision-resolved">
-          <span className="decision-settled">{took(taken)}</span>
+        <p className={styles.decisionResolved}>
+          <span className={styles.decisionSettled}>{took(taken)}</span>
           {again && (
-            <button className="decision-change" onClick={again.onPick}>
+            <button className={styles.decisionChange} onClick={again.onPick}>
               {again.label}
             </button>
           )}
@@ -126,27 +128,31 @@ function Control({
   /* Required is marked by the control's own `required`, which the cascade draws and a
      screen reader announces — rather than by an asterisk beside the words, which is a
      mark only the sighted reader gets and only if they know the convention. */
-  const label = <span className="card-name micro">{said}</span>
+  const label = <span className={`${styles.cardName} micro`}>{said}</span>
   /* A field the reader may not write is read off the card itself: what is drawn is what
      cora put up, not what the page is holding on their behalf. */
   if (!field.editable || settled)
     return (
-      <div className="card-field">
+      <div className={styles.cardField}>
         {label}
-        <span className="card-read">
+        <span className={styles.cardRead}>
           {written(field.editable ? value : field.value)}
         </span>
       </div>
     )
   const choices = field.schema.enum
+  const kind = input(field.schema)
+  /* A date's change fires once, on a complete pick; a text field's fires per keystroke.
+     That is the whole of why the field is let go for one and not the other. */
+  const picker = kind === 'date' || kind === 'datetime-local'
   return (
-    <label className="card-field">
+    <label className={styles.cardField}>
       {label}
       {Array.isArray(choices) ? (
         <Choices choices={choices} value={value} onWrite={onWrite} />
       ) : field.schema.type === 'boolean' ? (
         <input
-          className="card-check"
+          className={styles.cardCheck}
           type="checkbox"
           checked={value === true}
           required={field.required}
@@ -154,11 +160,17 @@ function Control({
         />
       ) : (
         <input
-          className="card-input"
-          type={input(field.schema)}
+          className={styles.cardInput}
+          type={kind}
           required={field.required}
           value={value === null || value === undefined ? '' : String(value)}
-          onChange={(event) => onWrite(read(field.schema, event.target.value))}
+          onChange={(event) => {
+            onWrite(read(field.schema, event.target.value))
+            /* A controlled date input keeps its native popup open: the value is written
+               back onto the still-focused field, and the browser reads that as the picker
+               still in use. Letting the field go dismisses it, on Safari as on Chrome. */
+            if (picker) event.currentTarget.blur()
+          }}
         />
       )}
     </label>
@@ -183,7 +195,7 @@ function Choices({
   if (choices.length > MANY)
     return (
       <select
-        className="card-input"
+        className={styles.cardInput}
         value={value === null || value === undefined ? '' : String(value)}
         onChange={(event) =>
           onWrite(choices.find((each) => String(each) === event.target.value) ?? null)
@@ -198,12 +210,12 @@ function Choices({
       </select>
     )
   return (
-    <span className="card-choices">
+    <span className={styles.cardChoices}>
       {choices.map((each) => (
         <button
           key={String(each)}
           type="button"
-          className={each === value ? 'card-choice picked' : 'card-choice'}
+          className={joined(styles.cardChoice, each === value && styles.picked)}
           aria-pressed={each === value}
           onClick={() => onWrite(each)}
         >

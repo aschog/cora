@@ -1,0 +1,115 @@
+/* ── shell ── */
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(1100px 700px at 12% -10%, #14243c 0%, rgba(20, 36, 60, 0) 62%),
+    radial-gradient(800px 600px at 100% 110%, #17202c 0%, rgba(23, 32, 44, 0) 60%),
+    var(--bg);
+}
+
+.columns {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-height: 0;
+}
+
+/* ── what a rail holds above its own content ── */
+.rail-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-bottom: var(--s3);
+}
+
+.rail-panels .rail-top {
+  justify-content: flex-end;
+}
+
+.brand-name {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+/* ── the rails ── */
+/* Flush to the edge of the page and the full height of it, told apart from the
+   conversation by a hairline. The glow the shell paints belongs to the middle. */
+.rail-docs,
+.rail-panels {
+  padding: var(--s4);
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.rail-docs {
+  flex: 0 1 232px;
+  min-width: 180px;
+  border-right: 1px solid var(--hairline);
+}
+
+.rail-panels {
+  flex: 0 1 360px;
+  min-width: 268px;
+  border-left: 1px solid var(--hairline);
+}
+
+.tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: var(--s4);
+}
+
+.tab {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 8px 4px;
+  border-radius: var(--pill);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--n600);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tab:hover {
+  background: rgba(255, 255, 255, 0.09);
+  color: var(--text);
+}
+
+.tab.active {
+  background: var(--accent);
+  color: var(--bg);
+  font-weight: 600;
+}
+
+/* Announced when it appears: the sentence about a question left running arrives with no
+   click behind it. Empty when the page has nothing to say, and taking no room for it. */
+.banners {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ── the rails fold away ── */
+/* Folded, a rail is not a narrower rail: it is gone, and only the control that brings
+   it back stays — standing on the page rather than on a panel of its own. */
+.rail-docs.shut,
+.rail-panels.shut {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: var(--s3);
+  overflow: hidden;
+  background: none;
+  border: 0;
+}
+
+.rail-docs.shut .rail-top,
+.rail-panels.shut .rail-top {
+  flex-direction: row-reverse;
+  justify-content: flex-end;
+  margin-bottom: 0;
+}

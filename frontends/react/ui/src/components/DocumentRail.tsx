@@ -1,6 +1,8 @@
 import DeleteControl from './DeleteControl'
 import UploadNotice from './UploadNotice'
 import type { Notice } from './UploadNotice'
+import styles from './DocumentRail.module.css'
+import { joined } from '../joined'
 
 type Props = {
   documents: string[]
@@ -35,12 +37,12 @@ export default function DocumentRail({
           between them: an association is what you reach for when the order cannot say it,
           and here it can — a `dl` would claim the heading is a term, and leave a `dt`
           with no `dd` in every state where no field is named. */}
-      <div className="rail-heading">
+      <div className={styles.railHeading}>
         <h2 className="micro">YOUR DOCUMENTS</h2>
-        {field && <span className="field-fixed">{field}</span>}
+        {field && <span className={styles.fieldFixed}>{field}</span>}
       </div>
 
-      <label className="upload">
+      <label className={styles.upload}>
         <span>＋</span>
         <span>Add a document</span>
         <input
@@ -68,19 +70,19 @@ export default function DocumentRail({
         )}
       </div>
 
-      <div className="doc-list">
+      <div className={styles.docList}>
         {documents.map((name) => (
           /* The control sits beside the row rather than inside it: the row is disabled
              unless this answer cited the document, and a delete nested in it would only
              reach the documents the last answer happened to quote. */
-          <div key={name} className="doc-line">
+          <div key={name} className={styles.docLine}>
             <button
-              className={cited.has(name) ? 'doc-row cited' : 'doc-row'}
+              className={joined(styles.docRow, cited.has(name) && styles.cited)}
               disabled={!cited.has(name)}
               onClick={() => onOpen(name)}
             >
-              <span className="doc-bar" />
-              <span className="doc-name">{name}</span>
+              <span className={styles.docBar} />
+              <span className={styles.docName}>{name}</span>
             </button>
             <DeleteControl what={name} onDelete={() => onDelete(name)} />
           </div>

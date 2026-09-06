@@ -1,0 +1,15 @@
+/* sessions + memory */
+/* A delete is an icon at the end of its row, quiet until it is reached for: a rail of
+   controls shouting for attention is a rail nobody reads. */
+.row-delete {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  padding: 2px;
+  color: var(--n500);
+}
+
+.row-delete:hover,
+.row-delete:focus-visible {
+  color: var(--text);
+}

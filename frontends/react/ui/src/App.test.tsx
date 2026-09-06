@@ -1,6 +1,11 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import App from './App'
+import answerCss from './components/Answer.module.css'
+import appCss from './App.module.css'
+import bodyCss from './components/DocumentBody.module.css'
+import planCss from './components/PlanPanel.module.css'
+import noticeCss from './components/UploadNotice.module.css'
 
 /**
  * The steps that arrive *while* the turn runs say something the finished turn does not.
@@ -88,6 +93,9 @@ afterEach(() => {
   step.release()
   cleanup()
   globalThis.sessionStorage?.clear()
+  /* The address outlives a render, so a conversation one test opened would be the one
+     the next test's page opens in — every spec here starts nowhere in particular. */
+  globalThis.history.replaceState(null, '', globalThis.location.pathname)
 })
 
 beforeEach(() => {
@@ -262,7 +270,7 @@ test('a document the answer cited opens in the source panel, marked at the passa
   )
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
   expect(screen.getByRole('heading', { name: 'notes.md' })).toBeTruthy()
-  expect(container.querySelector('.doc-passage')?.textContent).toBe(
+  expect(container.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(
     KEPT.slice(0, 6),
   )
 })
@@ -303,7 +311,7 @@ test('a document cited in an earlier turn is not marked for this one', async () 
 
   // Still openable: the text is there to read, with nothing marked in it.
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(document.querySelector('.doc-passage')).toBeNull()
+  expect(document.querySelector(`.${bodyCss.docPassage}`)).toBeNull()
 })
 
 /** A turn that cites nothing. */
@@ -359,7 +367,7 @@ test('an answer never lands on a conversation that was replaced while it ran', a
      something false about it — that cora cannot open it, when the truth is that
      nothing here cites it. */
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
-  const panels = document.querySelector('.rail-panels') as HTMLElement
+  const panels = document.querySelector(`.${appCss.railPanels}`) as HTMLElement
   expect(within(panels).queryByText('notes.md')).toBeNull()
   expect(within(panels).queryByRole('heading', { name: 'notes.md' })).toBeNull()
 })
@@ -375,7 +383,7 @@ test('the conversation follows what just happened, answered or failed', async ()
      bottom. */
   const { container } = render(<App />)
   await screen.findByText('notes.md')
-  const scroller = container.querySelector('.scroller') as HTMLElement
+  const scroller = container.querySelector(`.${answerCss.scroller}`) as HTMLElement
   atTheBottom(scroller)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -435,7 +443,7 @@ test('a turn that fails says so where the answer would have been, and is scrolle
   )
   const { container } = render(<App />)
   await screen.findByText('notes.md')
-  const scroller = container.querySelector('.scroller') as HTMLElement
+  const scroller = container.querySelector(`.${answerCss.scroller}`) as HTMLElement
   atTheBottom(scroller)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -621,7 +629,7 @@ test('a filename uploaded twice is read at the upload this answer cited', async 
 
   expect(await screen.findByText(/the copy the answer cited/)).toBeTruthy()
   expect(screen.queryByText(/nobody is reading this copy/)).toBeNull()
-  expect(container.querySelector('.doc-passage')?.textContent).toBe(SECOND.slice(0, 5))
+  expect(container.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(SECOND.slice(0, 5))
 })
 
 test('a question in flight does not un-cite the answer still on screen', async () => {
@@ -641,7 +649,7 @@ test('a question in flight does not un-cite the answer still on screen', async (
 
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
+  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(KEPT.slice(0, 6))
 
   turn = held()
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
@@ -653,7 +661,7 @@ test('a question in flight does not un-cite the answer still on screen', async (
   // Back to the passage while cora works: the answer above it has not changed.
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
+  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(KEPT.slice(0, 6))
 })
 
 test('a turn that failed does not un-cite the answer still on screen', async () => {
@@ -673,7 +681,7 @@ test('a turn that failed does not un-cite the answer still on screen', async () 
 
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
+  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(KEPT.slice(0, 6))
 
   turn = held()
   vi.stubGlobal(
@@ -696,7 +704,7 @@ test('a turn that failed does not un-cite the answer still on screen', async () 
 
   fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
   expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
-  expect(document.querySelector('.doc-passage')?.textContent).toBe(KEPT.slice(0, 6))
+  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(KEPT.slice(0, 6))
 })
 
 test('an answer returning to the conversation it was asked in is not dropped', async () => {
@@ -753,7 +761,7 @@ test('an answer returning to the conversation it was asked in is not dropped', a
 
   expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
   // Once in the conversation — the other one on the page is the session it names.
-  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
     ['Why am I stalling?'],
   )
 })
@@ -874,7 +882,7 @@ test('the question in flight stays with the conversation it was asked in', async
 
   // In the other conversation the running turn is not on the page at all: it is not
   // this conversation's question, and it is not being asked here.
-  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
     [OLDER.question],
   )
   expect(screen.queryByText(/Working/)).toBeNull()
@@ -884,7 +892,7 @@ test('the question in flight stays with the conversation it was asked in', async
 
   // Back in the conversation the turn is running in: its question, its plan, and a
   // composer whose disabling the plan explains.
-  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
     [EARLIER.question, 'Why am I stalling?'],
   )
   expect(screen.getByText(/Working/)).toBeTruthy()
@@ -897,7 +905,7 @@ test('the question in flight stays with the conversation it was asked in', async
   turn.release()
 
   expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
-  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
     [EARLIER.question, 'Why am I stalling?'],
   )
 })
@@ -1014,11 +1022,11 @@ test('the panels afterwards speak for the new session, not the one left behind',
 
   fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
-  const panels = document.querySelector('.rail-panels') as HTMLElement
+  const panels = document.querySelector(`.${appCss.railPanels}`) as HTMLElement
   expect(within(panels).queryByRole('heading', { name: 'notes.md' })).toBeNull()
   fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
   expect(screen.queryByText(TURN.trace[0].summary)).toBeNull()
-  expect(panels.querySelector('.plan-step')).toBeNull()
+  expect(panels.querySelector(`.${planCss.planStep}`)).toBeNull()
 })
 
 test('an answer to the conversation left behind does not land on the new session', async () => {
@@ -1340,7 +1348,7 @@ test('a question left running that fails says so, rather than never arriving', a
   // Said about the conversation, not *in* the empty one: the failed turn is not dragged
   // onto a page it was never asked on.
   expect(screen.queryByText('Why am I stalling?')).toBeNull()
-  expect(document.querySelector('.turn')).toBeNull()
+  expect(document.querySelector(`.${answerCss.turn}`)).toBeNull()
 
   // Until the reader asks the next question, which is them moving on from it.
   turn = held()
@@ -1615,7 +1623,7 @@ test('a turn that succeeded is not drawn as failed by the re-read that follows i
   expect(screen.queryByText(/is not a function/)).toBeNull()
   expect(screen.queryByText(/conversation you left/)).toBeNull()
   // Once in the conversation — the other one on the page is the session it names.
-  expect([...document.querySelectorAll('.said')].map((each) => each.textContent)).toEqual(
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
     ['Why am I stalling?'],
   )
 })
@@ -1871,7 +1879,7 @@ test('the conversation follows the answer down as it is written', async () => {
     frame('turn', TURN),
   ]
   await asked(parts, parts.length - 1)
-  const scroller = document.querySelector('.scroller') as HTMLElement
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
   await screen.findByText('Sleep, not volume.')
 
   atTheBottom(scroller)
@@ -1891,7 +1899,7 @@ test('a reader who has scrolled up is left there as the answer grows', async () 
     frame('turn', TURN),
   ]
   await asked(parts, 1)
-  const scroller = document.querySelector('.scroller') as HTMLElement
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
   await screen.findByText('Sleep,')
   scrolledUp(scroller)
 
@@ -1907,7 +1915,7 @@ test('a conversation reopened shows its newest turn, however the reader had scro
      statement about the next, which opens on the turn it left off at like any other. */
   render(<App />)
   await screen.findByText('notes.md')
-  const scroller = document.querySelector('.scroller') as HTMLElement
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
   scrolledUp(scroller)
 
   fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
@@ -1924,7 +1932,7 @@ test('a reader who scrolls back to the bottom is followed again', async () => {
     frame('turn', TURN),
   ]
   await asked(parts, 1)
-  const scroller = document.querySelector('.scroller') as HTMLElement
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
   await screen.findByText('Sleep,')
   scrolledUp(scroller)
   scroller.scrollTop = 4200
@@ -1940,7 +1948,7 @@ test('asking a question scrolls to it from wherever the reader had scrolled to',
   /* Following is the reader's to give up, and asking is them giving it back: the question
      they just typed is the one thing that belongs on screen. */
   await asked([frame('turn', TURN)], 1)
-  const scroller = document.querySelector('.scroller') as HTMLElement
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
   await screen.findByText(/Working/)
   scrolledUp(scroller)
 
@@ -2064,11 +2072,15 @@ test('an upload that indexed nothing is drawn as the outcome it is', async () =>
 
   upload('notes.md')
   const duplicate = await screen.findByText('“notes.md” is already in your documents.')
-  expect(duplicate.closest('.upload-notice')?.className).toContain('wrong')
+  expect(duplicate.closest(`.${noticeCss.uploadNotice}`)?.className).toContain(
+    noticeCss.wrong,
+  )
 
   upload('notes.md')
   const added = await screen.findByText('Added “notes.md” — 12 passages.')
-  expect(added.closest('.upload-notice')?.className).not.toContain('wrong')
+  expect(added.closest(`.${noticeCss.uploadNotice}`)?.className).not.toContain(
+    noticeCss.wrong,
+  )
 })
 
 test('the reader can shut what an upload said', async () => {
@@ -2089,8 +2101,8 @@ test('what an upload did is drawn beside the list it changed', async () => {
   upload('notes.md')
 
   const said = await screen.findByText('Added “notes.md” — 12 passages.')
-  expect(said.closest('.rail-docs')).toBeTruthy()
-  expect(document.querySelector('.banners')?.textContent).toBe('')
+  expect(said.closest(`.${appCss.railDocs}`)).toBeTruthy()
+  expect(document.querySelector(`.${appCss.banners}`)?.textContent).toBe('')
 })
 
 test('an upload that fails says so, and takes the last one’s notice away', async () => {
@@ -2592,7 +2604,7 @@ test('a card arriving brings the conversation down to it', async () => {
   stopping()
   render(<App />)
   await screen.findByText('notes.md')
-  const scroller = document.querySelector('.scroller') as HTMLElement
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
   atTheBottom(scroller)
 
   askAbout()
@@ -4323,4 +4335,345 @@ test('a delete confirmed after the field moved names the field the rail was show
   expect(railField()).toBe('travel')
   expect(screen.getByText('kyoto.md')).toBeTruthy()
   expect(screen.queryByText('notes.md')).toBeNull()
+})
+
+test('the conversation being read is named in the address', async () => {
+  /* A conversation the reader is in should be one they can link to, come back to, and
+     press back out of — none of which is possible while every conversation has the same
+     address. */
+  render(<App />)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+
+  expect(globalThis.location.hash).toBe('#/c/old')
+})
+
+test('a page opened at a conversation opens in it', async () => {
+  globalThis.history.replaceState(null, '', `${globalThis.location.pathname}#/c/old`)
+
+  render(<App />)
+
+  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
+})
+
+test('starting over takes the conversation out of the address', async () => {
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+
+  fireEvent.click(screen.getByRole('button', { name: /new/i }))
+
+  /* The fresh thread is in no store, so there is nothing for the address to name. */
+  await waitFor(() => expect(globalThis.location.hash).toBe(''))
+  expect(screen.queryByText(OLDER.result.answer)).toBeNull()
+})
+
+test('a card is only forgotten when the store says there is none', async () => {
+  /* A thread parked on its *first* question has answered nothing, so it is listed under
+     no session and the stow is the only route back to it. A read that could not be made
+     is no news about whether a card is waiting — clearing the stow on it throws away the
+     one thing that could have brought the question back. */
+  globalThis.sessionStorage.setItem('cora.parked', 'old')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path.endsWith('/pending'))
+        return {
+          ok: false,
+          status: 503,
+          json: async () => ({ error: 'cora is having a moment.' }),
+        } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+
+  render(<App />)
+  await screen.findByText(OLDER.result.answer)
+  await flushed()
+
+  expect(globalThis.sessionStorage.getItem('cora.parked')).toBe('old')
+})
+
+test('a card is forgotten when the store says there is none', async () => {
+  /* The other half: told plainly that nothing is parked, the stow is stale and holding
+     it would send every later reload back to a conversation with no question in it. */
+  globalThis.sessionStorage.setItem('cora.parked', 'old')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => null } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+
+  render(<App />)
+  await screen.findByText(OLDER.result.answer)
+
+  await waitFor(() =>
+    expect(globalThis.sessionStorage.getItem('cora.parked')).toBeNull(),
+  )
+})
+
+test('a conversation you started is named in the address once it has answered', async () => {
+  /* Asking is the commonest way to be in a conversation, and until the first turn lands
+     there is nothing to name: the thread is in no store. Once it has answered it is
+     recorded and listed, so it is linkable, reloadable and something to press back out
+     of — the same as one opened from SESSIONS. */
+  render(<App />)
+  expect(globalThis.location.hash).toBe('')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Should I train fasted?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  await waitFor(() => expect(globalThis.location.hash).toMatch(/^#\/c\/.+/))
+})
+
+/** The address changing under the page, which is what the back button does to it. */
+const goBackTo = (hash: string) => {
+  globalThis.history.replaceState(null, '', globalThis.location.pathname + hash)
+  globalThis.dispatchEvent(new HashChangeEvent('hashchange'))
+}
+
+test('the address changing under the page opens the conversation it names', async () => {
+  /* The back button, or a link pasted into the bar. Nothing else on the page has changed,
+     so the address is the whole of the request. */
+  render(<App />)
+  await screen.findByText('notes.md')
+  expect(screen.queryByText(OLDER.result.answer)).toBeNull()
+
+  goBackTo('#/c/old')
+
+  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
+})
+
+test('the address the page wrote itself does not open the conversation a second time', async () => {
+  /* Opening a conversation writes the address, and the address is subscribed to. Reading
+     that write back as a request would re-enter the load that caused it — once per open,
+     for as long as the two disagree. */
+  let reads = 0
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/sessions/old') reads += 1
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  await flushed()
+
+  expect(globalThis.location.hash).toBe('#/c/old')
+  expect(reads).toBe(1)
+})
+
+test('a card left open outranks the address, because nothing else can reach it', async () => {
+  /* A thread parked on its first question is listed under no session: the stow is its one
+     route back. The address names a conversation that is listed and one click away, so
+     between the two it is the stow that would be lost.
+     The cost is that the reload after parking a card goes to that card rather than to the
+     conversation last read. Narrowing the rule to unlisted threads only would need the
+     page to know, before it opens anything, whether the stowed thread has ever answered —
+     which is a round trip it does not have and a second thing to keep true. */
+  globalThis.sessionStorage.setItem('cora.parked', 'parked-thread')
+  globalThis.history.replaceState(null, '', globalThis.location.pathname + '#/c/old')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/sessions/parked-thread/pending')
+        return { ok: true, json: async () => PAUSED } as unknown as Response
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => null } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+
+  render(<App />)
+
+  expect(await screen.findByText(DECISION.prompt)).toBeTruthy()
+  expect(screen.queryByText(OLDER.result.answer)).toBeNull()
+})
+
+test('a panel that throws costs that panel, not the conversation beside it', async () => {
+  /* A column that cannot be drawn used to take the window with it. The store answering
+     with a shape the panel cannot read is the realistic way in — and the reader should
+     still have the conversation they were reading, and a way out of the broken panel. */
+  const quiet = vi.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string) => {
+        if (path === '/api/sessions')
+          return { ok: true, json: async () => ({ not: 'a list' }) } as unknown as Response
+        return {
+          ok: true,
+          json: async () => served[route(path)] ?? [],
+        } as unknown as Response
+      }),
+    )
+    render(<App />)
+    await screen.findByText('notes.md')
+
+    fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+
+    // The panel says so, and the rest of the page is still there.
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.getByPlaceholderText(/Ask a question/)).toBeTruthy()
+    expect(screen.getByText('notes.md')).toBeTruthy()
+
+    // And the strip above it still works, which is the way out of a panel that broke.
+    fireEvent.click(screen.getByRole('tab', { name: 'MEMORY' }))
+    expect(await screen.findByText('No burpees.')).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+  } finally {
+    quiet.mockRestore()
+  }
+})
+
+test('a scopes read that failed recovers, though the fields never change', async () => {
+  /* Which fields a deployment offers is settled when the process starts, so nothing a
+     turn does can change it — which is an argument for never asking twice, and it is
+     wrong. A read that failed leaves no fields, no picker and a banner, and re-asking is
+     the only way out of that. So it stays in the refresh with the other three, and the
+     cost is one small request a turn. */
+  const broken = { error: 'The plugin registry is temporarily unavailable.' }
+  let reachable = false
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/scopes' && !reachable)
+        return { ok: false, status: 503, json: async () => broken } as unknown as Response
+      if (path === '/api/ask') return answering()
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+
+  render(<App />)
+  expect(await screen.findByText(broken.error)).toBeTruthy()
+
+  reachable = true
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'anything' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+
+  await screen.findByText(TURN.trace[0].summary)
+  expect(screen.queryByText(broken.error)).toBeNull()
+  // And the picker the failed read left empty is drawn again.
+  expect(screen.getByRole('button', { name: 'Plugin' })).toBeTruthy()
+})
+
+test('a conversation that paused on its first question is named once the card settles', async () => {
+  /* The ask path returned at the pause without naming anything — a paused turn is in no
+     store. The resume is the only route by which this conversation ever becomes
+     something to link to, so it is the path that has to write the address. */
+  vi.stubGlobal('crypto', { randomUUID: () => 'fresh1' })
+  stopping()
+  const asked = await stopped()
+  expect(globalThis.location.hash).toBe('')
+
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/1,730 kcal/)
+
+  await waitFor(() => expect(globalThis.location.hash).toBe('#/c/fresh1'))
+})
+
+test('an answer landing in a conversation the reader left does not move the address', async () => {
+  /* The address names the conversation they are in. A turn finishing somewhere else must
+     not write its own thread over that — the reader would be yanked back into a
+     conversation they deliberately left. */
+  vi.stubGlobal('crypto', { randomUUID: () => 'here' })
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(LIVE[0].summary)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  expect(globalThis.location.hash).toBe('#/c/old')
+
+  turn.release()
+  await flushed()
+
+  expect(globalThis.location.hash).toBe('#/c/old')
+})
+
+test('an address that could mean another path asks the store for nothing', async () => {
+  /* Refusing to draw it is half the point. The other half is that no request is built
+     from it: a path that resolves to another endpoint must not be fetched at all. */
+  globalThis.history.replaceState(
+    null,
+    '',
+    globalThis.location.pathname + '#/c/..%2Fmemory',
+  )
+
+  render(<App />)
+  await screen.findByText('notes.md')
+  await flushed()
+
+  const asked = vi.mocked(globalThis.fetch).mock.calls.map(([path]) => String(path))
+  expect(asked.filter((path) => path.startsWith('/api/sessions/'))).toEqual([])
+})
+
+test('a passage on screen is asked for again after a delete, and its absence is drawn', async () => {
+  /* The text is held under its upload, and nothing else ever re-asks: a document an
+     effect deleted would otherwise be drawn from what was held for as long as the page
+     stays open. The re-read after a write is what evicts it. */
+  let gone = false
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return gone
+          ? ({
+              ok: false,
+              status: 404,
+              json: async () => ({ error: 'cora cannot open this document.' }),
+            } as unknown as Response)
+          : ({ ok: true, json: async () => ({ text: KEPT }) } as unknown as Response)
+      if (init?.method === 'DELETE')
+        return { ok: true, status: 204 } as unknown as Response
+      if (route(path) === '/api/documents')
+        return {
+          ok: true,
+          json: async () => ['notes.md', 'other.md'],
+        } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  await screen.findByText(/the document follows/)
+
+  /* Deleted out from under the panel — another document goes, and the re-read that
+     follows any write is what re-asks for this one. */
+  gone = true
+  fireEvent.click(screen.getByRole('button', { name: 'Delete other.md' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Delete document' }))
+
+  expect(await screen.findByText('cora cannot open this document.')).toBeTruthy()
+  expect(screen.queryByText(/the document follows/)).toBeNull()
 })

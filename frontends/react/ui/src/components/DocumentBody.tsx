@@ -1,48 +1,21 @@
-import { useEffect, useRef, useState } from 'react'
-import * as cora from '../api'
-
-/** One sentence for every way a passage's document cannot be read: deleted, indexed
- *  before cora kept any text, or cited by an index that names no field to look in. All
- *  three arrive as nothing, so guessing between them would sometimes be a lie — and a
- *  reader who clicked `[1]` is owed the same sentence as one who opened the rail. */
-export const UNKEPT = 'cora cannot open this document.'
-
-/**
- * The kept text of an upload, or why it cannot be read. Both answers live here so that
- * every way of opening a passage gives the same one: a citation from an index written
- * before cora kept any text names no upload, and a reader who clicked `[1]` deserves
- * that sentence as much as a reader who opened the document in the rail.
- */
-export function usePassage(source: { scope: string; upload: string } | null) {
-  const [text, setText] = useState<string | null>(null)
-  const [trouble, setTrouble] = useState<string | null>(null)
-
-  useEffect(() => {
-    setText(null)
-    setTrouble(null)
-    if (!source) {
-      setTrouble(UNKEPT)
-      return
-    }
-    let current = true
-    cora
-      .passage(source.scope, source.upload)
-      .then((kept) => current && setText(kept))
-      .catch((failed) => current && setTrouble(String(failed.message ?? failed)))
-    return () => {
-      current = false
-    }
-  }, [source?.scope, source?.upload])
-
-  return { text, trouble }
-}
+import { useEffect, useMemo, useRef } from 'react'
+import styles from './DocumentBody.module.css'
+import { joined } from '../joined'
 
 export type Span = { start: number; end: number }
 
-type Props = { text: string; spans: Span[]; scrollToFirst?: boolean }
+type Props = {
+  text: string
+  spans: Span[]
+  scrollToFirst?: boolean
+  /** Drawn without its own panel, where whatever holds it already is one. A prop rather
+   *  than a rule reaching in from the holder: each component's styles are its own now, so
+   *  what the outside gets to change about this one is what this one offers. */
+  flat?: boolean
+}
 
 /** The document, with every cited passage marked where its offsets fall. */
-export default function DocumentBody({ text, spans, scrollToFirst }: Props) {
+export default function DocumentBody({ text, spans, scrollToFirst, flat }: Props) {
   const first = useRef<HTMLElement>(null)
 
   const where = spans.map((span) => `${span.start}-${span.end}`).join()
@@ -51,22 +24,41 @@ export default function DocumentBody({ text, spans, scrollToFirst }: Props) {
     if (scrollToFirst) first.current?.scrollIntoView({ block: 'center' })
   }, [scrollToFirst, text, where])
 
-  const marked = merged(spans, text.length)
+  /* A whole document cut into spans on every render is the one expensive thing the page
+     does, and most renders change neither the text nor where it is marked — a turn
+     landing, a rail folding, a banner appearing. Held against the two values the cutting
+     actually reads: the text, and where the marks fall in it. */
+  const pieces = useMemo(() => {
+    const marked = merged(spans, text.length)
+    const cut: React.ReactNode[] = []
+    let read = 0
+    marked.forEach((span, n) => {
+      if (span.start > read) {
+        cut.push(<span key={`t${n}`}>{text.slice(read, span.start)}</span>)
+      }
+      cut.push(
+        <mark
+          className={styles.docPassage}
+          key={`m${n}`}
+          ref={n === 0 ? first : undefined}
+        >
+          {text.slice(span.start, span.end)}
+        </mark>,
+      )
+      read = Math.max(read, span.end)
+    })
+    cut.push(<span key="tail">{text.slice(read)}</span>)
+    return cut
+    /* `where` rather than `spans`: the array is built fresh by the panel on every render
+       and would never compare equal, which is the same as not holding it at all. */
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [text, where])
 
-  const pieces: React.ReactNode[] = []
-  let read = 0
-  marked.forEach((span, n) => {
-    if (span.start > read) pieces.push(<span key={`t${n}`}>{text.slice(read, span.start)}</span>)
-    pieces.push(
-      <mark className="doc-passage" key={`m${n}`} ref={n === 0 ? first : undefined}>
-        {text.slice(span.start, span.end)}
-      </mark>,
-    )
-    read = Math.max(read, span.end)
-  })
-  pieces.push(<span key="tail">{text.slice(read)}</span>)
-
-  return <div className="doc-panel doc-para">{pieces}</div>
+  return (
+    <div className={joined(styles.docPanel, styles.docPara, flat && styles.flat)}>
+      {pieces}
+    </div>
+  )
 }
 
 /**

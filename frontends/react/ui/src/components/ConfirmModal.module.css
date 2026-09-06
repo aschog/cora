@@ -1,0 +1,29 @@
+/* The same shape as the `.quiet` beside it, said here rather than shared: that one is
+   global because two rails draw it, and this one is this card's. Three declarations
+   repeated is cheaper than a rule reaching across the boundary — which is a rule that
+   silently stops matching the moment either side moves. */
+.loud {
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  color: #fff;
+  background: var(--accent);
+}
+
+.loud:hover {
+  background: var(--accent-hover);
+}
+
+.modal-said {
+  margin-top: var(--s3);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--n700);
+}
+
+.modal-answers {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--s2);
+  margin-top: var(--s4);
+}

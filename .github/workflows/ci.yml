@@ -85,6 +85,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # The rules of the library, which no type expresses: the order hooks are called in,
+      # and a dependency array that has fallen behind the closure it belongs to.
+      - name: Lint
+        run: npm run lint
+
       - name: Type check
         run: npx tsc -b --noEmit
 

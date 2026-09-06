@@ -248,3 +248,25 @@ holds no record of which.
 - **GIVEN** an answer citing a document that has since been deleted
 - **WHEN** the reader opens that citation
 - **THEN** they are told the document is no longer there, and the answer is unchanged
+
+### Requirement: A document leaves the rail when the reader confirms it
+
+The rail SHALL stop listing a document as soon as the reader confirms deleting it, before
+the store has answered.
+
+#### Scenario: The row goes before the store answers
+
+- **GIVEN** a document the reader has confirmed deleting
+- **WHEN** the store has not yet answered
+- **THEN** the rail no longer lists it, and lists the others
+
+### Requirement: A document the store would not delete comes back, with the reason
+
+Where the store refuses the delete, the document SHALL be listed again and the page SHALL
+say why.
+
+#### Scenario: Refused, so it is listed again
+
+- **GIVEN** a document the reader confirmed deleting
+- **WHEN** the store refuses
+- **THEN** it is listed again, and the page says why

@@ -96,16 +96,27 @@ async function failure(response: Response): Promise<string> {
   }
 }
 
-export const documents = (scope: string) =>
-  read<string[]>(`/api/documents?scope=${encodeURIComponent(scope)}`)
-export const scopes = () => read<Scopes>('/api/scopes')
-export const memory = () => read<Fact[]>('/api/memory')
-export const sessions = () => read<Session[]>('/api/sessions')
-export const turns = (thread: string) => read<Turn[]>(`/api/sessions/${thread}`)
+/* Every read takes the signal of the thing that wanted it. A page the reader has moved
+   past is a page whose requests are still on the wire: the answers were always dropped,
+   and this is what stops them being fetched at all. A write takes none — a delete the
+   reader asked for is not undone by them looking elsewhere. */
+export const documents = (scope: string, signal?: AbortSignal) =>
+  read<string[]>(`/api/documents?scope=${encodeURIComponent(scope)}`, { signal })
+export const scopes = (signal?: AbortSignal) => read<Scopes>('/api/scopes', { signal })
+export const memory = (signal?: AbortSignal) => read<Fact[]>('/api/memory', { signal })
+export const sessions = (signal?: AbortSignal) =>
+  read<Session[]>('/api/sessions', { signal })
+/* Every thread reaching a path is escaped on the way in — here, and in the three below
+   that take one. The router already refuses an address that could mean a different path,
+   and this is the same guard at the other end: one place every caller routes through,
+   rather than a rule each new one has to know. */
+export const turns = (thread: string, signal?: AbortSignal) =>
+  read<Turn[]>(`/api/sessions/${encodeURIComponent(thread)}`, { signal })
 
-export const passage = (scope: string, upload: string) =>
+export const passage = (scope: string, upload: string, signal?: AbortSignal) =>
   read<{ text: string }>(
     `/api/uploads/${encodeURIComponent(scope)}/${encodeURIComponent(upload)}`,
+    { signal },
   ).then((kept) => kept.text)
 
 /** Delete one document from one field: its passages out of the index, and the file its
@@ -117,9 +128,11 @@ export const deleteDocument = (scope: string, name: string) =>
 /** Delete one conversation: the turns recorded under it, and the thread they were
  *  answered on. One request, because a conversation whose record is gone and whose
  *  thread is not still holds a pin, a transcript and possibly a turn nobody can see. */
-export const deleteSession = (thread: string) => discard(`/api/sessions/${thread}`)
+export const deleteSession = (thread: string) =>
+  discard(`/api/sessions/${encodeURIComponent(thread)}`)
 
-export const forget = (key: string) => discard(`/api/memory/${key}`)
+export const forget = (key: string) =>
+  discard(`/api/memory/${encodeURIComponent(key)}`)
 
 export const forgetEverything = () => discard('/api/memory')
 
@@ -208,13 +221,17 @@ export async function resume(
 
 /** Which field a conversation is pinned to, or nothing. The pin is a key of the thread's
  *  own state, so this is what a reloaded page reads it back from. */
-export const pinned = (thread: string) =>
-  read<{ pin: string | null }>(`/api/sessions/${thread}/scope`).then((held) => held.pin)
+export const pinned = (thread: string, signal?: AbortSignal) =>
+  read<{ pin: string | null }>(`/api/sessions/${encodeURIComponent(thread)}/scope`, {
+    signal,
+  }).then(
+    (held) => held.pin,
+  )
 
 /** What a conversation is waiting on, or nothing. A page that arrived after the pause
  *  has nowhere else to look: the turn is recorded only once it has an answer. */
-export const pending = (thread: string) =>
-  read<Pending | null>(`/api/sessions/${thread}/pending`)
+export const pending = (thread: string, signal?: AbortSignal) =>
+  read<Pending | null>(`/api/sessions/${encodeURIComponent(thread)}/pending`, { signal })
 
 const post = (path: string, body: unknown) =>
   fetch(path, {

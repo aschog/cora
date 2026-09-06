@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import type { Step } from '../api'
+import styles from './PlanPanel.module.css'
+import { joined } from '../joined'
 
 /** The trace as the panel draws it. A step that ran work of its own — a plugin's tool
  *  that delegated to the model — opens onto that work, drawn by this same panel to
@@ -18,28 +20,34 @@ export default function PlanPanel({ steps }: { steps: Step[] }) {
   const [open, setOpen] = useState<number | null>(null)
 
   return (
-    <div className="plan">
+    <div className={styles.plan}>
       {steps.map((step, n) => (
         <div key={n}>
           <button
-            className="plan-step"
+            className={styles.planStep}
             aria-expanded={open === n}
             onClick={() => setOpen(open === n ? null : n)}
           >
-            <span className="plan-step-n">{n + 1}</span>
-            <span className="plan-step-label">{step.summary}</span>
-            <span className={step.failed ? 'plan-step-mark failed' : 'plan-step-mark'}>
+            <span className={styles.planStepN}>{n + 1}</span>
+            <span className={styles.planStepLabel}>{step.summary}</span>
+            <span className={joined(styles.planStepMark, step.failed && styles.failed)}>
               {step.failed ? '✕' : '✓'}
             </span>
           </button>
           {open === n && (saysMore(step) || step.origin) && (
-            <div className="plan-detail">
-              {saysMore(step) && <div className="plan-result">{step.detail}</div>}
-              {step.origin && <div className="micro plan-origin">{step.origin}</div>}
+            <div className={styles.planDetail}>
+              {saysMore(step) && <div className={styles.planResult}>{step.detail}</div>}
+              {step.origin && (
+                <div className={`micro ${styles.planOrigin}`}>{step.origin}</div>
+              )}
             </div>
           )}
           {open === n && step.steps?.length > 0 && (
-            <div className="plan-inside" role="group" aria-label={`inside ${step.summary}`}>
+            <div
+              className={styles.planInside}
+              role="group"
+              aria-label={`inside ${step.summary}`}
+            >
               <PlanPanel steps={step.steps} />
             </div>
           )}

@@ -1,0 +1,35 @@
+/* ── modal ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s5);
+  background: rgba(4, 6, 10, 0.62);
+}
+
+.modal {
+  width: min(560px, 100%);
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: var(--s5);
+  background: var(--surface);
+  border-radius: 4px;
+  box-shadow: var(--shadow-lg);
+}
+
+.modal-title {
+  font-size: 19px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+/* A narrower dialog, for a question rather than a document. Written as a compound with
+   the class it narrows so it beats that width whatever order the sheets load in — two
+   single classes are the same specificity, and source order across modules is the
+   bundler's business rather than something to rely on. */
+.modal.narrow {
+  width: min(420px, 100%);
+}

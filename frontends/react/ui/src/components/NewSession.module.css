@@ -1,0 +1,48 @@
+/* Read out, never drawn: a reason that belongs to a control with no room for prose. */
+.told-not-shown {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* ── starting over ── */
+.new-session {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: var(--s4);
+  padding: 9px 20px 9px 16px;
+  background: rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.09);
+  border-radius: var(--pill);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.new-session:hover:not([aria-disabled='true']) {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.new-session[aria-disabled='true'] {
+  color: var(--n500);
+  cursor: default;
+}
+
+.new-session-plus {
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.new-session[aria-disabled='true'] .new-session-plus {
+  color: var(--n500);
+}

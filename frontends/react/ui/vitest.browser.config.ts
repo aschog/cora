@@ -1,5 +1,6 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from 'vite'
+import { modules } from './vite.config'
 
 // The tier the fast one cannot be, for the two things happy-dom cannot answer for. It moves
 // no selection boundary when a text node is rewritten, so what the reader keeps while an
@@ -8,6 +9,7 @@ import { defineConfig } from 'vite'
 // observable where the cascade is real. Its own config and its own command: a browser is not
 // something `npm test` should need.
 export default defineConfig({
+  css: modules,
   test: {
     include: ['browser/**/*.test.ts'],
     browser: {

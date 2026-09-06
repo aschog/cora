@@ -1,3 +1,5 @@
+import styles from './DeleteControl.module.css'
+
 type Props = {
   /** What this control would delete, in the reader's own words. It is the control's
    *  whole name: a column of identical icons says nothing about which row is which,
@@ -10,7 +12,7 @@ type Props = {
 export default function DeleteControl({ what, onDelete }: Props) {
   return (
     <button
-      className="row-delete"
+      className={styles.rowDelete}
       title={`Delete ${what}`}
       aria-label={`Delete ${what}`}
       onClick={onDelete}

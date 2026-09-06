@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import styles from './ScopePicker.module.css'
 
 type Props = {
   /** The fields this deployment offers. Fewer than two is nothing to route between, and
@@ -77,19 +78,19 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
      description hung off a name nobody can focus is a description nobody is read. */
   if (fixed && pin !== null)
     return (
-      <div className="modes">
-        <div className="mode-strip" role="group" aria-label={ANSWER_IN}>
-          <span className="mode settled">{pin}</span>
+      <div className={styles.modes}>
+        <div className={styles.modeStrip} role="group" aria-label={ANSWER_IN}>
+          <span className={`${styles.mode} ${styles.settled}`}>{pin}</span>
         </div>
-        <span className="scope-note">{ONE_WAY}</span>
+        <span className={styles.scopeNote}>{ONE_WAY}</span>
       </div>
     )
 
   return (
-    <div className="modes">
-      <div className="mode-strip" role="group" aria-label={ANSWER_IN}>
+    <div className={styles.modes}>
+      <div className={styles.modeStrip} role="group" aria-label={ANSWER_IN}>
         <button
-          className="mode"
+          className={styles.mode}
           aria-pressed={pin === null}
           onClick={() => {
             setOpen(false)
@@ -98,11 +99,11 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
         >
           {CHAT}
         </button>
-        <div className="mode-wrap" ref={wrap} onKeyDown={escape}>
+        <div className={styles.modeWrap} ref={wrap} onKeyDown={escape}>
           <button
             ref={trigger}
             id={TRIGGER}
-            className="mode"
+            className={styles.mode}
             aria-pressed={pin !== null}
             aria-expanded={open}
             aria-controls={LIST}
@@ -110,7 +111,7 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
           >
             {pin ?? (
               <>
-                <span className="mode-plus" aria-hidden="true">
+                <span className={styles.modePlus} aria-hidden="true">
                   +
                 </span>
                 {PICK}
@@ -118,11 +119,11 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
             )}
           </button>
           {open && (
-            <ul id={LIST} className="mode-menu">
+            <ul id={LIST} className={styles.modeMenu}>
               {available.map((scope) => (
                 <li key={scope}>
                   <button
-                    className="mode-option"
+                    className={styles.modeOption}
                     aria-current={pin === scope}
                     onClick={() => {
                       onPin(scope)
@@ -137,7 +138,7 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
           )}
         </div>
       </div>
-      {pin !== null && <span className="scope-note">{FROM_NEXT}</span>}
+      {pin !== null && <span className={styles.scopeNote}>{FROM_NEXT}</span>}
     </div>
   )
 }
