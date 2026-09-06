@@ -19,7 +19,7 @@ from cora.plugins.travel.itinerary import ITINERARY_TOOL_NAME
 from cora.ports.chat_model import ModelReply
 from cora.ports.host import ANSWERING, Extension, Host
 from cora.ports.plugin import ToolCall
-from fakes import ScriptedChatModel
+from fakes import FakeConversations, ScriptedChatModel
 
 THREAD = "checked"
 QUESTION = "How do I reach the desk?"
@@ -188,3 +188,17 @@ def test_a_turn_that_stopped_and_was_picked_up_checks_its_answer_once(
     app.agent.resume(Answer(action="s1"), THREAD)
 
     assert seen == [SPOKEN]
+
+
+def test_the_answer_that_is_recorded_is_the_one_the_handlers_left() -> None:
+    kept = FakeConversations()
+    app = assembled(
+        chat_model=ScriptedChatModel([ModelReply(text=SPOKEN)]),
+        plugins=(_plugin(REDACTING, _redact),),
+        conversations=kept,
+    )
+
+    app.agent.answer(QUESTION, THREAD)
+
+    [turn] = kept.turns(THREAD)
+    assert turn.result.answer == REDACTED
