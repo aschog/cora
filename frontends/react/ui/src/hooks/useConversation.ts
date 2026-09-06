@@ -5,6 +5,7 @@ import type { Entry } from '../entry'
 import { carded, parkedOn, recorded, unanswered } from '../entry'
 import { aborted, message } from '../fail'
 import { forget, forgetIf, stow, stowed } from '../parked'
+import { threadInUrl } from '../route'
 import { useOneAtATime } from './useOneAtATime'
 
 /** What became of a load: drawn on the page, dropped for a later one (or a store that
@@ -23,11 +24,19 @@ const newThread = () =>
  *  can be built before the ones that own those.
  */
 export function useConversation(setTrouble: (said: string | null) => void) {
-  /* A card left open outlives the page it was drawn on, so the page opens in the
-     conversation it was left in. Read as this state's first value rather than set from an
-     effect: a thread minted only to be replaced on the next render is one every read
-     that ran in between belongs to. */
-  const [thread, setThread] = useState<string>(() => stowed() ?? newThread())
+  /* Where the page opens: the conversation a card was left open in, else the one the
+     address names, else a fresh one. Read as this state's first value rather than set
+     from an effect — a thread minted only to be replaced on the next render is one every
+     read that ran in between belongs to.
+     The stow outranks the address, though the address is the more deliberate of the two,
+     because of what each costs when it loses. A conversation named in the address is
+     listed under SESSIONS and is one click away. A thread parked on its first question
+     has answered nothing, is listed nowhere, and is reachable by this and by nothing
+     else — so passing it over is not choosing between two routes, it is closing the only
+     one. Whichever wins, opening it writes the address, so the two agree afterwards. */
+  const [thread, setThread] = useState<string>(
+    () => stowed() ?? threadInUrl() ?? newThread(),
+  )
   const [entries, setEntries] = useState<Entry[]>([])
   /* Which conversation the reader is in, written where it changes rather than during a
      render: `setThread` schedules a render, so a ref assigned while rendering still

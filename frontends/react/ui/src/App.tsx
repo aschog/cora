@@ -1,9 +1,11 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as cora from './api'
 import type { Citation, Fact, Session } from './api'
 import { answeredIn, lastTrace } from './entry'
 import { stowed } from './parked'
+import { showThread, threadInUrl } from './route'
+import { useRoutedThread } from './hooks/useHash'
 import { useConversation } from './hooks/useConversation'
 import { useDocuments } from './hooks/useDocuments'
 import { usePin } from './hooks/usePin'
@@ -87,6 +89,9 @@ function Page() {
   const [confirming, setConfirming] = useState<(Asked & Removal) | null>(null)
   const [leftOpen, setLeftOpen] = useState(true)
   const [rightOpen, setRightOpen] = useState(true)
+  /* Which conversation the address names. Read from it rather than mirrored into state:
+     the reader can change it, and two answers to "which conversation" can disagree. */
+  const routed = useRoutedThread()
 
   const {
     thread,
@@ -159,6 +164,10 @@ function Page() {
     })
     if (outcome === 'unreadable') setTrouble(UNDRAWABLE)
     if (outcome === 'drawn') {
+      /* The address names the conversation that is drawn, and only once it is: a link to
+         one that could not be read would otherwise sit in the bar describing a page the
+         reader is not on. */
+      showThread(session.thread_id)
       void parked(session.thread_id)
       void held(session.thread_id)
     }
@@ -171,10 +180,31 @@ function Page() {
     /* Every write this makes is behind an `await` — the store is read first and nothing
        is set until it answers — which is the callback the rule asks for and cannot see
        through an async call. */
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (stowed()) void enterConversation({ thread_id: thread, opened_with: '' })
+    if (threadInUrl() || stowed()) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void enterConversation({ thread_id: thread, opened_with: '' })
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  /* The address changing *under* the page — the back button, a link pasted into the bar
+     — is a request to be in another conversation. What the page itself just wrote is not:
+     opening one writes the address, and following that back would load it twice.
+     Compared against the last address this acted on rather than against the thread on the
+     page, because the two disagree for every reason and only one of them is a
+     navigation: a conversation the reader started, a load still in flight, a thread the
+     store refused. Re-asserting the address over any of those takes them somewhere they
+     did not ask to go. */
+  const followed = useRef(routed)
+  useEffect(() => {
+    const asked = routed
+    if (asked === followed.current) return
+    followed.current = asked
+    if (asked === null || asked === thread) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void enterConversation({ thread_id: asked, opened_with: '' })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routed])
 
   /** What the page has to say about itself, in one place: a load that failed, a question
    *  left running that will not be answered, and what became of the last upload. The
@@ -234,6 +264,9 @@ function Page() {
                   start({
                     canLeave: somethingToLeave,
                     leaving: () => {
+                      /* A fresh thread is in no store and has nothing to link to, so the
+                         address goes back to naming no conversation at all. */
+                      showThread(null)
                       setRead(null)
                       setNotice(null)
                       reset()

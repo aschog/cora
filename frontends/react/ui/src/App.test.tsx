@@ -88,6 +88,9 @@ afterEach(() => {
   step.release()
   cleanup()
   globalThis.sessionStorage?.clear()
+  /* The address outlives a render, so a conversation one test opened would be the one
+     the next test's page opens in — every spec here starts nowhere in particular. */
+  globalThis.history.replaceState(null, '', globalThis.location.pathname)
 })
 
 beforeEach(() => {
@@ -4323,4 +4326,38 @@ test('a delete confirmed after the field moved names the field the rail was show
   expect(railField()).toBe('travel')
   expect(screen.getByText('kyoto.md')).toBeTruthy()
   expect(screen.queryByText('notes.md')).toBeNull()
+})
+
+test('the conversation being read is named in the address', async () => {
+  /* A conversation the reader is in should be one they can link to, come back to, and
+     press back out of — none of which is possible while every conversation has the same
+     address. */
+  render(<App />)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+
+  expect(globalThis.location.hash).toBe('#/c/old')
+})
+
+test('a page opened at a conversation opens in it', async () => {
+  globalThis.history.replaceState(null, '', `${globalThis.location.pathname}#/c/old`)
+
+  render(<App />)
+
+  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
+})
+
+test('starting over takes the conversation out of the address', async () => {
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+
+  fireEvent.click(screen.getByRole('button', { name: /new/i }))
+
+  /* The fresh thread is in no store, so there is nothing for the address to name. */
+  await waitFor(() => expect(globalThis.location.hash).toBe(''))
+  expect(screen.queryByText(OLDER.result.answer)).toBeNull()
 })
