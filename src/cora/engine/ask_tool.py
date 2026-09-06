@@ -96,17 +96,23 @@ DRAWN = ("string", "integer", "number", "boolean")
 """The kinds of value a field may ask for. Not every JSON Schema type: an object or an
 array is a shape the page has no control for, and a card the reader cannot answer is
 worse than an ask that was refused."""
+MOST_FIELDS = 12
+"""The longest form cora will put up. A card past this is one the reader abandons, and
+an abandoned card tells the model nothing — refused, it asks for what the answer turns
+on instead."""
 ASK_FOR_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "prompt": {
             "type": "string",
             "description": "What you need and what for, in a single sentence.",
+            "minLength": 1,
         },
         "fields": {
             "type": "array",
             "description": "The values you need, in the order they are best filled in.",
             "minItems": 1,
+            "maxItems": MOST_FIELDS,
             "items": {
                 "type": "object",
                 "properties": {

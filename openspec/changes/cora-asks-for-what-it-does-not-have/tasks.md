@@ -18,6 +18,8 @@ throughout, as the boundary it is — the last item is the one that is not.
 - [x] 2.6 An ask whose field has no name refused the same way
 - [x] 2.7 An ask naming a type cora does not read refused rather than drawn as nothing
 - [x] 2.8 Two fields of one name refused, rather than one of them silently dropped
+- [x] 2.9 An ask with no prompt to read refused, so no card asks without saying what for
+- [x] 2.10 A form longer than anyone fills refused rather than drawn as a wall
 
 ## 3. What the reader writes settles it
 
@@ -33,13 +35,18 @@ throughout, as the boundary it is — the last item is the one that is not.
 - [x] 4.3 A round asking for values and calling a tool settling the ask before the tool
 - [x] 4.4 A form asked with the rounds spent ending the turn like any other tool
 - [x] 4.5 A round asking both ways putting the form, so no fork is put twice
+- [x] 4.6 An open fork put wherever it stands in the round, so the order decides nothing
+- [x] 4.7 **Graph.** A turn that keeps asking for values ended by cora's own budget
+      rather than by the limit the graph runs under — `test_langgraph_runner.py`
 
 ## 4a. A card that is not filled in is not sent
 
 - [x] 4a.1 A box the reader left blank absent from what the model is told and the trace
-- [x] 4a.2 A blank never written over the argument the model supplied — the gate's cards
+- [x] 4a.2 A box that came up empty and went back empty dropped on the gate's cards too
 - [x] 4a.3 A required field holding only spaces still holding the submit action shut —
       `PauseCard.test.tsx`
+- [x] 4a.4 A prefilled field the reader cleared reaching the tool cleared, so a filter
+      the model guessed at is one they can strike out
 
 ## 5. Cora's own
 

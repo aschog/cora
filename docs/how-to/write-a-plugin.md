@@ -184,9 +184,9 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    handler answering with something that is not a sentence refuses on cora's wording
    rather than on your value. A `RETURNING` handler is read for the payload and the
    error: the call id answers one call and is not yours to change. Two things `CALLING`
-   does not cover: an `ask_user` call, which the turn settles with the reader before the
-   tools run, and the arguments — you are handed a copy, so rewriting them changes
-   nothing.
+   does not cover: either of cora's asks — `ask_user` and `ask_user_for` — which the
+   turn settles with the reader before the tools run, and the arguments — you are handed
+   a copy, so rewriting them changes nothing.
 
    ```python
    def a_note_on_the_season(brief: str) -> str:

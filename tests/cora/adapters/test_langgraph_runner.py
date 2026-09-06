@@ -34,7 +34,7 @@ from cora.domain.trace import (
     TraceStep,
     step_kinds,
 )
-from cora.engine.ask_tool import ASK_TOOL_NAME
+from cora.engine.ask_tool import ASK_FOR_TOOL_NAME, ASK_TOOL_NAME, SEND
 from cora.engine.plugin_set import Registry
 from cora.engine.steps import (
     ANSWER,
@@ -833,9 +833,8 @@ def test_a_turn_that_stops_to_ask_still_gets_its_whole_round_budget() -> None:
 
 
 def test_a_turn_that_keeps_asking_is_stopped_by_the_round_budget() -> None:
-    """The pause is visited once a turn, so a limit sized for one ask still holds: a
-    model that asks again is routed to the tools, where the engine's own budget stops
-    it — rather than the graph overrunning a limit that never expected a second."""
+    """A second fork is routed to the tools, where the engine's own budget stops it —
+    rather than the graph overrunning a limit that never expected one."""
     rounds = 0
 
     def asks(state: AgentState) -> AgentState:
@@ -862,6 +861,43 @@ def test_a_turn_that_keeps_asking_is_stopped_by_the_round_budget() -> None:
     with pytest.raises(ToolLoopLimitError):
         list(runner.resume(Answer(action="77 kg"), THREAD))
 
+    assert rounds == 2, "exactly the rounds the budget allows, and no more"
+
+
+def test_a_turn_that_keeps_asking_for_values_is_stopped_by_the_round_budget() -> None:
+    """A form may be put again and again, so the pause is no longer visited once a turn
+    — and the limit the graph runs under was sized on the belief that it was. Every
+    round the reader is stopped is still a round, so cora's own budget is what ends the
+    turn, and a reader who kept filling forms in is told so rather than shown a graph
+    that overran."""
+    rounds = 0
+
+    def asks_for(state: AgentState) -> AgentState:
+        nonlocal rounds
+        rounds += 1
+        call = ToolCall(
+            name=ASK_FOR_TOOL_NAME,
+            arguments={
+                "prompt": "Where from?",
+                "fields": [{"name": "origin", "description": "Where from"}],
+            },
+            call_id=f"f{rounds}",
+        )
+        return {"messages": [Message(role="assistant", content="", tool_calls=(call,))]}
+
+    runner = _runner(
+        model=_always(asks_for),
+        tools=_nothing,
+        ask=AskStep(pause=interrupting),
+        rounds=2,
+    )
+    list(runner.run({"question": "q"}, THREAD))
+
+    with pytest.raises(ToolLoopLimitError) as stopped:
+        for _ in range(ROUNDS + 2):
+            list(runner.resume(Answer(action=SEND, values={"origin": "BER"}), THREAD))
+
+    assert stopped.value.__cause__ is None, "cora's budget, not the graph's guard"
     assert rounds == 2, "exactly the rounds the budget allows, and no more"
 
 

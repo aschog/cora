@@ -129,6 +129,15 @@ model, not an enforcement boundary: a document containing "ignore your instructi
 still a document the model reads. If you upload text you did not write, you are trusting
 the model's compliance with that notice.
 
+**A card can ask you for anything, because the model wrote the fields on it.** When cora
+asks for values it does not hold, the prompt and the boxes are the model's own words,
+and what you type into them goes into the conversation. No screen stands in front of
+that: the ask is settled with you before the tools run, so a `CALLING` handler never
+sees it, and the shipped screen reads your question rather than what cora asks back. A
+model led by something it read could already ask you in prose — the difference is that a
+card looks like cora asking. Read a form the way you would read the answer above it, and
+be no freer with what you type into it.
+
 **The approval gate covers what was declared to cora.** A tool a plugin registered with
 `effect=True` cannot run on the model's word. The turn stops, you see what the tool says
 it does and the arguments the model wrote, and nothing outside cora happens until you
@@ -193,9 +202,9 @@ if it came from someone you do not know.
 - **Output is confined.** A plugin writing what an effect produced is handed a port, not
   a path. A filename that would resolve outside the configured output directory is
   refused, so no plugin writes that check itself.
-- **Three tool names are cora's.** `search_documents`, `remember` and `ask_user` cannot
-  be taken by a plugin; a plugin that tries is refused at startup rather than shadowing
-  the tool the model expects.
+- **Four tool names are cora's.** `search_documents`, `remember`, `ask_user` and
+  `ask_user_for` cannot be taken by a plugin; a plugin that tries is refused at startup
+  rather than shadowing the tool the model expects.
 - **A system-wide handler cannot be scoped away.** A handler registered without a scope
   runs in every turn, whatever field it is in, and no scope can switch it off — so a
   screen that *is* loaded covers every field. cora does not enforce that one is loaded;

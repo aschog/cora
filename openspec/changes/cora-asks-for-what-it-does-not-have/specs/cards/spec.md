@@ -82,8 +82,9 @@ other tool asked for at the budget does.
 
 An action that runs on a card's values SHALL be unavailable while any required field is
 empty, so the reader either fills the card in or leaves it by the way out. Whitespace
-SHALL count as empty, and a value left empty SHALL NOT reach the turn as one the reader
-wrote.
+SHALL count as empty. A box that came up empty and went back empty SHALL NOT reach the
+turn as a value the reader wrote, and a box that came up holding something and went back
+empty SHALL reach it as the erasure it is.
 
 #### Scenario: The way out is the only way off an unfilled card
 
@@ -102,6 +103,12 @@ wrote.
 - **GIVEN** a card the reader submitted with one box left empty
 - **WHEN** the turn carries on
 - **THEN** that field is absent from what the model is told and from the trace
+
+#### Scenario: A value the reader cleared is cleared for the tool too
+
+- **GIVEN** a card put up holding an argument the model wrote
+- **WHEN** the reader empties that box and submits the card
+- **THEN** the tool runs without that value, rather than on the one they cleared
 
 ### Requirement: An ask cora cannot read is refused, not put to the reader
 

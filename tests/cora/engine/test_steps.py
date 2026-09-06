@@ -1353,6 +1353,23 @@ def test_a_form_may_be_raised_again_where_a_decision_may_not() -> None:
     assert Router(max_tool_rounds=8)(_stopped_once(_ask_call("a2"))) == TOOLS
 
 
+def test_a_round_asking_both_ways_puts_the_fork_wherever_it_stands_in_the_round() -> (
+    None
+):
+    """The fork is the constrained one — once a turn, and exempt from the budget — so it
+    is the one put while it is still open. Read off the round rather than off the order
+    the model happened to emit the two calls in, or the same state settles two ways."""
+    for order in (
+        (_form_call("f1"), _ask_call("a1")),
+        (_ask_call("a1"), _form_call("f1")),
+    ):
+        partial = AskStep(pause=_Chosen("75 kg"))(_replied(*order))
+
+        [message] = partial["messages"]
+        assert message.tool_call_id == "a1"
+        assert Router(max_tool_rounds=2)(_replied(*order, rounds=2)) == ASK
+
+
 def test_a_form_asked_with_the_rounds_spent_is_the_budget_like_any_other_tool() -> None:
     """A fork costs no round, because a turn that stopped to check still has its whole
     budget to answer with. A form may be raised again and again, so something has to
@@ -2272,6 +2289,42 @@ def test_a_value_for_a_field_the_card_never_offered_is_dropped() -> None:
     )(_proposing(ASKING))
 
     assert contributed["filled"] == {"c1": {"origin": "BER"}}
+
+
+def test_a_prefilled_field_the_reader_cleared_is_cleared_for_the_tool_too() -> None:
+    """A card the gate puts arrives holding what the model wrote, so emptying a box is
+    the reader striking that value out. Dropped as blank, the model's guess would
+    survive the erasure and the search would run on a filter they removed."""
+    guessed = Tool(
+        name=ASKING,
+        description=DOES,
+        parameter_schema={
+            "type": "object",
+            "properties": {"origin": {"type": "string"}, "cap": {"type": "integer"}},
+            "required": ["origin"],
+        },
+        run=lambda **_: "searched",
+        asks=lambda arguments: Card(
+            prompt=FILL_IN,
+            fields=(
+                FieldAsked(name="origin", required=True),
+                FieldAsked(name="cap", value=500),
+            ),
+            actions=(
+                ActionOffered(label="Search", answer="Search", needs_valid=True),
+                ActionOffered(label="Not now", answer=None),
+            ),
+        ),
+    )
+
+    contributed = GateStep(
+        registry=_offering(guessed),
+        approve=lambda _: Answer(
+            action="Search", values={"origin": "BER", "cap": None}
+        ),
+    )(_proposing(ASKING))
+
+    assert contributed["filled"] == {"c1": {"origin": "BER", "cap": None}}
 
 
 def test_a_field_the_reader_left_blank_is_not_a_value_they_wrote() -> None:

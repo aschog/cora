@@ -4,6 +4,7 @@ from cora.domain.decision import Decision, Option
 from cora.engine.ask_tool import (
     ASK_TOOL_NAME,
     ASKED_ALREADY,
+    MOST_FIELDS,
     SEND,
     ask_for_tool,
     ask_tool,
@@ -188,3 +189,24 @@ def test_neither_ask_reads_as_the_other() -> None:
     assert "two or more different values" in settling
     assert "do not have and cannot look up" in gathering
     assert "option" not in gathering, "options are the other ask's, and a form has none"
+
+
+def test_an_ask_with_no_prompt_to_read_is_refused() -> None:
+    """A card whose prompt is blank asks the reader for values and never says what for
+    — and the trace, having no question to show, would fall back to the fields."""
+    with pytest.raises(ToolRefusal):
+        card_from({"prompt": "", "fields": [{"name": "origin", "description": "From"}]})
+
+
+def test_a_form_longer_than_anyone_fills_is_refused() -> None:
+    """A wall of controls is a card the reader abandons, and abandoning it tells the
+    model nothing. Refused, the model asks for what the answer turns on instead."""
+    with pytest.raises(ToolRefusal):
+        card_from(
+            _asking(
+                *(
+                    {"name": f"field_{at}", "description": "Something"}
+                    for at in range(MOST_FIELDS + 1)
+                )
+            )
+        )

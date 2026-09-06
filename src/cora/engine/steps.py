@@ -1098,13 +1098,18 @@ def ask_in(state: AgentState) -> ToolCall | None:
     A form is here however many the turn has already put. The fork is here only once,
     so a round raising both after the fork was settled yields the form: the reader is
     put what is still open rather than the same question twice.
+
+    An open fork wins over a form beside it, whichever the model wrote first. It is the
+    constrained one — once a turn, and the only ask the round budget exempts — so a rule
+    that read the round's order would spend a turn's one question on where in a list the
+    model happened to put it.
     """
-    for call in _requested_calls(state):
-        if call.name == ASK_FOR_TOOL_NAME:
-            return call
-        if call.name == ASK_TOOL_NAME and not _already_asked(state):
-            return call
-    return None
+    calls = _requested_calls(state)
+    if not _already_asked(state):
+        fork = next((call for call in calls if call.name == ASK_TOOL_NAME), None)
+        if fork is not None:
+            return fork
+    return next((call for call in calls if call.name == ASK_FOR_TOOL_NAME), None)
 
 
 def _already_asked(state: AgentState) -> bool:
@@ -1135,24 +1140,27 @@ def _written(card: Card, answer: Answer | None) -> dict[str, Any] | None:
     and a value for a field it put up to be read is dropped rather than written over the
     argument it was shown beside.
 
-    A box left empty is dropped with them. It is a field the reader skipped rather than
-    a value of nothing — written through, it would overwrite the argument the model
-    supplied, and be reported to both the model and the trace as filled in.
+    A box that came up empty and went back empty is dropped with them: the reader
+    skipped it rather than answering it with nothing, and written through it would be
+    reported to the model and the trace as filled in. A box that came up holding
+    something is not — emptying that one is the reader striking the value out, and a
+    card that could not carry an erasure would leave them looking at a filter they
+    cleared and a search that still ran on it.
     """
     if answer is None or answer.action is None:
         return None
     if answer.action not in {action.answer for action in card.actions}:
         return None
-    offered = {field.name for field in card.fields if field.editable}
+    offered = {field.name: field for field in card.fields if field.editable}
     return {
         name: value
         for name, value in answer.values.items()
-        if name in offered and not _blank(value)
+        if name in offered and not (_blank(value) and _blank(offered[name].value))
     }
 
 
 def _blank(value: Any) -> bool:
-    """Whether a box came back with nothing in it.
+    """Whether a box holds nothing.
 
     Whitespace counts, and `False` and `0` do not: a cleared text box arrives as an
     empty string, and an unticked checkbox is an answer.

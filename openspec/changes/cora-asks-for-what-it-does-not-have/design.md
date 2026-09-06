@@ -33,9 +33,21 @@ but a call, which would be a handler stopping a turn.
 
 - The router already sends a round's ask to that step ahead of the round's tools, and it
   sends either ask by the same rule.
-- The one-ask-a-turn guard is that rule, so it covers the new tool by standing still.
+- The one-ask-a-turn guard is narrowed to the fork: a reader who skipped a box left a
+  gap nothing else can close, and refusing the second form puts prose back.
+- A form answers to the round budget instead, because something has to bound it and that
+  is what bounds every other tool.
 - Rejected: the gate, which fills in a call's own arguments — here the arguments are the
   question, not the thing being filled.
+
+**A blank is read against what the box came up holding.**
+
+- A field the card put up empty and got back empty was skipped, and is dropped rather
+  than reported to the model as answered.
+- A field the card put up holding the model's own argument is not: emptying that one is
+  the reader striking the value out, and the call runs without it.
+- Rejected: dropping every blank — the reader could then never remove a filter the model
+  guessed at, and the search would run on one they had cleared.
 
 **What the reader wrote comes back as that call's result.**
 
