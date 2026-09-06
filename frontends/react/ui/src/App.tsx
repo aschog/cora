@@ -15,6 +15,7 @@ import CitationModal from './components/CitationModal'
 import ConfirmModal from './components/ConfirmModal'
 import type { Asked } from './components/ConfirmModal'
 import DocumentRail from './components/DocumentRail'
+import ErrorBoundary from './components/ErrorBoundary'
 import NewSession from './components/NewSession'
 import RailToggle from './components/RailToggle'
 import ScopePicker from './components/ScopePicker'
@@ -181,7 +182,7 @@ export default function App() {
             />
           </div>
           {leftOpen && (
-            <>
+            <ErrorBoundary said="The documents rail could not be drawn.">
               <NewSession
                 canStart={somethingToLeave}
                 onNew={() =>
@@ -214,28 +215,32 @@ export default function App() {
                 upload={notice}
                 onDismissUpload={() => setNotice(null)}
               />
-            </>
+            </ErrorBoundary>
           )}
         </aside>
 
-        <Answer
-          mode={
-            <ScopePicker
-              available={fields}
-              pin={pin}
-              fixed={fixedPin}
-              onPin={pick}
-            />
-          }
-          thread={thread}
-          entries={conversation}
-          asking={asking}
-          askingElsewhere={working !== null && working !== thread}
-          onAsk={ask}
-          onCite={setOpened}
-          onTake={take}
-          onChange={change}
-        />
+        {/* Each column catches its own, so a rail that cannot be drawn costs the reader
+            that rail rather than the conversation they were reading. */}
+        <ErrorBoundary said="This conversation could not be drawn.">
+          <Answer
+            mode={
+              <ScopePicker
+                available={fields}
+                pin={pin}
+                fixed={fixedPin}
+                onPin={pick}
+              />
+            }
+            thread={thread}
+            entries={conversation}
+            asking={asking}
+            askingElsewhere={working !== null && working !== thread}
+            onAsk={ask}
+            onCite={setOpened}
+            onTake={take}
+            onChange={change}
+          />
+        </ErrorBoundary>
 
         <aside className={rightOpen ? 'rail-panels' : 'rail-panels shut'}>
           <div className="rail-top">
@@ -262,58 +267,63 @@ export default function App() {
                 ))}
               </div>
 
-              {tab === 'STEPS' && (
-                <PlanPanel
-                  steps={live?.thread === thread ? live.steps : lastTrace(entries)}
-                />
-              )}
-              {tab === 'SOURCE' && (
-                <SourcePanel
-                  document={read?.document ?? null}
-                  source={read ? sourceOf(read) : null}
-                  citations={read ? passagesIn(read) : []}
-                />
-              )}
-              {tab === 'SESSIONS' && (
-                <SessionsPanel
-                  sessions={sessions}
-                  here={thread}
-                  working={working}
-                  onOpen={enterConversation}
-                  onDelete={(session) =>
-                    setConfirming({
-                      head: 'DELETE SESSION',
-                      subject: session.opened_with,
-                      said: SESSION_GOES,
-                      confirm: 'Delete session',
-                      act: () => discard(session),
-                    })
-                  }
-                />
-              )}
-              {tab === 'MEMORY' && (
-                <MemoryPanel
-                  facts={facts}
-                  onForget={(fact) =>
-                    setConfirming({
-                      head: 'FORGET THIS',
-                      subject: fact.text,
-                      said: FACT_GOES,
-                      confirm: 'Forget it',
-                      act: () => cora.forget(fact.key),
-                    })
-                  }
-                  onForgetEverything={() =>
-                    setConfirming({
-                      head: 'FORGET EVERYTHING',
-                      subject: 'Everything cora remembers about you',
-                      said: EVERYTHING_GOES,
-                      confirm: 'Forget everything',
-                      act: () => cora.forgetEverything(),
-                    })
-                  }
-                />
-              )}
+              {/* Keyed on the tab, so a panel that could not be drawn is left behind by
+                  moving to another one — the strip above stays outside this for the same
+                  reason, as the way out of a panel that broke. */}
+              <ErrorBoundary key={tab} said="This panel could not be drawn.">
+                {tab === 'STEPS' && (
+                  <PlanPanel
+                    steps={live?.thread === thread ? live.steps : lastTrace(entries)}
+                  />
+                )}
+                {tab === 'SOURCE' && (
+                  <SourcePanel
+                    document={read?.document ?? null}
+                    source={read ? sourceOf(read) : null}
+                    citations={read ? passagesIn(read) : []}
+                  />
+                )}
+                {tab === 'SESSIONS' && (
+                  <SessionsPanel
+                    sessions={sessions}
+                    here={thread}
+                    working={working}
+                    onOpen={enterConversation}
+                    onDelete={(session) =>
+                      setConfirming({
+                        head: 'DELETE SESSION',
+                        subject: session.opened_with,
+                        said: SESSION_GOES,
+                        confirm: 'Delete session',
+                        act: () => discard(session),
+                      })
+                    }
+                  />
+                )}
+                {tab === 'MEMORY' && (
+                  <MemoryPanel
+                    facts={facts}
+                    onForget={(fact) =>
+                      setConfirming({
+                        head: 'FORGET THIS',
+                        subject: fact.text,
+                        said: FACT_GOES,
+                        confirm: 'Forget it',
+                        act: () => cora.forget(fact.key),
+                      })
+                    }
+                    onForgetEverything={() =>
+                      setConfirming({
+                        head: 'FORGET EVERYTHING',
+                        subject: 'Everything cora remembers about you',
+                        said: EVERYTHING_GOES,
+                        confirm: 'Forget everything',
+                        act: () => cora.forgetEverything(),
+                      })
+                    }
+                  />
+                )}
+              </ErrorBoundary>
             </>
           )}
         </aside>
