@@ -47,7 +47,7 @@ export default function PauseCard({ card, taken, again, onTake }: Props) {
     <div className={styles.decision} role="group" aria-label={state}>
       <p className={`${styles.decisionHead} micro`}>
         <span
-          className={joined(styles.decisionDot, !open && 'settled')}
+          className={joined(styles.decisionDot, !open && styles.settled)}
           aria-hidden="true"
         >
           ●

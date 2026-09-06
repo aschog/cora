@@ -20,3 +20,11 @@
   box-shadow: -3px 0 0 var(--amber);
   white-space: pre-wrap;
 }
+
+/* Inside something that is already a panel — a dialog brings its own ground, and a panel
+   drawn on a panel is a box inside a box. */
+.doc-panel.flat {
+  background: none;
+  box-shadow: none;
+  padding: 0;
+}

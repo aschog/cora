@@ -37,7 +37,7 @@ export default function ConfirmModal({
   return (
     <div className={dialog.overlay} onClick={onCancel}>
       <div
-        className={`${dialog.modal} ${styles.narrow}`}
+        className={`${dialog.modal} ${dialog.narrow}`}
         role="dialog"
         aria-modal="true"
         aria-label={head}

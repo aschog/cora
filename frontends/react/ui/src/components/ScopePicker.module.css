@@ -92,3 +92,9 @@
   font-size: 12px;
   color: var(--n600);
 }
+
+/* Settled: the one name left, drawn in the colour the page uses for a field it is in. */
+.mode.settled {
+  color: var(--accent-text);
+  font-weight: 600;
+}

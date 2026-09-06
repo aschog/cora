@@ -36,4 +36,10 @@ export default [
     files: ['**/*.test.{ts,tsx}', 'browser/**/*.ts'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
   },
+  /* The checks that run beside eslint rather than in it. Node, not a browser — and not
+     type-checked, because `tsconfig.app.json` covers what ships. */
+  {
+    files: ['scripts/**/*.mjs', '*.config.{js,ts}'],
+    languageOptions: { globals: globals.node },
+  },
 ]

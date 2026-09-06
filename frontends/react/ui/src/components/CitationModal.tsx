@@ -45,7 +45,7 @@ export default function CitationModal({ citation, onClose }: Props) {
         </div>
         {trouble && <div className="trouble">{trouble}</div>}
         {text !== null && (
-          <DocumentBody text={text} spans={[citation]} scrollToFirst />
+          <DocumentBody text={text} spans={[citation]} scrollToFirst flat />
         )}
       </div>
     </div>

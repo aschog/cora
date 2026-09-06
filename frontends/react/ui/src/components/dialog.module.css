@@ -25,3 +25,11 @@
   font-weight: 600;
   line-height: 1.25;
 }
+
+/* A narrower dialog, for a question rather than a document. Written as a compound with
+   the class it narrows so it beats that width whatever order the sheets load in — two
+   single classes are the same specificity, and source order across modules is the
+   bundler's business rather than something to rely on. */
+.modal.narrow {
+  width: min(420px, 100%);
+}

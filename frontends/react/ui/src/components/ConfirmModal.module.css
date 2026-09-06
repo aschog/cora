@@ -1,4 +1,11 @@
+/* The same shape as the `.quiet` beside it, said here rather than shared: that one is
+   global because two rails draw it, and this one is this card's. Three declarations
+   repeated is cheaper than a rule reaching across the boundary — which is a rule that
+   silently stops matching the moment either side moves. */
 .loud {
+  padding: 7px 16px;
+  border-radius: 999px;
+  font-size: 13.5px;
   color: #fff;
   background: var(--accent);
 }

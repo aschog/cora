@@ -1,12 +1,21 @@
 import { useEffect, useMemo, useRef } from 'react'
 import styles from './DocumentBody.module.css'
+import { joined } from '../joined'
 
 export type Span = { start: number; end: number }
 
-type Props = { text: string; spans: Span[]; scrollToFirst?: boolean }
+type Props = {
+  text: string
+  spans: Span[]
+  scrollToFirst?: boolean
+  /** Drawn without its own panel, where whatever holds it already is one. A prop rather
+   *  than a rule reaching in from the holder: each component's styles are its own now, so
+   *  what the outside gets to change about this one is what this one offers. */
+  flat?: boolean
+}
 
 /** The document, with every cited passage marked where its offsets fall. */
-export default function DocumentBody({ text, spans, scrollToFirst }: Props) {
+export default function DocumentBody({ text, spans, scrollToFirst, flat }: Props) {
   const first = useRef<HTMLElement>(null)
 
   const where = spans.map((span) => `${span.start}-${span.end}`).join()
@@ -45,7 +54,11 @@ export default function DocumentBody({ text, spans, scrollToFirst }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [text, where])
 
-  return <div className={`${styles.docPanel} ${styles.docPara}`}>{pieces}</div>
+  return (
+    <div className={joined(styles.docPanel, styles.docPara, flat && styles.flat)}>
+      {pieces}
+    </div>
+  )
 }
 
 /**

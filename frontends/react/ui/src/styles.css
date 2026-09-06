@@ -106,10 +106,11 @@ button {
   color: var(--n600);
 }
 
-/* A control that says no, and one that goes ahead. Neither is red: what the reader is
-   about to lose is said in the words above them, and a colour cannot say it. */
-.quiet,
-.loud {
+/* The control that says no. Not red, and neither is the one that goes ahead: what the
+   reader is about to lose is said in the words above them, and a colour cannot say it.
+   Global because two rails draw it; the one that goes ahead belongs to the one card that
+   offers it, and carries the same shape in its own module. */
+.quiet {
   padding: 7px 16px;
   border-radius: 999px;
   font-size: 13.5px;
@@ -122,12 +123,6 @@ button {
 
 .quiet:hover {
   color: var(--text);
-}
-
-.modal .doc-panel {
-  background: none;
-  box-shadow: none;
-  padding: 0;
 }
 
 @keyframes coraPulse {
@@ -150,19 +145,4 @@ button {
 
 .trouble {
   box-shadow: -3px 0 0 var(--magenta);
-}
-
-.modal.narrow {
-  width: min(420px, 100%);
-}
-
-/* Settled: the one name left, drawn in the colour the page uses for a field it is in. */
-.mode.settled {
-  color: var(--accent-text);
-  font-weight: 600;
-}
-
-/* Nothing is waiting on the reader any more, so the light that said so goes out. */
-.decision-dot.settled {
-  color: var(--n500);
 }

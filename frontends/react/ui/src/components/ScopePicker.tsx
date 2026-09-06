@@ -80,7 +80,7 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
     return (
       <div className={styles.modes}>
         <div className={styles.modeStrip} role="group" aria-label={ANSWER_IN}>
-          <span className={`${styles.mode} settled`}>{pin}</span>
+          <span className={`${styles.mode} ${styles.settled}`}>{pin}</span>
         </div>
         <span className={styles.scopeNote}>{ONE_WAY}</span>
       </div>
