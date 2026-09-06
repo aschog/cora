@@ -1,10 +1,8 @@
 """What a paused turn puts in front of the reader, and what comes back from it."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
-
-NOTHING_TO_DO = "a Card offers no action"
 
 
 @dataclass(frozen=True)
@@ -35,7 +33,8 @@ class ActionOffered:
     `answer` is what travels back as the action taken, and `None` is the way out — a
     decline, or none of them. `needs_valid` holds the action closed until every
     required field on the card holds a value, which is what makes a half-filled form
-    unsubmittable rather than submitted empty.
+    unsubmittable rather than submitted empty — an affordance of the page rather than a
+    check, so what runs on the values is still whatever refuses a call it cannot make.
 
     `settled` is what the card says once this action has been taken, in the reader's
     own voice. Carried by the action because only whoever offered it knows what taking
@@ -71,11 +70,18 @@ class Card:
     def __post_init__(self) -> None:
         """Refuse a card nobody can leave.
 
+        The page has nothing else to offer while a card is open, so one the reader
+        cannot get off is a conversation they cannot leave — and an action that waits
+        for the required fields is no way out of a card they cannot fill.
+
         Raises:
-            ValueError: The card offers no action.
+            ValueError: The card offers no action, or none that can be taken as it
+                stands.
         """
         if not self.actions:
-            raise ValueError(NOTHING_TO_DO)
+            raise ValueError("a Card offers no action")
+        if all(action.needs_valid for action in self.actions):
+            raise ValueError("every action on a Card waits for it to be filled in")
 
 
 @dataclass(frozen=True)
@@ -105,9 +111,7 @@ class Asks(Protocol):
 
 
 def fields_of(
-    schema: Mapping[str, Any],
-    given: Mapping[str, Any] = {},
-    editable: bool = True,
+    schema: Mapping[str, Any], given: Mapping[str, Any] | None = None
 ) -> tuple[FieldAsked, ...]:
     """The fields of a JSON Schema object, carrying what is already known.
 
@@ -116,20 +120,17 @@ def fields_of(
 
     Args:
         given: Values already settled, filled into the fields they belong to.
-        editable: Whether the reader may write these — false for a call put up to be
-            read rather than filled.
     """
-    properties = schema.get("properties", {})
-    required = _required(schema)
+    known = given or {}
+    required = schema.get("required", ())
     return tuple(
         FieldAsked(
             name=name,
             schema=dict(each) if isinstance(each, Mapping) else {},
-            value=given.get(name),
-            editable=editable,
+            value=known.get(name),
             required=name in required,
         )
-        for name, each in properties.items()
+        for name, each in schema.get("properties", {}).items()
     )
 
 
@@ -137,11 +138,6 @@ def missing_from(
     schema: Mapping[str, Any], given: Mapping[str, Any]
 ) -> tuple[str, ...]:
     """The schema's required properties that `given` does not hold a value for."""
-    return tuple(name for name in _required(schema) if given.get(name) in (None, ""))
-
-
-def _required(schema: Mapping[str, Any]) -> tuple[str, ...]:
-    named = schema.get("required", ())
-    if not isinstance(named, Sequence) or isinstance(named, str):
-        return ()
-    return tuple(str(name) for name in named)
+    return tuple(
+        name for name in schema.get("required", ()) if given.get(name) in (None, "")
+    )

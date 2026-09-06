@@ -1,5 +1,6 @@
 """The steps a turn is made of, and the rule that routes between them."""
 
+import logging
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from typing import Any, Protocol
@@ -11,6 +12,7 @@ from cora.domain.citations import Citable, Citation
 from cora.domain.decision import Decision, Option
 from cora.domain.errors import AdapterError, CoreError, ToolLoopLimitError
 from cora.domain.trace import (
+    CardFilled,
     EffectSettled,
     MemoryUnread,
     ScopeSettled,
@@ -39,6 +41,8 @@ from cora.ports.host import (
 from cora.ports.memory import Fact, Memory
 from cora.ports.pause import Answered, declined
 from cora.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult
+
+log = logging.getLogger(__name__)
 
 
 class ToolExecutor(Protocol):
@@ -76,8 +80,9 @@ AGENT_RULES = (
     "user's own documents, and cite the numbered passages it returns as [n]. "
     "Answer directly when the question needs no documents. "
     "If a search comes back with no passages at all, the user has uploaded nothing: "
-    "say you have nothing on their question, ask them to upload the documents that "
-    "would cover it, and do not answer it from your own knowledge."
+    "say so, ask them to upload the documents that would cover it, and never fill "
+    "the gap from your own knowledge. An empty search ends only the reading — "
+    "whatever your other tools can still do for the question, go on and do it."
 )
 MEMORY_RULE = (
     f"Call the {REMEMBER_TOOL_NAME} tool only when the user asks you to remember "
@@ -221,6 +226,10 @@ class ScreenStep:
             "trace_start": len(state.get("trace", ())),
             "trace": trace,
             "answer": "",
+            # A turn's, like `answer`: what a reader wrote into one turn's card is not
+            # an argument for the next. Cleared here because this step always runs,
+            # where the gate that writes it runs only in a turn that called a tool.
+            "filled": {},
         }
 
 
@@ -540,11 +549,75 @@ sentence would have a card the model never reaches, and the declaration is alrea
 place the fact is stated once."""
 
 
+BROKEN_ASKS = "it could not work out what to ask you for"
+NOT_A_CARD = "it asked you for something the page cannot draw"
+FILLED_IN = "The user filled this call in — {values}. It ran on those.\n\n"
+
+
+def _card_for(tool: Tool | None, call: ToolCall) -> Card | None:
+    """What this call has to put to the user first, or nothing to run as called.
+
+    The one place a plugin's `asks` runs, and so the place it is contained: the gate is
+    a step of the core, and a plugin that broke inside it would take the turn down
+    rather than cost it the call. Contained the way `ToolStep._ran` contains a refusing
+    handler — the round hears about it, in the shape a refused call already has.
+
+    Raises:
+        ToolRefusal: The plugin's `asks` broke, or answered with something that is not
+            a card. Either way the call is not run and the round is told why.
+    """
+    if tool is None or tool.asks is None:
+        return None
+    try:
+        card = tool.asks(deepcopy(call.arguments))
+    except ToolRefusal:
+        raise
+    except Exception as broke:
+        # The kind of what was raised and nothing else, as everywhere else: the message
+        # could be carrying whatever the plugin was holding.
+        log.warning("asks for '%s' raised %s", tool.name, type(broke).__name__)
+        raise ToolRefusal(BROKEN_ASKS) from broke
+    if card is None or isinstance(card, Card):
+        return card
+    raise ToolRefusal(NOT_A_CARD)
+
+
+def _stated(values: dict[str, Any]) -> str:
+    """What the user filled the call in with, said to the model.
+
+    The values live in state rather than in the transcript, so this is the only thing
+    that tells the model what it is answering about: a tool whose result does not
+    restate the city and the dates would otherwise have cora writing about a search
+    nobody can see.
+    """
+    written = ", ".join(f"{name}={value!r}" for name, value in sorted(values.items()))
+    return FILLED_IN.format(values=written or "with nothing")
+
+
 def _gathers(tool: Tool) -> Tool:
-    """The tool as the model is offered it, saying so if it gathers its arguments."""
+    """The tool as the model is offered it, saying so if it gathers its arguments.
+
+    Offered with nothing required, because the card is what requires it. A schema
+    naming arguments the model must supply says the opposite of `GATHERS`, and the
+    schema is the half a model reads as binding — so the two cannot be left disagreeing.
+
+    What the tool takes is unchanged. The runtime validates the schema the plugin
+    registered, and the card is built from that one too, so a card must offer every
+    argument the schema requires. One it leaves out is one nobody supplies.
+    """
     if tool.asks is None:
         return tool
-    return replace(tool, description=tool.description + GATHERS)
+    return replace(
+        tool,
+        description=tool.description + GATHERS,
+        # A new dict: the registered tool and the offered one share theirs otherwise,
+        # and stripping in place would take the requiredness the card is built from.
+        parameter_schema={
+            name: value
+            for name, value in tool.parameter_schema.items()
+            if name != "required"
+        },
+    )
 
 
 REFUSED_CALL = "tool '{name}' was refused: {reason}"
@@ -585,6 +658,7 @@ class ToolStep:
 
     def _round(self, state: AgentState, scopes: frozenset[str]) -> AgentState:
         known = tuple(state.get("citations", ()))
+        filled = state.get("filled", {})
         messages: list[Message] = []
         trace: list[TraceStep] = []
         added: list[Citation] = []
@@ -602,6 +676,8 @@ class ToolStep:
                 context = citable.register(known + tuple(added))
                 added.extend(context.citations)
                 read = Read(body=context.text, outcome=citable.summary, untrusted=True)
+            if call.call_id in filled:
+                read = replace(read, body=_stated(filled[call.call_id]) + read.body)
             messages.append(told(result, read))
             trace.append(used(call, result, read, tuple(inside.steps)))
             trace.extend(after)
@@ -717,8 +793,11 @@ class GateStep:
         """
         messages: list[Message] = []
         trace: list[TraceStep] = []
-        outstanding, filled = self._asked_for(_requested_calls(state), state, messages)
-        for call, tool in self._effecting(outstanding, state):
+        offered = self._offered(state)
+        outstanding, filled = self._asked_for(
+            _requested_calls(state), offered, messages, trace
+        )
+        for call, tool in self._effecting(outstanding, offered):
             # A copy of the arguments, for the reason `ToolStep._ran` copies them: a
             # dict inside a frozen call is changeable, and whatever answers the gate
             # reaches it from outside the run. What was approved has to be what runs.
@@ -744,7 +823,11 @@ class GateStep:
         return {"messages": messages, "trace": trace, "filled": filled}
 
     def _asked_for(
-        self, calls: tuple[ToolCall, ...], state: AgentState, messages: list[Message]
+        self,
+        calls: tuple[ToolCall, ...],
+        offered: dict[str, Tool],
+        messages: list[Message],
+        trace: list[TraceStep],
     ) -> tuple[tuple[ToolCall, ...], dict[str, dict[str, Any]]]:
         """The round's calls, with every one that asks the user filled in by them.
 
@@ -757,16 +840,27 @@ class GateStep:
         forged to carry the user's values would be a round nobody spent. The trace shows
         the call as it really runs, which is where the reader reads it.
         """
-        offered = self._offered(state)
         outstanding: list[ToolCall] = []
         filled: dict[str, dict[str, Any]] = {}
         for call in calls:
-            tool = offered.get(call.name)
-            card = tool.asks(deepcopy(call.arguments)) if tool and tool.asks else None
+            try:
+                card = _card_for(offered.get(call.name), call)
+            except ToolRefusal as broke:
+                messages.append(
+                    Message(
+                        role="tool",
+                        content=REFUSED_CALL.format(name=call.name, reason=broke),
+                        tool_call_id=call.call_id,
+                    )
+                )
+                continue
             if card is None:
                 outstanding.append(call)
                 continue
             written = _written(card, self.approve(card))
+            trace.append(
+                CardFilled(tool=call.name, fields=tuple(sorted(written or ())))
+            )
             if written is None:
                 messages.append(
                     Message(
@@ -781,14 +875,13 @@ class GateStep:
         return tuple(outstanding), filled
 
     def _effecting(
-        self, calls: tuple[ToolCall, ...], state: AgentState
+        self, calls: tuple[ToolCall, ...], offered: dict[str, Tool]
     ) -> tuple[tuple[ToolCall, Tool], ...]:
         """The round's outstanding calls that declared an effect, with their tools.
 
         Paired with the tool because the proposal is worded out of it: what the user is
         shown is what the tool says it does, not a sentence cora wrote about the name.
         """
-        offered = self._offered(state)
         return tuple(
             (call, tool)
             for call in calls

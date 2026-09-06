@@ -3,8 +3,8 @@ import pytest
 from cora.domain.card import (
     ActionOffered,
     Answer,
-    Asks,
     Card,
+    FieldAsked,
     fields_of,
     missing_from,
 )
@@ -39,10 +39,39 @@ def test_a_card_nobody_can_leave_is_refused() -> None:
         Card(prompt="Give me the trip.")
 
 
+def test_a_card_whose_every_action_waits_for_it_is_refused() -> None:
+    """The page disables the composer while a card is open, so a card the reader cannot
+    get off is a conversation they cannot leave — and an action that waits for the
+    required fields is no way out of a card they cannot fill."""
+    with pytest.raises(ValueError):
+        Card(
+            prompt="Give me the trip.",
+            fields=(FieldAsked(name="origin", required=True),),
+            actions=(ActionOffered(label="Search", answer="Search", needs_valid=True),),
+        )
+
+
+def test_a_card_with_one_way_out_beside_the_waiting_one_is_fine() -> None:
+    card = Card(
+        prompt="Give me the trip.",
+        fields=(FieldAsked(name="origin", required=True),),
+        actions=(
+            ActionOffered(label="Search", answer="Search", needs_valid=True),
+            ActionOffered(label="Not now", answer=None),
+        ),
+    )
+
+    assert len(card.actions) == 2
+
+
+def test_what_is_already_known_is_optional_and_shared_with_nobody() -> None:
+    """A mutable default is one dict for the life of the module."""
+    assert [field.value for field in fields_of(SCHEMA)] == [None, None]
+
+
 def test_a_card_is_its_own_asks_so_one_port_puts_every_kind() -> None:
     card = Card(prompt="Give me the trip.", actions=(SEARCH,))
 
-    assert isinstance(card, Asks)
     assert card.card is card
 
 
@@ -56,10 +85,6 @@ def test_a_field_carries_its_schema_what_is_known_and_whether_it_is_the_readers(
     assert (origin.value, origin.required, origin.editable) == ("BER", True, True)
     assert (nights.value, nights.required) == (None, False)
     assert nights.schema == {"type": "integer"}
-
-
-def test_fields_of_a_call_put_up_to_be_read_are_not_writable() -> None:
-    assert not any(field.editable for field in fields_of(SCHEMA, {}, editable=False))
 
 
 def test_what_a_call_still_has_to_be_told() -> None:

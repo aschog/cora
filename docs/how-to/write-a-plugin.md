@@ -134,17 +134,38 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
                                           needs_valid=True),
                             ActionOffered(label="Not now", answer=None)))
 
-   cora.register_tool(name="price_it", parameter_schema=SCHEMA, ..., asks=asks)
+   cora.register_tool(
+       name="price_it",
+       description="Price a trip.",
+       parameter_schema=SCHEMA,
+       run=price_it,
+       asks=asks,
+   )
    ```
 
    A card is a prompt, fields to fill and actions to take, and the page draws whatever
    you hand it: a field's own JSON Schema picks the control, so a date is a date picker
    and a short `enum` is a row of choices, with no frontend of yours anywhere. An
    action's `answer` is what comes back when it is taken, `None` is the way out, and
-   `needs_valid` holds it closed until every required field is filled. What the reader
-   writes is written over the arguments, and your `run` is called once, with the values
-   a person stated. Take nothing back but a card: it is data, never code, and the page
-   draws every part of it as text.
+   `needs_valid` holds it closed until every required field is filled — a page
+   affordance, so write the tool to refuse a call it cannot run rather than trusting it.
+   What the reader writes is written over the arguments, and your `run` is called once,
+   with the values a person stated. Take nothing back but a card: it is data, never
+   code, and the page draws every part of it as text.
+
+   **Ask for everything you require.** Cora offers a gathering tool with nothing
+   required, because your card is what requires it — a schema telling the model it must
+   supply the values says the opposite of the sentence beside it. So leave nothing off
+   the card: an argument the schema requires and the card omits is one nobody supplies,
+   and the call is refused for want of it.
+
+   **`asks` has to be pure.** The step that puts your card is replayed every time the
+   turn is picked up, so cora calls `asks` again on each of them — always with the same
+   arguments, and expecting the same answer. One that reads a clock, a counter or a file
+   moves the question the reader already settled, and their answer lands on a different
+   one. Do nothing in it but read the arguments and build the card; `run` is where a
+   call has an effect. Break, or hand back something that is not a card, and the call is
+   refused rather than the turn lost — the model is told and answers around it.
 
 4. **Take part in the turn.** A handler subscribes to a named point in it, is handed
    one frozen value, and answers by returning — a refusal, an amendment, or `None` for

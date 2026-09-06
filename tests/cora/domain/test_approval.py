@@ -1,4 +1,4 @@
-from cora.domain.approval import APPROVE, DECLINE, Proposed, approves
+from cora.domain.approval import APPROVE, DECLINE, TOOL, Proposed, approves
 from cora.domain.card import Answer
 
 PROPOSED = Proposed(
@@ -24,7 +24,7 @@ def test_a_proposal_is_a_card_of_the_call_and_nothing_writable() -> None:
 
     assert card.prompt == "Save an itinerary"
     assert [(field.name, field.value) for field in card.fields] == [
-        ("tool", "save_itinerary"),
+        (TOOL, "save_itinerary"),
         ("a", 1),
     ]
     assert not any(field.editable for field in card.fields)

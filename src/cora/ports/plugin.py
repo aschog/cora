@@ -41,6 +41,16 @@ class Tool:
     written, it returns the card to put to the user, or nothing to run as called. What
     the reader fills in is written over those arguments before the tool sees them, so
     the tool itself is called once and with values a person stated.
+
+    A tool declaring it is offered to the model with nothing required, because the card
+    is what requires it. So the card asks for every argument the schema requires: one it
+    leaves out is one nobody supplies, and the call is refused for want of it.
+
+    It must be a pure function of the arguments it is handed. The step that puts the
+    card is replayed every time the turn is picked up, so `asks` is called again on each
+    of them — one whose answer varies moves the pause the reader already settled onto a
+    different question, and the answer they gave lands on it. Nothing it does is a
+    record of anything: the tool's `run` is the only place a call has an effect.
     """
 
     name: str

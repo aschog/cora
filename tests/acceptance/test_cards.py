@@ -12,6 +12,7 @@ from starlette.testclient import TestClient
 
 from app_builder import assembled
 from cora.app.assembly import App
+from cora.engine.steps import GATHERS
 from cora.frontends.react.api import api
 from cora.plugins.travel import SCOPE
 from cora.plugins.travel.trips import (
@@ -19,6 +20,7 @@ from cora.plugins.travel.trips import (
     FLIGHTS_TOOL_NAME,
     SEARCH_IT,
     SETTING,
+    trip_tools,
 )
 from cora.ports.chat_model import ModelReply
 from cora.ports.host import Extension
@@ -99,6 +101,26 @@ def _app(model: ScriptedChatModel) -> App:
 
 def _of(body: str, name: str) -> list[dict]:
     return [data for event, data in frames(body) if event == name]
+
+
+def test_the_real_assembly_offers_the_search_with_nothing_required() -> None:
+    """The whole point of the strip, through the app a deployment actually gets: the
+    model is not told it must supply a route and a window before it may call."""
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    _app(model).agent.answer("What is the cheapest way to Lisbon?", THREAD)
+
+    offered = {tool.name: tool for tool in model.last_tools or ()}
+    assert "required" not in offered[FLIGHTS_TOOL_NAME].parameter_schema
+    assert offered[FLIGHTS_TOOL_NAME].parameter_schema["properties"]["origin"]
+    assert GATHERS in offered[FLIGHTS_TOOL_NAME].description
+
+
+def test_the_search_still_takes_exactly_what_it_always_took() -> None:
+    """What the tool requires is unchanged: the card is built from the registered
+    schema and every call is run against it, so the strip is the model's view alone."""
+    [flights, _] = trip_tools("a-key")
+
+    assert "origin" in flights.parameter_schema["required"]
 
 
 def test_a_search_it_cannot_run_asks_me_for_the_trip_and_prices_what_i_give_it(

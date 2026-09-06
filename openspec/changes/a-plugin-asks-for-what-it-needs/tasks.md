@@ -39,7 +39,7 @@ prose, held by a person reading it. The page's items are `vitest`, the rest are 
 - [x] 6.1 A paused turn's payload carrying the card, its fields and its actions
 - [x] 6.2 `POST /api/resume` taking the action and the record, and continuing the turn
 - [x] 6.3 `GET /api/pending` answering with the card a reload has to draw
-- [x] 6.4 A resume naming an action the card does not offer refused
+- [x] 6.4 A resume naming an action the card does not offer refused, rather than read as a decline
 - [x] 6.5 A value for a field the card marked read-only dropped before the run sees it
 
 ## 7. The renderer
@@ -64,6 +64,23 @@ prose, held by a person reading it. The page's items are `vitest`, the rest are 
 - [x] 8.2 That card raised before any request reaches the service
 - [x] 8.3 A search told a route and a window running without raising a card
 - [x] 8.4 The submitted values reaching the query the service is sent
+
+## 10. Offered as a tool that asks
+
+- [x] 10.1 A gathering tool offered with no required arguments
+- [x] 10.2 The registered schema untouched, and not the same dict as the offered one
+- [x] 10.3 A tool that gathers nothing offered with its required list intact
+- [x] 10.4 The runtime still refusing a gathering call missing a required argument
+- [x] 10.5 The gate still raising the card for a call made with no arguments at all
+- [x] 10.6 The real assembly offering `search_flights` with nothing required
+- [x] 10.7 The travel instructions never ordering a route, dates or a budget asked in prose
+- [x] 10.8 The instructions sending the searches at a trip being planned, not at a price
+- [x] 10.9 Neither search's description telling the model to settle values before calling
+- [x] 10.11 The rules saying an empty search ends only the reading, never the turn
+- [ ] 10.10 **Manual, Phase 4.** A real model in the travel scope stopping on the card
+      for "I want to go to Madrid" rather than answering with questions — asked in a
+      *fresh* conversation, because a thread that already answered in prose teaches
+      itself to keep doing it
 
 ## 9. Done
 

@@ -25,7 +25,7 @@ from starlette.routing import Match, Mount, Route
 from starlette.staticfiles import StaticFiles
 
 from cora.app.assembly import App
-from cora.domain.card import Answer, Card
+from cora.domain.card import Answer
 from cora.domain.chat_result import ChatResult
 from cora.domain.decision import TurnPaused
 from cora.domain.errors import AdapterError, CoreError, NothingToResumeError
@@ -296,6 +296,12 @@ NOT_A_DECISION = (
 not one: a missing action would settle whichever card happened to be outstanding, and
 must not read as a decline either."""
 NOT_FILLED_IN = "The values written into a card have to be a JSON object."
+NOT_THAT_CARD = (
+    "That is not one of the ways off the card this conversation is waiting on."
+)
+"""What an answer naming an action nobody offered is refused with. The step waiting
+would read it as a decline, which is safe and says nothing — so a page holding a card
+the conversation has moved past is told, rather than settling the turn on its behalf."""
 NO_SUCH_SCOPE = (
     "cora is not running that field, so a conversation cannot be pinned to it."
 )
@@ -388,23 +394,27 @@ def _resume(app: App) -> Callable[[Request], Any]:
         waiting = await run_in_threadpool(app.agent.pending, thread_id)
         if waiting is None:
             raise NothingToResumeError
-        settled = Answer(action=action, values=_writable(waiting.card, values))
+        # Not merely "something is pending": an action nobody offered would be read by
+        # the step waiting as a decline — safe, and silent. A page whose card has moved
+        # on is refused where whoever sent it can still see it, rather than quietly
+        # settling the reader's turn the other way.
+        if action is not None and action not in {
+            offered.answer for offered in waiting.card.actions
+        }:
+            return JSONResponse({"error": NOT_THAT_CARD}, status_code=REFUSED)
+        # A card names the fields it asks for and marks which of them are the reader's;
+        # a value for anything else reached the run from outside it and is dropped, so a
+        # request cannot write an argument the card put up to be read.
+        writable = {field.name for field in waiting.card.fields if field.editable}
+        settled = Answer(
+            action=action,
+            values={name: v for name, v in values.items() if name in writable},
+        )
         return _streaming(
             lambda report, write: app.agent.resume(settled, thread_id, report, write)
         )
 
     return picked
-
-
-def _writable(card: Card, values: dict[str, Any]) -> dict[str, Any]:
-    """What the reader was actually offered to write, out of what they sent.
-
-    A card names the fields it asks for and marks which of them are the reader's; a
-    value for anything else reached the run from outside it and is dropped, so a request
-    cannot write an argument the card put up to be read.
-    """
-    offered = {field.name for field in card.fields if field.editable}
-    return {name: value for name, value in values.items() if name in offered}
 
 
 def _pending(app: App) -> Callable[[Request], Any]:

@@ -4,6 +4,7 @@ import logging
 
 import pytest
 
+from cora.domain.card import ActionOffered, Card
 from cora.domain.chunk import Chunk
 from cora.domain.errors import PluginLoadError
 from cora.engine.ask_tool import ASK_TOOL_NAME
@@ -854,6 +855,20 @@ def _reading(name: str = "look_up") -> Tool:
     )
 
 
+def _gathering(name: str = "price_it") -> Tool:
+    """A tool that stops to have its card filled in, said on the registration."""
+    return Tool(
+        name=name,
+        description="Price a trip.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda **_: "priced",
+        asks=lambda _: Card(
+            prompt="Give me the trip.",
+            actions=(ActionOffered(label="Search", answer="Search"),),
+        ),
+    )
+
+
 def test_a_delegated_loop_is_offered_nothing_that_writes_stops_or_acts() -> None:
     """The rule that keeps a nested turn from needing a nested approval, asserted over
     the set the loop is actually handed rather than described in prose.
@@ -866,7 +881,7 @@ def test_a_delegated_loop_is_offered_nothing_that_writes_stops_or_acts() -> None
     model = ScriptedChatModel([ModelReply(text="looked it up")])
     host = host_for(model=model)
 
-    host.delegate("look it up", tools=(_reading(), _acting()))
+    host.delegate("look it up", tools=(_reading(), _acting(), _gathering()))
 
     offered = {tool.name for tool in model.last_tools or ()}
     assert offered == {SEARCH_TOOL_NAME, "look_up"}
@@ -884,9 +899,10 @@ def test_the_plugin_is_told_which_of_its_tools_was_withheld(
     host = host_for(model=model)
 
     with caplog.at_level(logging.INFO):
-        host.delegate("look it up", tools=(_reading(), _acting()))
+        host.delegate("look it up", tools=(_reading(), _acting(), _gathering()))
 
     assert "book_it" in caplog.text
+    assert "price_it" in caplog.text
 
 
 def test_a_plugin_can_register_a_tool_that_changes_something_outside_cora() -> None:

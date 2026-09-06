@@ -139,15 +139,16 @@ and the conversation intact.
 
 And it prices what it plans. Give it a route, a budget and a month you might go rather
 than a date you have fixed, and it comes back with the three cheapest fares and the
-three cheapest places to stay, each priced and dated. Ask it for prices without saying
-where from or when, and it stops and asks you: a card of the search's own fields, dates
+three cheapest places to stay, each priced and dated. Name a trip without saying where
+from or when, and it stops and asks you: a card of the search's own fields, dates
 as date pickers, and a button that stays shut until the trip is filled in. Nothing
-reaches the service until you submit it, and what is priced is what you wrote. A window is a search rather than a
-lookup — the service wants a departure date, so cora tries one candidate a week across
-the range and keeps the best of all of them, widening the interval rather than quietly
-searching less when the range is long. Your budget and your restrictions go *into* the
-search, so an option you ruled out is one you never see rather than one shown with a
-caveat. This is the one thing in cora that needs a key: set
+reaches the service until you submit it, and what is priced is what you wrote.
+
+A window is a search rather than a lookup — the service wants a departure date, so cora
+tries one candidate a week across the range and keeps the best of all of them, widening
+the interval rather than quietly searching less when the range is long. Your budget and
+your restrictions go *into* the search, so an option you ruled out is one you never see
+rather than one shown with a caveat. This is the one thing in cora that needs a key: set
 `CORA_PLUGIN_TRAVEL_SERPAPI_KEY` and the two searches appear, set nothing and they are
 never offered — a tool that can only fail is worse than a tool that was never there.
 Prices are what the aggregator showed, not a seat held for you, and the answer says so.

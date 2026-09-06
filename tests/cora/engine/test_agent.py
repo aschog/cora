@@ -19,7 +19,6 @@ from cora.domain.errors import (
 from cora.domain.trace import ModelDecision, StepEntered, ToolUse, TraceStep
 from cora.engine.agent import Agent
 from cora.ports.chat_model import ModelReply, Piece, TextSink, Written, unheard
-from cora.ports.graph import Settled
 from fakes import FailingConversations, FakeConversations, ScriptedChatModel
 from fixture_plugins import make_plugin
 
@@ -57,7 +56,7 @@ class _StubRunner:
         self.pin = pin
         self.seeded: AgentState | None = None
         self.thread_id: str | None = None
-        self.chosen: Settled | None = None
+        self.chosen: Answer | None = None
         self.resumes = 0
         self.forgotten: list[str] = []
 
@@ -74,7 +73,7 @@ class _StubRunner:
             raise self.then
 
     def resume(
-        self, answer: Settled, thread_id: str, on_text: TextSink = unheard
+        self, answer: Answer, thread_id: str, on_text: TextSink = unheard
     ) -> Iterator[AgentState]:
         self.chosen = answer
         self.resumes += 1

@@ -75,6 +75,35 @@ test('a long enumeration is drawn as a select', () => {
   expect(within(screen.getByRole('combobox')).getAllByRole('option')).toHaveLength(6)
 })
 
+test('a choice goes back as itself, whichever control drew it', () => {
+  /* A select answers in text, so an enumeration of numbers would submit "3" through one
+     and 3 through the row of buttons. */
+  const taken = drawn({
+    fields: [field('nights', { type: 'integer', enum: [1, 2, 3, 4, 7] })],
+  })
+
+  fireEvent.change(screen.getByRole('combobox'), { target: { value: '3' } })
+  fireEvent.click(screen.getByRole('button', { name: /Search/ }))
+
+  expect(taken).toHaveBeenCalledWith(expect.anything(), { nights: 3 })
+})
+
+test('two actions sharing a label are both drawn', () => {
+  drawn({
+    actions: [action('Later', { answer: 'a' }), action('Later', { answer: 'b' })],
+  })
+
+  expect(screen.getAllByRole('button', { name: 'Later' })).toHaveLength(2)
+})
+
+test('a value that is not a string is read back as the JSON it arrived as', () => {
+  drawn({
+    fields: [field('days', {}, { value: 3, editable: false })],
+  })
+
+  expect(screen.getByText('3')).toBeTruthy()
+})
+
 test('a schema the page has no control for still asks, as text', () => {
   drawn({ fields: [field('shape', { type: 'polygon' })] })
 
@@ -138,6 +167,63 @@ test('a field the card marked unwritable is read, and never sent', () => {
 
   fireEvent.click(screen.getByRole('button', { name: /Search/ }))
   expect(taken).toHaveBeenCalledWith(expect.anything(), {})
+})
+
+test('a boolean is drawn as a checkbox and goes back as a boolean', () => {
+  /* Text would send the string "true", which the schema the card was built from would
+     then refuse. */
+  const taken = drawn({ fields: [field('direct_only', { type: 'boolean' })] })
+
+  fireEvent.click(screen.getByRole('checkbox'))
+  fireEvent.click(screen.getByRole('button', { name: /Search/ }))
+
+  expect(taken).toHaveBeenCalledWith(expect.anything(), { direct_only: true })
+})
+
+test('a field says what the schema says it is, not just what it is called', () => {
+  drawn({
+    fields: [
+      field('window_start', {
+        type: 'string',
+        description: 'Earliest day the trip could start.',
+      }),
+    ],
+  })
+
+  expect(screen.getByText('Earliest day the trip could start.')).toBeTruthy()
+})
+
+test('a required field says so on the control the reader answers', () => {
+  drawn({ fields: [field('origin', { type: 'string' }, { required: true })] })
+
+  expect(screen.getByLabelText('origin')).toHaveProperty('required', true)
+})
+
+test('what the reader typed belongs to the card in front of them', () => {
+  /* Turn ids repeat across conversations, so React reconciles one conversation's card
+     onto another's — and the values must not go with it. */
+  const first = card({ fields: [field('origin', { type: 'string' })] })
+  const second = card({ fields: [field('origin', { type: 'string' })] })
+  const taken = vi.fn()
+  const { rerender } = render(<PauseCard card={first} onTake={taken} />)
+  fireEvent.change(screen.getByLabelText('origin'), { target: { value: 'BER' } })
+
+  rerender(<PauseCard card={second} onTake={taken} />)
+  fireEvent.click(screen.getByRole('button', { name: /Search/ }))
+
+  expect(taken).toHaveBeenCalledWith(expect.anything(), { origin: null })
+})
+
+test('a field nobody answered reads as blank, not as null', () => {
+  render(
+    <PauseCard
+      card={card({ fields: [field('max_price', { type: 'integer' })] })}
+      taken={action('Search')}
+      onTake={vi.fn()}
+    />,
+  )
+
+  expect(screen.queryByText('null')).toBeNull()
 })
 
 test('a settled card says what the action said, and offers none', () => {

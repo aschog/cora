@@ -95,7 +95,7 @@ the action alone.
 #### Scenario: An answered card reads as settled
 
 - **GIVEN** a card the reader has settled
-- **WHEN** the conversation is read back
+- **WHEN** they read back up the conversation it stood in
 - **THEN** the card says which action was taken, where it stood
 
 ### Requirement: A card is data, and drawing it runs nothing
@@ -134,6 +134,30 @@ whose fields are the call's arguments, which the reader reads and cannot write.
 - **WHEN** the turn goes on
 - **THEN** nothing outside cora changed, and the answer says what was refused
 
+### Requirement: A gathering tool is offered saying so, and with nothing required
+
+A tool declaring `asks` SHALL be offered to the model saying it asks for what is missing,
+and with no required arguments. The schema the plugin registered SHALL be unchanged, and
+every call SHALL still be run against it.
+
+#### Scenario: The model is told it may call unfilled
+
+- **GIVEN** a tool that gathers, whose registered schema requires an argument
+- **WHEN** the model is offered it
+- **THEN** the schema it is offered requires none, and the registered one still requires it
+
+#### Scenario: What the tool takes is unchanged
+
+- **GIVEN** that tool, called without the argument it requires
+- **WHEN** the call runs
+- **THEN** it is refused for the argument it is missing
+
+#### Scenario: A tool that gathers nothing is offered as registered
+
+- **GIVEN** a tool declaring no card
+- **WHEN** the model is offered it
+- **THEN** its schema is exactly the one registered, required arguments and all
+
 ### Requirement: The travel scope asks for a trip before it searches
 
 The travel search SHALL ask for the trip as a card when it has not been told one. The
@@ -143,7 +167,7 @@ it.
 #### Scenario: An underspecified trip raises a card
 
 - **GIVEN** the travel scope, and a question naming no route and no dates
-- **WHEN** the reader asks for the cheapest way to go
+- **WHEN** the reader names a trip they want to take
 - **THEN** a card asks for the trip, and no search has run
 
 #### Scenario: The submitted trip is what is searched

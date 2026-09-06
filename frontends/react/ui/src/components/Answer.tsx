@@ -213,9 +213,8 @@ const outcome = (entry?: Entry) =>
   entry &&
   (entry.answer ??
     entry.error ??
-    (entry.cards
-      ? entry.cards.map((shown) => shown.taken?.label).join(',')
-      : '…'))
+    entry.cards?.map((shown) => shown.taken?.label).join(',') ??
+    '…')
 
 /** The answer is rendered markdown, so its citations are buttons in that HTML rather
  *  than elements React placed — which makes the click one listener on the block. */

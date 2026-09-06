@@ -29,7 +29,15 @@ type Props = {
  *  Every part of it is drawn as text. A card may have been written by a plugin, and a
  *  plugin describing what the page shows must not be a plugin running code on it. */
 export default function PauseCard({ card, taken, again, onTake }: Props) {
+  /* Keyed on the card, so what the reader typed belongs to the card in front of them.
+     Turn ids repeat across conversations, so React reconciles one conversation's card
+     onto another's — and without this the values would go with it. */
   const [written, setWritten] = useState<Record<string, unknown>>(() => filled(card))
+  const [drawn, setDrawn] = useState(card)
+  if (drawn !== card) {
+    setDrawn(card)
+    setWritten(filled(card))
+  }
   const open = taken === undefined
   const state = open ? WAITING : SETTLED
   const short = !complete(card, written)
@@ -64,14 +72,24 @@ export default function PauseCard({ card, taken, again, onTake }: Props) {
       )}
       {open ? (
         <div className="decision-options">
-          {card.actions.map((action) => (
-            <Action
-              key={action.label}
-              action={action}
-              short={short}
-              onTake={() => onTake(action, written)}
-            />
-          ))}
+          {card.actions.map((action, at) => {
+            const held = action.needs_valid && short
+            return (
+              <button
+                key={at}
+                className="decision-option"
+                disabled={held}
+                onClick={() => onTake(action, written)}
+              >
+                <span className="decision-label">{action.label}</span>
+                {(held || action.note) && (
+                  <span className="decision-note">
+                    {held ? FILL_IN_FIRST : action.note}
+                  </span>
+                )}
+              </button>
+            )
+          })}
         </div>
       ) : (
         <p className="decision-resolved">
@@ -84,26 +102,6 @@ export default function PauseCard({ card, taken, again, onTake }: Props) {
         </p>
       )}
     </div>
-  )
-}
-
-function Action({
-  action,
-  short,
-  onTake,
-}: {
-  action: Offered
-  short: boolean
-  onTake: () => void
-}) {
-  const held = action.needs_valid && short
-  return (
-    <button className="decision-option" disabled={held} onClick={onTake}>
-      <span className="decision-label">{action.label}</span>
-      {(held || action.note) && (
-        <span className="decision-note">{held ? FILL_IN_FIRST : action.note}</span>
-      )}
-    </button>
   )
 }
 
@@ -121,9 +119,14 @@ function Control({
   settled: boolean
   onWrite: (value: unknown) => void
 }) {
-  const label = (
-    <span className="card-name micro">{String(field.schema.title ?? field.name)}</span>
-  )
+  /* The schema's own words, which is what the tool wrote them for. The name is the
+     fallback, because a property with no description is still one the reader must
+     answer. */
+  const said = String(field.schema.title ?? field.schema.description ?? field.name)
+  /* Required is marked by the control's own `required`, which the cascade draws and a
+     screen reader announces — rather than by an asterisk beside the words, which is a
+     mark only the sighted reader gets and only if they know the convention. */
+  const label = <span className="card-name micro">{said}</span>
   /* A field the reader may not write is read off the card itself: what is drawn is what
      cora put up, not what the page is holding on their behalf. */
   if (!field.editable || settled)
@@ -141,10 +144,19 @@ function Control({
       {label}
       {Array.isArray(choices) ? (
         <Choices choices={choices} value={value} onWrite={onWrite} />
+      ) : field.schema.type === 'boolean' ? (
+        <input
+          className="card-check"
+          type="checkbox"
+          checked={value === true}
+          required={field.required}
+          onChange={(event) => onWrite(event.target.checked)}
+        />
       ) : (
         <input
           className="card-input"
           type={input(field.schema)}
+          required={field.required}
           value={value === null || value === undefined ? '' : String(value)}
           onChange={(event) => onWrite(read(field.schema, event.target.value))}
         />
@@ -154,7 +166,9 @@ function Control({
 }
 
 /** A short enumeration as buttons, a long one as a select. Four is where a row of them
- *  stops fitting beside its label. */
+ *  stops fitting beside its label. Either way what goes back is the choice itself and
+ *  not the string a control drew it as: a select answers in text, and an enumeration of
+ *  numbers would submit "3" where the row of buttons submits 3. */
 const MANY = 4
 
 function Choices({
@@ -171,7 +185,9 @@ function Choices({
       <select
         className="card-input"
         value={value === null || value === undefined ? '' : String(value)}
-        onChange={(event) => onWrite(event.target.value)}
+        onChange={(event) =>
+          onWrite(choices.find((each) => String(each) === event.target.value) ?? null)
+        }
       >
         <option value="" />
         {choices.map((each) => (
@@ -227,9 +243,14 @@ const read = (schema: Record<string, unknown>, typed: string): unknown => {
 
 /** A value as the reader reads it. A string is shown as written; anything else is drawn
  *  as the JSON it arrived as, because a number, a list and a nested object all have to be
- *  readable and none of them is prose. */
+ *  readable and none of them is prose. Nothing reads as nothing: a field the reader left
+ *  alone saying `null` reads as a value cora sent. */
 const written = (value: unknown) =>
-  typeof value === 'string' ? value : JSON.stringify(value ?? null)
+  value === null || value === undefined
+    ? ''
+    : typeof value === 'string'
+      ? value
+      : JSON.stringify(value)
 
 /** What the card already knows, so a field the model filled in arrives filled in. The
  *  reader's own fields and no others: what goes back is what they were offered to

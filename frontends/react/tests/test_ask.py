@@ -9,6 +9,7 @@ from starlette.testclient import TestClient
 
 from app_builder import assembled, indexed
 from cora.app.assembly import App
+from cora.domain.approval import TOOL
 from cora.domain.errors import LlmError
 from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
@@ -18,6 +19,7 @@ from cora.frontends.react.api import (
     NOT_A_DECISION,
     NOT_A_QUESTION,
     NOT_FILLED_IN,
+    NOT_THAT_CARD,
     REFUSED,
     TOO_LONG_TO_ASK,
     api,
@@ -829,7 +831,7 @@ def test_a_proposed_effect_is_streamed_as_the_paused_event_the_page_reads() -> N
     assert paused["card"]["prompt"] == BOOKING
     assert paused["card"]["fields"] == [
         {
-            "name": "tool",
+            "name": TOOL,
             "schema": {},
             "value": BOOKED,
             "editable": False,
@@ -934,15 +936,6 @@ def test_a_value_for_a_field_the_card_put_up_to_be_read_never_reaches_the_run() 
     assert "December" not in approved.text
 
 
-def test_answering_a_thread_waiting_on_nothing_is_refused() -> None:
-    with TestClient(api(_acting_app())) as reader:
-        refused = reader.post(
-            "/api/resume", json={"thread_id": "never-asked", "answer": "c1"}
-        )
-
-    assert refused.status_code == REFUSED
-
-
 def _proposing_two() -> ScriptedChatModel:
     return ScriptedChatModel(
         [
@@ -977,13 +970,17 @@ def test_a_round_proposing_two_effects_is_answered_one_call_at_a_time() -> None:
     )
 
 
-def test_an_action_the_card_never_offered_settles_nothing() -> None:
-    """Whatever answers arrived from outside the run: a call id reaching the ask step is
-    not a label it offered, so the turn goes on as though nothing was chosen."""
+def test_an_action_the_card_never_offered_is_refused_not_read_as_a_decline() -> None:
+    """The step waiting would read it as a decline — safe, and silent. A page holding a
+    card the conversation has moved past is told, rather than having the reader's turn
+    settled the other way on its behalf."""
     with TestClient(api(assembled(chat_model=_stopping()))) as reader:
         reader.post("/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"})
 
-        resumed = reader.post("/api/resume", json={"thread_id": "t1", "answer": "c1"})
+        refused = reader.post("/api/resume", json={"thread_id": "t1", "answer": "c1"})
 
-    [turn] = _carried(resumed.text, "turn")
-    assert turn["answer"] == WEIGHED
+    assert refused.status_code == REFUSED
+    assert refused.json() == {"error": NOT_THAT_CARD}
+    assert reader.get("/api/sessions/t1/pending").json() is not None, (
+        "the thread is still waiting, so the card is still answerable"
+    )

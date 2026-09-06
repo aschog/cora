@@ -1,5 +1,6 @@
 import dataclasses
 from dataclasses import dataclass, replace
+from typing import Any
 
 import pytest
 
@@ -16,6 +17,7 @@ from cora.domain.errors import (
     ToolLoopLimitError,
 )
 from cora.domain.trace import (
+    CardFilled,
     EffectSettled,
     ModelDecision,
     ScopeSettled,
@@ -33,12 +35,16 @@ from cora.engine.steps import (
     AGENT_RULES,
     ASK_RULE,
     BELONGS_TO_NONE,
+    BROKEN_ASKS,
     CHOSE_NOTHING,
     CORA_PREAMBLE,
     DECLINED_CALL,
+    FILLED_IN,
     GATHERS,
     MEMORY_RULE,
+    NOT_A_CARD,
     NOTHING_CHOSEN,
+    REFUSED_CALL,
     REMEMBERED_HEADING,
     ROUTED,
     ROUTING_RULE,
@@ -716,6 +722,18 @@ def test_the_rules_say_what_an_empty_search_means_and_what_to_do_about_it() -> N
     assert "no passages" in rules
     assert "ask" in rules and "upload" in rules
     assert "own knowledge" in rules
+
+
+def test_an_empty_search_ends_the_reading_and_not_the_turn() -> None:
+    """The rule as it stood ended the whole turn in prose: say you have nothing, ask
+    for uploads. A travel question met an empty store and died there, three times,
+    before any live tool was considered — so the rule now says what it always meant:
+    the documents gave nothing, and the other tools still stand."""
+    rules = AGENT_RULES.lower()
+
+    assert "ends only the reading" in rules
+    assert "go on" in rules
+    assert "say you have nothing on their question" not in rules
 
 
 def test_coras_own_opening_names_no_subject() -> None:
@@ -1795,6 +1813,91 @@ def test_the_gate_settles_every_proposal_of_a_round_before_any_of_it_runs() -> N
     assert [message.tool_call_id for message in contributed["messages"]] == ["c2"]
 
 
+def test_a_tool_that_gathers_is_offered_with_nothing_required() -> None:
+    """The card is what requires it. A schema naming arguments the model must supply
+    says the opposite of the sentence beside it, and the schema is the half a model
+    reads as binding."""
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    ModelStep(
+        chat_model=model,
+        tools=(),
+        max_history_turns=4,
+        registry=_offering(_gathering()),
+    )({"brief": "b", "question": "q"})
+
+    assert model.last_tools is not None
+    [offered] = model.last_tools
+    assert "required" not in offered.parameter_schema
+    assert offered.parameter_schema["properties"] == {"origin": {"type": "string"}}
+
+
+def test_offering_it_leaves_the_tool_the_plugin_registered_alone() -> None:
+    """What the tool takes is unchanged: the runtime validates the registered schema,
+    and the card is built from it too."""
+    registered = _gathering()
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    ModelStep(
+        chat_model=model,
+        tools=(),
+        max_history_turns=4,
+        registry=_offering(registered),
+    )({"brief": "b", "question": "q"})
+
+    assert model.last_tools is not None
+    [offered] = model.last_tools
+    assert registered.parameter_schema["required"] == ["origin"]
+    assert offered.parameter_schema is not registered.parameter_schema
+
+
+def test_a_tool_that_gathers_nothing_is_offered_with_its_required_list_intact() -> None:
+    registered = _acting()
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    ModelStep(
+        chat_model=model,
+        tools=(),
+        max_history_turns=4,
+        registry=_offering(registered),
+    )({"brief": "b", "question": "q"})
+
+    assert model.last_tools is not None
+    [offered] = model.last_tools
+    assert offered.parameter_schema == registered.parameter_schema
+
+
+def test_the_runtime_still_refuses_a_gathering_call_missing_what_it_requires() -> None:
+    """The strip is what the model is shown and nothing more. A card that left a
+    required argument off would be a call refused for want of it."""
+    runtime = ToolRuntime(tools=(_priced(),))
+
+    refused = runtime.execute(ToolCall(name=ASKING, arguments={}, call_id="c1"))
+
+    assert refused.error and "origin" in refused.error
+
+
+def test_the_gate_still_raises_the_card_for_a_call_made_with_no_arguments() -> None:
+    """Nothing required is what the model is offered, so a call may arrive empty — and
+    that is exactly the call the card exists for."""
+    seen: list[Asks] = []
+
+    def answer(asks: Asks) -> Answer:
+        seen.append(asks)
+        return Answer(action="Search", values={"origin": "BER"})
+
+    GateStep(registry=_offering(_gathering()), approve=answer)(
+        {
+            "messages": [
+                Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=(ToolCall(name=ASKING, arguments={}, call_id="c1"),),
+                )
+            ]
+        }
+    )
+
+    assert [asks.card for asks in seen] == [TRIP]
+
+
 def test_a_tool_that_gathers_is_offered_to_the_model_saying_so() -> None:
     """A model shown a required argument it cannot supply asks in prose, which is right
     about every other tool and wrong about this one: the card is what asks, and a call
@@ -1844,7 +1947,11 @@ def _gathering(effect: bool = False) -> Tool:
     return Tool(
         name=ASKING,
         description=DOES,
-        parameter_schema={"type": "object"},
+        parameter_schema={
+            "type": "object",
+            "properties": {"origin": {"type": "string"}},
+            "required": ["origin"],
+        },
         run=lambda **_: "searched",
         effect=effect,
         asks=lambda arguments: None if arguments.get("origin") else TRIP,
@@ -1944,7 +2051,8 @@ def test_a_filled_call_that_also_declares_an_effect_still_passes_the_gate() -> N
     assert isinstance(proposed, Proposed)
     assert proposed.arguments == {"what": ASKING, "origin": "BER"}
     assert contributed["trace"] == [
-        EffectSettled(tool=ASKING, does=DOES, approved=False)
+        CardFilled(tool=ASKING, fields=("origin",)),
+        EffectSettled(tool=ASKING, does=DOES, approved=False),
     ]
 
 
@@ -1974,11 +2082,112 @@ def test_a_value_for_a_field_the_card_never_offered_is_dropped() -> None:
     assert contributed["filled"] == {"c1": {"origin": "BER"}}
 
 
-def test_a_call_the_user_filled_in_is_read_with_their_values_from_then_on() -> None:
-    """Every reader of the round is owed the call as it stands rather than as it was
-    written: the tools run it, and the trace shows it, with what they wrote."""
-    state: AgentState = {**_proposing(ASKING), "filled": {"c1": {"origin": "LIS"}}}
+def test_a_card_the_gate_put_is_on_the_trace_whichever_way_it_went() -> None:
+    """cora stopped and asked, so the turn is read back rather than guessed at — the
+    same reason an approval is traced beside the call it authorised."""
+    filled = GateStep(registry=_offering(_gathering()), approve=_filled("BER"))(
+        _proposing(ASKING)
+    )
+    gave_nothing = GateStep(registry=_offering(_gathering()), approve=_filled(None))(
+        _proposing(ASKING)
+    )
 
-    [call] = _requested_calls(state)
+    assert filled["trace"] == [CardFilled(tool=ASKING, fields=("origin",))]
+    assert gave_nothing["trace"] == [CardFilled(tool=ASKING, fields=())]
 
-    assert call.arguments == {"what": ASKING, "origin": "LIS"}
+
+def test_the_trace_names_the_fields_the_reader_wrote_and_not_their_values() -> None:
+    """A card may hold a budget, and the panel is read over a shoulder."""
+    [step] = GateStep(registry=_offering(_gathering()), approve=_filled("BER"))(
+        _proposing(ASKING)
+    )["trace"]
+
+    assert step.summary == f"You filled in {ASKING}"
+    assert step.detail == "origin"
+    assert "BER" not in step.summary + step.detail
+
+
+def test_what_a_reader_wrote_into_one_turns_card_is_not_the_next_turns_argument() -> (
+    None
+):
+    """A call id repeats across turns, and the gate does not run in a turn that called
+    no tool — so nothing else would clear it."""
+    contributed = ScreenStep()({"question": "and now?", "filled": {"c1": {"a": 1}}})
+
+    assert contributed["filled"] == {}
+
+
+def test_a_plugin_whose_asks_breaks_costs_the_call_and_not_the_turn() -> None:
+    """The gate is a step of the core, so a plugin that broke inside it is contained the
+    way a refusing handler is: the round is told, and the turn still answers."""
+    broken = replace(_gathering(), asks=_raising)
+
+    contributed = GateStep(registry=_offering(broken), approve=_filled("BER"))(
+        _proposing(ASKING)
+    )
+
+    [told] = contributed["messages"]
+    assert told.content == REFUSED_CALL.format(name=ASKING, reason=BROKEN_ASKS)
+    assert contributed["filled"] == {}
+
+
+def test_a_plugin_that_asks_for_something_that_is_not_a_card_is_refused() -> None:
+    """A run parked on something the page cannot draw is a conversation nobody can
+    leave, so it is refused before it can park."""
+    nonsense = replace(_gathering(), asks=lambda _: "give me the trip")
+
+    contributed = GateStep(registry=_offering(nonsense), approve=_filled("BER"))(
+        _proposing(ASKING)
+    )
+
+    [told] = contributed["messages"]
+    assert told.content == REFUSED_CALL.format(name=ASKING, reason=NOT_A_CARD)
+
+
+def _raising(_: dict[str, Any]) -> Card:
+    raise RuntimeError("the key is hunter2")
+
+
+def _priced() -> Tool:
+    """The gathering tool as something that actually runs, for the rounds that get past
+    the gate to it."""
+    return replace(_gathering(), run=lambda **_: "priced it")
+
+
+def test_the_model_is_told_what_the_reader_filled_the_call_in_with() -> None:
+    """The values are state rather than transcript, so this is the only thing that says
+    what the call the model is answering about actually ran on."""
+    ran = ToolStep(ToolRuntime(tools=(_priced(),)))
+
+    contributed = ran(
+        {
+            **_proposing(ASKING),
+            "filled": {"c1": {"origin": "BER", "nights": 7}},
+        }
+    )
+
+    [told] = contributed["messages"]
+    assert told.content.startswith(FILLED_IN.format(values="nights=7, origin='BER'"))
+    assert "priced it" in told.content
+
+
+def test_a_call_nobody_filled_in_is_told_as_it_always_was() -> None:
+    ran = ToolStep(ToolRuntime(tools=(_priced(),)))
+
+    [told] = ran(
+        {
+            "messages": [
+                Message(
+                    role="assistant",
+                    content="",
+                    tool_calls=(
+                        ToolCall(
+                            name=ASKING, arguments={"origin": "BER"}, call_id="c1"
+                        ),
+                    ),
+                )
+            ]
+        }
+    )["messages"]
+
+    assert told.content == "priced it"

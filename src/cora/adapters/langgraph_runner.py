@@ -27,7 +27,6 @@ from cora.ports.graph import (
     GraphRunner,
     Loop,
     NamedStep,
-    Settled,
 )
 
 MODEL = "model"
@@ -143,7 +142,7 @@ class LangGraphRunner:
         yield from self._streamed(state, thread_id, on_text)
 
     def resume(
-        self, answer: Settled, thread_id: str, on_text: TextSink = unheard
+        self, answer: Answer, thread_id: str, on_text: TextSink = unheard
     ) -> Iterator[AgentState]:
         """The parked run, picked up where it stopped. The step that stopped is replayed
         from its first line with `interrupt` returning the answer this time, which is

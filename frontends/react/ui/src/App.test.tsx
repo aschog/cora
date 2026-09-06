@@ -3769,7 +3769,6 @@ test('a decision settled and then an effect proposed leaves one card open, not t
     vi.fn(async (path: string) => {
       if (path === '/api/ask') return stream(frame('paused', PAUSED))
       if (path === '/api/resume') return stream(frame('paused', PROPOSED))
-      if (path === '/api/resume') return stream(frame('turn', SAVED))
       if (path.endsWith('/pending'))
         return { ok: true, json: async () => null } as unknown as Response
       return {

@@ -8,6 +8,7 @@ from starlette.testclient import TestClient
 from app_builder import assembled
 from cora.adapters.file_output import FileOutput
 from cora.app.assembly import App
+from cora.domain.approval import TOOL
 from cora.domain.decision import TurnPaused
 from cora.engine.steps import DECLINED_CALL
 from cora.frontends.react.api import api
@@ -82,7 +83,7 @@ def test_an_effect_happens_only_after_i_approve_it(tmp_path: pathlib.Path) -> No
 
     card = proposed["card"]
     read = {field["name"]: field["value"] for field in card["fields"]}
-    assert read["tool"] == ITINERARY_TOOL_NAME
+    assert read[TOOL] == ITINERARY_TOOL_NAME
     assert card["prompt"], "the card says what the call would do"
     assert read["title"] == TITLE
     assert not any(field["editable"] for field in card["fields"])

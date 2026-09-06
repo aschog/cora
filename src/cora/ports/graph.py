@@ -48,11 +48,6 @@ class NamedStep(Protocol):
         ...
 
 
-Settled = Answer
-"""What travels back into a parked turn: the action taken off the card, and whatever
-the reader wrote into it. One type because one card is what a thread stops on, whether
-the action was picked, approved or submitted."""
-
 Route = Callable[[AgentState], str]
 ModelFor = Callable[[TextSink], Step]
 """How a graph asks for the step that talks to the model: one per turn, bound to that
@@ -90,7 +85,7 @@ class GraphRunner(Protocol):
         ...
 
     def resume(
-        self, answer: Settled, thread_id: str, on_text: TextSink = unheard
+        self, answer: Answer, thread_id: str, on_text: TextSink = unheard
     ) -> Iterator[AgentState]:
         """The same turn, picked up from where it stopped.
 

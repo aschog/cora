@@ -5,6 +5,7 @@ from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 
 from cora.domain.agent_state import AgentState
+from cora.domain.card import Answer
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import cited
 from cora.domain.conversation import Turn
@@ -19,7 +20,7 @@ from cora.domain.errors import (
 from cora.domain.trace import StepEntered, TraceStep
 from cora.ports.chat_model import TextSink, unheard
 from cora.ports.conversations import Conversations
-from cora.ports.graph import GraphRunner, Settled
+from cora.ports.graph import GraphRunner
 
 log = logging.getLogger(__name__)
 
@@ -121,7 +122,7 @@ class Agent:
 
     def resume(
         self,
-        answer: Settled,
+        answer: Answer,
         thread_id: str,
         on_step: Callable[[TraceStep], None] = _ignore,
         on_text: TextSink = unheard,

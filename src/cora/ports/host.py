@@ -192,7 +192,9 @@ class Host(Protocol):
             asks: What to put to the user before this call is made, given the arguments
                 the model wrote — or nothing, to run as called. What they fill in is
                 written over those arguments, so the tool is called once and with values
-                a person stated.
+                a person stated. It must be pure: the step that puts the card is
+                replayed on every pick-up, so it is called again each time, and one
+                whose answer varies moves the pause the reader already settled.
         """
         ...
 

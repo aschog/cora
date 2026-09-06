@@ -495,16 +495,15 @@ def _stay(place: Any, currency: str) -> Offer | None:
 
 FLIGHTS_TOOL_NAME = "search_flights"
 FLIGHTS_TOOL_DESCRIPTION = (
-    "Search live flight prices and return the cheapest few. Give a window rather than "
-    "two dates when the traveller has not fixed them — an earliest start, a latest "
-    "return and a number of nights — and several departures across it are tried. "
-    "Where the dates are fixed, set the window to exactly those dates."
+    "Search live flight prices and return the cheapest few. A window is an earliest "
+    "start, a latest return and a number of nights, and several departures across it "
+    "are tried. Where the dates are fixed, the window is exactly those two dates."
 )
 HOTELS_TOOL_NAME = "search_hotels"
 HOTELS_TOOL_DESCRIPTION = (
     "Search live accommodation prices for one set of dates and return the cheapest "
-    "few. Call it once the dates are settled. A budget or a minimum star rating is "
-    "applied by the search itself, so what comes back is already within them."
+    "few. A budget or a minimum star rating is applied by the search itself, so what "
+    "comes back is already within them."
 )
 
 
