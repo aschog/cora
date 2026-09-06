@@ -4435,3 +4435,107 @@ test('a conversation you started is named in the address once it has answered', 
 
   await waitFor(() => expect(globalThis.location.hash).toMatch(/^#\/c\/.+/))
 })
+
+/** The address changing under the page, which is what the back button does to it. */
+const goBackTo = (hash: string) => {
+  globalThis.history.replaceState(null, '', globalThis.location.pathname + hash)
+  globalThis.dispatchEvent(new HashChangeEvent('hashchange'))
+}
+
+test('the address changing under the page opens the conversation it names', async () => {
+  /* The back button, or a link pasted into the bar. Nothing else on the page has changed,
+     so the address is the whole of the request. */
+  render(<App />)
+  await screen.findByText('notes.md')
+  expect(screen.queryByText(OLDER.result.answer)).toBeNull()
+
+  goBackTo('#/c/old')
+
+  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
+})
+
+test('the address the page wrote itself does not open the conversation a second time', async () => {
+  /* Opening a conversation writes the address, and the address is subscribed to. Reading
+     that write back as a request would re-enter the load that caused it — once per open,
+     for as long as the two disagree. */
+  let reads = 0
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/sessions/old') reads += 1
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+  render(<App />)
+
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  await flushed()
+
+  expect(globalThis.location.hash).toBe('#/c/old')
+  expect(reads).toBe(1)
+})
+
+test('a card left open outranks the address, because nothing else can reach it', async () => {
+  /* A thread parked on its first question is listed under no session: the stow is its one
+     route back. The address names a conversation that is listed and one click away, so
+     between the two it is the stow that would be lost.
+     The cost is that the reload after parking a card goes to that card rather than to the
+     conversation last read. Narrowing the rule to unlisted threads only would need the
+     page to know, before it opens anything, whether the stowed thread has ever answered —
+     which is a round trip it does not have and a second thing to keep true. */
+  globalThis.sessionStorage.setItem('cora.parked', 'parked-thread')
+  globalThis.history.replaceState(null, '', globalThis.location.pathname + '#/c/old')
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (path === '/api/sessions/parked-thread/pending')
+        return { ok: true, json: async () => PAUSED } as unknown as Response
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => null } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+    }),
+  )
+
+  render(<App />)
+
+  expect(await screen.findByText(DECISION.prompt)).toBeTruthy()
+  expect(screen.queryByText(OLDER.result.answer)).toBeNull()
+})
+
+test('a panel that throws costs that panel, not the conversation beside it', async () => {
+  /* A column that cannot be drawn used to take the window with it. The store answering
+     with a shape the panel cannot read is the realistic way in — and the reader should
+     still have the conversation they were reading, and a way out of the broken panel. */
+  const quiet = vi.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string) => {
+        if (path === '/api/sessions')
+          return { ok: true, json: async () => ({ not: 'a list' }) } as unknown as Response
+        return {
+          ok: true,
+          json: async () => served[route(path)] ?? [],
+        } as unknown as Response
+      }),
+    )
+    render(<App />)
+    await screen.findByText('notes.md')
+
+    fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+
+    // The panel says so, and the rest of the page is still there.
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.getByPlaceholderText(/Ask a question/)).toBeTruthy()
+    expect(screen.getByText('notes.md')).toBeTruthy()
+
+    // And the strip above it still works, which is the way out of a panel that broke.
+    fireEvent.click(screen.getByRole('tab', { name: 'MEMORY' }))
+    expect(await screen.findByText('No burpees.')).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
+  } finally {
+    quiet.mockRestore()
+  }
+})
