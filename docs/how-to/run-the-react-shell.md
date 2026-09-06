@@ -31,14 +31,20 @@ Four, and CI runs all of them; the commit hook runs none, because they need Node
 commit that touches no TypeScript should not wait for it:
 
 ```sh
-npm --prefix frontends/react/ui run lint          # eslint, and the hook rules with it
+npm --prefix frontends/react/ui run lint          # eslint, plus what it cannot see
 npx --prefix frontends/react/ui tsc -b            # type check
 npm --prefix frontends/react/ui test              # unit tier, happy-dom
 npm --prefix frontends/react/ui run test:browser  # the tier that needs a real cascade
 ```
 
-`lint` is the one no type checker can stand in for: the order hooks are called in, and a
-dependency array that has fallen behind the closure it belongs to.
+`lint` is the one no type checker can stand in for. Two halves: eslint, for the order
+hooks are called in and a dependency array that has fallen behind the closure it belongs
+to — and `scripts/check-styles.mjs`, for what a stylesheet cannot be typed into saying.
+`vite/client` types a module as `Record<string, string>`, so `styles.narrow` type-checks
+whether or not `.narrow` exists and is `undefined` at runtime; the element is then drawn
+with the word "undefined" for a class, and the only symptom is a control that quietly
+loses its shape. It also catches a rule left in the global sheet naming a class that has
+moved into a module, which is how a compound selector dies when a stylesheet is split.
 
 Styles are per component — `Answer.module.css` beside `Answer.tsx` — so a class reaches
 what the file it sits beside draws and nothing else. `src/styles.css` keeps what is

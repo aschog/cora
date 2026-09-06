@@ -288,7 +288,7 @@ The page has its own four, which CI runs and the hook does not — they need Nod
 commit that touches no TypeScript should not wait for it:
 
 ```sh
-npm --prefix frontends/react/ui run lint          # eslint, and the hook rules with it
+npm --prefix frontends/react/ui run lint          # eslint, plus what it cannot see
 npx --prefix frontends/react/ui tsc -b            # type check
 npm --prefix frontends/react/ui test              # unit tier, happy-dom
 npm --prefix frontends/react/ui run test:browser  # the tier that needs a real cascade
