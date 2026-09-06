@@ -5,9 +5,18 @@ import WithStore from '../test/withStore'
 
 const KEPT = 'Sleep matters. The rest of the document follows.'
 
+/* Both drawn, and drawn separately — which is what `SourcePanel` and `CitationModal` do.
+   Collapsing them with `??` here would make this suite structurally unable to see the two
+   being true at once, which is the thing most worth knowing about. */
 function Reads({ upload }: { upload: string }) {
   const { text, trouble } = usePassage({ scope: 'cora', upload })
-  return <p>{trouble ?? text ?? 'reading'}</p>
+  return (
+    <>
+      {trouble && <p>{trouble}</p>}
+      {text !== null && <p>{text}</p>}
+      {trouble === null && text === null && <p>reading</p>}
+    </>
+  )
 }
 
 const asked = () => vi.mocked(globalThis.fetch).mock.calls.map(([path]) => String(path))
@@ -85,4 +94,44 @@ test('each upload is asked for under its own name, so one cannot be drawn as ano
     '/api/uploads/cora/u1',
     '/api/uploads/cora/u2',
   ])
+})
+
+test('a document that has gone is not still drawn from what was held', async () => {
+  /* Text is held under its upload, and a refetch that fails leaves it held. Drawn beside
+     the sentence saying the document cannot be opened, it tells the reader two things at
+     once and one of them is false — a deleted document's words under a line saying they
+     cannot be read. */
+  const { rerender } = render(
+    <WithStore>
+      <Reads upload="u1" />
+    </WithStore>,
+  )
+  await waitFor(() => expect(screen.getByText(KEPT)).toBeTruthy())
+
+  /* Deleted while the reader is looking at another one. */
+  vi.mocked(globalThis.fetch).mockImplementation(
+    async () =>
+      ({
+        ok: false,
+        status: 404,
+        json: async () => ({ error: 'cora cannot open this document.' }),
+      }) as Response,
+  )
+  rerender(
+    <WithStore>
+      <Reads upload="u2" />
+    </WithStore>,
+  )
+  await waitFor(() => expect(screen.getByText(/cannot open/)).toBeTruthy())
+
+  /* Back to the one that is held. It is drawn out of what was kept and asked for again
+     behind that, and this time the answer is that it is gone. */
+  rerender(
+    <WithStore>
+      <Reads upload="u1" />
+    </WithStore>,
+  )
+
+  await waitFor(() => expect(screen.getByText(/cannot open/)).toBeTruthy())
+  expect(screen.queryByText(KEPT)).toBeNull()
 })

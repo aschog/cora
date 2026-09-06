@@ -19,6 +19,10 @@ export const rail = {
      the reader may go back to a field a turn changed while they were elsewhere. */
   documents: (field: string) => ['documents', field] as const,
   everyDocument: ['documents'] as const,
+  /* Not a rail, but it is a document's text and a document can go: an effect a turn ran
+     may have deleted the one the panel is reading, and nothing else would ever ask
+     again. */
+  everyPassage: ['passage'] as const,
   memory: ['memory'] as const,
   sessions: ['sessions'] as const,
   scopes: ['scopes'] as const,
@@ -89,7 +93,13 @@ export function useRails({
    *  asked for again, rather than because the page guessed at what changed. */
   const refresh = useCallback(async () => {
     await Promise.all(
-      [rail.everyDocument, rail.memory, rail.sessions, rail.scopes].map((queryKey) =>
+      [
+        rail.everyDocument,
+        rail.everyPassage,
+        rail.memory,
+        rail.sessions,
+        rail.scopes,
+      ].map((queryKey) =>
         held.invalidateQueries({ queryKey }),
       ),
     )

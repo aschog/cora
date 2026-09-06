@@ -26,10 +26,16 @@ export function usePassage(source: { scope: string; upload: string } | null) {
     enabled: source !== null,
   })
 
+  /* A source that names no upload is the one failure that is not a failed read: there is
+     nothing to ask for, and the sentence is the same one either way. */
+  const trouble = source === null ? UNKEPT : read.error ? message(read.error) : null
+
   return {
-    text: read.data ?? null,
-    /* A source that names no upload is the one failure that is not a failed read: there
-       is nothing to ask for, and the sentence is the same one either way. */
-    trouble: source === null ? UNKEPT : read.error ? message(read.error) : null,
+    /* Never both. Text is held under its upload and a refetch that fails leaves it held,
+       so a document deleted while the page was open would be drawn out of what was kept,
+       under the line saying it cannot be read. The sentence is the newer of the two and
+       the words are the ones that are no longer true. */
+    text: trouble === null ? (read.data ?? null) : null,
+    trouble,
   }
 }
