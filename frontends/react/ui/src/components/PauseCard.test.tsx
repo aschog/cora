@@ -135,6 +135,18 @@ test('that same action is takeable once the required field holds a value', () =>
   })
 })
 
+test('a required field holding only spaces is not one the reader answered', () => {
+  drawn({
+    fields: [field('destination', { type: 'string' }, { required: true })],
+    actions: [action('Search', { needs_valid: true })],
+  })
+
+  fireEvent.change(screen.getByLabelText('destination'), { target: { value: '   ' } })
+
+  const search = screen.getByRole('button', { name: /Search/ })
+  expect(search).toHaveProperty('disabled', true)
+})
+
 test('an action that waits for nothing is takeable on an empty card', () => {
   const taken = drawn({
     fields: [field('destination', { type: 'string' }, { required: true })],

@@ -84,6 +84,14 @@ none of those three apart. A field carries the JSON Schema it came from and the 
 draws the control that schema describes, so a plugin adds a card the page has never
 seen without touching the page: the card is data cora sends, not code anybody shipped.
 
+Cora asks for what it does not have, as one of those. Where a plugin's tool asks for the
+arguments it was called without, cora asks for the values an answer turns on and nobody
+has written down — the trip, the dates, the budget — naming the fields itself and putting
+them as one form rather than a list of questions you answer one at a time. It is cora's
+own, so a deployment with no plugin loaded asks this way too. A card whose required
+fields are empty cannot be sent — you fill it in, or you leave it — and a box you skipped
+is asked for on another card rather than in prose.
+
 A conversation you are finished with is deleted from the list under *SESSIONS*, from the
 control at the end of its row — which asks first, and says what is lost and what is not.
 Deleting takes both halves of it: the turns you came back through, and the thread they

@@ -21,7 +21,12 @@ from cora.domain.trace import (
     TraceStep,
 )
 from cora.domain.transcript import prompt_from
-from cora.engine.ask_tool import ASK_TOOL_NAME, decision_from
+from cora.engine.ask_tool import (
+    ASK_FOR_TOOL_NAME,
+    ASK_TOOL_NAME,
+    card_from,
+    decision_from,
+)
 from cora.engine.events import dispatch
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.nesting import Inside, collecting
@@ -96,6 +101,18 @@ ASK_RULE = (
     "where each came from. Ask once, then answer with what you are given — never guess "
     "which of them was meant."
 )
+ASK_FOR_RULE = (
+    f"Call the {ASK_FOR_TOOL_NAME} tool the moment an answer turns on values you do "
+    "not have and cannot look up — where they are flying from, which days, what they "
+    "want to spend. Name those values as fields and let the form ask for them. Never "
+    "ask for them in your answer instead: an answer that asks costs the user a turn, "
+    "and it is the one thing this tool exists to replace. Ask for what the answer "
+    "turns on and no more, and mark a field required only where you cannot proceed "
+    "without it."
+)
+"""Why the model is told this and not left to the tool's own description: cora states a
+rule per tool it offers, in one place and in one voice, and a tool left out of that list
+is the one whose use has to be inferred."""
 NOTHING_CHOSEN = (
     "The user chose none of the options. Carry on without one, say what you could not "
     "settle, and do not ask again."
@@ -103,6 +120,16 @@ NOTHING_CHOSEN = (
 CHOSE_NOTHING = "nothing chosen"
 """What the reader's plan says a decline came to. The sentence above is written for the
 model and tells it what to do next, which is no part of what happened."""
+WRITTEN_IN = "The user filled the form in — {values}. Those are their own words."
+NOTHING_WRITTEN = (
+    "The user filled in nothing. Carry on without those values, say plainly what you "
+    "still need, and do not ask again."
+)
+WROTE_NOTHING = "nothing filled in"
+FILLED = "filled in: {fields}"
+"""What the reader's plan says a form came to: which fields came back, not what was in
+them — the values are on the card they were written on, and a plan is not where a form
+is read back."""
 REMEMBERED_HEADING = "What you already know about this user:"
 REMEMBERED_NOTICE = (
     "The notes below are things this user told you about themselves in earlier "
@@ -422,6 +449,7 @@ class FocusStep:
             AGENT_RULES,
             *((MEMORY_RULE,) if self.memory is not None else ()),
             ASK_RULE,
+            ASK_FOR_RULE,
             *((instructions,) if instructions.strip() else ()),
             *_remembered(facts),
         )
@@ -590,8 +618,12 @@ def _stated(values: dict[str, Any]) -> str:
     restate the city and the dates would otherwise have cora writing about a search
     nobody can see.
     """
-    written = ", ".join(f"{name}={value!r}" for name, value in sorted(values.items()))
-    return FILLED_IN.format(values=written or "with nothing")
+    return FILLED_IN.format(values=_values(values) or "with nothing")
+
+
+def _values(written: dict[str, Any]) -> str:
+    """What the reader wrote, in the order a reader would check it — by name."""
+    return ", ".join(f"{name}={value!r}" for name, value in sorted(written.items()))
 
 
 def _gathers(tool: Tool) -> Tool:
@@ -908,30 +940,68 @@ class AskStep:
     pause: Answered = declined
 
     def __call__(self, state: AgentState) -> AgentState:
-        """Put the round's question to the user, and answer the call with the choice.
+        """Put the round's ask to the user, and answer the call with what came back.
 
         Contributes nothing when the round asked nothing of the reader. A call cora
-        cannot read as a decision is answered with the refusal instead, and the run is
-        never stopped for it — a malformed question is not one the user can settle.
+        cannot read is answered with the refusal instead, and the run is never stopped
+        for it — an ask nobody could settle is not one to stop a reader with.
+
+        Either ask, because either one parks the run and this is the step that can:
+        which of the round's calls that is, `ask_in` says, so the router and this
+        cannot disagree about the card the reader is put.
         """
-        call = next(
-            (call for call in _requested_calls(state) if call.name == ASK_TOOL_NAME),
-            None,
-        )
+        call = ask_in(state)
         if call is None:
             return {}
+        settling = self._picked if call.name == ASK_TOOL_NAME else self._filled_in
         try:
-            decision = decision_from(call.arguments)
+            return settling(call)
         except ToolRefusal as refused:
             return _settled(
                 call, asked="", said=str(refused), outcome=str(refused), failed=True
             )
+
+    def _picked(self, call: ToolCall) -> AgentState:
+        """One fact settled between the values the model found.
+
+        Raises:
+            ToolRefusal: The call is not a decision.
+        """
+        decision = decision_from(call.arguments)
         chosen = _taken(decision, self.pause(decision))
         return _settled(
             call,
             asked=decision.question,
             said=chosen if chosen is not None else NOTHING_CHOSEN,
             outcome=chosen if chosen is not None else CHOSE_NOTHING,
+            failed=False,
+        )
+
+    def _filled_in(self, call: ToolCall) -> AgentState:
+        """The values the model asked for, as the reader wrote them.
+
+        What they wrote is the call's result rather than a round cora forged on their
+        behalf: the model reads it the way it reads any tool, and nothing in the
+        transcript claims to be something the model said.
+
+        Raises:
+            ToolRefusal: The call is not an ask cora can put to a reader.
+        """
+        card = card_from(call.arguments)
+        written = _written(card, self.pause(card))
+        if not written:
+            return _settled(
+                call,
+                asked=card.prompt,
+                said=NOTHING_WRITTEN,
+                outcome=WROTE_NOTHING,
+                failed=False,
+            )
+        return _settled(
+            call,
+            asked=card.prompt,
+            said=WRITTEN_IN.format(values=_values(written)),
+            outcome=FILLED.format(fields=", ".join(sorted(written))),
             failed=False,
         )
 
@@ -960,13 +1030,12 @@ class Router:
         calls = _requested_calls(state)
         if not calls:
             return DONE
-        if any(call.name == ASK_TOOL_NAME for call in calls) and not _already_asked(
-            state
-        ):
+        asking = ask_in(state)
+        if asking is not None and asking.name == ASK_TOOL_NAME:
             return ASK
         if _rounds(state) >= self.max_tool_rounds:
             raise ToolLoopLimitError
-        return TOOLS
+        return ASK if asking is not None else TOOLS
 
 
 def scoped(state: AgentState) -> frozenset[str]:
@@ -1019,12 +1088,38 @@ def _requested_calls(state: AgentState) -> tuple[ToolCall, ...]:
     )
 
 
+def ask_in(state: AgentState) -> ToolCall | None:
+    """The round's ask that may still stop the reader, or nothing that may.
+
+    Read in one place because two read it: the router sends the turn to the step that
+    can park it, and the step settles the call — and a rule written twice is one the
+    two can disagree about, which would put a card the router never routed for.
+
+    A form is here however many the turn has already put. The fork is here only once,
+    so a round raising both after the fork was settled yields the form: the reader is
+    put what is still open rather than the same question twice.
+    """
+    for call in _requested_calls(state):
+        if call.name == ASK_FOR_TOOL_NAME:
+            return call
+        if call.name == ASK_TOOL_NAME and not _already_asked(state):
+            return call
+    return None
+
+
 def _already_asked(state: AgentState) -> bool:
-    """Whether this turn has stopped the reader once already, which is all it may do.
+    """Whether this turn has put its one question to the reader already.
+
+    The fork only: asked twice about a fact it holds at two values, cora is guessing at
+    what it already has, and the second question says the first settled nothing. A form
+    is the other way round — the reader who skipped a box left a gap cora cannot fill
+    from anywhere, and the only other way to close it is the prose a form replaces. How
+    many of those a turn may put up is the round budget's to say, as it is for any other
+    tool.
 
     Read off the trace rather than off the calls: an ask that was refused never reached
-    them, and spending the turn's one question on a malformed call would leave cora
-    guessing between the very values it stopped for.
+    the reader, and spending the turn's one question on a malformed call would leave
+    cora guessing between the very values it stopped for.
     """
     return any(
         isinstance(step, ToolUse) and step.name == ASK_TOOL_NAME and not step.failed
@@ -1039,13 +1134,30 @@ def _written(card: Card, answer: Answer | None) -> dict[str, Any] | None:
     from outside it, so an action the card never offered is nobody leaving it filled in,
     and a value for a field it put up to be read is dropped rather than written over the
     argument it was shown beside.
+
+    A box left empty is dropped with them. It is a field the reader skipped rather than
+    a value of nothing — written through, it would overwrite the argument the model
+    supplied, and be reported to both the model and the trace as filled in.
     """
     if answer is None or answer.action is None:
         return None
     if answer.action not in {action.answer for action in card.actions}:
         return None
     offered = {field.name for field in card.fields if field.editable}
-    return {name: value for name, value in answer.values.items() if name in offered}
+    return {
+        name: value
+        for name, value in answer.values.items()
+        if name in offered and not _blank(value)
+    }
+
+
+def _blank(value: Any) -> bool:
+    """Whether a box came back with nothing in it.
+
+    Whitespace counts, and `False` and `0` do not: a cleared text box arrives as an
+    empty string, and an unticked checkbox is an answer.
+    """
+    return value is None or (isinstance(value, str) and not value.strip())
 
 
 def _taken(decision: Decision, answer: Answer | None) -> str | None:

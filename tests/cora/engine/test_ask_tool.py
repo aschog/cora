@@ -4,7 +4,10 @@ from cora.domain.decision import Decision, Option
 from cora.engine.ask_tool import (
     ASK_TOOL_NAME,
     ASKED_ALREADY,
+    SEND,
+    ask_for_tool,
     ask_tool,
+    card_from,
     decision_from,
 )
 from cora.ports.plugin import ToolRefusal
@@ -80,3 +83,108 @@ def test_running_the_tool_says_the_turn_has_already_asked() -> None:
         ask_tool().run(question=ASKED, options=[{"label": "75 kg"}])
 
     assert ASKED_ALREADY in str(refused.value)
+
+
+WANTED = "Give me the trip and I'll price it."
+
+
+def _asking(*fields: dict) -> dict:
+    return {"prompt": WANTED, "fields": list(fields)}
+
+
+def test_an_ask_for_three_values_is_a_card_of_three_fields() -> None:
+    card = card_from(
+        _asking(
+            {"name": "origin", "description": "Where you are flying from"},
+            {"name": "depart", "description": "The day you leave"},
+            {"name": "nights", "description": "How many nights away"},
+        )
+    )
+
+    assert card.prompt == WANTED
+    assert [field.name for field in card.fields] == ["origin", "depart", "nights"]
+    assert all(field.editable for field in card.fields), "a form is written in"
+
+
+def test_a_field_carries_the_schema_of_the_value_it_asks_for() -> None:
+    card = card_from(
+        _asking(
+            {"name": "depart", "description": "The day you leave", "format": "date"},
+            {"name": "nights", "description": "How many", "type": "integer"},
+            {"name": "budget", "description": "Spend", "choices": ["Lean", "No cap"]},
+        )
+    )
+
+    day, nights, budget = card.fields
+    assert day.schema == {
+        "type": "string",
+        "description": "The day you leave",
+        "format": "date",
+    }
+    assert nights.schema["type"] == "integer"
+    assert budget.schema["enum"] == ["Lean", "No cap"]
+
+
+def test_a_field_the_ask_calls_required_is_required_on_the_card() -> None:
+    card = card_from(
+        _asking(
+            {"name": "origin", "description": "From", "required": True},
+            {"name": "budget", "description": "Spend"},
+        )
+    )
+
+    assert [field.required for field in card.fields] == [True, False]
+
+
+def test_the_card_offers_a_way_out_beside_the_one_that_submits() -> None:
+    """A card the reader cannot leave is a conversation they cannot leave, and the one
+    that submits waits for the fields the ask called required."""
+    card = card_from(_asking({"name": "origin", "description": "From"}))
+
+    send, out = card.actions
+    assert (send.answer, send.needs_valid) == (SEND, True)
+    assert out.answer is None, "the way out settles the ask and writes nothing"
+
+
+def test_an_ask_for_no_values_at_all_is_refused() -> None:
+    """Refused where it was made rather than drawn: an empty card is one the reader
+    cannot answer, and it would spend the turn's one question."""
+    with pytest.raises(ToolRefusal):
+        card_from({"prompt": WANTED, "fields": []})
+
+
+def test_a_field_with_no_name_is_refused() -> None:
+    with pytest.raises(ToolRefusal) as refused:
+        card_from(_asking({"description": "Where you are flying from"}))
+
+    assert "name" in str(refused.value)
+
+
+def test_a_field_of_a_type_cora_cannot_read_is_refused() -> None:
+    with pytest.raises(ToolRefusal):
+        card_from(_asking({"name": "origin", "description": "From", "type": "map"}))
+
+
+def test_two_fields_of_the_same_name_are_refused() -> None:
+    """Silently keeping one of them would ask for less than the model asked for, and
+    the answer would rest on a value nobody was shown a box for."""
+    with pytest.raises(ToolRefusal) as refused:
+        card_from(
+            _asking(
+                {"name": "origin", "description": "Where from"},
+                {"name": "origin", "description": "Where from, again"},
+            )
+        )
+
+    assert "origin" in str(refused.value)
+
+
+def test_neither_ask_reads_as_the_other() -> None:
+    """The model picks by shape, so each description names the case it is for: one
+    settles a fact between values already found, the other gathers what nobody has."""
+    settling = ask_tool().description
+    gathering = ask_for_tool().description
+
+    assert "two or more different values" in settling
+    assert "do not have and cannot look up" in gathering
+    assert "option" not in gathering, "options are the other ask's, and a form has none"

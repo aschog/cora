@@ -24,7 +24,7 @@ from cora.domain.errors import (
     ToolLoopLimitError,
 )
 from cora.domain.trace import ToolUse
-from cora.engine.ask_tool import ASK_TOOL_NAME
+from cora.engine.ask_tool import ASK_FOR_TOOL_NAME, ASK_TOOL_NAME
 from cora.engine.memory_tool import MAX_FACT_CHARS, REMEMBER_TOOL_NAME
 from cora.engine.plugin_registry import load_plugin, load_plugins
 from cora.engine.port_logging import LoggingEmbedder, LoggingRetriever
@@ -146,8 +146,26 @@ def test_the_offered_tools_are_coras_first_then_each_plugins_in_order() -> None:
         SEARCH_TOOL_NAME,
         REMEMBER_TOOL_NAME,
         ASK_TOOL_NAME,
+        ASK_FOR_TOOL_NAME,
         "bmi",
         "tdee",
+    ]
+
+
+def test_a_cora_with_no_plugin_can_still_ask_for_what_it_does_not_hold() -> None:
+    """Asking is cora's own rather than a subject somebody brings: a deployment that
+    loaded nothing still has both asks, the settling one and the gathering one."""
+    model = ScriptedChatModel([ModelReply(text="ok")])
+    app = assembled(chat_model=model, memory=FakeMemory(), plugins=())
+
+    app.agent.answer("q", THREAD)
+
+    assert model.last_tools is not None
+    assert [tool.name for tool in model.last_tools] == [
+        SEARCH_TOOL_NAME,
+        REMEMBER_TOOL_NAME,
+        ASK_TOOL_NAME,
+        ASK_FOR_TOOL_NAME,
     ]
 
 
@@ -683,6 +701,7 @@ def test_build_wires_real_adapters_from_config(tmp_path: Path) -> None:
         SEARCH_TOOL_NAME,
         REMEMBER_TOOL_NAME,
         ASK_TOOL_NAME,
+        ASK_FOR_TOOL_NAME,
         *(entry.value.name for entry in registered.registered if entry.kind == TOOL),
     }
     assert app.memory is _focusing(runner).memory, (

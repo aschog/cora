@@ -17,7 +17,7 @@ from cora.app.config import (
 from cora.app.log_config import enable_debug_logs
 from cora.domain.errors import PluginLoadError
 from cora.engine.agent import Agent
-from cora.engine.ask_tool import ask_tool
+from cora.engine.ask_tool import ask_for_tool, ask_tool
 from cora.engine.host import PluginHost
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.memory_tool import remember_tool
@@ -269,7 +269,12 @@ def _coras_own_tools(
     to the model rather than a tool that quietly forgets.
     """
     remembering = (remember_tool(memory),) if memory is not None else ()
-    return (search_tool(context_source, top_k), *remembering, ask_tool())
+    return (
+        search_tool(context_source, top_k),
+        *remembering,
+        ask_tool(),
+        ask_for_tool(),
+    )
 
 
 def build(config: Config, collection: str = DEFAULT_COLLECTION) -> App:

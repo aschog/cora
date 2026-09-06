@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 
 from cora.domain.errors import ConfigurationError
-from cora.engine.ask_tool import ASK_TOOL_NAME
+from cora.engine.ask_tool import ASK_FOR_TOOL_NAME, ASK_TOOL_NAME
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.validation import CORA
@@ -25,6 +25,7 @@ RESERVED_TOOL_NAMES = {
     SEARCH_TOOL_NAME: "document search",
     REMEMBER_TOOL_NAME: "what the agent keeps about the user",
     ASK_TOOL_NAME: "stopping to ask the user",
+    ASK_FOR_TOOL_NAME: "stopping to ask the user for values",
 }
 
 

@@ -59,6 +59,15 @@ reader; the gate puts it, writes what they filled in over those arguments, and r
 the call so the tools are handed values a person stated. Ahead of the proposals, so a
 call that both asks and acts is approved as it will really be made.
 
+Cora asks on its own account through two tools of its own, both settled by the ask step
+ahead of the round's tools: `ask_user`, which puts a fact it holds at two values, and
+`ask_user_for`, which puts a form of values it does not hold at all. The model names the
+fields and cora builds the card from them, so an answer that needs four things nobody has
+written down is one form rather than four questions in prose, and what the reader wrote
+comes back as that call's result. The fork is put once a turn — asked twice, cora is
+guessing at a value it already holds — and a form as often as the round budget allows,
+because a box the reader skipped is a gap nothing else can close.
+
 Whatever the turn stopped on — a question between remembered values, a call awaiting
 approval, a form to fill — reaches the page as one `Card`: a prompt, its fields and its
 actions. One pause port over all three, because what parks a run is the card and nothing

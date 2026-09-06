@@ -270,4 +270,11 @@ const complete = (card: Card, written: Record<string, unknown>) =>
     (field) => !field.editable || !field.required || !empty(written[field.name]),
   )
 
-const empty = (value: unknown) => value === null || value === undefined || value === ''
+/** Spaces are empty. The backend drops a box holding only whitespace rather than
+ *  writing it over what it asked about, so a button this let through would submit a card
+ *  the run then reads as unfilled. */
+const empty = (value: unknown) =>
+  value === null ||
+  value === undefined ||
+  value === '' ||
+  (typeof value === 'string' && value.trim() === '')

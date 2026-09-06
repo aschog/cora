@@ -238,3 +238,11 @@ def test_a_plugin_that_registered_nothing_is_listed_with_nothing_under_it() -> N
     assert quiet.contributions == ()
     assert quiet.of(TOOL) == quiet.of(HANDLER) == quiet.of(INSTRUCTIONS) == ()
     assert quiet.scopes == ()
+
+
+def test_the_ask_that_gathers_is_coras_own_name_too() -> None:
+    """A plugin taking the name would shadow the one tool that stops the turn to ask,
+    and the reader would be put a card nobody in the core wrote."""
+    from cora.engine.ask_tool import ASK_FOR_TOOL_NAME
+
+    assert ASK_FOR_TOOL_NAME in RESERVED_TOOL_NAMES
