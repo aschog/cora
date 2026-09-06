@@ -54,10 +54,11 @@
 
 ## 8. Saving what was verified
 
-- [ ] 8.1 Write a test that the save writes the kept plan rather than an argument the model wrote.
-- [ ] 8.2 Write a test that the card put to the traveller describes that plan's dates, fare, stay and total.
-- [ ] 8.3 Write a test that the save still waits for approval, and a decline writes nothing.
-- [ ] 8.4 Write a test that a save with no plan kept refuses in a sentence rather than writing an empty file.
+- [ ] 8.1 Write a test that the save writes the plan that passed its checks.
+- [ ] 8.2 Write a test that the card carries that plan's dates, fare, stay and total as the call's arguments.
+- [ ] 8.3 Write a test that a call whose plan differs from the kept one is refused and writes nothing.
+- [ ] 8.4 Write a test that the save still waits for approval, and a decline writes nothing.
+- [ ] 8.5 Write a test that a save with no plan kept refuses in a sentence rather than writing an empty file.
 
 ## 9. No key, and a failing service
 

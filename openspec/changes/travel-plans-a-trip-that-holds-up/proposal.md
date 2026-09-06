@@ -24,7 +24,7 @@ past the flight home and read perfectly well.
 - `plugins/travel/.../constraints.py` — new: what a plan must satisfy, one rule per function
 - `plugins/travel/.../planner.py` — new: the loop, and the two tools that enter it
 - `plugins/travel/.../trips.py` — the searches called directly as well as offered to the model
-- `plugins/travel/.../itinerary.py` — **BREAKING** saves the kept plan, not a Markdown argument
+- `plugins/travel/.../itinerary.py` — **BREAKING** takes a structured plan, and refuses an unverified one
 - `plugins/travel/.../__init__.py` — two more tools, and instructions that name the planner
 - `README.md`, `docs/how-to/write-a-plugin.md` — the plugin that plans, as the worked example
 - Depends on: `a-plugin-remembers-across-turns` for the plan, `a-plugin-shows-its-work` for the trace

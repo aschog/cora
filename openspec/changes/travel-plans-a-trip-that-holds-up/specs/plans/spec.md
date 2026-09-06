@@ -120,15 +120,21 @@ checks that failed, and each revision it made.
 
 ### Requirement: What is saved is what was verified
 
-Saving an itinerary SHALL write the plan cora checked, and the call put to the traveller
-for approval SHALL describe that plan. The model SHALL NOT be able to alter the plan
-between the check and the save.
+Saving an itinerary SHALL write the plan cora checked. The call put to the traveller
+SHALL carry that plan, and a call carrying a plan cora did not verify SHALL be refused
+rather than written.
 
-#### Scenario: The approval describes the plan
+#### Scenario: The approval carries the plan
 
 - **GIVEN** a verified plan in this conversation
 - **WHEN** cora offers to save it
-- **THEN** the card describes that plan's dates, fare, stay and total
+- **THEN** the card carries that plan's dates, fare, stay and total as the call's own arguments
+
+#### Scenario: A plan the model rewrote is refused
+
+- **GIVEN** a verified plan, and a call to save one that differs from it
+- **WHEN** the call runs
+- **THEN** nothing is written, and the model is told the plan was not the verified one
 
 #### Scenario: The file holds the verified plan
 

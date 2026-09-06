@@ -51,15 +51,17 @@ Progress reaching the page mid-call, which is the whole page and not this.
 
 - A frozen shape with a schema, kept under the conversation, so a revision starts from
   what was verified rather than from what the transcript still says.
-- Rejected: the plan travelling in tool arguments — the model would be free to edit it
-  between the check and the save.
 
-**Saving reads the kept plan, and the card describes it.**
+**Saving passes the plan, and the tool refuses one it did not verify.**
 
-- `save_itinerary` takes a title and writes what was verified, so the check and the
-  write cannot be separated by a model that rewrote the middle.
-- The proposal put to the traveller describes that plan, because approving a title alone
-  approves nothing.
+- The gate words its card from the tool's description and the call's arguments and
+  nothing else, so a plan that is not an argument is a plan nobody saw before approving.
+- So the save takes the plan, and its `run` compares what arrived against the kept one
+  and refuses a mismatch.
+- The card therefore describes what will be written, and a model that rewrote the middle
+  is caught by the comparison rather than trusted.
+- Rejected: a title alone, reading the plan out of what was kept — the write would be
+  right and the approval blind, which is worse than the card cora ships today.
 
 ## Risks / Trade-offs
 
