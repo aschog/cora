@@ -61,7 +61,7 @@ def test_a_dropped_field_is_offered_and_the_rails_follow_it(
     holder = LiveApp(
         named=(),
         folder=tmp_path,
-        compose=lambda loaded, dropped: assembled(plugins=loaded, scopes_from=dropped),
+        compose=lambda loaded: assembled(plugins=loaded),
     )
     reader = TestClient(api(holder))
     assert reader.get("/api/scopes").json()["available"] == []
@@ -89,7 +89,7 @@ def test_the_api_reads_the_current_composition_per_request(
     holder = LiveApp(
         named=(),
         folder=tmp_path,
-        compose=lambda loaded, dropped: assembled(plugins=loaded),
+        compose=lambda loaded: assembled(plugins=loaded),
     )
     reader = TestClient(api(holder))
     assert reader.get("/api/plugins").json() == []

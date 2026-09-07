@@ -66,6 +66,17 @@
 - [x] 6.7 Extend the outer test: the dropped package's field is offered on the next
       read.
 
-## 7. Done
+## 7. One rule for fields
 
-- [x] 7.1 Drop the outer test's `xfail` marker and watch it pass.
+- [x] 7.1 Write a test that shows the offered fields are the configured ones plus
+      every scope any loaded plugin registered, in that order, named once.
+- [x] 7.2 Write a test that shows a named module's field is offered without
+      configuration, exactly as a dropped one's is.
+- [x] 7.3 Write a test that shows a configured field with no registration is still
+      offered — a documents-only field.
+- [x] 7.4 Write a test that shows a symlinked package directory loads as a plugin
+      and an edit through the link moves the signature.
+
+## 8. Done
+
+- [x] 8.1 Drop the outer test's `xfail` marker and watch it pass.

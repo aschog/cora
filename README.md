@@ -64,10 +64,12 @@ make run                                   # or: make run-env, to read the key f
 moves — the module it names is one line, in the `Makefile`. `make run-env` is the same
 thing reading its environment from `.env`, so the exports above go in that file
 instead. cora loads no plugin unless asked, so the `CORA_PLUGINS` line is what turns
-this from a bare cora into the coaching app with a prompt-injection screen. `CORA_SCOPES`
-says which fields a turn *may* run in: the coaching persona and its calculators are the
-fitness scope's, the travel persona and its notes are travel's, while the medical filter
-and the injection screen are system-wide and hold whatever a turn is running as.
+this from a bare cora into the coaching app with a prompt-injection screen. A field is
+offered because something brings it: the coaching persona and its calculators bring
+`fitness`, the travel persona and its notes bring `travel`, while the medical filter and
+the injection screen are system-wide and hold whatever a turn is running as. So the
+`CORA_SCOPES` line above is optional — it names fields *beyond* what the plugins
+register, which is how a field holding only documents exists.
 
 With two fields named, cora reads each question and answers it in the one it belongs to —
 the trace says which, and a question that fits both stops the turn to ask. That is
@@ -221,9 +223,15 @@ has to be in cora's environment already, or the plugin is refused by name.
 And the folder is live. A plugin dropped there while cora serves is installed by the
 next request — reload the page and it is in the menu — a deleted one is gone the same
 way, and an edited one serves its new code. No environment change, no restart. The
-field a dropped plugin registers under arrives with it — the picker, the router and the
-rails offer it as if `CORA_SCOPES` had named it, and it goes when the plugin goes —
-while what `CORA_PLUGINS` names stays gated by `CORA_SCOPES` alone. A turn
+field a plugin registers under arrives with it — the picker, the router and the rails
+offer it, and it goes when the plugin goes. A symlink counts as its target, so this
+repo's own plugins deploy by linking:
+
+```sh
+ln -s "$(pwd)"/plugins/travel/src/cora/plugins/travel .cora/plugins/travel
+```
+
+A turn
 already running finishes on the plugins it started with, and a drop that cannot load
 refuses that request readably while everything already loaded keeps serving. Only the
 folder is live: what `CORA_PLUGINS` names is fixed at start.

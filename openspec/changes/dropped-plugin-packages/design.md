@@ -52,13 +52,16 @@ and the React API closes over that one assembled `App` for the process's life.
   answers that request as a `CoreError` already does, and is retried on the next.
 - Named modules are loaded once at startup and passed into every recomposition
   untouched.
-- Dropping into the folder is the deployment act, so the fields a dropped plugin
-  registers join the configured ones for as long as it is there; named modules stay
-  gated by `CORA_SCOPES`.
+- A field has one rule: it is offered if anything brings it — a registration of any
+  loaded plugin, or `CORA_SCOPES`, which stays only for fields no plugin registers
+  (a documents-only field). Loading is the deployment act, however a plugin arrived.
+- Symlinks are followed as the filesystem follows them: discovery, loading and the
+  signature all stat through, so a linked package edits live.
 - The app carries the fields it offers, and the api reads them off the current
   composition per request — its startup `scopes` parameter goes.
-- `load_plugins` keeps named-first order, which is what tells the folder's plugins
-  apart from the named ones without a second loading path.
+- Nothing tells named from dropped any more: the union reads every registration, so
+  the named-first order stops carrying meaning and the compose seam takes one
+  argument again.
 
 ## Risks / Trade-offs
 

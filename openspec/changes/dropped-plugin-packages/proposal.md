@@ -15,8 +15,11 @@ dropped at all without flattening it into one file.
   restart, a page reload shows it.
 - A drop that cannot load refuses that reload readably and leaves the running set
   serving.
-- A field a dropped plugin registers is offered with it — picker, router, pin and
-  rails — and goes when the plugin goes. `CORA_SCOPES` keeps gating named modules.
+- One rule for fields: offered = what `CORA_SCOPES` names (documents-only fields)
+  plus what any loaded plugin registered — named or dropped — and a plugin's field
+  goes when it goes. No env is needed to deploy a plugin.
+- A symlink in the folder is a plugin like a real directory, so a repo's own plugins
+  deploy by `ln -s`.
 - Dependencies are not installed: an import the environment lacks is a refusal, not
   a feature.
 

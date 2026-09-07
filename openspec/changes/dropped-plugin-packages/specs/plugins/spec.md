@@ -45,19 +45,34 @@ serving until the folder loads again.
 - **WHEN** that turn completes
 - **THEN** it finishes on the plugin set it started with
 
-### Requirement: A field a dropped plugin brings is offered with it
+### Requirement: A field is offered by whatever brings it
 
-The system SHALL offer the fields a dropped plugin registers under as if the deployment
-had named them, for as long as the plugin is in the folder: what a reader may pick and
-pin, what a question may be routed to, and what the rails may list and upload into are
-the configured fields plus the folder's. A plugin named in the environment SHALL stay
-gated by the configured fields alone.
+The system SHALL offer a field if anything brings it: a registration of any loaded
+plugin — named in the environment or dropped in the folder alike — or the deployment's
+configuration, which is how a field with no plugin behind it, a documents-only field,
+exists. What a reader may pick and pin, what a question may be routed to, and what the
+rails may list and upload into SHALL be that one set, each field named once, and a
+plugin's field SHALL go when the plugin goes. Deploying a plugin SHALL need no
+configuration at all.
 
 #### Scenario: A dropped plugin's field is offered without configuration
 
 - **GIVEN** a running deployment, and a plugin dropped that registers under `interview`
 - **WHEN** the offered fields are next read
 - **THEN** `interview` is among them, though no configuration names it
+
+#### Scenario: A named module's field is offered the same way
+
+- **GIVEN** a module named in the environment registering under a field nothing else
+  names
+- **WHEN** the offered fields are read
+- **THEN** that field is among them
+
+#### Scenario: A configured field with no plugin is still a field
+
+- **GIVEN** a deployment whose configuration names a field no registration carries
+- **WHEN** the offered fields are read
+- **THEN** it is among them, holding documents and nothing else
 
 #### Scenario: A deleted plugin takes its field with it
 
@@ -70,12 +85,6 @@ gated by the configured fields alone.
 - **GIVEN** a dropped plugin whose field no configuration names
 - **WHEN** a conversation is pinned to that field and a question asked
 - **THEN** the turn runs in it, and is not refused as a field nobody offers
-
-#### Scenario: A named module's field still needs naming
-
-- **GIVEN** a module in the environment registering under a field `CORA_SCOPES` omits
-- **WHEN** the offered fields are read
-- **THEN** that field is not among them
 
 ## MODIFIED Requirements
 
@@ -111,6 +120,12 @@ system SHALL name no plugin of its own in the code it ships.
 - **GIVEN** a dropped package whose `__init__.py` imports a sibling with `from . import`
 - **WHEN** cora starts
 - **THEN** the plugin loads, the sibling resolved from inside the folder
+
+#### Scenario: A symlinked package is a plugin like any other
+
+- **GIVEN** a symlink in the plugins folder pointing at a package directory elsewhere
+- **WHEN** cora starts, and the linked package is later edited where it lives
+- **THEN** it loads under the link's name, and the edit reaches the next composition
 
 #### Scenario: A folder without __init__.py is not a plugin
 

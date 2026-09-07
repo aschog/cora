@@ -384,8 +384,9 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
 
    The folder is live: a plugin dropped while cora serves is installed by the next
    request, a deleted one is removed, and an edited one serves its new code — reload
-   the page, no restart. The field it registers under arrives with it, offered as if
-   `CORA_SCOPES` had named it, and leaves with it. A drop that cannot load refuses that request readably and
+   the page, no restart. The field it registers under arrives with it and leaves with
+   it, and a symlink counts as its target — a plugin still being written deploys by
+   `ln -s` and edits live. A drop that cannot load refuses that request readably and
    what was already loaded keeps serving.
 
 10. **See what loaded.** `make plugins` prints every plugin under where it came from,

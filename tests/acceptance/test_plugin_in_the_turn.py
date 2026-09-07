@@ -122,9 +122,11 @@ def test_a_tool_out_of_scope_cannot_be_reached_by_asking_for_it_anyway() -> None
             ModelReply(text="I cannot work that out here."),
         ]
     )
-    app = assembled(chat_model=model, plugins=load_plugins(BOTH))
+    # The fitness plugin's field is offered by loading it, so keeping the tool out of
+    # the turn's scope takes a turn pinned to another field — a documents-only one.
+    app = assembled(chat_model=model, plugins=load_plugins(BOTH), scopes=("travel",))
 
-    answered = app.agent.answer(PROTEIN, THREAD)
+    answered = app.agent.answer(PROTEIN, THREAD, pin="travel")
 
     [call] = [step for step in answered.trace if step.summary.startswith(BMI)]
     assert call.failed

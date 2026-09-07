@@ -646,10 +646,7 @@ def _live(folder: Path, **kwargs: Any) -> "LiveApp":
     return LiveApp(
         named=kwargs.pop("named", ()),
         folder=folder,
-        compose=kwargs.pop(
-            "compose",
-            lambda loaded, dropped: assembled(plugins=loaded, scopes_from=dropped),
-        ),
+        compose=kwargs.pop("compose", lambda loaded: assembled(plugins=loaded)),
     )
 
 
@@ -707,33 +704,29 @@ def test_an_edited_plugin_serves_its_new_behaviour(tmp_path: Path) -> None:
     assert [each.name for each in listed["field_notes"].of(TOOL)] == ["recount"]
 
 
-def test_the_app_offers_the_scopes_a_plugin_it_trusts_brings() -> None:
-    """Dropping into the folder is the deployment act, so what a dropped plugin
-    registers under is offered as if `CORA_SCOPES` had named it — once, however many
-    registrations carry it, and not doubled when configuration names it too."""
-    dropped = make_plugin(name="interview", scope="interview")
-
+def test_the_app_offers_the_fields_configuration_and_plugins_bring() -> None:
+    """One rule: a field is offered because something brings it — a registration of
+    any loaded plugin, or the configuration. Named once however many bring it, the
+    configured ones first in their own order."""
     app = assembled(
-        plugins=(dropped,),
+        plugins=(make_plugin(name="interview", scope="interview"),),
         scopes=("fitness",),
-        scopes_from=("fixture_plugins.interview",),
     )
 
     assert app.scopes == ("fitness", "interview")
-    already = assembled(
+    doubled = assembled(
         plugins=(make_plugin(name="coaching", scope="fitness"),),
         scopes=("fitness",),
-        scopes_from=("fixture_plugins.coaching",),
     )
-    assert already.scopes == ("fitness",)
+    assert doubled.scopes == ("fitness",)
 
 
-def test_a_named_modules_unconfigured_scope_stays_unoffered() -> None:
-    named = make_plugin(name="interview", scope="interview")
+def test_a_configured_field_with_no_registration_is_still_offered() -> None:
+    """A documents-only field: nothing registers it, the deployment names it, and it
+    holds uploads all the same."""
+    app = assembled(plugins=(), scopes=("travel",))
 
-    app = assembled(plugins=(named,), scopes=("fitness",))
-
-    assert app.scopes == ("fitness",)
+    assert app.scopes == ("travel",)
 
 
 def test_a_dropped_plugins_scope_is_offered_and_goes_with_it(tmp_path: Path) -> None:
@@ -785,9 +778,9 @@ def test_named_modules_load_once_and_survive_recomposition_untouched(
     folder = _folder(tmp_path)
     seen: list[tuple[Extension, ...]] = []
 
-    def compose(loaded: tuple[Extension, ...], dropped: tuple[str, ...]) -> App:
+    def compose(loaded: tuple[Extension, ...]) -> App:
         seen.append(loaded)
-        return assembled(plugins=loaded, scopes_from=dropped)
+        return assembled(plugins=loaded)
 
     holder = _live(folder, named=("fixture_plugins.valid",), compose=compose)
     holder.current()

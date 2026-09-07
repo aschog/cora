@@ -90,7 +90,6 @@ def test_a_question_pinned_to_a_field_a_dropped_plugin_brought_is_accepted() -> 
         conversations=FakeConversations(),
         plugins=(make_plugin(name="interview", scope="interview"),),
         scopes=BOTH,
-        scopes_from=("fixture_plugins.interview",),
     )
 
     with TestClient(api(app)) as reader:

@@ -446,6 +446,28 @@ def test_the_folder_signature_moves_with_the_folder(tmp_path: pathlib.Path) -> N
     assert folder_signature(tmp_path) == empty
 
 
+def test_a_symlinked_package_is_a_plugin_like_any_other(
+    tmp_path: pathlib.Path,
+) -> None:
+    """A repo's own plugin deploys by `ln -s`: the link is discovered, loaded and
+    stat-ed as the directory it points at, so an edit where it lives moves the
+    signature the folder is watched by."""
+    from cora.engine.plugin_registry import folder_signature
+
+    target = _drop_package(tmp_path / "elsewhere", "field_notes")
+    folder = tmp_path / "plugins"
+    folder.mkdir()
+    (folder / "field_notes").symlink_to(target)
+
+    (loaded,) = load_plugins([], folder=folder)
+    assert loaded.module == "field_notes"
+    assert loaded.source == str(folder / "field_notes")
+
+    before = folder_signature(folder)
+    (target / "__init__.py").write_text(f"{DROPPED}\n# revised\n")
+    assert folder_signature(folder) != before
+
+
 NOT_A_VERSION = ["'1'", "None", "1.5"]
 
 
