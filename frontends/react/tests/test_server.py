@@ -84,12 +84,12 @@ def test_nothing_is_built_before_the_settings_are_read(
     """A mistyped port is a typo, and assembling the app for it is an embedding model
     the operator waits through before being told. The sentence, the exit code and the
     absent traceback all hold whichever order it happens in, so the order is what is
-    asserted here: a `build` that fails the test if it is reached at all."""
+    asserted here: a `live` that fails the test if it is reached at all."""
     monkeypatch.setenv("OPENROUTER_API_KEY", "not-used-because-the-port-fails-first")
     monkeypatch.setenv("CORA_PORT", "8O00")
     monkeypatch.setattr(
         server,
-        "build",
+        "live",
         lambda config: pytest.fail("the app was assembled for a port cora cannot read"),
     )
 

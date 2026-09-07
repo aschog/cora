@@ -36,9 +36,12 @@ def _searching() -> ModelReply:
 @pytest.mark.integration
 def test_a_guard_plugin_and_a_domain_plugin_are_live_in_one_app() -> None:
     model = ScriptedChatModel([_searching(), ModelReply(text=GROUNDED)])
+    # The fitness plugin brings its field, so the single-field turn runs in it — and
+    # the document it answers from is uploaded into that field, not the default one.
     app = indexed(
         assembled(chat_model=model, plugins=load_plugins(BOTH_PLUGINS.split(","))),
         PROTEIN,
+        scope="fitness",
     )
 
     answered = app.agent.answer(TRAINING, THREAD)

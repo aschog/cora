@@ -64,19 +64,21 @@ make run                                   # or: make run-env, to read the key f
 moves — the module it names is one line, in the `Makefile`. `make run-env` is the same
 thing reading its environment from `.env`, so the exports above go in that file
 instead. cora loads no plugin unless asked, so the `CORA_PLUGINS` line is what turns
-this from a bare cora into the coaching app with a prompt-injection screen. `CORA_SCOPES`
-says which fields a turn *may* run in: the coaching persona and its calculators are the
-fitness scope's, the travel persona and its notes are travel's, while the medical filter
-and the injection screen are system-wide and hold whatever a turn is running as.
+this from a bare cora into the coaching app with a prompt-injection screen. A field is
+offered because something brings it: the coaching persona and its calculators bring
+`fitness`, the travel persona and its notes bring `travel`, while the medical filter and
+the injection screen are system-wide and hold whatever a turn is running as. So the
+`CORA_SCOPES` line above is optional — it names fields *beyond* what the plugins
+register, which is how a field holding only documents exists.
 
-With two fields named, cora reads each question and answers it in the one it belongs to —
+With two fields offered, cora reads each question and answers it in the one it belongs to —
 the trace says which, and a question that fits both stops the turn to ask. That is
 *Chat*, above the conversation. Name one field instead — *+ Plugin* lists the ones this
 deployment loaded — and every later turn is answered in it, through a reload and a
 reopen: the pin is the thread's own state. A pin is set once, because a
 thread that could change field is a thread whose earlier turns mean something else — a
-second field is a second conversation. Naming one scope leaves nothing to route between,
-which is how a single-field deployment stays one.
+second field is a second conversation. Loading one field leaves nothing to route
+between, which is how a single-field deployment stays one.
 
 Everything cora stops for is one card. A question between two remembered weights, a
 call it is about to make that changes something outside itself, a form it needs filled
@@ -209,10 +211,32 @@ handed the location rather than choosing one, and a filename that would climb ou
 refused, so no plugin writes that check itself.
 
 A plugin does not have to be installed. Drop a single `.py` file into `./.cora/plugins/`
-and cora loads it with no packaging at all, named for the file — the folder is read in
-name order after the modules `CORA_PLUGINS` names, and `CORA_PLUGINS_PATH` moves it. It
-is read relative to where cora was started, and every file in it is code cora runs —
-`CORA_DEBUG` logs which folder that was.
+and cora loads it with no packaging at all, named for the file. A plugin that has grown
+past one file goes in the same way: drop its folder — a directory holding `__init__.py` —
+and it is one plugin named for the folder, its own relative imports working as written.
+The folder is read in name order after the modules `CORA_PLUGINS` names, and
+`CORA_PLUGINS_PATH` moves it. It is read relative to where cora was started, and
+everything in it is code cora runs — `CORA_DEBUG` logs which folder that was. What a
+drop-in imports is not installed for it: anything beyond cora and the standard library
+has to be in cora's environment already, or the plugin is refused by name.
+
+And the folder is live. A plugin dropped there while cora serves is installed by the
+next request — reload the page and it is in the menu — a deleted one is gone the same
+way, and an edited one serves its new code. No environment change, no restart. The
+field a plugin registers under arrives with it — the picker, the router and the rails
+offer it, and it goes when the plugin goes. A symlink counts as its target, so this
+repo's own plugins deploy by linking:
+
+```sh
+ln -s "$(pwd)"/plugins/travel/src/cora/plugins/travel .cora/plugins/travel
+```
+
+One route per plugin, though: a module `CORA_PLUGINS` names and a link (or file) in the
+folder are two plugins with one name, which cora refuses — link it *or* name it. A turn
+already running finishes on the plugins it started with. A drop that cannot load is
+louder: every request is refused, readably and naming the plugin, until the folder
+loads again — fix or remove the file and the prior set serves on, nothing lost. Only
+the folder is live: what `CORA_PLUGINS` names is fixed at start.
 `make plugins` prints what loaded: every plugin under where it came from, with its tools,
 its instructions and the points in a turn it subscribed to, and anything registered
 without a scope marked `system-wide`. `GET /api/plugins` carries the same listing. A

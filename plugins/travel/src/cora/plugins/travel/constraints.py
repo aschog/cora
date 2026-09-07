@@ -10,7 +10,7 @@ import datetime
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 
-from cora.plugins.travel.plan import Plan
+from .plan import Plan
 
 WET = ("rain", "shower", "snow", "storm", "thunder")
 """What a forecast has to say for an outdoor day to be ruled out. Words rather than a

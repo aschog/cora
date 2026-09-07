@@ -17,9 +17,10 @@ from typing import Any
 import httpx
 
 from cora.domain.card import ActionOffered, Card, fields_of, missing_from
-from cora.plugins.travel.forecast import Fetcher
-from cora.plugins.travel.plan import Priced
 from cora.ports.plugin import Tool, ToolRefusal
+
+from .forecast import Fetcher
+from .plan import Priced
 
 SEARCH = "https://serpapi.com/search"
 SETTING = "serpapi_key"

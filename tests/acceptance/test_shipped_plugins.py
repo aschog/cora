@@ -6,13 +6,15 @@ the same question for every plugin — asking it once, over the modules found in
 namespace, covers the next plugin as well as these two.
 """
 
+import importlib
+import pathlib
 import pkgutil
 
 import pytest
 
 import cora.plugins
 from app_builder import assembled, indexed
-from cora.engine.plugin_registry import load_plugin
+from cora.engine.plugin_registry import load_plugin, load_plugins
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.plugins.travel import CORPUS
 from cora.ports.chat_model import ModelReply
@@ -43,6 +45,39 @@ def test_a_shipped_plugin_loads_through_the_registry(module: str) -> None:
 
     assert isinstance(loaded, Extension)
     assert loaded.module == module
+
+
+@pytest.mark.parametrize("module", _shipped_modules())
+def test_a_shipped_plugin_also_loads_as_a_drop_in(
+    module: str, tmp_path: pathlib.Path
+) -> None:
+    """Shipped in the monorepo, written independent: each package must load through
+    the folder too, exactly as a deployment that never installed it would load it."""
+    package = pathlib.Path(importlib.import_module(module).__file__ or "").parent
+    (tmp_path / package.name).symlink_to(package)
+
+    (loaded,) = load_plugins([], folder=tmp_path)
+
+    assert loaded.module == package.name
+
+
+@pytest.mark.parametrize("module", _shipped_modules())
+def test_a_shipped_plugin_imports_its_own_siblings_relatively(module: str) -> None:
+    """The load test above cannot catch an absolute self-import here, because the
+    editable install resolves it to the same files — on a machine where the package is
+    only dropped, it resolves to nothing. The source is what has to say `from .`."""
+    package = pathlib.Path(importlib.import_module(module).__file__ or "").parent
+    offenders = [
+        f"{found.name}:{number}: {line.strip()}"
+        for found in sorted(package.glob("*.py"))
+        for number, line in enumerate(found.read_text().splitlines(), start=1)
+        if f"from {module}" in line or f"import {module}" in line
+    ]
+
+    assert not offenders, (
+        "an absolute self-import breaks the package as a drop-in; write `from .`:\n"
+        + "\n".join(offenders)
+    )
 
 
 TRIP = "How early should I book a sleeper?"

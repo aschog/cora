@@ -298,8 +298,11 @@ The system SHALL refuse a plugin it cannot load, and the refusal SHALL name the 
 and what is wrong with it. A module defining no `extend`, one that raises while
 registering, one registering a name cora has already taken, and two plugins whose names
 end alike are each refused. A plugin SHALL be refused a name cora keeps for its own,
-and a file whose stem is not a plain identifier SHALL be refused for that. Every refusal
-SHALL name the plugin as it was found — a module by its path, a file by its own.
+and a file or folder whose name is not a plain identifier SHALL be refused for that.
+A dropped package importing what the environment does not hold SHALL be refused,
+naming the folder and what went wrong — dependencies are not installed for it. Every
+refusal SHALL name the plugin as it was found — a module by its path, a file or a
+folder by its own name.
 
 #### Scenario: A module that does not register is refused
 
@@ -343,6 +346,12 @@ SHALL name the plugin as it was found — a module by its path, a file by its ow
 - **WHEN** cora starts
 - **THEN** it refuses, naming that file and what went wrong in it
 
+#### Scenario: A package that cannot be imported is refused by its folder name
+
+- **GIVEN** a dropped package importing a module the environment does not hold
+- **WHEN** cora starts
+- **THEN** it refuses, naming that folder and what went wrong in it
+
 ### Requirement: What a plugin read for cora is labelled untrusted
 
 The system SHALL label as untrusted whatever reaches a model out of the user's documents.
@@ -371,7 +380,9 @@ after reading them, and for a plugin that searched the documents itself.
 
 The system SHALL load a plugin named as a module, wherever that module is installed
 from, and SHALL load a single Python file dropped in its plugins folder with no
-packaging at all. Every plugin SHALL carry the source it was found through, and the
+packaging at all. It SHALL likewise load a package directory dropped there — a folder
+holding `__init__.py` — as one plugin, named for the folder, its own relative imports
+resolving. Every plugin SHALL carry the source it was found through, and the
 system SHALL name no plugin of its own in the code it ships.
 
 #### Scenario: A named module living outside this repository is enough
@@ -386,11 +397,117 @@ system SHALL name no plugin of its own in the code it ships.
 - **WHEN** cora starts
 - **THEN** it is loaded, and the listing says which file it was read from
 
+#### Scenario: A package folder in the plugins folder is enough
+
+- **GIVEN** a directory in the plugins folder holding `__init__.py` and sibling modules
+- **WHEN** cora starts
+- **THEN** it is loaded under the folder's name, and the listing says which folder
+
+#### Scenario: A dropped package's relative imports work as written
+
+- **GIVEN** a dropped package whose `__init__.py` imports a sibling with `from . import`
+- **WHEN** cora starts
+- **THEN** the plugin loads, the sibling resolved from inside the folder
+
+#### Scenario: A symlinked package is a plugin like any other
+
+- **GIVEN** a symlink in the plugins folder pointing at a package directory elsewhere
+- **WHEN** cora starts, and the linked package is later edited where it lives
+- **THEN** it loads under the link's name, and the edit reaches the next composition
+
+#### Scenario: A folder without __init__.py is not a plugin
+
+- **GIVEN** a directory in the plugins folder holding no `__init__.py`
+- **WHEN** cora starts
+- **THEN** the folder is ignored, and the deployment loads without it
+
 #### Scenario: A named module says it was named
 
 - **GIVEN** plugins loaded from both sources
 - **WHEN** the listing is read
 - **THEN** a named module is shown under its module path, and a file under its folder
+
+### Requirement: The plugins folder is live
+
+The system SHALL keep its running plugin set in step with the plugins folder while it
+serves: a plugin dropped in is installed, one deleted is removed, and one edited is
+reloaded, each visible by the next request without a restart. A turn already running
+SHALL finish on the set it started with. Plugins named as modules in the environment
+SHALL stay as started; only the folder is live. A folder state that cannot load SHALL
+refuse every request, readably and naming the plugin, for as long as it holds; the set
+already composed SHALL be kept, and SHALL serve again as soon as the folder loads.
+
+#### Scenario: A dropped plugin is installed without a restart
+
+- **GIVEN** a running deployment, and a plugin then dropped into the folder
+- **WHEN** the plugin listing is next read
+- **THEN** the new plugin is in it, and its tools answer the next question
+
+#### Scenario: A deleted plugin is removed without a restart
+
+- **GIVEN** a running deployment loaded from the folder, and the plugin then deleted
+- **WHEN** the plugin listing is next read
+- **THEN** the plugin is gone, and nothing offers its tools
+
+#### Scenario: An edited plugin serves its new behaviour
+
+- **GIVEN** a running deployment, and a dropped plugin's code then changed
+- **WHEN** the next turn runs
+- **THEN** the plugin acts as the new code says
+
+#### Scenario: A broken drop does not take the deployment down
+
+- **GIVEN** a running deployment, and a file dropped that cannot load
+- **WHEN** the next request arrives, and another after the file is removed
+- **THEN** the first is refused naming the plugin, and the second is served by the
+  prior set, nothing lost
+
+#### Scenario: A turn in flight is not reshaped under itself
+
+- **GIVEN** a turn already running when the folder changes
+- **WHEN** that turn completes
+- **THEN** it finishes on the plugin set it started with
+
+### Requirement: A field is offered by whatever brings it
+
+The system SHALL offer a field if anything brings it: a registration of any loaded
+plugin — named in the environment or dropped in the folder alike — or the deployment's
+configuration, which is how a field with no plugin behind it, a documents-only field,
+exists. What a reader may pick and pin, what a question may be routed to, and what the
+rails may list and upload into SHALL be that one set, each field named once, and a
+plugin's field SHALL go when the plugin goes. Deploying a plugin SHALL need no
+configuration at all.
+
+#### Scenario: A dropped plugin's field is offered without configuration
+
+- **GIVEN** a running deployment, and a plugin dropped that registers under `interview`
+- **WHEN** the offered fields are next read
+- **THEN** `interview` is among them, though no configuration names it
+
+#### Scenario: A named module's field is offered the same way
+
+- **GIVEN** a module named in the environment registering under a field nothing else
+  names
+- **WHEN** the offered fields are read
+- **THEN** that field is among them
+
+#### Scenario: A configured field with no plugin is still a field
+
+- **GIVEN** a deployment whose configuration names a field no registration carries
+- **WHEN** the offered fields are read
+- **THEN** it is among them, holding documents and nothing else
+
+#### Scenario: A deleted plugin takes its field with it
+
+- **GIVEN** a deployment offering a field only a dropped plugin registered
+- **WHEN** the plugin is deleted and the offered fields are next read
+- **THEN** the field is gone with it
+
+#### Scenario: A question is answered in the dropped field
+
+- **GIVEN** a dropped plugin whose field no configuration names
+- **WHEN** a conversation is pinned to that field and a question asked
+- **THEN** the turn runs in it, and is not refused as a field nobody offers
 
 ### Requirement: Cora says what it loaded
 

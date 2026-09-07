@@ -24,7 +24,7 @@ from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Match, Mount, Route
 from starlette.staticfiles import StaticFiles
 
-from cora.app.assembly import App
+from cora.app.assembly import App, LiveApp
 from cora.domain.card import Answer
 from cora.domain.chat_result import ChatResult
 from cora.domain.decision import TurnPaused
@@ -57,36 +57,45 @@ applied to a part the parser has already spooled to disk and read whole — so t
 carrying it is bounded here instead, before any of it is read."""
 
 
+Apps = Callable[[], App]
+"""How a handler reads the app: taken once per request, so a turn runs whole on the
+composition it started with, whatever the plugins folder does meanwhile."""
+
+
 def api(
-    app: App,
+    app: App | LiveApp,
     *,
-    scopes: tuple[str, ...] = (),
     ui: pathlib.Path | None = None,
 ) -> Starlette:
-    """`scopes` is what the deployment configured, which the assembled app does not
-    carry: the picker offers them, and nothing on the page can change them. What
-    loaded is the app's own listing, so the menu and a terminal say one thing."""
+    """One HTTP surface over the app, reading everything off the composition itself —
+    the fields it offers included, because a live plugins folder makes those a fact of
+    the composition rather than a setting. What loaded is the app's own listing, so
+    the menu and a terminal say one thing.
+
+    Handed a `LiveApp`, every request reads the composition the plugins folder
+    describes by then; handed an `App`, the page serves that one for good."""
+    apps = app.current if isinstance(app, LiveApp) else (lambda: app)
     routes: list[Route | Mount] = [
-        Route("/api/documents", _documents(app, scopes), methods=["GET"]),
-        Route("/api/documents", _ingest(app, scopes), methods=["POST"]),
+        Route("/api/documents", _documents(apps), methods=["GET"]),
+        Route("/api/documents", _ingest(apps), methods=["POST"]),
         Route(
             "/api/documents/{scope}/{name}",
-            _delete_document(app, scopes),
+            _delete_document(apps),
             methods=["DELETE"],
         ),
-        Route("/api/ask", _ask(app, scopes), methods=["POST"]),
-        Route("/api/resume", _resume(app), methods=["POST"]),
-        Route("/api/uploads/{scope}/{upload}", _upload(app, scopes), methods=["GET"]),
-        Route("/api/sessions", _sessions(app), methods=["GET"]),
-        Route("/api/sessions/{thread_id}", _turns(app), methods=["GET"]),
-        Route("/api/sessions/{thread_id}", _delete(app), methods=["DELETE"]),
-        Route("/api/sessions/{thread_id}/pending", _pending(app), methods=["GET"]),
-        Route("/api/sessions/{thread_id}/scope", _scope(app), methods=["GET"]),
-        Route("/api/memory", _memory(app), methods=["GET"]),
-        Route("/api/memory", _clear(app), methods=["DELETE"]),
-        Route("/api/memory/{key}", _forget(app), methods=["DELETE"]),
-        Route("/api/plugins", _plugins(app), methods=["GET"]),
-        Route("/api/scopes", _scopes(scopes), methods=["GET"]),
+        Route("/api/ask", _ask(apps), methods=["POST"]),
+        Route("/api/resume", _resume(apps), methods=["POST"]),
+        Route("/api/uploads/{scope}/{upload}", _upload(apps), methods=["GET"]),
+        Route("/api/sessions", _sessions(apps), methods=["GET"]),
+        Route("/api/sessions/{thread_id}", _turns(apps), methods=["GET"]),
+        Route("/api/sessions/{thread_id}", _delete(apps), methods=["DELETE"]),
+        Route("/api/sessions/{thread_id}/pending", _pending(apps), methods=["GET"]),
+        Route("/api/sessions/{thread_id}/scope", _scope(apps), methods=["GET"]),
+        Route("/api/memory", _memory(apps), methods=["GET"]),
+        Route("/api/memory", _clear(apps), methods=["DELETE"]),
+        Route("/api/memory/{key}", _forget(apps), methods=["DELETE"]),
+        Route("/api/plugins", _plugins(apps), methods=["GET"]),
+        Route("/api/scopes", _scopes(apps), methods=["GET"]),
     ]
     if ui is not None and ui.is_dir():
         routes.append(Mount("/", StaticFiles(directory=ui, html=True)))
@@ -158,23 +167,22 @@ inside `api` so a handler can be driven by a test over a route that fails on dem
 no real route can be made to fail these ways."""
 
 
-def _documents(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
+def _documents(apps: Apps) -> Callable[[Request], Any]:
     """What one field holds, which is what a turn in it could cite. Asked for no field,
     the default one answers — it is a field like any other."""
 
     def listed(request: Request) -> JSONResponse:
+        app = apps()
         named = request.query_params.get("scope", "")
-        scope = _field(named, scopes)
+        scope = _field(named, app.scopes)
         if scope is None:
-            return _refusal(named, scopes)
+            return _refusal(named, app.scopes)
         return JSONResponse(app.knowledge_base.list_sources(scope))
 
     return listed
 
 
-def _delete_document(
-    app: App, scopes: tuple[str, ...] = ()
-) -> Callable[[Request], Any]:
+def _delete_document(apps: Apps) -> Callable[[Request], Any]:
     """A document deleted from one field, both halves of it, through the one call that
     drops both.
 
@@ -184,10 +192,11 @@ def _delete_document(
     """
 
     def one(request: Request) -> Response:
+        app = apps()
         named = request.path_params["scope"]
-        scope = _field(named, scopes)
+        scope = _field(named, app.scopes)
         if scope is None:
-            return _refusal(named, scopes)
+            return _refusal(named, app.scopes)
         app.knowledge_base.forget(scope, request.path_params["name"])
         return Response(status_code=NO_CONTENT)
 
@@ -212,7 +221,7 @@ def _field(named: str, scopes: tuple[str, ...]) -> str | None:
     return asked if asked in (*scopes, DEFAULT_SCOPE) else None
 
 
-def _ingest(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
+def _ingest(apps: Apps) -> Callable[[Request], Any]:
     """An upload, into the field it names or into the default one.
 
     The name is refused here rather than deeper down: it is the reader's, and a field
@@ -221,6 +230,9 @@ def _ingest(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
     """
 
     async def add(request: Request) -> JSONResponse:
+        # Off the loop: reading the current app may recompose over a changed plugins
+        # folder, and that work — imports included — must not hold every other request.
+        app = await run_in_threadpool(apps)
         refused = _over_ceiling(request)
         if refused is not None:
             return refused
@@ -231,9 +243,9 @@ def _ingest(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
             named = str(form.get("scope") or "")
             filename = uploaded.filename or ""
             data = await uploaded.read()
-        scope = _field(named, scopes)
+        scope = _field(named, app.scopes)
         if scope is None:
-            return _refusal(named, scopes)
+            return _refusal(named, app.scopes)
         chunks = await run_in_threadpool(
             app.knowledge_base.add_file, data, filename, scope
         )
@@ -314,7 +326,7 @@ DONE = None
 that is not closed is a page still spinning under an answer that already failed."""
 
 
-def _ask(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
+def _ask(apps: Apps) -> Callable[[Request], Any]:
     """A turn takes as long as it takes, so it is a stream: the steps as the agent takes
     them, the answer in the pieces it is written in, then the answer whole, and either
     way an end. The whole one is what the page keeps — the pieces are it arriving early.
@@ -334,6 +346,7 @@ def _ask(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
     waiting for."""
 
     async def taken(request: Request) -> Response:
+        app = await run_in_threadpool(apps)
         asked = await _json_object(request, NOT_A_QUESTION)
         if isinstance(asked, JSONResponse):
             return asked
@@ -344,7 +357,7 @@ def _ask(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
         # A field nobody loaded would pin the thread to a scope no registration is
         # under, and a pin cannot be undone — so it is refused here, where what the
         # deployment offers is known, rather than fixed forever inside the turn.
-        if pinned is not None and pinned not in scopes:
+        if pinned is not None and pinned not in app.scopes:
             return JSONResponse({"error": NO_SUCH_SCOPE}, status_code=REFUSED)
         return _streaming(
             lambda report, write: app.agent.answer(
@@ -355,7 +368,7 @@ def _ask(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
     return taken
 
 
-def _resume(app: App) -> Callable[[Request], Any]:
+def _resume(apps: Apps) -> Callable[[Request], Any]:
     """The rest of a turn that stopped, on the action the reader took and what they
     wrote. A second request rather than an answer written back up the first one: the
     stream only goes one way, and the pause is parked in the checkpointer, which is what
@@ -365,6 +378,7 @@ def _resume(app: App) -> Callable[[Request], Any]:
     form is the same two things, and a second route would be this one written twice."""
 
     async def picked(request: Request) -> Response:
+        app = await run_in_threadpool(apps)
         answered = await _json_object(request, NOT_A_DECISION)
         if isinstance(answered, JSONResponse):
             return answered
@@ -405,13 +419,13 @@ def _resume(app: App) -> Callable[[Request], Any]:
     return picked
 
 
-def _pending(app: App) -> Callable[[Request], Any]:
+def _pending(apps: Apps) -> Callable[[Request], Any]:
     """What a thread is waiting on, for a page that arrived after the pause. A turn is
     recorded only once it has an answer, so a reload mid-question finds the card here or
     nowhere."""
 
     def waiting(request: Request) -> JSONResponse:
-        parked = app.agent.pending(request.path_params["thread_id"])
+        parked = apps().agent.pending(request.path_params["thread_id"])
         return JSONResponse(None if parked is None else payloads.pending(parked))
 
     return waiting
@@ -507,12 +521,13 @@ def _event(name: str, data: dict[str, Any]) -> str:
     return f"event: {name}\ndata: {json.dumps(data)}\n\n"
 
 
-def _upload(app: App, scopes: tuple[str, ...] = ()) -> Callable[[Request], Any]:
+def _upload(apps: Apps) -> Callable[[Request], Any]:
     def read(request: Request) -> JSONResponse:
+        app = apps()
         named = request.path_params["scope"]
-        scope = _field(named, scopes)
+        scope = _field(named, app.scopes)
         if scope is None:
-            return _refusal(named, scopes)
+            return _refusal(named, app.scopes)
         text = app.knowledge_base.text(scope, request.path_params["upload"])
         if text is None:
             return JSONResponse({"error": UNKEPT}, status_code=404)
@@ -527,8 +542,9 @@ deleted document from one whose text was never kept — both read as nothing —
 the reader is told is true of both rather than guessing between them."""
 
 
-def _sessions(app: App) -> Callable[[Request], Any]:
+def _sessions(apps: Apps) -> Callable[[Request], Any]:
     def listed(request: Request) -> JSONResponse:
+        app = apps()
         if app.conversations is None:
             return JSONResponse([])
         return JSONResponse(
@@ -538,8 +554,9 @@ def _sessions(app: App) -> Callable[[Request], Any]:
     return listed
 
 
-def _turns(app: App) -> Callable[[Request], Any]:
+def _turns(apps: Apps) -> Callable[[Request], Any]:
     def kept(request: Request) -> JSONResponse:
+        app = apps()
         if app.conversations is None:
             return JSONResponse([])
         turns = app.conversations.turns(request.path_params["thread_id"])
@@ -548,7 +565,7 @@ def _turns(app: App) -> Callable[[Request], Any]:
     return kept
 
 
-def _delete(app: App) -> Callable[[Request], Any]:
+def _delete(apps: Apps) -> Callable[[Request], Any]:
     """A conversation deleted, both halves of it, through the one call that drops both.
 
     Shaped like forgetting a fact: no body, and nothing to say beyond that it is done.
@@ -557,14 +574,15 @@ def _delete(app: App) -> Callable[[Request], Any]:
     """
 
     def one(request: Request) -> Response:
-        app.agent.forget(request.path_params["thread_id"])
+        apps().agent.forget(request.path_params["thread_id"])
         return Response(status_code=NO_CONTENT)
 
     return one
 
 
-def _memory(app: App) -> Callable[[Request], Any]:
+def _memory(apps: Apps) -> Callable[[Request], Any]:
     def recalled(request: Request) -> JSONResponse:
+        app = apps()
         if app.memory is None:
             return JSONResponse([])
         return JSONResponse([payloads.fact(each) for each in app.memory.recall()])
@@ -572,12 +590,13 @@ def _memory(app: App) -> Callable[[Request], Any]:
     return recalled
 
 
-def _forget(app: App) -> Callable[[Request], Any]:
+def _forget(apps: Apps) -> Callable[[Request], Any]:
     """A deployment with no memory slot has nothing to forget, so forgetting is
     already done — the same reading as the panels, where no store is empty rather
     than broken."""
 
     def one(request: Request) -> Response:
+        app = apps()
         if app.memory is not None:
             app.memory.forget(request.path_params["key"])
         return Response(status_code=NO_CONTENT)
@@ -585,8 +604,9 @@ def _forget(app: App) -> Callable[[Request], Any]:
     return one
 
 
-def _clear(app: App) -> Callable[[Request], Any]:
+def _clear(apps: Apps) -> Callable[[Request], Any]:
     def everything(request: Request) -> Response:
+        app = apps()
         if app.memory is not None:
             app.memory.clear()
         return Response(status_code=NO_CONTENT)
@@ -594,32 +614,36 @@ def _clear(app: App) -> Callable[[Request], Any]:
     return everything
 
 
-def _plugins(app: App) -> Callable[[Request], Any]:
+def _plugins(apps: Apps) -> Callable[[Request], Any]:
     """What loaded, with what each plugin registered — the listing `make plugins`
     prints, as the menu reads it."""
 
     def listed(request: Request) -> JSONResponse:
-        return JSONResponse([payloads.plugin(each) for each in app.plugins])
+        return JSONResponse([payloads.plugin(each) for each in apps().plugins])
 
     return listed
 
 
-def _scopes(scopes: tuple[str, ...]) -> Callable[[Request], Any]:
-    """The fields this deployment offers, and the one a turn belonging to none runs in.
-    The page draws the picker from this: a deployment with one field has nothing to
-    pick, and a deployment with none is a bare cora."""
+def _scopes(apps: Apps) -> Callable[[Request], Any]:
+    """The fields this composition offers, and the one a turn belonging to none runs
+    in. The page draws the picker from this: a deployment with one field has nothing
+    to pick, and a deployment with none is a bare cora. Read off the current app,
+    because a dropped plugin brings its field with it."""
 
     def offered(request: Request) -> JSONResponse:
-        return JSONResponse({"available": list(scopes), "default": DEFAULT_SCOPE})
+        return JSONResponse(
+            {"available": list(apps().scopes), "default": DEFAULT_SCOPE}
+        )
 
     return offered
 
 
-def _scope(app: App) -> Callable[[Request], Any]:
+def _scope(apps: Apps) -> Callable[[Request], Any]:
     """What a thread is pinned to, for a page that has just reopened it. The pin is a
     key of the thread's own state, so it survives the reload that lost the page's."""
 
     def held(request: Request) -> JSONResponse:
-        return JSONResponse({"pin": app.agent.pinned(request.path_params["thread_id"])})
+        pin = apps().agent.pinned(request.path_params["thread_id"])
+        return JSONResponse({"pin": pin})
 
     return held

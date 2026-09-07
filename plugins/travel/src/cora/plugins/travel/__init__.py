@@ -1,23 +1,24 @@
 import pathlib
 
 from cora.domain.errors import PluginLoadError
-from cora.plugins.travel.forecast import forecast_tool
-from cora.plugins.travel.itinerary import itinerary_tool
-from cora.plugins.travel.planner import planning_tools
-from cora.plugins.travel.researcher import (
+from cora.ports.host import Host
+
+from .forecast import forecast_tool
+from .itinerary import itinerary_tool
+from .planner import planning_tools
+from .researcher import (
     RESEARCH_SCHEMA,
     RESEARCH_TOOL_DESCRIPTION,
     RESEARCH_TOOL_NAME,
     researching,
 )
-from cora.plugins.travel.trips import (
+from .trips import (
     ENDPOINT,
     SEARCH,
     SETTING,
     Search,
     trip_tools,
 )
-from cora.ports.host import Host
 
 SCOPE = "travel"
 """What this plugin's field is called. Everything it registers is under it: a travel

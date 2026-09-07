@@ -124,15 +124,15 @@ def _provider(name: str, imported: dict[str, str]) -> str:
 
 
 def _assembled(tree: ast.Module) -> dict[str, str]:
-    build = reading.function(tree, "build")
+    composer = reading.function(tree, "_composer")
     call = next(
         node
-        for node in ast.walk(build)
+        for node in ast.walk(composer)
         if isinstance(node, ast.Call)
         and isinstance(node.func, ast.Name)
         and node.func.id == "assemble"
     )
-    resolved = reading.bound(build)
+    resolved = reading.bound(composer)
     imported = reading.imported(tree)
     filled = {}
     for keyword in call.keywords:

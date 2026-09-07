@@ -1,5 +1,6 @@
 import logging
 import sqlite3
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -10,7 +11,7 @@ from app_builder import assembled, indexed
 from cora.adapters.langgraph_runner import LangGraphRunner
 from cora.adapters.openrouter_chat_model import OpenRouterChatModel
 from cora.adapters.sqlite_conversations import SqliteConversations
-from cora.app.assembly import App, build
+from cora.app.assembly import App, LiveApp, build
 from cora.app.config import DEFAULT_PLUGINS, Config
 from cora.app.log_config import DEBUG_HANDLER_NAME, FILE_HANDLER_NAME
 from cora.domain.card import Answer
@@ -617,6 +618,239 @@ def test_a_dropped_plugin_that_fails_to_register_is_refused_by_its_path() -> Non
 
 def _raising(cora: object) -> None:
     raise ValueError("nothing this says reaches the user")
+
+
+LIVE = """\
+from cora.ports.host import Host
+
+
+def extend(cora: Host) -> None:
+    cora.register_tool(
+        name="count_seen",
+        description="How many were seen.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: 3,
+        scope="birds",
+    )
+"""
+
+RENAMED_TOOL = LIVE.replace('"count_seen"', '"recount"')
+
+
+def _folder(tmp_path: Path) -> Path:
+    folder = tmp_path / "plugins"
+    folder.mkdir()
+    return folder
+
+
+def _live(
+    folder: Path,
+    named: tuple[str, ...] = (),
+    compose: Callable[[tuple[Extension, ...]], App] | None = None,
+) -> LiveApp:
+    return LiveApp(
+        named=named,
+        folder=folder,
+        compose=compose or (lambda loaded: assembled(plugins=loaded)),
+    )
+
+
+def test_the_holder_recomposes_on_a_changed_folder_and_not_otherwise(
+    tmp_path: Path,
+) -> None:
+    """The check is a stat scan and the swap is one composition: an unchanged folder
+    costs no rebuild, and a changed one costs exactly one."""
+    folder = _folder(tmp_path)
+    holder = _live(folder)
+    first = holder.current()
+    assert holder.current() is first
+
+    (folder / "field_notes.py").write_text(LIVE)
+    second = holder.current()
+    assert second is not first
+    assert holder.current() is second
+
+
+def test_a_plugin_dropped_after_composition_is_in_the_next_listing(
+    tmp_path: Path,
+) -> None:
+    folder = _folder(tmp_path)
+    holder = _live(folder)
+    assert [each.name for each in holder.current().plugins] == []
+
+    (folder / "field_notes.py").write_text(LIVE)
+
+    assert [each.name for each in holder.current().plugins] == ["field_notes"]
+
+
+def test_a_deleted_plugin_is_out_of_the_next_listing(tmp_path: Path) -> None:
+    folder = _folder(tmp_path)
+    (folder / "field_notes.py").write_text(LIVE)
+    holder = _live(folder)
+    assert [each.name for each in holder.current().plugins] == ["field_notes"]
+
+    (folder / "field_notes.py").unlink()
+
+    assert [each.name for each in holder.current().plugins] == []
+
+
+def test_an_edited_plugin_serves_its_new_behaviour(tmp_path: Path) -> None:
+    """The stale half of an edit is `sys.modules`: what the old code registered has to
+    go with it, or the next composition quietly re-registers the past."""
+    folder = _folder(tmp_path)
+    (folder / "field_notes.py").write_text(LIVE)
+    holder = _live(folder)
+    listed = {each.name: each for each in holder.current().plugins}
+    assert [each.name for each in listed["field_notes"].of(TOOL)] == ["count_seen"]
+
+    (folder / "field_notes.py").write_text(RENAMED_TOOL)
+
+    listed = {each.name: each for each in holder.current().plugins}
+    assert [each.name for each in listed["field_notes"].of(TOOL)] == ["recount"]
+
+
+def test_the_app_offers_the_fields_configuration_and_plugins_bring() -> None:
+    """One rule: a field is offered because something brings it — a registration of
+    any loaded plugin, or the configuration. Named once however many bring it, the
+    configured ones first in their own order."""
+    app = assembled(
+        plugins=(make_plugin(name="interview", scope="interview"),),
+        scopes=("fitness",),
+    )
+
+    assert app.scopes == ("fitness", "interview")
+    doubled = assembled(
+        plugins=(make_plugin(name="coaching", scope="fitness"),),
+        scopes=("fitness",),
+    )
+    assert doubled.scopes == ("fitness",)
+
+
+def test_a_configured_field_with_no_registration_is_still_offered() -> None:
+    """A documents-only field: nothing registers it, the deployment names it, and it
+    holds uploads all the same."""
+    app = assembled(plugins=(), scopes=("travel",))
+
+    assert app.scopes == ("travel",)
+
+
+def test_a_dropped_plugins_scope_is_offered_and_goes_with_it(tmp_path: Path) -> None:
+    folder = _folder(tmp_path)
+    holder = _live(folder)
+    assert holder.current().scopes == ()
+
+    (folder / "field_notes.py").write_text(LIVE)
+    assert holder.current().scopes == ("birds",)
+
+    (folder / "field_notes.py").unlink()
+    assert holder.current().scopes == ()
+
+
+def test_a_dropped_plugins_tool_answers_the_next_turn(tmp_path: Path) -> None:
+    """The spec's sentence is about turns, not listings: a dropped tool runs when the
+    model calls it, and an edit to the plugin is what the next turn executes."""
+    folder = _folder(tmp_path)
+
+    def compose(loaded: tuple[Extension, ...]) -> App:
+        return assembled(
+            chat_model=ScriptedChatModel(
+                [
+                    ModelReply(
+                        tool_calls=(
+                            ToolCall(name="count_seen", arguments={}, call_id="c1"),
+                        )
+                    ),
+                    ModelReply(text="Counted."),
+                ]
+            ),
+            plugins=loaded,
+        )
+
+    holder = _live(folder, compose=compose)
+    (folder / "field_notes.py").write_text(LIVE)
+
+    result = holder.current().agent.answer("How many birds?", "t-drop")
+    assert result.answer == "Counted."
+    [call] = [step for step in result.trace if isinstance(step, ToolUse)]
+    assert not call.failed
+    assert "3" in call.detail
+
+    (folder / "field_notes.py").write_text(LIVE.replace("lambda: 3", "lambda: 7"))
+
+    again = holder.current().agent.answer("And now?", "t-edit")
+    [call] = [step for step in again.trace if isinstance(step, ToolUse)]
+    assert "7" in call.detail
+
+
+def test_a_broken_drop_refuses_the_read_and_the_prior_set_keeps_serving(
+    tmp_path: Path,
+) -> None:
+    folder = _folder(tmp_path)
+    holder = _live(folder)
+    first = holder.current()
+
+    (folder / "broken.py").write_text("raise RuntimeError('boom')\n")
+    with pytest.raises(PluginLoadError):
+        holder.current()
+
+    (folder / "broken.py").unlink()
+    assert holder.current() is first
+
+
+def test_an_app_taken_before_a_change_finishes_its_turn_on_its_own_set(
+    tmp_path: Path,
+) -> None:
+    folder = _folder(tmp_path)
+    holder = _live(folder)
+    taken = holder.current()
+
+    (folder / "field_notes.py").write_text(LIVE)
+
+    assert taken.agent.answer("Still here?", THREAD).answer == "ok"
+    assert taken.plugins == ()
+    assert holder.current() is not taken
+
+
+def test_named_modules_load_once_and_survive_recomposition_untouched(
+    tmp_path: Path,
+) -> None:
+    """Only the folder is live: what `CORA_PLUGINS` named is the same module object
+    on every composition, not a fresh import."""
+    folder = _folder(tmp_path)
+    seen: list[tuple[Extension, ...]] = []
+
+    def compose(loaded: tuple[Extension, ...]) -> App:
+        seen.append(loaded)
+        return assembled(plugins=loaded)
+
+    holder = _live(folder, named=("fixture_plugins.valid",), compose=compose)
+    holder.current()
+    (folder / "field_notes.py").write_text(LIVE)
+    holder.current()
+
+    first, second = seen
+    assert [each.module for each in second] == ["fixture_plugins.valid", "field_notes"]
+    assert second[0].extend is first[0].extend
+
+
+@pytest.mark.integration
+def test_recomposition_reuses_the_process_checkpointer(tmp_path: Path) -> None:
+    """The checkpointer is an adapter, and adapters are made once for the process: a
+    folder change must not open a second connection onto the same conversations file."""
+    from cora.app.assembly import live
+
+    folder = tmp_path / "plugins"
+    folder.mkdir()
+    holder = live(replace(_config(tmp_path), plugins_path=str(folder)))
+    before = holder.current()
+
+    (folder / "field_notes.py").write_text(DROPPED)
+    after = holder.current()
+
+    assert after is not before
+    assert isinstance(before.agent.runner, LangGraphRunner)
+    assert isinstance(after.agent.runner, LangGraphRunner)
+    assert after.agent.runner.checkpointer is before.agent.runner.checkpointer
 
 
 @pytest.mark.integration

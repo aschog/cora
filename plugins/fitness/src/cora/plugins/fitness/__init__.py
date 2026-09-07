@@ -1,6 +1,7 @@
-from cora.plugins.fitness.safety import refuse_medical
-from cora.plugins.fitness.tools import TOOLS
 from cora.ports.host import SCREENING, Host
+
+from .safety import refuse_medical
+from .tools import TOOLS
 
 SCOPE = "fitness"
 """What the coaching is registered under: a turn asking as a coach gets the persona and
