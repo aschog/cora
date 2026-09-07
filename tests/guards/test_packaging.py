@@ -73,6 +73,7 @@ def test_the_workspace_holds_the_app_and_its_extension_points() -> None:
         ".": "cora",
         "frontends/react": "cora-frontend-react",
         "plugins/fitness": "cora-plugin-fitness",
+        "plugins/interview": "cora-plugin-interview",
         "plugins/security": "cora-plugin-security",
         "plugins/travel": "cora-plugin-travel",
     }
@@ -162,6 +163,7 @@ def test_the_app_carries_no_plugin_and_names_none() -> None:
 # way for the same reason.
 PLUGIN_REACHES: dict[str, set[str]] = {
     "cora.plugins.fitness": set(),
+    "cora.plugins.interview": set(),
     "cora.plugins.security": set(),
     "cora.plugins.travel": {"httpx"},
 }

@@ -43,6 +43,7 @@ members = ["plugins/*", "frontends/*"]
 [tool.uv.sources]
 cora = { workspace = true }
 cora-plugin-fitness = { workspace = true }
+cora-plugin-interview = { workspace = true }
 cora-plugin-security = { workspace = true }
 cora-plugin-travel = { workspace = true }
 cora-frontend-react = { workspace = true }
@@ -51,6 +52,7 @@ cora-frontend-react = { workspace = true }
 dev = [
     "cora-frontend-react",
     "cora-plugin-fitness",
+    "cora-plugin-interview",
     "cora-plugin-security",
     "cora-plugin-travel",
     "httpx>=0.28.1",
@@ -75,6 +77,7 @@ root = [
     "scripts",
     "frontends/react/src",
     "plugins/fitness/src",
+    "plugins/interview/src",
     "plugins/security/src",
     "plugins/travel/src",
     "tests/helpers",
@@ -86,6 +89,7 @@ src = [
     "scripts",
     "frontends/react/src",
     "plugins/fitness/src",
+    "plugins/interview/src",
     "plugins/security/src",
     "plugins/travel/src",
     "tests/helpers",

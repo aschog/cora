@@ -189,6 +189,7 @@ FRONTEND_TOOLKITS: dict[str, frozenset[str]] = {
 }
 PLUGIN_TOOLKITS: dict[str, frozenset[str]] = {
     "fitness": frozenset(),
+    "interview": frozenset(),
     "security": frozenset(),
     "travel": frozenset({"httpx"}),
 }
