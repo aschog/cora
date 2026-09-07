@@ -419,6 +419,33 @@ def test_a_package_asking_for_a_contract_cora_does_not_offer_is_refused(
     assert str(CONTRACT) in refused.value.user_message
 
 
+def test_the_folder_signature_moves_with_the_folder(tmp_path: pathlib.Path) -> None:
+    """One cheap reading of what the folder holds: a drop, a delete or an edit — a
+    package's own files included — moves it, and nothing else does."""
+    from cora.engine.plugin_registry import folder_signature
+
+    empty = folder_signature(tmp_path)
+    assert folder_signature(tmp_path) == empty
+
+    dropped = _drop(tmp_path, "field_notes.py")
+    added = folder_signature(tmp_path)
+    assert added != empty
+
+    dropped.write_text(f"{DROPPED}\n# revised\n")
+    assert folder_signature(tmp_path) != added
+
+    package = _drop_package(tmp_path, "birds", notes='FIELD = "birds"\n')
+    packaged = folder_signature(tmp_path)
+    (package / "notes.py").write_text('FIELD = "waders"\n')
+    assert folder_signature(tmp_path) != packaged
+
+    dropped.unlink()
+    (package / "notes.py").unlink()
+    (package / "__init__.py").unlink()
+    package.rmdir()
+    assert folder_signature(tmp_path) == empty
+
+
 NOT_A_VERSION = ["'1'", "None", "1.5"]
 
 

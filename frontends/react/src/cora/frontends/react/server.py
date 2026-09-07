@@ -1,4 +1,5 @@
-"""The process the deployment runs: cora assembled once, served over HTTP.
+"""The process the deployment runs: cora served over HTTP, live over its plugins
+folder — a plugin dropped there is installed by the next request, no restart.
 
 The build it serves is looked for beside the package rather than shipped inside it —
 `ui/dist` is Vite's output, not a Python module. Nothing is mounted when it is absent,
@@ -12,7 +13,7 @@ from collections.abc import Mapping
 
 import uvicorn
 
-from cora.app.assembly import build
+from cora.app.assembly import live
 from cora.app.config import Config, int_setting
 from cora.domain.errors import CoreError
 from cora.frontends.react.api import api
@@ -45,7 +46,7 @@ def serve() -> None:
         config = Config.from_env()
         chosen = port(os.environ)
         served = api(
-            build(config),
+            live(config),
             scopes=config.scopes,
             ui=ui_path(os.environ),
         )

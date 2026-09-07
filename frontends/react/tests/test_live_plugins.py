@@ -41,16 +41,52 @@ def _config(root: pathlib.Path, folder: pathlib.Path) -> Config:
     )
 
 
+INSTRUCTIONS_ONLY = """\
+from cora.ports.host import Host
+
+
+def extend(cora: Host) -> None:
+    cora.register_instructions("Answer about birds.", scope="birds")
+"""
+
+
+def test_the_api_reads_the_current_composition_per_request(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The api holds the folder's holder, not one boot-time app: what a page reload
+    shows is whatever the folder holds by then, and a broken drop is a readable
+    refusal rather than a dead deployment."""
+    from app_builder import assembled
+    from cora.app.assembly import LiveApp
+
+    holder = LiveApp(
+        named=(), folder=tmp_path, compose=lambda loaded: assembled(plugins=loaded)
+    )
+    reader = TestClient(api(holder))
+    assert reader.get("/api/plugins").json() == []
+
+    (tmp_path / "field_notes.py").write_text(INSTRUCTIONS_ONLY)
+    listed = reader.get("/api/plugins").json()
+    assert [each["name"] for each in listed] == ["field_notes"]
+
+    (tmp_path / "broken.py").write_text("raise RuntimeError('boom')\n")
+    refused = reader.get("/api/plugins")
+    assert refused.status_code == 400
+    assert "broken" in refused.json()["error"]
+
+    (tmp_path / "broken.py").unlink()
+    assert [each["name"] for each in reader.get("/api/plugins").json()] == [
+        "field_notes"
+    ]
+
+
 @pytest.mark.integration
-@pytest.mark.xfail(strict=True, reason="dropped-plugin-packages is in flight")
 def test_a_package_dropped_while_serving_answers_the_next_listing_read(
     tmp_path: pathlib.Path,
 ) -> None:
     """The whole story at once: a folder of plain `.py` files, a relative import
     inside it, dropped while the process serves — and the next read has it."""
-    from cora.app import assembly
-
-    live = getattr(assembly, "live")  # noqa: B009 — not there until the slice lands
+    from cora.app.assembly import live
 
     folder = tmp_path / "plugins"
     folder.mkdir()

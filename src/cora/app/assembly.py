@@ -1,6 +1,9 @@
 """Where the ports are filled and the agent is put together."""
 
 import logging
+import pathlib
+import threading
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from cora.adapters.langgraph_runner import interrupting, langgraph_for
@@ -21,7 +24,7 @@ from cora.engine.ask_tool import ask_for_tool, ask_tool
 from cora.engine.host import PluginHost
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.memory_tool import remember_tool
-from cora.engine.plugin_registry import load_plugins
+from cora.engine.plugin_registry import folder_signature, load_plugins
 from cora.engine.plugin_set import Registry
 from cora.engine.port_logging import (
     LoggingChatModel,
@@ -77,6 +80,62 @@ class App:
     plugins: tuple[Listed, ...] = ()
     memory: Memory | None = None
     conversations: Conversations | None = None
+
+
+class LiveApp:
+    """The plugins folder made live: one composition at a time, over parts made once.
+
+    `compose` closes over everything that outlives a folder change — the adapters and
+    the deployment's own settings — and what the folder holds is re-read and composed
+    through it. The named modules ride along on every composition, which Python's
+    module cache makes the same objects each time: only the folder moves. The first
+    composition happens here, so a deployment that cannot start is refused at start.
+    """
+
+    def __init__(
+        self,
+        *,
+        compose: Callable[[tuple[Extension, ...]], App],
+        named: tuple[str, ...] = (),
+        folder: pathlib.Path | None = None,
+    ) -> None:
+        """Composes once, here: a folder that cannot load refuses the start itself.
+
+        Args:
+            compose: An app from the plugins handed to it; everything else it needs
+                is its own, made once and reused across compositions.
+            named: The module paths the deployment configured, loaded every
+                composition and cached by Python into the same modules.
+            folder: Where plugins are dropped. Absent, the folder simply never moves.
+        """
+        self._compose = compose
+        self._named = named
+        self._folder = folder
+        self._lock = threading.Lock()
+        self._signature = folder_signature(folder)
+        self._app = compose(load_plugins(named, folder=folder))
+
+    def current(self) -> App:
+        """The app the folder describes right now.
+
+        Composed again only when the folder moved since the last look — a stat scan,
+        cheap enough to pay per request. A reader keeps whatever app it already took,
+        so a turn runs whole on the set it started with.
+
+        Raises:
+            PluginLoadError: What the folder now holds cannot be loaded. The last
+                composition stands, this read is refused, and the next one retries.
+            ConfigurationError: What it holds cannot be composed together; the same
+                standing applies.
+        """
+        with self._lock:
+            signature = folder_signature(self._folder)
+            if signature != self._signature:
+                self._app = self._compose(
+                    load_plugins(self._named, folder=self._folder)
+                )
+                self._signature = signature
+            return self._app
 
 
 def assemble(
@@ -278,17 +337,48 @@ def _coras_own_tools(
 def build(config: Config) -> App:
     """The real app: every slot filled from configuration, ready to answer.
 
-    The adapters are imported here rather than at the top, so importing `cora.app` costs
-    nothing a frontend does not use — the embedding model in particular is loaded on
-    first use, not on import.
+    Raises:
+        AdapterError: A store could not be opened.
+        PluginLoadError: A plugin named in the configuration could not be loaded.
+        ConfigurationError: The plugins load but cannot be composed together.
+    """
+    return _composer(config)(
+        load_plugins(config.plugin_modules, folder=_folder_of(config))
+    )
+
+
+def live(config: Config) -> LiveApp:
+    """The real app served live: `build`'s slots, composed again as the folder moves.
 
     Raises:
         AdapterError: A store could not be opened.
         PluginLoadError: A plugin named in the configuration could not be loaded.
         ConfigurationError: The plugins load but cannot be composed together.
     """
+    return LiveApp(
+        compose=_composer(config),
+        named=config.plugin_modules,
+        folder=_folder_of(config),
+    )
+
+
+def _folder_of(config: Config) -> pathlib.Path:
+    folder = pathlib.Path(config.plugins_path).resolve()
+    log.info("reading dropped plugins from %s", folder)
+    return folder
+
+
+def _composer(config: Config) -> Callable[[tuple[Extension, ...]], App]:
+    """Every slot that outlives a folder change, filled once and closed over.
+
+    The adapters are imported here rather than at the top, so importing `cora.app` costs
+    nothing a frontend does not use — the embedding model in particular is loaded on
+    first use, not on import.
+
+    Raises:
+        AdapterError: A store could not be opened.
+    """
     from functools import partial
-    from pathlib import Path
 
     from cora.adapters.chroma_retriever import ChromaRetriever
     from cora.adapters.file_documents import FileDocuments
@@ -299,34 +389,44 @@ def build(config: Config) -> App:
     from cora.adapters.sqlite_store_memory import SqliteStoreMemory
 
     enable_debug_logs(config.debug, config.log_path)
-    retriever = ChromaRetriever(path=config.db_path, collection="documents")
-    # Read off what loaded rather than off what the deployment typed: a plugin dropped
-    # in the folder was named by nobody, and settings keyed by `CORA_PLUGINS` would
-    # hand it an empty slice under a name it does not have.
-    folder = Path(config.plugins_path).resolve()
-    log.info("reading dropped plugins from %s", folder)
-    loaded = load_plugins(config.plugin_modules, folder=folder)
-    return assemble(
-        chat_model=OpenRouterChatModel(
-            model=config.model,
-            api_key=config.api_key,
-            base_url=config.base_url,
-            max_output_tokens=config.max_output_tokens,
-            request_timeout_seconds=config.request_timeout_seconds,
-            reasoning_effort=config.reasoning_effort,
-        ),
-        embedder=SentenceTransformerEmbedder(),
-        retriever=retriever,
-        documents=FileDocuments.at(config.documents_path),
-        plugins=loaded,
-        plugin_settings=read_plugin_settings(tuple(plugin.module for plugin in loaded)),
-        scopes=config.scopes,
-        memory=SqliteStoreMemory.at(config.memory_path),
-        conversations=SqliteConversations.at(config.conversations_path),
-        output=FileOutput.at(config.output_path),
-        graph=partial(langgraph_for, checkpoints_at=config.conversations_path),
-        top_k=config.top_k,
-        max_tool_rounds=config.max_tool_rounds,
-        history_turns=config.history_turns,
-        debug=config.debug,
+    chat_model = OpenRouterChatModel(
+        model=config.model,
+        api_key=config.api_key,
+        base_url=config.base_url,
+        max_output_tokens=config.max_output_tokens,
+        request_timeout_seconds=config.request_timeout_seconds,
+        reasoning_effort=config.reasoning_effort,
     )
+    embedder = SentenceTransformerEmbedder()
+    retriever = ChromaRetriever(path=config.db_path, collection="documents")
+    documents = FileDocuments.at(config.documents_path)
+    memory = SqliteStoreMemory.at(config.memory_path)
+    conversations = SqliteConversations.at(config.conversations_path)
+    output = FileOutput.at(config.output_path)
+    graph = partial(langgraph_for, checkpoints_at=config.conversations_path)
+
+    def compose(loaded: tuple[Extension, ...]) -> App:
+        # Settings read off what loaded rather than off what the deployment typed: a
+        # plugin dropped in the folder was named by nobody, and settings keyed by
+        # `CORA_PLUGINS` would hand it an empty slice under a name it does not have.
+        return assemble(
+            chat_model=chat_model,
+            embedder=embedder,
+            retriever=retriever,
+            documents=documents,
+            plugins=loaded,
+            plugin_settings=read_plugin_settings(
+                tuple(plugin.module for plugin in loaded)
+            ),
+            scopes=config.scopes,
+            memory=memory,
+            conversations=conversations,
+            output=output,
+            graph=graph,
+            top_k=config.top_k,
+            max_tool_rounds=config.max_tool_rounds,
+            history_turns=config.history_turns,
+            debug=config.debug,
+        )
+
+    return compose

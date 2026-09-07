@@ -35,22 +35,22 @@
 
 ## 5. The live folder
 
-- [ ] 5.1 Write a test that shows the folder signature differs when a file is
+- [x] 5.1 Write a test that shows the folder signature differs when a file is
       added, removed, or touched, and holds still otherwise.
-- [ ] 5.2 Write a test that shows the holder recomposes on a changed signature and
+- [x] 5.2 Write a test that shows the holder recomposes on a changed signature and
       returns the same app on an unchanged one.
-- [ ] 5.3 Write a test that shows a plugin dropped after composition is in the next
+- [x] 5.3 Write a test that shows a plugin dropped after composition is in the next
       listing read.
-- [ ] 5.4 Write a test that shows a deleted plugin is out of the next listing read.
-- [ ] 5.5 Write a test that shows an edited plugin's new behaviour serves the next
+- [x] 5.4 Write a test that shows a deleted plugin is out of the next listing read.
+- [x] 5.5 Write a test that shows an edited plugin's new behaviour serves the next
       turn.
-- [ ] 5.6 Write a test that shows a broken drop refuses that read, and the prior
+- [x] 5.6 Write a test that shows a broken drop refuses that read, and the prior
       set answers the one after the folder is fixed.
-- [ ] 5.7 Write a test that shows an app taken before a change finishes its turn on
+- [x] 5.7 Write a test that shows an app taken before a change finishes its turn on
       the set it started with.
-- [ ] 5.8 Write a test that shows named modules load once and survive every
+- [x] 5.8 Write a test that shows named modules load once and survive every
       recomposition untouched.
 
 ## 6. Done
 
-- [ ] 6.1 Drop the outer test's `xfail` marker and watch it pass.
+- [x] 6.1 Drop the outer test's `xfail` marker and watch it pass.

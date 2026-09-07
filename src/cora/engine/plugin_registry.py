@@ -168,6 +168,37 @@ def _is_dropped_plugin(path: pathlib.Path) -> bool:
     return path.suffix == SUFFIX and path.is_file()
 
 
+def folder_signature(folder: pathlib.Path | None) -> tuple[object, ...]:
+    """One cheap reading of what the folder holds, for telling two moments apart.
+
+    Every plugin entry by name, stamp and — for a package — every `.py` inside it, so
+    a drop, a delete and an edit each move it. It is compared and never parsed, and it
+    races the folder by design: an entry that vanishes mid-read makes a difference,
+    which is all a difference has to do.
+    """
+    return tuple(
+        (path.name, _members(path)) if path.is_dir() else (path.name, _stamp(path))
+        for path in _files_in(folder)
+    )
+
+
+def _members(package: pathlib.Path) -> tuple[object, ...]:
+    return tuple(
+        sorted(
+            (str(inner.relative_to(package)), _stamp(inner))
+            for inner in package.rglob(f"*{SUFFIX}")
+        )
+    )
+
+
+def _stamp(path: pathlib.Path) -> tuple[object, ...]:
+    try:
+        found = path.stat()
+    except OSError:
+        return ("gone",)
+    return (found.st_mtime_ns, found.st_size)
+
+
 def _extension(module: ModuleType, *, name: str, source: str) -> Extension:
     """What the module has to prove before anything of it is kept.
 
