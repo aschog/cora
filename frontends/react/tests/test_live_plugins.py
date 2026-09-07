@@ -72,8 +72,13 @@ def test_a_dropped_field_is_offered_and_the_rails_follow_it(
     (tmp_path / "field_notes.py").write_text(INSTRUCTIONS_ONLY)
 
     assert reader.get("/api/scopes").json()["available"] == ["birds"]
-    listed = reader.get("/api/documents?scope=birds")
-    assert listed.status_code == 200 and listed.json() == []
+    added = reader.post(
+        "/api/documents",
+        files={"file": ("sightings.md", b"Twelve waders at dawn.", "text/markdown")},
+        data={"scope": "birds"},
+    )
+    assert added.status_code == 200 and added.json()["scope"] == "birds"
+    assert reader.get("/api/documents?scope=birds").json() == ["sightings.md"]
 
     (tmp_path / "field_notes.py").unlink()
     assert reader.get("/api/scopes").json()["available"] == []

@@ -5,6 +5,7 @@ import pathlib
 import threading
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import partial
 
 from cora.adapters.langgraph_runner import interrupting, langgraph_for, saver_at
 from cora.adapters.loaders import LOADERS
@@ -400,8 +401,6 @@ def _composer(config: Config) -> Callable[[tuple[Extension, ...]], App]:
     Raises:
         AdapterError: A store could not be opened.
     """
-    from functools import partial
-
     from cora.adapters.chroma_retriever import ChromaRetriever
     from cora.adapters.file_documents import FileDocuments
     from cora.adapters.file_output import FileOutput

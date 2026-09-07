@@ -464,6 +464,30 @@ def test_a_symlinked_package_is_a_plugin_like_any_other(
     assert folder_signature(folder) != before
 
 
+def test_a_file_and_a_package_sharing_a_name_are_refused_naming_both(
+    tmp_path: pathlib.Path,
+) -> None:
+    """`field_notes.py` and `field_notes/` are two plugins with one name — the same
+    collision two named modules earn, from whichever mix of sources."""
+    dropped = _drop(tmp_path, "field_notes.py")
+    package = _drop_package(tmp_path, "field_notes")
+
+    with pytest.raises(ConfigurationError) as refused:
+        load_plugins([], folder=tmp_path)
+
+    assert str(dropped) in refused.value.user_message
+    assert str(package) in refused.value.user_message
+
+
+def test_a_broken_symlink_is_not_a_plugin(tmp_path: pathlib.Path) -> None:
+    """A link whose target is gone is neither a file nor a package: the deployment
+    loads without it rather than dying on a leftover."""
+    (tmp_path / "ghost").symlink_to(tmp_path / "nowhere")
+    (tmp_path / "ghost.py").symlink_to(tmp_path / "nowhere.py")
+
+    assert load_plugins([], folder=tmp_path) == ()
+
+
 NOT_A_VERSION = ["'1'", "None", "1.5"]
 
 

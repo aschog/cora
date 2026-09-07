@@ -233,9 +233,10 @@ ln -s "$(pwd)"/plugins/travel/src/cora/plugins/travel .cora/plugins/travel
 
 One route per plugin, though: a module `CORA_PLUGINS` names and a link (or file) in the
 folder are two plugins with one name, which cora refuses — link it *or* name it. A turn
-already running finishes on the plugins it started with, and a drop that cannot load
-refuses that request readably while everything already loaded keeps serving. Only the
-folder is live: what `CORA_PLUGINS` names is fixed at start.
+already running finishes on the plugins it started with. A drop that cannot load is
+louder: every request is refused, readably and naming the plugin, until the folder
+loads again — fix or remove the file and the prior set serves on, nothing lost. Only
+the folder is live: what `CORA_PLUGINS` names is fixed at start.
 `make plugins` prints what loaded: every plugin under where it came from, with its tools,
 its instructions and the points in a turn it subscribed to, and anything registered
 without a scope marked `system-wide`. `GET /api/plugins` carries the same listing. A

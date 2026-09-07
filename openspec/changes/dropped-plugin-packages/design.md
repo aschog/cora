@@ -74,11 +74,17 @@ and the React API closes over that one assembled `App` for the process's life.
 - [mtime granularity misses a same-second edit] → the signature is nanosecond and
   includes size and every `.py` member of a package; a non-Python resource edited
   inside one does not move it, and is picked up with the next `.py` change.
+- [A parked turn resumes after a folder change] → deliberately on the *current*
+  composition: the card's answer is a new request, and requests read the folder's app.
+- [A tool importing lazily mid-swap] → `sys.modules` is global, so a turn on the old
+  app that imports at call time can see the new module; the old app's own objects are
+  untouched, and the window is one recomposition.
 - [Python's bytecode cache validates by whole seconds] → a dropped plugin's own module
   always compiles from source; a package's *members* keep Python's cache, so a
   same-second same-size edit to one waits for the next second.
 
 ## Migration Plan
 
-None — deployments that never touch the folder compose once and serve exactly as
-before.
+Mostly none — a deployment that never touches the folder composes once. One behaviour
+moves: a `CORA_PLUGINS` module whose scope `CORA_SCOPES` omitted was unoffered, and the
+union rule now offers it. A deployment relying on that gate pins its turns instead.

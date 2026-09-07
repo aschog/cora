@@ -85,6 +85,10 @@
 - [x] 8.3 Write a test that shows a dropped plugin's tool answers the next turn, and
       an edit to it is what the turn after that executes.
 
+- [x] 8.4 Write a test that shows a dropped file and package sharing a name are
+      refused naming both.
+- [x] 8.5 Write a test that shows a broken symlink in the folder is not a plugin.
+
 ## 9. Done
 
 - [x] 8.1 Drop the outer test's `xfail` marker and watch it pass.

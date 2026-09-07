@@ -12,8 +12,8 @@ serves: a plugin dropped in is installed, one deleted is removed, and one edited
 reloaded, each visible by the next request without a restart. A turn already running
 SHALL finish on the set it started with. Plugins named as modules in the environment
 SHALL stay as started; only the folder is live. A folder state that cannot load SHALL
-refuse the request that met it, readably, and the set already running SHALL keep
-serving until the folder loads again.
+refuse every request, readably and naming the plugin, for as long as it holds; the set
+already composed SHALL be kept, and SHALL serve again as soon as the folder loads.
 
 #### Scenario: A dropped plugin is installed without a restart
 
@@ -36,8 +36,9 @@ serving until the folder loads again.
 #### Scenario: A broken drop does not take the deployment down
 
 - **GIVEN** a running deployment, and a file dropped that cannot load
-- **WHEN** the next request arrives
-- **THEN** it is refused naming the plugin, and the prior set still serves
+- **WHEN** the next request arrives, and another after the file is removed
+- **THEN** the first is refused naming the plugin, and the second is served by the
+  prior set, nothing lost
 
 #### Scenario: A turn in flight is not reshaped under itself
 

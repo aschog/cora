@@ -74,7 +74,7 @@ def api(
 
     Handed a `LiveApp`, every request reads the composition the plugins folder
     describes by then; handed an `App`, the page serves that one for good."""
-    apps = app.current if isinstance(app, LiveApp) else (lambda held=app: held)
+    apps = app.current if isinstance(app, LiveApp) else (lambda: app)
     routes: list[Route | Mount] = [
         Route("/api/documents", _documents(apps), methods=["GET"]),
         Route("/api/documents", _ingest(apps), methods=["POST"]),

@@ -1,5 +1,6 @@
 import logging
 import sqlite3
+from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -642,11 +643,15 @@ def _folder(tmp_path: Path) -> Path:
     return folder
 
 
-def _live(folder: Path, **kwargs: Any) -> "LiveApp":
+def _live(
+    folder: Path,
+    named: tuple[str, ...] = (),
+    compose: Callable[[tuple[Extension, ...]], App] | None = None,
+) -> LiveApp:
     return LiveApp(
-        named=kwargs.pop("named", ()),
+        named=named,
         folder=folder,
-        compose=kwargs.pop("compose", lambda loaded: assembled(plugins=loaded)),
+        compose=compose or (lambda loaded: assembled(plugins=loaded)),
     )
 
 
