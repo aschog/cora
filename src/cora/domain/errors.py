@@ -90,6 +90,18 @@ class PluginLoadError(CoreError):
         super().__init__(f"Plugin '{plugin_name}' could not be loaded: {reason}.")
 
 
+class PluginRemovalError(CoreError):
+    """A plugin could not be deleted, or is not one this deployment can delete.
+
+    Raised before anything is deleted, so a refusal leaves the plugin and everything
+    under it exactly as it was.
+    """
+
+    def __init__(self, plugin_name: str, reason: str) -> None:
+        """Name the plugin and why it was refused — both reach the user."""
+        super().__init__(f"Plugin '{plugin_name}' could not be deleted: {reason}.")
+
+
 class InputRejectedError(CoreError):
     """A handler refused what the user sent. The message says what to do about it."""
 
