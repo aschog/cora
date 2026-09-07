@@ -1,8 +1,9 @@
 from cora.domain.errors import PluginLoadError
-from cora.plugins.interview.guard import refuse_misuse
-from cora.plugins.interview.prompts import DEFAULT_STYLE, STYLES
-from cora.plugins.interview.tools import interview_tools, report_tool
 from cora.ports.host import SCREENING, Host
+
+from .guard import refuse_misuse
+from .prompts import DEFAULT_STYLE, STYLES
+from .tools import interview_tools, report_tool
 
 CONTRACT = 1
 """Written as the number, not imported from cora's own — importing it would declare
