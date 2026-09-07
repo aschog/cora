@@ -4677,3 +4677,116 @@ test('a passage on screen is asked for again after a delete, and its absence is 
   expect(await screen.findByText('cora cannot open this document.')).toBeTruthy()
   expect(screen.queryByText(/the document follows/)).toBeNull()
 })
+
+/* ── deleting a plugin ──────────────────────────────────────────────────────────── */
+
+/** Three fields, one of each kind a picker can hold: `fitness` brought by a plugin in
+ *  the plugins folder, `travel` named by the configuration with no plugin behind it, and
+ *  `birds` brought by a module the environment names, which is fixed at start. */
+const LOADED = [
+  { name: 'coach', scopes: ['fitness'], deletable: true },
+  { name: 'watching', scopes: ['birds'], deletable: false },
+]
+
+const pluginFetch = (): { deleted: string[] } => {
+  const deleted: string[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        deleted.push(path)
+        return { ok: true, status: 204 } as unknown as Response
+      }
+      if (path === '/api/ask') return answering()
+      const gone = deleted.length > 0
+      const listings: Record<string, unknown> = {
+        ...served,
+        '/api/scopes': {
+          available: gone ? ['travel', 'birds'] : ['fitness', 'travel', 'birds'],
+          default: 'cora',
+        },
+        '/api/plugins': gone ? LOADED.slice(1) : LOADED,
+      }
+      return {
+        ok: true,
+        json: async () => listings[route(path)] ?? [],
+      } as unknown as Response
+    }),
+  )
+  return { deleted }
+}
+
+const openMenu = async () => {
+  await screen.findByRole('button', { name: 'Plugin' })
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  return screen.getByRole('list')
+}
+
+test('only a field whose plugin cora can delete carries the control', async () => {
+  pluginFetch()
+  render(<App />)
+
+  const fields = await openMenu()
+
+  expect(within(fields).getByRole('button', { name: 'Delete the fitness plugin' }))
+    .toBeTruthy()
+  // Named by the configuration, so there is no plugin behind it to delete.
+  expect(
+    within(fields).queryByRole('button', { name: 'Delete the travel plugin' }),
+  ).toBeNull()
+  // Named in the environment, so it is fixed at start and comes back on the next one.
+  expect(
+    within(fields).queryByRole('button', { name: 'Delete the birds plugin' }),
+  ).toBeNull()
+})
+
+test('the question names the plugin, its field, and what is not lost', async () => {
+  const asked = pluginFetch()
+  render(<App />)
+  const fields = await openMenu()
+
+  fireEvent.click(
+    within(fields).getByRole('button', { name: 'Delete the fitness plugin' }),
+  )
+
+  const said = screen.getByRole('dialog').textContent ?? ''
+  expect(said).toContain('coach')
+  expect(said).toContain('fitness')
+  expect(said).toContain('plugins folder')
+  expect(said).toContain('every conversation pinned there')
+  expect(said).toContain('What cora remembers about you')
+  // The control asks; nothing has been asked of cora yet.
+  expect(asked.deleted).toEqual([])
+})
+
+test('keeping the plugin deletes nothing, and the field is still offered', async () => {
+  const asked = pluginFetch()
+  render(<App />)
+  const fields = await openMenu()
+  fireEvent.click(
+    within(fields).getByRole('button', { name: 'Delete the fitness plugin' }),
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+
+  expect(asked.deleted).toEqual([])
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(within(await openMenu()).getByRole('button', { name: 'fitness' })).toBeTruthy()
+})
+
+test('a plugin confirmed away takes its field out of the picker', async () => {
+  const asked = pluginFetch()
+  render(<App />)
+  const fields = await openMenu()
+  fireEvent.click(
+    within(fields).getByRole('button', { name: 'Delete the fitness plugin' }),
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: 'Delete plugin' }))
+
+  await waitFor(() => expect(asked.deleted).toEqual(['/api/plugins/coach']))
+  expect(screen.queryByRole('dialog')).toBeNull()
+  const left = await openMenu()
+  expect(within(left).queryByRole('button', { name: 'fitness' })).toBeNull()
+  expect(within(left).getByRole('button', { name: 'travel' })).toBeTruthy()
+})

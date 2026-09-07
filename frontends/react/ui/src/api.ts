@@ -78,6 +78,11 @@ export type Session = { thread_id: string; opened_with: string }
  *  answered in. A deployment with no field is a bare cora and has nothing to pin. */
 export type Scopes = { available: string[]; default: string }
 
+/** One loaded plugin, as the page reads the listing. `deletable` is cora's answer and
+ *  not the page's reading of where it came from: only a plugin in the plugins folder
+ *  can be deleted, and which those are is the deployment's own fact. */
+export type Plugin = { name: string; scopes: string[]; deletable: boolean }
+
 const UNREADABLE = 'cora could not be reached.'
 const NO_CONTENT = 204
 
@@ -106,6 +111,8 @@ export const scopes = (signal?: AbortSignal) => read<Scopes>('/api/scopes', { si
 export const memory = (signal?: AbortSignal) => read<Fact[]>('/api/memory', { signal })
 export const sessions = (signal?: AbortSignal) =>
   read<Session[]>('/api/sessions', { signal })
+export const plugins = (signal?: AbortSignal) =>
+  read<Plugin[]>('/api/plugins', { signal })
 /* Every thread reaching a path is escaped on the way in — here, and in the three below
    that take one. The router already refuses an address that could mean a different path,
    and this is the same guard at the other end: one place every caller routes through,
@@ -130,6 +137,12 @@ export const deleteDocument = (scope: string, name: string) =>
  *  thread is not still holds a pin, a transcript and possibly a turn nobody can see. */
 export const deleteSession = (thread: string) =>
   discard(`/api/sessions/${encodeURIComponent(thread)}`)
+
+/** Delete one plugin: its entry in the plugins folder, the documents and passages of
+ *  every field only it brought, and every conversation pinned to one of them. The name
+ *  is the one the listing gives it, and cora resolves it against what it loaded. */
+export const deletePlugin = (name: string) =>
+  discard(`/api/plugins/${encodeURIComponent(name)}`)
 
 export const forget = (key: string) =>
   discard(`/api/memory/${encodeURIComponent(key)}`)
