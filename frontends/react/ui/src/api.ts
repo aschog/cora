@@ -78,10 +78,17 @@ export type Session = { thread_id: string; opened_with: string }
  *  answered in. A deployment with no field is a bare cora and has nothing to pin. */
 export type Scopes = { available: string[]; default: string }
 
-/** One loaded plugin, as the page reads the listing. `deletable` is cora's answer and
- *  not the page's reading of where it came from: only a plugin in the plugins folder
- *  can be deleted, and which those are is the deployment's own fact. */
-export type Plugin = { name: string; scopes: string[]; deletable: boolean }
+/** One loaded plugin, as the page reads the listing. Both answers are cora's rather
+ *  than the page's reading of them: only a plugin in the plugins folder can be deleted,
+ *  and `going` is the fields deleting it would take — which is not every field it
+ *  registered, because one something else also brings stays. The question a reader
+ *  answers has to say what deleting takes, so it is not derived here twice. */
+export type Plugin = {
+  name: string
+  scopes: string[]
+  deletable: boolean
+  going: string[]
+}
 
 const UNREADABLE = 'cora could not be reached.'
 const NO_CONTENT = 204

@@ -12,7 +12,7 @@ from cora.domain.errors import PluginRemovalError
 from cora.engine.agent import Agent
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.removal import remove_plugin
-from cora.ports.host import INSTRUCTIONS, Contributed, Listed
+from cora.ports.host import DEFAULT_SCOPE, INSTRUCTIONS, Contributed, Listed
 from fakes import FakeConversations, FakeDocuments, FakeEmbedder, FakeRetriever
 
 DROPPED = """\
@@ -377,3 +377,41 @@ def test_a_name_that_is_a_path_is_refused(tmp_path: pathlib.Path) -> None:
 def test_a_deployment_with_no_plugins_folder_deletes_nothing() -> None:
     with pytest.raises(PluginRemovalError, match="no plugins folder"):
         _removing("field_notes", folder=None, listing=(_listed("field_notes", "x"),))
+
+
+def test_the_field_a_bare_cora_answers_in_is_never_a_plugins_to_take(
+    tmp_path: pathlib.Path,
+) -> None:
+    """A plugin registering under `cora` says "in every field, and in none". It brought
+    that field with it no more than it brought the documents uploaded before it was
+    written, which are what a cora with nothing loaded holds."""
+    dropped = tmp_path / "screen.py"
+    dropped.write_text(DROPPED)
+    knowledge_base = _knowledge_base()
+    knowledge_base.add_file(b"Twelve waders at dawn.", "sightings.md", DEFAULT_SCOPE)
+    threads = _Threads({"watching": DEFAULT_SCOPE})
+    conversations = _conversations("watching")
+
+    _removing(
+        "screen",
+        folder=tmp_path,
+        listing=(_listed("screen", str(dropped), DEFAULT_SCOPE),),
+        knowledge_base=knowledge_base,
+        threads=threads,
+        conversations=conversations,
+    )
+
+    assert not dropped.exists()
+    assert knowledge_base.list_sources(DEFAULT_SCOPE) == ["sightings.md"]
+    assert [each.thread_id for each in conversations.sessions()] == ["watching"]
+
+
+def test_an_entry_that_could_not_be_removed_is_said_in_coras_own_words(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Two deletes of one plugin race, and the second finds the entry gone. What the
+    filesystem raises is not a refusal the page can read, so it is not what it gets."""
+    listing = (_listed("field_notes", str(tmp_path / "field_notes.py"), "birds"),)
+
+    with pytest.raises(PluginRemovalError, match="could not be removed"):
+        _removing("field_notes", folder=tmp_path, listing=listing)

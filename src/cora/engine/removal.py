@@ -6,11 +6,12 @@ import shutil
 from cora.domain.errors import PluginRemovalError
 from cora.engine.agent import Agent
 from cora.engine.knowledge_base import KnowledgeBase
-from cora.ports.host import Listed
+from cora.ports.host import DEFAULT_SCOPE, Listed
 
 NOT_LOADED = "no plugin of that name is loaded"
 FIXED_AT_START = "it is named in the environment, and is fixed at start"
 NO_FOLDER = "this deployment reads no plugins folder"
+NOT_REMOVABLE = "its entry could not be removed"
 
 
 def remove_plugin(
@@ -40,18 +41,19 @@ def remove_plugin(
         agent: The conversations, read for their pins and forgotten by both halves.
 
     Raises:
-        PluginRemovalError: Nothing of that name is loaded, or it is a module named in
-            the environment and so has no entry to delete.
+        PluginRemovalError: Nothing of that name is loaded, it is a module named in the
+            environment and so has no entry to delete, or the entry could not be taken
+            out of the folder.
     """
     listed = _loaded(name, listing)
     entry = _entry(listed, folder)
-    fields = _fields_going(listed, listing, configured)
+    fields = fields_going(listed, listing, configured)
     for scope in fields:
         for source in knowledge_base.list_sources(scope):
             knowledge_base.forget(scope, source)
     for thread_id in _pinned_to(fields, agent):
         agent.forget(thread_id)
-    _delete(entry)
+    _delete(listed.name, entry)
 
 
 def deletable(listed: Listed, folder: pathlib.Path | None) -> bool:
@@ -87,21 +89,31 @@ def _entry(listed: Listed, folder: pathlib.Path | None) -> pathlib.Path:
     return pathlib.Path(listed.source)
 
 
-def _fields_going(
-    listed: Listed, listing: tuple[Listed, ...], configured: tuple[str, ...]
+def fields_going(
+    listed: Listed, listing: tuple[Listed, ...], configured: tuple[str, ...] = ()
 ) -> tuple[str, ...]:
     """The fields that leave with this plugin, which are the ones only it brings.
 
+    Public because the page asks it before the reader answers: what a question about
+    deleting says is lost has to be what deleting takes, and one rule read twice is a
+    rule that can be read two ways.
+
     A field the deployment configured, or another loaded plugin registers under, is
     still offered once this one is gone — and documents in a field that is still
-    offered belong to whatever still brings it.
+    offered belong to whatever still brings it. The field a bare cora answers in is
+    always one of those: a plugin registering there says "in every field, and in none",
+    and what is kept there was the user's before any plugin was loaded.
     """
-    retained = set(configured) | {
-        scope
-        for other in listing
-        if other.name != listed.name
-        for scope in other.scopes
-    }
+    retained = (
+        {DEFAULT_SCOPE}
+        | set(configured)
+        | {
+            scope
+            for other in listing
+            if other.name != listed.name
+            for scope in other.scopes
+        }
+    )
     return tuple(scope for scope in listed.scopes if scope not in retained)
 
 
@@ -111,7 +123,9 @@ def _pinned_to(fields: tuple[str, ...], agent: Agent) -> tuple[str, ...]:
     A pin is a key of the thread's own state rather than a column of the record, so
     finding them is a read per conversation — which is what the page already costs to
     reopen one. A deployment recording no turns has no conversation to enumerate, and
-    so has none to delete.
+    so has none to delete. Neither has a thread that has never answered: it is listed
+    nowhere and is reached by nothing, which is what deleting a conversation already
+    leaves behind.
     """
     if not fields or agent.conversations is None:
         return ()
@@ -122,13 +136,23 @@ def _pinned_to(fields: tuple[str, ...], agent: Agent) -> tuple[str, ...]:
     )
 
 
-def _delete(entry: pathlib.Path) -> None:
+def _delete(name: str, entry: pathlib.Path) -> None:
     """Take the entry out of the folder, whatever shape it has.
 
     A symlink is unlinked rather than followed: it answers `is_dir()` when it points at
     one, and following it would delete the repository a deployment linked out of.
+
+    What the filesystem raises is not a refusal a reader could act on — a second delete
+    of one plugin finds the entry already gone — so it leaves here as cora's own
+    sentence. Nothing else is lost by that: the entry goes last.
+
+    Raises:
+        PluginRemovalError: The entry could not be taken out of the folder.
     """
-    if entry.is_symlink() or not entry.is_dir():
-        entry.unlink()
-    else:
-        shutil.rmtree(entry)
+    try:
+        if entry.is_symlink() or not entry.is_dir():
+            entry.unlink()
+        else:
+            shutil.rmtree(entry)
+    except OSError as failed:
+        raise PluginRemovalError(name, NOT_REMOVABLE) from failed

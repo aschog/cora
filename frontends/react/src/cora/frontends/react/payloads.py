@@ -115,7 +115,7 @@ def session(session: Session) -> dict[str, Any]:
     return {"thread_id": session.thread_id, "opened_with": session.opened_with}
 
 
-def plugin(listed: Listed, deletable: bool = False) -> dict[str, Any]:
+def plugin(listed: Listed, deletable: bool, going: tuple[str, ...]) -> dict[str, Any]:
     """One loaded plugin as the header menu draws it.
 
     The contributions arrive as one list of the same four keys whatever kind they are,
@@ -124,13 +124,16 @@ def plugin(listed: Listed, deletable: bool = False) -> dict[str, Any]:
     and the menu shows it without having to know what it means.
 
     `deletable` is cora's answer rather than the page's reading of the source: whether
-    a plugin can be deleted is a fact about where this deployment found it.
+    a plugin can be deleted is a fact about where this deployment found it. `going` is
+    the fields deleting it would take, which is not every field it registered — one
+    something else also brings stays, and the question the reader answers says so.
     """
     return {
         "name": listed.name,
         "source": listed.source,
         "scopes": list(listed.scopes),
         "deletable": deletable,
+        "going": list(going),
         "contributions": [
             {
                 "kind": each.kind,

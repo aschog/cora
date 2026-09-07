@@ -40,6 +40,8 @@ pinned to it. See proposal.md — Why.
   than a half-deleted plugin nobody can name.
 - Passages and files go through the same per-document delete the rail uses, over
   `sources` and `uploads`, so no store learns a new operation.
+- What the filesystem raises leaves as cora's own refusal, because a page reading a
+  bare 500 tells the reader cora could not be reached, which is false.
 - Conversations are found by reading each session's pin, which is a checkpoint read per
   session and cheap at the scale one machine holds.
 
@@ -58,6 +60,11 @@ pinned to it. See proposal.md — Why.
   component draws — the page learns no fourth way to delete something.
 - The menu shows a control only for a field whose plugin is deleteable, which the
   plugin listing already says.
+- Which fields go with a plugin is read off that listing too, rather than derived from
+  what it registered: the rule is the engine's, and a question is not the place to
+  read it a second way.
+- One field draws the menu when something in it is deletable, though one field is
+  nothing to pick between — otherwise the last plugin is deletable by hand alone.
 - The question names the plugin, every field going with it, and what stays, because
   this is now the most destructive control on the page.
 - After the delete the fields, the documents and the sessions are read again, as the
@@ -74,6 +81,11 @@ pinned to it. See proposal.md — Why.
   already runs.
 - Reading a pin per session is linear in sessions → acceptable on one machine, and the
   read is the one the page already makes per thread.
+- A thread pinned to the field but never answered is listed nowhere, so it outlives the
+  plugin → it is reached by nothing, which is where deleting a conversation already
+  leaves one.
+- A conversation whose pin is settled draws the name and no menu, so deleting is done
+  from another conversation → the control belongs to the field, not to the turn.
 
 ## Open Questions
 

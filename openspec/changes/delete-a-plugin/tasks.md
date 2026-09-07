@@ -28,6 +28,10 @@
 - [x] 3.8 Write a test that shows a field two loaded plugins bring keeps its documents.
 - [x] 3.9 Write a test that shows a plugin registering no field is deleted by its
       entry alone.
+- [x] 3.10 Write a test that shows the field a bare cora answers in keeps its documents
+      and its conversations.
+- [x] 3.11 Write a test that shows a field the deployment configured keeps its
+      documents.
 
 ## 4. What a delete refuses
 
@@ -35,6 +39,8 @@
 - [x] 4.2 Write a test that shows a plugin named in `CORA_PLUGINS` is refused as fixed
       at start.
 - [x] 4.3 Write a test that shows a name carrying a path or a traversal is refused.
+- [x] 4.4 Write a test that shows an entry that could not be removed is refused in
+      cora's own words rather than the filesystem's.
 
 ## 5. The route
 
@@ -43,6 +49,8 @@
 - [x] 5.2 Write a test that shows a refused delete answers the sentence saying why.
 - [x] 5.3 Write a test that shows the plugin listing and the offered fields drop it on
       the next read.
+- [x] 5.4 Write a test that shows the listing says which fields would go with each
+      plugin.
 
 ## 6. The page
 
@@ -54,6 +62,10 @@
 - [x] 6.4 Write a test that shows leaving the question deletes nothing.
 - [x] 6.5 Write a test that shows confirming reads the fields, the documents and the
       sessions again.
+- [x] 6.6 Write a test that shows the question names the field that goes and not the
+      field another plugin also brings.
+- [x] 6.7 Write a test that shows a deployment offering one field can still delete its
+      plugin.
 
 ## 7. Done
 

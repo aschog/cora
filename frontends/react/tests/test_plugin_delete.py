@@ -96,3 +96,18 @@ def test_the_listing_says_which_plugins_can_be_deleted(
     assert [
         (each["name"], each["deletable"]) for each in reader.get("/api/plugins").json()
     ] == [("field_notes", True)]
+
+
+def test_the_listing_says_which_fields_would_go_with_each_plugin(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The page draws the question out of this rather than out of what the plugin
+    registered: a field something else still brings is not one that goes."""
+    (tmp_path / "field_notes.py").write_text(DROPPED)
+    (tmp_path / "ringing.py").write_text(DROPPED.replace("birds", "birds"))
+    (tmp_path / "trips.py").write_text(DROPPED.replace("birds", "travel"))
+    reader = _reader(tmp_path)
+
+    listed = {each["name"]: each["going"] for each in reader.get("/api/plugins").json()}
+
+    assert listed == {"field_notes": [], "ringing": [], "trips": ["travel"]}

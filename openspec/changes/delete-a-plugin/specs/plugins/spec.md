@@ -54,6 +54,12 @@ failed part way can be asked for again.
 - **WHEN** it is deleted
 - **THEN** its entry is gone, and it has nothing else to take with it
 
+#### Scenario: A failure to remove the entry is said in cora's own words
+
+- **GIVEN** two deletes of one plugin, the second finding the entry already gone
+- **WHEN** the second answers
+- **THEN** it names the plugin and says its entry could not be removed
+
 #### Scenario: A half that failed leaves the plugin deletable
 
 - **GIVEN** a delete whose documents could not be dropped
@@ -65,6 +71,9 @@ failed part way can be asked for again.
 The system SHALL leave what cora remembers about the user, and what an approved effect
 wrote outside cora's stores. Every other plugin, its fields and its documents SHALL be
 left. A conversation pinned to no field SHALL be left, whatever it was answered about.
+A field the deployment configured, one another loaded plugin also brings, and the field
+a bare cora answers in SHALL keep their documents: a field something else still brings
+is not one that goes.
 
 #### Scenario: Memory and output are left
 
@@ -111,9 +120,10 @@ start. Nothing a request carries SHALL be read as a path.
 
 ### Requirement: Deleting a plugin is asked about first
 
-The page SHALL offer the control only on a field a deleteable plugin brings, and SHALL
-ask before deleting. The question SHALL name the plugin, every field going with it, and
-what is not lost. After the delete the page SHALL read the fields, the documents and the
+The page SHALL offer the control on a field a deleteable plugin brings, and only there,
+whether or not there is more than one field to pick between. It SHALL ask before
+deleting. The question SHALL name the plugin, every field going with it — as cora says
+which those are, rather than every field it registered — and what is not lost. After the delete the page SHALL read the fields, the documents and the
 conversations again, rather than keep its own account of what changed.
 
 #### Scenario: The control is on the field the plugin brings
@@ -127,6 +137,18 @@ conversations again, rather than keep its own account of what changed.
 - **GIVEN** a field the configuration names, with no plugin behind it
 - **WHEN** the fields are listed
 - **THEN** it carries no delete control
+
+#### Scenario: One field is still a field whose plugin can be deleted
+
+- **GIVEN** a deployment offering one field, brought by a plugin in the plugins folder
+- **WHEN** the fields are listed
+- **THEN** that field carries a delete control, though there is nothing to pick between
+
+#### Scenario: The question names only the fields that go
+
+- **GIVEN** a plugin registered under two fields, one of them brought by another plugin
+- **WHEN** the question is shown
+- **THEN** it names the field that goes and not the field that stays
 
 #### Scenario: The question says what is lost and what is not
 

@@ -1,18 +1,11 @@
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from "@testing-library/react";
-import { afterEach, beforeEach, expect, test, vi } from "vitest";
-import App from "./App";
-import answerCss from "./components/Answer.module.css";
-import appCss from "./App.module.css";
-import bodyCss from "./components/DocumentBody.module.css";
-import planCss from "./components/PlanPanel.module.css";
-import noticeCss from "./components/UploadNotice.module.css";
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
+import App from './App'
+import answerCss from './components/Answer.module.css'
+import appCss from './App.module.css'
+import bodyCss from './components/DocumentBody.module.css'
+import planCss from './components/PlanPanel.module.css'
+import noticeCss from './components/UploadNotice.module.css'
 
 /**
  * The steps that arrive *while* the turn runs say something the finished turn does not.
@@ -20,60 +13,41 @@ import noticeCss from "./components/UploadNotice.module.css";
  * trace, with nothing streamed and nothing observed.
  */
 const LIVE = [
+  { summary: 'Reading your documents', detail: '', failed: false, origin: '', steps: [] },
   {
-    summary: "Reading your documents",
-    detail: "",
+    summary: 'Weighing the last 21 days',
+    detail: 'training_log',
     failed: false,
-    origin: "",
+    origin: 'plugin tool',
     steps: [],
   },
-  {
-    summary: "Weighing the last 21 days",
-    detail: "training_log",
-    failed: false,
-    origin: "plugin tool",
-    steps: [],
-  },
-];
+]
 const TURN = {
-  answer: "Sleep, not volume [1].",
+  answer: 'Sleep, not volume [1].',
   citations: [
-    {
-      number: 1,
-      document: "notes.md",
-      start: 0,
-      end: 6,
-      upload: "u1",
-      scope: "cora",
-    },
+    { number: 1, document: 'notes.md', start: 0, end: 6, upload: 'u1', scope: 'cora' },
   ],
   trace: [
-    {
-      summary: "Wrote the answer",
-      detail: "",
-      failed: false,
-      origin: "",
-      steps: [],
-    },
+    { summary: 'Wrote the answer', detail: '', failed: false, origin: '', steps: [] },
   ],
-};
+}
 
 const frame = (event: string, data: unknown) =>
-  `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
 
 /** Everything already queued has run — used where what is asserted is that something did
  *  *not* happen, and there is no observable arrival to wait for. */
-const flushed = () => new Promise((settle) => setTimeout(settle, 0));
+const flushed = () => new Promise((settle) => setTimeout(settle, 0))
 
 const held = () => {
-  let release = () => {};
-  const until = new Promise<void>((resolve) => (release = resolve));
-  return { until, release: () => release() };
-};
+  let release = () => {}
+  const until = new Promise<void>((resolve) => (release = resolve))
+  return { until, release: () => release() }
+}
 
 /** Renewed per test: a spec that fails before releasing must not hang the next one. */
-let turn = held();
-let step = held();
+let turn = held()
+let step = held()
 
 /**
  * The answer stream, read in three parts. The second step is split across two reads, so
@@ -81,354 +55,324 @@ let step = held();
  * the test lets it go, so anything asserted before that can only have been streamed.
  */
 function answering(): Response {
-  const encoder = new TextEncoder();
-  const second = frame("step", LIVE[1]);
-  const cut = 20;
+  const encoder = new TextEncoder()
+  const second = frame('step', LIVE[1])
+  const cut = 20
   const parts = [
-    frame("step", LIVE[0]) + second.slice(0, cut),
+    frame('step', LIVE[0]) + second.slice(0, cut),
     second.slice(cut),
-    frame("turn", TURN),
-  ];
-  let next = 0;
+    frame('turn', TURN),
+  ]
+  let next = 0
   const reader = {
     cancel: async () => {},
     read: async () => {
-      if (next === parts.length) return { done: true, value: undefined };
-      if (next === parts.length - 1) await turn.until;
-      return { done: false, value: encoder.encode(parts[next++]) };
+      if (next === parts.length) return { done: true, value: undefined }
+      if (next === parts.length - 1) await turn.until
+      return { done: false, value: encoder.encode(parts[next++]) }
     },
-  };
-  return { ok: true, body: { getReader: () => reader } } as unknown as Response;
+  }
+  return { ok: true, body: { getReader: () => reader } } as unknown as Response
 }
 
 const OLDER = {
-  question: "An older question",
-  result: { answer: "An older answer.", citations: [], trace: [] },
-};
+  question: 'An older question',
+  result: { answer: 'An older answer.', citations: [], trace: [] },
+}
 
 const served: Record<string, unknown> = {
-  "/api/documents": ["notes.md"],
-  "/api/scopes": { available: ["fitness", "travel"], default: "cora" },
-  "/api/memory": [{ key: "f1", text: "No burpees." }],
-  "/api/sessions": [{ thread_id: "old", opened_with: OLDER.question }],
-  "/api/sessions/old": [OLDER],
-};
+  '/api/documents': ['notes.md'],
+  '/api/scopes': { available: ['fitness', 'travel'], default: 'cora' },
+  '/api/memory': [{ key: 'f1', text: 'No burpees.' }],
+  '/api/sessions': [{ thread_id: 'old', opened_with: OLDER.question }],
+  '/api/sessions/old': [OLDER],
+}
 
 afterEach(() => {
-  turn.release();
-  step.release();
-  cleanup();
-  globalThis.sessionStorage?.clear();
+  turn.release()
+  step.release()
+  cleanup()
+  globalThis.sessionStorage?.clear()
   /* The address outlives a render, so a conversation one test opened would be the one
      the next test's page opens in — every spec here starts nowhere in particular. */
-  globalThis.history.replaceState(null, "", globalThis.location.pathname);
-});
+  globalThis.history.replaceState(null, '', globalThis.location.pathname)
+})
 
 beforeEach(() => {
-  turn = held();
-  step = held();
+  turn = held()
+  step = held()
   /* A pin sent with a question is read back off the thread afterwards, as the real API
      does: the page draws the control from what the thread holds, so a fake that forgot
      the pin would show every conversation as unpinned however it was asked. */
-  let taken: string | null = null;
+  let taken: string | null = null
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (path === "/api/ask") {
-        taken = JSON.parse((init?.body as string) ?? "{}").pin ?? taken;
-        return answering();
+      if (path === '/api/ask') {
+        taken = JSON.parse((init?.body as string) ?? '{}').pin ?? taken
+        return answering()
       }
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      if (path.endsWith("/scope") && !(path in served))
-        return {
-          ok: true,
-          json: async () => ({ pin: taken }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: taken }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-});
+  )
+})
 
-const KEPT = "Sleep, not volume. The rest of the document follows.";
+const KEPT = 'Sleep, not volume. The rest of the document follows.'
 
 /** The route a request names, without the field it asked the route for. The listing is
  *  per field now, and the fixture serves one set of documents whichever is asked for. */
-const route = (path: string) => path.split("?")[0];
+const route = (path: string) => path.split('?')[0]
 
 /** Naming a field is two clicks: the segment that asks which, then the plugin. */
 const pickPlugin = (name: string) => {
-  fireEvent.click(screen.getByRole("button", { name: "Plugin" }));
-  fireEvent.click(
-    within(screen.getByRole("list")).getByRole("button", { name }),
-  );
-};
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  fireEvent.click(within(screen.getByRole('list')).getByRole('button', { name }))
+}
 
 /** The field the rail says it lists and uploads into, or `null` where it names none.
  *  Read off the heading row, because that is where a reader reads it: the heading names
  *  the list and the field follows it, with no ARIA in between. `null` rather than an
  *  empty string, so a field drawn with nothing in it is not read as no field drawn. */
 const railField = () => {
-  const row = screen.getByRole("heading", {
-    name: "YOUR DOCUMENTS",
-  }).parentElement!;
-  return row.childElementCount > 1 ? row.lastElementChild!.textContent : null;
-};
+  const row = screen.getByRole('heading', { name: 'YOUR DOCUMENTS' }).parentElement!
+  return row.childElementCount > 1 ? row.lastElementChild!.textContent : null
+}
 
-test("the plan fills while the turn runs, then the answer lands with its citation", async () => {
-  render(<App />);
 
-  expect(await screen.findByText("notes.md")).toBeTruthy();
+test('the plan fills while the turn runs, then the answer lands with its citation', async () => {
+  render(<App />)
+
+  expect(await screen.findByText('notes.md')).toBeTruthy()
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
 
   // The question and both steps are on the page before the answer exists at all.
-  expect(await screen.findByText("Why am I stalling?")).toBeTruthy();
-  expect(await screen.findByText(/Working/)).toBeTruthy();
-  expect(await screen.findByText(LIVE[0].summary)).toBeTruthy();
-  expect(await screen.findByText(LIVE[1].summary)).toBeTruthy();
-  expect(screen.queryByText(/Sleep, not volume/)).toBeNull();
+  expect(await screen.findByText('Why am I stalling?')).toBeTruthy()
+  expect(await screen.findByText(/Working/)).toBeTruthy()
+  expect(await screen.findByText(LIVE[0].summary)).toBeTruthy()
+  expect(await screen.findByText(LIVE[1].summary)).toBeTruthy()
+  expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
 
-  turn.release();
+  turn.release()
 
-  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy();
-  expect(
-    screen.getByRole("button", { name: "Open cited source 1" }),
-  ).toBeTruthy();
-  expect(screen.getByText(TURN.trace[0].summary)).toBeTruthy();
+  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Open cited source 1' })).toBeTruthy()
+  expect(screen.getByText(TURN.trace[0].summary)).toBeTruthy()
 
   // The answer replaced the turn that was waiting rather than following it.
-  expect(screen.queryByText(/Working/)).toBeNull();
-  expect(screen.queryAllByText("Why am I stalling?")).toHaveLength(1);
-});
+  expect(screen.queryByText(/Working/)).toBeNull()
+  expect(screen.queryAllByText('Why am I stalling?')).toHaveLength(1)
+})
 
-test("a panel that could not be read says so, and stops saying it once it can", async () => {
-  const broken = { error: "The knowledge base is temporarily unavailable." };
-  let reachable = false;
+test('a panel that could not be read says so, and stops saying it once it can', async () => {
+  const broken = { error: 'The knowledge base is temporarily unavailable.' }
+  let reachable = false
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (route(path) === "/api/documents" && !reachable)
+      if (route(path) === '/api/documents' && !reachable)
         return {
           ok: false,
           status: 503,
           json: async () => broken,
-        } as unknown as Response;
-      if (path === "/api/ask") return answering();
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+        } as unknown as Response
+      if (path === '/api/ask') return answering()
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
+  )
 
-  render(<App />);
+  render(<App />)
 
-  expect(await screen.findByText(broken.error)).toBeTruthy();
+  expect(await screen.findByText(broken.error)).toBeTruthy()
 
-  reachable = true;
+  reachable = true
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "anything" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
+    target: { value: 'anything' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
 
-  await screen.findByText(TURN.trace[0].summary);
-  expect(screen.queryByText(broken.error)).toBeNull();
-});
+  await screen.findByText(TURN.trace[0].summary)
+  expect(screen.queryByText(broken.error)).toBeNull()
+})
 
-test("each rail folds away and comes back, and its toggle says which it is", async () => {
-  render(<App />);
-  expect(await screen.findByText("notes.md")).toBeTruthy();
+test('each rail folds away and comes back, and its toggle says which it is', async () => {
+  render(<App />)
+  expect(await screen.findByText('notes.md')).toBeTruthy()
 
-  const documents = screen.getByRole("button", { name: "Documents" });
-  const rail = screen.getByRole("button", { name: "Plan & memory" });
-  expect(documents.getAttribute("aria-pressed")).toBe("true");
+  const documents = screen.getByRole('button', { name: 'Documents' })
+  const rail = screen.getByRole('button', { name: 'Plan & memory' })
+  expect(documents.getAttribute('aria-pressed')).toBe('true')
 
-  fireEvent.click(documents);
-  expect(screen.queryByText("notes.md")).toBeNull();
-  expect(screen.getByRole("tab", { name: "STEPS" })).toBeTruthy();
-  expect(documents.getAttribute("aria-pressed")).toBe("false");
+  fireEvent.click(documents)
+  expect(screen.queryByText('notes.md')).toBeNull()
+  expect(screen.getByRole('tab', { name: 'STEPS' })).toBeTruthy()
+  expect(documents.getAttribute('aria-pressed')).toBe('false')
 
-  fireEvent.click(rail);
-  expect(screen.queryByRole("tab", { name: "STEPS" })).toBeNull();
-  expect(rail.getAttribute("aria-pressed")).toBe("false");
+  fireEvent.click(rail)
+  expect(screen.queryByRole('tab', { name: 'STEPS' })).toBeNull()
+  expect(rail.getAttribute('aria-pressed')).toBe('false')
 
-  fireEvent.click(documents);
-  fireEvent.click(rail);
-  expect(screen.getByText("notes.md")).toBeTruthy();
-  expect(screen.getByRole("tab", { name: "STEPS" })).toBeTruthy();
-});
+  fireEvent.click(documents)
+  fireEvent.click(rail)
+  expect(screen.getByText('notes.md')).toBeTruthy()
+  expect(screen.getByRole('tab', { name: 'STEPS' })).toBeTruthy()
+})
 
-test("the rail carries the name and the controls, and folds down to its own toggle", async () => {
-  render(<App />);
-  await screen.findByText("notes.md");
+test('the rail carries the name and the controls, and folds down to its own toggle', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  const documents = screen.getByRole("button", { name: "Documents" });
-  const rail = documents.closest("aside")!;
-  expect(rail.textContent).toContain("cora");
-  expect(rail.textContent).toContain("New session");
-  expect(rail.textContent).not.toContain("Chat");
+  const documents = screen.getByRole('button', { name: 'Documents' })
+  const rail = documents.closest('aside')!
+  expect(rail.textContent).toContain('cora')
+  expect(rail.textContent).toContain('New session')
+  expect(rail.textContent).not.toContain('Chat')
 
-  fireEvent.click(documents);
+  fireEvent.click(documents)
 
   // Folded, the name and the way back stay; everything the rail was holding goes.
-  expect(rail.textContent).toContain("cora");
-  expect(screen.getByRole("button", { name: "Documents" })).toBeTruthy();
-  expect(screen.queryByText("New session")).toBeNull();
+  expect(rail.textContent).toContain('cora')
+  expect(screen.getByRole('button', { name: 'Documents' })).toBeTruthy()
+  expect(screen.queryByText('New session')).toBeNull()
   // The field the conversation runs in is the conversation's, so folding the rail keeps it.
-  expect(screen.getByRole("button", { name: "Chat" })).toBeTruthy();
-});
+  expect(screen.getByRole('button', { name: 'Chat' })).toBeTruthy()
+})
 
-test("a document the answer cited opens in the source panel, marked at the passage", async () => {
-  const { container } = render(<App />);
 
-  expect(await screen.findByText("notes.md")).toBeTruthy();
-  const inTheRail = screen.getByRole("button", { name: "notes.md" });
-  expect(inTheRail.hasAttribute("disabled")).toBe(true);
+test('a document the answer cited opens in the source panel, marked at the passage', async () => {
+  const { container } = render(<App />)
+
+  expect(await screen.findByText('notes.md')).toBeTruthy()
+  const inTheRail = screen.getByRole('button', { name: 'notes.md' })
+  expect(inTheRail.hasAttribute('disabled')).toBe(true)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
+    target: { value: 'Why?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
 
   // Cited now, so the rail opens it — into SOURCE, marked where the citation falls.
-  expect(inTheRail.hasAttribute("disabled")).toBe(false);
-  fireEvent.click(inTheRail);
+  expect(inTheRail.hasAttribute('disabled')).toBe(false)
+  fireEvent.click(inTheRail)
 
-  expect(
-    screen.getByRole("tab", { name: "SOURCE" }).getAttribute("aria-selected"),
-  ).toBe("true");
-  expect(
-    await screen.findByText(/The rest of the document follows/),
-  ).toBeTruthy();
-  expect(screen.getByRole("heading", { name: "notes.md" })).toBeTruthy();
+  expect(screen.getByRole('tab', { name: 'SOURCE' }).getAttribute('aria-selected')).toBe(
+    'true',
+  )
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'notes.md' })).toBeTruthy()
   expect(container.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(
     KEPT.slice(0, 6),
-  );
-});
+  )
+})
 
-test("a document cited in an earlier turn is not marked for this one", async () => {
-  render(<App />);
-  await screen.findByText("notes.md");
+test('a document cited in an earlier turn is not marked for this one', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
 
   const ask = async () => {
-    turn = held();
+    turn = held()
     fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-      target: { value: "Why?" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-    turn.release();
-  };
+      target: { value: 'Why?' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+    turn.release()
+  }
 
-  await ask();
-  await screen.findByText(/Sleep, not volume/);
+  await ask()
+  await screen.findByText(/Sleep, not volume/)
 
   // A second turn that rests on nothing: the panel speaks for the answer being read.
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return uncited();
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      if (path.endsWith("/scope") && !(path in served))
-        return {
-          ok: true,
-          json: async () => ({ pin: null }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/ask') return uncited()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  await ask();
-  await screen.findByText(/Nothing in your documents/);
+  )
+  await ask()
+  await screen.findByText(/Nothing in your documents/)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SOURCE" }));
-  expect(screen.getByText("not cited in this answer")).toBeTruthy();
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(screen.getByText('not cited in this answer')).toBeTruthy()
 
   // Still openable: the text is there to read, with nothing marked in it.
-  expect(
-    await screen.findByText(/The rest of the document follows/),
-  ).toBeTruthy();
-  expect(document.querySelector(`.${bodyCss.docPassage}`)).toBeNull();
-});
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(document.querySelector(`.${bodyCss.docPassage}`)).toBeNull()
+})
 
 /** A turn that cites nothing. */
 function uncited(): Response {
-  const encoder = new TextEncoder();
-  const body = frame("turn", {
-    answer: "Nothing in your documents covers that.",
+  const encoder = new TextEncoder()
+  const body = frame('turn', {
+    answer: 'Nothing in your documents covers that.',
     citations: [],
     trace: [],
-  });
-  let sent = false;
+  })
+  let sent = false
   const reader = {
     cancel: async () => {},
     read: async () =>
       sent
         ? { done: true, value: undefined }
         : ((sent = true), { done: false, value: encoder.encode(body) }),
-  };
-  return { ok: true, body: { getReader: () => reader } } as unknown as Response;
+  }
+  return { ok: true, body: { getReader: () => reader } } as unknown as Response
 }
 
-test("an answer never lands on a conversation that was replaced while it ran", async () => {
+
+test('an answer never lands on a conversation that was replaced while it ran', async () => {
   /* A turn takes tens of seconds and only the Ask button is disabled while it does, so
      opening an earlier conversation mid-turn is ordinary use. Replacing "the last
      entry" would then delete that conversation's last turn and show, inside it, an
      answer computed on a thread the reader has left. */
-  turn = held();
-  render(<App />);
-  await screen.findByText("notes.md");
+  turn = held()
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(/Working/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   /* Released in the same tick as the reopen, because two responses landing in one task
      batch is ordinary — and a guard that reads a thread React has not committed yet
      would let the abandoned answer through exactly then. */
-  turn.release();
-  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy();
-  await flushed();
+  turn.release()
+  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
+  await flushed()
 
-  expect(screen.getByText(OLDER.result.answer)).toBeTruthy();
-  expect(screen.queryByText(/Sleep, not volume/)).toBeNull();
-  expect(screen.queryByText("Why am I stalling?")).toBeNull();
+  expect(screen.getByText(OLDER.result.answer)).toBeTruthy()
+  expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
+  expect(screen.queryByText('Why am I stalling?')).toBeNull()
 
   /* And the panels the answer would have steered are left alone too: a document the
      abandoned turn cited is not this conversation's to show, and showing it says
      something false about it — that cora cannot open it, when the truth is that
      nothing here cites it. */
-  fireEvent.click(screen.getByRole("tab", { name: "SOURCE" }));
-  const panels = document.querySelector(`.${appCss.railPanels}`) as HTMLElement;
-  expect(within(panels).queryByText("notes.md")).toBeNull();
-  expect(
-    within(panels).queryByRole("heading", { name: "notes.md" }),
-  ).toBeNull();
-});
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  const panels = document.querySelector(`.${appCss.railPanels}`) as HTMLElement
+  expect(within(panels).queryByText('notes.md')).toBeNull()
+  expect(within(panels).queryByRole('heading', { name: 'notes.md' })).toBeNull()
+})
 
-test("the conversation follows what just happened, answered or failed", async () => {
+test('the conversation follows what just happened, answered or failed', async () => {
   /* happy-dom lays nothing out, so what is observable is the scroll the effect asks
      for — enough to catch the newest turn being left below the fold.
 
@@ -437,1480 +381,1300 @@ test("the conversation follows what just happened, answered or failed", async ()
      line asserts that the effect has *already* run, which is a race the test never meant
      to make — and the assertion is the same either way, because it must still reach the
      bottom. */
-  const { container } = render(<App />);
-  await screen.findByText("notes.md");
-  const scroller = container.querySelector(
-    `.${answerCss.scroller}`,
-  ) as HTMLElement;
-  atTheBottom(scroller);
+  const { container } = render(<App />)
+  await screen.findByText('notes.md')
+  const scroller = container.querySelector(`.${answerCss.scroller}`) as HTMLElement
+  atTheBottom(scroller)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(/Working/);
-  await waitFor(() => expect(scroller.scrollTop).toBe(5000));
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
 
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
-  await waitFor(() => expect(scroller.scrollTop).toBe(5000));
-});
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
+})
 
 /** A scroller the reader is at the bottom of, which happy-dom lays out as nothing at all:
  *  it reports every box as zero, so both the room and the reader's place in it are said
  *  here rather than measured. */
 function atTheBottom(scroller: HTMLElement): void {
-  Object.defineProperty(scroller, "scrollHeight", {
-    value: 5000,
-    configurable: true,
-  });
-  Object.defineProperty(scroller, "clientHeight", {
-    value: 800,
-    configurable: true,
-  });
-  scroller.scrollTop = 4200;
+  Object.defineProperty(scroller, 'scrollHeight', { value: 5000, configurable: true })
+  Object.defineProperty(scroller, 'clientHeight', { value: 800, configurable: true })
+  scroller.scrollTop = 4200
 }
 
 /** The same scroller, with the reader some way up it. */
 function scrolledUp(scroller: HTMLElement): void {
-  atTheBottom(scroller);
-  scroller.scrollTop = 0;
-  fireEvent.scroll(scroller);
+  atTheBottom(scroller)
+  scroller.scrollTop = 0
+  fireEvent.scroll(scroller)
 }
 
 /** A turn that takes a step and then fails, the failure held back until released. */
 function failing(): Response {
-  const encoder = new TextEncoder();
+  const encoder = new TextEncoder()
   const parts = [
-    frame("step", LIVE[0]),
-    frame("error", { error: "cora is away." }),
-  ];
-  let next = 0;
+    frame('step', LIVE[0]),
+    frame('error', { error: 'cora is away.' }),
+  ]
+  let next = 0
   const reader = {
     cancel: async () => {},
     read: async () => {
-      if (next === parts.length) return { done: true, value: undefined };
-      if (next === parts.length - 1) await turn.until;
-      return { done: false, value: encoder.encode(parts[next++]) };
+      if (next === parts.length) return { done: true, value: undefined }
+      if (next === parts.length - 1) await turn.until
+      return { done: false, value: encoder.encode(parts[next++]) }
     },
-  };
-  return { ok: true, body: { getReader: () => reader } } as unknown as Response;
+  }
+  return { ok: true, body: { getReader: () => reader } } as unknown as Response
 }
 
-test("a turn that fails says so where the answer would have been, and is scrolled to", async () => {
+test('a turn that fails says so where the answer would have been, and is scrolled to', async () => {
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return failing();
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/ask') return failing()
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  const { container } = render(<App />);
-  await screen.findByText("notes.md");
-  const scroller = container.querySelector(
-    `.${answerCss.scroller}`,
-  ) as HTMLElement;
-  atTheBottom(scroller);
+  )
+  const { container } = render(<App />)
+  await screen.findByText('notes.md')
+  const scroller = container.querySelector(`.${answerCss.scroller}`) as HTMLElement
+  atTheBottom(scroller)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(/Working/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
 
   /* The turn it replaces was already scrolled to; a failure that lands in its place
      changes neither the count of turns nor any answer, so nothing follows it down. */
-  scroller.scrollTop = 4200;
-  turn.release();
+  scroller.scrollTop = 4200
+  turn.release()
 
-  expect(await screen.findByText("cora is away.")).toBeTruthy();
-  expect(screen.queryByText(/Working/)).toBeNull();
-  expect(screen.queryAllByText("Why am I stalling?")).toHaveLength(1);
-  expect(scroller.scrollTop).toBe(5000);
-});
+  expect(await screen.findByText('cora is away.')).toBeTruthy()
+  expect(screen.queryByText(/Working/)).toBeNull()
+  expect(screen.queryAllByText('Why am I stalling?')).toHaveLength(1)
+  expect(scroller.scrollTop).toBe(5000)
+})
 
-test("a citation wrapped in a link the model wrote opens the passage, not the link", async () => {
+test('a citation wrapped in a link the model wrote opens the passage, not the link', async () => {
   /* The answer is written over documents cora read, so a link around a citation is a
      link the reader never chose. Letting the anchor fire navigates the tab away on a
      click the page itself invited. */
   const linked = {
-    answer: "See [the log [1]](#elsewhere).",
+    answer: 'See [the log [1]](#elsewhere).',
     citations: TURN.citations,
     trace: TURN.trace,
-  };
+  }
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return oneTurn(linked);
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      if (path.endsWith("/scope") && !(path in served))
-        return {
-          ok: true,
-          json: async () => ({ pin: null }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/ask') return oneTurn(linked)
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    target: { value: 'Why?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
 
   /* A fragment rather than a URL: the click's default action is what this is about,
      and a unit test has no business dialling a host to find that out. */
-  const cite = await screen.findByRole("button", {
-    name: "Open cited source 1",
-  });
-  const click = new MouseEvent("click", { bubbles: true, cancelable: true });
-  cite.dispatchEvent(click);
+  const cite = await screen.findByRole('button', { name: 'Open cited source 1' })
+  const click = new MouseEvent('click', { bubbles: true, cancelable: true })
+  cite.dispatchEvent(click)
 
-  expect(click.defaultPrevented).toBe(true);
-  expect(await screen.findByRole("dialog")).toBeTruthy();
-});
+  expect(click.defaultPrevented).toBe(true)
+  expect(await screen.findByRole('dialog')).toBeTruthy()
+})
 
 /** A stream carrying one finished turn and nothing held back. */
 function oneTurn(result: unknown): Response {
-  const encoder = new TextEncoder();
-  let sent = false;
+  const encoder = new TextEncoder()
+  let sent = false
   const reader = {
     cancel: async () => {},
     read: async () =>
       sent
         ? { done: true, value: undefined }
-        : ((sent = true),
-          { done: false, value: encoder.encode(frame("turn", result)) }),
-  };
-  return { ok: true, body: { getReader: () => reader } } as unknown as Response;
+        : ((sent = true), { done: false, value: encoder.encode(frame('turn', result)) }),
+  }
+  return { ok: true, body: { getReader: () => reader } } as unknown as Response
 }
+
 
 /** A turn whose second step is held back, so a reopen can happen between the two. */
 function steppingSlowly(): Response {
-  const encoder = new TextEncoder();
+  const encoder = new TextEncoder()
   const parts = [
-    frame("step", { ...LIVE[0], summary: "Before the reopen" }),
-    frame("step", { ...LIVE[1], summary: "After the reopen" }),
-    frame("turn", TURN),
-  ];
-  let next = 0;
+    frame('step', { ...LIVE[0], summary: 'Before the reopen' }),
+    frame('step', { ...LIVE[1], summary: 'After the reopen' }),
+    frame('turn', TURN),
+  ]
+  let next = 0
   const reader = {
     cancel: async () => {},
     read: async () => {
-      if (next === parts.length) return { done: true, value: undefined };
-      if (next === 1) await step.until;
-      if (next === 2) await turn.until;
-      return { done: false, value: encoder.encode(parts[next++]) };
+      if (next === parts.length) return { done: true, value: undefined }
+      if (next === 1) await step.until
+      if (next === 2) await turn.until
+      return { done: false, value: encoder.encode(parts[next++]) }
     },
-  };
-  return { ok: true, body: { getReader: () => reader } } as unknown as Response;
+  }
+  return { ok: true, body: { getReader: () => reader } } as unknown as Response
 }
 
-test("a conversation shows its own plan, not the plan of a turn left behind", async () => {
+test('a conversation shows its own plan, not the plan of a turn left behind', async () => {
   /* The panel shows the steps behind what is on screen. A turn the reader walked away
      from is another conversation's work: it must neither go on filling this panel nor
      leave behind what it had already filled. */
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return steppingSlowly();
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      if (path.endsWith("/scope") && !(path in served))
-        return {
-          ok: true,
-          json: async () => ({ pin: null }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/ask') return steppingSlowly()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  expect(await screen.findByText("Before the reopen")).toBeTruthy();
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  expect(await screen.findByText('Before the reopen')).toBeTruthy()
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
-  step.release();
-  await flushed();
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  step.release()
+  await flushed()
 
-  fireEvent.click(screen.getByRole("tab", { name: "STEPS" }));
-  expect(screen.queryByText("After the reopen")).toBeNull();
-  expect(screen.queryByText("Before the reopen")).toBeNull();
+  fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
+  expect(screen.queryByText('After the reopen')).toBeNull()
+  expect(screen.queryByText('Before the reopen')).toBeNull()
   // The request is still in flight, so cora is still answering one question.
-  expect(
-    screen.getByRole("button", { name: "Ask" }).hasAttribute("disabled"),
-  ).toBe(true);
-});
+  expect(screen.getByRole('button', { name: 'Ask' }).hasAttribute('disabled')).toBe(true)
+})
 
-const FIRST = "Older, and nobody is reading this copy now.";
-const SECOND = "Newer, and this is the copy the answer cited.";
+const FIRST = 'Older, and nobody is reading this copy now.'
+const SECOND = 'Newer, and this is the copy the answer cited.'
 
-test("a filename uploaded twice is read at the upload this answer cited", async () => {
+test('a filename uploaded twice is read at the upload this answer cited', async () => {
   /* A span means nothing without the text it was measured in, and one filename can name
      two uploads — the rail lists names, the store keeps text per upload. Taking the
      upload from one citation and the offsets from another marks passages that were
      never cited, in a copy of the document nobody asked about. */
   const copies = [
     {
-      answer: "From the first copy [1].",
+      answer: 'From the first copy [1].',
       citations: [
-        {
-          number: 1,
-          document: "notes.md",
-          start: 0,
-          end: 5,
-          upload: "u1",
-          scope: "cora",
-        },
+        { number: 1, document: 'notes.md', start: 0, end: 5, upload: 'u1', scope: 'cora' },
       ],
       trace: [],
     },
     {
-      answer: "From the second copy [1].",
+      answer: 'From the second copy [1].',
       citations: [
-        {
-          number: 1,
-          document: "notes.md",
-          start: 0,
-          end: 5,
-          upload: "u2",
-          scope: "cora",
-        },
+        { number: 1, document: 'notes.md', start: 0, end: 5, upload: 'u2', scope: 'cora' },
       ],
       trace: [],
     },
-  ];
-  let asked = 0;
+  ]
+  let asked = 0
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return oneTurn(copies[asked++] ?? copies[1]);
-      if (path === "/api/uploads/cora/u1")
-        return {
-          ok: true,
-          json: async () => ({ text: FIRST }),
-        } as unknown as Response;
-      if (path === "/api/uploads/cora/u2")
-        return {
-          ok: true,
-          json: async () => ({ text: SECOND }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/ask') return oneTurn(copies[asked++] ?? copies[1])
+      if (path === '/api/uploads/cora/u1')
+        return { ok: true, json: async () => ({ text: FIRST }) } as unknown as Response
+      if (path === '/api/uploads/cora/u2')
+        return { ok: true, json: async () => ({ text: SECOND }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  const { container } = render(<App />);
-  await screen.findByText("notes.md");
+  )
+  const { container } = render(<App />)
+  await screen.findByText('notes.md')
 
   const ask = async (question: string) => {
     fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
       target: { value: question },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  };
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  }
 
-  await ask("Which copy?");
-  await screen.findByText(/From the first copy/);
-  await ask("And now?");
-  await screen.findByText(/From the second copy/);
+  await ask('Which copy?')
+  await screen.findByText(/From the first copy/)
+  await ask('And now?')
+  await screen.findByText(/From the second copy/)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SOURCE" }));
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
 
-  expect(await screen.findByText(/the copy the answer cited/)).toBeTruthy();
-  expect(screen.queryByText(/nobody is reading this copy/)).toBeNull();
-  expect(container.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(
-    SECOND.slice(0, 5),
-  );
-});
+  expect(await screen.findByText(/the copy the answer cited/)).toBeTruthy()
+  expect(screen.queryByText(/nobody is reading this copy/)).toBeNull()
+  expect(container.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(SECOND.slice(0, 5))
+})
 
-test("a question in flight does not un-cite the answer still on screen", async () => {
+test('a question in flight does not un-cite the answer still on screen', async () => {
   /* A turn takes tens of seconds, and the answer being read is still the answer being
      read. The question joins the thread the moment it is asked and carries no citations
      yet — reading that as "this answer" strips the marks off the one on the page and
      says it rests on nothing. */
-  render(<App />);
-  await screen.findByText("notes.md");
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SOURCE" }));
-  expect(
-    await screen.findByText(/The rest of the document follows/),
-  ).toBeTruthy();
-  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(
-    KEPT.slice(0, 6),
-  );
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(KEPT.slice(0, 6))
 
-  turn = held();
+  turn = held()
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "And next?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText("And next?");
+    target: { value: 'And next?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText('And next?')
 
   // Back to the passage while cora works: the answer above it has not changed.
-  fireEvent.click(screen.getByRole("tab", { name: "SOURCE" }));
-  expect(
-    await screen.findByText(/The rest of the document follows/),
-  ).toBeTruthy();
-  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(
-    KEPT.slice(0, 6),
-  );
-});
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(KEPT.slice(0, 6))
+})
 
-test("a turn that failed does not un-cite the answer still on screen", async () => {
+test('a turn that failed does not un-cite the answer still on screen', async () => {
   /* The other half of the same criterion: a failure lands where the answer would have
      been and carries no citations, and it carries no `pending` flag either. Reading it as
      "this answer" tells the reader that the answer above it — the one with the marks —
      rests on nothing, about a turn that produced no answer at all. */
-  render(<App />);
-  await screen.findByText("notes.md");
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SOURCE" }));
-  expect(
-    await screen.findByText(/The rest of the document follows/),
-  ).toBeTruthy();
-  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(
-    KEPT.slice(0, 6),
-  );
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(KEPT.slice(0, 6))
 
-  turn = held();
+  turn = held()
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return failing();
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      if (path.endsWith("/scope") && !(path in served))
-        return {
-          ok: true,
-          json: async () => ({ pin: null }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/ask') return failing()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
+  )
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "And next?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText("cora is away.");
+    target: { value: 'And next?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText('cora is away.')
 
-  fireEvent.click(screen.getByRole("tab", { name: "SOURCE" }));
-  expect(
-    await screen.findByText(/The rest of the document follows/),
-  ).toBeTruthy();
-  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(
-    KEPT.slice(0, 6),
-  );
-});
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(document.querySelector(`.${bodyCss.docPassage}`)?.textContent).toBe(KEPT.slice(0, 6))
+})
 
-test("an answer returning to the conversation it was asked in is not dropped", async () => {
+test('an answer returning to the conversation it was asked in is not dropped', async () => {
   /* Leaving a conversation mid-turn drops the reply — that turn is another
      conversation's now. Coming *back* to it is not leaving it: the thread guard passes,
      but the reopen renumbered the entries, so the turn matched nothing and landed
      nowhere. The reader had to open the conversation a third time to find it. */
-  vi.stubGlobal("crypto", { randomUUID: () => "here" });
-  let recorded = false;
+  vi.stubGlobal('crypto', { randomUUID: () => 'here' })
+  let recorded = false
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return answering();
-      if (path === "/api/sessions")
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions')
         return {
           ok: true,
           json: async () => [
-            { thread_id: "old", opened_with: OLDER.question },
-            { thread_id: "here", opened_with: "Why am I stalling?" },
+            { thread_id: 'old', opened_with: OLDER.question },
+            { thread_id: 'here', opened_with: 'Why am I stalling?' },
           ],
-        } as unknown as Response;
+        } as unknown as Response
       // The store has the turn once the turn is over, and not before.
-      if (path === "/api/sessions/here")
+      if (path === '/api/sessions/here')
         return {
           ok: true,
           json: async () =>
-            recorded ? [{ question: "Why am I stalling?", result: TURN }] : [],
-        } as unknown as Response;
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      if (path.endsWith("/scope") && !(path in served))
-        return {
-          ok: true,
-          json: async () => ({ pin: null }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+            recorded ? [{ question: 'Why am I stalling?', result: TURN }] : [],
+        } as unknown as Response
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(LIVE[0].summary);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(LIVE[0].summary)
 
   // Away, and straight back — both while the turn is still running.
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Why am I stalling?" }),
-  );
-  await flushed();
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  fireEvent.click(await screen.findByRole('button', { name: 'Why am I stalling?' }))
+  await flushed()
 
-  recorded = true;
-  turn.release();
+  recorded = true
+  turn.release()
 
-  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy();
+  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
   // Once in the conversation — the other one on the page is the session it names.
-  expect(
-    [...document.querySelectorAll(`.${answerCss.said}`)].map(
-      (each) => each.textContent,
-    ),
-  ).toEqual(["Why am I stalling?"]);
-});
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
+    ['Why am I stalling?'],
+  )
+})
 
-test("a conversation that loads late does not overwrite the one the reader is in", async () => {
+test('a conversation that loads late does not overwrite the one the reader is in', async () => {
   /* Every load of a conversation is a race with the reader: they can open another one
      while it is in flight, or the same one again, and the response that arrives last is
      not the conversation they asked for last. Putting one thread's turns under another
      thread's name is what the whole guard around a reply exists to prevent. */
-  vi.stubGlobal("crypto", { randomUUID: () => "here" });
-  const slow = held();
-  let recorded = false;
+  vi.stubGlobal('crypto', { randomUUID: () => 'here' })
+  const slow = held()
+  let recorded = false
   const body = (data: unknown) =>
-    ({ ok: true, json: async () => data }) as unknown as Response;
+    ({ ok: true, json: async () => data }) as unknown as Response
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return answering();
-      if (path === "/api/sessions")
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions')
         return body([
-          { thread_id: "old", opened_with: OLDER.question },
-          { thread_id: "here", opened_with: "Why am I stalling?" },
-        ]);
-      if (path === "/api/sessions/here") {
+          { thread_id: 'old', opened_with: OLDER.question },
+          { thread_id: 'here', opened_with: 'Why am I stalling?' },
+        ])
+      if (path === '/api/sessions/here') {
         // The re-read that follows the answer is the one held open.
-        if (recorded) await slow.until;
-        return body(
-          recorded ? [{ question: "Why am I stalling?", result: TURN }] : [],
-        );
+        if (recorded) await slow.until
+        return body(recorded ? [{ question: 'Why am I stalling?', result: TURN }] : [])
       }
-      if (path === "/api/sessions/old") return body([OLDER]);
-      if (path.startsWith("/api/uploads/")) return body({ text: KEPT });
-      return body(served[route(path)] ?? []);
+      if (path === '/api/sessions/old') return body([OLDER])
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[route(path)] ?? [])
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(LIVE[0].summary);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(LIVE[0].summary)
 
   const sessions = () => {
-    fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-    return screen;
-  };
-  fireEvent.click(
-    await sessions().findByRole("button", { name: OLDER.question }),
-  );
-  await screen.findByText(OLDER.result.answer);
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Why am I stalling?" }),
-  );
-  await flushed();
+    fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+    return screen
+  }
+  fireEvent.click(await sessions().findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  fireEvent.click(await screen.findByRole('button', { name: 'Why am I stalling?' }))
+  await flushed()
 
   // The answer lands, so the thread is re-read from the store — and while that is in
   // flight the reader opens the other conversation.
-  recorded = true;
-  turn.release();
-  await flushed();
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
+  recorded = true
+  turn.release()
+  await flushed()
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
 
-  slow.release();
-  await flushed();
+  slow.release()
+  await flushed()
 
-  expect(screen.getByText(OLDER.result.answer)).toBeTruthy();
-  expect(screen.queryByText(/Sleep, not volume/)).toBeNull();
+  expect(screen.getByText(OLDER.result.answer)).toBeTruthy()
+  expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
   // And it is the conversation the reader is in: the panel disables the current one.
   expect(
-    screen
-      .getByRole("button", { name: OLDER.question })
-      .hasAttribute("disabled"),
-  ).toBe(true);
-});
+    screen.getByRole('button', { name: OLDER.question }).hasAttribute('disabled'),
+  ).toBe(true)
+})
 
 const EARLIER = {
-  question: "An earlier question in this thread",
-  result: { answer: "An earlier answer.", citations: [], trace: [] },
-};
+  question: 'An earlier question in this thread',
+  result: { answer: 'An earlier answer.', citations: [], trace: [] },
+}
 
-test("the question in flight stays with the conversation it was asked in", async () => {
+test('the question in flight stays with the conversation it was asked in', async () => {
   /* A turn is not one of the turns the store has — it is a question being asked in a
      thread. Leaving that conversation and coming back re-read the store, which does not
      know about it yet: the reader found a thread where they had asked nothing, no plan,
      and a composer they could not type in, for as long as the model took. */
-  vi.stubGlobal("crypto", { randomUUID: () => "here" });
-  let recorded = false;
+  vi.stubGlobal('crypto', { randomUUID: () => 'here' })
+  let recorded = false
   const body = (data: unknown) =>
-    ({ ok: true, json: async () => data }) as unknown as Response;
+    ({ ok: true, json: async () => data }) as unknown as Response
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return answering();
-      if (path === "/api/sessions")
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions')
         return body([
-          { thread_id: "old", opened_with: OLDER.question },
-          { thread_id: "here", opened_with: EARLIER.question },
-        ]);
+          { thread_id: 'old', opened_with: OLDER.question },
+          { thread_id: 'here', opened_with: EARLIER.question },
+        ])
       // The store has the turn once the turn is over, and not before.
-      if (path === "/api/sessions/here")
+      if (path === '/api/sessions/here')
         return body(
           recorded
-            ? [EARLIER, { question: "Why am I stalling?", result: TURN }]
+            ? [EARLIER, { question: 'Why am I stalling?', result: TURN }]
             : [EARLIER],
-        );
-      if (path === "/api/sessions/old") return body([OLDER]);
-      if (path.startsWith("/api/uploads/")) return body({ text: KEPT });
-      return body(served[route(path)] ?? []);
+        )
+      if (path === '/api/sessions/old') return body([OLDER])
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[route(path)] ?? [])
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(LIVE[0].summary);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(LIVE[0].summary)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
 
   // In the other conversation the running turn is not on the page at all: it is not
   // this conversation's question, and it is not being asked here.
-  expect(
-    [...document.querySelectorAll(`.${answerCss.said}`)].map(
-      (each) => each.textContent,
-    ),
-  ).toEqual([OLDER.question]);
-  expect(screen.queryByText(/Working/)).toBeNull();
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
+    [OLDER.question],
+  )
+  expect(screen.queryByText(/Working/)).toBeNull()
 
-  fireEvent.click(
-    await screen.findByRole("button", { name: EARLIER.question }),
-  );
-  await screen.findByText(EARLIER.result.answer);
+  fireEvent.click(await screen.findByRole('button', { name: EARLIER.question }))
+  await screen.findByText(EARLIER.result.answer)
 
   // Back in the conversation the turn is running in: its question, its plan, and a
   // composer whose disabling the plan explains.
-  expect(
-    [...document.querySelectorAll(`.${answerCss.said}`)].map(
-      (each) => each.textContent,
-    ),
-  ).toEqual([EARLIER.question, "Why am I stalling?"]);
-  expect(screen.getByText(/Working/)).toBeTruthy();
-  expect(screen.queryByText(/still answering/)).toBeNull();
-  fireEvent.click(screen.getByRole("tab", { name: "STEPS" }));
-  expect(screen.getByText(LIVE[0].summary)).toBeTruthy();
-  expect(
-    screen.getByRole("button", { name: "Ask" }).hasAttribute("disabled"),
-  ).toBe(true);
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
+    [EARLIER.question, 'Why am I stalling?'],
+  )
+  expect(screen.getByText(/Working/)).toBeTruthy()
+  expect(screen.queryByText(/still answering/)).toBeNull()
+  fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
+  expect(screen.getByText(LIVE[0].summary)).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Ask' }).hasAttribute('disabled')).toBe(true)
 
-  recorded = true;
-  turn.release();
+  recorded = true
+  turn.release()
 
-  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy();
-  expect(
-    [...document.querySelectorAll(`.${answerCss.said}`)].map(
-      (each) => each.textContent,
-    ),
-  ).toEqual([EARLIER.question, "Why am I stalling?"]);
-});
+  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
+    [EARLIER.question, 'Why am I stalling?'],
+  )
+})
 
-test("the rail offers a way to start a new session", async () => {
-  render(<App />);
-  await screen.findByText("notes.md");
+test('the rail offers a way to start a new session', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  expect(screen.getByRole("button", { name: "New session" })).toBeTruthy();
-});
+  expect(screen.getByRole('button', { name: 'New session' })).toBeTruthy()
+})
 
-test("starting a new session takes the conversation off the page", async () => {
-  render(<App />);
-  await screen.findByText("notes.md");
+test('starting a new session takes the conversation off the page', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
 
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
-  expect(screen.queryByText("Why am I stalling?")).toBeNull();
-  expect(screen.queryByText(/Sleep, not volume/)).toBeNull();
-});
+  expect(screen.queryByText('Why am I stalling?')).toBeNull()
+  expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
+})
 
-test("the question asked after a new session runs on another thread", async () => {
+test('the question asked after a new session runs on another thread', async () => {
   /* A new session that reused the thread would go on appending to the conversation the
      reader just left — off the page, but in the store, and in the model's context. */
-  const asked: string[] = [];
+  const asked: string[] = []
   /* Named here rather than left to the environment: another spec pins `randomUUID` to a
      constant, and a thread that never changes is exactly what this asserts against. */
-  let minted = 0;
-  vi.stubGlobal("crypto", { randomUUID: () => `t${++minted}` });
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (path === "/api/ask") {
-        asked.push(JSON.parse(String(init?.body)).thread_id);
-        return answering();
+      if (path === '/api/ask') {
+        asked.push(JSON.parse(String(init?.body)).thread_id)
+        return answering()
       }
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      if (path.endsWith("/scope") && !(path in served))
-        return {
-          ok: true,
-          json: async () => ({ pin: null }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   const ask = async (question: string) => {
-    turn = held();
+    turn = held()
     fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
       target: { value: question },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-    turn.release();
-    await screen.findByText(/Sleep, not volume/);
-  };
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+    turn.release()
+    await screen.findByText(/Sleep, not volume/)
+  }
 
-  await ask("Why am I stalling?");
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
-  await ask("And now?");
+  await ask('Why am I stalling?')
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  await ask('And now?')
 
-  expect(asked).toHaveLength(2);
-  expect(asked[0]).toBeTruthy();
-  expect(asked[1]).not.toBe(asked[0]);
-});
+  expect(asked).toHaveLength(2)
+  expect(asked[0]).toBeTruthy()
+  expect(asked[1]).not.toBe(asked[0])
+})
 
-test("the new session is not offered while the conversation is already new", async () => {
+test('the new session is not offered while the conversation is already new', async () => {
   /* Nothing to start: the page is already an empty conversation on an unused thread, and
      a control that changes nothing is not a control. A question in flight is a
      conversation — asked and unanswered is something to leave. */
-  render(<App />);
-  await screen.findByText("notes.md");
-  const start = screen.getByRole("button", { name: "New session" });
-  const unavailable = () => start.getAttribute("aria-disabled") === "true";
-  expect(unavailable()).toBe(true);
+  render(<App />)
+  await screen.findByText('notes.md')
+  const start = screen.getByRole('button', { name: 'New session' })
+  const unavailable = () => start.getAttribute('aria-disabled') === 'true'
+  expect(unavailable()).toBe(true)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(/Working/);
-  expect(unavailable()).toBe(false);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
+  expect(unavailable()).toBe(false)
 
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
-  expect(unavailable()).toBe(false);
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  expect(unavailable()).toBe(false)
 
-  fireEvent.click(start);
-  expect(unavailable()).toBe(true);
-});
+  fireEvent.click(start)
+  expect(unavailable()).toBe(true)
+})
 
-test("the panels afterwards speak for the new session, not the one left behind", async () => {
+test('the panels afterwards speak for the new session, not the one left behind', async () => {
   /* The plan panel shows the steps behind what is on screen, and the source panel marks
      what this answer rested on. With the conversation gone, both would be speaking for a
      turn the reader can no longer see. */
-  render(<App />);
-  await screen.findByText("notes.md");
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
-  expect(screen.getByText(TURN.trace[0].summary)).toBeTruthy();
-  fireEvent.click(screen.getByRole("tab", { name: "SOURCE" }));
-  expect(
-    await screen.findByText(/The rest of the document follows/),
-  ).toBeTruthy();
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  expect(screen.getByText(TURN.trace[0].summary)).toBeTruthy()
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
 
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
-  const panels = document.querySelector(`.${appCss.railPanels}`) as HTMLElement;
-  expect(
-    within(panels).queryByRole("heading", { name: "notes.md" }),
-  ).toBeNull();
-  fireEvent.click(screen.getByRole("tab", { name: "STEPS" }));
-  expect(screen.queryByText(TURN.trace[0].summary)).toBeNull();
-  expect(panels.querySelector(`.${planCss.planStep}`)).toBeNull();
-});
+  const panels = document.querySelector(`.${appCss.railPanels}`) as HTMLElement
+  expect(within(panels).queryByRole('heading', { name: 'notes.md' })).toBeNull()
+  fireEvent.click(screen.getByRole('tab', { name: 'STEPS' }))
+  expect(screen.queryByText(TURN.trace[0].summary)).toBeNull()
+  expect(panels.querySelector(`.${planCss.planStep}`)).toBeNull()
+})
 
-test("an answer to the conversation left behind does not land on the new session", async () => {
+test('an answer to the conversation left behind does not land on the new session', async () => {
   /* Starting over mid-turn is leaving that conversation: the turn is recorded on the
      thread it was asked in, and the reader can reopen it under SESSIONS. What it must
      never do is arrive in the empty conversation they moved to. */
-  render(<App />);
-  await screen.findByText("notes.md");
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(/Working/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
 
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
-  expect(screen.queryByText("Why am I stalling?")).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  expect(screen.queryByText('Why am I stalling?')).toBeNull()
 
-  turn.release();
-  await flushed();
+  turn.release()
+  await flushed()
 
-  expect(screen.queryByText(/Sleep, not volume/)).toBeNull();
-  expect(screen.queryByText("Why am I stalling?")).toBeNull();
-});
+  expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
+  expect(screen.queryByText('Why am I stalling?')).toBeNull()
+})
 
-test("the conversation left behind is listed under SESSIONS", async () => {
+test('the conversation left behind is listed under SESSIONS', async () => {
   /* Starting over is not throwing away: what was asked is checkpointed under its own
      thread, and the only way back to it is the sessions list. */
-  let minted = 0;
-  vi.stubGlobal("crypto", { randomUUID: () => `t${++minted}` });
-  let recorded = false;
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
+  let recorded = false
   const body = (data: unknown) =>
-    ({ ok: true, json: async () => data }) as unknown as Response;
+    ({ ok: true, json: async () => data }) as unknown as Response
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return answering();
+      if (path === '/api/ask') return answering()
       // The store has the conversation once its first turn is over, and not before.
-      if (path === "/api/sessions")
-        return body(
-          recorded
-            ? [{ thread_id: "t1", opened_with: "Why am I stalling?" }]
-            : [],
-        );
-      if (path.startsWith("/api/uploads/")) return body({ text: KEPT });
-      return body(served[route(path)] ?? []);
+      if (path === '/api/sessions')
+        return body(recorded ? [{ thread_id: 't1', opened_with: 'Why am I stalling?' }] : [])
+      if (path.startsWith('/api/uploads/'))
+        return body({ text: KEPT })
+      return body(served[route(path)] ?? [])
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  recorded = true;
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  recorded = true
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
 
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
 
-  const listed = await screen.findByRole("button", {
-    name: "Why am I stalling?",
-  });
+  const listed = await screen.findByRole('button', { name: 'Why am I stalling?' })
   // Reopenable: the conversation is no longer the one the reader is in.
-  expect(listed.hasAttribute("disabled")).toBe(false);
-});
+  expect(listed.hasAttribute('disabled')).toBe(false)
+})
 
-test("a reopen still loading when a new session starts does not land on it", async () => {
+test('a reopen still loading when a new session starts does not land on it', async () => {
   /* Changing which conversation the page is in is a race with the store: `loads` exists
      so the reader's last choice wins. A new session that did not enter that race was
      undone by a reopen resolving after it — dropping the reader back into the
      conversation they had just left, on its thread, with the next question appending
      to it. */
-  const slow = held();
+  const slow = held()
   const body = (data: unknown) =>
-    ({ ok: true, json: async () => data }) as unknown as Response;
+    ({ ok: true, json: async () => data }) as unknown as Response
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return answering();
-      if (path === "/api/sessions/old") {
-        await slow.until;
-        return body([OLDER]);
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions/old') {
+        await slow.until
+        return body([OLDER])
       }
-      if (path.startsWith("/api/uploads/")) return body({ text: KEPT });
-      return body(served[route(path)] ?? []);
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[route(path)] ?? [])
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
-  slow.release();
-  await flushed();
+  slow.release()
+  await flushed()
 
-  expect(screen.queryByText(OLDER.result.answer)).toBeNull();
-  expect(screen.queryByText(/Sleep, not volume/)).toBeNull();
-});
+  expect(screen.queryByText(OLDER.result.answer)).toBeNull()
+  expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
+})
 
-test("a turn left running says so where the question would be typed, and lands in its own conversation", async () => {
+test('a turn left running says so where the question would be typed, and lands in its own conversation', async () => {
   /* cora answers one question at a time, so starting over mid-turn leaves a page whose
      composer cannot be typed in — with the question, the plan and the banner all
      belonging to the conversation left behind, there was nothing on screen to say why,
      and nothing to say the answer was not lost. */
-  let minted = 0;
-  vi.stubGlobal("crypto", { randomUUID: () => `t${++minted}` });
-  let recorded = false;
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
+  let recorded = false
   const body = (data: unknown) =>
-    ({ ok: true, json: async () => data }) as unknown as Response;
+    ({ ok: true, json: async () => data }) as unknown as Response
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return answering();
-      if (path === "/api/sessions")
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions')
         return body(
-          recorded
-            ? [{ thread_id: "t1", opened_with: "Why am I stalling?" }]
-            : [],
-        );
-      if (path === "/api/sessions/t1")
-        return body(
-          recorded ? [{ question: "Why am I stalling?", result: TURN }] : [],
-        );
-      if (path.startsWith("/api/uploads/")) return body({ text: KEPT });
-      return body(served[route(path)] ?? []);
+          recorded ? [{ thread_id: 't1', opened_with: 'Why am I stalling?' }] : [],
+        )
+      if (path === '/api/sessions/t1')
+        return body(recorded ? [{ question: 'Why am I stalling?', result: TURN }] : [])
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[route(path)] ?? [])
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(/Working/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
   // Asked here, so nothing says it was asked elsewhere.
-  expect(screen.queryByText(/still answering/)).toBeNull();
+  expect(screen.queryByText(/still answering/)).toBeNull()
 
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
   // The page is empty and cannot be asked in, and it says which of those is why.
-  expect(
-    screen.getByRole("button", { name: "Ask" }).hasAttribute("disabled"),
-  ).toBe(true);
-  expect(
-    screen.getByText(/still answering .* conversation you left/),
-  ).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Ask' }).hasAttribute('disabled')).toBe(true)
+  expect(screen.getByText(/still answering .* conversation you left/)).toBeTruthy()
 
-  recorded = true;
-  turn.release();
+  recorded = true
+  turn.release()
 
-  await screen.findByRole("tab", { name: "SESSIONS" });
+  await screen.findByRole('tab', { name: 'SESSIONS' })
   await waitFor(() =>
-    expect(
-      screen.getByRole("button", { name: "Ask" }).hasAttribute("disabled"),
-    ).toBe(false),
-  );
-  expect(screen.queryByText(/still answering/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Ask' }).hasAttribute('disabled')).toBe(
+      false,
+    ),
+  )
+  expect(screen.queryByText(/still answering/)).toBeNull()
 
   // Nothing was thrown away: the answer is in the conversation it was asked in.
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Why am I stalling?" }),
-  );
-  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy();
-});
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Why am I stalling?' }))
+  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
+})
 
-test("a banner raised by the conversation left behind does not follow the new session", async () => {
+test('a banner raised by the conversation left behind does not follow the new session', async () => {
   /* The banner speaks for one load of one conversation. Carried into a new session it is
      a failure the reader cannot act on, about a page it did not happen to. */
-  const unreachable = "The conversation store is temporarily unavailable.";
+  const unreachable = 'The conversation store is temporarily unavailable.'
   const body = (data: unknown) =>
-    ({ ok: true, json: async () => data }) as unknown as Response;
+    ({ ok: true, json: async () => data }) as unknown as Response
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return answering();
-      if (path === "/api/sessions/old")
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions/old')
         return {
           ok: false,
           status: 503,
           json: async () => ({ error: unreachable }),
-        } as unknown as Response;
-      if (path.startsWith("/api/uploads/")) return body({ text: KEPT });
-      return body(served[route(path)] ?? []);
+        } as unknown as Response
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[route(path)] ?? [])
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  expect(await screen.findByText(unreachable)).toBeTruthy();
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  expect(await screen.findByText(unreachable)).toBeTruthy()
 
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
-  await waitFor(() => expect(screen.queryByText(unreachable)).toBeNull());
-});
+  await waitFor(() => expect(screen.queryByText(unreachable)).toBeNull())
+})
 
-test("the control is reachable while it is unavailable, and clicking it then changes nothing", async () => {
+test('the control is reachable while it is unavailable, and clicking it then changes nothing', async () => {
   /* A `disabled` button is out of the accessibility tree — the same reason the rail's
      documents explain themselves on the page rather than in a tooltip. Unavailable is
      something to be told, so the control stays reachable and does nothing. */
-  const asked: string[] = [];
-  let minted = 0;
-  vi.stubGlobal("crypto", { randomUUID: () => `t${++minted}` });
+  const asked: string[] = []
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (path === "/api/ask") {
-        asked.push(JSON.parse(String(init?.body)).thread_id);
-        return answering();
+      if (path === '/api/ask') {
+        asked.push(JSON.parse(String(init?.body)).thread_id)
+        return answering()
       }
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      if (path.endsWith("/scope") && !(path in served))
-        return {
-          ok: true,
-          json: async () => ({ pin: null }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  const start = screen.getByRole("button", { name: "New session" });
-  expect(start.getAttribute("aria-disabled")).toBe("true");
-  expect(start.hasAttribute("disabled")).toBe(false);
+  const start = screen.getByRole('button', { name: 'New session' })
+  expect(start.getAttribute('aria-disabled')).toBe('true')
+  expect(start.hasAttribute('disabled')).toBe(false)
 
   // Unavailable, and it says why rather than leaving a dead control to guess at.
-  const why = document.getElementById(
-    start.getAttribute("aria-describedby") ?? "",
-  );
-  expect(why?.textContent).toMatch(/already in a new session/);
+  const why = document.getElementById(start.getAttribute('aria-describedby') ?? '')
+  expect(why?.textContent).toMatch(/already in a new session/)
 
-  fireEvent.click(start);
+  fireEvent.click(start)
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
 
   // The thread the page opened with: the click minted nothing.
-  expect(asked).toEqual(["t1"]);
+  expect(asked).toEqual(['t1'])
   // And with something to leave, the control carries no reason not to.
-  expect(start.hasAttribute("aria-describedby")).toBe(false);
-});
+  expect(start.hasAttribute('aria-describedby')).toBe(false)
+})
 
-test("a conversation load that lost the race says nothing about it", async () => {
+test('a conversation load that lost the race says nothing about it', async () => {
   /* The banner speaks for the page. A load the reader walked away from has nothing to
      tell them: it reported a failure they cannot act on, about a conversation that is not
      on screen — the other half of the property above, in the order where the failure
      arrives last. */
-  const unreachable = "The conversation store is temporarily unavailable.";
-  const slow = held();
+  const unreachable = 'The conversation store is temporarily unavailable.'
+  const slow = held()
   const body = (data: unknown) =>
-    ({ ok: true, json: async () => data }) as unknown as Response;
+    ({ ok: true, json: async () => data }) as unknown as Response
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return answering();
-      if (path === "/api/sessions/old") {
-        await slow.until;
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions/old') {
+        await slow.until
         return {
           ok: false,
           status: 503,
           json: async () => ({ error: unreachable }),
-        } as unknown as Response;
+        } as unknown as Response
       }
-      if (path.startsWith("/api/uploads/")) return body({ text: KEPT });
-      return body(served[route(path)] ?? []);
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[route(path)] ?? [])
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
-  slow.release();
-  await flushed();
+  slow.release()
+  await flushed()
 
-  expect(screen.queryByText(unreachable)).toBeNull();
-});
+  expect(screen.queryByText(unreachable)).toBeNull()
+})
 
-test("a question left running that fails says so, rather than never arriving", async () => {
+test('a question left running that fails says so, rather than never arriving', async () => {
   /* The reader was told the answer would be listed under SESSIONS when it lands. A turn
      that fails is recorded nowhere, so nothing would ever be listed and nothing would
      ever be said: they wait for an answer that no longer exists. */
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return failing();
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/ask') return failing()
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(/Working/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
 
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
-  turn.release();
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  turn.release()
 
-  expect(
-    await screen.findByText(/conversation you left.*cora is away\./),
-  ).toBeTruthy();
+  expect(await screen.findByText(/conversation you left.*cora is away\./)).toBeTruthy()
   // Said about the conversation, not *in* the empty one: the failed turn is not dragged
   // onto a page it was never asked on.
-  expect(screen.queryByText("Why am I stalling?")).toBeNull();
-  expect(document.querySelector(`.${answerCss.turn}`)).toBeNull();
+  expect(screen.queryByText('Why am I stalling?')).toBeNull()
+  expect(document.querySelector(`.${answerCss.turn}`)).toBeNull()
 
   // Until the reader asks the next question, which is them moving on from it.
-  turn = held();
+  turn = held()
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "And now?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    target: { value: 'And now?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
 
-  expect(
-    screen.queryByText(/conversation you left.*cora is away\./),
-  ).toBeNull();
-});
+  expect(screen.queryByText(/conversation you left.*cora is away\./)).toBeNull()
+})
 
-test("a turn that fails while a reopen is loading is not swallowed by it", async () => {
+test('a turn that fails while a reopen is loading is not swallowed by it', async () => {
   /* A failure is appended to the conversation on screen — but a load already in flight
      replaces that conversation wholesale, and takes the failure with it. `here.current`
      says where the last load *put* the reader, not what they have asked for next. */
-  const slow = held();
+  const slow = held()
   const body = (data: unknown) =>
-    ({ ok: true, json: async () => data }) as unknown as Response;
+    ({ ok: true, json: async () => data }) as unknown as Response
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return failing();
-      if (path === "/api/sessions/old") {
-        await slow.until;
-        return body([OLDER]);
+      if (path === '/api/ask') return failing()
+      if (path === '/api/sessions/old') {
+        await slow.until
+        return body([OLDER])
       }
-      return body(served[route(path)] ?? []);
+      return body(served[route(path)] ?? [])
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(/Working/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  turn.release();
-  await flushed();
-  slow.release();
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  turn.release()
+  await flushed()
+  slow.release()
 
-  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy();
-  expect(
-    screen.getByText(/conversation you left.*cora is away\./),
-  ).toBeTruthy();
-});
+  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
+  expect(screen.getByText(/conversation you left.*cora is away\./)).toBeTruthy()
+})
 
-test("the failure of a question you left is not still said once you are back in it", async () => {
+test('the failure of a question you left is not still said once you are back in it', async () => {
   /* "In the conversation you left" is a claim about where the reader is. Reopening that
      conversation makes it false, and it stood until the next question was asked. */
-  let minted = 0;
-  vi.stubGlobal("crypto", { randomUUID: () => `t${++minted}` });
-  let asks = 0;
-  let recorded = false;
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
+  let asks = 0
+  let recorded = false
   const body = (data: unknown) =>
-    ({ ok: true, json: async () => data }) as unknown as Response;
+    ({ ok: true, json: async () => data }) as unknown as Response
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
       // The first question is answered and checkpointed; the second one fails.
-      if (path === "/api/ask") return asks++ === 0 ? answering() : failing();
-      if (path === "/api/sessions")
-        return body(
-          recorded ? [{ thread_id: "t1", opened_with: "First question" }] : [],
-        );
-      if (path === "/api/sessions/t1")
-        return body(
-          recorded ? [{ question: "First question", result: TURN }] : [],
-        );
-      if (path.startsWith("/api/uploads/")) return body({ text: KEPT });
-      return body(served[route(path)] ?? []);
+      if (path === '/api/ask') return asks++ === 0 ? answering() : failing()
+      if (path === '/api/sessions')
+        return body(recorded ? [{ thread_id: 't1', opened_with: 'First question' }] : [])
+      if (path === '/api/sessions/t1')
+        return body(recorded ? [{ question: 'First question', result: TURN }] : [])
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[route(path)] ?? [])
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   const ask = (question: string) => {
-    turn = held();
+    turn = held()
     fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
       target: { value: question },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  };
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  }
 
-  ask("First question");
-  recorded = true;
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
+  ask('First question')
+  recorded = true
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
 
-  ask("And now?");
-  await screen.findByText(/Working/);
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
-  turn.release();
-  expect(
-    await screen.findByText(/conversation you left.*cora is away\./),
-  ).toBeTruthy();
+  ask('And now?')
+  await screen.findByText(/Working/)
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  turn.release()
+  expect(await screen.findByText(/conversation you left.*cora is away\./)).toBeTruthy()
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(
-    await screen.findByRole("button", { name: "First question" }),
-  );
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'First question' }))
 
-  await screen.findByText(/Sleep, not volume/);
-  expect(screen.queryByText(/conversation you left/)).toBeNull();
-});
+  await screen.findByText(/Sleep, not volume/)
+  expect(screen.queryByText(/conversation you left/)).toBeNull()
+})
 
-test("a turn that fails in the conversation on screen says so there, whatever else is loading", async () => {
+test('a turn that fails in the conversation on screen says so there, whatever else is loading', async () => {
   /* A load on the wire is not a load that will replace this conversation: one that has
      already lost its race replaces nothing. Reading "a load exists" as "what I append is
      about to be overwritten" sent the failure to a sentence that is not drawn while the
      reader is in the conversation it names — so it was said nowhere at all. */
-  const slow = held();
-  let asks = 0;
+  const slow = held()
+  let asks = 0
   const body = (data: unknown) =>
-    ({ ok: true, json: async () => data }) as unknown as Response;
+    ({ ok: true, json: async () => data }) as unknown as Response
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return asks++ === 0 ? answering() : failing();
-      if (path === "/api/sessions/old") {
-        await slow.until;
-        return body([OLDER]);
+      if (path === '/api/ask') return asks++ === 0 ? answering() : failing()
+      if (path === '/api/sessions/old') {
+        await slow.until
+        return body([OLDER])
       }
-      if (path.startsWith("/api/uploads/")) return body({ text: KEPT });
-      return body(served[route(path)] ?? []);
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[route(path)] ?? [])
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   const ask = (question: string) => {
-    turn = held();
+    turn = held()
     fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
       target: { value: question },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  };
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  }
 
-  ask("Why am I stalling?");
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
+  ask('Why am I stalling?')
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
 
   // A reopen that can never land: the new session below is a later claim on the page.
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
-  ask("And now?");
-  await screen.findByText(/Working/);
-  turn.release();
+  ask('And now?')
+  await screen.findByText(/Working/)
+  turn.release()
 
   // Where the answer would have been, in the conversation that asked it.
-  expect(await screen.findByText("cora is away.")).toBeTruthy();
-  expect(screen.getByText("And now?")).toBeTruthy();
-  slow.release();
-});
+  expect(await screen.findByText('cora is away.')).toBeTruthy()
+  expect(screen.getByText('And now?')).toBeTruthy()
+  slow.release()
+})
 
-test("the page says both of its sentences at once, in one order", async () => {
+test('the page says both of its sentences at once, in one order', async () => {
   /* Two facts with two lifetimes: a load that failed, cleared by the next one that goes
      through, and a question left running that will not be answered, which stands until the
      reader asks the next one. They are drawn from one place so that order is a decision
      rather than whatever the two `&&`s happened to be. */
-  const unreachable = "The conversation store is temporarily unavailable.";
+  const unreachable = 'The conversation store is temporarily unavailable.'
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return failing();
-      if (path === "/api/sessions/old")
+      if (path === '/api/ask') return failing()
+      if (path === '/api/sessions/old')
         return {
           ok: false,
           status: 503,
           json: async () => ({ error: unreachable }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+        } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(/Working/);
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
-  turn.release();
-  await screen.findByText(/conversation you left/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Working/)
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  turn.release()
+  await screen.findByText(/conversation you left/)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(unreachable);
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(unreachable)
 
   /* Resolved through the role, and named: the documents rail carries a live region of its
      own for what an upload did, so a bare role would find two. The name is what tells the
      two apart — and what a screen reader says before the sentence, rather than announcing
      it bare. */
-  const banners = screen.getByRole("status", { name: "Notices" });
+  const banners = screen.getByRole('status', { name: 'Notices' })
   expect([...banners.children].map((each) => each.textContent)).toEqual([
     unreachable,
-    "In the conversation you left: cora is away.",
-  ]);
-});
+    'In the conversation you left: cora is away.',
+  ])
+})
 
 /** A 200 whose body is not a list of turns: the read went through, what came back cannot
  *  be drawn. A proxy or a version skew is enough. */
-const NONSENSE = "not a list of turns at all";
+const NONSENSE = 'not a list of turns at all'
 
-test("a conversation that cannot be drawn says so, and does not read as a failed turn", async () => {
+test('a conversation that cannot be drawn says so, and does not read as a failed turn', async () => {
   /* Reading and drawing fail differently. The read is what the store answered for; what
      the page does with it is the page's own fault, and reported as neither the store being
      unreachable nor — inside a turn — as that turn having failed. */
   const body = (data: unknown) =>
-    ({ ok: true, json: async () => data }) as unknown as Response;
+    ({ ok: true, json: async () => data }) as unknown as Response
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return answering();
-      if (path === "/api/sessions/old") return body(NONSENSE);
-      if (path.startsWith("/api/uploads/")) return body({ text: KEPT });
-      return body(served[route(path)] ?? []);
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions/old') return body(NONSENSE)
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[route(path)] ?? [])
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
 
   // Said on the page, rather than thrown where nobody sees it.
-  expect(await screen.findByText(/could not be read/)).toBeTruthy();
-  expect(screen.queryByText(/is not a function/)).toBeNull();
-});
+  expect(await screen.findByText(/could not be read/)).toBeTruthy()
+  expect(screen.queryByText(/is not a function/)).toBeNull()
+})
 
-test("a turn that succeeded is not drawn as failed by the re-read that follows it", async () => {
+test('a turn that succeeded is not drawn as failed by the re-read that follows it', async () => {
   /* When the store's own list of turns lands while a turn is running, the answer is taken
      from a re-read rather than appended. A re-read that cannot be drawn was reaching the
      reader as that turn having failed, with an internal message where the answer belongs. */
-  let minted = 0;
-  vi.stubGlobal("crypto", { randomUUID: () => `t${++minted}` });
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
   const body = (data: unknown) =>
-    ({ ok: true, json: async () => data }) as unknown as Response;
-  let reads = 0;
+    ({ ok: true, json: async () => data }) as unknown as Response
+  let reads = 0
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return answering();
-      if (path === "/api/sessions")
+      if (path === '/api/ask') return answering()
+      if (path === '/api/sessions')
         return body([
-          { thread_id: "old", opened_with: OLDER.question },
-          { thread_id: "t1", opened_with: "Why am I stalling?" },
-        ]);
+          { thread_id: 'old', opened_with: OLDER.question },
+          { thread_id: 't1', opened_with: 'Why am I stalling?' },
+        ])
       // Readable on the way back into the conversation, nonsense on the re-read after.
-      if (path === "/api/sessions/t1")
-        return body(reads++ === 0 ? [] : NONSENSE);
-      if (path === "/api/sessions/old") return body([OLDER]);
-      if (path.startsWith("/api/uploads/")) return body({ text: KEPT });
-      return body(served[route(path)] ?? []);
+      if (path === '/api/sessions/t1') return body(reads++ === 0 ? [] : NONSENSE)
+      if (path === '/api/sessions/old') return body([OLDER])
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[route(path)] ?? [])
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(LIVE[0].summary);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(LIVE[0].summary)
 
   // Away and back, so the answer arrives to a conversation the store has re-read.
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Why am I stalling?" }),
-  );
-  await screen.findByText(/Working/);
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  fireEvent.click(await screen.findByRole('button', { name: 'Why am I stalling?' }))
+  await screen.findByText(/Working/)
 
-  turn.release();
+  turn.release()
 
   // The answer is on the page, from the turn in hand rather than from the re-read.
-  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy();
-  expect(screen.queryByText(/is not a function/)).toBeNull();
-  expect(screen.queryByText(/conversation you left/)).toBeNull();
+  expect(await screen.findByText(/Sleep, not volume/)).toBeTruthy()
+  expect(screen.queryByText(/is not a function/)).toBeNull()
+  expect(screen.queryByText(/conversation you left/)).toBeNull()
   // Once in the conversation — the other one on the page is the session it names.
-  expect(
-    [...document.querySelectorAll(`.${answerCss.said}`)].map(
-      (each) => each.textContent,
-    ),
-  ).toEqual(["Why am I stalling?"]);
-});
+  expect([...document.querySelectorAll(`.${answerCss.said}`)].map((each) => each.textContent)).toEqual(
+    ['Why am I stalling?'],
+  )
+})
 
-test("a conversation that cannot be drawn does not half-move the page into it", async () => {
+test('a conversation that cannot be drawn does not half-move the page into it', async () => {
   /* Reopening changes three things at once: which thread the page is in, which turns it
      shows, and which document it reads. Where the turns are what cannot be drawn, the
      other two had already moved — so the reader sat in one conversation looking at
      another's, and their next question was asked on the thread they could not see. */
-  const asked: string[] = [];
-  let minted = 0;
-  vi.stubGlobal("crypto", { randomUUID: () => `t${++minted}` });
+  const asked: string[] = []
+  let minted = 0
+  vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
   const body = (data: unknown) =>
-    ({ ok: true, json: async () => data }) as unknown as Response;
+    ({ ok: true, json: async () => data }) as unknown as Response
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (path === "/api/ask") {
-        asked.push(JSON.parse(String(init?.body)).thread_id);
-        return answering();
+      if (path === '/api/ask') {
+        asked.push(JSON.parse(String(init?.body)).thread_id)
+        return answering()
       }
-      if (path === "/api/sessions/old") return body(NONSENSE);
-      if (path.startsWith("/api/uploads/")) return body({ text: KEPT });
-      return body(served[route(path)] ?? []);
+      if (path === '/api/sessions/old') return body(NONSENSE)
+      if (path.startsWith('/api/uploads/')) return body({ text: KEPT })
+      return body(served[route(path)] ?? [])
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   const ask = (question: string) => {
-    turn = held();
+    turn = held()
     fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
       target: { value: question },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-    turn.release();
-  };
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+    turn.release()
+  }
 
-  ask("Why am I stalling?");
-  await screen.findByText(/Sleep, not volume/);
+  ask('Why am I stalling?')
+  await screen.findByText(/Sleep, not volume/)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  expect(await screen.findByText(/could not be read/)).toBeTruthy();
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  expect(await screen.findByText(/could not be read/)).toBeTruthy()
 
   // Still in the conversation on screen, and still asking in it.
-  expect(screen.getByText(/Sleep, not volume/)).toBeTruthy();
-  ask("And now?");
-  await screen.findByText("And now?");
-  expect(asked).toEqual(["t1", "t1"]);
-});
+  expect(screen.getByText(/Sleep, not volume/)).toBeTruthy()
+  ask('And now?')
+  await screen.findByText('And now?')
+  expect(asked).toEqual(['t1', 't1'])
+})
 
 /**
  * A stream of the given frames. Everything from `held` on waits until the test releases
@@ -1918,591 +1682,536 @@ test("a conversation that cannot be drawn does not half-move the page into it", 
  * makes "this was on the page before the turn was" assertable.
  */
 function streaming(parts: string[], held = parts.length - 1): Response {
-  const encoder = new TextEncoder();
-  let next = 0;
+  const encoder = new TextEncoder()
+  let next = 0
   const reader = {
     cancel: async () => {},
     read: async () => {
-      if (next === held) await turn.until;
-      if (next === parts.length) return { done: true, value: undefined };
-      return { done: false, value: encoder.encode(parts[next++]) };
+      if (next === held) await turn.until
+      if (next === parts.length) return { done: true, value: undefined }
+      return { done: false, value: encoder.encode(parts[next++]) }
     },
-  };
-  return { ok: true, body: { getReader: () => reader } } as unknown as Response;
+  }
+  return { ok: true, body: { getReader: () => reader } } as unknown as Response
 }
 
 /** A turn that writes its answer in pieces, its final step and its `turn` withheld. */
 function writing(pieces: string[]): Response {
   const parts = [
-    frame("step", LIVE[0]),
-    ...pieces.map((piece) => frame("text", { text: piece })),
-    frame("step", TURN.trace[0]),
-    frame("turn", TURN),
-  ];
-  return streaming(parts, parts.length - 2);
+    frame('step', LIVE[0]),
+    ...pieces.map((piece) => frame('text', { text: piece })),
+    frame('step', TURN.trace[0]),
+    frame('turn', TURN),
+  ]
+  return streaming(parts, parts.length - 2)
 }
 
 /** The page over a stream of the given frames, asked one question. */
 async function asked(parts: string[], held?: number): Promise<void> {
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return streaming(parts, held);
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      if (path.endsWith("/scope") && !(path in served))
-        return {
-          ok: true,
-          json: async () => ({ pin: null }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/ask') return streaming(parts, held)
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
 }
 
 /* The outer test of story 19. Held under `test.fails` — vitest's strict xfail — while
    the list was worked through, so leaving the marker behind was not possible. */
-test("the answer arrives as it is written, and its citation is clickable once it lands", async () => {
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(async (path: string) => {
-      if (path === "/api/ask") return writing(["Sleep, ", "not volume [1]."]);
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
-    }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+test(
+  'the answer arrives as it is written, and its citation is clickable once it lands',
+  async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (path: string) => {
+        if (path === '/api/ask') return writing(['Sleep, ', 'not volume [1].'])
+        if (path.startsWith('/api/uploads/'))
+          return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+        return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
+      }),
+    )
+    render(<App />)
+    await screen.findByText('notes.md')
 
-  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+      target: { value: 'Why am I stalling?' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
 
-  // Written, before the turn that carries it exists — so `[1]` is still literal text.
-  expect(await screen.findByText(/Sleep, not volume \[1\]\./)).toBeTruthy();
-  expect(screen.queryByText(/Working/)).toBeNull();
-  expect(
-    screen.queryByRole("button", { name: "Open cited source 1" }),
-  ).toBeNull();
+    // Written, before the turn that carries it exists — so `[1]` is still literal text.
+    expect(await screen.findByText(/Sleep, not volume \[1\]\./)).toBeTruthy()
+    expect(screen.queryByText(/Working/)).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Open cited source 1' })).toBeNull()
 
-  turn.release();
+    turn.release()
 
-  const cite = await screen.findByRole("button", {
-    name: "Open cited source 1",
-  });
-  fireEvent.click(cite);
-  expect(await screen.findByRole("dialog")).toBeTruthy();
-});
+    const cite = await screen.findByRole('button', { name: 'Open cited source 1' })
+    fireEvent.click(cite)
+    expect(await screen.findByRole('dialog')).toBeTruthy()
+  },
+)
 
-test("a turn still being written shows what has been written, not Working", async () => {
+
+test('a turn still being written shows what has been written, not Working', async () => {
   await asked([
-    frame("step", LIVE[0]),
-    frame("text", { text: "Sleep, " }),
-    frame("text", { text: "not volume." }),
-    frame("turn", TURN),
-  ]);
+    frame('step', LIVE[0]),
+    frame('text', { text: 'Sleep, ' }),
+    frame('text', { text: 'not volume.' }),
+    frame('turn', TURN),
+  ])
 
-  expect(await screen.findByText("Sleep, not volume.")).toBeTruthy();
-  expect(screen.queryByText(/Working/)).toBeNull();
-});
+  expect(await screen.findByText('Sleep, not volume.')).toBeTruthy()
+  expect(screen.queryByText(/Working/)).toBeNull()
+})
 
-test("a turn with nothing written yet still says Working", async () => {
-  await asked([frame("step", LIVE[0]), frame("turn", TURN)]);
+test('a turn with nothing written yet still says Working', async () => {
+  await asked([frame('step', LIVE[0]), frame('turn', TURN)])
 
-  expect(await screen.findByText(LIVE[0].summary)).toBeTruthy();
-  expect(screen.getByText(/Working/)).toBeTruthy();
-});
+  expect(await screen.findByText(LIVE[0].summary)).toBeTruthy()
+  expect(screen.getByText(/Working/)).toBeTruthy()
+})
 
-test("the answer after an aside starts clean", async () => {
+test('the answer after an aside starts clean', async () => {
   /* A model may write before it calls a tool. That text is the trace's — it is already
      kept as the step's detail — and letting the next round append to it would leave the
      reader an answer with the model's aside glued to the front of it. The stream says
      which is which, so the page no longer infers it from the shape of the steps. */
   await asked([
-    frame("text", { text: "Let me check the log. " }),
-    frame("aside", {}),
-    frame("step", LIVE[0]),
-    frame("step", LIVE[1]),
-    frame("text", { text: "Sleep, " }),
-    frame("text", { text: "not volume." }),
-    frame("turn", TURN),
-  ]);
+    frame('text', { text: 'Let me check the log. ' }),
+    frame('aside', {}),
+    frame('step', LIVE[0]),
+    frame('step', LIVE[1]),
+    frame('text', { text: 'Sleep, ' }),
+    frame('text', { text: 'not volume.' }),
+    frame('turn', TURN),
+  ])
 
-  expect(await screen.findByText("Sleep, not volume.")).toBeTruthy();
-  expect(screen.queryByText(/Let me check the log/)).toBeNull();
-});
+  expect(await screen.findByText('Sleep, not volume.')).toBeTruthy()
+  expect(screen.queryByText(/Let me check the log/)).toBeNull()
+})
 
-test("an aside puts the turn back to Working, rather than reading as the answer", async () => {
+test('an aside puts the turn back to Working, rather than reading as the answer', async () => {
   /* Between the aside and the round that answers, the page has nothing to show but that
      it is still working. Leaving the superseded sentence there presents the model's note
      to itself as cora's answer for the whole of a tool round — and if the turn then
      fails, that is the last thing the reader was told. */
   const parts = [
-    frame("text", { text: "Let me check your notes. " }),
-    frame("aside", {}),
-    frame("step", LIVE[0]),
-    frame("text", { text: "Sleep, not volume [1]." }),
-    frame("turn", TURN),
-  ];
-  await asked(parts, 3);
+    frame('text', { text: 'Let me check your notes. ' }),
+    frame('aside', {}),
+    frame('step', LIVE[0]),
+    frame('text', { text: 'Sleep, not volume [1].' }),
+    frame('turn', TURN),
+  ]
+  await asked(parts, 3)
 
-  expect(await screen.findByText(LIVE[0].summary)).toBeTruthy();
-  expect(screen.queryByText(/Let me check your notes/)).toBeNull();
-  expect(screen.getByText(/Working/)).toBeTruthy();
+  expect(await screen.findByText(LIVE[0].summary)).toBeTruthy()
+  expect(screen.queryByText(/Let me check your notes/)).toBeNull()
+  expect(screen.getByText(/Working/)).toBeTruthy()
 
-  turn.release();
+  turn.release()
 
   expect(
-    await screen.findByRole("button", { name: "Open cited source 1" }),
-  ).toBeTruthy();
-  expect(screen.getByText(/Sleep, not volume/)).toBeTruthy();
-  expect(screen.queryByText(/Working/)).toBeNull();
-});
+    await screen.findByRole('button', { name: 'Open cited source 1' }),
+  ).toBeTruthy()
+  expect(screen.getByText(/Sleep, not volume/)).toBeTruthy()
+  expect(screen.queryByText(/Working/)).toBeNull()
+})
 
-test("a step arriving does not on its own clear what has been written", async () => {
+test('a step arriving does not on its own clear what has been written', async () => {
   /* The step that ends a round arrives after the text written in it and before the turn
      that carries it, so a page that cleared on the step would blank the finished answer
      for the frame between the two. The aside is what clears, and a final round sends
      none. */
+  const parts = [frame('text', { text: 'Sleep, not volume.' }), frame('step', LIVE[0])]
+  await asked(parts, parts.length)
+
+  expect(await screen.findByText(LIVE[0].summary)).toBeTruthy()
+  expect(screen.getByText('Sleep, not volume.')).toBeTruthy()
+})
+
+test('a turn that fails after writing shows the error in place of what was written', async () => {
   const parts = [
-    frame("text", { text: "Sleep, not volume." }),
-    frame("step", LIVE[0]),
-  ];
-  await asked(parts, parts.length);
+    frame('text', { text: 'Sleep, ' }),
+    frame('error', { error: 'The model is busy. Please try again.' }),
+  ]
+  await asked(parts, parts.length - 1)
 
-  expect(await screen.findByText(LIVE[0].summary)).toBeTruthy();
-  expect(screen.getByText("Sleep, not volume.")).toBeTruthy();
-});
+  expect(await screen.findByText('Sleep,')).toBeTruthy()
 
-test("a turn that fails after writing shows the error in place of what was written", async () => {
+  turn.release()
+
+  expect(await screen.findByText(/The model is busy/)).toBeTruthy()
+  expect(screen.queryByText('Sleep,')).toBeNull()
+})
+
+test('an answer written into a conversation the reader left does not land on the page', async () => {
   const parts = [
-    frame("text", { text: "Sleep, " }),
-    frame("error", { error: "The model is busy. Please try again." }),
-  ];
-  await asked(parts, parts.length - 1);
+    frame('text', { text: 'Sleep, ' }),
+    frame('text', { text: 'not volume.' }),
+    frame('turn', TURN),
+  ]
+  await asked(parts, 1)
 
-  expect(await screen.findByText("Sleep,")).toBeTruthy();
+  expect(await screen.findByText('Sleep,')).toBeTruthy()
 
-  turn.release();
+  fireEvent.click(screen.getByRole('button', { name: /New session/i }))
+  turn.release()
+  await flushed()
 
-  expect(await screen.findByText(/The model is busy/)).toBeTruthy();
-  expect(screen.queryByText("Sleep,")).toBeNull();
-});
+  expect(screen.queryByText(/Sleep/)).toBeNull()
+})
 
-test("an answer written into a conversation the reader left does not land on the page", async () => {
+test('the conversation follows the answer down as it is written', async () => {
   const parts = [
-    frame("text", { text: "Sleep, " }),
-    frame("text", { text: "not volume." }),
-    frame("turn", TURN),
-  ];
-  await asked(parts, 1);
+    frame('text', { text: 'Sleep, ' }),
+    frame('text', { text: 'not volume.' }),
+    frame('turn', TURN),
+  ]
+  await asked(parts, parts.length - 1)
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
+  await screen.findByText('Sleep, not volume.')
 
-  expect(await screen.findByText("Sleep,")).toBeTruthy();
+  atTheBottom(scroller)
+  turn.release()
 
-  fireEvent.click(screen.getByRole("button", { name: /New session/i }));
-  turn.release();
-  await flushed();
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
+})
 
-  expect(screen.queryByText(/Sleep/)).toBeNull();
-});
-
-test("the conversation follows the answer down as it is written", async () => {
-  const parts = [
-    frame("text", { text: "Sleep, " }),
-    frame("text", { text: "not volume." }),
-    frame("turn", TURN),
-  ];
-  await asked(parts, parts.length - 1);
-  const scroller = document.querySelector(
-    `.${answerCss.scroller}`,
-  ) as HTMLElement;
-  await screen.findByText("Sleep, not volume.");
-
-  atTheBottom(scroller);
-  turn.release();
-
-  await screen.findByRole("button", { name: "Open cited source 1" });
-  await waitFor(() => expect(scroller.scrollTop).toBe(5000));
-});
-
-test("a reader who has scrolled up is left there as the answer grows", async () => {
+test('a reader who has scrolled up is left there as the answer grows', async () => {
   /* The scroll effect runs once per piece now, so a reader who goes back to re-read an
      earlier turn during a thirty-second answer was yanked to the bottom on the next
      one — the conversation could not be read while it was being written. */
   const parts = [
-    frame("text", { text: "Sleep, " }),
-    frame("text", { text: "not volume." }),
-    frame("turn", TURN),
-  ];
-  await asked(parts, 1);
-  const scroller = document.querySelector(
-    `.${answerCss.scroller}`,
-  ) as HTMLElement;
-  await screen.findByText("Sleep,");
-  scrolledUp(scroller);
+    frame('text', { text: 'Sleep, ' }),
+    frame('text', { text: 'not volume.' }),
+    frame('turn', TURN),
+  ]
+  await asked(parts, 1)
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
+  await screen.findByText('Sleep,')
+  scrolledUp(scroller)
 
-  turn.release();
-  await screen.findByRole("button", { name: "Open cited source 1" });
-  await flushed();
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+  await flushed()
 
-  expect(scroller.scrollTop).toBe(0);
-});
+  expect(scroller.scrollTop).toBe(0)
+})
 
-test("a conversation reopened shows its newest turn, however the reader had scrolled", async () => {
+test('a conversation reopened shows its newest turn, however the reader had scrolled', async () => {
   /* Following is this conversation's, not the page's: leaving one halfway up it is no
      statement about the next, which opens on the turn it left off at like any other. */
-  render(<App />);
-  await screen.findByText("notes.md");
-  const scroller = document.querySelector(
-    `.${answerCss.scroller}`,
-  ) as HTMLElement;
-  scrolledUp(scroller);
+  render(<App />)
+  await screen.findByText('notes.md')
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
+  scrolledUp(scroller)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
 
-  await waitFor(() => expect(scroller.scrollTop).toBe(5000));
-});
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
+})
 
-test("a reader who scrolls back to the bottom is followed again", async () => {
+test('a reader who scrolls back to the bottom is followed again', async () => {
   const parts = [
-    frame("text", { text: "Sleep, " }),
-    frame("text", { text: "not volume." }),
-    frame("turn", TURN),
-  ];
-  await asked(parts, 1);
-  const scroller = document.querySelector(
-    `.${answerCss.scroller}`,
-  ) as HTMLElement;
-  await screen.findByText("Sleep,");
-  scrolledUp(scroller);
-  scroller.scrollTop = 4200;
-  fireEvent.scroll(scroller);
+    frame('text', { text: 'Sleep, ' }),
+    frame('text', { text: 'not volume.' }),
+    frame('turn', TURN),
+  ]
+  await asked(parts, 1)
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
+  await screen.findByText('Sleep,')
+  scrolledUp(scroller)
+  scroller.scrollTop = 4200
+  fireEvent.scroll(scroller)
 
-  turn.release();
-  await screen.findByRole("button", { name: "Open cited source 1" });
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
 
-  await waitFor(() => expect(scroller.scrollTop).toBe(5000));
-});
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
+})
 
-test("asking a question scrolls to it from wherever the reader had scrolled to", async () => {
+test('asking a question scrolls to it from wherever the reader had scrolled to', async () => {
   /* Following is the reader's to give up, and asking is them giving it back: the question
      they just typed is the one thing that belongs on screen. */
-  await asked([frame("turn", TURN)], 1);
-  const scroller = document.querySelector(
-    `.${answerCss.scroller}`,
-  ) as HTMLElement;
-  await screen.findByText(/Working/);
-  scrolledUp(scroller);
+  await asked([frame('turn', TURN)], 1)
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
+  await screen.findByText(/Working/)
+  scrolledUp(scroller)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "And now?" },
-  });
-  turn.release();
-  await screen.findByRole("button", { name: "Open cited source 1" });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
+    target: { value: 'And now?' },
+  })
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
 
-  await waitFor(() => expect(scroller.scrollTop).toBe(5000));
-});
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
+})
 
 /* The outer tests of story 21. Held under `test.fails` — vitest's strict xfail — while
    the list was worked through, so leaving the marker behind was not possible. */
 
 const GROWN = {
-  answer: "Sleep is the lever.\n\nNot volume and not intensity [1].",
+  answer: 'Sleep is the lever.\n\nNot volume and not intensity [1].',
   citations: TURN.citations,
   trace: TURN.trace,
-};
+}
 
-test("a paragraph the reader is reading is the same node when the answer finishes", async () => {
-  /* A selection lives on the nodes it was made in, and it is those nodes the fix keeps:
+test(
+  'a paragraph the reader is reading is the same node when the answer finishes',
+  async () => {
+    /* A selection lives on the nodes it was made in, and it is those nodes the fix keeps:
        happy-dom's Selection outlives their removal where a browser's collapses, so the
        node is what can be asserted here — the reader's copy is what it buys. */
-  await asked(
-    [
-      frame("text", { text: "Sleep is the lever.\n\n" }),
-      frame("text", { text: "Not volume " }),
-      frame("text", { text: "and not intensity [1]." }),
-      frame("turn", GROWN),
-    ],
-    2,
-  );
-  const read = await screen.findByText("Sleep is the lever.");
-  const words = read.firstChild;
+    await asked(
+      [
+        frame('text', { text: 'Sleep is the lever.\n\n' }),
+        frame('text', { text: 'Not volume ' }),
+        frame('text', { text: 'and not intensity [1].' }),
+        frame('turn', GROWN),
+      ],
+      2,
+    )
+    const read = await screen.findByText('Sleep is the lever.')
+    const words = read.firstChild
 
-  turn.release();
-  await screen.findByRole("button", { name: "Open cited source 1" });
+    turn.release()
+    await screen.findByRole('button', { name: 'Open cited source 1' })
 
-  expect(screen.getByText("Sleep is the lever.")).toBe(read);
-  expect(read.firstChild).toBe(words);
-});
+    expect(screen.getByText('Sleep is the lever.')).toBe(read)
+    expect(read.firstChild).toBe(words)
+  },
+)
 
 /** The rail's file input, which has no label of its own — the label is the button. */
 const upload = (name: string) => {
-  const picker = document.querySelector(
-    'input[type="file"]',
-  ) as HTMLInputElement;
-  fireEvent.change(picker, { target: { files: [new File(["notes"], name)] } });
-};
+  const picker = document.querySelector('input[type="file"]') as HTMLInputElement
+  fireEvent.change(picker, { target: { files: [new File(['notes'], name)] } })
+}
 
-test("a file uploaded twice is added, and then said to be there already", async () => {
-  const counts = [12, 0];
+test('a file uploaded twice is added, and then said to be there already', async () => {
+  const counts = [12, 0]
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (route(path) === "/api/documents" && init?.method === "POST")
+      if (route(path) === '/api/documents' && init?.method === 'POST')
         return {
           ok: true,
-          json: async () => ({ document: "notes.md", chunks: counts.shift() }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+          json: async () => ({ document: 'notes.md', chunks: counts.shift() }),
+        } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  upload("notes.md");
-  expect(
-    await screen.findByText("Added “notes.md” — 12 passages."),
-  ).toBeTruthy();
+  upload('notes.md')
+  expect(await screen.findByText('Added “notes.md” — 12 passages.')).toBeTruthy()
 
-  upload("notes.md");
+  upload('notes.md')
   expect(
-    await screen.findByText("“notes.md” is already in your documents."),
-  ).toBeTruthy();
-});
+    await screen.findByText('“notes.md” is already in your documents.'),
+  ).toBeTruthy()
+})
 
 /** The page with a rail whose uploads are answered in turn: a chunk count, or a refusal. */
 async function ready(outcomes: (number | { error: string })[]): Promise<void> {
-  const answers = [...outcomes];
+  const answers = [...outcomes]
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (route(path) === "/api/documents" && init?.method === "POST") {
-        const outcome = answers.shift();
-        if (typeof outcome === "number")
+      if (route(path) === '/api/documents' && init?.method === 'POST') {
+        const outcome = answers.shift()
+        if (typeof outcome === 'number')
           return {
             ok: true,
-            json: async () => ({ document: "notes.md", chunks: outcome }),
-          } as unknown as Response;
-        return { ok: false, json: async () => outcome } as unknown as Response;
+            json: async () => ({ document: 'notes.md', chunks: outcome }),
+          } as unknown as Response
+        return { ok: false, json: async () => outcome } as unknown as Response
       }
-      if (path === "/api/ask") return answering();
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      if (path.endsWith("/scope") && !(path in served))
-        return {
-          ok: true,
-          json: async () => ({ pin: null }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 }
 
-test("one passage indexed is one passage", async () => {
-  await ready([1]);
+test('one passage indexed is one passage', async () => {
+  await ready([1])
 
-  upload("notes.md");
+  upload('notes.md')
 
-  expect(await screen.findByText("Added “notes.md” — 1 passage.")).toBeTruthy();
-});
+  expect(await screen.findByText('Added “notes.md” — 1 passage.')).toBeTruthy()
+})
 
-test("an upload that indexed nothing is drawn as the outcome it is", async () => {
+test('an upload that indexed nothing is drawn as the outcome it is', async () => {
   /* A duplicate is not the outcome the reader asked for, and not the one a document added
      gets: the reader tells the two apart by looking at them. The store answering "already
      there" before "added" cannot happen — the order is arbitrary because only the drawing
      is under test. */
-  await ready([0, 12]);
+  await ready([0, 12])
 
-  upload("notes.md");
-  const duplicate = await screen.findByText(
-    "“notes.md” is already in your documents.",
-  );
+  upload('notes.md')
+  const duplicate = await screen.findByText('“notes.md” is already in your documents.')
   expect(duplicate.closest(`.${noticeCss.uploadNotice}`)?.className).toContain(
     noticeCss.wrong,
-  );
+  )
 
-  upload("notes.md");
-  const added = await screen.findByText("Added “notes.md” — 12 passages.");
+  upload('notes.md')
+  const added = await screen.findByText('Added “notes.md” — 12 passages.')
   expect(added.closest(`.${noticeCss.uploadNotice}`)?.className).not.toContain(
     noticeCss.wrong,
-  );
-});
+  )
+})
 
-test("the reader can shut what an upload said", async () => {
-  await ready([12]);
+test('the reader can shut what an upload said', async () => {
+  await ready([12])
 
-  upload("notes.md");
-  await screen.findByText("Added “notes.md” — 12 passages.");
-  fireEvent.click(screen.getByRole("button", { name: "Dismiss" }));
+  upload('notes.md')
+  await screen.findByText('Added “notes.md” — 12 passages.')
+  fireEvent.click(screen.getByRole('button', { name: 'Dismiss' }))
 
-  expect(screen.queryByText("Added “notes.md” — 12 passages.")).toBeNull();
-});
+  expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull()
+})
 
-test("what an upload did is drawn beside the list it changed", async () => {
+test('what an upload did is drawn beside the list it changed', async () => {
   /* Not over the conversation: the sentence is about this rail, and the control that
      raised it is directly above. */
-  await ready([12]);
+  await ready([12])
 
-  upload("notes.md");
+  upload('notes.md')
 
-  const said = await screen.findByText("Added “notes.md” — 12 passages.");
-  expect(said.closest(`.${appCss.railDocs}`)).toBeTruthy();
-  expect(document.querySelector(`.${appCss.banners}`)?.textContent).toBe("");
-});
+  const said = await screen.findByText('Added “notes.md” — 12 passages.')
+  expect(said.closest(`.${appCss.railDocs}`)).toBeTruthy()
+  expect(document.querySelector(`.${appCss.banners}`)?.textContent).toBe('')
+})
 
-test("an upload that fails says so, and takes the last one’s notice away", async () => {
-  await ready([
-    12,
-    { error: "That upload is larger than the 5 MB cora reads." },
-  ]);
+test('an upload that fails says so, and takes the last one’s notice away', async () => {
+  await ready([12, { error: 'That upload is larger than the 5 MB cora reads.' }])
 
-  upload("notes.md");
-  await screen.findByText("Added “notes.md” — 12 passages.");
-  upload("huge.pdf");
+  upload('notes.md')
+  await screen.findByText('Added “notes.md” — 12 passages.')
+  upload('huge.pdf')
 
   expect(
-    await screen.findByText("That upload is larger than the 5 MB cora reads."),
-  ).toBeTruthy();
-  expect(screen.queryByText("Added “notes.md” — 12 passages.")).toBeNull();
-});
+    await screen.findByText('That upload is larger than the 5 MB cora reads.'),
+  ).toBeTruthy()
+  expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull()
+})
 
-test("a notice for an upload the reader walked away from is not drawn", async () => {
+test('a notice for an upload the reader walked away from is not drawn', async () => {
   /* Ingestion takes seconds and nothing stops the reader leaving while it runs, so the
      notice would land on a conversation the upload never happened in — where nothing can
      take it away again, `New session` having nothing left to leave. */
-  const ingesting = held();
+  const ingesting = held()
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (route(path) === "/api/documents" && init?.method === "POST") {
-        await ingesting.until;
+      if (route(path) === '/api/documents' && init?.method === 'POST') {
+        await ingesting.until
         return {
           ok: true,
-          json: async () => ({ document: "notes.md", chunks: 12 }),
-        } as unknown as Response;
+          json: async () => ({ document: 'notes.md', chunks: 12 }),
+        } as unknown as Response
       }
-      if (path === "/api/ask") return answering();
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      if (path.endsWith("/scope") && !(path in served))
-        return {
-          ok: true,
-          json: async () => ({ pin: null }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
   /* A conversation to leave, so `New session` is live. */
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByRole("button", { name: "Open cited source 1" });
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
 
-  upload("notes.md");
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
-  ingesting.release();
-  await flushed();
+  upload('notes.md')
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  ingesting.release()
+  await flushed()
 
-  expect(screen.queryByText("Added “notes.md” — 12 passages.")).toBeNull();
-});
+  expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull()
+})
 
-test("starting a new session takes the last upload’s notice away", async () => {
+test('starting a new session takes the last upload’s notice away', async () => {
   /* The notice is news about what the reader just handed the page. Left standing over a
      conversation opened after it, it is a banner with nothing behind it — and nothing
      else ever takes it away. */
-  await ready([12]);
+  await ready([12])
 
-  upload("notes.md");
-  await screen.findByText("Added “notes.md” — 12 passages.");
+  upload('notes.md')
+  await screen.findByText('Added “notes.md” — 12 passages.')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByRole("button", { name: "Open cited source 1" });
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
   await waitFor(() =>
-    expect(screen.queryByText("Added “notes.md” — 12 passages.")).toBeNull(),
-  );
-});
+    expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull(),
+  )
+})
 
-test("reopening an earlier conversation takes the notice away too", async () => {
+test('reopening an earlier conversation takes the notice away too', async () => {
   /* The same boundary as a new session: the reader has moved to a conversation the upload
      had not happened in yet. */
-  await ready([12]);
+  await ready([12])
 
-  upload("notes.md");
-  await screen.findByText("Added “notes.md” — 12 passages.");
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
+  upload('notes.md')
+  await screen.findByText('Added “notes.md” — 12 passages.')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
 
   await waitFor(() =>
-    expect(screen.queryByText("Added “notes.md” — 12 passages.")).toBeNull(),
-  );
-});
+    expect(screen.queryByText('Added “notes.md” — 12 passages.')).toBeNull(),
+  )
+})
 
-test("a notice stands while the reader asks their next question", async () => {
+test('a notice stands while the reader asks their next question', async () => {
   /* Every load that goes through clears the banner about a load — an upload's outcome is
      not one, and a question in between is not the reader being told twice. */
-  await ready([12]);
+  await ready([12])
 
-  upload("notes.md");
-  await screen.findByText("Added “notes.md” — 12 passages.");
+  upload('notes.md')
+  await screen.findByText('Added “notes.md” — 12 passages.')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByRole("button", { name: "Open cited source 1" });
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
 
-  expect(screen.getByText("Added “notes.md” — 12 passages.")).toBeTruthy();
-});
+  expect(screen.getByText('Added “notes.md” — 12 passages.')).toBeTruthy()
+})
 
 /** Every sentence story 22 deleted. Kept as one list so a paragraph reintroduced anywhere
  *  in the rail fails here, whichever panel it lands in. */
@@ -2517,126 +2226,114 @@ const EXPLANATIONS = [
   /tell cora something about yourself/,
   /the agent stays the same/,
   /CORA_PLUGINS/,
-];
+]
 
 const nothingExplains = () =>
-  EXPLANATIONS.forEach((said) => expect(screen.queryByText(said)).toBeNull());
+  EXPLANATIONS.forEach((said) => expect(screen.queryByText(said)).toBeNull())
 
-test("a full page explains none of its own panels", async () => {
+test('a full page explains none of its own panels', async () => {
   /* Documents, steps, facts and a past conversation — every panel with something
      in it, and the reader is told about none of them. */
-  render(<App />);
-  await screen.findByText("notes.md");
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
-  expect(screen.getByText(TURN.trace[0].summary)).toBeTruthy();
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  expect(screen.getByText(TURN.trace[0].summary)).toBeTruthy()
 
-  fireEvent.click(screen.getByRole("button", { name: "notes.md" }));
-  expect(
-    await screen.findByText(/The rest of the document follows/),
-  ).toBeTruthy();
-  expect(screen.getByRole("heading", { name: "notes.md" })).toBeTruthy();
-  expect(screen.queryByText(/cited passage/)).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'notes.md' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+  expect(screen.getByRole('heading', { name: 'notes.md' })).toBeTruthy()
+  expect(screen.queryByText(/cited passage/)).toBeNull()
 
-  for (const panel of ["STEPS", "SESSIONS", "MEMORY"]) {
-    fireEvent.click(screen.getByRole("tab", { name: panel }));
-    nothingExplains();
+  for (const panel of ['STEPS', 'SESSIONS', 'MEMORY']) {
+    fireEvent.click(screen.getByRole('tab', { name: panel }))
+    nothingExplains()
   }
-});
+})
 
-test("a page with nothing in it yet draws the controls and no prose", async () => {
+test('a page with nothing in it yet draws the controls and no prose', async () => {
   /* A bare cora: no document, and no field to pin a conversation to. */
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(
       async (path: string) =>
         ({
           ok: true,
           json: async () =>
-            path === "/api/scopes" ? { available: [], default: "cora" } : [],
+            path === '/api/scopes' ? { available: [], default: 'cora' } : [],
         }) as unknown as Response,
     ),
-  );
-  render(<App />);
-  await screen.findByText("Add a document");
+  )
+  render(<App />)
+  await screen.findByText('Add a document')
 
-  for (const panel of ["STEPS", "SOURCE", "SESSIONS", "MEMORY"]) {
-    fireEvent.click(screen.getByRole("tab", { name: panel }));
-    nothingExplains();
+  for (const panel of ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY']) {
+    fireEvent.click(screen.getByRole('tab', { name: panel }))
+    nothingExplains()
   }
-  expect(screen.getByPlaceholderText(/Ask a question/)).toBeTruthy();
-});
+  expect(screen.getByPlaceholderText(/Ask a question/)).toBeTruthy()
+})
 
-test("an upload that failed in a conversation left behind keeps this one’s notice", async () => {
+test('an upload that failed in a conversation left behind keeps this one’s notice', async () => {
   /* The success path is stamped with the conversation the upload was started in; the
      failure path was not, and `setNotice(null)` reaches into state the reader's *current*
      conversation owns. The rejection is still drawn — a document is refused wherever the
      reader is — but it may not take away news about an upload that worked here. */
-  const refusing = held();
-  let first = true;
+  const refusing = held()
+  let first = true
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (route(path) === "/api/documents" && init?.method === "POST") {
+      if (route(path) === '/api/documents' && init?.method === 'POST') {
         if (first) {
-          first = false;
-          await refusing.until;
+          first = false
+          await refusing.until
           return {
             ok: false,
-            json: async () => ({
-              error: "That upload is larger than the 5 MB cora reads.",
-            }),
-          } as unknown as Response;
+            json: async () => ({ error: 'That upload is larger than the 5 MB cora reads.' }),
+          } as unknown as Response
         }
         return {
           ok: true,
-          json: async () => ({ document: "notes.md", chunks: 12 }),
-        } as unknown as Response;
+          json: async () => ({ document: 'notes.md', chunks: 12 }),
+        } as unknown as Response
       }
-      if (path === "/api/ask") return answering();
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      if (path.endsWith("/scope") && !(path in served))
-        return {
-          ok: true,
-          json: async () => ({ pin: null }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served))
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   /* A conversation to leave, so `New session` is live. */
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByRole("button", { name: "Open cited source 1" });
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByRole('button', { name: 'Open cited source 1' })
 
-  upload("huge.pdf");
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
-  upload("notes.md");
-  await screen.findByText("Added “notes.md” — 12 passages.");
+  upload('huge.pdf')
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  upload('notes.md')
+  await screen.findByText('Added “notes.md” — 12 passages.')
 
-  refusing.release();
+  refusing.release()
   expect(
-    await screen.findByText("That upload is larger than the 5 MB cora reads."),
-  ).toBeTruthy();
-  expect(screen.getByText("Added “notes.md” — 12 passages.")).toBeTruthy();
-});
+    await screen.findByText('That upload is larger than the 5 MB cora reads.'),
+  ).toBeTruthy()
+  expect(screen.getByText('Added “notes.md” — 12 passages.')).toBeTruthy()
+})
+
 
 // ── a question waiting on the reader ──
 
@@ -2654,38 +2351,38 @@ const asks = (
     ...options.map((each) => ({
       label: each.label,
       answer: each.label,
-      note: each.note ?? "",
+      note: each.note ?? '',
       needs_valid: false,
-      settled: "",
+      settled: '',
     })),
     {
       label: decline,
       answer: null,
-      note: "",
+      note: '',
       needs_valid: false,
-      settled: "You chose none of them.",
+      settled: 'You chose none of them.',
     },
   ],
-});
+})
 
 const DECISION = asks(
-  "Which bodyweight should I treat as current?",
+  'Which bodyweight should I treat as current?',
   [
-    { label: "77 kg", note: "intake form, 17 Aug" },
-    { label: "75 kg", note: "coach notes, February" },
+    { label: '77 kg', note: 'intake form, 17 Aug' },
+    { label: '75 kg', note: 'coach notes, February' },
   ],
-  "Do not use any of them",
-);
-const PAUSED = { asked: "What is my BMR?", card: DECISION };
+  'Do not use any of them',
+)
+const PAUSED = { asked: 'What is my BMR?', card: DECISION }
 const WEIGHED = {
-  answer: "At 75 kg your BMR is about 1,730 kcal.",
+  answer: 'At 75 kg your BMR is about 1,730 kcal.',
   citations: [],
   trace: [],
-};
+}
 
 const stream = (...parts: string[]): Response => {
-  const encoder = new TextEncoder();
-  let next = 0;
+  const encoder = new TextEncoder()
+  let next = 0
   return {
     ok: true,
     body: {
@@ -2697,33 +2394,30 @@ const stream = (...parts: string[]): Response => {
             : { done: false, value: encoder.encode(parts[next++]) },
       }),
     },
-  } as unknown as Response;
-};
+  } as unknown as Response
+}
 
-type Sent = { path: string; body: Record<string, unknown> };
+type Sent = { path: string; body: Record<string, unknown> }
 
 /** A stream whose last frame is withheld until the test lets it go, so what is asserted
  *  before that can only be what the page does while a turn is still running. */
-const holding = (
-  gate: { until: Promise<void> },
-  ...parts: string[]
-): Response => {
-  const encoder = new TextEncoder();
-  let next = 0;
+const holding = (gate: { until: Promise<void> }, ...parts: string[]): Response => {
+  const encoder = new TextEncoder()
+  let next = 0
   return {
     ok: true,
     body: {
       getReader: () => ({
         cancel: async () => {},
         read: async () => {
-          if (next === parts.length) return { done: true, value: undefined };
-          if (next === parts.length - 1) await gate.until;
-          return { done: false, value: encoder.encode(parts[next++]) };
+          if (next === parts.length) return { done: true, value: undefined }
+          if (next === parts.length - 1) await gate.until
+          return { done: false, value: encoder.encode(parts[next++]) }
         },
       }),
     },
-  } as unknown as Response;
-};
+  } as unknown as Response
+}
 
 /** A page whose every turn stops to ask, and whose resume answers. What comes back is
  *  what the page sent, so a test can say which of the two requests it made. */
@@ -2732,402 +2426,376 @@ const stopping = (
   gate?: { until: Promise<void> },
   answered: unknown = WEIGHED,
 ): Sent[] => {
-  const sent: Sent[] = [];
+  const sent: Sent[] = []
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (init?.body && typeof init.body === "string")
-        sent.push({ path, body: JSON.parse(init.body) });
-      if (path === "/api/ask") return stream(frame("paused", PAUSED));
-      if (path === "/api/resume")
+      if (init?.body && typeof init.body === 'string')
+        sent.push({ path, body: JSON.parse(init.body) })
+      if (path === '/api/ask') return stream(frame('paused', PAUSED))
+      if (path === '/api/resume')
         return gate
-          ? holding(gate, frame("turn", answered))
-          : stream(frame("turn", answered));
-      if (path.endsWith("/pending"))
-        return { ok: true, json: async () => pending } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+          ? holding(gate, frame('turn', answered))
+          : stream(frame('turn', answered))
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => pending } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  return sent;
-};
+  )
+  return sent
+}
 
-const askAbout = (question = "What is my BMR?") => {
+const askAbout = (question = 'What is my BMR?') => {
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
     target: { value: question },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-};
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+}
 
-const card = () => screen.findByRole("group", { name: /Paused/ });
+const card = () => screen.findByRole('group', { name: /Paused/ })
 
 const stopped = async () => {
-  render(<App />);
-  await screen.findByText("notes.md");
-  askAbout();
-  return card();
-};
+  render(<App />)
+  await screen.findByText('notes.md')
+  askAbout()
+  return card()
+}
 
-const of = (sent: Sent[], path: string) =>
-  sent.filter((each) => each.path === path);
+const of = (sent: Sent[], path: string) => sent.filter((each) => each.path === path)
 
-test("a turn that stops to ask draws the question and every way out of it", async () => {
-  stopping();
+test('a turn that stops to ask draws the question and every way out of it', async () => {
+  stopping()
 
-  const asked = await stopped();
+  const asked = await stopped()
 
-  expect(within(asked).getByText(DECISION.prompt)).toBeTruthy();
-  expect(within(asked).getByRole("button", { name: /77 kg/ })).toBeTruthy();
-  expect(within(asked).getByRole("button", { name: /75 kg/ })).toBeTruthy();
-  expect(
-    within(asked).getByRole("button", { name: DECISION.actions[2].label }),
-  ).toBeTruthy();
-});
+  expect(within(asked).getByText(DECISION.prompt)).toBeTruthy()
+  expect(within(asked).getByRole('button', { name: /77 kg/ })).toBeTruthy()
+  expect(within(asked).getByRole('button', { name: /75 kg/ })).toBeTruthy()
+  expect(within(asked).getByRole('button', { name: DECISION.actions[2].label })).toBeTruthy()
+})
 
-test("an option says where it came from, beside the value itself", async () => {
-  stopping();
+test('an option says where it came from, beside the value itself', async () => {
+  stopping()
 
-  const asked = await stopped();
+  const asked = await stopped()
 
-  expect(within(asked).getByText("coach notes, February")).toBeTruthy();
-});
+  expect(within(asked).getByText('coach notes, February')).toBeTruthy()
+})
 
-test("picking an option finishes the turn, and the card stops offering any", async () => {
+test('picking an option finishes the turn, and the card stops offering any', async () => {
   /* The prompt stays: a settled card that no longer says what it was about is a line
      of an answer with nothing to read it against. What goes is the choosing. */
-  const sent = stopping();
-  const asked = await stopped();
+  const sent = stopping()
+  const asked = await stopped()
 
-  fireEvent.click(within(asked).getByRole("button", { name: /75 kg/ }));
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
 
-  expect(await screen.findByText(/1,730 kcal/)).toBeTruthy();
-  expect(of(sent, "/api/resume")[0].body.answer).toBe("75 kg");
-  expect(screen.getByText(DECISION.prompt)).toBeTruthy();
-  expect(screen.queryByRole("button", { name: /77 kg/ })).toBeNull();
-});
+  expect(await screen.findByText(/1,730 kcal/)).toBeTruthy()
+  expect(of(sent, '/api/resume')[0].body.answer).toBe('75 kg')
+  expect(screen.getByText(DECISION.prompt)).toBeTruthy()
+  expect(screen.queryByRole('button', { name: /77 kg/ })).toBeNull()
+})
 
-test("the line left behind names what was chosen", async () => {
-  stopping();
-  const asked = await stopped();
+test('the line left behind names what was chosen', async () => {
+  stopping()
+  const asked = await stopped()
 
-  fireEvent.click(within(asked).getByRole("button", { name: /75 kg/ }));
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
 
-  expect(await screen.findByText(/You chose 75 kg/)).toBeTruthy();
-});
+  expect(await screen.findByText(/You chose 75 kg/)).toBeTruthy()
+})
 
-test("a card that has been answered is not still called paused", async () => {
-  stopping();
-  const asked = await stopped();
+test('a card that has been answered is not still called paused', async () => {
+  stopping()
+  const asked = await stopped()
 
-  fireEvent.click(within(asked).getByRole("button", { name: /75 kg/ }));
-  await screen.findByText(/You chose 75 kg/);
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/You chose 75 kg/)
 
-  expect(screen.getByRole("group", { name: /Settled/ })).toBeTruthy();
-  expect(screen.queryByRole("group", { name: /Paused/ })).toBeNull();
-  expect(screen.queryByText(/needs your input/)).toBeNull();
-});
+  expect(screen.getByRole('group', { name: /Settled/ })).toBeTruthy()
+  expect(screen.queryByRole('group', { name: /Paused/ })).toBeNull()
+  expect(screen.queryByText(/needs your input/)).toBeNull()
+})
 
-test("a card put back up is waiting again, and says so", async () => {
-  stopping();
-  const asked = await stopped();
-  fireEvent.click(within(asked).getByRole("button", { name: /75 kg/ }));
-  await screen.findByText(/You chose 75 kg/);
+test('a card put back up is waiting again, and says so', async () => {
+  stopping()
+  const asked = await stopped()
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/You chose 75 kg/)
 
-  fireEvent.click(screen.getByRole("button", { name: "Change" }));
+  fireEvent.click(screen.getByRole('button', { name: 'Change' }))
 
-  expect(await screen.findByRole("group", { name: /Paused/ })).toBeTruthy();
-});
+  expect(await screen.findByRole('group', { name: /Paused/ })).toBeTruthy()
+})
 
-test("choosing none of them is sent as choosing nothing, and still answers", async () => {
-  const sent = stopping();
-  const asked = await stopped();
+test('choosing none of them is sent as choosing nothing, and still answers', async () => {
+  const sent = stopping()
+  const asked = await stopped()
 
-  fireEvent.click(
-    within(asked).getByRole("button", { name: DECISION.actions[2].label }),
-  );
+  fireEvent.click(within(asked).getByRole('button', { name: DECISION.actions[2].label }))
 
-  expect(await screen.findByText(/1,730 kcal/)).toBeTruthy();
-  expect(of(sent, "/api/resume")[0].body.answer).toBeNull();
-  expect(screen.getByText(/You chose none of them/)).toBeTruthy();
-});
+  expect(await screen.findByText(/1,730 kcal/)).toBeTruthy()
+  expect(of(sent, '/api/resume')[0].body.answer).toBeNull()
+  expect(screen.getByText(/You chose none of them/)).toBeTruthy()
+})
 
-test("changing a decision puts the options back", async () => {
-  stopping();
-  const asked = await stopped();
-  fireEvent.click(within(asked).getByRole("button", { name: /75 kg/ }));
-  await screen.findByText(/You chose 75 kg/);
+test('changing a decision puts the options back', async () => {
+  stopping()
+  const asked = await stopped()
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/You chose 75 kg/)
 
-  fireEvent.click(screen.getByRole("button", { name: "Change" }));
+  fireEvent.click(screen.getByRole('button', { name: 'Change' }))
 
-  expect(await screen.findByRole("button", { name: /77 kg/ })).toBeTruthy();
-});
+  expect(await screen.findByRole('button', { name: /77 kg/ })).toBeTruthy()
+})
 
-test("picking again after a change asks, rather than answering a turn that has gone on", async () => {
-  const sent = stopping();
-  const asked = await stopped();
-  fireEvent.click(within(asked).getByRole("button", { name: /75 kg/ }));
-  await screen.findByText(/You chose 75 kg/);
-  fireEvent.click(screen.getByRole("button", { name: "Change" }));
+test('picking again after a change asks, rather than answering a turn that has gone on', async () => {
+  const sent = stopping()
+  const asked = await stopped()
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/You chose 75 kg/)
+  fireEvent.click(screen.getByRole('button', { name: 'Change' }))
 
-  fireEvent.click(await screen.findByRole("button", { name: /77 kg/ }));
+  fireEvent.click(await screen.findByRole('button', { name: /77 kg/ }))
 
-  await waitFor(() => expect(of(sent, "/api/ask")).toHaveLength(2));
-  expect(of(sent, "/api/resume")).toHaveLength(1);
-  expect(of(sent, "/api/ask")[1].body.question).toBe("Use 77 kg instead.");
-});
+  await waitFor(() => expect(of(sent, '/api/ask')).toHaveLength(2))
+  expect(of(sent, '/api/resume')).toHaveLength(1)
+  expect(of(sent, '/api/ask')[1].body.question).toBe('Use 77 kg instead.')
+})
 
-test("a card left open comes back when the page does", async () => {
-  stopping(PAUSED);
-  await stopped();
+test('a card left open comes back when the page does', async () => {
+  stopping(PAUSED)
+  await stopped()
 
-  cleanup();
-  render(<App />);
+  cleanup()
+  render(<App />)
 
-  expect(await screen.findByText(DECISION.prompt)).toBeTruthy();
-});
+  expect(await screen.findByText(DECISION.prompt)).toBeTruthy()
+})
 
-test("a card the conversation moved past does not come back", async () => {
-  stopping(null);
-  const asked = await stopped();
-  fireEvent.click(within(asked).getByRole("button", { name: /75 kg/ }));
-  await screen.findByText(/1,730 kcal/);
+test('a card the conversation moved past does not come back', async () => {
+  stopping(null)
+  const asked = await stopped()
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/1,730 kcal/)
 
-  cleanup();
-  render(<App />);
-  await screen.findByText("notes.md");
+  cleanup()
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  expect(screen.queryByText(DECISION.prompt)).toBeNull();
-});
+  expect(screen.queryByText(DECISION.prompt)).toBeNull()
+})
 
-test("the composer says why it is unavailable while a card waits", async () => {
-  stopping();
-  const asked = await stopped();
+test('the composer says why it is unavailable while a card waits', async () => {
+  stopping()
+  const asked = await stopped()
 
-  expect(screen.getByText(/waiting on your answer/)).toBeTruthy();
-  expect(screen.getByRole("button", { name: "Ask" })).toHaveProperty(
-    "disabled",
-    true,
-  );
+  expect(screen.getByText(/waiting on your answer/)).toBeTruthy()
+  expect(screen.getByRole('button', { name: 'Ask' })).toHaveProperty('disabled', true)
 
-  fireEvent.click(within(asked).getByRole("button", { name: /75 kg/ }));
-  await screen.findByText(/1,730 kcal/);
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/1,730 kcal/)
 
-  expect(screen.queryByText(/waiting on your answer/)).toBeNull();
-});
+  expect(screen.queryByText(/waiting on your answer/)).toBeNull()
+})
 
-test("a card arriving brings the conversation down to it", async () => {
-  stopping();
-  render(<App />);
-  await screen.findByText("notes.md");
-  const scroller = document.querySelector(
-    `.${answerCss.scroller}`,
-  ) as HTMLElement;
-  atTheBottom(scroller);
+test('a card arriving brings the conversation down to it', async () => {
+  stopping()
+  render(<App />)
+  await screen.findByText('notes.md')
+  const scroller = document.querySelector(`.${answerCss.scroller}`) as HTMLElement
+  atTheBottom(scroller)
 
-  askAbout();
-  await card();
+  askAbout()
+  await card()
 
-  await waitFor(() => expect(scroller.scrollTop).toBe(5000));
-});
+  await waitFor(() => expect(scroller.scrollTop).toBe(5000))
+})
 
-test("a resume in the conversation on screen is not called work you left behind", async () => {
+
+test('a resume in the conversation on screen is not called work you left behind', async () => {
   /* The note is about a question running in a conversation the reader is no longer in.
      A resume has no entry in flight to name its thread, and saying it of the turn on
      screen tells them to wait for it under SESSIONS, where it will never appear. */
-  const gate = held();
-  stopping(null, gate);
-  const asked = await stopped();
+  const gate = held()
+  stopping(null, gate)
+  const asked = await stopped()
 
-  fireEvent.click(within(asked).getByRole("button", { name: /75 kg/ }));
-  await flushed();
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await flushed()
 
-  expect(screen.queryByText(/conversation you left/)).toBeNull();
+  expect(screen.queryByText(/conversation you left/)).toBeNull()
 
-  gate.release();
-  expect(await screen.findByText(/1,730 kcal/)).toBeTruthy();
-});
+  gate.release()
+  expect(await screen.findByText(/1,730 kcal/)).toBeTruthy()
+})
 
-test("an answer to a decision does not land on the conversation the reader moved to", async () => {
+test('an answer to a decision does not land on the conversation the reader moved to', async () => {
   /* Ids repeat across conversations — every reopened thread numbers its turns from -1 —
      so a restored card and another conversation's first turn can carry the same one. */
-  const gate = held();
-  stopping(PAUSED, gate);
-  await stopped();
+  const gate = held()
+  stopping(PAUSED, gate)
+  await stopped()
 
-  cleanup();
-  render(<App />);
-  const restored = await screen.findByRole("group", { name: /Paused/ });
-  fireEvent.click(within(restored).getByRole("button", { name: /75 kg/ }));
+  cleanup()
+  render(<App />)
+  const restored = await screen.findByRole('group', { name: /Paused/ })
+  fireEvent.click(within(restored).getByRole('button', { name: /75 kg/ }))
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
-  gate.release();
-  await flushed();
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  gate.release()
+  await flushed()
 
-  expect(screen.getByText(OLDER.result.answer)).toBeTruthy();
-  expect(screen.queryByText(/1,730 kcal/)).toBeNull();
-});
+  expect(screen.getByText(OLDER.result.answer)).toBeTruthy()
+  expect(screen.queryByText(/1,730 kcal/)).toBeNull()
+})
 
-test("starting over leaves the parked card behind", async () => {
-  stopping(PAUSED);
-  await stopped();
+test('starting over leaves the parked card behind', async () => {
+  stopping(PAUSED)
+  await stopped()
 
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
-  await flushed();
-  cleanup();
-  render(<App />);
-  await screen.findByText("notes.md");
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  await flushed()
+  cleanup()
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  expect(screen.queryByText(DECISION.prompt)).toBeNull();
-});
+  expect(screen.queryByText(DECISION.prompt)).toBeNull()
+})
 
-test("a card parked in an unrecorded conversation is not lost by reading another", async () => {
+
+test('a card parked in an unrecorded conversation is not lost by reading another', async () => {
   /* A thread parked on its *first* question has answered nothing, so it is listed under
      no session: forgetting it while reading a different conversation would leave the
      card reachable by no route at all. */
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return stream(frame("paused", PAUSED));
+      if (path === '/api/ask') return stream(frame('paused', PAUSED))
       // Only the parked conversation is waiting on anything; the older one is not.
-      if (path === "/api/sessions/old/pending")
-        return { ok: true, json: async () => null } as unknown as Response;
-      if (path.endsWith("/pending"))
-        return { ok: true, json: async () => PAUSED } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/sessions/old/pending')
+        return { ok: true, json: async () => null } as unknown as Response
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => PAUSED } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  await stopped();
+  )
+  await stopped()
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
 
-  cleanup();
-  render(<App />);
+  cleanup()
+  render(<App />)
 
-  expect(await screen.findByText(DECISION.prompt)).toBeTruthy();
-});
+  expect(await screen.findByText(DECISION.prompt)).toBeTruthy()
+})
 
-test("a decision that could not be sent is still answerable, and says what went wrong", async () => {
-  const sent: Sent[] = [];
+test('a decision that could not be sent is still answerable, and says what went wrong', async () => {
+  const sent: Sent[] = []
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (init?.body && typeof init.body === "string")
-        sent.push({ path, body: JSON.parse(init.body) });
-      if (path === "/api/ask") return stream(frame("paused", PAUSED));
-      if (path === "/api/resume")
+      if (init?.body && typeof init.body === 'string')
+        sent.push({ path, body: JSON.parse(init.body) })
+      if (path === '/api/ask') return stream(frame('paused', PAUSED))
+      if (path === '/api/resume')
         return {
           ok: false,
           status: 503,
-          json: async () => ({ error: "cora is having a moment." }),
-        } as unknown as Response;
-      if (path.endsWith("/pending"))
-        return { ok: true, json: async () => PAUSED } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+          json: async () => ({ error: 'cora is having a moment.' }),
+        } as unknown as Response
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => PAUSED } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  const asked = await stopped();
+  )
+  const asked = await stopped()
 
-  fireEvent.click(within(asked).getByRole("button", { name: /75 kg/ }));
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
 
-  expect(await screen.findByText("cora is having a moment.")).toBeTruthy();
-  expect(screen.queryByText(/You chose 75 kg/)).toBeNull();
-  expect(screen.getByRole("button", { name: /75 kg/ })).toBeTruthy();
+  expect(await screen.findByText('cora is having a moment.')).toBeTruthy()
+  expect(screen.queryByText(/You chose 75 kg/)).toBeNull()
+  expect(screen.getByRole('button', { name: /75 kg/ })).toBeTruthy()
 
-  fireEvent.click(screen.getByRole("button", { name: /75 kg/ }));
+  fireEvent.click(screen.getByRole('button', { name: /75 kg/ }))
 
-  await waitFor(() => expect(of(sent, "/api/resume")).toHaveLength(2));
-});
+  await waitFor(() => expect(of(sent, '/api/resume')).toHaveLength(2))
+})
 
-test("a conversation is pinned to a field, and keeps it", async () => {
+test('a conversation is pinned to a field, and keeps it', async () => {
   const sent = () =>
     (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
-      .filter(([path]) => path === "/api/ask")
-      .map(([, init]) => JSON.parse((init as RequestInit).body as string));
+      .filter(([path]) => path === '/api/ask')
+      .map(([, init]) => JSON.parse((init as RequestInit).body as string))
 
-  render(<App />);
-  await screen.findByText("notes.md");
+  render(<App />)
+  await screen.findByText('notes.md')
 
   /* Unpinned, cora reads every question. The pick binds what comes next, so it is the
      next question that carries it. */
-  pickPlugin("fitness");
-  expect(screen.getByText(/next question/)).toBeTruthy();
+  pickPlugin('fitness')
+  expect(screen.getByText(/next question/)).toBeTruthy()
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
 
   expect(sent()).toEqual([
-    {
-      question: "Why am I stalling?",
-      thread_id: expect.any(String),
-      pin: "fitness",
-    },
-  ]);
+    { question: 'Why am I stalling?', thread_id: expect.any(String), pin: 'fitness' },
+  ])
   /* The pin is in the thread's state now, so the control stops being a choice: a second
      field is a second conversation, and the reason is on the page for a screen reader. */
-  expect(screen.queryByRole("list")).toBeNull();
-  expect(screen.getByLabelText("Answer in").textContent).toBe("fitness");
+  expect(screen.queryByRole('list')).toBeNull()
+  expect(screen.getByLabelText('Answer in').textContent).toBe('fitness')
   /* And the reason is read rather than clipped. It stands where the promise it replaces
      stood: a control that has become a fact owes the reader the fact, and a description
      hung off an unfocusable name reaches nobody either way. */
-  const why = screen.getByText(/Start a new one/);
-  expect(why.classList.contains("told-not-shown")).toBe(false);
-});
+  const why = screen.getByText(/Start a new one/)
+  expect(why.classList.contains('told-not-shown')).toBe(false)
+})
 
-test("a reopened conversation is drawn in the field it was pinned to", async () => {
+test('a reopened conversation is drawn in the field it was pinned to', async () => {
   const pinned: Record<string, unknown> = {
     ...served,
-    "/api/sessions/old/scope": { pin: "travel" },
-  };
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(
       async (path: string) =>
-        ({
-          ok: true,
-          json: async () => pinned[route(path)] ?? [],
-        }) as unknown as Response,
+        ({ ok: true, json: async () => pinned[route(path)] ?? [] }) as unknown as Response,
     ),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(screen.getByRole("button", { name: OLDER.question }));
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('button', { name: OLDER.question }))
 
   /* The pin outlived the page because it is the thread's own state, not the page's. */
-  await waitFor(() =>
-    expect(screen.getByLabelText("Answer in").textContent).toBe("travel"),
-  );
-  expect(screen.queryByRole("list")).toBeNull();
-});
+  await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('travel'))
+  expect(screen.queryByRole('list')).toBeNull()
+})
 
-test("the picker says what the thread holds, not what the reader picked", async () => {
+test('the picker says what the thread holds, not what the reader picked', async () => {
   /* The pin is fixed by the turn rather than by the pick, and a turn that was admitted
      fixes it even if the answer then fails. So the page reads the thread back after every
      question instead of inferring from what it sent — otherwise a failed turn leaves the
      control offering a field the engine has already closed. */
-  let asked = false;
+  let asked = false
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") {
-        asked = true;
+      if (path === '/api/ask') {
+        asked = true
         return {
           ok: true,
           body: {
@@ -3136,895 +2804,813 @@ test("the picker says what the thread holds, not what the reader picked", async 
               read: async () => ({
                 done: false,
                 value: new TextEncoder().encode(
-                  frame("error", {
-                    error: "The assistant is temporarily unavailable.",
-                  }),
+                  frame('error', { error: 'The assistant is temporarily unavailable.' }),
                 ),
               }),
             }),
           },
-        } as unknown as Response;
+        } as unknown as Response
       }
-      if (path.endsWith("/scope"))
+      if (path.endsWith('/scope'))
         return {
           ok: true,
-          json: async () => ({ pin: asked ? "fitness" : null }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+          json: async () => ({ pin: asked ? 'fitness' : null }),
+        } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  pickPlugin("fitness");
+  pickPlugin('fitness')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(/temporarily unavailable/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/temporarily unavailable/)
 
   /* The turn failed, but it was admitted — so the thread is in that field now, and the
      control says so rather than offering a choice that would be refused. */
-  await waitFor(() =>
-    expect(screen.getByLabelText("Answer in").textContent).toBe("fitness"),
-  );
-  expect(screen.queryByRole("list")).toBeNull();
-});
+  await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
+  expect(screen.queryByRole('list')).toBeNull()
+})
 
-test("a scope read that failed leaves the pin the page already knows about", async () => {
+
+test('a scope read that failed leaves the pin the page already knows about', async () => {
   /* `held` runs after every turn now, so a transient failure reading the thread must not
      re-open a control the engine has closed: the reader's next pick would be refused with
      a sentence about a field they can no longer see. */
-  let reachable = true;
+  let reachable = true
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return answering();
-      if (path.endsWith("/scope")) {
+      if (path === '/api/ask') return answering()
+      if (path.endsWith('/scope')) {
         if (!reachable)
-          return { ok: false, status: 503, json: async () => ({}) } as Response;
-        return {
-          ok: true,
-          json: async () => ({ pin: "fitness" }),
-        } as unknown as Response;
+          return { ok: false, status: 503, json: async () => ({}) } as Response
+        return { ok: true, json: async () => ({ pin: 'fitness' }) } as unknown as Response
       }
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  pickPlugin("fitness");
+  pickPlugin('fitness')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await waitFor(() =>
-    expect(screen.getByLabelText("Answer in").textContent).toBe("fitness"),
-  );
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
 
-  reachable = false;
+  reachable = false
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "And creatine?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText("And creatine?");
+    target: { value: 'And creatine?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText('And creatine?')
 
   /* The read failed; the field the thread holds is not news the page has, so it keeps
      what it had rather than inventing a choice. */
-  await waitFor(() =>
-    expect(screen.getByLabelText("Answer in").textContent).toBe("fitness"),
-  );
-  expect(screen.queryByRole("list")).toBeNull();
-});
+  await waitFor(() => expect(screen.getByLabelText('Answer in').textContent).toBe('fitness'))
+  expect(screen.queryByRole('list')).toBeNull()
+})
 
-test("the rail lists and uploads into the field it is set to", async () => {
+test('the rail lists and uploads into the field it is set to', async () => {
   /* One field is what a turn can cite, so the rail shows the field it uploads into: a
      list of documents no turn in this field could reach would be a list that lies. */
-  const held: Record<string, string[]> = {
-    cora: ["notes.md"],
-    travel: ["kyoto.md"],
-  };
-  let into: string | null = null;
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['kyoto.md'] }
+  let into: string | null = null
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (route(path) === "/api/documents" && init?.method === "POST") {
-        into = (init.body as FormData).get("scope") as string;
-        const added = { document: "kyoto.md", chunks: 3 };
-        return { ok: true, json: async () => added } as unknown as Response;
+      if (route(path) === '/api/documents' && init?.method === 'POST') {
+        into = (init.body as FormData).get('scope') as string
+        const added = { document: 'kyoto.md', chunks: 3 }
+        return { ok: true, json: async () => added } as unknown as Response
       }
-      if (route(path) === "/api/documents") {
-        const asked =
-          new URL(path, "http://x").searchParams.get("scope") ?? "cora";
-        return {
-          ok: true,
-          json: async () => held[asked] ?? [],
-        } as unknown as Response;
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
       }
-      const body = served[route(path)] ?? [];
-      return { ok: true, json: async () => body } as unknown as Response;
+      const body = served[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  pickPlugin("travel");
+  pickPlugin('travel')
 
-  expect(await screen.findByText("kyoto.md")).toBeTruthy();
-  expect(screen.queryByText("notes.md")).toBeNull();
+  expect(await screen.findByText('kyoto.md')).toBeTruthy()
+  expect(screen.queryByText('notes.md')).toBeNull()
 
-  upload("kyoto.md");
-  await screen.findByText(/Added/);
-  expect(into).toBe("travel");
-});
+  upload('kyoto.md')
+  await screen.findByText(/Added/)
+  expect(into).toBe('travel')
+})
 
-test("a pinned conversation uploads into its own field", async () => {
+test('a pinned conversation uploads into its own field', async () => {
   const pinned: Record<string, unknown> = {
     ...served,
-    "/api/sessions/old/scope": { pin: "travel" },
-  };
-  let into: string | null = null;
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
+  let into: string | null = null
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (route(path) === "/api/documents" && init?.method === "POST") {
-        into = (init.body as FormData).get("scope") as string;
-        const added = { document: "kyoto.md", chunks: 3 };
-        return { ok: true, json: async () => added } as unknown as Response;
+      if (route(path) === '/api/documents' && init?.method === 'POST') {
+        into = (init.body as FormData).get('scope') as string
+        const added = { document: 'kyoto.md', chunks: 3 }
+        return { ok: true, json: async () => added } as unknown as Response
       }
-      const body = pinned[route(path)] ?? [];
-      return { ok: true, json: async () => body } as unknown as Response;
+      const body = pinned[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(screen.getByRole("button", { name: OLDER.question }));
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('button', { name: OLDER.question }))
   await waitFor(() =>
-    expect(screen.getByLabelText("Answer in").textContent).toBe("travel"),
-  );
+    expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
+  )
 
-  upload("kyoto.md");
+  upload('kyoto.md')
 
-  await waitFor(() => expect(into).toBe("travel"));
-});
+  await waitFor(() => expect(into).toBe('travel'))
+})
 
-test("leaving a pinned conversation returns the rail to the default field", async () => {
+test('leaving a pinned conversation returns the rail to the default field', async () => {
   /* A field the conversation is not in would keep taking uploads no turn in it could
      cite, so the rail follows the pin away as well as into it. */
   const pinned: Record<string, unknown> = {
     ...served,
-    "/api/sessions/old/scope": { pin: "travel" },
-  };
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      const body = pinned[route(path)] ?? [];
-      return { ok: true, json: async () => body } as unknown as Response;
+      const body = pinned[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(screen.getByRole("button", { name: OLDER.question }));
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('button', { name: OLDER.question }))
   await waitFor(() =>
-    expect(screen.getByLabelText("Answer in").textContent).toBe("travel"),
-  );
+    expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
+  )
 
-  fireEvent.click(screen.getByRole("button", { name: "New session" }));
+  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
 
-  await waitFor(() => expect(railField()).toBe("cora"));
-});
+  await waitFor(() =>
+    expect(
+      railField(),
+    ).toBe('cora'),
+  )
+})
 
-test("a filename in two fields never opens the other field’s copy", async () => {
+test('a filename in two fields never opens the other field’s copy', async () => {
   /* One name can cover a document in each field. Reading the newest citation for the
      name alone would mark this field's copy as cited and open the other field's text
      under it, at a span measured in something else — so the citation the conversation
      holds belongs to the field it was cut from, and to no other. */
   const answered = {
-    answer: "From the default field [1].",
+    answer: 'From the default field [1].',
     citations: [
-      {
-        number: 1,
-        document: "notes.md",
-        start: 0,
-        end: 5,
-        upload: "u1",
-        scope: "cora",
-      },
+      { number: 1, document: 'notes.md', start: 0, end: 5, upload: 'u1', scope: 'cora' },
     ],
     trace: [],
-  };
-  const held: Record<string, string[]> = {
-    cora: ["notes.md"],
-    travel: ["notes.md"],
-  };
-  const opened: string[] = [];
+  }
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['notes.md'] }
+  const opened: string[] = []
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return oneTurn(answered);
-      if (path.startsWith("/api/uploads/")) {
-        opened.push(path);
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
+      if (path === '/api/ask') return oneTurn(answered)
+      if (path.startsWith('/api/uploads/')) {
+        opened.push(path)
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
       }
-      if (route(path) === "/api/documents") {
-        const asked =
-          new URL(path, "http://x").searchParams.get("scope") ?? "cora";
-        return {
-          ok: true,
-          json: async () => held[asked] ?? [],
-        } as unknown as Response;
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
       }
-      const body = served[route(path)] ?? [];
-      return { ok: true, json: async () => body } as unknown as Response;
+      const body = served[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Which copy?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(/From the default field/);
+    target: { value: 'Which copy?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/From the default field/)
 
-  pickPlugin("travel");
+  pickPlugin('travel')
   await waitFor(() =>
     expect(
-      screen.getByRole("button", { name: "notes.md" }).hasAttribute("disabled"),
+      screen.getByRole('button', { name: 'notes.md' }).hasAttribute('disabled'),
     ).toBe(true),
-  );
-  fireEvent.click(screen.getByRole("button", { name: "notes.md" }));
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'notes.md' }))
 
-  expect(opened).toEqual([]);
-});
+  expect(opened).toEqual([])
+})
 
-test("a single loaded field is where uploads go", async () => {
+test('a single loaded field is where uploads go', async () => {
   /* Routing has nothing to choose between, so every turn runs in that field — and the
      rail states it, because an upload landing anywhere else could never be cited. */
-  let into: string | null = null;
+  let into: string | null = null
   const one: Record<string, unknown> = {
     ...served,
-    "/api/scopes": { available: ["fitness"], default: "cora" },
-  };
+    '/api/scopes': { available: ['fitness'], default: 'cora' },
+  }
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (route(path) === "/api/documents" && init?.method === "POST") {
-        into = (init.body as FormData).get("scope") as string;
-        const added = { document: "plan.md", chunks: 2 };
-        return { ok: true, json: async () => added } as unknown as Response;
+      if (route(path) === '/api/documents' && init?.method === 'POST') {
+        into = (init.body as FormData).get('scope') as string
+        const added = { document: 'plan.md', chunks: 2 }
+        return { ok: true, json: async () => added } as unknown as Response
       }
-      const body = one[route(path)] ?? [];
-      return { ok: true, json: async () => body } as unknown as Response;
+      const body = one[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
     }),
-  );
-  render(<App />);
-  await waitFor(() => expect(railField()).toBe("fitness"));
+  )
+  render(<App />)
+  await waitFor(() =>
+    expect(railField()).toBe('fitness'),
+  )
 
   /* Nothing to route between is nothing to choose between: both segments would answer in
      the one field, and naming it would fix the thread to it for good in exchange for
      nothing. A choice that changes no answer is not a choice. */
-  expect(screen.queryByRole("button", { name: "Chat" })).toBeNull();
-  expect(screen.queryByRole("button", { name: "Plugin" })).toBeNull();
+  expect(screen.queryByRole('button', { name: 'Chat' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Plugin' })).toBeNull()
 
-  upload("plan.md");
+  upload('plan.md')
 
-  await waitFor(() => expect(into).toBe("fitness"));
-});
+  await waitFor(() => expect(into).toBe('fitness'))
+})
 
-test("a single loaded field a conversation is already pinned to is still named somewhere", async () => {
+test('a single loaded field a conversation is already pinned to is still named somewhere', async () => {
   /* A thread pinned when the deployment loaded two fields survives it loading one, and the
      strip that would say so is gone with the choice. The rail names it then, the same way
      it does when the fields could not be listed at all. */
-  globalThis.sessionStorage.setItem("cora.parked", "old");
+  globalThis.sessionStorage.setItem('cora.parked', 'old')
   const one: Record<string, unknown> = {
     ...served,
-    "/api/scopes": { available: ["travel"], default: "cora" },
-    "/api/sessions/old": [OLDER],
-    "/api/sessions/old/scope": { pin: "travel" },
-  };
+    '/api/scopes': { available: ['travel'], default: 'cora' },
+    '/api/sessions/old': [OLDER],
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(
       async (path: string) =>
-        ({
-          ok: true,
-          json: async () => one[route(path)] ?? [],
-        }) as unknown as Response,
+        ({ ok: true, json: async () => one[route(path)] ?? [] }) as unknown as Response,
     ),
-  );
-  render(<App />);
+  )
+  render(<App />)
 
-  await waitFor(() => expect(railField()).toBe("travel"));
-});
+  await waitFor(() => expect(railField()).toBe('travel'))
+})
 
-test("an unpinned turn leaves the rail in the field it was answered in", async () => {
+test('an unpinned turn leaves the rail in the field it was answered in', async () => {
   /* Routing settles the field inside the turn, so the answer is the only thing that can
      say which — and the rail would otherwise list a field the conversation is not in and
      call its own cited document unopenable. */
   const answered = {
-    answer: "Book it early [1].",
+    answer: 'Book it early [1].',
     citations: [
       {
         number: 1,
-        document: "kyoto.md",
+        document: 'kyoto.md',
         start: 0,
         end: 5,
-        upload: "u9",
-        scope: "travel",
+        upload: 'u9',
+        scope: 'travel',
       },
     ],
     trace: [],
-    scopes: ["travel"],
-  };
-  const held: Record<string, string[]> = { cora: [], travel: ["kyoto.md"] };
+    scopes: ['travel'],
+  }
+  const held: Record<string, string[]> = { cora: [], travel: ['kyoto.md'] }
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return oneTurn(answered);
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      if (route(path) === "/api/documents") {
-        const asked =
-          new URL(path, "http://x").searchParams.get("scope") ?? "cora";
-        return {
-          ok: true,
-          json: async () => held[asked] ?? [],
-        } as unknown as Response;
+      if (path === '/api/ask') return oneTurn(answered)
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
       }
-      const body = served[route(path)] ?? [];
-      return { ok: true, json: async () => body } as unknown as Response;
+      const body = served[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByPlaceholderText(/Ask a question/);
+  )
+  render(<App />)
+  await screen.findByPlaceholderText(/Ask a question/)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "How early?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(/Book it early/);
+    target: { value: 'How early?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Book it early/)
 
-  expect(await screen.findByText("kyoto.md")).toBeTruthy();
-  fireEvent.click(screen.getByRole("tab", { name: "SOURCE" }));
-  expect(
-    await screen.findByText(/The rest of the document follows/),
-  ).toBeTruthy();
-});
+  expect(await screen.findByText('kyoto.md')).toBeTruthy()
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  expect(await screen.findByText(/The rest of the document follows/)).toBeTruthy()
+})
 
-test("Chat is a way back to the default field, not only away from a pin", async () => {
+test('Chat is a way back to the default field, not only away from a pin', async () => {
   /* Routing leaves the field it settled standing, so the rail follows a turn into
      `travel`. Asking for Chat is the reader saying no field is named — and the default
      field is the field a turn naming none runs in, so that is where it has to land.
      Without this, one routed turn puts the default field out of reach for the life of
      the conversation, `New session` being the only way out. */
-  const routed = {
-    answer: "Book it early.",
-    citations: [],
-    trace: [],
-    scopes: ["travel"],
-  };
-  const held: Record<string, string[]> = {
-    cora: ["notes.md"],
-    travel: ["kyoto.md"],
-  };
+  const routed = { answer: 'Book it early.', citations: [], trace: [], scopes: ['travel'] }
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['kyoto.md'] }
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return oneTurn(routed);
-      if (route(path) === "/api/documents") {
-        const asked =
-          new URL(path, "http://x").searchParams.get("scope") ?? "cora";
-        return {
-          ok: true,
-          json: async () => held[asked] ?? [],
-        } as unknown as Response;
+      if (path === '/api/ask') return oneTurn(routed)
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
       }
-      const body = served[route(path)] ?? [];
-      return { ok: true, json: async () => body } as unknown as Response;
+      const body = served[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "How early?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(/Book it early/);
-  await waitFor(() => expect(railField()).toBe("travel"));
+    target: { value: 'How early?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(/Book it early/)
+  await waitFor(() =>
+    expect(railField()).toBe('travel'),
+  )
 
-  fireEvent.click(screen.getByRole("button", { name: "Chat" }));
+  fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
 
-  await waitFor(() => expect(railField()).toBe("cora"));
-  expect(await screen.findByText("notes.md")).toBeTruthy();
-});
+  await waitFor(() =>
+    expect(railField()).toBe('cora'),
+  )
+  expect(await screen.findByText('notes.md')).toBeTruthy()
+})
 
-test("the note about a pin is absent until there is a pin to note", async () => {
+test('the note about a pin is absent until there is a pin to note', async () => {
   /* "From your next question on." is what a pick promises. Standing under a strip with
      nothing picked, it promises something about a pin the reader has not set. */
-  render(<App />);
-  await screen.findByText("notes.md");
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  expect(screen.queryByText(/next question/)).toBeNull();
+  expect(screen.queryByText(/next question/)).toBeNull()
 
-  pickPlugin("fitness");
+  pickPlugin('fitness')
 
-  expect(screen.getByText(/next question/)).toBeTruthy();
-});
+  expect(screen.getByText(/next question/)).toBeTruthy()
+})
 
-test("the segment that opens the list says what it opens, and whether it is open", async () => {
+test('the segment that opens the list says what it opens, and whether it is open', async () => {
   /* The list is a region this button discloses, so the button is where a reader finds
      out that there is one and whether it is showing. */
-  render(<App />);
-  await screen.findByText("notes.md");
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  const trigger = screen.getByRole("button", { name: "Plugin" });
-  expect(trigger.getAttribute("aria-expanded")).toBe("false");
+  const trigger = screen.getByRole('button', { name: 'Plugin' })
+  expect(trigger.getAttribute('aria-expanded')).toBe('false')
 
-  fireEvent.click(trigger);
+  fireEvent.click(trigger)
 
-  expect(trigger.getAttribute("aria-expanded")).toBe("true");
-  expect(trigger.getAttribute("aria-controls")).toBe(
-    screen.getByRole("list").id,
-  );
-});
+  expect(trigger.getAttribute('aria-expanded')).toBe('true')
+  expect(trigger.getAttribute('aria-controls')).toBe(screen.getByRole('list').id)
+})
 
-test("a pinned conversation the page cannot list the fields of is still named somewhere", async () => {
+test('a pinned conversation the page cannot list the fields of is still named somewhere', async () => {
   /* The strip needs the loaded fields to draw itself and a pin needs only the thread, so
      a scopes read that failed leaves a conversation pinned with no strip to say so. A
      parked card is picked up outside the load that failed, which is how the page reaches
      that state. The rail is what names the field then — otherwise the field taking the
      uploads is named nowhere. */
-  globalThis.sessionStorage.setItem("cora.parked", "old");
+  globalThis.sessionStorage.setItem('cora.parked', 'old')
   const half: Record<string, unknown> = {
-    "/api/sessions/old": [OLDER],
-    "/api/sessions/old/scope": { pin: "travel" },
-  };
+    '/api/sessions/old': [OLDER],
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (route(path) === "/api/scopes")
+      if (route(path) === '/api/scopes')
         return {
           ok: false,
           status: 503,
-          json: async () => ({ error: "No." }),
-        } as unknown as Response;
-      const body = half[route(path)] ?? [];
-      return { ok: true, json: async () => body } as unknown as Response;
+          json: async () => ({ error: 'No.' }),
+        } as unknown as Response
+      const body = half[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
     }),
-  );
-  render(<App />);
+  )
+  render(<App />)
 
-  await waitFor(() => expect(railField()).toBe("travel"));
-  expect(screen.queryByRole("button", { name: "Chat" })).toBeNull();
-});
+  await waitFor(() => expect(railField()).toBe('travel'))
+  expect(screen.queryByRole('button', { name: 'Chat' })).toBeNull()
+})
 
-test("the field list closes on Escape, and hands the trigger its focus back", async () => {
+test('the field list closes on Escape, and hands the trigger its focus back', async () => {
   /* An overlay stands over the conversation, so a reader who opens it and changes their
      mind has to be able to shut it. Without a key that does, a keyboard is a way in and
      no way out. */
-  render(<App />);
-  await screen.findByText("notes.md");
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  const trigger = screen.getByRole("button", { name: "Plugin" });
-  fireEvent.click(trigger);
-  expect(screen.getByRole("list")).toBeTruthy();
+  const trigger = screen.getByRole('button', { name: 'Plugin' })
+  fireEvent.click(trigger)
+  expect(screen.getByRole('list')).toBeTruthy()
 
-  fireEvent.keyDown(
-    within(screen.getByRole("list")).getByRole("button", { name: "travel" }),
-    {
-      key: "Escape",
-    },
-  );
+  fireEvent.keyDown(within(screen.getByRole('list')).getByRole('button', { name: 'travel' }), {
+    key: 'Escape',
+  })
 
-  expect(screen.queryByRole("list")).toBeNull();
-  expect(document.activeElement).toBe(trigger);
-});
+  expect(screen.queryByRole('list')).toBeNull()
+  expect(document.activeElement).toBe(trigger)
+})
 
-test("picking a field closes the list, and hands the trigger its focus back", async () => {
+test('picking a field closes the list, and hands the trigger its focus back', async () => {
   /* The other way out of the list is using it. The button that was pressed goes away with
      the list it was in, so a reader who picked with the keyboard is left on nothing unless
      the focus is put back — the same place Escape puts it. */
-  render(<App />);
-  await screen.findByText("notes.md");
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  fireEvent.click(screen.getByRole("button", { name: "Plugin" }));
-  fireEvent.click(
-    within(screen.getByRole("list")).getByRole("button", { name: "fitness" }),
-  );
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  fireEvent.click(within(screen.getByRole('list')).getByRole('button', { name: 'fitness' }))
 
-  expect(screen.queryByRole("list")).toBeNull();
-  expect(document.activeElement).toBe(
-    screen.getByRole("button", { name: "fitness" }),
-  );
-});
+  expect(screen.queryByRole('list')).toBeNull()
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: 'fitness' }))
+})
 
-test("the strip says which field it is running in, and the list which one is picked", async () => {
+test('the strip says which field it is running in, and the list which one is picked', async () => {
   /* The state has to be on the control, not only in its colour: `Chat` says whether any
      field is named, the trigger says which, and the list marks it. */
-  render(<App />);
-  await screen.findByText("notes.md");
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  expect(
-    screen.getByRole("button", { name: "Chat" }).getAttribute("aria-pressed"),
-  ).toBe("true");
+  expect(screen.getByRole('button', { name: 'Chat' }).getAttribute('aria-pressed')).toBe(
+    'true',
+  )
 
-  pickPlugin("fitness");
+  pickPlugin('fitness')
 
-  expect(
-    screen.getByRole("button", { name: "Chat" }).getAttribute("aria-pressed"),
-  ).toBe("false");
-  const named = screen.getByRole("button", { name: "fitness" });
-  expect(named.getAttribute("aria-pressed")).toBe("true");
-  expect(screen.queryByRole("list")).toBeNull();
+  expect(screen.getByRole('button', { name: 'Chat' }).getAttribute('aria-pressed')).toBe(
+    'false',
+  )
+  const named = screen.getByRole('button', { name: 'fitness' })
+  expect(named.getAttribute('aria-pressed')).toBe('true')
+  expect(screen.queryByRole('list')).toBeNull()
 
-  fireEvent.click(named);
-  const marked = within(screen.getByRole("list"))
-    .getAllByRole("button")
-    .filter((each) => each.getAttribute("aria-current") === "true");
-  expect(marked.map((each) => each.textContent)).toEqual(["fitness"]);
-});
+  fireEvent.click(named)
+  const marked = within(screen.getByRole('list'))
+    .getAllByRole('button')
+    .filter((each) => each.getAttribute('aria-current') === 'true')
+  expect(marked.map((each) => each.textContent)).toEqual(['fitness'])
+})
 
-test("the field list closes when the reader turns to something else", async () => {
-  render(<App />);
-  await screen.findByText("notes.md");
+test('the field list closes when the reader turns to something else', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  fireEvent.click(screen.getByRole("button", { name: "Plugin" }));
-  expect(screen.getByRole("list")).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  expect(screen.getByRole('list')).toBeTruthy()
 
-  fireEvent.mouseDown(screen.getByPlaceholderText(/Ask a question/));
+  fireEvent.mouseDown(screen.getByPlaceholderText(/Ask a question/))
 
-  expect(screen.queryByRole("list")).toBeNull();
-});
+  expect(screen.queryByRole('list')).toBeNull()
+})
 
-test("a pinned conversation is named over the conversation, and not twice", async () => {
+test('a pinned conversation is named over the conversation, and not twice', async () => {
   /* The strip says the field a pinned conversation is in, so the rail saying it again
      would be the same fact drawn in two places — and two places is where they drift. */
   const pinned: Record<string, unknown> = {
     ...served,
-    "/api/sessions/old/scope": { pin: "travel" },
-  };
+    '/api/sessions/old/scope': { pin: 'travel' },
+  }
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      const body = pinned[route(path)] ?? [];
-      return { ok: true, json: async () => body } as unknown as Response;
+      const body = pinned[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(screen.getByRole("button", { name: OLDER.question }));
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('button', { name: OLDER.question }))
 
   await waitFor(() =>
-    expect(screen.getByLabelText("Answer in").textContent).toBe("travel"),
-  );
-  expect(railField()).toBeNull();
-});
+    expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
+  )
+  expect(railField()).toBeNull()
+})
 
-test("the rail names no field before the deployment has said which there are", async () => {
+test('the rail names no field before the deployment has said which there are', async () => {
   /* `anyField` is the server's answer and arrives with the rest of the page. Until it
      does the field is the empty string, and a pill drawn around it is a pill with
      nothing in it. */
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => new Promise<Response>(() => {})),
-  );
-  render(<App />);
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(() => {})))
+  render(<App />)
 
-  await screen.findByText("YOUR DOCUMENTS");
-  expect(railField()).toBeNull();
-});
+  await screen.findByText('YOUR DOCUMENTS')
+  expect(railField()).toBeNull()
+})
 
-test("a resumed answer does not move the rail of the conversation the reader moved to", async () => {
+test('a resumed answer does not move the rail of the conversation the reader moved to', async () => {
   /* The answer itself is correctly not landed when the reader has moved on. The field
      it was answered in must not land either: a rail flipped to another conversation's
      field lists documents this one could never cite. */
-  const gate = held();
-  stopping(PAUSED, gate, { ...WEIGHED, scopes: ["travel"] });
-  await stopped();
+  const gate = held()
+  stopping(PAUSED, gate, { ...WEIGHED, scopes: ['travel'] })
+  await stopped()
 
-  cleanup();
-  render(<App />);
-  const restored = await screen.findByRole("group", { name: /Paused/ });
-  fireEvent.click(within(restored).getByRole("button", { name: /75 kg/ }));
+  cleanup()
+  render(<App />)
+  const restored = await screen.findByRole('group', { name: /Paused/ })
+  fireEvent.click(within(restored).getByRole('button', { name: /75 kg/ }))
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
-  gate.release();
-  await flushed();
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  gate.release()
+  await flushed()
 
-  expect(railField()).toBe("cora");
-});
+  expect(
+    railField(),
+  ).toBe('cora')
+})
 
-test("reopening an unpinned conversation draws it in the field it was answered in", async () => {
+test('reopening an unpinned conversation draws it in the field it was answered in', async () => {
   /* Nothing is pinned, so only the conversation's own turns say which field it is in.
      Left where the last conversation put it, the rail lists another field's documents
      and marks none of this one's citations. */
   const earlier = {
-    question: "How early?",
+    question: 'How early?',
     result: {
-      answer: "Book it early [1].",
+      answer: 'Book it early [1].',
       citations: [
         {
           number: 1,
-          document: "kyoto.md",
+          document: 'kyoto.md',
           start: 0,
           end: 5,
-          upload: "u9",
-          scope: "travel",
+          upload: 'u9',
+          scope: 'travel',
         },
       ],
       trace: [],
-      scopes: ["travel"],
+      scopes: ['travel'],
     },
-  };
-  const held: Record<string, string[]> = {
-    cora: ["notes.md"],
-    travel: ["kyoto.md"],
-  };
+  }
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['kyoto.md'] }
   const kept: Record<string, unknown> = {
     ...served,
-    "/api/sessions": [{ thread_id: "trip", opened_with: earlier.question }],
-    "/api/sessions/trip": [earlier],
-  };
+    '/api/sessions': [{ thread_id: 'trip', opened_with: earlier.question }],
+    '/api/sessions/trip': [earlier],
+  }
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (route(path) === "/api/documents") {
-        const asked =
-          new URL(path, "http://x").searchParams.get("scope") ?? "cora";
-        return {
-          ok: true,
-          json: async () => held[asked] ?? [],
-        } as unknown as Response;
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => held[asked] ?? [] } as unknown as Response
       }
-      const body = kept[route(path)] ?? [];
-      return { ok: true, json: async () => body } as unknown as Response;
+      const body = kept[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(
-    await screen.findByRole("button", { name: earlier.question }),
-  );
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: earlier.question }))
 
-  await waitFor(() => expect(railField()).toBe("travel"));
-  expect(await screen.findByText("kyoto.md")).toBeTruthy();
-});
+  await waitFor(() =>
+    expect(
+      railField(),
+    ).toBe('travel'),
+  )
+  expect(await screen.findByText('kyoto.md')).toBeTruthy()
+})
 
-test("a slow listing for the field left behind never lands on the one shown", async () => {
+test('a slow listing for the field left behind never lands on the one shown', async () => {
   /* Asking moves the rail to the field the turn was answered in, and the load the turn
      kicked off asked for the field before it. The older answer arriving last would
      leave one field's name over another field's documents. */
-  const held: Record<string, string[]> = {
-    cora: ["notes.md"],
-    travel: ["kyoto.md"],
-  };
-  let holdCora: null | (() => void) = null;
-  const release = () => holdCora?.();
+  const held: Record<string, string[]> = { cora: ['notes.md'], travel: ['kyoto.md'] }
+  let holdCora: null | (() => void) = null
+  const release = () => holdCora?.()
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask")
-        return oneTurn({
-          answer: "Answered.",
-          citations: [],
-          trace: [],
-          scopes: ["travel"],
-        });
-      if (route(path) === "/api/documents") {
-        const asked =
-          new URL(path, "http://x").searchParams.get("scope") ?? "cora";
-        const body = held[asked] ?? [];
-        if (asked === "cora" && holdCora === null) {
+      if (path === '/api/ask')
+        return oneTurn({ answer: 'Answered.', citations: [], trace: [], scopes: ['travel'] })
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        const body = held[asked] ?? []
+        if (asked === 'cora' && holdCora === null) {
           await new Promise<void>((go) => {
-            holdCora = go;
-          });
+            holdCora = go
+          })
         }
-        return { ok: true, json: async () => body } as unknown as Response;
+        return { ok: true, json: async () => body } as unknown as Response
       }
-      const rest = served[route(path)] ?? [];
-      return { ok: true, json: async () => rest } as unknown as Response;
+      const rest = served[route(path)] ?? []
+      return { ok: true, json: async () => rest } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByPlaceholderText(/Ask a question/);
+  )
+  render(<App />)
+  await screen.findByPlaceholderText(/Ask a question/)
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Anything?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText("Answered.");
-  await screen.findByText("kyoto.md");
+    target: { value: 'Anything?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText('Answered.')
+  await screen.findByText('kyoto.md')
 
-  release();
-  await flushed();
+  release()
+  await flushed()
 
-  expect(screen.queryByText("notes.md")).toBeNull();
-  expect(screen.getByText("kyoto.md")).toBeTruthy();
-});
+  expect(screen.queryByText('notes.md')).toBeNull()
+  expect(screen.getByText('kyoto.md')).toBeTruthy()
+})
 
-test("a conversation reopened after a pinned one is still drawn in its own field", async () => {
+test('a conversation reopened after a pinned one is still drawn in its own field', async () => {
   /* Leaving a pinned conversation clears the pin, and clearing it must not overrule the
      field the conversation being opened was answered in. */
   const earlier = {
-    question: "How early?",
+    question: 'How early?',
     result: {
-      answer: "Book it early.",
+      answer: 'Book it early.',
       citations: [],
       trace: [],
-      scopes: ["fitness"],
+      scopes: ['fitness'],
     },
-  };
+  }
   const kept: Record<string, unknown> = {
     ...served,
-    "/api/sessions": [
-      { thread_id: "old", opened_with: OLDER.question },
-      { thread_id: "gym", opened_with: earlier.question },
+    '/api/sessions': [
+      { thread_id: 'old', opened_with: OLDER.question },
+      { thread_id: 'gym', opened_with: earlier.question },
     ],
-    "/api/sessions/old": [OLDER],
-    "/api/sessions/gym": [earlier],
-    "/api/sessions/old/scope": { pin: "travel" },
-    "/api/sessions/gym/scope": { pin: null },
-  };
+    '/api/sessions/old': [OLDER],
+    '/api/sessions/gym': [earlier],
+    '/api/sessions/old/scope': { pin: 'travel' },
+    '/api/sessions/gym/scope': { pin: null },
+  }
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      const body = kept[route(path)] ?? [];
-      return { ok: true, json: async () => body } as unknown as Response;
+      const body = kept[route(path)] ?? []
+      return { ok: true, json: async () => body } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
 
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   await waitFor(() =>
-    expect(screen.getByLabelText("Answer in").textContent).toBe("travel"),
-  );
-  fireEvent.click(
-    await screen.findByRole("button", { name: earlier.question }),
-  );
-  await waitFor(() => expect(railField()).not.toBeNull());
-  await flushed();
+    expect(screen.getByLabelText('Answer in').textContent).toBe('travel'),
+  )
+  fireEvent.click(await screen.findByRole('button', { name: earlier.question }))
+  await waitFor(() =>
+    expect(railField()).not.toBeNull(),
+  )
+  await flushed()
 
-  expect(railField()).toBe("fitness");
-});
+  expect(
+    railField(),
+  ).toBe('fitness')
+})
 
-test("answering a decision moves the rail to the field it settled", async () => {
+test('answering a decision moves the rail to the field it settled', async () => {
   /* The card is where a reader picks the field of an unpinned turn, so the rail has to
      follow what they picked — not only refuse to follow what they did not. */
-  stopping(PAUSED, undefined, { ...WEIGHED, scopes: ["travel"] });
-  await stopped();
+  stopping(PAUSED, undefined, { ...WEIGHED, scopes: ['travel'] })
+  await stopped()
 
-  fireEvent.click(screen.getByRole("button", { name: /75 kg/ }));
+  fireEvent.click(screen.getByRole('button', { name: /75 kg/ }))
 
-  await waitFor(() => expect(railField()).toBe("travel"));
-});
+  await waitFor(() =>
+    expect(
+      railField(),
+    ).toBe('travel'),
+  )
+})
 
-test("a listing that failed for a field left behind neither banners nor clears", async () => {
+test('a listing that failed for a field left behind neither banners nor clears', async () => {
   /* Only the list was guarded by the field it asked for. A banner is news about a field
      too: one cleared by a load the reader has moved past hides a live failure. */
-  let holdTravel: null | (() => void) = null;
-  const release = () => holdTravel?.();
+  let holdTravel: null | (() => void) = null
+  const release = () => holdTravel?.()
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (route(path) === "/api/documents") {
-        const asked =
-          new URL(path, "http://x").searchParams.get("scope") ?? "cora";
-        if (asked === "travel") {
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        if (asked === 'travel') {
           await new Promise<void>((go) => {
-            holdTravel = go;
-          });
-          return {
-            ok: true,
-            json: async () => ["kyoto.md"],
-          } as unknown as Response;
+            holdTravel = go
+          })
+          return { ok: true, json: async () => ['kyoto.md'] } as unknown as Response
         }
         if (holdTravel !== null)
           return {
             ok: false,
             status: 503,
             json: async () => ({
-              error: "The knowledge base is temporarily unavailable.",
+              error: 'The knowledge base is temporarily unavailable.',
             }),
-          } as unknown as Response;
-        return {
-          ok: true,
-          json: async () => ["notes.md"],
-        } as unknown as Response;
+          } as unknown as Response
+        return { ok: true, json: async () => ['notes.md'] } as unknown as Response
       }
-      const rest = served[route(path)] ?? [];
-      return { ok: true, json: async () => rest } as unknown as Response;
+      const rest = served[route(path)] ?? []
+      return { ok: true, json: async () => rest } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  pickPlugin("travel");
-  await flushed();
-  fireEvent.click(screen.getByRole("button", { name: "Chat" }));
+  pickPlugin('travel')
+  await flushed()
+  fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
   expect(
-    await screen.findByText("The knowledge base is temporarily unavailable."),
-  ).toBeTruthy();
+    await screen.findByText('The knowledge base is temporarily unavailable.'),
+  ).toBeTruthy()
 
-  release();
-  await flushed();
+  release()
+  await flushed()
 
   expect(
-    screen.getByText("The knowledge base is temporarily unavailable."),
-  ).toBeTruthy();
-});
+    screen.getByText('The knowledge base is temporarily unavailable.'),
+  ).toBeTruthy()
+})
 
-test("a listing that failed for a field left behind raises no banner about it", async () => {
+test('a listing that failed for a field left behind raises no banner about it', async () => {
   /* The mirror of the clear: news about a field the reader has moved off is news about
      a page they cannot see, and it would sit over a field that is loading fine. */
-  let failTravel: null | (() => void) = null;
-  const release = () => failTravel?.();
+  let failTravel: null | (() => void) = null
+  const release = () => failTravel?.()
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (route(path) === "/api/documents") {
-        const asked =
-          new URL(path, "http://x").searchParams.get("scope") ?? "cora";
-        if (asked === "travel") {
+      if (route(path) === '/api/documents') {
+        const asked = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        if (asked === 'travel') {
           await new Promise<void>((go) => {
-            failTravel = go;
-          });
+            failTravel = go
+          })
           return {
             ok: false,
             status: 503,
             json: async () => ({
-              error: "The knowledge base is temporarily unavailable.",
+              error: 'The knowledge base is temporarily unavailable.',
             }),
-          } as unknown as Response;
+          } as unknown as Response
         }
-        return {
-          ok: true,
-          json: async () => ["notes.md"],
-        } as unknown as Response;
+        return { ok: true, json: async () => ['notes.md'] } as unknown as Response
       }
-      const rest = served[route(path)] ?? [];
-      return { ok: true, json: async () => rest } as unknown as Response;
+      const rest = served[route(path)] ?? []
+      return { ok: true, json: async () => rest } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  pickPlugin("travel");
-  await flushed();
-  fireEvent.click(screen.getByRole("button", { name: "Chat" }));
-  await flushed();
+  pickPlugin('travel')
+  await flushed()
+  fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
+  await flushed()
 
-  release();
-  await flushed();
+  release()
+  await flushed()
 
   expect(
-    screen.queryByText("The knowledge base is temporarily unavailable."),
-  ).toBeNull();
-});
+    screen.queryByText('The knowledge base is temporarily unavailable.'),
+  ).toBeNull()
+})
+
 
 // ── an effect waiting on the reader's word ──
 
@@ -4038,7 +3624,7 @@ const proposes = (
 ) => ({
   prompt: does,
   fields: [
-    { name: "tool", schema: {}, value: tool, editable: false, required: false },
+    { name: 'tool', schema: {}, value: tool, editable: false, required: false },
     ...Object.entries(args).map(([name, value]) => ({
       name,
       schema: {},
@@ -4049,714 +3635,664 @@ const proposes = (
   ],
   actions: [
     {
-      label: "Approve",
+      label: 'Approve',
       answer: call_id,
-      note: "",
+      note: '',
       needs_valid: false,
-      settled: "You approved it.",
+      settled: 'You approved it.',
     },
     {
-      label: "Decline",
+      label: 'Decline',
       answer: null,
-      note: "",
+      note: '',
       needs_valid: false,
-      settled: "You declined it. Nothing outside cora was changed.",
+      settled: 'You declined it. Nothing outside cora was changed.',
     },
   ],
-});
+})
 
 const PROPOSAL = proposes(
-  "c1",
-  "save_itinerary",
-  "Save an itinerary as a Markdown file the user keeps.",
-  { title: "Kyoto, three days" },
-);
-const PROPOSED = { asked: "Save the Kyoto days.", card: PROPOSAL };
+  'c1',
+  'save_itinerary',
+  'Save an itinerary as a Markdown file the user keeps.',
+  { title: 'Kyoto, three days' },
+)
+const PROPOSED = { asked: 'Save the Kyoto days.', card: PROPOSAL }
 const SAVED = {
-  answer: "Saved it to cora-output/kyoto-three-days.md.",
+  answer: 'Saved it to cora-output/kyoto-three-days.md.',
   citations: [],
   trace: [],
-};
+}
 
 /** A page whose turn proposes an effect, and whose approval finishes it. */
 const proposing = (pending: unknown = null): Sent[] => {
-  const sent: Sent[] = [];
+  const sent: Sent[] = []
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (init?.body && typeof init.body === "string")
-        sent.push({ path, body: JSON.parse(init.body) });
-      if (path === "/api/ask") return stream(frame("paused", PROPOSED));
-      if (path === "/api/resume") return stream(frame("turn", SAVED));
-      if (path.endsWith("/pending"))
-        return { ok: true, json: async () => pending } as unknown as Response;
+      if (init?.body && typeof init.body === 'string')
+        sent.push({ path, body: JSON.parse(init.body) })
+      if (path === '/api/ask') return stream(frame('paused', PROPOSED))
+      if (path === '/api/resume') return stream(frame('turn', SAVED))
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => pending } as unknown as Response
       return {
         ok: true,
         json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      } as unknown as Response
     }),
-  );
-  return sent;
-};
+  )
+  return sent
+}
 
 const proposed = async () => {
-  render(<App />);
-  await screen.findByText("notes.md");
-  askAbout("Save the Kyoto days.");
-  return card();
-};
+  render(<App />)
+  await screen.findByText('notes.md')
+  askAbout('Save the Kyoto days.')
+  return card()
+}
 
-test("a turn that proposes an effect draws what it would do and the call itself", async () => {
-  proposing();
+test('a turn that proposes an effect draws what it would do and the call itself', async () => {
+  proposing()
 
-  const asked = await proposed();
+  const asked = await proposed()
 
-  expect(within(asked).getByText(PROPOSAL.prompt)).toBeTruthy();
-  expect(within(asked).getByText("save_itinerary")).toBeTruthy();
-  expect(within(asked).getByText("Kyoto, three days")).toBeTruthy();
-  expect(within(asked).getByRole("button", { name: "Approve" })).toBeTruthy();
-  expect(within(asked).getByRole("button", { name: "Decline" })).toBeTruthy();
-});
+  expect(within(asked).getByText(PROPOSAL.prompt)).toBeTruthy()
+  expect(within(asked).getByText('save_itinerary')).toBeTruthy()
+  expect(within(asked).getByText('Kyoto, three days')).toBeTruthy()
+  expect(within(asked).getByRole('button', { name: 'Approve' })).toBeTruthy()
+  expect(within(asked).getByRole('button', { name: 'Decline' })).toBeTruthy()
+})
 
-test("nothing can be typed while an effect is waiting on the reader", async () => {
-  proposing();
+test('nothing can be typed while an effect is waiting on the reader', async () => {
+  proposing()
 
-  await proposed();
+  await proposed()
 
-  expect(screen.getByRole("button", { name: "Ask" })).toHaveProperty(
-    "disabled",
-    true,
-  );
-  expect(screen.getByText(/waiting on your answer/)).toBeTruthy();
-});
+  expect(screen.getByRole('button', { name: 'Ask' })).toHaveProperty('disabled', true)
+  expect(screen.getByText(/waiting on your answer/)).toBeTruthy()
+})
 
-test("approving names the call it answers, and the turn finishes", async () => {
-  const sent = proposing();
-  const asked = await proposed();
+test('approving names the call it answers, and the turn finishes', async () => {
+  const sent = proposing()
+  const asked = await proposed()
 
-  fireEvent.click(within(asked).getByRole("button", { name: "Approve" }));
+  fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
 
-  expect(await screen.findByText(/kyoto-three-days\.md/)).toBeTruthy();
-  expect(of(sent, "/api/resume")[0].body).toEqual({
+  expect(await screen.findByText(/kyoto-three-days\.md/)).toBeTruthy()
+  expect(of(sent, '/api/resume')[0].body).toEqual({
     thread_id: expect.any(String),
-    answer: "c1",
+    answer: 'c1',
     values: {},
-  });
-});
+  })
+})
 
-test("an approved card reads as settled, and still shows what was approved", async () => {
-  proposing();
-  const asked = await proposed();
+test('an approved card reads as settled, and still shows what was approved', async () => {
+  proposing()
+  const asked = await proposed()
 
-  fireEvent.click(within(asked).getByRole("button", { name: "Approve" }));
+  fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
 
-  expect(await screen.findByText(/You approved it/)).toBeTruthy();
-  expect(screen.getByRole("group", { name: /Settled/ })).toBeTruthy();
-  expect(screen.queryByRole("group", { name: /Paused/ })).toBeNull();
-  expect(screen.getByText("Kyoto, three days")).toBeTruthy();
-});
+  expect(await screen.findByText(/You approved it/)).toBeTruthy()
+  expect(screen.getByRole('group', { name: /Settled/ })).toBeTruthy()
+  expect(screen.queryByRole('group', { name: /Paused/ })).toBeNull()
+  expect(screen.getByText('Kyoto, three days')).toBeTruthy()
+})
 
-test("declining says nothing outside cora changed, and the turn still answers", async () => {
-  const sent = proposing();
-  const asked = await proposed();
+test('declining says nothing outside cora changed, and the turn still answers', async () => {
+  const sent = proposing()
+  const asked = await proposed()
 
-  fireEvent.click(within(asked).getByRole("button", { name: "Decline" }));
+  fireEvent.click(within(asked).getByRole('button', { name: 'Decline' }))
 
-  expect(await screen.findByText(/You declined it/)).toBeTruthy();
-  expect(of(sent, "/api/resume")[0].body.answer).toBeNull();
-});
+  expect(await screen.findByText(/You declined it/)).toBeTruthy()
+  expect(of(sent, '/api/resume')[0].body.answer).toBeNull()
+})
 
-test("an approved effect offers no way of putting the card back up", async () => {
+test('an approved effect offers no way of putting the card back up', async () => {
   /* A decision answered one way can be asked again the other; an effect that has
      happened cannot be taken back, and a control saying otherwise would be a lie. */
-  proposing();
-  const asked = await proposed();
+  proposing()
+  const asked = await proposed()
 
-  fireEvent.click(within(asked).getByRole("button", { name: "Approve" }));
-  await screen.findByText(/You approved it/);
+  fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
+  await screen.findByText(/You approved it/)
 
-  expect(screen.queryByRole("button", { name: "Change" })).toBeNull();
-});
+  expect(screen.queryByRole('button', { name: 'Change' })).toBeNull()
+})
 
-test("a proposal left open comes back when the page does", async () => {
-  proposing(PROPOSED);
-  await proposed();
+test('a proposal left open comes back when the page does', async () => {
+  proposing(PROPOSED)
+  await proposed()
 
-  cleanup();
-  render(<App />);
+  cleanup()
+  render(<App />)
 
-  expect(await screen.findByText(PROPOSAL.prompt)).toBeTruthy();
-  expect(await screen.findByRole("button", { name: "Approve" })).toBeTruthy();
-});
+  expect(await screen.findByText(PROPOSAL.prompt)).toBeTruthy()
+  expect(await screen.findByRole('button', { name: 'Approve' })).toBeTruthy()
+})
 
-test("a decision settled and then an effect proposed leaves one card open, not two", async () => {
+test('a decision settled and then an effect proposed leaves one card open, not two', async () => {
   /* One turn can do both: the reader picks a value, and the round that follows asks to
      act on it. The decision they answered stays answered — it is the history of the
      turn — and the only thing waiting on them is the new card. */
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return stream(frame("paused", PAUSED));
-      if (path === "/api/resume") return stream(frame("paused", PROPOSED));
-      if (path.endsWith("/pending"))
-        return { ok: true, json: async () => null } as unknown as Response;
+      if (path === '/api/ask') return stream(frame('paused', PAUSED))
+      if (path === '/api/resume') return stream(frame('paused', PROPOSED))
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => null } as unknown as Response
       return {
         ok: true,
         json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      } as unknown as Response
     }),
-  );
-  const asked = await stopped();
+  )
+  const asked = await stopped()
 
-  fireEvent.click(within(asked).getByRole("button", { name: /75 kg/ }));
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
 
-  expect(await screen.findByText(/You chose 75 kg/)).toBeTruthy();
-  expect(screen.getByText(PROPOSAL.prompt)).toBeTruthy();
-  expect(screen.getAllByRole("group", { name: /Paused/ })).toHaveLength(1);
-  expect(screen.getAllByRole("group", { name: /Settled/ })).toHaveLength(1);
-});
+  expect(await screen.findByText(/You chose 75 kg/)).toBeTruthy()
+  expect(screen.getByText(PROPOSAL.prompt)).toBeTruthy()
+  expect(screen.getAllByRole('group', { name: /Paused/ })).toHaveLength(1)
+  expect(screen.getAllByRole('group', { name: /Settled/ })).toHaveLength(1)
+})
 
 const CANCELLING = proposes(
-  "c2",
-  "cancel_booking",
-  "Cancel a booking, which cannot be undone.",
-  { reference: "BK-4471" },
-);
+  'c2',
+  'cancel_booking',
+  'Cancel a booking, which cannot be undone.',
+  { reference: 'BK-4471' },
+)
 
 /** A round that proposes two effects: answering the first puts the second up. */
 const proposingTwo = (): Sent[] => {
-  const sent: Sent[] = [];
-  let answers = 0;
+  const sent: Sent[] = []
+  let answers = 0
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (init?.body && typeof init.body === "string")
-        sent.push({ path, body: JSON.parse(init.body) });
-      if (path === "/api/ask") return stream(frame("paused", PROPOSED));
-      if (path === "/api/resume")
+      if (init?.body && typeof init.body === 'string')
+        sent.push({ path, body: JSON.parse(init.body) })
+      if (path === '/api/ask') return stream(frame('paused', PROPOSED))
+      if (path === '/api/resume')
         return ++answers === 1
-          ? stream(frame("paused", { ...PROPOSED, card: CANCELLING }))
-          : stream(frame("turn", SAVED));
-      if (path.endsWith("/pending"))
-        return { ok: true, json: async () => null } as unknown as Response;
+          ? stream(frame('paused', { ...PROPOSED, card: CANCELLING }))
+          : stream(frame('turn', SAVED))
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => null } as unknown as Response
       return {
         ok: true,
         json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      } as unknown as Response
     }),
-  );
-  return sent;
-};
+  )
+  return sent
+}
 
-test("the second effect of a round is answerable, and the first stays settled", async () => {
+test('the second effect of a round is answerable, and the first stays settled', async () => {
   /* A round may propose two, and each is put on its own. The first keeps the answer it
      was given — that is the record of what cora was allowed to do — and the second is
      the only thing still waiting on the reader. */
-  proposingTwo();
-  const asked = await proposed();
+  proposingTwo()
+  const asked = await proposed()
 
-  fireEvent.click(within(asked).getByRole("button", { name: "Approve" }));
+  fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
 
-  expect(await screen.findByText(CANCELLING.prompt)).toBeTruthy();
-  expect(screen.getByText(/You approved it/)).toBeTruthy();
-  expect(screen.getByText("Kyoto, three days")).toBeTruthy();
-  expect(screen.getAllByRole("group", { name: /Paused/ })).toHaveLength(1);
-  expect(screen.getAllByRole("group", { name: /Settled/ })).toHaveLength(1);
-  expect(screen.getByRole("button", { name: "Ask" })).toHaveProperty(
-    "disabled",
-    true,
-  );
-});
+  expect(await screen.findByText(CANCELLING.prompt)).toBeTruthy()
+  expect(screen.getByText(/You approved it/)).toBeTruthy()
+  expect(screen.getByText('Kyoto, three days')).toBeTruthy()
+  expect(screen.getAllByRole('group', { name: /Paused/ })).toHaveLength(1)
+  expect(screen.getAllByRole('group', { name: /Settled/ })).toHaveLength(1)
+  expect(screen.getByRole('button', { name: 'Ask' })).toHaveProperty('disabled', true)
+})
 
-test("answering the second effect names its own call, and finishes the turn", async () => {
-  const sent = proposingTwo();
-  const asked = await proposed();
-  fireEvent.click(within(asked).getByRole("button", { name: "Approve" }));
-  await screen.findByText(CANCELLING.prompt);
+test('answering the second effect names its own call, and finishes the turn', async () => {
+  const sent = proposingTwo()
+  const asked = await proposed()
+  fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
+  await screen.findByText(CANCELLING.prompt)
 
-  fireEvent.click(screen.getByRole("button", { name: "Decline" }));
+  fireEvent.click(screen.getByRole('button', { name: 'Decline' }))
 
-  expect(await screen.findByText(/kyoto-three-days\.md/)).toBeTruthy();
-  expect(of(sent, "/api/resume").map((each) => each.body.answer)).toEqual([
-    "c1",
-    null,
-  ]);
-  expect(screen.getAllByRole("group", { name: /Settled/ })).toHaveLength(2);
-});
+  expect(await screen.findByText(/kyoto-three-days\.md/)).toBeTruthy()
+  expect(of(sent, '/api/resume').map((each) => each.body.answer)).toEqual(['c1', null])
+  expect(screen.getAllByRole('group', { name: /Settled/ })).toHaveLength(2)
+})
 
-test("an approved call whose tool then failed is not shown as having happened", async () => {
+test('an approved call whose tool then failed is not shown as having happened', async () => {
   /* The card is answered before the request goes out, so it cannot know the outcome.
      It says what the reader did; what came of it is the answer's to say. */
-  const failed = {
-    answer: "I could not write that file.",
-    citations: [],
-    trace: [],
-  };
+  const failed = { answer: 'I could not write that file.', citations: [], trace: [] }
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/ask") return stream(frame("paused", PROPOSED));
-      if (path === "/api/resume") return stream(frame("turn", failed));
-      if (path.endsWith("/pending"))
-        return { ok: true, json: async () => null } as unknown as Response;
+      if (path === '/api/ask') return stream(frame('paused', PROPOSED))
+      if (path === '/api/resume') return stream(frame('turn', failed))
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => null } as unknown as Response
       return {
         ok: true,
         json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      } as unknown as Response
     }),
-  );
-  const asked = await proposed();
+  )
+  const asked = await proposed()
 
-  fireEvent.click(within(asked).getByRole("button", { name: "Approve" }));
+  fireEvent.click(within(asked).getByRole('button', { name: 'Approve' }))
 
-  expect(await screen.findByText(/could not write that file/)).toBeTruthy();
-  expect(screen.getByText("You approved it.")).toBeTruthy();
-  expect(screen.queryByText(/it happened/)).toBeNull();
-});
+  expect(await screen.findByText(/could not write that file/)).toBeTruthy()
+  expect(screen.getByText('You approved it.')).toBeTruthy()
+  expect(screen.queryByText(/it happened/)).toBeNull()
+})
 
-const GONE = { thread_id: "gone", opened_with: "A question asked twice" };
+
+const GONE = { thread_id: 'gone', opened_with: 'A question asked twice' }
 const CARD = {
-  asked: "What is my BMR?",
-  card: asks(
-    "Which weight should I use?",
-    [{ label: "75 kg", note: "coach notes" }],
-    "Neither",
-  ),
-};
+  asked: 'What is my BMR?',
+  card: asks('Which weight should I use?', [{ label: '75 kg', note: 'coach notes' }], 'Neither'),
+}
 
 /** Two conversations, and what is served about them once one of them is deleted. */
 const listing = (deleted: string[]): Record<string, unknown> => ({
   ...served,
-  "/api/sessions": [
-    { thread_id: "old", opened_with: OLDER.question },
+  '/api/sessions': [
+    { thread_id: 'old', opened_with: OLDER.question },
     GONE,
   ].filter((session) => !deleted.includes(session.thread_id)),
-});
+})
 
 const deletable = (
   answer: (path: string) => Response | null = () => null,
 ): { deleted: string[] } => {
-  const deleted: string[] = [];
+  const deleted: string[] = []
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (init?.method === "DELETE") {
-        const said = answer(path);
-        if (said) return said;
-        deleted.push(path);
-        return { ok: true, status: 204 } as unknown as Response;
+      if (init?.method === 'DELETE') {
+        const said = answer(path)
+        if (said) return said
+        deleted.push(path)
+        return { ok: true, status: 204 } as unknown as Response
       }
-      if (path === "/api/ask") return answering();
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      const body = listing(deleted.map((each) => each.split("/").pop()!))[
-        route(path)
-      ];
-      return { ok: true, json: async () => body ?? [] } as unknown as Response;
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      const body = listing(deleted.map((each) => each.split('/').pop()!))[route(path)]
+      return { ok: true, json: async () => body ?? [] } as unknown as Response
     }),
-  );
-  return { deleted };
-};
+  )
+  return { deleted }
+}
 
 const deleteControl = () =>
-  screen.getByRole("button", { name: `Delete ${GONE.opened_with}` });
+  screen.getByRole('button', { name: `Delete ${GONE.opened_with}` })
 
 const confirm = () =>
-  fireEvent.click(screen.getByRole("button", { name: "Delete session" }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete session' }))
 
-test("a conversation deleted from the list leaves the list", async () => {
-  const asked = deletable();
-  render(<App />);
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  await screen.findByRole("button", { name: GONE.opened_with });
+test('a conversation deleted from the list leaves the list', async () => {
+  const asked = deletable()
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  await screen.findByRole('button', { name: GONE.opened_with })
 
-  fireEvent.click(deleteControl());
+  fireEvent.click(deleteControl())
 
   // The control asks; nothing has been asked of cora yet.
-  expect(screen.getByRole("dialog")).toBeTruthy();
-  expect(asked.deleted).toEqual([]);
+  expect(screen.getByRole('dialog')).toBeTruthy()
+  expect(asked.deleted).toEqual([])
 
-  confirm();
+  confirm()
 
   await waitFor(() =>
-    expect(screen.queryByRole("button", { name: GONE.opened_with })).toBeNull(),
-  );
-  expect(asked.deleted).toEqual(["/api/sessions/gone"]);
-  expect(screen.getByRole("button", { name: OLDER.question })).toBeTruthy();
-  expect(screen.queryByRole("dialog")).toBeNull();
-});
+    expect(screen.queryByRole('button', { name: GONE.opened_with })).toBeNull(),
+  )
+  expect(asked.deleted).toEqual(['/api/sessions/gone'])
+  expect(screen.getByRole('button', { name: OLDER.question })).toBeTruthy()
+  expect(screen.queryByRole('dialog')).toBeNull()
+})
 
-test("keeping a conversation deletes nothing, and asks again next time", async () => {
-  const asked = deletable();
-  render(<App />);
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  await screen.findByRole("button", { name: GONE.opened_with });
+test('keeping a conversation deletes nothing, and asks again next time', async () => {
+  const asked = deletable()
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  await screen.findByRole('button', { name: GONE.opened_with })
 
-  fireEvent.click(deleteControl());
-  fireEvent.click(screen.getByRole("button", { name: "Keep it" }));
+  fireEvent.click(deleteControl())
+  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
 
-  expect(asked.deleted).toEqual([]);
-  expect(screen.queryByRole("dialog")).toBeNull();
-  expect(screen.getByRole("button", { name: GONE.opened_with })).toBeTruthy();
+  expect(asked.deleted).toEqual([])
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(screen.getByRole('button', { name: GONE.opened_with })).toBeTruthy()
 
-  fireEvent.click(deleteControl());
-  expect(screen.getByRole("dialog")).toBeTruthy();
-});
+  fireEvent.click(deleteControl())
+  expect(screen.getByRole('dialog')).toBeTruthy()
+})
 
-test("a delete that fails says so, and the conversation is still listed", async () => {
+test('a delete that fails says so, and the conversation is still listed', async () => {
   /* Nothing was deleted, so nothing on the page may read as deleted: the row stands,
      and the reader is told why rather than left to notice it came back. */
-  const unreachable = "The conversation store is temporarily unavailable.";
-  deletable(
-    () =>
-      ({
-        ok: false,
-        status: 503,
-        json: async () => ({ error: unreachable }),
-      }) as unknown as Response,
-  );
-  render(<App />);
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  await screen.findByRole("button", { name: GONE.opened_with });
+  const unreachable = 'The conversation store is temporarily unavailable.'
+  deletable(() => ({
+    ok: false,
+    status: 503,
+    json: async () => ({ error: unreachable }),
+  }) as unknown as Response)
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  await screen.findByRole('button', { name: GONE.opened_with })
 
-  fireEvent.click(deleteControl());
-  confirm();
+  fireEvent.click(deleteControl())
+  confirm()
 
-  expect(await screen.findByText(unreachable)).toBeTruthy();
-  expect(screen.getByRole("button", { name: GONE.opened_with })).toBeTruthy();
-});
+  expect(await screen.findByText(unreachable)).toBeTruthy()
+  expect(screen.getByRole('button', { name: GONE.opened_with })).toBeTruthy()
+})
 
-test("the card stowed for a deleted conversation is let go with it", async () => {
+test('the card stowed for a deleted conversation is let go with it', async () => {
   /* The stow is what a reload comes back through. Left behind, it would take the page
      into a conversation that no longer exists, holding a card nothing can answer. */
-  globalThis.sessionStorage.setItem("cora.parked", GONE.thread_id);
-  deletable();
+  globalThis.sessionStorage.setItem('cora.parked', GONE.thread_id)
+  deletable()
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (init?.method === "DELETE")
-        return { ok: true, status: 204 } as unknown as Response;
+      if (init?.method === 'DELETE') return { ok: true, status: 204 } as unknown as Response
       if (route(path) === `/api/sessions/${GONE.thread_id}/pending`)
-        return { ok: true, json: async () => CARD } as unknown as Response;
-      const body = listing([])[route(path)];
-      return { ok: true, json: async () => body ?? [] } as unknown as Response;
+        return { ok: true, json: async () => CARD } as unknown as Response
+      const body = listing([])[route(path)]
+      return { ok: true, json: async () => body ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
+  )
+  render(<App />)
   // The page came back into the parked conversation, so the reader has to leave it
   // before the row can be deleted at all.
-  expect(await screen.findByText(CARD.card.prompt)).toBeTruthy();
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
+  expect(await screen.findByText(CARD.card.prompt)).toBeTruthy()
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
 
-  fireEvent.click(deleteControl());
-  confirm();
+  fireEvent.click(deleteControl())
+  confirm()
 
-  await waitFor(() =>
-    expect(globalThis.sessionStorage.getItem("cora.parked")).toBeNull(),
-  );
-});
+  await waitFor(() => expect(globalThis.sessionStorage.getItem('cora.parked')).toBeNull())
+})
 
-const FACT = { key: "f1", text: "No burpees." };
+
+const FACT = { key: 'f1', text: 'No burpees.' }
 
 /** The memory rail's own fixture: what cora holds, minus whatever has been forgotten,
  *  so a rail that says a fact is gone is a rail the store agrees with. */
 const remembering = (...facts: { key: string; text: string }[]) => {
-  let held = facts;
-  const asked: string[] = [];
+  let held = facts
+  const asked: string[] = []
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (init?.method === "DELETE") {
-        asked.push(path);
+      if (init?.method === 'DELETE') {
+        asked.push(path)
         held =
-          path === "/api/memory"
+          path === '/api/memory'
             ? []
-            : held.filter(
-                (fact) => fact.key !== path.slice("/api/memory/".length),
-              );
-        return { ok: true, status: 204 } as unknown as Response;
+            : held.filter((fact) => fact.key !== path.slice('/api/memory/'.length))
+        return { ok: true, status: 204 } as unknown as Response
       }
-      if (route(path) === "/api/memory")
-        return { ok: true, json: async () => held } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (route(path) === '/api/memory')
+        return { ok: true, json: async () => held } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  return { asked };
-};
+  )
+  return { asked }
+}
 
 const forgetting = (fact: { text: string }) =>
-  screen.getByRole("button", { name: `Delete ${fact.text}` });
+  screen.getByRole('button', { name: `Delete ${fact.text}` })
 
-test("a fact is forgotten only once i have said so", async () => {
-  const memory = remembering(FACT);
-  render(<App />);
-  fireEvent.click(screen.getByRole("tab", { name: "MEMORY" }));
-  await screen.findByText(FACT.text);
+test('a fact is forgotten only once i have said so', async () => {
+  const memory = remembering(FACT)
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'MEMORY' }))
+  await screen.findByText(FACT.text)
 
   // The control asks; nothing has been asked of cora yet.
-  fireEvent.click(forgetting(FACT));
-  expect(screen.getByRole("dialog")).toBeTruthy();
-  expect(memory.asked).toEqual([]);
+  fireEvent.click(forgetting(FACT))
+  expect(screen.getByRole('dialog')).toBeTruthy()
+  expect(memory.asked).toEqual([])
 
   // Keeping it leaves the fact exactly where it was.
-  fireEvent.click(screen.getByRole("button", { name: "Keep it" }));
-  expect(memory.asked).toEqual([]);
-  expect(screen.getByText(FACT.text)).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+  expect(memory.asked).toEqual([])
+  expect(screen.getByText(FACT.text)).toBeTruthy()
 
-  fireEvent.click(forgetting(FACT));
-  fireEvent.click(screen.getByRole("button", { name: "Forget it" }));
+  fireEvent.click(forgetting(FACT))
+  fireEvent.click(screen.getByRole('button', { name: 'Forget it' }))
 
-  await waitFor(() => expect(memory.asked).toEqual(["/api/memory/f1"]));
-  await waitFor(() => expect(screen.queryByText(FACT.text)).toBeNull());
-});
+  await waitFor(() => expect(memory.asked).toEqual(['/api/memory/f1']))
+  await waitFor(() => expect(screen.queryByText(FACT.text)).toBeNull())
+})
 
-const ALSO = { key: "f2", text: "Four sessions a week." };
+
+const ALSO = { key: 'f2', text: 'Four sessions a week.' }
 
 const memoryRail = async (...facts: { key: string; text: string }[]) => {
-  const memory = remembering(...facts);
-  render(<App />);
-  fireEvent.click(screen.getByRole("tab", { name: "MEMORY" }));
-  await screen.findByText(facts[0].text);
-  return memory;
-};
+  const memory = remembering(...facts)
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'MEMORY' }))
+  await screen.findByText(facts[0].text)
+  return memory
+}
 
-test("the control on a fact asks rather than forgetting it", async () => {
-  const memory = await memoryRail(FACT);
+test('the control on a fact asks rather than forgetting it', async () => {
+  const memory = await memoryRail(FACT)
 
-  fireEvent.click(forgetting(FACT));
+  fireEvent.click(forgetting(FACT))
 
-  expect(screen.getByRole("dialog", { name: "FORGET THIS" })).toBeTruthy();
-  expect(
-    screen.getByText(/documents and your conversations are untouched/),
-  ).toBeTruthy();
-  expect(memory.asked).toEqual([]);
-});
+  expect(screen.getByRole('dialog', { name: 'FORGET THIS' })).toBeTruthy()
+  expect(screen.getByText(/documents and your conversations are untouched/)).toBeTruthy()
+  expect(memory.asked).toEqual([])
+})
 
-test("a confirmed question forgets that one fact", async () => {
-  const memory = await memoryRail(FACT, ALSO);
+test('a confirmed question forgets that one fact', async () => {
+  const memory = await memoryRail(FACT, ALSO)
 
-  fireEvent.click(forgetting(FACT));
-  fireEvent.click(screen.getByRole("button", { name: "Forget it" }));
+  fireEvent.click(forgetting(FACT))
+  fireEvent.click(screen.getByRole('button', { name: 'Forget it' }))
 
-  await waitFor(() => expect(screen.queryByText(FACT.text)).toBeNull());
-  expect(memory.asked).toEqual(["/api/memory/f1"]);
-  expect(screen.getByText(ALSO.text)).toBeTruthy();
-});
+  await waitFor(() => expect(screen.queryByText(FACT.text)).toBeNull())
+  expect(memory.asked).toEqual(['/api/memory/f1'])
+  expect(screen.getByText(ALSO.text)).toBeTruthy()
+})
 
-test("keeping a fact forgets nothing, and asks again next time", async () => {
-  const memory = await memoryRail(FACT);
+test('keeping a fact forgets nothing, and asks again next time', async () => {
+  const memory = await memoryRail(FACT)
 
-  fireEvent.click(forgetting(FACT));
-  fireEvent.click(screen.getByRole("button", { name: "Keep it" }));
+  fireEvent.click(forgetting(FACT))
+  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
 
-  expect(memory.asked).toEqual([]);
-  expect(screen.queryByRole("dialog")).toBeNull();
-  expect(screen.getByText(FACT.text)).toBeTruthy();
+  expect(memory.asked).toEqual([])
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(screen.getByText(FACT.text)).toBeTruthy()
 
-  fireEvent.click(forgetting(FACT));
-  expect(screen.getByRole("dialog")).toBeTruthy();
-});
+  fireEvent.click(forgetting(FACT))
+  expect(screen.getByRole('dialog')).toBeTruthy()
+})
 
-test("forgetting everything asks about every fact rather than one", async () => {
+test('forgetting everything asks about every fact rather than one', async () => {
   /* The most destructive control in either rail, and the one that was a single click. */
-  const memory = await memoryRail(FACT, ALSO);
+  const memory = await memoryRail(FACT, ALSO)
 
-  fireEvent.click(screen.getByRole("button", { name: "forget everything" }));
+  fireEvent.click(screen.getByRole('button', { name: 'forget everything' }))
 
-  expect(
-    screen.getByRole("dialog", { name: "FORGET EVERYTHING" }),
-  ).toBeTruthy();
-  expect(screen.getByText(/Every fact cora has been told/)).toBeTruthy();
-  expect(memory.asked).toEqual([]);
-  expect(screen.getByText(FACT.text)).toBeTruthy();
-});
+  expect(screen.getByRole('dialog', { name: 'FORGET EVERYTHING' })).toBeTruthy()
+  expect(screen.getByText(/Every fact cora has been told/)).toBeTruthy()
+  expect(memory.asked).toEqual([])
+  expect(screen.getByText(FACT.text)).toBeTruthy()
+})
 
-test("that question confirmed empties the rail", async () => {
-  const memory = await memoryRail(FACT, ALSO);
+test('that question confirmed empties the rail', async () => {
+  const memory = await memoryRail(FACT, ALSO)
 
-  fireEvent.click(screen.getByRole("button", { name: "forget everything" }));
-  fireEvent.click(screen.getByRole("button", { name: "Forget everything" }));
+  fireEvent.click(screen.getByRole('button', { name: 'forget everything' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Forget everything' }))
 
-  await waitFor(() => expect(screen.queryByText(FACT.text)).toBeNull());
-  expect(screen.queryByText(ALSO.text)).toBeNull();
-  expect(memory.asked).toEqual(["/api/memory"]);
-});
+  await waitFor(() => expect(screen.queryByText(FACT.text)).toBeNull())
+  expect(screen.queryByText(ALSO.text)).toBeNull()
+  expect(memory.asked).toEqual(['/api/memory'])
+})
+
 
 /** The documents rail's own fixture: what the field lists, minus what has been deleted. */
 const indexing = (...names: string[]) => {
-  let held = names;
-  const asked: string[] = [];
+  let held = names
+  const asked: string[] = []
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (init?.method === "DELETE") {
-        asked.push(path);
+      if (init?.method === 'DELETE') {
+        asked.push(path)
         held = held.filter(
-          (name) => name !== decodeURIComponent(path.split("/").pop() ?? ""),
-        );
-        return { ok: true, status: 204 } as unknown as Response;
+          (name) => name !== decodeURIComponent(path.split('/').pop() ?? ''),
+        )
+        return { ok: true, status: 204 } as unknown as Response
       }
-      if (route(path) === "/api/documents")
-        return { ok: true, json: async () => held } as unknown as Response;
-      if (path === "/api/ask") return answering();
-      if (path.startsWith("/api/uploads/"))
-        return {
-          ok: true,
-          json: async () => ({ text: KEPT }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (route(path) === '/api/documents')
+        return { ok: true, json: async () => held } as unknown as Response
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
+        return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  return { asked };
-};
+  )
+  return { asked }
+}
 
 const deletingDocument = (name: string) =>
-  screen.getByRole("button", { name: `Delete ${name}` });
+  screen.getByRole('button', { name: `Delete ${name}` })
 
-test("a document is deleted only once i have said so", async () => {
-  const documents = indexing("notes.md", "plan.md");
-  render(<App />);
-  await screen.findByText("plan.md");
+test('a document is deleted only once i have said so', async () => {
+  const documents = indexing('notes.md', 'plan.md')
+  render(<App />)
+  await screen.findByText('plan.md')
 
-  fireEvent.click(deletingDocument("plan.md"));
+  fireEvent.click(deletingDocument('plan.md'))
 
   // The control asks; nothing has been asked of cora yet.
-  expect(screen.getByRole("dialog", { name: "DELETE DOCUMENT" })).toBeTruthy();
-  expect(
-    screen.getByText(/Answers already given keep their citations/),
-  ).toBeTruthy();
-  expect(documents.asked).toEqual([]);
+  expect(screen.getByRole('dialog', { name: 'DELETE DOCUMENT' })).toBeTruthy()
+  expect(screen.getByText(/Answers already given keep their citations/)).toBeTruthy()
+  expect(documents.asked).toEqual([])
 
-  fireEvent.click(screen.getByRole("button", { name: "Delete document" }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete document' }))
 
-  await waitFor(() => expect(screen.queryByText("plan.md")).toBeNull());
-  expect(documents.asked).toEqual(["/api/documents/cora/plan.md"]);
-  expect(screen.getByText("notes.md")).toBeTruthy();
-});
+  await waitFor(() => expect(screen.queryByText('plan.md')).toBeNull())
+  expect(documents.asked).toEqual(['/api/documents/cora/plan.md'])
+  expect(screen.getByText('notes.md')).toBeTruthy()
+})
 
-test("keeping a document deletes nothing, and asks again next time", async () => {
-  const documents = indexing("notes.md");
-  render(<App />);
-  await screen.findByText("notes.md");
+test('keeping a document deletes nothing, and asks again next time', async () => {
+  const documents = indexing('notes.md')
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  fireEvent.click(deletingDocument("notes.md"));
-  fireEvent.click(screen.getByRole("button", { name: "Keep it" }));
+  fireEvent.click(deletingDocument('notes.md'))
+  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
 
-  expect(documents.asked).toEqual([]);
-  expect(screen.getByText("notes.md")).toBeTruthy();
+  expect(documents.asked).toEqual([])
+  expect(screen.getByText('notes.md')).toBeTruthy()
 
-  fireEvent.click(deletingDocument("notes.md"));
-  expect(screen.getByRole("dialog")).toBeTruthy();
-});
+  fireEvent.click(deletingDocument('notes.md'))
+  expect(screen.getByRole('dialog')).toBeTruthy()
+})
 
-test("the source panel lets go of the document that was deleted", async () => {
+test('the source panel lets go of the document that was deleted', async () => {
   /* The panel is reading a file that is gone: left as it was, it would draw a document
      the field no longer holds, under a name nothing can open. */
-  indexing("notes.md");
-  render(<App />);
-  await screen.findByText("notes.md");
+  indexing('notes.md')
+  render(<App />)
+  await screen.findByText('notes.md')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
-  fireEvent.click(screen.getByRole("tab", { name: "SOURCE" }));
-  fireEvent.click(screen.getByRole("button", { name: "notes.md" }));
-  expect(await screen.findByRole("heading", { name: "notes.md" })).toBeTruthy();
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  fireEvent.click(screen.getByRole('button', { name: 'notes.md' }))
+  expect(await screen.findByRole('heading', { name: 'notes.md' })).toBeTruthy()
 
-  fireEvent.click(deletingDocument("notes.md"));
-  fireEvent.click(screen.getByRole("button", { name: "Delete document" }));
+  fireEvent.click(deletingDocument('notes.md'))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete document' }))
 
   await waitFor(() =>
-    expect(screen.queryByRole("heading", { name: "notes.md" })).toBeNull(),
-  );
-});
+    expect(screen.queryByRole('heading', { name: 'notes.md' })).toBeNull(),
+  )
+})
 
-test("a document delete that fails says so, and the document is still listed", async () => {
-  const unreachable = "The knowledge base is temporarily unavailable.";
+test('a document delete that fails says so, and the document is still listed', async () => {
+  const unreachable = 'The knowledge base is temporarily unavailable.'
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (init?.method === "DELETE")
+      if (init?.method === 'DELETE')
         return {
           ok: false,
           status: 503,
           json: async () => ({ error: unreachable }),
-        } as unknown as Response;
-      if (route(path) === "/api/documents")
-        return {
-          ok: true,
-          json: async () => ["notes.md"],
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+        } as unknown as Response
+      if (route(path) === '/api/documents')
+        return { ok: true, json: async () => ['notes.md'] } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
-  fireEvent.click(deletingDocument("notes.md"));
-  fireEvent.click(screen.getByRole("button", { name: "Delete document" }));
+  fireEvent.click(deletingDocument('notes.md'))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete document' }))
 
-  expect(await screen.findByText(unreachable)).toBeTruthy();
-  expect(screen.getByText("notes.md")).toBeTruthy();
-});
+  expect(await screen.findByText(unreachable)).toBeTruthy()
+  expect(screen.getByText('notes.md')).toBeTruthy()
+})
 
-test("a delete confirmed after the field moved names the field the rail was showing", async () => {
+
+test('a delete confirmed after the field moved names the field the rail was showing', async () => {
   /* The question can stand for as long as the reader takes, and the field under it moves
      without a click: a turn landing settles which field the conversation was answered in.
      What is deleted must be what they were looking at when they asked to delete it. */
-  const asked: string[] = [];
+  const asked: string[] = []
   const answeredElsewhere = {
-    answer: "Book it early.",
+    answer: 'Book it early.',
     citations: [],
     trace: [],
-    scopes: ["travel"],
-  };
+    scopes: ['travel'],
+  }
   const held: Record<string, unknown> = {
     ...served,
-    "/api/scopes": { available: ["fitness", "travel"], default: "cora" },
-  };
+    '/api/scopes': { available: ['fitness', 'travel'], default: 'cora' },
+  }
   /* Per field, as the real listing is: what lands under the rail's heading is then a
      claim about which field the page thinks it is showing. */
   const listed: Record<string, string[]> = {
-    cora: ["notes.md"],
-    travel: ["kyoto.md"],
-  };
+    cora: ['notes.md'],
+    travel: ['kyoto.md'],
+  }
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (init?.method === "DELETE") {
-        asked.push(path);
-        return { ok: true, status: 204 } as unknown as Response;
+      if (init?.method === 'DELETE') {
+        asked.push(path)
+        return { ok: true, status: 204 } as unknown as Response
       }
-      if (route(path) === "/api/documents") {
-        const which =
-          new URL(path, "http://x").searchParams.get("scope") ?? "cora";
-        return {
-          ok: true,
-          json: async () => listed[which] ?? [],
-        } as unknown as Response;
+      if (route(path) === '/api/documents') {
+        const which = new URL(path, 'http://x').searchParams.get('scope') ?? 'cora'
+        return { ok: true, json: async () => listed[which] ?? [] } as unknown as Response
       }
-      if (path === "/api/ask") {
+      if (path === '/api/ask') {
         const frames =
-          frame("step", LIVE[0]) + frame("turn", answeredElsewhere);
-        const encoder = new TextEncoder();
-        let sent = false;
+          frame('step', LIVE[0]) + frame('turn', answeredElsewhere)
+        const encoder = new TextEncoder()
+        let sent = false
         return {
           ok: true,
           body: {
@@ -4765,204 +4301,183 @@ test("a delete confirmed after the field moved names the field the rail was show
               read: async () =>
                 sent
                   ? { done: true, value: undefined }
-                  : ((sent = true),
-                    { done: false, value: encoder.encode(frames) }),
+                  : ((sent = true), { done: false, value: encoder.encode(frames) }),
             }),
           },
-        } as unknown as Response;
+        } as unknown as Response
       }
-      return {
-        ok: true,
-        json: async () => held[route(path)] ?? [],
-      } as unknown as Response;
+      return { ok: true, json: async () => held[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
 
   // Asked while the rail is at the home field, and the question is opened there.
-  fireEvent.click(deletingDocument("notes.md"));
-  expect(screen.getByRole("dialog")).toBeTruthy();
+  fireEvent.click(deletingDocument('notes.md'))
+  expect(screen.getByRole('dialog')).toBeTruthy()
 
   // The turn lands answered in another field, so the rail moves under the open question.
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "How early should I book?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await waitFor(() => expect(railField()).toBe("travel"));
+    target: { value: 'How early should I book?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await waitFor(() => expect(railField()).toBe('travel'))
 
-  fireEvent.click(screen.getByRole("button", { name: "Delete document" }));
+  fireEvent.click(screen.getByRole('button', { name: 'Delete document' }))
 
-  await waitFor(() => expect(asked).toHaveLength(1));
-  expect(asked).toEqual(["/api/documents/cora/notes.md"]);
+  await waitFor(() => expect(asked).toHaveLength(1))
+  expect(asked).toEqual(['/api/documents/cora/notes.md'])
 
   /* And the listing that follows the delete is the field the rail says it is showing:
      a load asked for the field the question was raised in would land the wrong list
      under the wrong heading. */
-  await flushed();
-  expect(railField()).toBe("travel");
-  expect(screen.getByText("kyoto.md")).toBeTruthy();
-  expect(screen.queryByText("notes.md")).toBeNull();
-});
+  await flushed()
+  expect(railField()).toBe('travel')
+  expect(screen.getByText('kyoto.md')).toBeTruthy()
+  expect(screen.queryByText('notes.md')).toBeNull()
+})
 
-test("the conversation being read is named in the address", async () => {
+test('the conversation being read is named in the address', async () => {
   /* A conversation the reader is in should be one they can link to, come back to, and
      press back out of — none of which is possible while every conversation has the same
      address. */
-  render(<App />);
+  render(<App />)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
 
-  expect(globalThis.location.hash).toBe("#/c/old");
-});
+  expect(globalThis.location.hash).toBe('#/c/old')
+})
 
-test("a page opened at a conversation opens in it", async () => {
-  globalThis.history.replaceState(
-    null,
-    "",
-    `${globalThis.location.pathname}#/c/old`,
-  );
+test('a page opened at a conversation opens in it', async () => {
+  globalThis.history.replaceState(null, '', `${globalThis.location.pathname}#/c/old`)
 
-  render(<App />);
+  render(<App />)
 
-  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy();
-});
+  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
+})
 
-test("starting over takes the conversation out of the address", async () => {
-  render(<App />);
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
+test('starting over takes the conversation out of the address', async () => {
+  render(<App />)
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
 
-  fireEvent.click(screen.getByRole("button", { name: /new/i }));
+  fireEvent.click(screen.getByRole('button', { name: /new/i }))
 
   /* The fresh thread is in no store, so there is nothing for the address to name. */
-  await waitFor(() => expect(globalThis.location.hash).toBe(""));
-  expect(screen.queryByText(OLDER.result.answer)).toBeNull();
-});
+  await waitFor(() => expect(globalThis.location.hash).toBe(''))
+  expect(screen.queryByText(OLDER.result.answer)).toBeNull()
+})
 
-test("a card is only forgotten when the store says there is none", async () => {
+test('a card is only forgotten when the store says there is none', async () => {
   /* A thread parked on its *first* question has answered nothing, so it is listed under
      no session and the stow is the only route back to it. A read that could not be made
      is no news about whether a card is waiting — clearing the stow on it throws away the
      one thing that could have brought the question back. */
-  globalThis.sessionStorage.setItem("cora.parked", "old");
+  globalThis.sessionStorage.setItem('cora.parked', 'old')
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path.endsWith("/pending"))
+      if (path.endsWith('/pending'))
         return {
           ok: false,
           status: 503,
-          json: async () => ({ error: "cora is having a moment." }),
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+          json: async () => ({ error: 'cora is having a moment.' }),
+        } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
+  )
 
-  render(<App />);
-  await screen.findByText(OLDER.result.answer);
-  await flushed();
+  render(<App />)
+  await screen.findByText(OLDER.result.answer)
+  await flushed()
 
-  expect(globalThis.sessionStorage.getItem("cora.parked")).toBe("old");
-});
+  expect(globalThis.sessionStorage.getItem('cora.parked')).toBe('old')
+})
 
-test("a card is forgotten when the store says there is none", async () => {
+test('a card is forgotten when the store says there is none', async () => {
   /* The other half: told plainly that nothing is parked, the stow is stale and holding
      it would send every later reload back to a conversation with no question in it. */
-  globalThis.sessionStorage.setItem("cora.parked", "old");
+  globalThis.sessionStorage.setItem('cora.parked', 'old')
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path.endsWith("/pending"))
-        return { ok: true, json: async () => null } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => null } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
+  )
 
-  render(<App />);
-  await screen.findByText(OLDER.result.answer);
+  render(<App />)
+  await screen.findByText(OLDER.result.answer)
 
   await waitFor(() =>
-    expect(globalThis.sessionStorage.getItem("cora.parked")).toBeNull(),
-  );
-});
+    expect(globalThis.sessionStorage.getItem('cora.parked')).toBeNull(),
+  )
+})
 
-test("a conversation you started is named in the address once it has answered", async () => {
+test('a conversation you started is named in the address once it has answered', async () => {
   /* Asking is the commonest way to be in a conversation, and until the first turn lands
      there is nothing to name: the thread is in no store. Once it has answered it is
      recorded and listed, so it is linkable, reloadable and something to press back out
      of — the same as one opened from SESSIONS. */
-  render(<App />);
-  expect(globalThis.location.hash).toBe("");
+  render(<App />)
+  expect(globalThis.location.hash).toBe('')
 
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Should I train fasted?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
+    target: { value: 'Should I train fasted?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
 
-  await waitFor(() => expect(globalThis.location.hash).toMatch(/^#\/c\/.+/));
-});
+  await waitFor(() => expect(globalThis.location.hash).toMatch(/^#\/c\/.+/))
+})
 
 /** The address changing under the page, which is what the back button does to it. */
 const goBackTo = (hash: string) => {
-  globalThis.history.replaceState(
-    null,
-    "",
-    globalThis.location.pathname + hash,
-  );
-  globalThis.dispatchEvent(new HashChangeEvent("hashchange"));
-};
+  globalThis.history.replaceState(null, '', globalThis.location.pathname + hash)
+  globalThis.dispatchEvent(new HashChangeEvent('hashchange'))
+}
 
-test("the address changing under the page opens the conversation it names", async () => {
+test('the address changing under the page opens the conversation it names', async () => {
   /* The back button, or a link pasted into the bar. Nothing else on the page has changed,
      so the address is the whole of the request. */
-  render(<App />);
-  await screen.findByText("notes.md");
-  expect(screen.queryByText(OLDER.result.answer)).toBeNull();
+  render(<App />)
+  await screen.findByText('notes.md')
+  expect(screen.queryByText(OLDER.result.answer)).toBeNull()
 
-  goBackTo("#/c/old");
+  goBackTo('#/c/old')
 
-  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy();
-});
+  expect(await screen.findByText(OLDER.result.answer)).toBeTruthy()
+})
 
-test("the address the page wrote itself does not open the conversation a second time", async () => {
+test('the address the page wrote itself does not open the conversation a second time', async () => {
   /* Opening a conversation writes the address, and the address is subscribed to. Reading
      that write back as a request would re-enter the load that caused it — once per open,
      for as long as the two disagree. */
-  let reads = 0;
+  let reads = 0
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/sessions/old") reads += 1;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/sessions/old') reads += 1
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
+  )
+  render(<App />)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
-  await flushed();
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  await flushed()
 
-  expect(globalThis.location.hash).toBe("#/c/old");
-  expect(reads).toBe(1);
-});
+  expect(globalThis.location.hash).toBe('#/c/old')
+  expect(reads).toBe(1)
+})
 
-test("a card left open outranks the address, because nothing else can reach it", async () => {
+test('a card left open outranks the address, because nothing else can reach it', async () => {
   /* A thread parked on its first question is listed under no session: the stow is its one
      route back. The address names a conversation that is listed and one click away, so
      between the two it is the stow that would be lost.
@@ -4970,227 +4485,198 @@ test("a card left open outranks the address, because nothing else can reach it",
      conversation last read. Narrowing the rule to unlisted threads only would need the
      page to know, before it opens anything, whether the stowed thread has ever answered —
      which is a round trip it does not have and a second thing to keep true. */
-  globalThis.sessionStorage.setItem("cora.parked", "parked-thread");
-  globalThis.history.replaceState(
-    null,
-    "",
-    globalThis.location.pathname + "#/c/old",
-  );
+  globalThis.sessionStorage.setItem('cora.parked', 'parked-thread')
+  globalThis.history.replaceState(null, '', globalThis.location.pathname + '#/c/old')
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/sessions/parked-thread/pending")
-        return { ok: true, json: async () => PAUSED } as unknown as Response;
-      if (path.endsWith("/pending"))
-        return { ok: true, json: async () => null } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/sessions/parked-thread/pending')
+        return { ok: true, json: async () => PAUSED } as unknown as Response
+      if (path.endsWith('/pending'))
+        return { ok: true, json: async () => null } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
+  )
 
-  render(<App />);
+  render(<App />)
 
-  expect(await screen.findByText(DECISION.prompt)).toBeTruthy();
-  expect(screen.queryByText(OLDER.result.answer)).toBeNull();
-});
+  expect(await screen.findByText(DECISION.prompt)).toBeTruthy()
+  expect(screen.queryByText(OLDER.result.answer)).toBeNull()
+})
 
-test("a panel that throws costs that panel, not the conversation beside it", async () => {
+test('a panel that throws costs that panel, not the conversation beside it', async () => {
   /* A column that cannot be drawn used to take the window with it. The store answering
      with a shape the panel cannot read is the realistic way in — and the reader should
      still have the conversation they were reading, and a way out of the broken panel. */
-  const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+  const quiet = vi.spyOn(console, 'error').mockImplementation(() => {})
   try {
     vi.stubGlobal(
-      "fetch",
+      'fetch',
       vi.fn(async (path: string) => {
-        if (path === "/api/sessions")
-          return {
-            ok: true,
-            json: async () => ({ not: "a list" }),
-          } as unknown as Response;
+        if (path === '/api/sessions')
+          return { ok: true, json: async () => ({ not: 'a list' }) } as unknown as Response
         return {
           ok: true,
           json: async () => served[route(path)] ?? [],
-        } as unknown as Response;
+        } as unknown as Response
       }),
-    );
-    render(<App />);
-    await screen.findByText("notes.md");
+    )
+    render(<App />)
+    await screen.findByText('notes.md')
 
-    fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
+    fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
 
     // The panel says so, and the rest of the page is still there.
-    expect(await screen.findByRole("alert")).toBeTruthy();
-    expect(screen.getByPlaceholderText(/Ask a question/)).toBeTruthy();
-    expect(screen.getByText("notes.md")).toBeTruthy();
+    expect(await screen.findByRole('alert')).toBeTruthy()
+    expect(screen.getByPlaceholderText(/Ask a question/)).toBeTruthy()
+    expect(screen.getByText('notes.md')).toBeTruthy()
 
     // And the strip above it still works, which is the way out of a panel that broke.
-    fireEvent.click(screen.getByRole("tab", { name: "MEMORY" }));
-    expect(await screen.findByText("No burpees.")).toBeTruthy();
-    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole('tab', { name: 'MEMORY' }))
+    expect(await screen.findByText('No burpees.')).toBeTruthy()
+    expect(screen.queryByRole('alert')).toBeNull()
   } finally {
-    quiet.mockRestore();
+    quiet.mockRestore()
   }
-});
+})
 
-test("a scopes read that failed recovers, though the fields never change", async () => {
+test('a scopes read that failed recovers, though the fields never change', async () => {
   /* Which fields a deployment offers is settled when the process starts, so nothing a
      turn does can change it — which is an argument for never asking twice, and it is
      wrong. A read that failed leaves no fields, no picker and a banner, and re-asking is
      the only way out of that. So it stays in the refresh with the other three, and the
      cost is one small request a turn. */
-  const broken = { error: "The plugin registry is temporarily unavailable." };
-  let reachable = false;
+  const broken = { error: 'The plugin registry is temporarily unavailable.' }
+  let reachable = false
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string) => {
-      if (path === "/api/scopes" && !reachable)
-        return {
-          ok: false,
-          status: 503,
-          json: async () => broken,
-        } as unknown as Response;
-      if (path === "/api/ask") return answering();
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+      if (path === '/api/scopes' && !reachable)
+        return { ok: false, status: 503, json: async () => broken } as unknown as Response
+      if (path === '/api/ask') return answering()
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
+  )
 
-  render(<App />);
-  expect(await screen.findByText(broken.error)).toBeTruthy();
+  render(<App />)
+  expect(await screen.findByText(broken.error)).toBeTruthy()
 
-  reachable = true;
+  reachable = true
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "anything" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
+    target: { value: 'anything' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
 
-  await screen.findByText(TURN.trace[0].summary);
-  expect(screen.queryByText(broken.error)).toBeNull();
+  await screen.findByText(TURN.trace[0].summary)
+  expect(screen.queryByText(broken.error)).toBeNull()
   // And the picker the failed read left empty is drawn again.
-  expect(screen.getByRole("button", { name: "Plugin" })).toBeTruthy();
-});
+  expect(screen.getByRole('button', { name: 'Plugin' })).toBeTruthy()
+})
 
-test("a conversation that paused on its first question is named once the card settles", async () => {
+test('a conversation that paused on its first question is named once the card settles', async () => {
   /* The ask path returned at the pause without naming anything — a paused turn is in no
      store. The resume is the only route by which this conversation ever becomes
      something to link to, so it is the path that has to write the address. */
-  vi.stubGlobal("crypto", { randomUUID: () => "fresh1" });
-  stopping();
-  const asked = await stopped();
-  expect(globalThis.location.hash).toBe("");
+  vi.stubGlobal('crypto', { randomUUID: () => 'fresh1' })
+  stopping()
+  const asked = await stopped()
+  expect(globalThis.location.hash).toBe('')
 
-  fireEvent.click(within(asked).getByRole("button", { name: /75 kg/ }));
-  await screen.findByText(/1,730 kcal/);
+  fireEvent.click(within(asked).getByRole('button', { name: /75 kg/ }))
+  await screen.findByText(/1,730 kcal/)
 
-  await waitFor(() => expect(globalThis.location.hash).toBe("#/c/fresh1"));
-});
+  await waitFor(() => expect(globalThis.location.hash).toBe('#/c/fresh1'))
+})
 
-test("an answer landing in a conversation the reader left does not move the address", async () => {
+test('an answer landing in a conversation the reader left does not move the address', async () => {
   /* The address names the conversation they are in. A turn finishing somewhere else must
      not write its own thread over that — the reader would be yanked back into a
      conversation they deliberately left. */
-  vi.stubGlobal("crypto", { randomUUID: () => "here" });
-  render(<App />);
-  await screen.findByText("notes.md");
+  vi.stubGlobal('crypto', { randomUUID: () => 'here' })
+  render(<App />)
+  await screen.findByText('notes.md')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  await screen.findByText(LIVE[0].summary);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText(LIVE[0].summary)
 
-  fireEvent.click(screen.getByRole("tab", { name: "SESSIONS" }));
-  fireEvent.click(await screen.findByRole("button", { name: OLDER.question }));
-  await screen.findByText(OLDER.result.answer);
-  expect(globalThis.location.hash).toBe("#/c/old");
+  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+  await screen.findByText(OLDER.result.answer)
+  expect(globalThis.location.hash).toBe('#/c/old')
 
-  turn.release();
-  await flushed();
+  turn.release()
+  await flushed()
 
-  expect(globalThis.location.hash).toBe("#/c/old");
-});
+  expect(globalThis.location.hash).toBe('#/c/old')
+})
 
-test("an address that could mean another path asks the store for nothing", async () => {
+test('an address that could mean another path asks the store for nothing', async () => {
   /* Refusing to draw it is half the point. The other half is that no request is built
      from it: a path that resolves to another endpoint must not be fetched at all. */
   globalThis.history.replaceState(
     null,
-    "",
-    globalThis.location.pathname + "#/c/..%2Fmemory",
-  );
+    '',
+    globalThis.location.pathname + '#/c/..%2Fmemory',
+  )
 
-  render(<App />);
-  await screen.findByText("notes.md");
-  await flushed();
+  render(<App />)
+  await screen.findByText('notes.md')
+  await flushed()
 
-  const asked = vi
-    .mocked(globalThis.fetch)
-    .mock.calls.map(([path]) => String(path));
-  expect(asked.filter((path) => path.startsWith("/api/sessions/"))).toEqual([]);
-});
+  const asked = vi.mocked(globalThis.fetch).mock.calls.map(([path]) => String(path))
+  expect(asked.filter((path) => path.startsWith('/api/sessions/'))).toEqual([])
+})
 
-test("a passage on screen is asked for again after a delete, and its absence is drawn", async () => {
+test('a passage on screen is asked for again after a delete, and its absence is drawn', async () => {
   /* The text is held under its upload, and nothing else ever re-asks: a document an
      effect deleted would otherwise be drawn from what was held for as long as the page
      stays open. The re-read after a write is what evicts it. */
-  let gone = false;
+  let gone = false
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (path === "/api/ask") return answering();
-      if (path.startsWith("/api/uploads/"))
+      if (path === '/api/ask') return answering()
+      if (path.startsWith('/api/uploads/'))
         return gone
           ? ({
               ok: false,
               status: 404,
-              json: async () => ({ error: "cora cannot open this document." }),
+              json: async () => ({ error: 'cora cannot open this document.' }),
             } as unknown as Response)
-          : ({
-              ok: true,
-              json: async () => ({ text: KEPT }),
-            } as unknown as Response);
-      if (init?.method === "DELETE")
-        return { ok: true, status: 204 } as unknown as Response;
-      if (route(path) === "/api/documents")
+          : ({ ok: true, json: async () => ({ text: KEPT }) } as unknown as Response)
+      if (init?.method === 'DELETE')
+        return { ok: true, status: 204 } as unknown as Response
+      if (route(path) === '/api/documents')
         return {
           ok: true,
-          json: async () => ["notes.md", "other.md"],
-        } as unknown as Response;
-      return {
-        ok: true,
-        json: async () => served[route(path)] ?? [],
-      } as unknown as Response;
+          json: async () => ['notes.md', 'other.md'],
+        } as unknown as Response
+      return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
-  );
-  render(<App />);
-  await screen.findByText("notes.md");
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
   fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
-    target: { value: "Why am I stalling?" },
-  });
-  fireEvent.click(screen.getByRole("button", { name: "Ask" }));
-  turn.release();
-  await screen.findByText(/Sleep, not volume/);
-  fireEvent.click(screen.getByRole("tab", { name: "SOURCE" }));
-  await screen.findByText(/the document follows/);
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+  fireEvent.click(screen.getByRole('tab', { name: 'SOURCE' }))
+  await screen.findByText(/the document follows/)
 
   /* Deleted out from under the panel — another document goes, and the re-read that
      follows any write is what re-asks for this one. */
-  gone = true;
-  fireEvent.click(screen.getByRole("button", { name: "Delete other.md" }));
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Delete document" }),
-  );
+  gone = true
+  fireEvent.click(screen.getByRole('button', { name: 'Delete other.md' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Delete document' }))
 
-  expect(
-    await screen.findByText("cora cannot open this document."),
-  ).toBeTruthy();
-  expect(screen.queryByText(/the document follows/)).toBeNull();
-});
+  expect(await screen.findByText('cora cannot open this document.')).toBeTruthy()
+  expect(screen.queryByText(/the document follows/)).toBeNull()
+})
 
 /* ── deleting a plugin ──────────────────────────────────────────────────────────── */
 
@@ -5198,131 +4684,172 @@ test("a passage on screen is asked for again after a delete, and its absence is 
  *  the plugins folder, `travel` named by the configuration with no plugin behind it, and
  *  `birds` brought by a module the environment names, which is fixed at start. */
 const LOADED = [
-  { name: "coach", scopes: ["fitness"], deletable: true },
-  { name: "watching", scopes: ["birds"], deletable: false },
-];
+  {
+    name: 'coach',
+    scopes: ['fitness', 'travel'],
+    /* `travel` is not here: the other plugin brings it too, so it stays behind. What
+       cora says goes is what the question says goes. */
+    going: ['fitness'],
+    deletable: true,
+  },
+  { name: 'watching', scopes: ['birds', 'travel'], going: ['birds'], deletable: false },
+]
 
 const pluginFetch = (): { deleted: string[]; read: string[] } => {
-  const deleted: string[] = [];
-  const read: string[] = [];
+  const deleted: string[] = []
+  const read: string[] = []
   vi.stubGlobal(
-    "fetch",
+    'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
-      if (init?.method === "DELETE") {
-        deleted.push(path);
-        return { ok: true, status: 204 } as unknown as Response;
+      if (init?.method === 'DELETE') {
+        deleted.push(path)
+        return { ok: true, status: 204 } as unknown as Response
       }
-      if (path === "/api/ask") return answering();
-      read.push(route(path));
-      const gone = deleted.length > 0;
+      if (path === '/api/ask') return answering()
+      read.push(route(path))
+      const gone = deleted.length > 0
       const listings: Record<string, unknown> = {
         ...served,
-        "/api/scopes": {
-          available: gone
-            ? ["travel", "birds"]
-            : ["fitness", "travel", "birds"],
-          default: "cora",
+        '/api/scopes': {
+          available: gone ? ['travel', 'birds'] : ['fitness', 'travel', 'birds'],
+          default: 'cora',
         },
-        "/api/plugins": gone ? LOADED.slice(1) : LOADED,
-      };
+        '/api/plugins': gone ? LOADED.slice(1) : LOADED,
+      }
       return {
         ok: true,
         json: async () => listings[route(path)] ?? [],
-      } as unknown as Response;
+      } as unknown as Response
     }),
-  );
-  return { deleted, read };
-};
+  )
+  return { deleted, read }
+}
 
 const openMenu = async () => {
-  await screen.findByRole("button", { name: "Plugin" });
-  fireEvent.click(screen.getByRole("button", { name: "Plugin" }));
-  return screen.getByRole("list");
-};
+  await screen.findByRole('button', { name: 'Plugin' })
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  return screen.getByRole('list')
+}
 
-test("only a field whose plugin cora can delete carries the control", async () => {
-  pluginFetch();
-  render(<App />);
+test('only a field whose plugin cora can delete carries the control', async () => {
+  pluginFetch()
+  render(<App />)
 
-  const fields = await openMenu();
+  const fields = await openMenu()
 
-  expect(
-    within(fields).getByRole("button", { name: "Delete the fitness plugin" }),
-  ).toBeTruthy();
+  expect(within(fields).getByRole('button', { name: 'Delete the fitness plugin' }))
+    .toBeTruthy()
   // Named by the configuration, so there is no plugin behind it to delete.
   expect(
-    within(fields).queryByRole("button", { name: "Delete the travel plugin" }),
-  ).toBeNull();
+    within(fields).queryByRole('button', { name: 'Delete the travel plugin' }),
+  ).toBeNull()
   // Named in the environment, so it is fixed at start and comes back on the next one.
   expect(
-    within(fields).queryByRole("button", { name: "Delete the birds plugin" }),
-  ).toBeNull();
-});
+    within(fields).queryByRole('button', { name: 'Delete the birds plugin' }),
+  ).toBeNull()
+})
 
-test("the question names the plugin, its field, and what is not lost", async () => {
-  const asked = pluginFetch();
-  render(<App />);
-  const fields = await openMenu();
+test('the question names the plugin, its field, and what is not lost', async () => {
+  const asked = pluginFetch()
+  render(<App />)
+  const fields = await openMenu()
 
   fireEvent.click(
-    within(fields).getByRole("button", { name: "Delete the fitness plugin" }),
-  );
+    within(fields).getByRole('button', { name: 'Delete the fitness plugin' }),
+  )
 
-  const said = screen.getByRole("dialog").textContent ?? "";
-  expect(said).toContain("coach");
-  expect(said).toContain("fitness");
-  expect(said).toContain("plugins folder");
-  expect(said).toContain("every conversation pinned there");
-  expect(said).toContain("What cora remembers about you");
+  const said = screen.getByRole('dialog').textContent ?? ''
+  expect(said).toContain('coach')
+  expect(said).toContain('fitness')
+  /* Registered under travel as well, but another plugin brings that field too — so it
+     is not going, and a question naming it would overstate what is lost. */
+  expect(said).not.toContain('travel')
+  expect(said).toContain('plugins folder')
+  expect(said).toContain('every conversation pinned there')
+  expect(said).toContain('What cora remembers about you')
   // The control asks; nothing has been asked of cora yet.
-  expect(asked.deleted).toEqual([]);
-});
+  expect(asked.deleted).toEqual([])
+})
 
-test("keeping the plugin deletes nothing, and the field is still offered", async () => {
-  const asked = pluginFetch();
-  render(<App />);
-  const fields = await openMenu();
+test('keeping the plugin deletes nothing, and the field is still offered', async () => {
+  const asked = pluginFetch()
+  render(<App />)
+  const fields = await openMenu()
   fireEvent.click(
-    within(fields).getByRole("button", { name: "Delete the fitness plugin" }),
-  );
+    within(fields).getByRole('button', { name: 'Delete the fitness plugin' }),
+  )
 
-  fireEvent.click(screen.getByRole("button", { name: "Keep it" }));
+  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
 
-  expect(asked.deleted).toEqual([]);
-  expect(screen.queryByRole("dialog")).toBeNull();
-  expect(
-    within(await openMenu()).getByRole("button", { name: "fitness" }),
-  ).toBeTruthy();
-});
+  expect(asked.deleted).toEqual([])
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(within(await openMenu()).getByRole('button', { name: 'fitness' })).toBeTruthy()
+})
 
-test("a plugin confirmed away takes its field out of the picker", async () => {
-  const asked = pluginFetch();
-  render(<App />);
-  const fields = await openMenu();
+test('a plugin confirmed away takes its field out of the picker', async () => {
+  const asked = pluginFetch()
+  render(<App />)
+  const fields = await openMenu()
   fireEvent.click(
-    within(fields).getByRole("button", { name: "Delete the fitness plugin" }),
-  );
+    within(fields).getByRole('button', { name: 'Delete the fitness plugin' }),
+  )
 
-  asked.read.length = 0;
-  fireEvent.click(screen.getByRole("button", { name: "Delete plugin" }));
+  asked.read.length = 0
+  fireEvent.click(screen.getByRole('button', { name: 'Delete plugin' }))
 
-  await waitFor(() => expect(asked.deleted).toEqual(["/api/plugins/coach"]));
+  await waitFor(() => expect(asked.deleted).toEqual(['/api/plugins/coach']))
   /* What went through is confirmed by reading the listings again rather than by the
      page's own account of what a delete changed — and a plugin's delete changes three
      of them. */
   await waitFor(() =>
     expect(new Set(asked.read)).toEqual(
       new Set([
-        "/api/scopes",
-        "/api/plugins",
-        "/api/documents",
-        "/api/sessions",
-        "/api/memory",
+        '/api/scopes',
+        '/api/plugins',
+        '/api/documents',
+        '/api/sessions',
+        '/api/memory',
       ]),
     ),
-  );
-  expect(screen.queryByRole("dialog")).toBeNull();
-  const left = await openMenu();
-  expect(within(left).queryByRole("button", { name: "fitness" })).toBeNull();
-  expect(within(left).getByRole("button", { name: "travel" })).toBeTruthy();
-});
+  )
+  expect(screen.queryByRole('dialog')).toBeNull()
+  const left = await openMenu()
+  expect(within(left).queryByRole('button', { name: 'fitness' })).toBeNull()
+  // The field the other plugin also brings is still offered, and still holds what it held.
+  expect(within(left).getByRole('button', { name: 'travel' })).toBeTruthy()
+})
+
+test('the last plugin can be deleted too, though one field is nothing to pick', async () => {
+  /* A deployment with one plugin is the whole of what the drop-in story describes, and
+     a picker that draws nothing there would leave that plugin deletable only by hand. */
+  const deleted: string[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        deleted.push(path)
+        return { ok: true, status: 204 } as unknown as Response
+      }
+      const listings: Record<string, unknown> = {
+        ...served,
+        '/api/scopes': { available: ['fitness'], default: 'cora' },
+        '/api/plugins': [
+          { name: 'coach', scopes: ['fitness'], going: ['fitness'], deletable: true },
+        ],
+      }
+      return {
+        ok: true,
+        json: async () => listings[route(path)] ?? [],
+      } as unknown as Response
+    }),
+  )
+  render(<App />)
+
+  const fields = await openMenu()
+  fireEvent.click(
+    within(fields).getByRole('button', { name: 'Delete the fitness plugin' }),
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Delete plugin' }))
+
+  await waitFor(() => expect(deleted).toEqual(['/api/plugins/coach']))
+})

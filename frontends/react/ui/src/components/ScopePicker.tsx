@@ -87,8 +87,14 @@ export default function ScopePicker({
 
   /* One field is not a choice: both segments answer in it, and naming it would fix the
      thread to it for good in exchange for nothing. None is a bare cora. Either way the
-     rail is what says which field the documents are in. */
-  if (available.length < 2) return null
+     rail is what says which field the documents are in.
+
+     Unless there is a plugin to delete under it. The list is where a field's plugin is
+     deleted from, and a deployment with one plugin is the whole of what dropping one in
+     describes — leaving that one deletable by hand alone is the worse trade. Picking
+     the field is still a pin, and still buys nothing, but it is now a choice the reader
+     declines rather than one the page made for them. */
+  if (available.length < 2 && deletable.length === 0) return null
 
   /* Settled by a turn, there is nothing left to pick: the strip becomes the name it
      settled on. A control that can no longer be used is not drawn as one — and why it

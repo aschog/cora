@@ -52,7 +52,9 @@ const EVERYTHING_GOES =
   "are untouched — this can't be undone."
 
 /** What deleting a plugin takes, named field by field: it is the one control here that
- *  takes three things at once, so the question says all three. */
+ *  takes three things at once, so the question says all three. The fields are cora's
+ *  answer — a field another plugin also brings is not one that goes, and a question
+ *  naming it would overstate the loss on the most destructive control here. */
 const pluginGoes = (fields: string[]) => {
   const one = fields.length === 1
   return (
@@ -355,7 +357,7 @@ function Page() {
                   setConfirming({
                     head: 'DELETE PLUGIN',
                     subject: plugin.name,
-                    said: pluginGoes(plugin.scopes),
+                    said: pluginGoes(plugin.going),
                     confirm: 'Delete plugin',
                     send: () => cora.deletePlugin(plugin.name),
                     from: rail.scopes,
@@ -365,7 +367,7 @@ function Page() {
                     without: (held: Scopes) => ({
                       ...held,
                       available: held.available.filter(
-                        (each) => !plugin.scopes.includes(each),
+                        (each) => !plugin.going.includes(each),
                       ),
                     }),
                   })

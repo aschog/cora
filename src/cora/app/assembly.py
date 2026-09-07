@@ -88,7 +88,9 @@ class App:
     `remove` deletes one dropped plugin and the data of the fields it brought. Bound
     to this composition, because what a plugin brought is what this composition
     loaded — a caller names the plugin and nothing else. `plugins_folder` is where a
-    plugin can be deleted from, which is what says whether one is deletable at all.
+    plugin can be deleted from, which is what says whether one is deletable at all,
+    and `configured` is the fields the deployment named itself, which no plugin's
+    deletion empties.
     """
 
     agent: Agent
@@ -97,6 +99,7 @@ class App:
     memory: Memory | None = None
     conversations: Conversations | None = None
     scopes: tuple[str, ...] = ()
+    configured: tuple[str, ...] = ()
     plugins_folder: pathlib.Path | None = None
     remove: Callable[[str], None] = _nothing_to_delete
 
@@ -194,7 +197,9 @@ def assemble(
             plus every field a loaded plugin registered: loading a plugin is the
             deployment act, and its fields come with it.
         plugins_folder: Where plugins are dropped, which is the only place one can be
-            deleted from. Without it a deployment has no plugin it can delete.
+            deleted from. The same path the plugins were loaded from: a plugin is
+            matched against it as it was found, so any other path leaves every plugin
+            undeletable. Without it a deployment has no plugin it can delete.
         memory: What cora keeps about the user. Without it, no `remember` tool is
             offered at all.
         conversations: Where turns are recorded. Without it, a turn is answered and
@@ -267,6 +272,7 @@ def assemble(
         memory=memory,
         conversations=conversations,
         scopes=offered,
+        configured=scopes,
         plugins_folder=plugins_folder,
         remove=partial(
             remove_plugin,
