@@ -31,6 +31,7 @@ from cora.domain.decision import TurnPaused
 from cora.domain.errors import AdapterError, CoreError, NothingToResumeError
 from cora.domain.trace import TraceStep
 from cora.engine.ingestion import DEFAULT_MAX_BYTES
+from cora.engine.removal import deletable
 from cora.engine.validation import MAX_INPUT_CHARS
 from cora.frontends.react import payloads
 from cora.ports.chat_model import Piece, TextSink, Written
@@ -620,7 +621,13 @@ def _plugins(apps: Apps) -> Callable[[Request], Any]:
     prints, as the menu reads it."""
 
     def listed(request: Request) -> JSONResponse:
-        return JSONResponse([payloads.plugin(each) for each in apps().plugins])
+        app = apps()
+        return JSONResponse(
+            [
+                payloads.plugin(each, deletable(each, app.plugins_folder))
+                for each in app.plugins
+            ]
+        )
 
     return listed
 

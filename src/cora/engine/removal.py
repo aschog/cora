@@ -54,6 +54,18 @@ def remove_plugin(
     _delete(entry)
 
 
+def deletable(listed: Listed, folder: pathlib.Path | None) -> bool:
+    """Whether this plugin is one this deployment can delete.
+
+    The plugins folder is the only place a plugin can be deleted from: a module named
+    in the environment is imported by name and returns at the next start, so there is
+    no entry deleting it could take. The listing is what says which a plugin is, and
+    this is the one rule that reads it — the refusal below and the listing the page
+    draws its controls from are the same answer.
+    """
+    return folder is not None and pathlib.Path(listed.source).parent == folder
+
+
 def _loaded(name: str, listing: tuple[Listed, ...]) -> Listed:
     for listed in listing:
         if listed.name == name:
@@ -70,10 +82,9 @@ def _entry(listed: Listed, folder: pathlib.Path | None) -> pathlib.Path:
     """
     if folder is None:
         raise PluginRemovalError(listed.name, NO_FOLDER)
-    entry = pathlib.Path(listed.source)
-    if entry.parent != folder:
+    if not deletable(listed, folder):
         raise PluginRemovalError(listed.name, FIXED_AT_START)
-    return entry
+    return pathlib.Path(listed.source)
 
 
 def _fields_going(

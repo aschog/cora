@@ -115,18 +115,22 @@ def session(session: Session) -> dict[str, Any]:
     return {"thread_id": session.thread_id, "opened_with": session.opened_with}
 
 
-def plugin(listed: Listed) -> dict[str, Any]:
+def plugin(listed: Listed, deletable: bool = False) -> dict[str, Any]:
     """One loaded plugin as the header menu draws it.
 
     The contributions arrive as one list of the same four keys whatever kind they are,
     so the menu renders a kind it has never heard of rather than dropping it. `note` is
     whatever else a registration says about itself — a tool with an effect says so —
     and the menu shows it without having to know what it means.
+
+    `deletable` is cora's answer rather than the page's reading of the source: whether
+    a plugin can be deleted is a fact about where this deployment found it.
     """
     return {
         "name": listed.name,
         "source": listed.source,
         "scopes": list(listed.scopes),
+        "deletable": deletable,
         "contributions": [
             {
                 "kind": each.kind,

@@ -83,3 +83,16 @@ def test_a_name_that_is_a_path_reaches_no_file(tmp_path: pathlib.Path) -> None:
         assert reader.delete(f"/api/plugins/{named}").status_code in (400, 404)
 
     assert (tmp_path / "field_notes.py").exists()
+
+
+def test_the_listing_says_which_plugins_can_be_deleted(
+    tmp_path: pathlib.Path,
+) -> None:
+    """Cora's answer rather than the page's reading of a source: a module named in the
+    environment is fixed at start, and the page has no control to offer for it."""
+    (tmp_path / "field_notes.py").write_text(DROPPED)
+    reader = _reader(tmp_path)
+
+    assert [
+        (each["name"], each["deletable"]) for each in reader.get("/api/plugins").json()
+    ] == [("field_notes", True)]

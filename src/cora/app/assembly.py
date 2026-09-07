@@ -27,12 +27,12 @@ from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.memory_tool import remember_tool
 from cora.engine.plugin_registry import folder_signature, load_plugins
 from cora.engine.plugin_set import Registry
-from cora.engine.removal import NO_FOLDER, remove_plugin
 from cora.engine.port_logging import (
     LoggingChatModel,
     LoggingEmbedder,
     LoggingRetriever,
 )
+from cora.engine.removal import NO_FOLDER, remove_plugin
 from cora.engine.retrieval_tool import search_tool
 from cora.engine.steps import (
     ANSWER,
@@ -87,7 +87,8 @@ class App:
 
     `remove` deletes one dropped plugin and the data of the fields it brought. Bound
     to this composition, because what a plugin brought is what this composition
-    loaded — a caller names the plugin and nothing else.
+    loaded — a caller names the plugin and nothing else. `plugins_folder` is where a
+    plugin can be deleted from, which is what says whether one is deletable at all.
     """
 
     agent: Agent
@@ -96,6 +97,7 @@ class App:
     memory: Memory | None = None
     conversations: Conversations | None = None
     scopes: tuple[str, ...] = ()
+    plugins_folder: pathlib.Path | None = None
     remove: Callable[[str], None] = _nothing_to_delete
 
 
@@ -265,6 +267,7 @@ def assemble(
         memory=memory,
         conversations=conversations,
         scopes=offered,
+        plugins_folder=plugins_folder,
         remove=partial(
             remove_plugin,
             folder=plugins_folder,
