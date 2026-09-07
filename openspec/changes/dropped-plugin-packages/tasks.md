@@ -1,36 +1,36 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the outer functional test, `xfail(strict=True)`: a package folder
+- [x] 1.1 Write the outer functional test, `xfail(strict=True)`: a package folder
       with a relative import, dropped while serving, answers the next listing read.
 
 ## 2. Discovery
 
-- [ ] 2.1 Write a test that shows the folder scan yields a directory holding
+- [x] 2.1 Write a test that shows the folder scan yields a directory holding
       `__init__.py` beside the `.py` files.
-- [ ] 2.2 Write a test that shows a directory without `__init__.py` is ignored.
-- [ ] 2.3 Write a test that shows a hidden or underscore-led directory is ignored.
+- [x] 2.2 Write a test that shows a directory without `__init__.py` is ignored.
+- [x] 2.3 Write a test that shows a hidden or underscore-led directory is ignored.
 
 ## 3. Loading
 
-- [ ] 3.1 Write a test that shows a dropped package loads, named for its folder,
+- [x] 3.1 Write a test that shows a dropped package loads, named for its folder,
       its source the folder's path.
-- [ ] 3.2 Write a test that shows `from . import sibling` inside a dropped package
+- [x] 3.2 Write a test that shows `from . import sibling` inside a dropped package
       resolves.
-- [ ] 3.3 Write a test that shows a dropped package cannot shadow an installed
+- [x] 3.3 Write a test that shows a dropped package cannot shadow an installed
       module of the same name.
-- [ ] 3.4 Write a test that shows a package whose import raises is refused naming
+- [x] 3.4 Write a test that shows a package whose import raises is refused naming
       the folder and the error.
-- [ ] 3.5 Write a test that shows a failed package leaves `sys.modules` as it found
+- [x] 3.5 Write a test that shows a failed package leaves `sys.modules` as it found
       it, submodules included.
 
 ## 4. The name faces every existing check
 
-- [ ] 4.1 Write a test that shows a folder whose name is not an identifier is
+- [x] 4.1 Write a test that shows a folder whose name is not an identifier is
       refused.
-- [ ] 4.2 Write a test that shows a dropped package colliding with a named module's
+- [x] 4.2 Write a test that shows a dropped package colliding with a named module's
       name is refused naming both.
-- [ ] 4.3 Write a test that shows a package defining no `extend` is refused.
-- [ ] 4.4 Write a test that shows a package asking for a contract cora does not
+- [x] 4.3 Write a test that shows a package defining no `extend` is refused.
+- [x] 4.4 Write a test that shows a package asking for a contract cora does not
       offer is refused before `extend` runs.
 
 ## 5. The live folder

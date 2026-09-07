@@ -265,6 +265,160 @@ def test_a_contract_version_cora_does_not_offer_is_refused_naming_both() -> None
     assert str(CONTRACT) in refused.value.user_message
 
 
+def _drop_package(
+    folder: pathlib.Path, name: str, init: str = DROPPED, **modules: str
+) -> pathlib.Path:
+    package = folder / name
+    package.mkdir(parents=True)
+    (package / "__init__.py").write_text(init)
+    for module, source in modules.items():
+        (package / f"{module}.py").write_text(source)
+    return package
+
+
+RELATIVE_IMPORT = """\
+from cora.ports.host import Host
+
+from .notes import FIELD
+
+
+def extend(cora: Host) -> None:
+    cora.register_instructions("Answer about " + FIELD + ".", scope=FIELD)
+"""
+
+
+def test_a_package_dropped_in_the_folder_is_loaded_under_its_folder_name(
+    tmp_path: pathlib.Path,
+) -> None:
+    """A directory holding `__init__.py` is one plugin, exactly as a file is: named
+    for the folder, sourced from where it lies, no packaging at all."""
+    package = _drop_package(tmp_path, "field_notes")
+
+    loaded = load_plugins([], folder=tmp_path)
+
+    assert [(each.module, each.source) for each in loaded] == [
+        ("field_notes", str(package))
+    ]
+
+
+def test_a_directory_without_init_is_not_a_plugin(tmp_path: pathlib.Path) -> None:
+    (tmp_path / "notes").mkdir()
+    (tmp_path / "notes" / "readme.py").write_text(DROPPED)
+
+    assert load_plugins([], folder=tmp_path) == ()
+
+
+@pytest.mark.parametrize("name", ["_drafts", ".hidden"])
+def test_a_hidden_or_private_directory_is_not_a_plugin(
+    tmp_path: pathlib.Path, name: str
+) -> None:
+    _drop_package(tmp_path, name)
+
+    assert load_plugins([], folder=tmp_path) == ()
+
+
+def test_a_dropped_packages_relative_imports_resolve(tmp_path: pathlib.Path) -> None:
+    """The folder is the package, so `from . import` inside it works as the author
+    wrote it — flattening is not the price of dropping in."""
+    _drop_package(
+        tmp_path, "field_notes", init=RELATIVE_IMPORT, notes='FIELD = "birds"\n'
+    )
+
+    (loaded,) = load_plugins([], folder=tmp_path)
+
+    assert loaded.module == "field_notes"
+
+
+def test_a_dropped_package_does_not_shadow_an_installed_module(
+    tmp_path: pathlib.Path,
+) -> None:
+    _drop_package(tmp_path, "json")
+
+    load_plugins([], folder=tmp_path)
+
+    assert sys.modules["json"].__name__ == "json"
+    assert not hasattr(sys.modules["json"], "extend")
+
+
+def test_a_package_that_fails_to_import_is_refused_by_its_folder_name(
+    tmp_path: pathlib.Path,
+) -> None:
+    package = _drop_package(tmp_path, "broken", init="raise RuntimeError('boom')\n")
+
+    with pytest.raises(PluginLoadError) as refused:
+        load_plugins([], folder=tmp_path)
+
+    assert str(package) in refused.value.user_message
+    assert "RuntimeError" in refused.value.user_message
+
+
+def test_a_failed_package_leaves_sys_modules_as_it_found_it(
+    tmp_path: pathlib.Path,
+) -> None:
+    """A package imports its siblings under its own name before it fails, and a stale
+    entry left behind would be what the next load of that name quietly gets."""
+    _drop_package(
+        tmp_path,
+        "birds",
+        init="from .notes import FIELD\nraise RuntimeError('boom')\n",
+        notes='FIELD = "birds"\n',
+    )
+
+    with pytest.raises(PluginLoadError):
+        load_plugins([], folder=tmp_path)
+
+    assert not [name for name in sys.modules if "birds" in name]
+
+
+@pytest.mark.parametrize("name", ["acme.birds", "field-notes", "2birds"])
+def test_a_package_whose_folder_name_is_not_a_name_is_refused(
+    tmp_path: pathlib.Path, name: str
+) -> None:
+    """`acme.birds` is the trap: a directory's `stem` reads it as `acme`, so the check
+    has to read the folder's name whole."""
+    _drop_package(tmp_path, name)
+
+    with pytest.raises(ConfigurationError) as refused:
+        load_plugins([], folder=tmp_path)
+
+    assert name in refused.value.user_message
+
+
+def test_a_dropped_package_named_like_a_named_module_is_refused_naming_both(
+    tmp_path: pathlib.Path,
+) -> None:
+    package = _drop_package(tmp_path, "valid")
+
+    with pytest.raises(ConfigurationError) as refused:
+        load_plugins(["fixture_plugins.valid"], folder=tmp_path)
+
+    assert "fixture_plugins.valid" in refused.value.user_message
+    assert str(package) in refused.value.user_message
+
+
+def test_a_package_that_registers_nothing_is_refused(tmp_path: pathlib.Path) -> None:
+    package = _drop_package(tmp_path, "field_notes", init="FIELD = 'birds'\n")
+
+    with pytest.raises(PluginLoadError) as refused:
+        load_plugins([], folder=tmp_path)
+
+    assert str(package) in refused.value.user_message
+    assert "defines no extend" in refused.value.user_message
+
+
+def test_a_package_asking_for_a_contract_cora_does_not_offer_is_refused(
+    tmp_path: pathlib.Path,
+) -> None:
+    package = _drop_package(tmp_path, "field_notes", init=f"CONTRACT = 99\n{DROPPED}")
+
+    with pytest.raises(PluginLoadError) as refused:
+        load_plugins([], folder=tmp_path)
+
+    assert str(package) in refused.value.user_message
+    assert "99" in refused.value.user_message
+    assert str(CONTRACT) in refused.value.user_message
+
+
 NOT_A_VERSION = ["'1'", "None", "1.5"]
 
 
