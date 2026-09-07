@@ -13,18 +13,19 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
-from cora.plugins.travel.constraints import Asked, check
-from cora.plugins.travel.forecast import skies
-from cora.plugins.travel.plan import (
+from cora.ports.host import Host
+from cora.ports.plugin import Tool, ToolRefusal
+
+from .constraints import Asked, check
+from .forecast import skies
+from .plan import (
     Day,
     Plan,
     plan_from,
     priced_with,
     written,
 )
-from cora.plugins.travel.trips import Offer, Search, _day, _whole
-from cora.ports.host import Host
-from cora.ports.plugin import Tool, ToolRefusal
+from .trips import Offer, Search, _day, _whole
 
 PLAN_TOOL_NAME = "plan_trip"
 PLAN_TOOL_DESCRIPTION = (

@@ -1,5 +1,6 @@
-from cora.plugins.security.injection import refuse_injection
 from cora.ports.host import SCREENING, Host
+
+from .injection import refuse_injection
 
 
 def extend(cora: Host) -> None:

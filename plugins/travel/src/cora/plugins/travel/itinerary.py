@@ -9,11 +9,12 @@ import json
 import re
 from typing import Any
 
-from cora.plugins.travel.plan import Plan, plan_from
-from cora.plugins.travel.planner import KEPT as PLAN_KEPT
 from cora.ports.host import Host
 from cora.ports.output import Output
 from cora.ports.plugin import Tool, ToolRefusal
+
+from .plan import Plan, plan_from
+from .planner import KEPT as PLAN_KEPT
 
 ITINERARY_TOOL_NAME = "save_itinerary"
 ITINERARY_TOOL_DESCRIPTION = (
