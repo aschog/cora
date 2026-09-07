@@ -243,6 +243,17 @@ without a scope marked `system-wide`. `GET /api/plugins` carries the same listin
 plugin declares which version of the contract it wants, and one cora does not offer is
 refused before its `extend` is called.
 
+A plugin you are finished with goes from the page as well. Its field carries the same
+control the three rails carry, in the menu that lists the fields, and it asks first —
+this takes more than anything else here. The plugin's files leave `.cora/plugins`, and
+every field only it brought goes with them: the documents, their passages, and every
+conversation pinned there. What cora remembers about you is left, and so is anything an
+approved effect wrote, because those are yours rather than the field's. A symlink is
+unlinked and what it points at is untouched, so a deployment that linked this repo's
+plugins in loses the link and nothing else. A field the configuration named carries no
+control, having no plugin behind it, and neither does one a module `CORA_PLUGINS` names
+— that one is fixed at start and would be back at the next one.
+
 A plugin keeps what it worked out. What it puts under a name of its own is there on the
 next turn of that conversation, rides the same checkpoint the rest of the turn does, and
 goes when the conversation is deleted — a plan it is still revising, a count it is
