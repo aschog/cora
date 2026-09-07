@@ -62,10 +62,6 @@ Apps = Callable[[], App]
 composition it started with, whatever the plugins folder does meanwhile."""
 
 
-def _fixed(app: App) -> Apps:
-    return lambda: app
-
-
 def api(
     app: App | LiveApp,
     *,
@@ -78,7 +74,7 @@ def api(
 
     Handed a `LiveApp`, every request reads the composition the plugins folder
     describes by then; handed an `App`, the page serves that one for good."""
-    apps = app.current if isinstance(app, LiveApp) else _fixed(app)
+    apps = app.current if isinstance(app, LiveApp) else (lambda held=app: held)
     routes: list[Route | Mount] = [
         Route("/api/documents", _documents(apps), methods=["GET"]),
         Route("/api/documents", _ingest(apps), methods=["POST"]),

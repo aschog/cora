@@ -3,6 +3,8 @@ import pathlib
 import pytest
 from starlette.testclient import TestClient
 
+from app_builder import assembled
+from cora.app.assembly import LiveApp, live
 from cora.app.config import Config
 from cora.frontends.react.api import api
 
@@ -55,9 +57,6 @@ def test_a_dropped_field_is_offered_and_the_rails_follow_it(
 ) -> None:
     """The field arrives with the plugin: the picker's list, the documents rail and
     the pin all read the composition the folder describes, not a startup setting."""
-    from app_builder import assembled
-    from cora.app.assembly import LiveApp
-
     holder = LiveApp(
         named=(),
         folder=tmp_path,
@@ -83,9 +82,6 @@ def test_the_api_reads_the_current_composition_per_request(
     """The api holds the folder's holder, not one boot-time app: what a page reload
     shows is whatever the folder holds by then, and a broken drop is a readable
     refusal rather than a dead deployment."""
-    from app_builder import assembled
-    from cora.app.assembly import LiveApp
-
     holder = LiveApp(
         named=(),
         folder=tmp_path,
@@ -115,8 +111,6 @@ def test_a_package_dropped_while_serving_answers_the_next_listing_read(
 ) -> None:
     """The whole story at once: a folder of plain `.py` files, a relative import
     inside it, dropped while the process serves — and the next read has it."""
-    from cora.app.assembly import live
-
     folder = tmp_path / "plugins"
     folder.mkdir()
     reader = TestClient(api(live(_config(tmp_path, folder))))

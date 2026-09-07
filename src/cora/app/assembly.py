@@ -261,7 +261,7 @@ def _offered(scopes: tuple[str, ...], registry: Registry) -> tuple[str, ...]:
     brought = sorted(
         {entry.scope for entry in registry.entries if entry.scope is not None}
     )
-    return (*scopes, *(scope for scope in brought if scope not in set(scopes)))
+    return (*scopes, *(scope for scope in brought if scope not in scopes))
 
 
 def _announce(plugins: tuple[Extension, ...]) -> None:

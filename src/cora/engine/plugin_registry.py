@@ -157,15 +157,14 @@ def _files_in(folder: pathlib.Path | None) -> tuple[pathlib.Path, ...]:
         sorted(
             path
             for path in folder.iterdir()
-            if not path.name.startswith(SKIPPED) and _is_dropped_plugin(path)
+            if not path.name.startswith(SKIPPED)
+            and (
+                (path / INIT).is_file()
+                if path.is_dir()
+                else path.suffix == SUFFIX and path.is_file()
+            )
         )
     )
-
-
-def _is_dropped_plugin(path: pathlib.Path) -> bool:
-    if path.is_dir():
-        return (path / INIT).is_file()
-    return path.suffix == SUFFIX and path.is_file()
 
 
 def folder_signature(folder: pathlib.Path | None) -> tuple[object, ...]:

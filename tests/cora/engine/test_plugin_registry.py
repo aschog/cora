@@ -4,7 +4,7 @@ import sys
 import pytest
 
 from cora.domain.errors import ConfigurationError, PluginLoadError
-from cora.engine.plugin_registry import load_plugin, load_plugins
+from cora.engine.plugin_registry import folder_signature, load_plugin, load_plugins
 from cora.engine.validation import CORA
 from cora.ports.host import CONTRACT
 
@@ -422,8 +422,6 @@ def test_a_package_asking_for_a_contract_cora_does_not_offer_is_refused(
 def test_the_folder_signature_moves_with_the_folder(tmp_path: pathlib.Path) -> None:
     """One cheap reading of what the folder holds: a drop, a delete or an edit — a
     package's own files included — moves it, and nothing else does."""
-    from cora.engine.plugin_registry import folder_signature
-
     empty = folder_signature(tmp_path)
     assert folder_signature(tmp_path) == empty
 
@@ -452,8 +450,6 @@ def test_a_symlinked_package_is_a_plugin_like_any_other(
     """A repo's own plugin deploys by `ln -s`: the link is discovered, loaded and
     stat-ed as the directory it points at, so an edit where it lives moves the
     signature the folder is watched by."""
-    from cora.engine.plugin_registry import folder_signature
-
     target = _drop_package(tmp_path / "elsewhere", "field_notes")
     folder = tmp_path / "plugins"
     folder.mkdir()
