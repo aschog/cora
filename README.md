@@ -209,10 +209,21 @@ handed the location rather than choosing one, and a filename that would climb ou
 refused, so no plugin writes that check itself.
 
 A plugin does not have to be installed. Drop a single `.py` file into `./.cora/plugins/`
-and cora loads it with no packaging at all, named for the file — the folder is read in
-name order after the modules `CORA_PLUGINS` names, and `CORA_PLUGINS_PATH` moves it. It
-is read relative to where cora was started, and every file in it is code cora runs —
-`CORA_DEBUG` logs which folder that was.
+and cora loads it with no packaging at all, named for the file. A plugin that has grown
+past one file goes in the same way: drop its folder — a directory holding `__init__.py` —
+and it is one plugin named for the folder, its own relative imports working as written.
+The folder is read in name order after the modules `CORA_PLUGINS` names, and
+`CORA_PLUGINS_PATH` moves it. It is read relative to where cora was started, and
+everything in it is code cora runs — `CORA_DEBUG` logs which folder that was. What a
+drop-in imports is not installed for it: anything beyond cora and the standard library
+has to be in cora's environment already, or the plugin is refused by name.
+
+And the folder is live. A plugin dropped there while cora serves is installed by the
+next request — reload the page and it is in the menu — a deleted one is gone the same
+way, and an edited one serves its new code. No environment change, no restart. A turn
+already running finishes on the plugins it started with, and a drop that cannot load
+refuses that request readably while everything already loaded keeps serving. Only the
+folder is live: what `CORA_PLUGINS` names is fixed at start.
 `make plugins` prints what loaded: every plugin under where it came from, with its tools,
 its instructions and the points in a turn it subscribed to, and anything registered
 without a scope marked `system-wide`. `GET /api/plugins` carries the same listing. A
