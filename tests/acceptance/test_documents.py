@@ -55,7 +55,7 @@ def test_a_field_answers_from_its_own_files() -> None:
         ),
         scopes=(FITNESS, TRAVEL),
     )
-    client = TestClient(api(app, scopes=(FITNESS, TRAVEL)))
+    client = TestClient(api(app))
     _upload(client, "plan.md", PLAN, FITNESS)
     _upload(client, "kyoto.md", KYOTO, TRAVEL)
 
@@ -103,7 +103,7 @@ def test_a_document_i_delete_is_searched_and_cited_no_more(
         ),
         scopes=(TRAVEL,),
     )
-    client = TestClient(api(app, scopes=(TRAVEL,)))
+    client = TestClient(api(app))
     _upload(client, "kyoto.md", KYOTO, TRAVEL)
     _upload(client, "maples.md", MAPLES, TRAVEL)
 

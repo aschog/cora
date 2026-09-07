@@ -45,11 +45,7 @@ def serve() -> None:
     try:
         config = Config.from_env()
         chosen = port(os.environ)
-        served = api(
-            live(config),
-            scopes=config.scopes,
-            ui=ui_path(os.environ),
-        )
+        served = api(live(config), ui=ui_path(os.environ))
     except CoreError as refused:
         # Written here rather than left to `SystemExit` to carry: an exit whose argument
         # is a string is only printed if nothing catches it on the way out.

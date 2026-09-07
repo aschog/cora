@@ -15,6 +15,8 @@ dropped at all without flattening it into one file.
   restart, a page reload shows it.
 - A drop that cannot load refuses that reload readably and leaves the running set
   serving.
+- A field a dropped plugin registers is offered with it — picker, router, pin and
+  rails — and goes when the plugin goes. `CORA_SCOPES` keeps gating named modules.
 - Dependencies are not installed: an import the environment lacks is a refusal, not
   a feature.
 
@@ -36,7 +38,7 @@ None.
 - `src/cora/app/assembly.py` — the composition rebuilds on folder change, over
   adapters that live on.
 - `frontends/react/src/cora/frontends/react/api.py`, `server.py` — the API reads
-  the current assembly instead of one fixed at boot.
+  the current assembly instead of one fixed at boot, its fields included.
 - `openspec/specs/plugins/spec.md` — requirements gain package and live-folder
   scenarios, via this change's delta.
 - `README.md`, `docs/how-to/write-a-plugin.md` — the drop-in section says folders,

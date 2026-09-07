@@ -220,7 +220,10 @@ has to be in cora's environment already, or the plugin is refused by name.
 
 And the folder is live. A plugin dropped there while cora serves is installed by the
 next request — reload the page and it is in the menu — a deleted one is gone the same
-way, and an edited one serves its new code. No environment change, no restart. A turn
+way, and an edited one serves its new code. No environment change, no restart. The
+field a dropped plugin registers under arrives with it — the picker, the router and the
+rails offer it as if `CORA_SCOPES` had named it, and it goes when the plugin goes —
+while what `CORA_PLUGINS` names stays gated by `CORA_SCOPES` alone. A turn
 already running finishes on the plugins it started with, and a drop that cannot load
 refuses that request readably while everything already loaded keeps serving. Only the
 folder is live: what `CORA_PLUGINS` names is fixed at start.

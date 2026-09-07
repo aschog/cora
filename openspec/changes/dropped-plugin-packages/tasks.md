@@ -51,6 +51,21 @@
 - [x] 5.8 Write a test that shows named modules load once and survive every
       recomposition untouched.
 
-## 6. Done
+## 6. A dropped field is offered
 
-- [x] 6.1 Drop the outer test's `xfail` marker and watch it pass.
+- [x] 6.1 Write a test that shows assemble offers the given scopes plus those
+      registered by the plugins it is told bring their own, carried on the app.
+- [x] 6.2 Write a test that shows a named module's unconfigured scope stays
+      unoffered.
+- [x] 6.3 Write a test that shows a dropped plugin's scope is in the holder's next
+      composition and gone once the plugin is deleted.
+- [x] 6.4 Write a test that shows the offered-fields route reads the current
+      composition.
+- [x] 6.5 Write a test that shows a question pinned to a dropped field is accepted.
+- [x] 6.6 Write a test that shows the rails list and upload into a dropped field.
+- [x] 6.7 Extend the outer test: the dropped package's field is offered on the next
+      read.
+
+## 7. Done
+
+- [x] 7.1 Drop the outer test's `xfail` marker and watch it pass.

@@ -52,6 +52,13 @@ and the React API closes over that one assembled `App` for the process's life.
   answers that request as a `CoreError` already does, and is retried on the next.
 - Named modules are loaded once at startup and passed into every recomposition
   untouched.
+- Dropping into the folder is the deployment act, so the fields a dropped plugin
+  registers join the configured ones for as long as it is there; named modules stay
+  gated by `CORA_SCOPES`.
+- The app carries the fields it offers, and the api reads them off the current
+  composition per request — its startup `scopes` parameter goes.
+- `load_plugins` keeps named-first order, which is what tells the folder's plugins
+  apart from the named ones without a second loading path.
 
 ## Risks / Trade-offs
 

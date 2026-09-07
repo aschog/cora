@@ -45,6 +45,38 @@ serving until the folder loads again.
 - **WHEN** that turn completes
 - **THEN** it finishes on the plugin set it started with
 
+### Requirement: A field a dropped plugin brings is offered with it
+
+The system SHALL offer the fields a dropped plugin registers under as if the deployment
+had named them, for as long as the plugin is in the folder: what a reader may pick and
+pin, what a question may be routed to, and what the rails may list and upload into are
+the configured fields plus the folder's. A plugin named in the environment SHALL stay
+gated by the configured fields alone.
+
+#### Scenario: A dropped plugin's field is offered without configuration
+
+- **GIVEN** a running deployment, and a plugin dropped that registers under `interview`
+- **WHEN** the offered fields are next read
+- **THEN** `interview` is among them, though no configuration names it
+
+#### Scenario: A deleted plugin takes its field with it
+
+- **GIVEN** a deployment offering a field only a dropped plugin registered
+- **WHEN** the plugin is deleted and the offered fields are next read
+- **THEN** the field is gone with it
+
+#### Scenario: A question is answered in the dropped field
+
+- **GIVEN** a dropped plugin whose field no configuration names
+- **WHEN** a conversation is pinned to that field and a question asked
+- **THEN** the turn runs in it, and is not refused as a field nobody offers
+
+#### Scenario: A named module's field still needs naming
+
+- **GIVEN** a module in the environment registering under a field `CORA_SCOPES` omits
+- **WHEN** the offered fields are read
+- **THEN** that field is not among them
+
 ## MODIFIED Requirements
 
 ### Requirement: A plugin is found where it is, and says where it came from

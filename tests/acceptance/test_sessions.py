@@ -42,7 +42,7 @@ def _listed(page: TestClient) -> list[str]:
 def test_a_conversation_i_delete_is_gone_from_both_stores(
     tmp_path: pathlib.Path,
 ) -> None:
-    served = api(_app(tmp_path / "conversations.sqlite"), scopes=(FITNESS,))
+    served = api(_app(tmp_path / "conversations.sqlite"))
     with TestClient(served) as page:
         for thread, question in ((KEPT, FIRST), (DELETED, SECOND)):
             asked = {"question": question, "thread_id": thread, "pin": FITNESS}

@@ -73,6 +73,10 @@ class App:
 
     `memory` and `conversations` are optional because an app can run without either —
     what is missing is then missing from the page too, rather than faked.
+
+    `scopes` is the fields this composition offers: what was configured, plus what the
+    plugins trusted to bring their own registered. The page reads it off the app,
+    because with a live plugins folder it is the composition's fact, not a setting's.
     """
 
     agent: Agent
@@ -80,6 +84,7 @@ class App:
     plugins: tuple[Listed, ...] = ()
     memory: Memory | None = None
     conversations: Conversations | None = None
+    scopes: tuple[str, ...] = ()
 
 
 class LiveApp:
@@ -95,15 +100,16 @@ class LiveApp:
     def __init__(
         self,
         *,
-        compose: Callable[[tuple[Extension, ...]], App],
+        compose: Callable[[tuple[Extension, ...], tuple[str, ...]], App],
         named: tuple[str, ...] = (),
         folder: pathlib.Path | None = None,
     ) -> None:
         """Composes once, here: a folder that cannot load refuses the start itself.
 
         Args:
-            compose: An app from the plugins handed to it; everything else it needs
-                is its own, made once and reused across compositions.
+            compose: An app from the plugins handed to it and the names of those the
+                folder contributed; everything else it needs is its own, made once
+                and reused across compositions.
             named: The module paths the deployment configured, loaded every
                 composition and cached by Python into the same modules.
             folder: Where plugins are dropped. Absent, the folder simply never moves.
@@ -113,7 +119,7 @@ class LiveApp:
         self._folder = folder
         self._lock = threading.Lock()
         self._signature = folder_signature(folder)
-        self._app = compose(load_plugins(named, folder=folder))
+        self._app = self._composed()
 
     def current(self) -> App:
         """The app the folder describes right now.
@@ -131,11 +137,13 @@ class LiveApp:
         with self._lock:
             signature = folder_signature(self._folder)
             if signature != self._signature:
-                self._app = self._compose(
-                    load_plugins(self._named, folder=self._folder)
-                )
+                self._app = self._composed()
                 self._signature = signature
             return self._app
+
+    def _composed(self) -> App:
+        loaded = load_plugins(self._named, folder=self._folder)
+        return self._compose(loaded, _folder_names(self._named, loaded))
 
 
 def assemble(
@@ -147,6 +155,7 @@ def assemble(
     plugins: tuple[Extension, ...] = (),
     plugin_settings: dict[str, dict[str, str]] | None = None,
     scopes: tuple[str, ...] = (),
+    scopes_from: tuple[str, ...] = (),
     memory: Memory | None = None,
     conversations: Conversations | None = None,
     output: Output | None = None,
@@ -171,6 +180,9 @@ def assemble(
         scopes: The fields a turn may run under — which of the plugins' scoped
             registrations this deployment offers. Naming one leaves the routing step
             nothing to choose between; naming two is what it chooses between.
+        scopes_from: Plugins that bring their own fields: whatever these registered
+            under is offered beside `scopes`, as if the deployment had named it.
+            Loading one — dropping it in the folder — is itself the deployment act.
         memory: What cora keeps about the user. Without it, no `remember` tool is
             offered at all.
         conversations: Where turns are recorded. Without it, a turn is answered and
@@ -201,13 +213,14 @@ def assemble(
         top_k=top_k,
     )
     _warn_unscreened(registry)
+    offered = _offered(scopes, registry, scopes_from)
     tools = _coras_own_tools(knowledge_base, top_k, memory)
     runner = graph(
         before=(
             Named(SCREEN, ScreenStep(registry=registry)),
             Named(
                 ROUTE,
-                RouteStep(chat_model=chat_model, available=scopes, registry=registry),
+                RouteStep(chat_model=chat_model, available=offered, registry=registry),
             ),
             Named(
                 FOCUS,
@@ -239,7 +252,27 @@ def assemble(
         plugins=registry.listing(plugins),
         memory=memory,
         conversations=conversations,
+        scopes=offered,
     )
+
+
+def _offered(
+    scopes: tuple[str, ...], registry: Registry, scopes_from: tuple[str, ...]
+) -> tuple[str, ...]:
+    """The configured fields, then what the trusted plugins brought.
+
+    Sorted past the configured ones and each named once — a field is a field,
+    however many registrations carry it.
+    """
+    bringing = set(scopes_from)
+    brought = sorted(
+        {
+            entry.scope
+            for entry in registry.entries
+            if entry.scope is not None and entry.module in bringing
+        }
+    )
+    return (*scopes, *(scope for scope in brought if scope not in set(scopes)))
 
 
 def _announce(plugins: tuple[Extension, ...]) -> None:
@@ -342,9 +375,8 @@ def build(config: Config) -> App:
         PluginLoadError: A plugin named in the configuration could not be loaded.
         ConfigurationError: The plugins load but cannot be composed together.
     """
-    return _composer(config)(
-        load_plugins(config.plugin_modules, folder=_folder_of(config))
-    )
+    loaded = load_plugins(config.plugin_modules, folder=_folder_of(config))
+    return _composer(config)(loaded, _folder_names(config.plugin_modules, loaded))
 
 
 def live(config: Config) -> LiveApp:
@@ -368,7 +400,20 @@ def _folder_of(config: Config) -> pathlib.Path:
     return folder
 
 
-def _composer(config: Config) -> Callable[[tuple[Extension, ...]], App]:
+def _folder_names(
+    named: tuple[str, ...], loaded: tuple[Extension, ...]
+) -> tuple[str, ...]:
+    """Which of the loaded plugins the folder contributed.
+
+    `load_plugins` returns the named ones first, in order, so everything past
+    them was dropped.
+    """
+    return tuple(plugin.module for plugin in loaded[len(named) :])
+
+
+def _composer(
+    config: Config,
+) -> Callable[[tuple[Extension, ...], tuple[str, ...]], App]:
     """Every slot that outlives a folder change, filled once and closed over.
 
     The adapters are imported here rather than at the top, so importing `cora.app` costs
@@ -405,7 +450,7 @@ def _composer(config: Config) -> Callable[[tuple[Extension, ...]], App]:
     output = FileOutput.at(config.output_path)
     graph = partial(langgraph_for, checkpoints_at=config.conversations_path)
 
-    def compose(loaded: tuple[Extension, ...]) -> App:
+    def compose(loaded: tuple[Extension, ...], dropped: tuple[str, ...]) -> App:
         # Settings read off what loaded rather than off what the deployment typed: a
         # plugin dropped in the folder was named by nobody, and settings keyed by
         # `CORA_PLUGINS` would hand it an empty slice under a name it does not have.
@@ -419,6 +464,7 @@ def _composer(config: Config) -> Callable[[tuple[Extension, ...]], App]:
                 tuple(plugin.module for plugin in loaded)
             ),
             scopes=config.scopes,
+            scopes_from=dropped,
             memory=memory,
             conversations=conversations,
             output=output,

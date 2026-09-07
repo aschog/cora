@@ -646,7 +646,10 @@ def _live(folder: Path, **kwargs: Any) -> "LiveApp":
     return LiveApp(
         named=kwargs.pop("named", ()),
         folder=folder,
-        compose=kwargs.pop("compose", lambda loaded: assembled(plugins=loaded)),
+        compose=kwargs.pop(
+            "compose",
+            lambda loaded, dropped: assembled(plugins=loaded, scopes_from=dropped),
+        ),
     )
 
 
@@ -704,6 +707,47 @@ def test_an_edited_plugin_serves_its_new_behaviour(tmp_path: Path) -> None:
     assert [each.name for each in listed["field_notes"].of(TOOL)] == ["recount"]
 
 
+def test_the_app_offers_the_scopes_a_plugin_it_trusts_brings() -> None:
+    """Dropping into the folder is the deployment act, so what a dropped plugin
+    registers under is offered as if `CORA_SCOPES` had named it — once, however many
+    registrations carry it, and not doubled when configuration names it too."""
+    dropped = make_plugin(name="interview", scope="interview")
+
+    app = assembled(
+        plugins=(dropped,),
+        scopes=("fitness",),
+        scopes_from=("fixture_plugins.interview",),
+    )
+
+    assert app.scopes == ("fitness", "interview")
+    already = assembled(
+        plugins=(make_plugin(name="coaching", scope="fitness"),),
+        scopes=("fitness",),
+        scopes_from=("fixture_plugins.coaching",),
+    )
+    assert already.scopes == ("fitness",)
+
+
+def test_a_named_modules_unconfigured_scope_stays_unoffered() -> None:
+    named = make_plugin(name="interview", scope="interview")
+
+    app = assembled(plugins=(named,), scopes=("fitness",))
+
+    assert app.scopes == ("fitness",)
+
+
+def test_a_dropped_plugins_scope_is_offered_and_goes_with_it(tmp_path: Path) -> None:
+    folder = _folder(tmp_path)
+    holder = _live(folder)
+    assert holder.current().scopes == ()
+
+    (folder / "field_notes.py").write_text(LIVE)
+    assert holder.current().scopes == ("birds",)
+
+    (folder / "field_notes.py").unlink()
+    assert holder.current().scopes == ()
+
+
 def test_a_broken_drop_refuses_the_read_and_the_prior_set_keeps_serving(
     tmp_path: Path,
 ) -> None:
@@ -741,9 +785,9 @@ def test_named_modules_load_once_and_survive_recomposition_untouched(
     folder = _folder(tmp_path)
     seen: list[tuple[Extension, ...]] = []
 
-    def compose(loaded: tuple[Extension, ...]) -> App:
+    def compose(loaded: tuple[Extension, ...], dropped: tuple[str, ...]) -> App:
         seen.append(loaded)
-        return assembled(plugins=loaded)
+        return assembled(plugins=loaded, scopes_from=dropped)
 
     holder = _live(folder, named=("fixture_plugins.valid",), compose=compose)
     holder.current()

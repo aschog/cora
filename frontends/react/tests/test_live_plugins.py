@@ -50,6 +50,33 @@ def extend(cora: Host) -> None:
 """
 
 
+def test_a_dropped_field_is_offered_and_the_rails_follow_it(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The field arrives with the plugin: the picker's list, the documents rail and
+    the pin all read the composition the folder describes, not a startup setting."""
+    from app_builder import assembled
+    from cora.app.assembly import LiveApp
+
+    holder = LiveApp(
+        named=(),
+        folder=tmp_path,
+        compose=lambda loaded, dropped: assembled(plugins=loaded, scopes_from=dropped),
+    )
+    reader = TestClient(api(holder))
+    assert reader.get("/api/scopes").json()["available"] == []
+    assert reader.get("/api/documents?scope=birds").status_code == 400
+
+    (tmp_path / "field_notes.py").write_text(INSTRUCTIONS_ONLY)
+
+    assert reader.get("/api/scopes").json()["available"] == ["birds"]
+    listed = reader.get("/api/documents?scope=birds")
+    assert listed.status_code == 200 and listed.json() == []
+
+    (tmp_path / "field_notes.py").unlink()
+    assert reader.get("/api/scopes").json()["available"] == []
+
+
 def test_the_api_reads_the_current_composition_per_request(
     tmp_path: pathlib.Path,
 ) -> None:
@@ -60,7 +87,9 @@ def test_the_api_reads_the_current_composition_per_request(
     from cora.app.assembly import LiveApp
 
     holder = LiveApp(
-        named=(), folder=tmp_path, compose=lambda loaded: assembled(plugins=loaded)
+        named=(),
+        folder=tmp_path,
+        compose=lambda loaded, dropped: assembled(plugins=loaded),
     )
     reader = TestClient(api(holder))
     assert reader.get("/api/plugins").json() == []
@@ -101,3 +130,4 @@ def test_a_package_dropped_while_serving_answers_the_next_listing_read(
     listed = reader.get("/api/plugins").json()
     assert [each["name"] for each in listed] == ["interview"]
     assert listed[0]["source"] == str(package)
+    assert reader.get("/api/scopes").json()["available"] == ["interview"]

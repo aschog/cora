@@ -1,6 +1,7 @@
 import hashlib
 import pathlib
 from collections.abc import Iterator
+from dataclasses import replace
 from typing import Any
 
 import anyio
@@ -509,7 +510,7 @@ KYOTO = b"The sleeper to Kyoto sells out a month before the maples turn."
 
 
 def _scoped(app: App) -> TestClient:
-    return TestClient(api(app, scopes=(FITNESS, TRAVEL)))
+    return TestClient(api(replace(app, scopes=(FITNESS, TRAVEL))))
 
 
 def test_an_upload_lands_in_the_field_it_names() -> None:

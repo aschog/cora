@@ -39,7 +39,7 @@ def _asked(reader: TestClient, **body: Any) -> list[tuple[str, dict]]:
 def test_the_page_is_told_which_fields_the_deployment_offers() -> None:
     """The picker is drawn from this: a deployment with one field has nothing to pick,
     and the default is what a question belonging to no field is answered in."""
-    with TestClient(api(_served(), scopes=BOTH)) as reader:
+    with TestClient(api(_served())) as reader:
         offered = reader.get("/api/scopes").json()
 
     assert offered == {"available": list(BOTH), "default": DEFAULT_SCOPE}
@@ -50,7 +50,7 @@ def test_a_question_can_carry_the_pin_that_fixes_the_thread_to_a_field() -> None
     and a page that reloads reads it back off the thread rather than off its own."""
     app = _served(ModelReply(text="Protein, then."))
 
-    with TestClient(api(app, scopes=BOTH)) as reader:
+    with TestClient(api(app)) as reader:
         assert reader.get(f"/api/sessions/{THREAD}/scope").json() == {"pin": None}
 
         streamed = _asked(reader, question="How much protein?", pin="fitness")
@@ -73,7 +73,7 @@ def test_a_second_field_on_a_pinned_thread_is_refused_as_a_sentence() -> None:
     is in, which is what tells them to start another."""
     app = _served(ModelReply(text="Protein, then."), ModelReply(text="never said"))
 
-    with TestClient(api(app, scopes=BOTH)) as reader:
+    with TestClient(api(app)) as reader:
         _asked(reader, question="How much protein?", pin="fitness")
         streamed = _asked(reader, question="Sleeper?", pin="travel")
 
@@ -82,10 +82,27 @@ def test_a_second_field_on_a_pinned_thread_is_refused_as_a_sentence() -> None:
     assert "fitness" in data["error"]
 
 
+def test_a_question_pinned_to_a_field_a_dropped_plugin_brought_is_accepted() -> None:
+    """`CORA_SCOPES` never named it, but the plugin brought it — the pin check reads
+    what the composition offers, not what the deployment typed."""
+    app = assembled(
+        chat_model=ScriptedChatModel([ModelReply(text="Ask away.")]),
+        conversations=FakeConversations(),
+        plugins=(make_plugin(name="interview", scope="interview"),),
+        scopes=BOTH,
+        scopes_from=("fixture_plugins.interview",),
+    )
+
+    with TestClient(api(app)) as reader:
+        streamed = _asked(reader, question="First question?", pin="interview")
+
+    assert streamed[-1][0] == "turn"
+
+
 def test_a_field_the_deployment_does_not_run_is_refused_before_the_turn() -> None:
     """A pin cannot be undone, so a pin to a field no registration is under would leave
     the thread answering plainly for ever. Refused where what is offered is known."""
-    with TestClient(api(_served(), scopes=BOTH)) as reader:
+    with TestClient(api(_served())) as reader:
         refused = reader.post(
             "/api/ask",
             json={"thread_id": THREAD, "question": "Anything?", "pin": "cooking"},
