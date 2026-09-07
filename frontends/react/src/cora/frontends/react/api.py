@@ -230,7 +230,9 @@ def _ingest(apps: Apps) -> Callable[[Request], Any]:
     """
 
     async def add(request: Request) -> JSONResponse:
-        app = apps()
+        # Off the loop: reading the current app may recompose over a changed plugins
+        # folder, and that work — imports included — must not hold every other request.
+        app = await run_in_threadpool(apps)
         refused = _over_ceiling(request)
         if refused is not None:
             return refused
@@ -344,7 +346,7 @@ def _ask(apps: Apps) -> Callable[[Request], Any]:
     waiting for."""
 
     async def taken(request: Request) -> Response:
-        app = apps()
+        app = await run_in_threadpool(apps)
         asked = await _json_object(request, NOT_A_QUESTION)
         if isinstance(asked, JSONResponse):
             return asked
@@ -376,7 +378,7 @@ def _resume(apps: Apps) -> Callable[[Request], Any]:
     form is the same two things, and a second route would be this one written twice."""
 
     async def picked(request: Request) -> Response:
-        app = apps()
+        app = await run_in_threadpool(apps)
         answered = await _json_object(request, NOT_A_DECISION)
         if isinstance(answered, JSONResponse):
             return answered

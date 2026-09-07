@@ -71,14 +71,14 @@ the injection screen are system-wide and hold whatever a turn is running as. So 
 `CORA_SCOPES` line above is optional — it names fields *beyond* what the plugins
 register, which is how a field holding only documents exists.
 
-With two fields named, cora reads each question and answers it in the one it belongs to —
+With two fields offered, cora reads each question and answers it in the one it belongs to —
 the trace says which, and a question that fits both stops the turn to ask. That is
 *Chat*, above the conversation. Name one field instead — *+ Plugin* lists the ones this
 deployment loaded — and every later turn is answered in it, through a reload and a
 reopen: the pin is the thread's own state. A pin is set once, because a
 thread that could change field is a thread whose earlier turns mean something else — a
-second field is a second conversation. Naming one scope leaves nothing to route between,
-which is how a single-field deployment stays one.
+second field is a second conversation. Loading one field leaves nothing to route
+between, which is how a single-field deployment stays one.
 
 Everything cora stops for is one card. A question between two remembered weights, a
 call it is about to make that changes something outside itself, a form it needs filled
@@ -231,7 +231,8 @@ repo's own plugins deploy by linking:
 ln -s "$(pwd)"/plugins/travel/src/cora/plugins/travel .cora/plugins/travel
 ```
 
-A turn
+One route per plugin, though: a module `CORA_PLUGINS` names and a link (or file) in the
+folder are two plugins with one name, which cora refuses — link it *or* name it. A turn
 already running finishes on the plugins it started with, and a drop that cannot load
 refuses that request readably while everything already loaded keeps serving. Only the
 folder is live: what `CORA_PLUGINS` names is fixed at start.

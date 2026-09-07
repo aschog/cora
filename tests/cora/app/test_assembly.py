@@ -741,6 +741,42 @@ def test_a_dropped_plugins_scope_is_offered_and_goes_with_it(tmp_path: Path) -> 
     assert holder.current().scopes == ()
 
 
+def test_a_dropped_plugins_tool_answers_the_next_turn(tmp_path: Path) -> None:
+    """The spec's sentence is about turns, not listings: a dropped tool runs when the
+    model calls it, and an edit to the plugin is what the next turn executes."""
+    folder = _folder(tmp_path)
+
+    def compose(loaded: tuple[Extension, ...]) -> App:
+        return assembled(
+            chat_model=ScriptedChatModel(
+                [
+                    ModelReply(
+                        tool_calls=(
+                            ToolCall(name="count_seen", arguments={}, call_id="c1"),
+                        )
+                    ),
+                    ModelReply(text="Counted."),
+                ]
+            ),
+            plugins=loaded,
+        )
+
+    holder = _live(folder, compose=compose)
+    (folder / "field_notes.py").write_text(LIVE)
+
+    result = holder.current().agent.answer("How many birds?", "t-drop")
+    assert result.answer == "Counted."
+    [call] = [step for step in result.trace if isinstance(step, ToolUse)]
+    assert not call.failed
+    assert "3" in call.detail
+
+    (folder / "field_notes.py").write_text(LIVE.replace("lambda: 3", "lambda: 7"))
+
+    again = holder.current().agent.answer("And now?", "t-edit")
+    [call] = [step for step in again.trace if isinstance(step, ToolUse)]
+    assert "7" in call.detail
+
+
 def test_a_broken_drop_refuses_the_read_and_the_prior_set_keeps_serving(
     tmp_path: Path,
 ) -> None:
@@ -790,6 +826,26 @@ def test_named_modules_load_once_and_survive_recomposition_untouched(
     first, second = seen
     assert [each.module for each in second] == ["fixture_plugins.valid", "field_notes"]
     assert second[0].extend is first[0].extend
+
+
+@pytest.mark.integration
+def test_recomposition_reuses_the_process_checkpointer(tmp_path: Path) -> None:
+    """The checkpointer is an adapter, and adapters are made once for the process: a
+    folder change must not open a second connection onto the same conversations file."""
+    from cora.app.assembly import live
+
+    folder = tmp_path / "plugins"
+    folder.mkdir()
+    holder = live(replace(_config(tmp_path), plugins_path=str(folder)))
+    before = holder.current()
+
+    (folder / "field_notes.py").write_text(DROPPED)
+    after = holder.current()
+
+    assert after is not before
+    assert isinstance(before.agent.runner, LangGraphRunner)
+    assert isinstance(after.agent.runner, LangGraphRunner)
+    assert after.agent.runner.checkpointer is before.agent.runner.checkpointer
 
 
 @pytest.mark.integration

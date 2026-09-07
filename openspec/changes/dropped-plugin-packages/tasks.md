@@ -55,8 +55,8 @@
 
 - [x] 6.1 Write a test that shows assemble offers the given scopes plus those
       registered by the plugins it is told bring their own, carried on the app.
-- [x] 6.2 Write a test that shows a named module's unconfigured scope stays
-      unoffered.
+- [x] 6.2 ~~A named module's unconfigured scope stays unoffered~~ — superseded by
+      7.2: the union rule reversed this, and the test went with it.
 - [x] 6.3 Write a test that shows a dropped plugin's scope is in the holder's next
       composition and gone once the plugin is deleted.
 - [x] 6.4 Write a test that shows the offered-fields route reads the current
@@ -77,6 +77,14 @@
 - [x] 7.4 Write a test that shows a symlinked package directory loads as a plugin
       and an edit through the link moves the signature.
 
-## 8. Done
+## 8. Review findings
+
+- [x] 8.1 Write a test that shows a slow drop recomposing inside an async handler
+      does not stall the event loop.
+- [x] 8.2 Write a test that shows recomposition reuses the process checkpointer.
+- [x] 8.3 Write a test that shows a dropped plugin's tool answers the next turn, and
+      an edit to it is what the turn after that executes.
+
+## 9. Done
 
 - [x] 8.1 Drop the outer test's `xfail` marker and watch it pass.

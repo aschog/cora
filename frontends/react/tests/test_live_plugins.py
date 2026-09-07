@@ -1,5 +1,8 @@
+import asyncio
 import pathlib
+import time
 
+import httpx
 import pytest
 from starlette.testclient import TestClient
 
@@ -103,6 +106,44 @@ def test_the_api_reads_the_current_composition_per_request(
     assert [each["name"] for each in reader.get("/api/plugins").json()] == [
         "field_notes"
     ]
+
+
+SLOW_IMPORT = f"import time\ntime.sleep(0.8)\n{INSTRUCTIONS_ONLY}"
+
+
+@pytest.mark.integration
+def test_a_slow_drop_does_not_stall_the_event_loop(tmp_path: pathlib.Path) -> None:
+    """Recomposing runs plugin imports, and an async handler that pays for that on the
+    event loop stalls every stream and request on the page. The 404 below touches no
+    composition, so it answers immediately — unless the loop itself is held."""
+    holder = LiveApp(
+        named=(),
+        folder=tmp_path,
+        compose=lambda loaded: assembled(plugins=loaded),
+    )
+    served = api(holder)
+
+    async def race() -> tuple[int, float, int]:
+        transport = httpx.ASGITransport(app=served)
+        async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+            (tmp_path / "slow.py").write_text(SLOW_IMPORT)
+            asking = asyncio.create_task(
+                c.post("/api/ask", json={"question": "hi", "thread_id": "t1"})
+            )
+            # The clock starts before yielding: a held loop stalls this coroutine
+            # itself, so stamping after the yield would hide exactly the stall.
+            started = time.monotonic()
+            await asyncio.sleep(0.05)
+            pong = await c.get("/api/nothing")
+            elapsed = time.monotonic() - started
+            asked = await asking
+            return pong.status_code, elapsed, asked.status_code
+
+    status, elapsed, asked = asyncio.run(race())
+
+    assert status == 404
+    assert asked == 200
+    assert elapsed < 0.4, "the event loop was held for the length of a plugin import"
 
 
 @pytest.mark.integration

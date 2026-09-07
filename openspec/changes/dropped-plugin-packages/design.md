@@ -43,7 +43,7 @@ and the React API closes over that one assembled `App` for the process's life.
 - The API takes that holder instead of an `App`: each handler reads the current app
   once, so a turn runs whole on one set.
 - A signature check is a directory stat, cheap enough to run per request; recompose
-  only when it differs. <!-- ponytail: per-request stat scan, a watcher if folders grow huge -->
+  only when it differs. A watcher can replace the scan if folders ever grow huge.
 - Recomposition swaps under a lock, one at a time; readers keep whatever app they
   already took.
 - Editing a dropped plugin re-executes its module: the `cora_dropped` names are
@@ -71,8 +71,12 @@ and the React API closes over that one assembled `App` for the process's life.
   same-name refusal already fires, since both carry the stem.
 - [An edited plugin's old code holds state a new turn expects] → conversation state
   lives in cora's stores, not the module, so a recompose loses nothing kept.
-- [mtime granularity misses a same-second edit] → signature includes size and every
-  member file of a package, and a page reload a second later catches it.
+- [mtime granularity misses a same-second edit] → the signature is nanosecond and
+  includes size and every `.py` member of a package; a non-Python resource edited
+  inside one does not move it, and is picked up with the next `.py` change.
+- [Python's bytecode cache validates by whole seconds] → a dropped plugin's own module
+  always compiles from source; a package's *members* keep Python's cache, so a
+  same-second same-size edit to one waits for the next second.
 
 ## Migration Plan
 

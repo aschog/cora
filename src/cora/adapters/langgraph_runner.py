@@ -84,7 +84,7 @@ def _saver() -> InMemorySaver:
     return InMemorySaver(serde=_serde())
 
 
-def _saver_at(path: str) -> SqliteSaver:
+def saver_at(path: str) -> SqliteSaver:
     """Beside the turns the reader comes back to, in the same file: what the model was
     told and what the page redraws are two halves of one conversation, and a deployment
     that deletes the file should lose both or neither."""
@@ -260,10 +260,13 @@ def langgraph_for(
     after: tuple[NamedStep, ...],
     max_tool_rounds: int,
     checkpoints_at: str | None = None,
+    checkpointer: BaseCheckpointSaver | None = None,
 ) -> GraphRunner:
-    """`checkpoints_at` is this binding's own, not the `GraphFor` port's: where a thread
-    is kept is a fact about LangGraph and sqlite, and a composition root binds it here
-    rather than the port learning that threads live in files."""
+    """`checkpoints_at` and `checkpointer` are this binding's own, not the `GraphFor`
+    port's: where a thread is kept is a fact about LangGraph and sqlite, and a
+    composition root binds it here rather than the port learning that threads live in
+    files. A composition root that composes more than once hands in `checkpointer` —
+    a saver it made once — so every composition remembers through one connection."""
     return LangGraphRunner(
         before=before,
         loop=loop,
@@ -271,5 +274,6 @@ def langgraph_for(
         recursion_limit=recursion_limit_for(
             max_tool_rounds, steps=len(before) + len(after) + 1
         ),
-        checkpointer=_saver() if checkpoints_at is None else _saver_at(checkpoints_at),
+        checkpointer=checkpointer
+        or (_saver() if checkpoints_at is None else saver_at(checkpoints_at)),
     )

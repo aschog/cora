@@ -6,7 +6,7 @@ import threading
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from cora.adapters.langgraph_runner import interrupting, langgraph_for
+from cora.adapters.langgraph_runner import interrupting, langgraph_for, saver_at
 from cora.adapters.loaders import LOADERS
 from cora.app.config import (
     DEFAULT_HISTORY_TURNS,
@@ -425,7 +425,10 @@ def _composer(config: Config) -> Callable[[tuple[Extension, ...]], App]:
     memory = SqliteStoreMemory.at(config.memory_path)
     conversations = SqliteConversations.at(config.conversations_path)
     output = FileOutput.at(config.output_path)
-    graph = partial(langgraph_for, checkpoints_at=config.conversations_path)
+    # The checkpointer is an adapter like the stores above it: made once, so a folder
+    # change recomposes over the same connection instead of opening another onto the
+    # same conversations file.
+    graph = partial(langgraph_for, checkpointer=saver_at(config.conversations_path))
 
     def compose(loaded: tuple[Extension, ...]) -> App:
         # Settings read off what loaded rather than off what the deployment typed: a

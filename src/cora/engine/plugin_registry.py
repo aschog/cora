@@ -1,6 +1,7 @@
 """Finding the plugins a deployment asked for, and refusing the ones it cannot have."""
 
 import importlib
+import importlib.machinery
 import importlib.util
 import pathlib
 import sys
@@ -111,9 +112,11 @@ def load_file(path: pathlib.Path) -> Extension:
     """
     source = str(path)
     name = _dropped_name(path)
+    location = path / INIT if path.is_dir() else path
     spec = importlib.util.spec_from_file_location(
         f"{DROPPED}.{name}",
-        path / INIT if path.is_dir() else path,
+        location,
+        loader=_FreshSource(f"{DROPPED}.{name}", str(location)),
         submodule_search_locations=[source] if path.is_dir() else None,
     )
     if spec is None or spec.loader is None:
@@ -131,6 +134,21 @@ def load_file(path: pathlib.Path) -> Extension:
             source, f"the plugin file raised {type(exc).__name__} while importing"
         ) from exc
     return _extension(module, name=name, source=source)
+
+
+class _FreshSource(importlib.machinery.SourceFileLoader):
+    """A loader that always compiles the source it was pointed at.
+
+    CPython validates a `.pyc` by whole-second mtime and size, so a plugin edited in
+    the same second as its last load — same length, different code — would run the
+    stale bytecode the cache kept. Statting is refused, which makes the loader skip
+    the cache both ways: nothing is read from one, nothing is written into one. A
+    package's *members* still import through Python's own finder and keep its caching,
+    so a same-second same-size edit to one of those waits for the next second.
+    """
+
+    def path_stats(self, path: str) -> dict[str, float]:
+        raise OSError("a dropped plugin is not bytecode-cached")
 
 
 def _dropped_name(path: pathlib.Path) -> str:
