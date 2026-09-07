@@ -4,14 +4,20 @@ brought, and the conversation pinned to that field, all gone on one call from th
 
 import pathlib
 
-import pytest
 from starlette.testclient import TestClient
 
 from app_builder import assembled
+from cora.adapters.file_output import FileOutput
 from cora.app.assembly import LiveApp
 from cora.frontends.react.api import api
 from cora.ports.chat_model import ModelReply
-from fakes import FakeConversations, FakeDocuments, FakeRetriever, ScriptedChatModel
+from fakes import (
+    FakeConversations,
+    FakeDocuments,
+    FakeMemory,
+    FakeRetriever,
+    ScriptedChatModel,
+)
 
 DROPPED = """\
 from cora.ports.host import Host
@@ -25,7 +31,6 @@ THREAD = "watching"
 QUESTION = "What did I see at dawn?"
 
 
-@pytest.mark.xfail(strict=True, reason="the delete route is not written yet")
 def test_deleting_a_plugin_takes_its_documents_and_its_conversation(
     tmp_path: pathlib.Path,
 ) -> None:
@@ -39,6 +44,9 @@ def test_deleting_a_plugin_takes_its_documents_and_its_conversation(
         FakeDocuments(),
     )
     model = ScriptedChatModel([ModelReply(text="Twelve waders.")])
+    memory = FakeMemory(("You watch waders at dawn.",))
+    output = FileOutput.at(str(tmp_path / "cora-output"))
+    kept = pathlib.Path(output.write("dawn-list.md", "Twelve waders."))
     holder = LiveApp(
         named=(),
         folder=folder,
@@ -48,6 +56,9 @@ def test_deleting_a_plugin_takes_its_documents_and_its_conversation(
             retriever=retriever,
             documents=documents,
             conversations=conversations,
+            memory=memory,
+            output=output,
+            plugins_folder=folder,
         ),
     )
     reader = TestClient(api(holder))
@@ -75,3 +86,7 @@ def test_deleting_a_plugin_takes_its_documents_and_its_conversation(
     assert reader.get("/api/scopes").json()["available"] == []
     assert reader.get("/api/documents?scope=birds").status_code == 400
     assert reader.get("/api/sessions").json() == []
+    assert [each["text"] for each in reader.get("/api/memory").json()] == [
+        "You watch waders at dawn."
+    ], "what cora remembers is about the user, and outlives every field"
+    assert kept.exists(), "what an approved effect wrote is the user's, not cora's"

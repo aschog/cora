@@ -375,5 +375,5 @@ def test_a_name_that_is_a_path_is_refused(tmp_path: pathlib.Path) -> None:
 
 
 def test_a_deployment_with_no_plugins_folder_deletes_nothing() -> None:
-    with pytest.raises(PluginRemovalError, match="fixed at start"):
+    with pytest.raises(PluginRemovalError, match="no plugins folder"):
         _removing("field_notes", folder=None, listing=(_listed("field_notes", "x"),))

@@ -10,6 +10,7 @@ from cora.ports.host import Listed
 
 NOT_LOADED = "no plugin of that name is loaded"
 FIXED_AT_START = "it is named in the environment, and is fixed at start"
+NO_FOLDER = "this deployment reads no plugins folder"
 
 
 def remove_plugin(
@@ -67,8 +68,10 @@ def _entry(listed: Listed, folder: pathlib.Path | None) -> pathlib.Path:
     can reach a path — and checked against the folder, so a plugin named as a module
     is refused rather than resolved to a directory that means nothing.
     """
+    if folder is None:
+        raise PluginRemovalError(listed.name, NO_FOLDER)
     entry = pathlib.Path(listed.source)
-    if folder is None or entry.parent != folder:
+    if entry.parent != folder:
         raise PluginRemovalError(listed.name, FIXED_AT_START)
     return entry
 

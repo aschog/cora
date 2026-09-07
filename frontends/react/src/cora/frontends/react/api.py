@@ -95,6 +95,7 @@ def api(
         Route("/api/memory", _clear(apps), methods=["DELETE"]),
         Route("/api/memory/{key}", _forget(apps), methods=["DELETE"]),
         Route("/api/plugins", _plugins(apps), methods=["GET"]),
+        Route("/api/plugins/{name}", _delete_plugin(apps), methods=["DELETE"]),
         Route("/api/scopes", _scopes(apps), methods=["GET"]),
     ]
     if ui is not None and ui.is_dir():
@@ -622,6 +623,22 @@ def _plugins(apps: Apps) -> Callable[[Request], Any]:
         return JSONResponse([payloads.plugin(each) for each in apps().plugins])
 
     return listed
+
+
+def _delete_plugin(apps: Apps) -> Callable[[Request], Any]:
+    """A plugin deleted from the plugins folder, with the documents and the
+    conversations of the fields it brought.
+
+    Shaped like the three deletes the rails already have: no body, and nothing to say
+    beyond that it is done. The name is resolved against what loaded rather than
+    against the folder, so a name that is a path is a name nothing loaded under.
+    """
+
+    def one(request: Request) -> Response:
+        apps().remove(request.path_params["name"])
+        return Response(status_code=NO_CONTENT)
+
+    return one
 
 
 def _scopes(apps: Apps) -> Callable[[Request], Any]:
