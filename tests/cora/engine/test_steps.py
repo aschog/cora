@@ -1,5 +1,6 @@
 import dataclasses
 from dataclasses import replace
+from typing import Any
 
 import pytest
 
@@ -30,9 +31,12 @@ from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.engine.rounds import UNTRUSTED_NOTICE
 from cora.engine.steps import (
     AGENT_RULES,
+    BROKEN_ASKS,
     CORA_PREAMBLE,
     DECLINED_CALL,
+    REFUSED_CALL,
     ROUTED,
+    UNFILLED_CALL,
     AnswerStep,
     AskStep,
     FocusStep,
@@ -782,3 +786,33 @@ def test_a_handler_is_offered_the_answer_and_what_it_returns_is_settled() -> Non
     contributed = _settled(_answering(lambda answer: answer.replace("555-0134", "x")))
 
     assert contributed["answer"] == "Call x."
+
+
+def _raising(_: dict[str, Any]) -> Card:
+    raise RuntimeError("the key is hunter2")
+
+
+def test_a_card_the_reader_gave_nothing_to_leaves_the_call_unrun() -> None:
+    """A tool that asked and was told nothing is not run on the arguments it asked
+    about: the round is told so, and still has an answer to give."""
+    contributed = GateStep(registry=_offering(_gathering()), approve=_filled(None))(
+        _proposing(ASKING)
+    )
+
+    [told] = contributed["messages"]
+    assert told.tool_call_id == "c1"
+    assert told.content == UNFILLED_CALL.format(name=ASKING)
+
+
+def test_a_plugin_whose_asks_breaks_costs_the_call_and_not_the_turn() -> None:
+    """The gate is a step of the core, so a plugin that broke inside it is contained the
+    way a refusing handler is: the round is told, and the turn still answers."""
+    broken = replace(_gathering(), asks=_raising)
+
+    contributed = GateStep(registry=_offering(broken), approve=_filled("BER"))(
+        _proposing(ASKING)
+    )
+
+    [told] = contributed["messages"]
+    assert told.content == REFUSED_CALL.format(name=ASKING, reason=BROKEN_ASKS)
+    assert contributed["filled"] == {}
