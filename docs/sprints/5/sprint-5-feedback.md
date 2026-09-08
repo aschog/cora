@@ -14,18 +14,24 @@ Three sources feed it:
 Each item says where it was seen and how it lands. The story it lands in is named against
 the cut in `spec.md`; an item with no story is deferred there, with its reason.
 
+What a box means, so an empty one is read the way it is meant. A ticked box is an item
+answered by something that shipped, and the `→` line under it names what. An empty box is
+an item deferred with its reason recorded, not an item forgotten — every box under
+*Deferred suggestions* is of that kind and stays empty on purpose, and the standing-habit
+item says so about itself.
+
 ---
 
 ## Reviewer findings
 
-- [ ] **`README.md` does not convey the main idea** — *the reviewer's first point.* The
+- [x] **`README.md` does not convey the main idea** — *the reviewer's first point.* The
       opening is one or two sentences; a reader does not learn what the solution is for.
       The retrospective names the cause: the README was cut last, deliberately, and
       proposals for it were discarded. → the retro's own action is **write the paragraph on
       day one, before the code**.
       → **story 1**, and it is written first.
 
-- [ ] **The two-store architecture is heavy for what it buys** — Chroma plus a SQL store
+- [x] **The two-store architecture is heavy for what it buys** — Chroma plus a SQL store
       duplicate the raw text, and the duplication exists to highlight a chunk inside its
       plain text. The reviewer's alternative, discussed in the review: one Markdown file per
       source document, addressed individually by the algorithm. Same capability, one store
@@ -33,7 +39,7 @@ the cut in `spec.md`; an item with no story is deferred there, with its reason.
       → **story 8**. It is an adapter swap behind the `Documents` port, which already
       exists; `sqlite_conversations.py` and `sqlite_store_memory.py` are untouched.
 
-- [ ] **Multi-domain layout is unexplained** — with one domain the two stores work, but
+- [x] **Multi-domain layout is unexplained** — with one domain the two stores work, but
       nothing says how they are laid out for a *second* domain: per-domain stores, shared
       store with a namespace, or something else. The reviewer asks for this in `README.md`,
       not only in the design. cora's whole pitch is that the domain comes from a plugin, so
@@ -41,7 +47,7 @@ the cut in `spec.md`; an item with no story is deferred there, with its reason.
       → **stories 6 and 8**, in the code and in `README.md`. A scope owns its documents, so
       the layout is a directory per scope rather than a scheme to explain.
 
-- [ ] **One agent should be a sequence of steps** — a single agent receives and processes
+- [x] **One agent should be a sequence of steps** — a single agent receives and processes
       the whole query; breaking the logical processes into an agentic workflow would be less
       fragile, more stable and easier to control. The retrospective records the same doubt
       held all sprint without acting on it, and the retro's action list makes it **the first
@@ -55,34 +61,51 @@ the cut in `spec.md`; an item with no story is deferred there, with its reason.
 
 Restated from the sprint-4 retrospective (branch `retro/submission-retrospective`).
 
-- [ ] **One gate, not four** — explain-back moves from every green step to every merge to
+- [x] **One gate, not four** — explain-back moves from every green step to every merge to
       main. Sprint 4 had four optional gates and skipped them; one checkpoint that gets held
       beats four that don't. If I can't say what a merge does and why, it doesn't merge.
-      → in force from this sprint's first merge; no story, it is how a merge happens.
-- [ ] **Read in the reader** — plans and branch diffs go through `md-read` before approval.
+      → **held.** Every merge in this sprint went through it, and it is the one retro action
+      that changed how the work was done rather than what was written down about it.
+- [x] **Read in the reader** — plans and branch diffs go through `md-read` before approval.
       The editing environment was doing double duty as a reading environment, and the reading
       half was the half that failed.
-      → in force from story 1.
+      → **held**, from story 1 onward.
 - [ ] **Refactor the tests, 20/80** — find the fifth of the 1,247 tests that carries most of
       the protection and extend only those; archive the rest under `tests` and delete the
       archive after the capstone. Membership is decided by what would go undetected, not by
       count.
-      → a **chore** in `spec.md`, not a story: no failing test names it.
-- [ ] **Break the one agent into a workflow** — first story of the sprint. Same item as the
+      → **not this sprint** (`spec.md`, *Not in this sprint*), and the number went the other
+      way: the suite is 1,880 tests now. Deciding which fifth carries the protection means
+      moving or deleting the rest, and doing that in the days before a review changes what
+      defends the code at the moment it is least affordable to be wrong about. Carried to
+      sprint 6, where it is a merge of its own with nothing queued behind it.
+- [x] **Break the one agent into a workflow** — first story of the sprint. Same item as the
       reviewer's fourth finding above; two routes reached it independently.
       → **stories 3 and 6**, third in the merge order — the reviewer's finding above says
       why the README and the one-frontend story go ahead of it.
-- [ ] **README before the code** — the paragraph that conveys the idea gets written day one.
+- [x] **README before the code** — the paragraph that conveys the idea gets written day one.
       → **story 1**.
-- [ ] **An architecture note for the frontend before its first story** — sprint 4 had none
+- [x] **An architecture note for the frontend before its first story** — sprint 4 had none
       and said so.
-      → a **chore**, due before story 6 puts the scope pin on the screen.
-- [ ] **Reviewer feedback as a backlog on day one** — this file. The only action from the
+      → **written**, as *The page* in `docs/big-picture.md`: the three layers and the seam
+      between them, why the query cache holds the rails, the one place the page reaches past
+      React and why, and what it deliberately has none of. Late against its own deadline —
+      it was due before story 6 put the scope pin on the screen and arrived after the last
+      story instead, so it documents the page rather than shaping it. A section of the
+      architecture doc rather than a page of its own, because the map there already carries
+      the frontend as a component and a second file would be a second thing to keep true.
+- [x] **Reviewer feedback as a backlog on day one** — this file. The only action from the
       previous retro that visibly changed behaviour.
       → this file, written before the story cut.
 - [ ] **Decide about mid-sprint feedback rather than carrying it** — book it or strike it. An
       item knowingly ignored teaches that the list is optional.
-      → open. Decide it at the first merge, not at the end.
+      → **not held.** Feedback did arrive during the sprint and was neither booked as a
+      change nor struck with a reason — it was carried, which is the exact thing the item
+      was written to stop. Recorded as failed rather than quietly re-dated: the action was
+      to *decide at the first merge*, and there were twenty-seven merges to decide at. It
+      goes to sprint 6 with a mechanism instead of an intention — feedback that arrives
+      mid-sprint gets a line in this file the day it arrives, and a line with no verdict
+      blocks the next merge.
 - [x] **Use SDD for the capstone** — done, against the planning difficulty the retro names:
       OpenSpec drives planning from `openspec/`, `docs/workflow.md` says how it fits, and
       `openspec/config.yaml` carries this project's rules so the tool reads them instead of
@@ -90,7 +113,8 @@ Restated from the sprint-4 retrospective (branch `retro/submission-retrospective
 
 ## Carried from sprint 4
 
-Open when sprint 4 closed, still open now.
+Open when sprint 4 closed. One of them closed during this sprint, and says so under its
+own box rather than being moved out of the section it was carried into.
 
 - [ ] **Stronger injection rules, and a scan of document content at ingest** — the rule is
       still two regexes
@@ -104,11 +128,17 @@ Open when sprint 4 closed, still open now.
       what each public service accepts, returns and promises. **Unticked by design**; an empty
       box reads as "still in force".
       → standing; every story carries it.
-- [ ] **No way to remove a document or clear the store** *(finding #8)* — the sidebar lists
+- [x] **No way to remove a document or clear the store** *(finding #8)* — the sidebar lists
       sources with no chunk count, no removal and no clear. Memory clearing shipped; document
       removal did not.
-      → **not this sprint** (`spec.md`, *Not in this sprint*), carried again. Cheap once
-      story 8 makes a source a file, so it is the first thing added if the sprint runs early.
+      → **shipped after all.** It was deferred at the story cut and named as the first thing
+      to add if the sprint ran early, which is what happened: the change
+      `2026-09-05-delete-a-document` takes a document's passages out of the index and the
+      file its citations opened onto, from the same control the other rails carry and behind
+      the same question. Story 8 making a source a file is what made it cheap, exactly as
+      the deferral predicted. The chunk count and a clear-every-document control did not
+      ship and are not missed — a count describes the index rather than the document, and
+      one control that empties a field has no reader asking for it.
 - [ ] **The page's heading outline and its tablist** — `SourcePanel`'s `<h2>` is the React
       page's only heading, and the `role="tab"` buttons have no `aria-controls` and no
       `role="tabpanel"` to point at. Referred back deliberately in sprint 4: the fix decides
@@ -139,7 +169,7 @@ Open when sprint 4 closed, still open now.
 The review said in conversation that cora is not a real agentic application — it is more like
 agentic RAG. It is not in the write-up above, and it is what the sprint now answers.
 
-- [ ] **cora can decide but cannot act** — every tool it owns reads its own documents, so a
+- [x] **cora can decide but cannot act** — every tool it owns reads its own documents, so a
       well-planned turn only ever produced a better answer. Reach, consequence and a gate in
       front of both.
       → **stories 9, 10 and 11**, and it is the capstone's headline.

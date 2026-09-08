@@ -226,17 +226,21 @@ is cheap to be brave.
 ## Chores
 
 Not stories — no failing test names them — but tracked, and each is a merge of its own.
+Each carries what became of it, because a chore with no verdict is the thing that teaches
+the list is optional.
 
-- **The test suite, 20/80** — find the fifth of the suite carrying most of the protection.
-  Story 2 took the Streamlit suite out of the question by deleting it, so what is weighed
-  is what is left. Extend only what earns it, archive the rest under `tests/` and delete
-  the archive after submission. Membership is decided by what would go undetected, not by
-  count.
+- **The test suite, 20/80** — **deferred to sprint 6**, and it is below under *Not in this
+  sprint* with the argument. The suite is 1,880 tests now, so the number moved the wrong
+  way and the chore is real. It is not a thing to do in the days before a review.
 - **An architecture note for the React shell before story 6 touches it** — the scope pin and
   the plugin listing are both new things on the screen, and sprint 4 shipped that frontend
   with no such note and said so.
+  → **done**, as *The page* in `docs/big-picture.md` — and late, after the last story
+  rather than before story 6, so it records the page instead of having shaped it.
 - **The showcase entry**, uploaded before the review and kept current, with its link in
   `README.md` (story 1's criterion).
+  → **open**, and the last thing between this sprint and a bookable review. `README.md`
+  links the showcase's front page rather than cora's entry on it.
 
 ## Evaluation-criteria coverage
 
@@ -258,10 +262,6 @@ record.
   reports; an inner loop that proposes an effect or asks a question needs an interrupt to
   travel up through a checkpointed subgraph and back down, and that is a bigger problem than
   the capability it buys. Booking is the job that would earn one.
-- **A plugin holding a credential of its own.** Story 9's forecast service needs none, so
-  the settings slice a plugin reads its key out of goes unexercised — it exists and is
-  tested, and a plugin wanting one appends it without a core change. Chosen so that a
-  reviewer with no account still sees the story work.
 - **A citation onto anything but an uploaded document.** Story 9 answers from a live
   service in cora's own prose and leaves the call on the trace, so a citation stays a
   passage of a file the user uploaded. `Citation` therefore does not widen to a source
@@ -287,13 +287,21 @@ record.
   proving, and widening two seams at once is how neither gets proved. A second frontend — a
   shell, a TUI — is the same deferral seen from the other side: it is a caller of `Agent`,
   so it costs a frontend and not a contract.
-- **A goal that outlives a turn** — the fourth agentic axis, and the expensive one. cora's
-  checkpointer could hold an accumulating task, but nothing this sprint needs it.
+- **A goal that outlives a turn** — the fourth agentic axis, and the expensive one. What a
+  plugin keeps between turns did ship, so the checkpointer holds a plan being revised and a
+  form half filled in. A *goal* is the other thing: work cora carries forward on its own
+  across turns nobody asked it to take. Nothing this sprint needs it, and the state it
+  would accumulate in is now there.
 - **A retrieval evaluation set** — story 6 measures the router instead, which is what the
   new headline turns on. Retrieval quality is unchanged this sprint, so a number for it
   would measure sprint 4.
-- **Document removal** *(sprint-4 finding #8)* — carried again. Cheap once story 8 makes a
-  source a file, which is why it is the first thing to add if the sprint runs early.
+- **The test suite, 20/80** — the retro's action and a chore above, carried to sprint 6.
+  The suite grew from 1,247 to 1,880 across this sprint, so the fifth that carries the
+  protection is a larger question than when it was written, not a smaller one. What makes
+  it a sprint-6 merge rather than a submission-week one is what the work *is*: deciding
+  membership means moving or deleting the rest, and a suite reshuffled days before a review
+  is the code's defences changed at the moment there is least room to be wrong about them.
+  Nothing about it gets cheaper by waiting, and nothing about it gets safer by hurrying.
 - **Stronger injection rules and a scan of document text at ingest** — the screen is still
   two regexes. Story 12 says what it does not catch rather than implying it catches
   everything.
