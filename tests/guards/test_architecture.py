@@ -41,8 +41,8 @@ def _is_technology(module: str) -> bool:
     off the manifests can only see the ten distributions someone asked for, while the
     environment holds every transitive one too — sentence-transformers and
     langchain-openai bring `numpy`, `torch` and `openai` — and importing one of those
-    binds a layer exactly as
-    tightly. The install used to enforce this by absence, with nothing to keep in sync;
+    binds a layer exactly as tightly. The install used to enforce this by absence, with
+    nothing to keep in sync;
     an allow-list is the only form of the rule that inherits that property."""
     root = module.split(".")[0]
     return root != "cora" and root not in sys.stdlib_module_names
@@ -448,7 +448,7 @@ def test_a_layer_binds_no_technology_it_was_not_given(
     layer: str, path: pathlib.Path
 ) -> None:
     """The property the install used to carry: a plugin shipped as a wheel the engine
-    was absent from could not import Chroma, because Chroma was not there. One
+    was absent from could not import the store, because the store was not there. One
     distribution later it is there, and only this says so."""
     bound = _technologies_bound(layer, path, ast.parse(path.read_text()))
     assert not bound, (

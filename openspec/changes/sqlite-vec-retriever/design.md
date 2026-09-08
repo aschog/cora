@@ -34,8 +34,8 @@
   filtered out of a shared set.
 - Rejected a `where` clause on one table, because the adapter promises separation and
   not omission.
-- The vector column declares `distance_metric=cosine`, which keeps distances in nought
-  to one and the score conversion as it is.
+- The vector column declares `distance_metric=cosine`, so one subtraction from the
+  distance is the cosine similarity, which is what the score already was.
 - The `vec0` table is created on first write, taking its dimension from the vector
   handed in.
 - Rejected a dimension constant, because the embedder is a port and its width is not

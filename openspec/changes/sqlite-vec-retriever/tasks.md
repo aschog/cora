@@ -60,3 +60,17 @@
 ## 8. Done
 
 - [x] 8.1 Drop the `xfail` marker from 1.1 and watch the outer test pass.
+
+## 9. Review findings
+
+- [x] 9.1 Write a test that an upload failing part-way leaves nothing behind — no span
+  without its vector, and `contains` false.
+- [x] 9.2 Write a test that a failed re-index leaves the copy it was replacing.
+- [x] 9.3 Write a test that a query reads only the user its adapter was opened for.
+- [x] 9.4 Write a test that a build with no `enable_load_extension` at all surfaces as
+  `RetrievalError`.
+- [x] 9.5 Write a test that the store holds its journal in write-ahead mode.
+- [x] 9.6 Write a test that an upload of no chunks writes nothing.
+- [x] 9.7 Drop the score's nought-to-one bound: cosine distance runs to two, so the
+  score is a similarity in minus one to one.
+- [x] 9.8 Prefix the tables `cora_` while a shared file has no migration to pay for it.
