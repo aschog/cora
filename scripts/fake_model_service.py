@@ -10,7 +10,6 @@ every time. What the browser suite types is what steers it:
 
     search …   call the document search, then answer citing the passage
     choose …   stop the turn and ask which of two values was meant
-    form …     stop the turn and ask for values on a card
     remember … keep a fact about the user
     write …    call a tool that changes something outside cora, so the gate stops it
     anything   answer in prose, streamed a word at a time
@@ -48,17 +47,6 @@ CALLS: tuple[tuple[str, str, dict[str, Any]], ...] = (
                 {"label": "77 kg", "note": "last week"},
             ],
             "decline": "Neither, thanks.",
-        },
-    ),
-    (
-        "form",
-        "ask_user_for",
-        {
-            "prompt": "Where are you going, and when?",
-            "fields": [
-                {"name": "where", "type": "string", "required": True},
-                {"name": "nights", "type": "integer"},
-            ],
         },
     ),
     ("remember", "remember", {"fact": "The user trains on Tuesdays."}),

@@ -23,11 +23,6 @@ const PAGE = 'http://127.0.0.1:8765'
 const MODEL = 'http://127.0.0.1:8911'
 const live = process.env.CORA_E2E_LIVE === '1'
 
-const stubbed = {
-  CORA_MODEL: 'fake',
-  OPENROUTER_API_KEY: 'no key needed',
-  OPENROUTER_BASE_URL: `${MODEL}/v1`,
-}
 const served = {
   CORA_DB_PATH: `${STORE}/cora.sqlite`,
   CORA_DOCUMENTS_PATH: `${STORE}/documents`,
@@ -37,7 +32,15 @@ const served = {
      makes the picker a control rather than a label. */
   CORA_SCOPES: 'notes',
   CORA_PORT: '8765',
-  ...(live ? {} : stubbed),
+  /* The one substitution a stubbed run makes. A live one leaves the key and the URL
+     to the environment, which is where a deployment's already are. */
+  ...(live
+    ? {}
+    : {
+        CORA_MODEL: 'fake',
+        OPENROUTER_API_KEY: 'no key needed',
+        OPENROUTER_BASE_URL: `${MODEL}/v1`,
+      }),
 }
 
 const model = {
@@ -54,7 +57,6 @@ export default defineConfig({
   /* One worker: the suite drives one deployment over one store, and two of it at once
      would be two readers deleting each other's rows. */
   workers: 1,
-  fullyParallel: false,
   forbidOnly: true,
   reporter: [['list']],
   timeout: 30_000,

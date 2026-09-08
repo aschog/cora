@@ -3,7 +3,7 @@
 
 REACT := cora.frontends.react.server
 
-.PHONY: run run-env plugins plugins-env ui ui-build ui-test e2e e2e-live docs docs-serve diagram
+.PHONY: run run-env plugins plugins-env ui ui-build ui-test e2e e2e-store e2e-live docs docs-serve diagram
 
 # cora, as one process serving the page and the API on 127.0.0.1:8000. It builds first
 # because the server only ever reads `ui/dist` — without that a source change is
@@ -42,19 +42,18 @@ ui-test:
 # which. Local only: it needs a browser, and CI has enough to say about a push already.
 E2E_STORE := .cora/e2e
 
-e2e: ui-build
+e2e-store:
 	rm -rf $(E2E_STORE)
 	mkdir -p $(E2E_STORE)/plugins
 	cp tests/e2e/plugins/*.py $(E2E_STORE)/plugins/
+
+e2e: ui-build e2e-store
 	cd frontends/react/ui && npx playwright test
 
 # The same suite's one live spec, against the model a deployment actually answers from.
 # Reads the key from .env, like every other live tier, and is run by hand before a
 # submission rather than on a schedule.
-e2e-live: ui-build
-	rm -rf $(E2E_STORE)
-	mkdir -p $(E2E_STORE)/plugins
-	cp tests/e2e/plugins/*.py $(E2E_STORE)/plugins/
+e2e-live: ui-build e2e-store
 	set -a; . ./.env; set +a; cd frontends/react/ui && CORA_E2E_LIVE=1 npx playwright test
 
 # MkDocs has forked: its owner is publishing a v2 that drops the plugin system, and
