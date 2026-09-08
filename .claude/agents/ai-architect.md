@@ -21,7 +21,7 @@ Given requirements (plus any research findings), produce:
 3. Trade-offs considered and rejected alternatives, briefly.
 
 Guard the invariants: UI → Core ← Plugins dependency rule; volatile
-dependencies (LangChain, Chroma, sentence-transformers, Starlette) confined to
+dependencies (LangChain, sqlite-vec, sentence-transformers, Starlette) confined to
 one adapter each; core testable with in-memory fakes, no network or model
 downloads in the unit tier; simplicity first — every abstraction must earn its
 place. Flag any requirement that would violate them instead of designing

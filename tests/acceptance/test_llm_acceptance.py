@@ -1,5 +1,5 @@
 """The tests that run the whole shipped stack against a real model: the real
-composition root, the real Chroma store and embedder, OpenRouter over the network, and
+composition root, the real store and embedder, OpenRouter over the network, and
 the shell's HTTP surface driven the way the page drives it. They are the only cover for
 behaviour a stub cannot show — a scripted model answers however the script says, so it
 can never reveal the model ignoring an instruction. Since story 15 removed the grounding

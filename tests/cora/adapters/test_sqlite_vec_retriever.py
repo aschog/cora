@@ -71,12 +71,13 @@ def test_asking_for_more_neighbours_than_exist_returns_the_ones_that_do(
     assert len(hits) == 2
 
 
-def test_a_score_reads_nearest_first_within_nought_to_one(
+def test_a_score_reads_nearest_first(
     index: SqliteVecRetriever, make_chunk: Callable[..., Chunk]
 ) -> None:
-    """Cosine keeps the distance in nought to one, which is what makes one subtraction
+    """One subtraction from a cosine distance is the cosine similarity itself, which is
     the score the port describes: higher is closer, and the merge across two fields
-    sorts on it."""
+    sorts on it. The range is minus one to one, so nothing may read an absolute value
+    as a threshold."""
     embedder = FakeEmbedder()
     chunks = [make_chunk("alpha", index=0), make_chunk("something else", index=1)]
     index.add(
@@ -87,7 +88,6 @@ def test_a_score_reads_nearest_first_within_nought_to_one(
 
     assert [hit.chunk.index for hit in hits] == [0, 1]
     assert hits[0].score > hits[1].score
-    assert all(0.0 <= hit.score <= 1.0 for hit in hits)
 
 
 def test_a_retrieved_passage_carries_its_span_and_no_text(
@@ -293,6 +293,36 @@ def test_a_build_that_refuses_extensions_surfaces_as_retrieval_error(
         SqliteVecRetriever.at(str(tmp_path / "index.sqlite"))
 
 
+class _OmittingExtensions:
+    """A connection from a build compiled with `SQLITE_OMIT_LOAD_EXTENSION`, where the
+    method is absent rather than failing. Hand-written, because `sqlite3.Connection` is
+    immutable and this is the one thing a real one on this machine cannot be."""
+
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.connection = connection
+
+    def __getattr__(self, name: str) -> object:
+        if name == "enable_load_extension":
+            raise AttributeError(name)
+        return getattr(self.connection, name)
+
+
+def test_a_build_without_the_call_at_all_surfaces_as_retrieval_error(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """`SQLITE_OMIT_LOAD_EXTENSION` leaves the method off the connection rather than
+    raising from it, so the failure arrives as an `AttributeError` and has to be caught
+    as one — the same store, unreachable the same way."""
+    connect = sqlite3.connect
+    monkeypatch.setattr(
+        "cora.adapters.sqlite_vec_retriever.sqlite3.connect",
+        lambda *args, **kwargs: _OmittingExtensions(connect(":memory:")),
+    )
+
+    with pytest.raises(RetrievalError):
+        SqliteVecRetriever.at(str(tmp_path / "index.sqlite"))
+
+
 def test_a_written_passage_belongs_to_one_user(
     tmp_path: Path, make_chunk: Callable[..., Chunk]
 ) -> None:
@@ -309,3 +339,74 @@ def test_a_written_passage_belongs_to_one_user(
     assert SqliteVecRetriever.at(path).contains(DEFAULT_SCOPE, "h")
     assert somebody_else.sources(DEFAULT_SCOPE) == []
     assert not somebody_else.contains(DEFAULT_SCOPE, "h")
+
+
+def test_an_upload_that_fails_half_way_leaves_nothing_behind(
+    index: SqliteVecRetriever, make_chunk: Callable[..., Chunk]
+) -> None:
+    """The engine gates a re-upload on `contains`, so a passage written without its
+    vector is a document the rail lists, the model cannot find, and re-uploading will
+    not repair. One write, or none."""
+    embedder = FakeEmbedder()
+    chunks = [make_chunk("a", index=0), make_chunk("b", index=1)]
+    wrong_width = [embedder.embed(["a"])[0], [0.1, 0.2, 0.3]]
+
+    with pytest.raises(RetrievalError):
+        index.add(DEFAULT_SCOPE, chunks, wrong_width, file_hash="h")
+
+    assert not index.contains(DEFAULT_SCOPE, "h")
+    assert index.sources(DEFAULT_SCOPE) == []
+    assert index.query(DEFAULT_SCOPE, embedder.embed(["a"])[0], k=5) == []
+
+
+def test_a_failed_re_index_leaves_the_copy_it_was_replacing(
+    index: SqliteVecRetriever, make_chunk: Callable[..., Chunk]
+) -> None:
+    """Re-indexing clears the upload first, so a failure part-way through must not take
+    the good copy with it."""
+    embedder = FakeEmbedder()
+    chunks = [make_chunk("a", index=0)]
+    index.add(DEFAULT_SCOPE, chunks, embedder.embed(["a"]), file_hash="h")
+
+    with pytest.raises(RetrievalError):
+        index.add(DEFAULT_SCOPE, chunks, [[0.1, 0.2, 0.3]], file_hash="h")
+
+    assert index.contains(DEFAULT_SCOPE, "h")
+    assert [
+        hit.chunk.upload
+        for hit in index.query(DEFAULT_SCOPE, embedder.embed(["a"])[0], k=5)
+    ] == ["h"]
+
+
+def test_a_query_reads_only_the_user_it_was_opened_for(
+    tmp_path: Path, make_chunk: Callable[..., Chunk]
+) -> None:
+    """Searching is the one method that goes through the vector table, so it is the one
+    that could hand back another user's passage without the join saying otherwise."""
+    embedder = FakeEmbedder()
+    path = str(tmp_path / "index.sqlite")
+    SqliteVecRetriever.at(path).add(
+        DEFAULT_SCOPE, [make_chunk("a", source="secret.md")], embedder.embed(["a"]), "h"
+    )
+
+    somebody_else = SqliteVecRetriever.at(path, user="another")
+
+    assert somebody_else.query(DEFAULT_SCOPE, embedder.embed(["a"])[0], k=5) == []
+
+
+def test_an_upload_of_no_chunks_writes_nothing(index: SqliteVecRetriever) -> None:
+    """An empty document reaches the engine's own refusal, not a vector table made at
+    the width of a vector that is not there."""
+    index.add(DEFAULT_SCOPE, [], [], file_hash="h")
+
+    assert not index.contains(DEFAULT_SCOPE, "h")
+
+
+def test_the_store_holds_its_journal_in_write_ahead_mode(
+    index: SqliteVecRetriever,
+) -> None:
+    """Four writers share this file, and the default journal takes an exclusive lock
+    that blocks readers for the length of a write."""
+    [(mode,)] = index._connection.execute("pragma journal_mode")
+
+    assert mode == "wal"
