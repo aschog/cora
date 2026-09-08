@@ -179,7 +179,20 @@ CONFLICTING = (
     "bodyweight 75 kg, from the coach notes in February",
     "bodyweight 85 kg, from the physio letter",
 )
-NEEDS_A_WEIGHT = "What is my basal metabolic rate?"
+NEEDS_A_WEIGHT = "I am a 34-year-old man, 180 cm tall. What is my basal metabolic rate?"
+"""Everything the calculation needs except the one thing memory holds three of.
+
+The height, the age and the sex are given because a question missing those as well fires
+both of cora's ask rules at once — `ASK_RULE`, because memory holds three bodyweights,
+and `ASK_FOR_RULE`, because nothing anywhere holds the rest — and the brief does not say
+which wins. Three models were run against the shorter question and each resolved the
+collision differently: one answered without asking, one put up the form and guessed a
+weight inside it, one alternated. That is a finding about the brief, written up rather
+than asserted here; what this test is for is the rule on its own.
+
+Bodyweight is still never mentioned and nothing asks to be asked, so what is under test
+is unchanged: the model reads the three values it holds and stops, rather than picking
+one."""
 DECIDING = "llm-decision"
 
 
