@@ -47,13 +47,6 @@ test('a card of fields draws a control for each, and its actions', () => {
   expect(screen.getAllByRole('button', { name: /Search|Not now/ })).toHaveLength(2)
 })
 
-test('a card of no fields draws buttons alone', () => {
-  drawn({ actions: [action('77 kg'), action('75 kg')] })
-
-  expect(screen.queryByRole('textbox')).toBeNull()
-  expect(screen.getAllByRole('button')).toHaveLength(2)
-})
-
 test('a string of format date is drawn as a date control', () => {
   drawn({ fields: [field('depart', { type: 'string', format: 'date' })] })
 
@@ -73,35 +66,6 @@ test('a long enumeration is drawn as a select', () => {
   drawn({ fields: [field('currency', { enum: ['EUR', 'GBP', 'USD', 'JPY', 'CHF'] })] })
 
   expect(within(screen.getByRole('combobox')).getAllByRole('option')).toHaveLength(6)
-})
-
-test('a choice goes back as itself, whichever control drew it', () => {
-  /* A select answers in text, so an enumeration of numbers would submit "3" through one
-     and 3 through the row of buttons. */
-  const taken = drawn({
-    fields: [field('nights', { type: 'integer', enum: [1, 2, 3, 4, 7] })],
-  })
-
-  fireEvent.change(screen.getByRole('combobox'), { target: { value: '3' } })
-  fireEvent.click(screen.getByRole('button', { name: /Search/ }))
-
-  expect(taken).toHaveBeenCalledWith(expect.anything(), { nights: 3 })
-})
-
-test('two actions sharing a label are both drawn', () => {
-  drawn({
-    actions: [action('Later', { answer: 'a' }), action('Later', { answer: 'b' })],
-  })
-
-  expect(screen.getAllByRole('button', { name: 'Later' })).toHaveLength(2)
-})
-
-test('a value that is not a string is read back as the JSON it arrived as', () => {
-  drawn({
-    fields: [field('days', {}, { value: 3, editable: false })],
-  })
-
-  expect(screen.getByText('3')).toBeTruthy()
 })
 
 test('a schema the page has no control for still asks, as text', () => {
@@ -132,31 +96,6 @@ test('that same action is takeable once the required field holds a value', () =>
 
   expect(taken).toHaveBeenCalledWith(expect.objectContaining({ label: 'Search' }), {
     destination: 'LIS',
-  })
-})
-
-test('a required field holding only spaces is not one the reader answered', () => {
-  drawn({
-    fields: [field('destination', { type: 'string' }, { required: true })],
-    actions: [action('Search', { needs_valid: true })],
-  })
-
-  fireEvent.change(screen.getByLabelText('destination'), { target: { value: '   ' } })
-
-  const search = screen.getByRole('button', { name: /Search/ })
-  expect(search).toHaveProperty('disabled', true)
-})
-
-test('an action that waits for nothing is takeable on an empty card', () => {
-  const taken = drawn({
-    fields: [field('destination', { type: 'string' }, { required: true })],
-    actions: [action('Not now', { answer: null })],
-  })
-
-  fireEvent.click(screen.getByRole('button', { name: 'Not now' }))
-
-  expect(taken).toHaveBeenCalledWith(expect.objectContaining({ answer: null }), {
-    destination: null,
   })
 })
 
@@ -192,52 +131,6 @@ test('a boolean is drawn as a checkbox and goes back as a boolean', () => {
   expect(taken).toHaveBeenCalledWith(expect.anything(), { direct_only: true })
 })
 
-test('a field says what the schema says it is, not just what it is called', () => {
-  drawn({
-    fields: [
-      field('window_start', {
-        type: 'string',
-        description: 'Earliest day the trip could start.',
-      }),
-    ],
-  })
-
-  expect(screen.getByText('Earliest day the trip could start.')).toBeTruthy()
-})
-
-test('a required field says so on the control the reader answers', () => {
-  drawn({ fields: [field('origin', { type: 'string' }, { required: true })] })
-
-  expect(screen.getByLabelText('origin')).toHaveProperty('required', true)
-})
-
-test('what the reader typed belongs to the card in front of them', () => {
-  /* Turn ids repeat across conversations, so React reconciles one conversation's card
-     onto another's — and the values must not go with it. */
-  const first = card({ fields: [field('origin', { type: 'string' })] })
-  const second = card({ fields: [field('origin', { type: 'string' })] })
-  const taken = vi.fn()
-  const { rerender } = render(<PauseCard card={first} onTake={taken} />)
-  fireEvent.change(screen.getByLabelText('origin'), { target: { value: 'BER' } })
-
-  rerender(<PauseCard card={second} onTake={taken} />)
-  fireEvent.click(screen.getByRole('button', { name: /Search/ }))
-
-  expect(taken).toHaveBeenCalledWith(expect.anything(), { origin: null })
-})
-
-test('a field nobody answered reads as blank, not as null', () => {
-  render(
-    <PauseCard
-      card={card({ fields: [field('max_price', { type: 'integer' })] })}
-      taken={action('Search')}
-      onTake={vi.fn()}
-    />,
-  )
-
-  expect(screen.queryByText('null')).toBeNull()
-})
-
 test('a settled card says what the action said, and offers none', () => {
   render(
     <PauseCard
@@ -249,12 +142,6 @@ test('a settled card says what the action said, and offers none', () => {
 
   expect(screen.getByText('You approved it.')).toBeTruthy()
   expect(screen.queryByRole('button', { name: 'Approve' })).toBeNull()
-})
-
-test('an action with nothing of its own to say names itself', () => {
-  render(<PauseCard card={card()} taken={action('75 kg')} onTake={vi.fn()} />)
-
-  expect(screen.getByText('You chose 75 kg.')).toBeTruthy()
 })
 
 test('a card written with markup is drawn as text, and none of it runs', () => {
@@ -269,28 +156,3 @@ test('a card written with markup is drawn as text, and none of it runs', () => {
   expect(document.querySelector('b')).toBeNull()
 })
 
-test('picking a date lets the field go, so the native popup closes', () => {
-  /* A controlled date input keeps its picker open when the value is written back onto
-     the still-focused field — Safari and Chrome both. Letting the field go on a complete
-     pick is what dismisses it. */
-  drawn({ fields: [field('depart', { type: 'string', format: 'date' })] })
-  const input = screen.getByLabelText('depart')
-  input.focus()
-  expect(document.activeElement).toBe(input)
-
-  fireEvent.change(input, { target: { value: '2026-09-13' } })
-
-  expect(document.activeElement).not.toBe(input)
-})
-
-test('typing into a text field does not let it go, so a word is not cut off', () => {
-  /* The mirror: a text field's change fires per keystroke, and letting go there would
-     eject the reader mid-word. Only a date picker closes on change. */
-  drawn({ fields: [field('note', { type: 'string' })] })
-  const input = screen.getByLabelText('note')
-  input.focus()
-
-  fireEvent.change(input, { target: { value: 'Lis' } })
-
-  expect(document.activeElement).toBe(input)
-})

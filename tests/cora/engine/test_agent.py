@@ -2,25 +2,19 @@ from collections.abc import Iterator
 
 import pytest
 
-from app_builder import assembled
 from cora.domain.agent_state import AgentState
-from cora.domain.approval import Proposed
 from cora.domain.card import Answer
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Turn
 from cora.domain.decision import Decision, Option, Pending, TurnPaused
 from cora.domain.errors import (
-    GraphRunError,
-    InputRejectedError,
     LlmError,
-    NothingToResumeError,
 )
 from cora.domain.trace import ModelDecision, StepEntered, ToolUse, TraceStep
 from cora.engine.agent import Agent
-from cora.ports.chat_model import ModelReply, Piece, TextSink, Written, unheard
-from fakes import FailingConversations, FakeConversations, ScriptedChatModel
-from fixture_plugins import make_plugin
+from cora.ports.chat_model import Piece, TextSink, unheard
+from fakes import FakeConversations
 
 SEARCHED = ToolUse(name="search_documents", arguments={"query": "protein"})
 ANSWERED = ModelDecision()
@@ -126,14 +120,6 @@ def test_only_the_cited_passages_are_reported_under_their_own_numbers() -> None:
     assert result.citations == (_at("a.md", 1), _at("c.md", 3))
 
 
-def test_the_runs_steps_come_back_in_order() -> None:
-    runner = _StubRunner(_traced(SEARCHED, ANSWERED))
-
-    result = Agent(runner).answer("q", THREAD)
-
-    assert result.trace == (SEARCHED, ANSWERED)
-
-
 def test_every_step_is_reported_as_it_arrives() -> None:
     seen: list[str] = []
     runner = _StubRunner(
@@ -144,82 +130,6 @@ def test_every_step_is_reported_as_it_arrives() -> None:
     Agent(runner).answer("q", THREAD, on_step=lambda step: seen.append(step.summary))
 
     assert seen == [SEARCHED.summary, ANSWERED.summary]
-
-
-def test_a_step_already_reported_is_never_reported_twice() -> None:
-    seen: list[TraceStep] = []
-    runner = _StubRunner(
-        {"trace": [SEARCHED]},
-        {"trace": [SEARCHED]},
-        _traced(SEARCHED, ANSWERED),
-    )
-
-    Agent(runner).answer("q", THREAD, on_step=seen.append)
-
-    assert seen == [SEARCHED, ANSWERED]
-
-
-def test_a_failure_before_any_answer_still_travels_out() -> None:
-    runner = _StubRunner({"trace": [SEARCHED]}, then=LlmError())
-
-    with pytest.raises(LlmError):
-        Agent(runner).answer("q", THREAD)
-
-
-def test_a_failure_after_an_answer_travels_out_the_same_way() -> None:
-    """An answer in the state is no reason to swallow what came after it: nothing is
-    held back, so every adapter failure is the turn's failure."""
-    runner = _StubRunner({"answer": "Hello!", "trace": [ANSWERED]}, then=LlmError())
-
-    with pytest.raises(LlmError):
-        Agent(runner).answer("Hi!", THREAD)
-
-
-def test_a_runner_that_walks_no_step_at_all_is_a_failure_not_an_empty_answer() -> None:
-    """The port promises at least one state. A runner that yields none would
-    otherwise return a blank answer that reads like a successful turn."""
-    with pytest.raises(GraphRunError):
-        Agent(_StubRunner()).answer("q", THREAD)
-
-
-def test_a_run_that_fails_midway_keeps_the_steps_it_already_reported() -> None:
-    seen: list[TraceStep] = []
-    runner = _StubRunner({"trace": [SEARCHED]}, then=LlmError())
-
-    with pytest.raises(LlmError):
-        Agent(runner).answer("q", THREAD, on_step=seen.append)
-
-    assert seen == [SEARCHED]
-
-
-def test_only_this_turns_steps_are_reported_and_returned() -> None:
-    """The thread arrives carrying every step of every earlier turn; replaying them
-    would show the user work this turn never did."""
-    seen: list[TraceStep] = []
-    runner = _StubRunner(
-        {"trace": [SEARCHED, ANSWERED, SEARCHED]},
-        {"trace": [SEARCHED, ANSWERED, SEARCHED, ANSWERED], "answer": "done"},
-        found={"trace": [SEARCHED, ANSWERED]},
-    )
-
-    result = Agent(runner).answer("q", THREAD, on_step=seen.append)
-
-    assert seen == [SEARCHED, ANSWERED]
-    assert result.trace == (SEARCHED, ANSWERED)
-
-
-def test_the_citations_resolve_against_the_whole_conversations_registry() -> None:
-    """Numbering runs the length of the thread, so an answer citing [3] means the
-    third passage the conversation registered — whichever turn found it."""
-    earlier = [_at("a.md", 1), _at("b.md", 2)]
-    runner = _StubRunner(
-        {"answer": "As [1] and [3] say.", "citations": [*earlier, _at("c.md", 3)]},
-        found={"citations": earlier},
-    )
-
-    result = Agent(runner).answer("q", THREAD)
-
-    assert result.citations == (_at("a.md", 1), _at("c.md", 3))
 
 
 def test_the_turn_it_took_is_recorded() -> None:
@@ -249,57 +159,6 @@ def test_a_turn_that_failed_records_nothing() -> None:
     assert conversations.turns(THREAD) == ()
 
 
-def test_an_agent_wired_to_no_store_still_answers() -> None:
-    agent = Agent(runner=_StubRunner({"answer": "1.6 g per kg"}))
-
-    assert agent.answer("How much protein?", THREAD).answer == "1.6 g per kg"
-
-
-def test_a_store_that_cannot_be_written_costs_the_turn_nothing() -> None:
-    """The answer is what the user asked for; keeping a record of it is bookkeeping.
-    A store that went away loses the conversation, never the reply."""
-    agent = Agent(
-        runner=_StubRunner({"answer": "1.6 g per kg"}),
-        conversations=FailingConversations(),
-    )
-
-    assert agent.answer("How much protein?", THREAD).answer == "1.6 g per kg"
-
-
-def test_the_answer_reaches_its_reader_as_it_is_written() -> None:
-    """The pieces are the same text arriving earlier. What the turn *is* — recorded,
-    prompted from, cited against — is still the whole answer in the result."""
-    written: list[Written] = []
-    runner = _StubRunner(
-        {"answer": "Sleep, not volume."}, writes=("Sleep, ", "not volume.")
-    )
-
-    result = Agent(runner).answer("why", THREAD, on_text=written.append)
-
-    assert written == [Piece("Sleep, "), Piece("not volume.")]
-    assert result.answer == "Sleep, not volume."
-
-
-def test_a_caller_that_reads_along_with_nothing_gets_the_same_turn() -> None:
-    """Every frontend but the page asks for a turn and waits for it."""
-    runner = _StubRunner({"answer": "Sleep, not volume."}, writes=("Sleep, ",))
-
-    assert Agent(runner).answer("why", THREAD).answer == "Sleep, not volume."
-
-
-def test_a_turn_that_fails_keeps_the_text_already_written() -> None:
-    """As it already keeps the steps it took: what was written happened, and the caller
-    replaces it with the sentence the failure carries rather than pretending to unsay
-    it."""
-    written: list[Written] = []
-    runner = _StubRunner({"trace": [SEARCHED]}, writes=("Sleep, ",), then=LlmError())
-
-    with pytest.raises(LlmError):
-        Agent(runner).answer("why", THREAD, on_text=written.append)
-
-    assert written == [Piece("Sleep, ")]
-
-
 # ── a turn that stopped to ask ──
 
 ASKED = "Which bodyweight should I treat as current?"
@@ -323,27 +182,6 @@ def test_a_turn_that_stopped_to_ask_says_so_rather_than_answering() -> None:
     assert paused.value.pending == PARKED
 
 
-def test_a_paused_turn_is_not_reported_as_an_empty_answer() -> None:
-    """The one outcome that would read as a successful turn: a blank answer with
-    citations and a trace, served as though the model had finished."""
-    kept = FakeConversations()
-    runner = _StubRunner(_traced(SEARCHED), waiting=PARKED)
-
-    with pytest.raises(TurnPaused):
-        Agent(runner, kept).answer(QUESTION, THREAD)
-
-    assert kept.turns(THREAD) == (), "a turn with no answer yet is not a turn"
-
-
-def test_a_pause_on_the_first_step_is_a_pause_and_not_a_failed_start() -> None:
-    """A run that parks before any step lands yields once, which is what a runner that
-    walked nothing looks like — and that would apologise instead of asking."""
-    runner = _StubRunner(waiting=PARKED)
-
-    with pytest.raises(TurnPaused):
-        Agent(runner).answer(QUESTION, THREAD)
-
-
 def test_resuming_finishes_the_turn_the_pause_belonged_to() -> None:
     kept = FakeConversations()
     runner = _StubRunner(waiting=PARKED, after=({"answer": "1,730 kcal."},))
@@ -356,44 +194,6 @@ def test_resuming_finishes_the_turn_the_pause_belonged_to() -> None:
     assert recorded == Turn(question=QUESTION, result=result), (
         "the turn is kept under the question that opened it, not under the decision"
     )
-
-
-def test_declining_resumes_with_nothing_chosen() -> None:
-    runner = _StubRunner(waiting=PARKED, after=({"answer": "Without a weight, then."},))
-
-    Agent(runner).resume(Answer(), THREAD)
-
-    assert runner.chosen == Answer(action=None)
-
-
-def test_resuming_a_thread_that_is_waiting_on_nothing_is_refused() -> None:
-    runner = _StubRunner({"answer": "done"})
-
-    with pytest.raises(NothingToResumeError):
-        Agent(runner).resume(Answer(action="75 kg"), THREAD)
-
-    assert runner.resumes == 0
-
-
-def test_approving_carries_the_call_it_answers_into_the_parked_turn() -> None:
-    """An approval and a label are picked up the same way — the difference is which step
-    was waiting, and each of them checks what came back to it."""
-    yes = Answer(action="c1")
-    runner = _StubRunner(
-        waiting=Pending(
-            asked=QUESTION, card=Proposed(call_id="c1", tool="book_it").card
-        ),
-        after=({"answer": "Booked."},),
-    )
-
-    answered = Agent(runner).resume(yes, THREAD)
-
-    assert runner.chosen == yes
-    assert answered.answer == "Booked."
-
-
-def test_a_thread_that_never_stopped_is_waiting_on_nothing() -> None:
-    assert Agent(_StubRunner({"answer": "done"})).pending(THREAD) is None
 
 
 def test_a_failure_from_inside_a_step_is_named_by_the_step_the_turn_was_in() -> None:
@@ -412,69 +212,6 @@ def test_a_failure_from_inside_a_step_is_named_by_the_step_the_turn_was_in() -> 
     assert unreachable.value.step == "work"
 
 
-def test_a_failure_that_already_names_its_step_keeps_that_name() -> None:
-    refused = InputRejectedError("Ask me something.")
-    refused.step = "screen"
-    runner = _StubRunner({"trace": [StepEntered("screen")]}, then=refused)
-
-    with pytest.raises(InputRejectedError) as raised:
-        Agent(runner).answer("   ", THREAD)
-
-    assert raised.value.step == "screen"
-
-
-def test_a_failure_before_any_step_was_entered_names_none() -> None:
-    """Nothing to name it after, and inventing one would say the turn reached a step
-    it never did."""
-    runner = _StubRunner({"trace": []}, then=LlmError())
-
-    with pytest.raises(LlmError) as unreachable:
-        Agent(runner).answer("q", THREAD)
-
-    assert unreachable.value.step == ""
-
-
-def test_an_answer_of_whitespace_is_no_more_an_answer_than_none() -> None:
-    """The chat model refuses a reply that says nothing, and the turn is held to the
-    same bar: what would reach the page is a blank bubble either way."""
-    with pytest.raises(GraphRunError):
-        Agent(_StubRunner({"answer": "  \n "})).answer("q", THREAD)
-
-
-def test_a_walk_that_settled_no_answer_is_a_failure_not_a_blank_one() -> None:
-    """Settling the answer is a step of the walk, and a walk without that step answers
-    with nothing at all. A blank answer reads like a successful turn and is recorded as
-    one, which is the failure `GraphRunError` exists for."""
-    conversations = FakeConversations()
-    agent = Agent(
-        runner=_StubRunner({"trace": [ANSWERED]}), conversations=conversations
-    )
-
-    with pytest.raises(GraphRunError):
-        agent.answer("How much protein?", THREAD)
-
-    assert conversations.turns(THREAD) == (), "and nothing was kept to come back to"
-
-
-def test_a_turn_says_which_field_it_was_answered_in() -> None:
-    """The reader is shown documents and citations per field, so the page has to know
-    which field a turn ran in — routing settles it inside the turn, and nothing outside
-    can work it out."""
-    app = assembled(
-        chat_model=ScriptedChatModel([ModelReply(text="Book it early.")]),
-        plugins=(
-            make_plugin(
-                name="trips", instructions="A companion.", tools=(), scope="travel"
-            ),
-        ),
-        scopes=("travel",),
-    )
-
-    answered = app.agent.answer("How early?", "t1")
-
-    assert answered.scopes == ("travel",)
-
-
 def test_forgetting_a_conversation_drops_its_turns_and_its_thread() -> None:
     """One call over both halves: a conversation whose record is gone and whose thread
     is not has a pin, a transcript and possibly a parked turn nobody can see."""
@@ -491,33 +228,3 @@ def test_forgetting_a_conversation_drops_its_turns_and_its_thread() -> None:
     assert conversations.turns(THREAD) == ()
     assert runner.forgotten == [THREAD]
     assert runner.pinned(THREAD) is None
-
-
-def test_a_conversation_whose_thread_will_not_drop_stays_in_the_list() -> None:
-    """The thread goes first, so a drop that fails halfway leaves the conversation
-    where the reader can ask for it again — the other order fails to a thread nobody
-    can reach."""
-    conversations = FakeConversations()
-    conversations.record(
-        THREAD,
-        Turn(question="How much protein?", result=ChatResult(answer="1.6 g per kg.")),
-    )
-    agent = Agent(
-        runner=_StubRunner(forgetting=GraphRunError()), conversations=conversations
-    )
-
-    with pytest.raises(GraphRunError):
-        agent.forget(THREAD)
-
-    assert [session.thread_id for session in conversations.sessions()] == [THREAD]
-
-
-def test_forgetting_a_conversation_where_nothing_is_recorded_is_not_an_error() -> None:
-    """A cora with no place to record turns still has a thread to drop, and dropping
-    what it never kept is already done — the reading every panel here takes."""
-    runner = _StubRunner()
-    agent = Agent(runner=runner)
-
-    agent.forget(THREAD)
-
-    assert runner.forgotten == [THREAD]

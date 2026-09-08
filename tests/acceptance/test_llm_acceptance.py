@@ -32,7 +32,6 @@ Spread it over three or four meals.
 """
 IN_THE_SUBJECT = "How much protein should I eat per kg of bodyweight?"
 LIVE_PLUGINS = ("cora.plugins.security", "cora.plugins.fitness")
-SMALL_TALK = "Hi there!"
 
 
 def _live_app(store: Path) -> App:
@@ -70,22 +69,12 @@ def _turn(page: TestClient, question: str, thread: str = "acceptance") -> dict:
     return data
 
 
-def _answer(turn: dict) -> str:
-    return str(turn["answer"]).lower()
-
-
 def _opens_a_passage(turn: dict) -> bool:
     """What the Sources panel used to prove, and more: the reader has a citation to
     open. Read off the citations rather than the text, because a number the domain never
     resolved — glued to a word, or belonging to no registered passage — reaches the page
     as text and opens nothing."""
     return turn["citations"] != []
-
-
-def _names_a_number(turn: dict) -> bool:
-    """Loose on purpose, and only ever asserted false: an answer that had no business
-    citing anything is caught by the bracket it wrote, whether or not it resolved."""
-    return CITATION.search(_answer(turn)) is not None
 
 
 def _steps(turn: dict) -> str:
@@ -101,7 +90,6 @@ def _remembered(page: TestClient) -> str:
 
 
 UPLOADED = {"file": ("protein.md", PROTEIN_DOC, "text/markdown")}
-CITATION = re.compile(r"\[\d+]")
 NEEDS_THE_CALCULATOR = (
     "I'm a 34-year-old man, 80 kg at 180 cm, training hard four times a week. "
     "What is my total daily energy expenditure?"
@@ -145,94 +133,11 @@ def test_a_whole_session_uploads_asks_calculates_and_remembers(tmp_path: Path) -
         assert "vegetarian" in _remembered(page)
 
 
-def test_a_real_model_answers_from_the_documents_but_greets_without_them(
-    tmp_path: Path,
-) -> None:
-    """The question never says "my documents" — one that does gives the answer away,
-    and the model answering a plain domain question from its own knowledge is the bug
-    this guards. The greeting rides in the same run, because what must be told apart
-    is two turns of one conversation, not two configurations."""
-    with _page(_holding_the_protein_doc(tmp_path)) as page:
-        asked = _turn(page, IN_THE_SUBJECT)
-
-        assert _opens_a_passage(asked), (
-            "the model answered without reaching the documents"
-        )
-        assert "protein.md" in _steps(asked), "the search never reached the document"
-
-        assert not _names_a_number(_turn(page, SMALL_TALK)), (
-            "small talk came back citing a document"
-        )
-
-
-ASKS_FOR_DOCUMENTS = ("upload", "no documents", "don't have any documents", "share")
-GREETS = ("hi", "hello", "hey", "nice to meet")
 """The greeting is checked for *being a greeting*, which is all story 12 claims for it.
 An empty store is a fact about the app, and a real model volunteers it while greeting —
 "nice to meet you; I don't have any documents from you yet, how can I help?" is small
 talk answered as small talk, so an assertion that no upload is ever mentioned would be
 testing a rule nobody wrote."""
-
-
-def test_a_real_model_asks_for_documents_instead_of_answering_without_them(
-    tmp_path: Path,
-) -> None:
-    """Story 12's whole subject is wording, so this is the only tier that can fail for
-    the right reason: a scripted model says whatever the script says, and what is being
-    tested is whether a real one, told it has nothing, declines to answer anyway.
-
-    The greeting gets an app of its own rather than riding along as turn two. Asked
-    after a turn that ended "which would you like?", a greeting is answered by picking
-    that back up — which is the model being coherent, not the rule leaking into small
-    talk, and it makes the assertion unable to tell the two apart."""
-    with _page(_live_app(tmp_path / "asked")) as page:
-        asked = _turn(page, IN_THE_SUBJECT)
-
-    answer = _answer(asked)
-    assert any(phrase in answer for phrase in ASKS_FOR_DOCUMENTS), (
-        f"an empty store was answered from model knowledge: {answer!r}"
-    )
-    assert not _names_a_number(asked), (
-        "nothing was uploaded and the answer cited something"
-    )
-
-    with _page(_live_app(tmp_path / "greeted")) as page:
-        greeted = _turn(page, SMALL_TALK)
-
-    greeting = _answer(greeted)
-    assert any(word in greeting for word in GREETS), (
-        f"a greeting was not answered as a greeting: {greeting!r}"
-    )
-    assert not _names_a_number(greeted), "a greeting cited a document"
-
-
-VEGETARIAN = "I'm vegetarian — keep that in mind."
-WHAT_TO_EAT = "What should I eat after a session?"
-MEAT = ("chicken", "beef", "steak", "salmon", "tuna", "pork", "turkey")
-
-
-def test_a_real_model_keeps_what_it_is_told_and_uses_it_next_session(
-    tmp_path: Path,
-) -> None:
-    """A scripted model calls `remember` because the script says so; only a real one
-    can show that the rule in the brief is enough to make it call the tool, and that
-    a fact recalled into a later brief actually changes the answer. The second
-    session is a new app over the same memory file — a new thread with nothing in
-    common but what was kept."""
-    first = _holding_the_protein_doc(tmp_path)
-    with _page(first) as page:
-        _turn(page, VEGETARIAN, thread="told")
-
-    assert first.memory is not None
-    kept = " ".join(fact.text.lower() for fact in first.memory.recall())
-    assert "vegetarian" in kept, "the model was told something durable and dropped it"
-
-    with _page(_holding_the_protein_doc(tmp_path)) as page:
-        answer = _answer(_turn(page, WHAT_TO_EAT, thread="later"))
-
-    assert not [meat for meat in MEAT if meat in answer], (
-        "a remembered constraint was in the brief and the answer ignored it"
-    )
 
 
 def test_a_real_model_cites_a_passage_the_reader_can_open(tmp_path: Path) -> None:

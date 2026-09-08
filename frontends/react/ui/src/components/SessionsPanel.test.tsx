@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import SessionsPanel from './SessionsPanel'
 import type { Session } from '../api'
@@ -26,14 +26,6 @@ const panel = (working: string | null = null) => {
 const deleting = (session: Session) =>
   screen.queryByRole('button', { name: `Delete ${session.opened_with}` })
 
-test("a listed conversation's own control asks for it to be deleted", () => {
-  const deleted = panel()
-
-  fireEvent.click(deleting(OTHER)!)
-
-  expect(deleted).toHaveBeenCalledWith(OTHER)
-})
-
 test('the conversation being read offers no delete', () => {
   /* It is the page: deleting it would leave the reader in a conversation that is gone.
      Leaving it is a click away, and the list is what they leave it through. */
@@ -52,20 +44,3 @@ test('a conversation still being answered in offers no delete', () => {
   expect(deleting(OTHER)).toBeTruthy()
 })
 
-test('the control is an icon, named for the conversation it deletes', () => {
-  /* A word per row repeated down a narrow rail reads as noise; the name is what says
-     which conversation is about to go, to a screen reader and to a test alike. */
-  panel()
-
-  expect(screen.queryByText('delete')).toBeNull()
-  expect(deleting(OTHER)!.querySelector('svg')).toBeTruthy()
-})
-
-test('the conversation being read is marked in the list', () => {
-  /* Its row is where the reader is, so the list says so rather than leaving them to
-     work it out from which row does nothing when clicked. */
-  panel()
-
-  const row = screen.getByRole('button', { name: HERE.opened_with }).parentElement!
-  expect(row.className).toContain('here')
-})

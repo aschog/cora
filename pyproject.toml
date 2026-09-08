@@ -102,6 +102,7 @@ select = [
     "C4",  # flake8-comprehensions
     "SIM", # flake8-simplify
     "RUF", # ruff-specific
+    "TID", # flake8-tidy-imports — the layer boundaries, in a `.ruff.toml` per layer
     "D",   # pydocstyle
 ]
 # `D417` would demand that an `Args:` block name every parameter, which turns

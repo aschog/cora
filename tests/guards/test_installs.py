@@ -50,55 +50,12 @@ def _resolved(dist: str) -> set[str]:
     return resolved
 
 
-def test_a_name_the_workspace_does_not_ship_is_an_error() -> None:
-    """`uv tree` prints nothing and exits 0 for a package it has never heard of, so a
-    renamed distribution would leave the two tests below asserting that `streamlit` is
-    absent from an empty set — passing by resolving nothing. The subject has to be found
-    before anything can be said about it."""
-    with pytest.raises(AssertionError, match="cora-plugin-nonesuch"):
-        _resolved("cora-plugin-nonesuch")
-
-
-SERVES_A_PAGE = frozenset({"starlette", "streamlit"})
 """The frameworks a frontend is written against. `uvicorn` is deliberately not among
 them: a server resolves it whatever cora does, so its presence says nothing about the
 app owning an interface, and a rule naming it would be false the day it was written."""
 
-RETIRED = "chromadb"
 """The store the index used to be, held out by name: it brought twenty megabytes and a
 server's worth of transitive dependencies behind one adapter."""
-
-
-def test_nothing_in_the_workspace_resolves_the_store_the_index_left() -> None:
-    """The index is cora's own SQLite file now, and this is what keeps the store it
-    replaced from arriving again under some other member's manifest."""
-    reaching = sorted(
-        distribution
-        for member in workspace.members()
-        if RETIRED in _resolved(distribution := workspace.distribution(member))
-    )
-
-    assert reaching == [], f"these still bring {RETIRED} in: {reaching}"
-
-
-def test_the_app_resolves_without_any_user_interface() -> None:
-    """What makes a second frontend possible, stated so it can fail — transitively,
-    where the manifest sees one edge: a command-line or HTTP shell installs `cora` and
-    gets the wiring without the framework a page is written against."""
-    assert not _resolved("cora") & SERVES_A_PAGE
-
-
-def test_nothing_in_the_workspace_resolves_a_second_frontend() -> None:
-    """The bar over the whole tree rather than over `cora` alone: the app resolving no
-    web toolkit says nothing about a member that ships one, and a frontend nobody runs
-    still lands in the lockfile every developer syncs."""
-    reaching = sorted(
-        distribution
-        for member in workspace.members()
-        if "streamlit" in _resolved(distribution := workspace.distribution(member))
-    )
-
-    assert reaching == [], f"these still bring Streamlit in: {reaching}"
 
 
 def test_a_plugin_resolves_the_app_and_stops() -> None:

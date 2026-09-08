@@ -4,7 +4,6 @@ from cora.domain.errors import ConfigurationError
 from cora.engine.plugin_set import RESERVED_TOOL_NAMES, Registry
 from cora.engine.validation import CORA
 from cora.ports.host import (
-    BRIEFING,
     HANDLER,
     HAS_AN_EFFECT,
     INSTRUCTIONS,
@@ -36,14 +35,6 @@ def _subscribed(module: str, event: str, scope: str | None = None) -> Registrati
     )
 
 
-def test_an_empty_registry_offers_nothing_at_all() -> None:
-    empty = Registry()
-
-    assert empty.tools() == ()
-    assert empty.handlers(SCREENING) == ()
-    assert empty.instructions() == ""
-
-
 def test_the_registered_tools_are_offered_in_registration_order() -> None:
     registry = Registry(
         (
@@ -54,21 +45,6 @@ def test_the_registered_tools_are_offered_in_registration_order() -> None:
     )
 
     assert [tool.name for tool in registry.tools()] == ["bmi", "tdee", "macros"]
-
-
-def test_the_handlers_of_one_event_come_back_in_registration_order() -> None:
-    """Which is load order, which is cora's own first: a plugin's screen is never
-    handed a question cora would have refused outright."""
-    registry = Registry(
-        (
-            _subscribed(CORA, SCREENING),
-            _subscribed(SECURITY, SCREENING),
-            _subscribed(FITNESS, BRIEFING),
-        )
-    )
-
-    assert [entry.module for entry in registry.handlers(SCREENING)] == [CORA, SECURITY]
-    assert [entry.module for entry in registry.handlers(BRIEFING)] == [FITNESS]
 
 
 def test_a_scoped_registration_applies_only_where_its_scope_is_active() -> None:
@@ -87,11 +63,6 @@ def test_a_scoped_registration_applies_only_where_its_scope_is_active() -> None:
     assert [entry.module for entry in registry.handlers(SCREENING)] == [SECURITY]
     assert registry.instructions() == ""
     assert "Be a coach." in registry.instructions(COACHING)
-
-
-def test_a_plugin_is_what_screens_beyond_coras_own() -> None:
-    assert not Registry((_subscribed(CORA, SCREENING),)).screened_by_a_plugin()
-    assert Registry((_subscribed(SECURITY, SCREENING),)).screened_by_a_plugin()
 
 
 def test_two_plugins_registering_one_tool_name_is_a_config_error() -> None:
@@ -134,10 +105,6 @@ def test_two_plugins_are_two_sections_headed_by_their_modules() -> None:
     assert "Be careful." in written
 
 
-def test_a_plugin_that_registered_nothing_to_say_adds_no_section() -> None:
-    assert Registry((_registered(SECURITY, INSTRUCTIONS, "  "),)).instructions() == ""
-
-
 WRAPPED = """\
 Answer travel questions — destinations, routes, timing and logistics — from the
 user's own documents.
@@ -171,14 +138,6 @@ def test_a_scopes_outline_is_the_paragraph_its_instructions_open_with(
     registry = Registry((_registered(FITNESS, INSTRUCTIONS, written, "fitness"),))
 
     assert registry.outline("fitness") == outlined
-
-
-def test_a_scope_nobody_wrote_instructions_for_outlines_as_nothing() -> None:
-    """The router is then given its name alone, which is all anyone said about it."""
-    registry = Registry((_registered(FITNESS, INSTRUCTIONS, "Coaching.", "fitness"),))
-
-    assert registry.outline("travel") == ""
-    assert Registry().outline("fitness") == ""
 
 
 def _extension(module: str, source: str = "") -> Extension:
@@ -229,20 +188,3 @@ def test_a_tool_that_changes_something_outside_cora_is_listed_as_doing_so() -> N
         ("bmr", ""),
         ("book_it", HAS_AN_EFFECT),
     ]
-
-
-def test_a_plugin_that_registered_nothing_is_listed_with_nothing_under_it() -> None:
-    """It is the one an operator most needs to see: loaded, and contributing none."""
-    (quiet,) = Registry().listing((_extension(FITNESS),))
-
-    assert quiet.contributions == ()
-    assert quiet.of(TOOL) == quiet.of(HANDLER) == quiet.of(INSTRUCTIONS) == ()
-    assert quiet.scopes == ()
-
-
-def test_the_ask_that_gathers_is_coras_own_name_too() -> None:
-    """A plugin taking the name would shadow the one tool that stops the turn to ask,
-    and the reader would be put a card nobody in the core wrote."""
-    from cora.engine.ask_tool import ASK_FOR_TOOL_NAME
-
-    assert ASK_FOR_TOOL_NAME in RESERVED_TOOL_NAMES

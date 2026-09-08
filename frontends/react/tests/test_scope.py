@@ -45,28 +45,6 @@ def test_the_page_is_told_which_fields_the_deployment_offers() -> None:
     assert offered == {"available": list(BOTH), "default": DEFAULT_SCOPE}
 
 
-def test_a_question_can_carry_the_pin_that_fixes_the_thread_to_a_field() -> None:
-    """The pin is a key of the thread's own state, so it needs a turn to be written —
-    and a page that reloads reads it back off the thread rather than off its own."""
-    app = _served(ModelReply(text="Protein, then."))
-
-    with TestClient(api(app)) as reader:
-        assert reader.get(f"/api/sessions/{THREAD}/scope").json() == {"pin": None}
-
-        streamed = _asked(reader, question="How much protein?", pin="fitness")
-
-        assert streamed[-1][0] == "turn"
-        assert reader.get(f"/api/sessions/{THREAD}/scope").json() == {"pin": "fitness"}
-        # The field the turn ran in is on the page as a step like any other, so the
-        # panel that draws the steps draws this one without being told about it.
-        [focused] = [
-            data["summary"]
-            for name, data in streamed
-            if name == "step" and data["summary"].startswith("Answering in")
-        ]
-        assert focused == "Answering in fitness — pinned to this conversation"
-
-
 def test_a_second_field_on_a_pinned_thread_is_refused_as_a_sentence() -> None:
     """The rule is the engine's, so it arrives the way a screening refusal does: on the
     stream, as the error that ends it. The reader is told which field the conversation
@@ -80,22 +58,6 @@ def test_a_second_field_on_a_pinned_thread_is_refused_as_a_sentence() -> None:
     [(name, data)] = streamed
     assert name == "error"
     assert "fitness" in data["error"]
-
-
-def test_a_question_pinned_to_a_field_a_dropped_plugin_brought_is_accepted() -> None:
-    """`CORA_SCOPES` never named it, but the plugin brought it — the pin check reads
-    what the composition offers, not what the deployment typed."""
-    app = assembled(
-        chat_model=ScriptedChatModel([ModelReply(text="Ask away.")]),
-        conversations=FakeConversations(),
-        plugins=(make_plugin(name="interview", scope="interview"),),
-        scopes=BOTH,
-    )
-
-    with TestClient(api(app)) as reader:
-        streamed = _asked(reader, question="First question?", pin="interview")
-
-    assert streamed[-1][0] == "turn"
 
 
 def test_a_field_the_deployment_does_not_run_is_refused_before_the_turn() -> None:

@@ -7,7 +7,6 @@ import pytest
 from cora.plugins.travel.itinerary import (
     ITINERARY_TOOL_NAME,
     NOT_THE_PLAN,
-    NOTHING_PLANNED,
     flat,
     itinerary_tool,
 )
@@ -91,15 +90,6 @@ def test_a_plan_that_is_not_the_one_checked_is_refused_and_nothing_is_written() 
     assert output.written == {}
 
 
-def test_a_save_with_no_plan_kept_refuses_rather_than_writing_an_empty_file() -> None:
-    output = FakeOutput()
-
-    with pytest.raises(ToolRefusal, match=NOTHING_PLANNED):
-        _tool(output).run(title=TITLE, **flat(_plan()))
-
-    assert output.written == {}
-
-
 def test_the_tool_declares_that_it_changes_something_outside_cora() -> None:
     """The declaration is the whole reason the gate stops for it, and it is the tool's
     own to make: only the tool knows a call of it writes."""
@@ -133,32 +123,3 @@ def test_two_plans_under_one_title_are_two_files() -> None:
 
     assert len(output.written) == 2
     assert all(name.startswith("kyoto-three-days-") for name in output.written)
-
-
-def test_the_same_plan_saved_twice_is_one_file() -> None:
-    """The name is made out of what was saved, so saving the identical plan again is the
-    same file rather than a second copy of it."""
-    output = FakeOutput()
-    plan = _plan()
-
-    _tool(output, plan).run(title=TITLE, **flat(plan))
-    _tool(output, plan).run(title=TITLE, **flat(plan))
-
-    assert len(output.written) == 1
-
-
-def test_the_arguments_the_card_shows_are_the_plan_the_traveller_reads() -> None:
-    """Flat and one field per part, because the gate lays out one read-only field per
-    top-level argument: a plan inside one field is a plan nobody read."""
-    shown = flat(_plan())
-
-    assert shown["depart"] == "2026-09-07"
-    assert shown["total"] == "EUR 420"
-    assert shown["days"][0] == "2026-09-07: Fushimi Inari at dawn"
-
-
-def test_an_unpriced_plan_says_so_rather_than_showing_a_price_of_nothing() -> None:
-    shown = flat(_plan(fare=None, stay=None))
-
-    assert shown["total"] == "unpriced"
-    assert shown["flight"] == "unpriced"

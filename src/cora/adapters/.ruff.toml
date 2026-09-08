@@ -1,0 +1,10 @@
+# The layers this one may not reach for. Enforced by ruff on every file under here,
+# hierarchically: the nearest config wins, so a file added to the layer is covered by
+# having been put here rather than by a list somebody keeps.
+extend = "../../../pyproject.toml"
+
+[lint.flake8-tidy-imports.banned-api]
+"cora.engine".msg = "an adapter fills a slot and is reusable by every frontend and every version of the use cases, which it can only be if it knows the ports alone"
+"cora.app".msg = "an adapter knows the ports alone"
+"cora.frontends".msg = "an adapter knows the ports alone"
+"pytest".msg = "a test-only framework has no business in a shipped wheel"

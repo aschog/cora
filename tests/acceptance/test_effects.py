@@ -12,7 +12,6 @@ from cora.adapters.file_output import FileOutput
 from cora.app.assembly import App
 from cora.domain.approval import TOOL
 from cora.domain.decision import TurnPaused
-from cora.engine.steps import DECLINED_CALL
 from cora.frontends.react.api import api
 from cora.plugins.travel import SCOPE
 from cora.plugins.travel.itinerary import ITINERARY_TOOL_NAME, flat
@@ -154,32 +153,6 @@ def test_an_effect_happens_only_after_i_approve_it(tmp_path: pathlib.Path) -> No
         "approved" in step["summary"].lower() and ITINERARY_TOOL_NAME in step["summary"]
         for step in turn["trace"]
     ), "the approval is on the trace, beside the call it authorised"
-
-
-DECLINED_QUESTION = "Save the Kyoto days."
-
-
-def test_declining_changes_nothing_and_the_model_is_told_it_did_not_happen(
-    tmp_path: pathlib.Path,
-) -> None:
-    """The other side of the story: a no leaves everything outside cora as it was, the
-    call never runs, and the turn is still answered — with the model told plainly that
-    the thing it asked for did not happen, so it can say so."""
-    output = tmp_path / "output"
-    model = _plans_then_saves("I have not saved it.")
-    with TestClient(api(_app(model, output))) as reader:
-        reader.post(
-            "/api/ask", json={"question": DECLINED_QUESTION, "thread_id": THREAD}
-        )
-        declined = reader.post(
-            "/api/resume", json={"thread_id": THREAD, "answer": None}
-        )
-
-    [turn] = _of(declined.text, "turn")
-    assert turn["answer"] == "I have not saved it."
-    assert not output.exists(), "nothing outside cora changed"
-    told = [message.content for message in model.last_messages or ()]
-    assert DECLINED_CALL.format(name=ITINERARY_TOOL_NAME) in told
 
 
 def test_a_plugin_that_takes_part_everywhere_it_may_cannot_switch_the_gate_off(

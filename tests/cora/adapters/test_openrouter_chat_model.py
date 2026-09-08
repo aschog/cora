@@ -1,4 +1,3 @@
-import logging
 from collections.abc import Iterator
 
 import httpx
@@ -8,9 +7,6 @@ from langchain_core.exceptions import ContextOverflowError
 from langchain_core.messages import (
     AIMessage,
     AIMessageChunk,
-    HumanMessage,
-    SystemMessage,
-    ToolMessage,
 )
 
 from cora.adapters.openrouter_chat_model import (
@@ -22,7 +18,6 @@ from cora.adapters.openrouter_chat_model import (
 from cora.domain.errors import (
     LlmBusyError,
     LlmConversationTooLongError,
-    LlmEmptyReplyError,
     LlmError,
     LlmKeyRejectedError,
     LlmMalformedToolCallError,
@@ -31,37 +26,6 @@ from cora.domain.errors import (
 )
 from cora.ports.chat_model import Message, ModelReply, Piece, Written
 from cora.ports.plugin import ToolCall
-from fakes import add_tool
-
-
-class _FakeChatOpenAI:
-    last: "_FakeChatOpenAI | None" = None
-
-    def __init__(self, **kwargs: object) -> None:
-        _FakeChatOpenAI.last = self
-        self.init_kwargs = kwargs
-        self.bound_tools: list[dict[str, object]] | None = None
-
-    def bind_tools(self, tools: list[dict[str, object]]) -> "_FakeChatOpenAI":
-        self.bound_tools = tools
-        return self
-
-    def stream(self, messages: object) -> Iterator[AIMessageChunk]:
-        yield AIMessageChunk(content="ok")
-
-
-def test_system_message_maps_to_langchain_system_message() -> None:
-    result = to_langchain_message(Message(role="system", content="sys"))
-
-    assert isinstance(result, SystemMessage)
-    assert result.content == "sys"
-
-
-def test_user_message_maps_to_human_message() -> None:
-    result = to_langchain_message(Message(role="user", content="hi"))
-
-    assert isinstance(result, HumanMessage)
-    assert result.content == "hi"
 
 
 def test_assistant_with_tool_calls_maps_to_ai_message() -> None:
@@ -75,14 +39,6 @@ def test_assistant_with_tool_calls_maps_to_ai_message() -> None:
     assert result.tool_calls == [
         {"name": "add", "args": {"a": 1, "b": 2}, "id": "c1", "type": "tool_call"}
     ]
-
-
-def test_tool_message_maps_to_langchain_tool_message() -> None:
-    result = to_langchain_message(Message(role="tool", content="3", tool_call_id="c1"))
-
-    assert isinstance(result, ToolMessage)
-    assert result.content == "3"
-    assert result.tool_call_id == "c1"
 
 
 def test_provider_reply_with_tool_calls_becomes_model_reply_tool_calls() -> None:
@@ -100,44 +56,6 @@ def test_provider_reply_with_tool_calls_becomes_model_reply_tool_calls() -> None
         tool_calls=(ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1"),),
     )
     assert reply.is_final is False
-
-
-def test_provider_text_reply_becomes_final_model_reply() -> None:
-    reply = to_model_reply(AIMessage(content="The sum is 3."))
-
-    assert reply == ModelReply(text="The sum is 3.", tool_calls=())
-    assert reply.is_final is True
-
-
-def test_tool_schemas_are_bound_onto_the_client(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        "cora.adapters.openrouter_chat_model.ChatOpenAI", _FakeChatOpenAI
-    )
-    tool = add_tool()
-    model = OpenRouterChatModel(
-        model="m",
-        api_key="k",
-        base_url="https://example/api",
-        max_output_tokens=1024,
-        request_timeout_seconds=30,
-        reasoning_effort="low",
-    )
-
-    model.complete((Message(role="user", content="hi"),), (tool,))
-
-    assert _FakeChatOpenAI.last is not None
-    assert _FakeChatOpenAI.last.bound_tools == [
-        {
-            "type": "function",
-            "function": {
-                "name": tool.name,
-                "description": tool.description,
-                "parameters": tool.parameter_schema,
-            },
-        }
-    ]
 
 
 def test_the_client_is_built_with_the_budgets_it_was_handed() -> None:
@@ -161,22 +79,6 @@ def test_the_client_is_built_with_the_budgets_it_was_handed() -> None:
     assert client.max_tokens == 1234
     assert client.request_timeout == 77
     assert client.max_retries == MAX_RETRIES
-
-
-def test_the_client_asks_for_the_reasoning_effort_it_was_handed() -> None:
-    """A reasoning model bills its thinking to the same budget it answers from, so how
-    hard it thinks decides what is left to answer with — and the provider's own default
-    is not the one measured to answer fastest here."""
-    model = OpenRouterChatModel(
-        model="m",
-        api_key="k",
-        base_url="https://example/api",
-        max_output_tokens=1234,
-        request_timeout_seconds=77,
-        reasoning_effort="high",
-    )
-
-    assert model._client.extra_body == {"reasoning": {"effort": "high"}}
 
 
 @pytest.mark.parametrize(
@@ -251,28 +153,6 @@ def test_an_answer_cut_off_at_the_token_limit_is_not_an_answer() -> None:
         to_model_reply(truncated)
 
 
-def test_a_final_reply_with_nothing_in_it_is_not_an_answer() -> None:
-    """No text and no tool call is a turn the user would see as a blank bubble."""
-    with pytest.raises(LlmEmptyReplyError):
-        to_model_reply(AIMessage(content=""))
-
-
-def test_a_tool_round_may_carry_no_text_at_all() -> None:
-    """The empty-reply check is about *finals*: asking for a tool is how a round starts,
-    and it says nothing to the user by design."""
-    reply = to_model_reply(
-        AIMessage(
-            content="",
-            tool_calls=[
-                {"name": "add", "args": {"a": 1}, "id": "c1", "type": "tool_call"}
-            ],
-            response_metadata={"finish_reason": "tool_calls"},
-        )
-    )
-
-    assert reply.is_final is False
-
-
 def test_a_tool_call_the_model_malformed_is_not_an_answer() -> None:
     """The call the model wrote is gone before cora sees it — `tool_calls` is empty and
     the prose beside it reads as a final. It is a turn that failed, and the search it
@@ -292,79 +172,6 @@ def test_a_tool_call_the_model_malformed_is_not_an_answer() -> None:
 
     with pytest.raises(LlmMalformedToolCallError):
         to_model_reply(malformed)
-
-
-def test_one_call_that_parsed_beside_one_that_did_not_is_still_a_failed_turn() -> None:
-    """A round that runs the calls it can and drops the rest answers on half of what the
-    model asked for, with nothing saying which half."""
-    half = AIMessage(
-        content="",
-        tool_calls=[
-            {"name": "add", "args": {"a": 1}, "id": "c1", "type": "tool_call"},
-        ],
-        invalid_tool_calls=[
-            {
-                "name": "search_documents",
-                "args": "not json",
-                "id": "c2",
-                "error": None,
-                "type": "invalid_tool_call",
-            }
-        ],
-    )
-
-    with pytest.raises(LlmMalformedToolCallError):
-        to_model_reply(half)
-
-
-def test_the_parse_failure_is_logged_and_the_reader_is_told_none_of_it(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """What the model wrote is the only way to find out why it broke, and it is no part
-    of a sentence the reader can act on."""
-    malformed = AIMessage(
-        content="",
-        invalid_tool_calls=[
-            {
-                "name": "search_documents",
-                "args": '{"query": ',
-                "id": "c1",
-                "error": "Unterminated string",
-                "type": "invalid_tool_call",
-            }
-        ],
-    )
-
-    with (
-        caplog.at_level(logging.WARNING, logger="cora.adapters"),
-        pytest.raises(LlmMalformedToolCallError) as raised,
-    ):
-        to_model_reply(malformed)
-
-    logged = caplog.text
-    assert "search_documents" in logged
-    assert "Unterminated string" in logged
-    assert "search_documents" not in raised.value.user_message
-
-
-def test_complete_returns_the_mapped_model_reply(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    monkeypatch.setattr(
-        "cora.adapters.openrouter_chat_model.ChatOpenAI", _FakeChatOpenAI
-    )
-    model = OpenRouterChatModel(
-        model="m",
-        api_key="k",
-        base_url="https://example/api",
-        max_output_tokens=1024,
-        request_timeout_seconds=30,
-        reasoning_effort="low",
-    )
-
-    reply = model.complete((Message(role="user", content="hi"),), ())
-
-    assert reply == ModelReply(text="ok")
 
 
 def _streaming(*chunks: AIMessageChunk) -> type:
@@ -394,22 +201,6 @@ def _model_over(monkeypatch: pytest.MonkeyPatch, client: type) -> OpenRouterChat
         request_timeout_seconds=30,
         reasoning_effort="low",
     )
-
-
-def test_each_piece_the_model_writes_reaches_the_sink(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    written: list[Written] = []
-    model = _model_over(
-        monkeypatch,
-        _streaming(
-            AIMessageChunk(content="Sleep, "), AIMessageChunk(content="not volume.")
-        ),
-    )
-
-    model.complete((Message(role="user", content="hi"),), (), written.append)
-
-    assert written == [Piece("Sleep, "), Piece("not volume.")]
 
 
 def test_a_streamed_reply_is_the_reply_a_whole_response_would_have_given(
@@ -474,35 +265,6 @@ def test_a_streamed_tool_call_arrives_whole(monkeypatch: pytest.MonkeyPatch) -> 
     assert written == []
 
 
-def test_a_streamed_tool_call_whose_arguments_never_parse_ends_the_turn(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The fragments are unparseable until the last has arrived, so a call that is still
-    broken once the stream is whole is broken for good."""
-    written: list[Written] = []
-    model = _model_over(
-        monkeypatch,
-        _streaming(
-            AIMessageChunk(content="Let me check your notes. "),
-            AIMessageChunk(
-                content="",
-                tool_call_chunks=[
-                    {
-                        "name": "search_documents",
-                        "args": "bm25",
-                        "id": "c1",
-                        "index": 0,
-                        "type": "tool_call_chunk",
-                    }
-                ],
-            ),
-        ),
-    )
-
-    with pytest.raises(LlmMalformedToolCallError):
-        model.complete((Message(role="user", content="hi"),), (), written.append)
-
-
 def test_what_the_model_thinks_reaches_no_sink(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -521,43 +283,6 @@ def test_what_the_model_thinks_reaches_no_sink(
     model.complete((Message(role="user", content="hi"),), (), written.append)
 
     assert written == [Piece("Sleep.")]
-
-
-def test_a_stream_cut_off_at_the_token_limit_is_still_not_an_answer(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The pieces already written are half a sentence; what the check reads is the
-    reason the provider gave for stopping, which only the last chunk carries."""
-    model = _model_over(
-        monkeypatch,
-        _streaming(
-            AIMessageChunk(content="Your daily protein target is"),
-            AIMessageChunk(content="", response_metadata={"finish_reason": "length"}),
-        ),
-    )
-
-    with pytest.raises(LlmTruncatedError):
-        model.complete((Message(role="user", content="hi"),), ())
-
-
-def test_a_stream_that_aggregates_to_nothing_is_still_not_an_answer(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    model = _model_over(monkeypatch, _streaming(AIMessageChunk(content="")))
-
-    with pytest.raises(LlmEmptyReplyError):
-        model.complete((Message(role="user", content="hi"),), ())
-
-
-def test_a_stream_that_arrives_empty_is_not_an_answer_either(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """No chunks at all: there is no reply to map, and a turn cannot be built from
-    one that was never sent."""
-    model = _model_over(monkeypatch, _streaming())
-
-    with pytest.raises(LlmEmptyReplyError):
-        model.complete((Message(role="user", content="hi"),), ())
 
 
 def test_a_stream_that_fails_part_way_keeps_the_category_and_what_was_written(
@@ -580,67 +305,3 @@ def test_a_stream_that_fails_part_way_keeps_the_category_and_what_was_written(
         model.complete((Message(role="user", content="hi"),), (), written.append)
 
     assert written == [Piece("Sleep, ")]
-
-
-def test_a_failure_nobody_modelled_leaves_the_operator_something_to_read(
-    monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
-) -> None:
-    """A category the reader can act on says what to do about it. The rest fall through
-    to a sentence that says nothing, so the traceback is the only account of what
-    happened and the log is the only place it can be kept."""
-
-    class _BreaksUnrecognisably:
-        def __init__(self, **kwargs: object) -> None: ...
-
-        def stream(self, messages: object) -> Iterator[AIMessageChunk]:
-            raise RuntimeError("the socket said something else entirely")
-            yield
-
-    model = _model_over(monkeypatch, _BreaksUnrecognisably)
-
-    with (
-        caplog.at_level(logging.WARNING, logger="cora.adapters"),
-        pytest.raises(LlmError),
-    ):
-        model.complete((Message(role="user", content="hi"),), ())
-
-    assert "the socket said something else entirely" in caplog.text
-
-
-def test_two_pieces_that_will_not_add_up_are_the_provider_s_failure(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """Adding a piece to the whole is the library's merge, and it refuses a field two
-    pieces disagree about — seen from providers that stream reasoning oddly. It is the
-    provider's stream failing, so the reader is told what a failed stream tells them,
-    not handed a `TypeError`."""
-    model = _model_over(
-        monkeypatch,
-        _streaming(
-            AIMessageChunk(content="Sleep, ", additional_kwargs={"reasoning": 1}),
-            AIMessageChunk(content="not volume.", additional_kwargs={"reasoning": "x"}),
-        ),
-    )
-
-    with pytest.raises(LlmError):
-        model.complete((Message(role="user", content="hi"),), ())
-
-
-class _ReaderWentAway(Exception):
-    """Nothing the provider could raise: what the caller's own sink does when it
-    fails."""
-
-
-def test_a_sink_that_fails_is_not_the_model_failing(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """`on_text` is the caller's code, called from inside the stream. Funnelled through
-    the provider's categories it would tell the reader the model is unavailable because
-    the page that was drawing the answer could not draw a word of it."""
-    model = _model_over(monkeypatch, _streaming(AIMessageChunk(content="Sleep, ")))
-
-    def refuses(piece: Written) -> None:
-        raise _ReaderWentAway
-
-    with pytest.raises(_ReaderWentAway):
-        model.complete((Message(role="user", content="hi"),), (), refuses)

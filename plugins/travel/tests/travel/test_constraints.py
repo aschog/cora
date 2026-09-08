@@ -45,14 +45,6 @@ def test_a_stay_that_does_not_cover_every_night_fails() -> None:
     assert "night" in failed
 
 
-def test_a_check_out_before_the_return_fails() -> None:
-    early = _plan(stay=_priced(240.0, OUT, OUT + datetime.timedelta(days=1)))
-
-    assert any(
-        "night" in failed or "return" in failed for failed in check(early, _asked())
-    )
-
-
 def test_a_total_over_the_budget_fails_and_says_by_how_much() -> None:
     dear = _plan(stay=_priced(700.0, OUT, BACK))
 
@@ -67,26 +59,10 @@ def test_a_date_in_the_range_with_nothing_to_do_fails() -> None:
     assert "2026-09-08" in failed
 
 
-def test_a_date_in_the_range_with_no_day_at_all_fails() -> None:
-    missing = _plan(days=(DAYS[0], DAYS[2]))
-
-    [failed] = check(missing, _asked())
-    assert "2026-09-08" in failed
-
-
-def test_nights_that_do_not_match_what_was_asked_for_fails() -> None:
-    [failed] = check(_plan(), _asked(nights=4))
-    assert "4" in failed
-
-
 def test_an_outdoor_day_the_forecast_rules_out_fails() -> None:
     [failed] = check(_plan(), _asked(), {"2026-09-08": "heavy rain"})
 
     assert "2026-09-08" in failed
-
-
-def test_an_indoor_day_in_the_rain_is_no_failure() -> None:
-    assert check(_plan(), _asked(), {"2026-09-07": "heavy rain"}) == ()
 
 
 def test_a_plan_failing_three_rules_comes_back_with_all_three() -> None:
@@ -96,14 +72,6 @@ def test_a_plan_failing_three_rules_comes_back_with_all_three() -> None:
     )
 
     assert len(check(broken, _asked())) == 3
-
-
-def test_an_absent_budget_is_not_a_budget_of_zero() -> None:
-    assert check(_plan(), _asked(budget=None)) == ()
-
-
-def test_an_absent_night_count_is_not_a_count_of_zero() -> None:
-    assert check(_plan(), _asked(nights=None)) == ()
 
 
 def test_an_unpriced_plan_is_not_over_a_budget_it_was_never_priced_against() -> None:

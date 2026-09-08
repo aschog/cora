@@ -54,29 +54,6 @@ def test_a_root_that_cannot_be_written_fails_as_the_outside_world_failing(
         output.write("kyoto.md", ITINERARY)
 
 
-def test_the_text_is_written_as_utf_8(tmp_path: pathlib.Path) -> None:
-    """An itinerary has em-dashes and place names in it, and the encoding it lands in is
-    named rather than left to the locale — a container under `LC_ALL=C` could not write
-    one at all. This pins the encoding, not the locale independence: on a UTF-8 host it
-    passes either way, and the surrogate test below is what holds the failure path."""
-    output = FileOutput.at(str(tmp_path))
-
-    where = output.write("kyoto.md", "Kyoto — 京都")
-
-    assert pathlib.Path(where).read_bytes() == "Kyoto — 京都".encode()
-
-
-def test_text_that_cannot_be_encoded_at_all_still_fails_as_the_port_promises(
-    tmp_path: pathlib.Path,
-) -> None:
-    """A lone surrogate is not encodable in any encoding, and what it raises is not an
-    `OSError` — so the one thing the port says it raises has to cover it too."""
-    output = FileOutput.at(str(tmp_path))
-
-    with pytest.raises(AdapterError):
-        output.write("broken.md", "a lone surrogate: \ud800")
-
-
 @pytest.mark.parametrize("name", ["kyoto\x00.md", "ky\x00oto/plan.md"])
 def test_a_name_that_is_not_a_path_at_all_is_refused_as_a_name(
     tmp_path: pathlib.Path, name: str

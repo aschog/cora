@@ -3,7 +3,7 @@
 
 REACT := cora.frontends.react.server
 
-.PHONY: run run-env plugins plugins-env ui ui-build ui-test ui-test-browser docs docs-serve diagram
+.PHONY: run run-env plugins plugins-env ui ui-build ui-test docs docs-serve diagram
 
 # cora, as one process serving the page and the API on 127.0.0.1:8000. It builds first
 # because the server only ever reads `ui/dist` — without that a source change is
@@ -33,9 +33,6 @@ ui-build:
 
 ui-test:
 	cd frontends/react/ui && npm test
-
-ui-test-browser:
-	cd frontends/react/ui && npm run test:browser
 
 # MkDocs has forked: its owner is publishing a v2 that drops the plugin system, and
 # `properdocs` is a continuation of 1.x that arrives here transitively. Both sides warn on

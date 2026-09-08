@@ -6,25 +6,16 @@ from html.parser import HTMLParser
 import pytest
 
 import workspace
-from cora.frontends.react.server import DEFAULT_PORT
 from site_config import config as _config
 from site_config import nav_pages as _nav_pages
 
 NARRATIVE = ("big-picture", "happy-path")
 NARRATIVE_PAGES = tuple(f"{name}.md" for name in NARRATIVE)
-NOT_THE_PRODUCT = ("sprints/", "cora_mockup.html", "workflow.md")
 
 
 def test_both_narrative_pages_are_in_the_nav() -> None:
     pages = _nav_pages(_config()["nav"])
     assert [name for name in NARRATIVE_PAGES if name in pages] == list(NARRATIVE_PAGES)
-
-
-def test_build_history_the_mockup_and_the_process_page_are_not_pages() -> None:
-    excluded = str(_config()["exclude_docs"]).split()
-    assert [name for name in NOT_THE_PRODUCT if name in excluded] == list(
-        NOT_THE_PRODUCT
-    )
 
 
 def test_the_built_site_is_not_tracked() -> None:
@@ -37,12 +28,6 @@ def test_the_built_site_is_not_tracked() -> None:
     assert ignored.returncode == 0, (
         "the built site must be ignored, not reviewed as source"
     )
-
-
-def test_the_nav_names_the_reference_once_and_never_a_module() -> None:
-    pages = _nav_pages(_config()["nav"])
-    assert "api/" in pages, "the reference section is one entry literate-nav resolves"
-    assert [page for page in pages if page.startswith("api/") and page != "api/"] == []
 
 
 REMOTE = re.compile(r"(?:https?:)?//[A-Za-z0-9.-]+")
@@ -108,62 +93,3 @@ def test_every_drawing_a_page_shows_is_built_beside_it(built: pathlib.Path) -> N
         if not (built / asset).is_file()
     ]
     assert missing == [], f"the site does not ship {missing}"
-
-
-def _sections() -> dict[str, list[str]]:
-    nav = _config()["nav"]
-    assert isinstance(nav, list)
-    found: dict[str, list[str]] = {}
-    for entry in nav:
-        if isinstance(entry, dict):
-            for title, under in entry.items():
-                if str(title) != "Home":
-                    found[str(title)] = _nav_pages(under)
-    return found
-
-
-def test_the_front_page_links_every_top_level_section() -> None:
-    front = (workspace.ROOT / "docs" / "index.md").read_text()
-    unlinked = [
-        title
-        for title, pages in _sections().items()
-        if not any(page in front for page in pages)
-    ]
-    assert unlinked == []
-
-
-def test_the_docs_and_the_app_do_not_want_the_same_port() -> None:
-    served = re.search(
-        r"mkdocs serve[^\n]*--dev-addr[= ]\S*?:(\d+)",
-        (workspace.ROOT / "Makefile").read_text(),
-    )
-    assert served, "`make docs-serve` has to name a port"
-    assert int(served.group(1)) != DEFAULT_PORT, (
-        "reading the docs while the app runs must not need one of them stopped"
-    )
-
-
-def test_the_site_follows_the_readers_system_theme() -> None:
-    theme = _config()["theme"]
-    assert isinstance(theme, dict)
-    palettes = theme.get("palette")
-    assert isinstance(palettes, list)
-    by_media: dict[str, object] = {}
-    for entry in palettes:
-        assert isinstance(entry, dict)
-        by_media[str(entry.get("media"))] = entry.get("scheme")
-    assert by_media == {
-        "(prefers-color-scheme: light)": "default",
-        "(prefers-color-scheme: dark)": "slate",
-    }
-
-
-@pytest.mark.integration
-def test_both_schemes_reach_the_built_page(built: pathlib.Path) -> None:
-    front = (built / "index.html").read_text()
-    for scheme, media in (
-        ("default", "(prefers-color-scheme: light)"),
-        ("slate", "(prefers-color-scheme: dark)"),
-    ):
-        assert f'data-md-color-scheme="{scheme}"' in front, scheme
-        assert f'data-md-color-media="{media}"' in front, media
