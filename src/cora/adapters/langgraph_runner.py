@@ -1,5 +1,3 @@
-import pathlib
-import sqlite3
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from itertools import pairwise
@@ -14,6 +12,7 @@ from langgraph.errors import GraphRecursionError
 from langgraph.graph import END, START, StateGraph
 from langgraph.types import Command, interrupt
 
+from cora.adapters.sqlite_store import connect
 from cora.domain.agent_state import AgentState
 from cora.domain.card import Answer, Asks
 from cora.domain.decision import Pending
@@ -85,12 +84,10 @@ def _saver() -> InMemorySaver:
 
 
 def saver_at(path: str) -> SqliteSaver:
-    """Beside the turns the reader comes back to, in the same file: what the model was
-    told and what the page redraws are two halves of one conversation, and a deployment
-    that deletes the file should lose both or neither."""
-    pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
-    connection = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
-    saver = SqliteSaver(connection, serde=_serde())
+    """Beside the turns the reader comes back to, in the same file cora keeps everything
+    else in: what the model was told and what the page redraws are two halves of one
+    conversation, and a deployment that deletes the file should lose both or neither."""
+    saver = SqliteSaver(connect(path), serde=_serde())
     saver.setup()
     return saver
 

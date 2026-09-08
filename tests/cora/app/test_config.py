@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from cora.app.config import (
-    DEFAULT_MEMORY_PATH,
+    DEFAULT_DB_PATH,
     DEFAULT_MODEL,
     DEFAULT_PLUGINS,
     DEFAULT_PLUGINS_PATH,
@@ -27,10 +27,8 @@ def test_from_env_reads_every_field() -> None:
             "CORA_REQUEST_TIMEOUT": "45",
             "CORA_REASONING_EFFORT": "high",
             "CORA_LOG_PATH": "/tmp/cora.log",
-            "CORA_DB_PATH": "/tmp/vectors",
-            "CORA_MEMORY_PATH": "/tmp/memory.sqlite",
+            "CORA_DB_PATH": "/tmp/cora.sqlite",
             "CORA_DOCUMENTS_PATH": "/tmp/documents",
-            "CORA_CONVERSATIONS_PATH": "/tmp/conversations.sqlite",
             "CORA_OUTPUT_PATH": "/tmp/kept",
             "CORA_SCOPES": " fitness , cooking ,",
             "CORA_PLUGINS_PATH": "/tmp/dropped",
@@ -50,10 +48,8 @@ def test_from_env_reads_every_field() -> None:
         request_timeout_seconds=45,
         reasoning_effort="high",
         log_path="/tmp/cora.log",
-        db_path="/tmp/vectors",
-        memory_path="/tmp/memory.sqlite",
+        db_path="/tmp/cora.sqlite",
         documents_path="/tmp/documents",
-        conversations_path="/tmp/conversations.sqlite",
         output_path="/tmp/kept",
         plugins_path="/tmp/dropped",
     )
@@ -70,7 +66,6 @@ def test_from_env_applies_defaults_for_optional_fields() -> None:
     assert config.max_tool_rounds > 0
     assert config.history_turns > 0
     assert config.db_path
-    assert config.memory_path
     assert config.plugins_path == DEFAULT_PLUGINS_PATH
 
 
@@ -141,13 +136,20 @@ def test_a_fresh_install_loads_no_plugin_at_all() -> None:
     assert unset.plugin_modules == ()
 
 
-def test_the_memory_default_sits_beside_the_document_store() -> None:
-    """Two files, one directory: whatever fixes the CWD-relative default fixes both."""
+def test_the_document_root_sits_beside_the_database() -> None:
+    """One database and one directory of readable files: whatever fixes the
+    CWD-relative default fixes both."""
     config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
 
-    assert Path(config.memory_path).parent == Path(config.db_path).parent
     assert Path(config.documents_path).parent == Path(config.db_path).parent
-    assert Path(config.conversations_path).parent == Path(config.db_path).parent
+
+
+def test_the_database_default_is_one_file_under_cora() -> None:
+    """Everything cora keeps for itself is in it — the passages, the facts, the turns
+    and the checkpoints — so the default names a file and not a directory."""
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert Path(config.db_path) == Path(".cora/cora.sqlite")
 
 
 def test_the_output_location_is_not_under_the_stores_cora_keeps_for_itself() -> None:
@@ -159,12 +161,35 @@ def test_the_output_location_is_not_under_the_stores_cora_keeps_for_itself() -> 
     assert Path(config.output_path).parent != Path(config.db_path).parent
 
 
-def test_a_memory_path_blanked_rather_than_deleted_is_no_path_at_all() -> None:
+def test_a_database_path_blanked_rather_than_deleted_is_no_path_at_all() -> None:
     """`sqlite3.connect("")` opens a private database that is deleted with the
-    connection, so a blank taken as a value loses every remembered fact in silence."""
-    config = Config.from_env({"OPENROUTER_API_KEY": "k", "CORA_MEMORY_PATH": "   "})
+    connection, so a blank taken as a value loses every fact, turn and passage in
+    silence — one variable now, so it loses all of them at once."""
+    config = Config.from_env({"OPENROUTER_API_KEY": "k", "CORA_DB_PATH": "   "})
 
-    assert config.memory_path == DEFAULT_MEMORY_PATH
+    assert config.db_path == DEFAULT_DB_PATH
+
+
+RETIRED = ("CORA_MEMORY_PATH", "CORA_CONVERSATIONS_PATH")
+"""What the facts and the turns used to be moved by, before one file held both."""
+
+
+@pytest.mark.parametrize("variable", RETIRED)
+def test_a_retired_store_variable_is_read_by_nothing(variable: str) -> None:
+    """Set by a deployment that has not caught up, and it changes nothing rather than
+    quietly sending half the stores somewhere else."""
+    assert Config.from_env(
+        {"OPENROUTER_API_KEY": "k", variable: "/tmp/elsewhere.sqlite"}
+    ) == Config.from_env({"OPENROUTER_API_KEY": "k"})
+
+
+def test_the_configuration_carries_one_store_path_and_not_three() -> None:
+    """The three that were are one now, so the fields they were read into are gone —
+    a caller still setting one would be setting an attribute nothing opens."""
+    config = Config.from_env({"OPENROUTER_API_KEY": "k"})
+
+    assert not hasattr(config, "memory_path")
+    assert not hasattr(config, "conversations_path")
 
 
 @pytest.mark.parametrize(
@@ -172,14 +197,13 @@ def test_a_memory_path_blanked_rather_than_deleted_is_no_path_at_all() -> None:
     [
         ("CORA_DB_PATH", "db_path"),
         ("CORA_DOCUMENTS_PATH", "documents_path"),
-        ("CORA_CONVERSATIONS_PATH", "conversations_path"),
         ("CORA_OUTPUT_PATH", "output_path"),
         ("OPENROUTER_BASE_URL", "base_url"),
     ],
 )
 def test_no_setting_takes_a_blank_for_an_answer(variable: str, field: str) -> None:
-    """The memory path is where it was found, not where it ends: a blank is not a value
-    anywhere in `from_env`, so a store that opens nowhere and a client that posts
+    """The database path is where it was found, not where it ends: a blank is not a
+    value anywhere in `from_env`, so a store that opens nowhere and a client that posts
     nowhere are the same mistake."""
     blanked = Config.from_env({"OPENROUTER_API_KEY": "k", variable: "   "})
     unset = Config.from_env({"OPENROUTER_API_KEY": "k"})

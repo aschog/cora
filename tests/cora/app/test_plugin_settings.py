@@ -32,7 +32,7 @@ def test_a_plugin_reads_none_of_coras_own_configuration() -> None:
         ("acme.plugins.log",),
         {
             "CORA_LOG_PATH": "/home/someone/.cora/logs/cora.log",
-            "CORA_MEMORY_PATH": "/home/someone/.cora/memory.sqlite",
+            "CORA_DB_PATH": "/home/someone/.cora/cora.sqlite",
             "OPENROUTER_API_KEY": "sk-live-secret",
         },
     )

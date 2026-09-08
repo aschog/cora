@@ -56,7 +56,7 @@ def test_a_fact_shared_last_session_briefs_the_model_the_next(
 ) -> None:
     """The criterion end to end: one session tells it something, a fresh session over
     the same memory file answers with it in hand and lists what it is holding."""
-    path = tmp_path / "memory.sqlite"
+    path = tmp_path / "cora.sqlite"
     told = ScriptedChatModel([_remembering(), ModelReply(text=ACKNOWLEDGED)])
     _asked(_app(path, told), SHARED)
 
@@ -75,7 +75,7 @@ def test_a_fact_shared_last_session_briefs_the_model_the_next(
 def test_clearing_the_panel_empties_the_store_and_the_next_brief(
     tmp_path: pathlib.Path,
 ) -> None:
-    path = tmp_path / "memory.sqlite"
+    path = tmp_path / "cora.sqlite"
     told = ScriptedChatModel([_remembering(), ModelReply(text=ACKNOWLEDGED)])
     _asked(_app(path, told), SHARED)
 

@@ -56,15 +56,13 @@ version pinned here, and a version bump is a reason to check that again.
 
 ## What is kept, and where
 
-Everything cora keeps is a file on your own machine. Each has its own setting so one can
-be moved without moving the others.
+Everything cora keeps is a file on your own machine. What cora keeps for itself is one
+database; what you can read yourself is kept beside it as files.
 
 | Where | What is in it | Setting |
 | --- | --- | --- |
 | `.cora/documents` | The cleaned text of every document you uploaded, one Markdown file per upload, under a directory per field | `CORA_DOCUMENTS_PATH` |
-| `.cora/chroma` | The embeddings, and where each passage sits in the file above | `CORA_DB_PATH` |
-| `.cora/memory.sqlite` | The facts you asked cora to remember | `CORA_MEMORY_PATH` |
-| `.cora/conversations.sqlite` | Every recorded turn — question, answer, citations, trace — and a checkpoint of every turn's state: the brief, the transcript, and the tool results the model was shown | `CORA_CONVERSATIONS_PATH` |
+| `.cora/cora.sqlite` | The embeddings and where each passage sits in the file above, the facts you asked cora to remember, every recorded turn — question, answer, citations, trace — and a checkpoint of every turn's state: the brief, the transcript, and the tool results the model was shown | `CORA_DB_PATH` |
 | `.cora/logs/cora.log` | Written only under `CORA_DEBUG`. cora's own lines cut each prompt, reply and passage to 120 characters; see below for what is not cut | `CORA_LOG_PATH` |
 | `cora-output` | What an approved effect produced — an itinerary you said yes to | `CORA_OUTPUT_PATH` |
 

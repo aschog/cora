@@ -10,7 +10,7 @@ from cora.engine.knowledge_base import KnowledgeBase
 from fakes import TEXT_LOADERS, FakeDocuments, FakeEmbedder, FakeRetriever
 
 if TYPE_CHECKING:
-    from cora.adapters.chroma_retriever import ChromaRetriever
+    from cora.adapters.sqlite_vec_retriever import SqliteVecRetriever
 
 
 @pytest.fixture
@@ -67,17 +67,17 @@ def make_chunk() -> Callable[..., Chunk]:
 
 
 @pytest.fixture
-def make_chroma(tmp_path: Path) -> "Callable[[], ChromaRetriever]":
-    def _make() -> "ChromaRetriever":
-        from cora.adapters.chroma_retriever import ChromaRetriever
+def make_index(tmp_path: Path) -> "Callable[[], SqliteVecRetriever]":
+    def _make() -> "SqliteVecRetriever":
+        from cora.adapters.sqlite_vec_retriever import SqliteVecRetriever
 
-        return ChromaRetriever(path=str(tmp_path), collection="documents")
+        return SqliteVecRetriever.at(str(tmp_path / "index.sqlite"))
 
     return _make
 
 
 @pytest.fixture
-def chroma_retriever(
-    make_chroma: "Callable[[], ChromaRetriever]",
-) -> "ChromaRetriever":
-    return make_chroma()
+def index(
+    make_index: "Callable[[], SqliteVecRetriever]",
+) -> "SqliteVecRetriever":
+    return make_index()

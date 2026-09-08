@@ -138,13 +138,23 @@ def stores() -> dict[str, str]:
 def test_a_store_is_discovered_rather_than_listed() -> None:
     """Two readings compared, not one restated: the discovery is what the test below
     holds the page against, so a discovery that found nothing would pass it on an empty
-    loop. The output location is the one this change added, and the plugins folder is
-    the one cora reads rather than writes."""
+    loop. The output location is beside the stores rather than among them, and the
+    plugins folder is the one cora reads rather than writes."""
     found = stores()
 
     assert found["CORA_OUTPUT_PATH"] == DEFAULT_OUTPUT_PATH
     assert found["CORA_DB_PATH"] == DEFAULT_DB_PATH
-    assert len(found) >= 7
+    assert len(found) >= 5
+
+
+def test_the_stores_cora_writes_are_one_database_and_one_directory() -> None:
+    """What the retired variables would still move, stated so it stays retired: the
+    facts, the turns and the passages are one file, and only the documents are kept
+    beside it as something a person can read."""
+    found = stores()
+
+    assert "CORA_MEMORY_PATH" not in found
+    assert "CORA_CONVERSATIONS_PATH" not in found
 
 
 def test_the_privacy_page_names_every_store_and_the_setting_that_moves_it() -> None:

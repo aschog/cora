@@ -266,7 +266,7 @@ def test_a_turn_written_before_the_trace_was_a_tree_reads_back(tmp_path: Path) -
     }
     with sqlite3.connect(str(tmp_path / "conversations.sqlite")) as connection:
         connection.execute(
-            "insert into turns (thread, turn) values (?, ?)",
+            "insert into cora_turns (thread, turn) values (?, ?)",
             (THREAD, json.dumps(before)),
         )
 
@@ -307,3 +307,28 @@ def test_a_plugin_s_own_line_comes_back_out_of_the_store_as_it_went_in(
     store.record(THREAD, turn)
 
     assert store.turns(THREAD) == (turn,)
+
+
+def test_the_store_shares_the_file_in_write_ahead_mode(tmp_path: Path) -> None:
+    """Four writers share this file, and the default journal takes an exclusive lock
+    that blocks readers for the length of a write. The turns are one of the four, so
+    the mode cannot depend on which of them opened it first."""
+    store = SqliteConversations.at(str(tmp_path / "cora.sqlite"))
+
+    with sqlite3.connect(str(tmp_path / "cora.sqlite")) as reading:
+        [(mode,)] = reading.execute("pragma journal_mode")
+
+    store.close()
+    assert mode == "wal"
+
+
+def test_a_path_whose_directory_cannot_be_made_surfaces_as_store_error(
+    tmp_path: Path,
+) -> None:
+    """As the index beside it: the directory is made before the file is opened, and an
+    `OSError` there is still this store being unreachable."""
+    blocked = tmp_path / "a-file"
+    blocked.write_text("not a directory")
+
+    with pytest.raises(ConversationStoreError):
+        SqliteConversations.at(str(blocked / "cora.sqlite"))

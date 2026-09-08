@@ -15,7 +15,7 @@ LAID_OUT = (
     "cora/ports/deep/__init__.py",
     "cora/ports/deep/thing.py",
     "cora/adapters/__init__.py",
-    "cora/adapters/chroma_retriever.py",
+    "cora/adapters/sqlite_vec_retriever.py",
     "cora/plugins/fitness/tools.py",
     "cora/frontends/react/api.py",
 )

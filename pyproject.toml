@@ -8,7 +8,6 @@ description = "cora is an agent you chat with, and everything it knows and can d
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "chromadb>=1.5,<2",
     "jsonschema>=4.26,<5",
     "langchain-openai>=1.4.1",
     "langgraph>=1.2.10,<2",
@@ -16,6 +15,7 @@ dependencies = [
     "openai>=2.48.0",
     "pypdf>=6.14,<7",
     "sentence-transformers>=5.3,<6",
+    "sqlite-vec>=0.1.9",
 ]
 
 [build-system]
@@ -150,7 +150,7 @@ filterwarnings = [
     "ignore:Using .httpx. with .starlette.testclient. is deprecated:UserWarning",
 ]
 markers = [
-    "integration: touches real infrastructure (Chroma, the embedding model, the shell's API, a docs build); run in CI",
+    "integration: touches real infrastructure (a store on disk, the embedding model, the shell's API, a docs build); run in CI",
     "llm: real OpenRouter round-trip through the assembled app; manual acceptance only, never in CI",
 ]
 

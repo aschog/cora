@@ -39,9 +39,10 @@ def _is_technology(module: str) -> bool:
 
     Named by what a layer may use, never by what the manifests declare. A deny-list read
     off the manifests can only see the ten distributions someone asked for, while the
-    environment holds every transitive one too — chromadb and langchain-openai bring
-    `numpy`, `torch` and `openai` — and importing one of those binds a layer exactly as
-    tightly. The install used to enforce this by absence, with nothing to keep in sync;
+    environment holds every transitive one too — sentence-transformers and
+    langchain-openai bring `numpy`, `torch` and `openai` — and importing one of those
+    binds a layer exactly as tightly. The install used to enforce this by absence, with
+    nothing to keep in sync;
     an allow-list is the only form of the rule that inherits that property."""
     root = module.split(".")[0]
     return root != "cora" and root not in sys.stdlib_module_names
@@ -447,7 +448,7 @@ def test_a_layer_binds_no_technology_it_was_not_given(
     layer: str, path: pathlib.Path
 ) -> None:
     """The property the install used to carry: a plugin shipped as a wheel the engine
-    was absent from could not import Chroma, because Chroma was not there. One
+    was absent from could not import the store, because the store was not there. One
     distribution later it is there, and only this says so."""
     bound = _technologies_bound(layer, path, ast.parse(path.read_text()))
     assert not bound, (
@@ -527,7 +528,7 @@ def test_the_walkers_catch_a_planted_violation(tmp_path: pathlib.Path) -> None:
         "from langgraph.graph import StateGraph\n"
         "from pytest import fixture\n"
         "from cora.app.config import Config\n"
-        "from ..adapters import chroma_retriever\n"
+        "from ..adapters import sqlite_vec_retriever\n"
     )
     tree = ast.parse(rogue.read_text())
 
@@ -556,8 +557,9 @@ def test_a_technology_no_manifest_declares_is_still_out_of_reach(
     """The install used to enforce this by absence: a layer could not import what was
     not installed, and nothing had to be named. One distribution later everything is
     installed, and a rule listing what the manifests declare sees only those — while
-    `openai`, `torch` and `numpy` are all present, dragged in by chromadb and
-    langchain-openai, and would bind the engine exactly as tightly."""
+    `openai`, `torch` and `numpy` are all present, dragged in by
+    sentence-transformers and langchain-openai, and would bind the engine exactly as
+    tightly."""
     rogue = tmp_path / "rogue.py"
     rogue.write_text("import openai\nimport torch\nimport numpy as np\n")
     tree = ast.parse(rogue.read_text())

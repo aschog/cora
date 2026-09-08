@@ -1,5 +1,4 @@
 import logging
-import sqlite3
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
@@ -8,9 +7,12 @@ from typing import Any
 import pytest
 
 from app_builder import assembled, indexed
+from app_config import store_config
 from cora.adapters.langgraph_runner import LangGraphRunner
 from cora.adapters.openrouter_chat_model import OpenRouterChatModel
 from cora.adapters.sqlite_conversations import SqliteConversations
+from cora.adapters.sqlite_store_memory import SqliteStoreMemory
+from cora.adapters.sqlite_vec_retriever import SqliteVecRetriever
 from cora.app.assembly import App, LiveApp, build
 from cora.app.config import DEFAULT_PLUGINS, Config
 from cora.app.log_config import DEBUG_HANDLER_NAME, FILE_HANDLER_NAME
@@ -532,28 +534,13 @@ def test_assemble_announces_the_plugins_it_was_given_by_module_path(
     assert "plugins loaded: fixture_plugins.screen, fixture_plugins.domain" in logged
 
 
-def _config(db_path: Path, *, debug: bool = False) -> Config:
-    return Config(
-        api_key="k",
-        model="openai/gpt-4o-mini",
-        base_url="https://openrouter.ai/api/v1",
-        plugin_modules=("fixture_plugins.valid",),
-        top_k=3,
-        max_tool_rounds=4,
-        history_turns=6,
-        max_output_tokens=1024,
-        request_timeout_seconds=30,
-        reasoning_effort="low",
-        db_path=str(db_path),
-        memory_path=str(db_path / "memory.sqlite"),
-        documents_path=str(db_path / "documents"),
-        conversations_path=str(db_path / "conversations.sqlite"),
-        log_path=str(db_path / "logs" / "cora.log"),
-        # Pinned under the test's own directory, because the default is the folder the
-        # docs tell an operator to drop plugins into — a suite reading that one runs
-        # whatever the developer left there, and fails on it.
-        plugins_path=str(db_path / "plugins"),
-        debug=debug,
+def _config(root: Path, *, debug: bool = False) -> Config:
+    """The shipped configuration under a directory of the test's own, with the plugins
+    folder pinned there too: the default is the one the docs tell an operator to drop
+    plugins into, and a suite reading that one runs whatever the developer left there.
+    """
+    return replace(
+        store_config(root), debug=debug, plugin_modules=("fixture_plugins.valid",)
     )
 
 
@@ -1014,7 +1001,7 @@ def test_the_graph_is_a_slot_like_every_other_port() -> None:
 
 
 @pytest.mark.integration
-def test_build_keeps_a_conversations_store_at_the_configured_path(
+def test_build_keeps_a_conversations_store_in_the_configured_database(
     tmp_path: Path,
 ) -> None:
     """The sessions panel lists what an earlier run recorded, so the store has to be the
@@ -1026,26 +1013,32 @@ def test_build_keeps_a_conversations_store_at_the_configured_path(
         "t1", Turn(question="How much protein?", result=ChatResult(answer="1.6 g"))
     )
 
-    reopened = SqliteConversations.at(str(tmp_path / "conversations.sqlite"))
+    reopened = SqliteConversations.at(str(tmp_path / "cora.sqlite"))
     assert [turn.question for turn in reopened.turns("t1")] == ["How much protein?"]
 
 
 @pytest.mark.integration
-def test_build_checkpoints_threads_in_the_conversations_file(tmp_path: Path) -> None:
-    """What the model was told lives beside what the reader comes back to: one file, so
-    a deployment that clears its conversations clears both halves of them."""
-    build(_config(tmp_path))
+def test_build_keeps_a_memory_store_in_the_configured_database(tmp_path: Path) -> None:
+    """A fact outlives the conversation it was learned in, so it has to be read back
+    out of the file the settings name rather than out of the process."""
+    app = build(_config(tmp_path))
 
-    with sqlite3.connect(str(tmp_path / "conversations.sqlite")) as connection:
-        tables = {
-            row[0]
-            for row in connection.execute(
-                "select name from sqlite_master where type = 'table'"
-            )
-        }
+    assert app.memory is not None
+    app.memory.remember("lifts on tuesdays")
 
-    assert "turns" in tables, "the turns the page redraws"
-    assert "checkpoints" in tables, "and the thread the model is given"
+    reopened = SqliteStoreMemory.at(str(tmp_path / "cora.sqlite"))
+    assert [fact.text for fact in reopened.recall()] == ["lifts on tuesdays"]
+
+
+@pytest.mark.integration
+def test_build_keeps_the_index_in_the_configured_database(tmp_path: Path) -> None:
+    """A passage is searched out of the same file, so an upload survives the process
+    that ingested it."""
+    app = build(_config(tmp_path))
+    app.knowledge_base.add_file(b"Deadlifts train the posterior chain. " * 40, "l.txt")
+
+    reopened = SqliteVecRetriever.at(str(tmp_path / "cora.sqlite"))
+    assert reopened.sources(DEFAULT_SCOPE) == ["l.txt"]
 
 
 # ── the round that stops to ask ──

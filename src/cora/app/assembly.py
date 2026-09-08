@@ -436,13 +436,13 @@ def _composer(
     Raises:
         AdapterError: A store could not be opened.
     """
-    from cora.adapters.chroma_retriever import ChromaRetriever
     from cora.adapters.file_documents import FileDocuments
     from cora.adapters.file_output import FileOutput
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
     from cora.adapters.sqlite_conversations import SqliteConversations
     from cora.adapters.sqlite_store_memory import SqliteStoreMemory
+    from cora.adapters.sqlite_vec_retriever import SqliteVecRetriever
 
     enable_debug_logs(config.debug, config.log_path)
     chat_model = OpenRouterChatModel(
@@ -454,15 +454,15 @@ def _composer(
         reasoning_effort=config.reasoning_effort,
     )
     embedder = SentenceTransformerEmbedder()
-    retriever = ChromaRetriever(path=config.db_path, collection="documents")
+    retriever = SqliteVecRetriever.at(config.db_path)
     documents = FileDocuments.at(config.documents_path)
-    memory = SqliteStoreMemory.at(config.memory_path)
-    conversations = SqliteConversations.at(config.conversations_path)
+    memory = SqliteStoreMemory.at(config.db_path)
+    conversations = SqliteConversations.at(config.db_path)
     output = FileOutput.at(config.output_path)
     # The checkpointer is an adapter like the stores above it: made once, so a folder
     # change recomposes over the same connection instead of opening another onto the
-    # same conversations file.
-    graph = partial(langgraph_for, checkpointer=saver_at(config.conversations_path))
+    # same store file.
+    graph = partial(langgraph_for, checkpointer=saver_at(config.db_path))
 
     def compose(loaded: tuple[Extension, ...]) -> App:
         # Settings read off what loaded rather than off what the deployment typed: a
