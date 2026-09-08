@@ -34,6 +34,7 @@ from cora.engine.steps import (
     BROKEN_ASKS,
     CORA_PREAMBLE,
     DECLINED_CALL,
+    HELD_AT_SEVERAL,
     REFUSED_CALL,
     ROUTED,
     UNFILLED_CALL,
@@ -816,3 +817,41 @@ def test_a_plugin_whose_asks_breaks_costs_the_call_and_not_the_turn() -> None:
     [told] = contributed["messages"]
     assert told.content == REFUSED_CALL.format(name=ASKING, reason=BROKEN_ASKS)
     assert contributed["filled"] == {}
+
+
+HELD_THREE_WAYS = (
+    "bodyweight 77 kg, from the intake form on 17 August",
+    "bodyweight 75 kg, from the coach notes in February",
+    "bodyweight 85 kg, from the physio letter",
+)
+
+
+def _brief_over(facts: tuple[str, ...]) -> str:
+    return _focus(memory=FakeMemory(facts))({"question": "q"})["brief"]
+
+
+def test_a_fact_the_notes_hold_at_several_values_is_named_as_one() -> None:
+    """Cora reads its own notes rather than leaving the model to notice: three weights
+    under one subject is a shape it can see, and the model was told to spot it and did
+    not — reliably enough to matter, across three of them.
+
+    What it cannot see is whether the answer turns on it, which is why this states the
+    conflict and leaves the asking to the rule above.
+    """
+    brief = _brief_over(HELD_THREE_WAYS)
+
+    assert HELD_AT_SEVERAL.format(subject="bodyweight", count=3) in brief
+    assert ASK_TOOL_NAME in brief
+
+
+def test_notes_that_agree_are_not_reported_as_a_conflict() -> None:
+    """The line costs the model attention, so it is absent where there is nothing to
+    settle — including where two notes share a subject and say the same thing."""
+    settled = (
+        "bodyweight 75 kg, from the coach notes",
+        "bodyweight 75 kg, from the intake form",
+        "trains four times a week",
+    )
+
+    assert "held at" not in _brief_over(settled).lower()
+    assert "held at" not in _brief_over(HELD_THREE_WAYS[:1]).lower()

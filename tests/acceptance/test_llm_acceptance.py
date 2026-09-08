@@ -184,15 +184,15 @@ NEEDS_A_WEIGHT = "I am a 34-year-old man, 180 cm tall. What is my basal metaboli
 
 The height, the age and the sex are given because a question missing those as well fires
 both of cora's ask rules at once — `ASK_RULE`, because memory holds three bodyweights,
-and `ASK_FOR_RULE`, because nothing anywhere holds the rest — and the brief does not say
-which wins. Three models were run against the shorter question and each resolved the
-collision differently: one answered without asking, one put up the form and guessed a
-weight inside it, one alternated. That is a finding about the brief, written up rather
-than asserted here; what this test is for is the rule on its own.
+and `ASK_FOR_RULE`, because nothing anywhere holds the rest.
 
-Bodyweight is still never mentioned and nothing asks to be asked, so what is under test
-is unchanged: the model reads the three values it holds and stops, rather than picking
-one."""
+The engine now names the conflict in the brief rather than leaving the model to spot it,
+which took the shorter question from one run in two to three in five. The rest is the
+collision itself: with both rules live the model still sometimes raises the form and
+leaves the ambiguity for later. That is written up here rather than asserted, because
+what this test is for is the rule on its own — bodyweight is still never mentioned, and
+nothing asks to be asked.
+"""
 DECIDING = "llm-decision"
 
 
