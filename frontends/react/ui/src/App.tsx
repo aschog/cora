@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as cora from './api'
-import type { Citation, Fact, Session } from './api'
+import type { Citation, Fact, Scopes, Session } from './api'
 import { answeredIn, lastTrace } from './entry'
 import { stowed } from './parked'
 import { showThread, threadInUrl } from './route'
@@ -50,6 +50,21 @@ const FACT_GOES =
 const EVERYTHING_GOES =
   'Every fact cora has been told is forgotten. Your documents and your conversations ' +
   "are untouched — this can't be undone."
+
+/** What deleting a plugin takes, named field by field: it is the one control here that
+ *  takes three things at once, so the question says all three. The fields are cora's
+ *  answer — a field another plugin also brings is not one that goes, and a question
+ *  naming it would overstate the loss on the most destructive control here. */
+const pluginGoes = (fields: string[]) => {
+  const one = fields.length === 1
+  return (
+    `Its files leave the plugins folder, and the ${one ? 'field' : 'fields'} ` +
+    `${fields.join(' and ')} ${one ? 'goes' : 'go'} with them: every document ` +
+    `${one ? 'it holds' : 'they hold'}, its passages, and every conversation pinned ` +
+    'there. What cora remembers about you, and anything it saved for you, are ' +
+    "untouched — this can't be undone."
+  )
+}
 
 /** One line the page says about itself, and which of them it is. */
 type Banner = { which: string; said: string }
@@ -117,6 +132,7 @@ function Page() {
     documents,
     facts,
     sessions,
+    plugins,
     fields,
     field,
     namedAbove,
@@ -243,6 +259,15 @@ function Page() {
   const somethingToLeave = conversation.length > 0
   const asking = working !== null
 
+  /** The plugin a field carries a delete control for, or nothing. Exactly one loaded
+   *  plugin, and one this deployment can delete: a field the configuration named has no
+   *  plugin behind it, and a field two plugins bring is not a question one control could
+   *  answer — which of them the reader meant, and what would be left holding the field. */
+  const behind = (scope: string) => {
+    const bringing = plugins.filter((each) => each.scopes.includes(scope))
+    return bringing.length === 1 && bringing[0].deletable ? bringing[0] : null
+  }
+
   const open = (document: string) => {
     setRead({ document, scope: field })
     setTab('SOURCE')
@@ -324,7 +349,29 @@ function Page() {
                 available={fields}
                 pin={pin}
                 fixed={fixedPin}
+                deletable={fields.filter((scope) => behind(scope) !== null)}
                 onPin={pick}
+                onDelete={(scope) => {
+                  const plugin = behind(scope)
+                  if (plugin === null) return
+                  setConfirming({
+                    head: 'DELETE PLUGIN',
+                    subject: plugin.name,
+                    said: pluginGoes(plugin.going),
+                    confirm: 'Delete plugin',
+                    send: () => cora.deletePlugin(plugin.name),
+                    from: rail.scopes,
+                    /* The fields go with the plugin, so the picker loses them at the
+                       moment the reader says so — the same act as a row leaving a rail,
+                       over the listing the picker is drawn from. */
+                    without: (held: Scopes) => ({
+                      ...held,
+                      available: held.available.filter(
+                        (each) => !plugin.going.includes(each),
+                      ),
+                    }),
+                  })
+                }}
               />
             }
             thread={thread}

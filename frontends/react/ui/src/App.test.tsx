@@ -4677,3 +4677,179 @@ test('a passage on screen is asked for again after a delete, and its absence is 
   expect(await screen.findByText('cora cannot open this document.')).toBeTruthy()
   expect(screen.queryByText(/the document follows/)).toBeNull()
 })
+
+/* ── deleting a plugin ──────────────────────────────────────────────────────────── */
+
+/** Three fields, one of each kind a picker can hold: `fitness` brought by a plugin in
+ *  the plugins folder, `travel` named by the configuration with no plugin behind it, and
+ *  `birds` brought by a module the environment names, which is fixed at start. */
+const LOADED = [
+  {
+    name: 'coach',
+    scopes: ['fitness', 'travel'],
+    /* `travel` is not here: the other plugin brings it too, so it stays behind. What
+       cora says goes is what the question says goes. */
+    going: ['fitness'],
+    deletable: true,
+  },
+  { name: 'watching', scopes: ['birds', 'travel'], going: ['birds'], deletable: false },
+]
+
+const pluginFetch = (): { deleted: string[]; read: string[] } => {
+  const deleted: string[] = []
+  const read: string[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        deleted.push(path)
+        return { ok: true, status: 204 } as unknown as Response
+      }
+      if (path === '/api/ask') return answering()
+      read.push(route(path))
+      const gone = deleted.length > 0
+      const listings: Record<string, unknown> = {
+        ...served,
+        '/api/scopes': {
+          available: gone ? ['travel', 'birds'] : ['fitness', 'travel', 'birds'],
+          default: 'cora',
+        },
+        '/api/plugins': gone ? LOADED.slice(1) : LOADED,
+      }
+      return {
+        ok: true,
+        json: async () => listings[route(path)] ?? [],
+      } as unknown as Response
+    }),
+  )
+  return { deleted, read }
+}
+
+const openMenu = async () => {
+  await screen.findByRole('button', { name: 'Plugin' })
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  return screen.getByRole('list')
+}
+
+test('only a field whose plugin cora can delete carries the control', async () => {
+  pluginFetch()
+  render(<App />)
+
+  const fields = await openMenu()
+
+  expect(within(fields).getByRole('button', { name: 'Delete the fitness plugin' }))
+    .toBeTruthy()
+  // Named by the configuration, so there is no plugin behind it to delete.
+  expect(
+    within(fields).queryByRole('button', { name: 'Delete the travel plugin' }),
+  ).toBeNull()
+  // Named in the environment, so it is fixed at start and comes back on the next one.
+  expect(
+    within(fields).queryByRole('button', { name: 'Delete the birds plugin' }),
+  ).toBeNull()
+})
+
+test('the question names the plugin, its field, and what is not lost', async () => {
+  const asked = pluginFetch()
+  render(<App />)
+  const fields = await openMenu()
+
+  fireEvent.click(
+    within(fields).getByRole('button', { name: 'Delete the fitness plugin' }),
+  )
+
+  const said = screen.getByRole('dialog').textContent ?? ''
+  expect(said).toContain('coach')
+  expect(said).toContain('fitness')
+  /* Registered under travel as well, but another plugin brings that field too — so it
+     is not going, and a question naming it would overstate what is lost. */
+  expect(said).not.toContain('travel')
+  expect(said).toContain('plugins folder')
+  expect(said).toContain('every conversation pinned there')
+  expect(said).toContain('What cora remembers about you')
+  // The control asks; nothing has been asked of cora yet.
+  expect(asked.deleted).toEqual([])
+})
+
+test('keeping the plugin deletes nothing, and the field is still offered', async () => {
+  const asked = pluginFetch()
+  render(<App />)
+  const fields = await openMenu()
+  fireEvent.click(
+    within(fields).getByRole('button', { name: 'Delete the fitness plugin' }),
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
+
+  expect(asked.deleted).toEqual([])
+  expect(screen.queryByRole('dialog')).toBeNull()
+  expect(within(await openMenu()).getByRole('button', { name: 'fitness' })).toBeTruthy()
+})
+
+test('a plugin confirmed away takes its field out of the picker', async () => {
+  const asked = pluginFetch()
+  render(<App />)
+  const fields = await openMenu()
+  fireEvent.click(
+    within(fields).getByRole('button', { name: 'Delete the fitness plugin' }),
+  )
+
+  asked.read.length = 0
+  fireEvent.click(screen.getByRole('button', { name: 'Delete plugin' }))
+
+  await waitFor(() => expect(asked.deleted).toEqual(['/api/plugins/coach']))
+  /* What went through is confirmed by reading the listings again rather than by the
+     page's own account of what a delete changed — and a plugin's delete changes three
+     of them. */
+  await waitFor(() =>
+    expect(new Set(asked.read)).toEqual(
+      new Set([
+        '/api/scopes',
+        '/api/plugins',
+        '/api/documents',
+        '/api/sessions',
+        '/api/memory',
+      ]),
+    ),
+  )
+  expect(screen.queryByRole('dialog')).toBeNull()
+  const left = await openMenu()
+  expect(within(left).queryByRole('button', { name: 'fitness' })).toBeNull()
+  // The field the other plugin also brings is still offered, and still holds what it held.
+  expect(within(left).getByRole('button', { name: 'travel' })).toBeTruthy()
+})
+
+test('the last plugin can be deleted too, though one field is nothing to pick', async () => {
+  /* A deployment with one plugin is the whole of what the drop-in story describes, and
+     a picker that draws nothing there would leave that plugin deletable only by hand. */
+  const deleted: string[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        deleted.push(path)
+        return { ok: true, status: 204 } as unknown as Response
+      }
+      const listings: Record<string, unknown> = {
+        ...served,
+        '/api/scopes': { available: ['fitness'], default: 'cora' },
+        '/api/plugins': [
+          { name: 'coach', scopes: ['fitness'], going: ['fitness'], deletable: true },
+        ],
+      }
+      return {
+        ok: true,
+        json: async () => listings[route(path)] ?? [],
+      } as unknown as Response
+    }),
+  )
+  render(<App />)
+
+  const fields = await openMenu()
+  fireEvent.click(
+    within(fields).getByRole('button', { name: 'Delete the fitness plugin' }),
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Delete plugin' }))
+
+  await waitFor(() => expect(deleted).toEqual(['/api/plugins/coach']))
+})

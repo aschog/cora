@@ -284,6 +284,8 @@ def test_the_plugins_endpoint_carries_what_each_plugin_registered() -> None:
             "name": "birds",
             "source": "fixture_plugins.birds",
             "scopes": ["b"],
+            "deletable": False,
+            "going": ["b"],
             "contributions": [
                 {"kind": "instructions", "name": "", "scope": "b", "note": ""},
                 {"kind": "tool", "name": "count", "scope": "b", "note": ""},

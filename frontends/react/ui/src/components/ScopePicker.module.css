@@ -70,8 +70,15 @@
   list-style: none;
 }
 
+/* The name and, where there is one to delete, the control that deletes its plugin. */
+.mode-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .mode-option {
-  width: 100%;
+  flex: 1 1 auto;
   padding: 7px 12px;
   border-radius: 8px;
   font-size: 14px;

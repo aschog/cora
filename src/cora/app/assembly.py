@@ -19,7 +19,7 @@ from cora.app.config import (
     plugin_settings as read_plugin_settings,
 )
 from cora.app.log_config import enable_debug_logs
-from cora.domain.errors import PluginLoadError
+from cora.domain.errors import PluginLoadError, PluginRemovalError
 from cora.engine.agent import Agent
 from cora.engine.ask_tool import ask_for_tool, ask_tool
 from cora.engine.host import PluginHost
@@ -32,6 +32,7 @@ from cora.engine.port_logging import (
     LoggingEmbedder,
     LoggingRetriever,
 )
+from cora.engine.removal import NO_FOLDER, remove_plugin
 from cora.engine.retrieval_tool import search_tool
 from cora.engine.steps import (
     ANSWER,
@@ -68,6 +69,11 @@ from cora.ports.retrieval import Retriever
 log = logging.getLogger(__name__)
 
 
+def _nothing_to_delete(name: str) -> None:
+    """What an app composed without a plugins folder answers a delete with."""
+    raise PluginRemovalError(name, NO_FOLDER)
+
+
 @dataclass(frozen=True)
 class App:
     """Everything a frontend is handed: an agent to ask, and the stores behind it.
@@ -78,6 +84,13 @@ class App:
     `scopes` is the fields this composition offers: what was configured, plus every
     field a loaded plugin registered. The page reads it off the app, because with a
     live plugins folder it is the composition's fact, not a setting's.
+
+    `remove` deletes one dropped plugin and the data of the fields it brought. Bound
+    to this composition, because what a plugin brought is what this composition
+    loaded — a caller names the plugin and nothing else. `plugins_folder` is where a
+    plugin can be deleted from, which is what says whether one is deletable at all,
+    and `configured` is the fields the deployment named itself, which no plugin's
+    deletion empties.
     """
 
     agent: Agent
@@ -86,6 +99,9 @@ class App:
     memory: Memory | None = None
     conversations: Conversations | None = None
     scopes: tuple[str, ...] = ()
+    configured: tuple[str, ...] = ()
+    plugins_folder: pathlib.Path | None = None
+    remove: Callable[[str], None] = _nothing_to_delete
 
 
 class LiveApp:
@@ -154,6 +170,7 @@ def assemble(
     plugins: tuple[Extension, ...] = (),
     plugin_settings: dict[str, dict[str, str]] | None = None,
     scopes: tuple[str, ...] = (),
+    plugins_folder: pathlib.Path | None = None,
     memory: Memory | None = None,
     conversations: Conversations | None = None,
     output: Output | None = None,
@@ -179,6 +196,10 @@ def assemble(
             way a documents-only field exists. What a turn may run under is these
             plus every field a loaded plugin registered: loading a plugin is the
             deployment act, and its fields come with it.
+        plugins_folder: Where plugins are dropped, which is the only place one can be
+            deleted from. The same path the plugins were loaded from: a plugin is
+            matched against it as it was found, so any other path leaves every plugin
+            undeletable. Without it a deployment has no plugin it can delete.
         memory: What cora keeps about the user. Without it, no `remember` tool is
             offered at all.
         conversations: Where turns are recorded. Without it, a turn is answered and
@@ -242,13 +263,25 @@ def assemble(
         after=(Named(ANSWER, AnswerStep(registry=registry)),),
         max_tool_rounds=max_tool_rounds,
     )
+    agent = Agent(runner=runner, conversations=conversations)
+    listing = registry.listing(plugins)
     return App(
-        agent=Agent(runner=runner, conversations=conversations),
+        agent=agent,
         knowledge_base=knowledge_base,
-        plugins=registry.listing(plugins),
+        plugins=listing,
         memory=memory,
         conversations=conversations,
         scopes=offered,
+        configured=scopes,
+        plugins_folder=plugins_folder,
+        remove=partial(
+            remove_plugin,
+            folder=plugins_folder,
+            listing=listing,
+            configured=scopes,
+            knowledge_base=knowledge_base,
+            agent=agent,
+        ),
     )
 
 
@@ -365,9 +398,8 @@ def build(config: Config) -> App:
         PluginLoadError: A plugin named in the configuration could not be loaded.
         ConfigurationError: The plugins load but cannot be composed together.
     """
-    return _composer(config)(
-        load_plugins(config.plugin_modules, folder=_folder_of(config))
-    )
+    folder = _folder_of(config)
+    return _composer(config, folder)(load_plugins(config.plugin_modules, folder=folder))
 
 
 def live(config: Config) -> LiveApp:
@@ -378,10 +410,11 @@ def live(config: Config) -> LiveApp:
         PluginLoadError: A plugin named in the configuration could not be loaded.
         ConfigurationError: The plugins load but cannot be composed together.
     """
+    folder = _folder_of(config)
     return LiveApp(
-        compose=_composer(config),
+        compose=_composer(config, folder),
         named=config.plugin_modules,
-        folder=_folder_of(config),
+        folder=folder,
     )
 
 
@@ -391,7 +424,9 @@ def _folder_of(config: Config) -> pathlib.Path:
     return folder
 
 
-def _composer(config: Config) -> Callable[[tuple[Extension, ...]], App]:
+def _composer(
+    config: Config, folder: pathlib.Path
+) -> Callable[[tuple[Extension, ...]], App]:
     """Every slot that outlives a folder change, filled once and closed over.
 
     The adapters are imported here rather than at the top, so importing `cora.app` costs
@@ -443,6 +478,7 @@ def _composer(config: Config) -> Callable[[tuple[Extension, ...]], App]:
                 tuple(plugin.module for plugin in loaded)
             ),
             scopes=config.scopes,
+            plugins_folder=folder,
             memory=memory,
             conversations=conversations,
             output=output,

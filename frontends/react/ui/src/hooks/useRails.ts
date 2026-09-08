@@ -4,12 +4,13 @@ import * as cora from '../api'
 import type { Scopes } from '../api'
 import { message } from '../fail'
 
-/** What the page shows around the conversation, keyed by what it was asked for. Four
- *  reads rather than one `Promise.all`: a listing that arrives under the field it asked
- *  about cannot land under another one's name, which is what the guard used to do by
- *  hand — and a field the reader goes back to is drawn from what is already held.
+/** What the page shows around the conversation, keyed by what it was asked for. One
+ *  read per listing rather than one `Promise.all`: a listing that arrives under the
+ *  field it asked about cannot land under another one's name, which is what the guard
+ *  used to do by hand — and a field the reader goes back to is drawn from what is
+ *  already held.
  *
- *  The banner is still one, and still every one of them: the four errors are read
+ *  The banner is still one, and still every one of them: their errors are read
  *  together below. Each keeps its own, so a load that goes through clears its own news
  *  and not the warning another one raised — which is the failure the single banner used
  *  to hide. */
@@ -26,6 +27,9 @@ export const rail = {
   memory: ['memory'] as const,
   sessions: ['sessions'] as const,
   scopes: ['scopes'] as const,
+  /* What loaded, which is what says whether a field has a plugin behind it and whether
+     that plugin is one this deployment can delete. */
+  plugins: ['plugins'] as const,
 }
 
 export function useRails({
@@ -51,6 +55,10 @@ export function useRails({
   const sessions = useQuery({
     queryKey: rail.sessions,
     queryFn: ({ signal }) => cora.sessions(signal),
+  })
+  const plugins = useQuery({
+    queryKey: rail.plugins,
+    queryFn: ({ signal }) => cora.plugins(signal),
   })
 
   const offered: Scopes = scopes.data ?? { available: [], default: '' }
@@ -84,8 +92,10 @@ export function useRails({
   const namedAbove = pin !== null && fields.length > 1
 
   /** The first thing that could not be read, in one sentence for all four. A reader is
-   *  told the page is incomplete once; which of the four it was is the console's. */
-  const failed = [documents, memory, sessions, scopes].find((read) => read.error)
+   *  told the page is incomplete once; which listing it was is the console's. */
+  const failed = [documents, memory, sessions, scopes, plugins].find(
+    (read) => read.error,
+  )
   const trouble = failed?.error ? message(failed.error) : null
 
   /** Everything the rails hold, read again. Every write goes through this: what a turn,
@@ -99,6 +109,7 @@ export function useRails({
         rail.memory,
         rail.sessions,
         rail.scopes,
+        rail.plugins,
       ].map((queryKey) =>
         held.invalidateQueries({ queryKey }),
       ),
@@ -109,6 +120,7 @@ export function useRails({
     documents: documents.data ?? [],
     facts: memory.data ?? [],
     sessions: sessions.data ?? [],
+    plugins: plugins.data ?? [],
     fields,
     field,
     namedAbove,

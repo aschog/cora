@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import DeleteControl from './DeleteControl'
 import styles from './ScopePicker.module.css'
 
 type Props = {
@@ -9,7 +10,12 @@ type Props = {
   pin: string | null
   /** Whether the pin is settled in the thread's own state, which is what makes it final. */
   fixed: boolean
+  /** The fields whose plugin this deployment can delete. A field the configuration
+   *  named has none behind it, and one two plugins bring is not a question this control
+   *  could answer — neither carries one. */
+  deletable: string[]
   onPin: (scope: string) => void
+  onDelete: (scope: string) => void
 }
 
 const CHAT = 'Chat'
@@ -36,10 +42,22 @@ const FROM_NEXT = 'From your next question on.'
  * list of buttons and says no more than that — `menu` and `listbox` are composite widgets
  * whose arrow keys a reader is then entitled to, and buttons in a list need none.
  *
+ * A field's plugin is deleted from the same list, from the control every rail carries —
+ * the field is what a reader knows the plugin by, and it is what goes with it. The
+ * question that follows is the page's, as it is for a document or a conversation:
+ * nothing has been asked of cora when the control is used.
+ *
  * A pin picked here is not written anywhere yet: it lives in the thread's own state, and
  * only a turn writes there. `fixed` is what says a turn has.
  */
-export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
+export default function ScopePicker({
+  available,
+  pin,
+  fixed,
+  deletable,
+  onPin,
+  onDelete,
+}: Props) {
   const [open, setOpen] = useState(false)
   const wrap = useRef<HTMLDivElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -69,8 +87,14 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
 
   /* One field is not a choice: both segments answer in it, and naming it would fix the
      thread to it for good in exchange for nothing. None is a bare cora. Either way the
-     rail is what says which field the documents are in. */
-  if (available.length < 2) return null
+     rail is what says which field the documents are in.
+
+     Unless there is a plugin to delete under it. The list is where a field's plugin is
+     deleted from, and a deployment with one plugin is the whole of what dropping one in
+     describes — leaving that one deletable by hand alone is the worse trade. Picking
+     the field is still a pin, and still buys nothing, but it is now a choice the reader
+     declines rather than one the page made for them. */
+  if (available.length < 2 && deletable.length === 0) return null
 
   /* Settled by a turn, there is nothing left to pick: the strip becomes the name it
      settled on. A control that can no longer be used is not drawn as one — and why it
@@ -121,7 +145,7 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
           {open && (
             <ul id={LIST} className={styles.modeMenu}>
               {available.map((scope) => (
-                <li key={scope}>
+                <li key={scope} className={styles.modeRow}>
                   <button
                     className={styles.modeOption}
                     aria-current={pin === scope}
@@ -132,6 +156,15 @@ export default function ScopePicker({ available, pin, fixed, onPin }: Props) {
                   >
                     {scope}
                   </button>
+                  {deletable.includes(scope) && (
+                    <DeleteControl
+                      what={`the ${scope} plugin`}
+                      onDelete={() => {
+                        shut()
+                        onDelete(scope)
+                      }}
+                    />
+                  )}
                 </li>
               ))}
             </ul>
