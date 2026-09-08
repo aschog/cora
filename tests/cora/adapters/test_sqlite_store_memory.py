@@ -4,7 +4,7 @@ import sqlite3
 import pytest
 
 from cora.adapters.sqlite_store_memory import RECALL_LIMIT, SqliteStoreMemory
-from cora.domain.errors import AdapterError
+from cora.domain.errors import AdapterError, MemoryStoreError
 
 
 @pytest.fixture
@@ -156,3 +156,14 @@ def test_the_store_shares_the_file_in_write_ahead_mode(
 
     memory.close()
     assert mode == "wal"
+
+
+def test_a_path_whose_directory_cannot_be_made_surfaces_as_memory_error(
+    tmp_path: pathlib.Path,
+) -> None:
+    """As the two stores beside it in the same file."""
+    blocked = tmp_path / "a-file"
+    blocked.write_text("not a directory")
+
+    with pytest.raises(MemoryStoreError):
+        SqliteStoreMemory.at(str(blocked / "cora.sqlite"))

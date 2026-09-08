@@ -38,8 +38,9 @@ def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return method(*args, **kwargs)
-        except (sqlite3.Error, AttributeError) as error:
-            # `AttributeError` is the build without extension loading: CPython compiled
+        except (sqlite3.Error, OSError, AttributeError) as error:
+            # `OSError` is the directory the store could not be made in, and
+            # `AttributeError` the build without extension loading: CPython compiled
             # with `SQLITE_OMIT_LOAD_EXTENSION` has no `enable_load_extension` at all.
             raise RetrievalError() from error
 

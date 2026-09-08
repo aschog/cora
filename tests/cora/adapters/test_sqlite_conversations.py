@@ -320,3 +320,15 @@ def test_the_store_shares_the_file_in_write_ahead_mode(tmp_path: Path) -> None:
 
     store.close()
     assert mode == "wal"
+
+
+def test_a_path_whose_directory_cannot_be_made_surfaces_as_store_error(
+    tmp_path: Path,
+) -> None:
+    """As the index beside it: the directory is made before the file is opened, and an
+    `OSError` there is still this store being unreachable."""
+    blocked = tmp_path / "a-file"
+    blocked.write_text("not a directory")
+
+    with pytest.raises(ConversationStoreError):
+        SqliteConversations.at(str(blocked / "cora.sqlite"))

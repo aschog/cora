@@ -410,3 +410,16 @@ def test_the_store_holds_its_journal_in_write_ahead_mode(
     [(mode,)] = index._connection.execute("pragma journal_mode")
 
     assert mode == "wal"
+
+
+def test_a_path_whose_directory_cannot_be_made_surfaces_as_retrieval_error(
+    tmp_path: Path,
+) -> None:
+    """Making the directory is the first thing opening a store does, and it fails as an
+    `OSError` rather than a database error — the port promises one error for a store it
+    cannot reach, however far it got."""
+    blocked = tmp_path / "a-file"
+    blocked.write_text("not a directory")
+
+    with pytest.raises(RetrievalError):
+        SqliteVecRetriever.at(str(blocked / "cora.sqlite"))

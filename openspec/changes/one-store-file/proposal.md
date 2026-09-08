@@ -8,7 +8,8 @@ Three database files hold what one can, and each is a path a deployment sets on 
 - The index, the facts, the recorded turns and the checkpoints share it, each on its own
   connection.
 - **BREAKING** `CORA_MEMORY_PATH` and `CORA_CONVERSATIONS_PATH` are gone.
-- **BREAKING** the stores are cleared again, and nothing is carried over.
+- **BREAKING** the stores are cleared again, and nothing is carried over — the tables
+  cora owns are renamed with it, so an old file's rows are read by nothing.
 - A blank `CORA_DB_PATH` still falls back to the default rather than opening a database
   that dies with the process.
 

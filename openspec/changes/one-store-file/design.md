@@ -29,8 +29,8 @@
   a third name would be a third thing to learn.
 - The two retired variables are dropped rather than deprecated, since no deployment of
   cora is older than this sprint.
-- Every store opens the file through one `connect`, which sets write-ahead logging and
-  a busy timeout — SQLite's own default is a journal that locks readers out.
+- Every store opens the file through one `connect`, which sets write-ahead logging —
+  SQLite's own default is a journal that locks readers out for the length of a write.
 - Rejected one shared connection: each adapter's lifetime and error translation are its
   own, and a shared handle makes closing one close them all — they share how they open
   it, not the handle.
@@ -42,8 +42,8 @@
 ## Risks / Trade-offs
 
 - Four connections on one file can contend under concurrent writes → WAL takes
-  concurrent readers with one writer, and a busy timeout makes the second writer wait
-  rather than fail.
+  concurrent readers with one writer, and `sqlite3.connect`'s own five-second timeout
+  makes the second writer wait rather than fail.
 - One file cannot be thrown away in parts any more → losing the index alone stops being
   `rm -rf`, and re-uploading is the way back.
 - A deployment still setting the retired variables gets the default instead → the
@@ -53,6 +53,9 @@
 ## Migration Plan
 
 - None: `.cora` is cleared, and the first run creates the file.
+- The tables cora owns are renamed with it, so a file written before this change keeps
+  its turns under a name nothing reads — clearing the store is what avoids a rail that
+  reads empty over rows still on disk.
 - Rollback is the previous commit, since the old three-file layout is gone either way.
 
 ## Touched

@@ -26,7 +26,8 @@ def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
         try:
             return method(*args, **kwargs)
-        except sqlite3.Error as error:
+        except (sqlite3.Error, OSError) as error:
+            # `OSError` is the directory the store could not be made in.
             raise ConversationStoreError() from error
 
     return wrapper
