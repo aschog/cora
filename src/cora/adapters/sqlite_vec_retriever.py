@@ -86,7 +86,8 @@ class SqliteVecRetriever:
         if not chunks:
             return
         self._connection.execute(VECTORS.format(width=len(vectors[0])))
-        with self._transaction():
+        self._connection.execute("begin")
+        with self._connection:
             self._drop(scope, file_hash)
             self._connection.executemany(
                 "insert into cora_passages "
@@ -146,25 +147,34 @@ class SqliteVecRetriever:
 
     @_translate_errors
     def sources(self, scope: str) -> list[str]:
-        rows = self._connection.execute(
-            "select source from cora_passages where user = ? and scope = ? order by id",
-            (self._user, scope),
-        ).fetchall()
-        return list(dict.fromkeys(row[0] for row in rows))
+        return [
+            row[0]
+            for row in self._connection.execute(
+                "select source from cora_passages where user = ? and scope = ? "
+                "group by source order by min(id)",
+                (self._user, scope),
+            )
+        ]
 
     @_translate_errors
     def forget(self, scope: str, file_hash: str) -> None:
-        with self._transaction():
+        if not self._indexed():
+            return
+        self._connection.execute("begin")
+        with self._connection:
             self._drop(scope, file_hash)
 
     @_translate_errors
     def uploads(self, scope: str, source: str) -> list[str]:
-        rows = self._connection.execute(
-            "select file_hash from cora_passages "
-            "where user = ? and scope = ? and source = ? order by id",
-            (self._user, scope, source),
-        ).fetchall()
-        return list(dict.fromkeys(row[0] for row in rows))
+        return [
+            row[0]
+            for row in self._connection.execute(
+                "select file_hash from cora_passages "
+                "where user = ? and scope = ? and source = ? "
+                "group by file_hash order by min(id)",
+                (self._user, scope, source),
+            )
+        ]
 
     @_translate_errors
     def contains(self, scope: str, file_hash: str) -> bool:
@@ -178,25 +188,19 @@ class SqliteVecRetriever:
     def close(self) -> None:
         self._connection.close()
 
-    def _transaction(self) -> sqlite3.Connection:
-        """The connection is in autocommit, so `with connection` commits nothing on its
-        own: the statement is what opens the transaction the block then closes."""
-        self._connection.execute("begin")
-        return self._connection
-
     def _drop(self, scope: str, file_hash: str) -> None:
-        """Every passage of one upload, out of both tables. Read the ids first: the
-        vector table is keyed by them and cannot be reached through the spans."""
-        going = self._written(scope, file_hash)
-        if not going:
-            return
-        if self._indexed():
-            self._connection.executemany(
-                "delete from cora_vectors where scope = ? and id = ?",
-                [(scope, row_id) for row_id in going],
-            )
-        self._connection.executemany(
-            "delete from cora_passages where id = ?", [(row_id,) for row_id in going]
+        """Every passage of one upload, out of both tables. The vectors go first, while
+        the spans naming them are still there to be selected."""
+        upload = (self._user, scope, file_hash)
+        self._connection.execute(
+            "delete from cora_vectors where scope = ? and id in "
+            "(select id from cora_passages where user = ? and scope = ? "
+            "and file_hash = ?)",
+            (scope, *upload),
+        )
+        self._connection.execute(
+            "delete from cora_passages where user = ? and scope = ? and file_hash = ?",
+            upload,
         )
 
     def _written(self, scope: str, file_hash: str) -> list[int]:

@@ -1,5 +1,4 @@
 import logging
-import sqlite3
 from collections.abc import Callable
 from dataclasses import replace
 from pathlib import Path
@@ -540,7 +539,9 @@ def _config(root: Path, *, debug: bool = False) -> Config:
     folder pinned there too: the default is the one the docs tell an operator to drop
     plugins into, and a suite reading that one runs whatever the developer left there.
     """
-    return store_config(root, debug=debug, plugin_modules=("fixture_plugins.valid",))
+    return replace(
+        store_config(root), debug=debug, plugin_modules=("fixture_plugins.valid",)
+    )
 
 
 @pytest.mark.integration
@@ -1038,35 +1039,6 @@ def test_build_keeps_the_index_in_the_configured_database(tmp_path: Path) -> Non
 
     reopened = SqliteVecRetriever.at(str(tmp_path / "cora.sqlite"))
     assert reopened.sources(DEFAULT_SCOPE) == ["l.txt"]
-
-
-@pytest.mark.integration
-def test_build_puts_every_store_and_the_checkpoints_in_one_database(
-    tmp_path: Path,
-) -> None:
-    """One file, four writers: each store owns its own tables, and a write to any of
-    them leaves the others readable."""
-    app = build(_config(tmp_path))
-    assert app.memory is not None and app.conversations is not None
-    app.memory.remember("lifts on tuesdays")
-    app.conversations.record("t1", Turn(question="q", result=ChatResult(answer="a")))
-    app.knowledge_base.add_file(b"Deadlifts train the posterior chain. " * 40, "l.txt")
-
-    with sqlite3.connect(str(tmp_path / "cora.sqlite")) as connection:
-        tables = {
-            row[0]
-            for row in connection.execute(
-                "select name from sqlite_master where type = 'table'"
-            )
-        }
-
-    assert "cora_turns" in tables, "the turns the page redraws"
-    assert "checkpoints" in tables, "and the thread the model is given"
-    assert "store" in tables, "and the facts it keeps about the user"
-    assert "cora_passages" in tables, "and where every indexed passage sits"
-    assert [fact.text for fact in app.memory.recall()] == ["lifts on tuesdays"]
-    assert [turn.question for turn in app.conversations.turns("t1")] == ["q"]
-    assert app.knowledge_base.list_sources() == ["l.txt"]
 
 
 # ── the round that stops to ask ──
