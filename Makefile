@@ -78,8 +78,9 @@ docs-serve:
 # there is no layout to search for. The domain map is read out of the classes by pyreverse
 # and laid out by graphviz, which this target needs installed. The session maps read one
 # method each, and the graph off the nodes the runner declares, and space themselves to
-# what is said on them. Every SVG is committed, and CI runs this target and fails on a
-# diff, so a port, a class or a call added without a redraw is a red build.
+# what is said on them. Every SVG is committed, and `tests/guards/test_diagrams.py` reads
+# each one for what it contains — never for its bytes, which are the layout of whichever
+# graphviz drew it — so a port, a class or a step added without a redraw is a red test.
 diagram:
 	uv run python scripts/gen_component_map.py
 	uv run python scripts/gen_domain_map.py

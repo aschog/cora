@@ -291,8 +291,8 @@ network. Sorted by what you came for:
 
 `make diagram` redraws all six — the component map from `cora.app.assembly`, the
 domain's classes through pyreverse and graphviz, and the four sequences on the
-walkthrough page out of the methods that take them. The SVGs are committed, and CI
-redraws them and fails on a diff, so one behind its source is a red build.
+walkthrough page out of the methods that take them. The SVGs are committed, and a guard
+reads each for what it draws, so one behind its source is a red test.
 
 ## Stack
 
