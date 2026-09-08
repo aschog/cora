@@ -456,13 +456,13 @@ def _composer(
     embedder = SentenceTransformerEmbedder()
     retriever = SqliteVecRetriever.at(config.db_path)
     documents = FileDocuments.at(config.documents_path)
-    memory = SqliteStoreMemory.at(config.memory_path)
-    conversations = SqliteConversations.at(config.conversations_path)
+    memory = SqliteStoreMemory.at(config.db_path)
+    conversations = SqliteConversations.at(config.db_path)
     output = FileOutput.at(config.output_path)
     # The checkpointer is an adapter like the stores above it: made once, so a folder
     # change recomposes over the same connection instead of opening another onto the
-    # same conversations file.
-    graph = partial(langgraph_for, checkpointer=saver_at(config.conversations_path))
+    # same store file.
+    graph = partial(langgraph_for, checkpointer=saver_at(config.db_path))
 
     def compose(loaded: tuple[Extension, ...]) -> App:
         # Settings read off what loaded rather than off what the deployment typed: a

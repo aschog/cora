@@ -41,15 +41,15 @@ model that does not reason: `openai/gpt-4o-mini`, which `DEFAULT_MODEL` still na
 asked with `low` set and answered normally, so such a model ignores the key rather than
 refusing it. No test holds that — only the provider can answer it."""
 DEFAULT_HISTORY_TURNS = 20
-DEFAULT_DB_PATH = ".cora/index.sqlite"
-"""The index: one SQLite file holding each passage's span beside its embedding. A
-file rather than a directory, because cora opens it itself."""
-DEFAULT_MEMORY_PATH = ".cora/memory.sqlite"
+DEFAULT_DB_PATH = ".cora/cora.sqlite"
+"""Everything cora keeps for itself, in one SQLite file: each passage's span beside its
+embedding, the facts, the recorded turns and the checkpoint of every thread. Each store
+owns its own tables and opens its own connection — one file, four writers, so a
+deployment moves what cora keeps by naming one path."""
 DEFAULT_DOCUMENTS_PATH = ".cora/documents"
 """Where a scope keeps its documents: a directory per field under this root, and one
 Markdown file per source under that. A directory rather than a database file, because
 the point of it is that a person can open it and read what cora has."""
-DEFAULT_CONVERSATIONS_PATH = ".cora/conversations.sqlite"
 DEFAULT_OUTPUT_PATH = "cora-output"
 """Where an approved effect writes what it produced. Beside cora's stores rather than
 under them: everything in `.cora/` is cora's own bookkeeping and a deployment may delete
@@ -78,9 +78,7 @@ class Config:
     db_path: str
     scopes: tuple[str, ...] = DEFAULT_SCOPES
     plugins_path: str = DEFAULT_PLUGINS_PATH
-    memory_path: str = DEFAULT_MEMORY_PATH
     documents_path: str = DEFAULT_DOCUMENTS_PATH
-    conversations_path: str = DEFAULT_CONVERSATIONS_PATH
     output_path: str = DEFAULT_OUTPUT_PATH
     log_path: str = DEFAULT_LOG_PATH
     debug: bool = False
@@ -128,11 +126,7 @@ class Config:
             ),
             reasoning_effort=_effort(env),
             db_path=_named(env, "CORA_DB_PATH", DEFAULT_DB_PATH),
-            memory_path=_named(env, "CORA_MEMORY_PATH", DEFAULT_MEMORY_PATH),
             documents_path=_named(env, "CORA_DOCUMENTS_PATH", DEFAULT_DOCUMENTS_PATH),
-            conversations_path=_named(
-                env, "CORA_CONVERSATIONS_PATH", DEFAULT_CONVERSATIONS_PATH
-            ),
             output_path=_named(env, "CORA_OUTPUT_PATH", DEFAULT_OUTPUT_PATH),
             log_path=_named(env, "CORA_LOG_PATH", DEFAULT_LOG_PATH),
             debug=_bool(env, "CORA_DEBUG"),

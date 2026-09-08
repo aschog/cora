@@ -85,9 +85,9 @@ def _saver() -> InMemorySaver:
 
 
 def saver_at(path: str) -> SqliteSaver:
-    """Beside the turns the reader comes back to, in the same file: what the model was
-    told and what the page redraws are two halves of one conversation, and a deployment
-    that deletes the file should lose both or neither."""
+    """Beside the turns the reader comes back to, in the same file cora keeps everything
+    else in: what the model was told and what the page redraws are two halves of one
+    conversation, and a deployment that deletes the file should lose both or neither."""
     pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
     saver = SqliteSaver(connection, serde=_serde())

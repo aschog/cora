@@ -26,8 +26,6 @@ def live_config(
         Config.from_env(),
         plugin_modules=plugins,
         scopes=scopes,
-        db_path=str(store / "chroma"),
-        memory_path=str(store / "memory.sqlite"),
+        db_path=str(store / "cora.sqlite"),
         documents_path=str(store / "documents"),
-        conversations_path=str(store / "conversations.sqlite"),
     )
