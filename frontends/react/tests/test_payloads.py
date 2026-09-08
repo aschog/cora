@@ -2,6 +2,7 @@ from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session
 from cora.domain.trace import ModelDecision, ToolUse
+from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.react import payloads
 from cora.ports.memory import Fact
 
@@ -25,8 +26,16 @@ def test_a_citation_carries_the_field_and_upload_its_span_was_measured_in() -> N
 
 def test_every_kind_of_step_renders_the_same_keys() -> None:
     """The page draws one kind of step, so a kind added to the engine arrives in the
-    shape the panel already knows."""
+    shape the panel already knows.
+
+    `origin` is the one field the shape does not settle: it says whose tool the step
+    reached for, which is the whole claim the plugin architecture makes, and it is read
+    off the engine's own list rather than off a second copy here. A step that called no
+    tool claims none.
+    """
     decision = payloads.step(ModelDecision(detail="thinking", tools=("search",)))
+    ours = payloads.step(ToolUse(name=SEARCH_TOOL_NAME, outcome="1 passage"))
+    theirs = payloads.step(ToolUse(name="book_a_flight", outcome="booked"))
 
     assert decision == {
         "summary": "Decided to call search",
@@ -35,6 +44,8 @@ def test_every_kind_of_step_renders_the_same_keys() -> None:
         "origin": "",
         "steps": [],
     }
+    assert ours["origin"] == "core tool"
+    assert theirs["origin"] == "plugin tool"
 
 
 def test_what_a_tool_did_inside_its_call_travels_as_the_call_s_own_steps() -> None:

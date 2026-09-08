@@ -11,6 +11,7 @@ from cora.ports.plugin import ToolRefusal
 
 CONTRACT = 1
 SCOPE = "kit"
+INSTRUCTIONS = "You are a note-keeper. Keep what the user worked out, when asked."
 NOTE = {
     "type": "object",
     "properties": {"title": {"type": "string"}, "body": {"type": "string"}},
@@ -26,6 +27,7 @@ def extend(cora: Host) -> None:
             raise ToolRefusal("this deployment keeps nothing")
         return f"written to {output.write(f'{title}.md', body)}"
 
+    cora.register_instructions(INSTRUCTIONS, scope=SCOPE)
     cora.register_tool(
         name="write_note",
         description="Write one note to a file.",

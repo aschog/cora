@@ -47,3 +47,28 @@ export async function confirm(page: Page, head: string, button: string) {
   await expect(asked).toBeVisible()
   await asked.getByRole('button', { name: button }).click()
 }
+
+/** What the browser resolved a custom property to, in the form a computed style reports
+ *  it — so a spec names the token it means rather than the hex behind it. */
+export const resolved = (page: Page, token: string) =>
+  page.evaluate((name) => {
+    const probe = document.createElement('div')
+    probe.style.color = `var(${name})`
+    document.body.appendChild(probe)
+    const seen = getComputedStyle(probe).color
+    probe.remove()
+    return seen
+  }, token)
+
+/** WCAG's ratio between two resolved colours, so a spec can say "visible" as a number. */
+export function contrast(one: string, other: string) {
+  const luminance = (colour: string) => {
+    const [r, g, b] = colour.match(/\d+/g)!.map((each) => {
+      const part = Number(each) / 255
+      return part <= 0.04045 ? part / 12.92 : ((part + 0.055) / 1.055) ** 2.4
+    })
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  }
+  const [light, dark] = [luminance(one), luminance(other)].sort((a, b) => b - a)
+  return (light + 0.05) / (dark + 0.05)
+}
