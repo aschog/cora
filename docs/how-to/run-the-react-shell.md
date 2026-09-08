@@ -27,15 +27,21 @@ stderr and a non-zero exit.
 
 ## The page's own gates
 
-Four, and CI runs all of them; the commit hook runs none, because they need Node and a
+Three, and CI runs all of them; the commit hook runs none, because they need Node and a
 commit that touches no TypeScript should not wait for it:
 
 ```sh
-npm --prefix frontends/react/ui run lint          # eslint, plus what it cannot see
-npx --prefix frontends/react/ui tsc -b            # type check
-npm --prefix frontends/react/ui test              # unit tier, happy-dom
-npm --prefix frontends/react/ui run test:browser  # the tier that needs a real cascade
+npm --prefix frontends/react/ui run lint    # eslint, plus what it cannot see
+npx --prefix frontends/react/ui tsc -b      # type check
+npm --prefix frontends/react/ui test        # unit tier, happy-dom
 ```
+
+A fourth that nothing runs for you: `make e2e`, from the repository root, drives the
+page through a real browser against a real server, with
+`scripts/fake_model_service.py` standing in for the provider so a run costs nothing and
+says the same thing every time. `make e2e-live` runs its one live spec against the model
+a deployment answers from. Local only — they want a browser, and CI has enough to say
+about a push already.
 
 `lint` is the one no type checker can stand in for. Two halves: eslint, for the order
 hooks are called in and a dependency array that has fallen behind the closure it belongs

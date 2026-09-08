@@ -37,6 +37,13 @@ module-name = [
 # The app is the root. What sits beside it is what you may install *as well*: a plugin
 # and a frontend, each a directory named in the plural because it expects
 # siblings. `ls` is the architecture diagram.
+
+# A layer's import bans live in a `.ruff.toml` in the directory they govern — that is
+# how ruff applies them — and ruff writes its cache beside one. Neither is something an
+# installed wheel has any use for, and the cache is a developer's machine in a binary.
+wheel-exclude = ["**/.ruff.toml", "**/.ruff_cache"]
+source-exclude = ["**/.ruff.toml", "**/.ruff_cache"]
+
 [tool.uv.workspace]
 members = ["plugins/*", "frontends/*"]
 

@@ -42,7 +42,7 @@ jobs:
         run: |
           sudo apt-get update && sudo apt-get install -y graphviz
           make diagram
-          git diff --exit-code -- docs
+          git diff --exit-code -- docs/assets
 
       # The wheels are the only artefact `module-name` can be wrong about: the editable
       # install every other gate runs on never reads it, so a module a manifest forgot to

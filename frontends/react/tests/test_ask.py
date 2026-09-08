@@ -12,6 +12,8 @@ from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.react.api import (
     MAX_ASK_BYTES,
+    NOT_A_DECISION,
+    NOT_FILLED_IN,
     NOT_THAT_CARD,
     REFUSED,
     TOO_LONG_TO_ASK,
@@ -415,3 +417,28 @@ def test_an_action_the_card_never_offered_is_refused_not_read_as_a_decline() -> 
     assert reader.get("/api/sessions/t1/pending").json() is not None, (
         "the thread is still waiting, so the card is still answerable"
     )
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"answer": "c1"},
+        {"thread_id": "t1"},
+        {"thread_id": "t1", "answer": 7},
+        {"thread_id": "t1", "answer": "c1", "values": "BER"},
+    ],
+)
+def test_an_answer_that_does_not_bind_to_a_card_is_refused(body: dict) -> None:
+    """An answer has to say which conversation it is in and which action was taken, and
+    what it fills in has to be fields: a missing half must not read as a decline, and a
+    `values` that is not an object must not reach the run.
+
+    This is the route an effect is approved on, so what it accepts is the width of what
+    can authorise one.
+    """
+    with TestClient(api(_acting_app())) as reader:
+        reader.post("/api/ask", json={"question": "book it", "thread_id": "t1"})
+        refused = reader.post("/api/resume", json=body)
+
+    assert refused.status_code == REFUSED
+    assert refused.json()["error"] in (NOT_A_DECISION, NOT_FILLED_IN)

@@ -32,6 +32,9 @@ const served = {
      makes the picker a control rather than a label. */
   CORA_SCOPES: 'notes',
   CORA_PORT: '8765',
+  /* Named, not inherited: Playwright merges this over `process.env`, so a shell that
+     followed the quick start would otherwise drive a different app than a bare one. */
+  CORA_PLUGINS: '',
   /* The one substitution a stubbed run makes. A live one leaves the key and the URL
      to the environment, which is where a deployment's already are. */
   ...(live

@@ -19,16 +19,21 @@ from types import ModuleType
 
 import pytest
 
+import cora.adapters
+import cora.app
 import cora.domain
 import cora.engine
 import cora.frontends
 import cora.plugins
 import cora.ports
+import sequences
 import workspace
 from app_builder import assembled
+from cora.adapters.langgraph_runner import GATE
 from cora.app.assembly import App
 from cora.engine.steps import GateStep, ToolStep
 from cora.engine.tool_runtime import ToolRuntime
+from cora.ports.graph import TOOLS
 from fixture_plugins import make_plugin
 
 PURE_MAY_USE = frozenset({"jsonschema"})
@@ -250,9 +255,28 @@ def test_a_value_in_the_domain_is_a_frozen_dataclass(kind: type) -> None:
     )
 
 
+def test_no_path_reaches_the_tools_without_passing_the_gate() -> None:
+    """The gate is unbypassable by construction rather than by discipline, and this is
+    what reads that off the wiring: the round's route arrives at it, the ask's leads
+    into it, and nothing else leads to the tools at all.
+
+    Read as a shape rather than as behaviour, because behaviour catches the wrong break.
+    A gate swapped out for something else fails every test that watches a turn; a
+    *second* edge into the tools beside the gated one fails none of them, and that is
+    the change that would get an effect through without asking anyone.
+    """
+    plan = sequences.routing()
+
+    assert [here for here, there in plan.edges if there == TOOLS] == [GATE]
+    assert [route for route, target in plan.routes if target == TOOLS] == [], (
+        "the router sends a round to the gate; it has no route to the tools"
+    )
+    assert plan.after(GATE) == TOOLS
+
+
 def test_the_gate_and_the_runtime_are_offered_the_same_tools() -> None:
-    """The guard on the walk proves no call reaches a tool without passing the gate.
-    That only means something while the gate and the runtime are looking at the same
+    """The guard above proves no call reaches a tool without passing the gate. That
+    only means something while the gate and the runtime are looking at the same
     tools: one offered a tool the other had never heard of would run it ungated, and
     every other test in the suite would still pass.
     """
@@ -275,3 +299,29 @@ def _gate_and_runtime(app: App) -> tuple[GateStep, ToolRuntime]:
 
 def _offered(part: GateStep | ToolRuntime, scopes: frozenset[str]) -> set[str]:
     return {tool.name for tool in (*part.tools, *part.registry.tools(scopes))}
+
+
+# Every directory whose files a layer rule speaks for. The bans themselves are ruff's —
+# one `.ruff.toml` per layer, applied by a file having been put there — and this is the
+# rule that the *file* exists: ruff's config is hierarchical and does not merge, so a
+# layer added without one inherits the root and is silently unbanned from everything.
+LAYER_DIRS = (
+    *PURE_ROOTS,
+    _root(cora.adapters),
+    _root(cora.app),
+    # A portion of an extension point, not the namespace over them: `cora.plugins` is
+    # one name across as many trees as there are plugins installed, and it is the
+    # plugin's own directory that its files sit under.
+    *sorted({file.parent for file in EXTENSION_FILES}),
+)
+
+
+@pytest.mark.parametrize(
+    "layer", LAYER_DIRS, ids=lambda path: str(_shipped_as(path / "x").parent)
+)
+def test_every_layer_says_in_its_own_directory_what_it_may_not_reach_for(
+    layer: pathlib.Path,
+) -> None:
+    assert (layer / ".ruff.toml").is_file(), (
+        f"{layer} has no .ruff.toml, so ruff bans it from nothing"
+    )

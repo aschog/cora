@@ -1,4 +1,3 @@
 node_modules/
 dist/
 *.tsbuildinfo
-browser/__screenshots__/

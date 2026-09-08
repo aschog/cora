@@ -1,5 +1,6 @@
 import hashlib
 import pathlib
+from collections.abc import Iterator
 from dataclasses import replace
 
 from starlette.testclient import TestClient
@@ -13,6 +14,7 @@ from cora.domain.errors import (
 )
 from cora.frontends.react.api import (
     MAX_REQUEST_BYTES,
+    NO_LENGTH,
     OVER_CEILING,
     UNKEPT,
     api,
@@ -211,3 +213,22 @@ def test_a_refusal_quotes_back_only_so_much_of_the_name_it_was_given() -> None:
 
     assert refused.status_code == 400
     assert len(refused.json()["error"]) < 200
+
+
+def test_an_upload_that_does_not_say_how_large_it_is_is_refused() -> None:
+    """A body of undeclared length cannot be bounded before it is read, and a ceiling
+    any client can step around by chunking its upload is not a ceiling."""
+    app = assembled()
+
+    def chunked() -> Iterator[bytes]:
+        yield b"x"
+
+    refused = client(app).post(
+        "/api/documents",
+        content=chunked(),
+        headers={"content-type": "multipart/form-data; boundary=nope"},
+    )
+
+    assert refused.status_code == 411
+    assert refused.json()["error"] == NO_LENGTH
+    assert app.knowledge_base.list_sources() == []
