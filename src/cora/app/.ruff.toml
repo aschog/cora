@@ -1,0 +1,9 @@
+# The layers this one may not reach for. Enforced by ruff on every file under here,
+# hierarchically: the nearest config wins, so a file added to the layer is covered by
+# having been put here rather than by a list somebody keeps.
+extend = "../../../pyproject.toml"
+
+[lint.flake8-tidy-imports.banned-api]
+"cora.frontends".msg = "the composition root is what a frontend installs, so naming one would mean a command-line shell had to install a web UI to reuse the wiring"
+"cora.plugins".msg = "the app installs no plugin at all, which is why importing one rather than naming it in config has to stay impossible"
+"pytest".msg = "a test-only framework has no business in a shipped wheel"

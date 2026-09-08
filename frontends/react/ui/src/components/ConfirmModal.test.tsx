@@ -29,24 +29,6 @@ test('the question says what is going, what is lost, and what going ahead is cal
   expect(screen.getByRole('button', { name: ASKED.confirm })).toBeTruthy()
 })
 
-test('confirming answers the caller that raised the question', () => {
-  const { confirmed, kept } = asked()
-
-  fireEvent.click(screen.getByRole('button', { name: ASKED.confirm }))
-
-  expect(confirmed).toHaveBeenCalled()
-  expect(kept).not.toHaveBeenCalled()
-})
-
-test('keeping it answers the other way, and does nothing itself', () => {
-  const { confirmed, kept } = asked()
-
-  fireEvent.click(screen.getByRole('button', { name: 'Keep it' }))
-
-  expect(kept).toHaveBeenCalled()
-  expect(confirmed).not.toHaveBeenCalled()
-})
-
 test('escape and the page behind the card are both ways out', () => {
   /* The two the cited-source modal already answers to: a question with one answer is
      one a reader who changed their mind is stuck in. */

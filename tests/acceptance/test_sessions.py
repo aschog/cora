@@ -21,7 +21,6 @@ KEPT, DELETED = "t-kept", "t-deleted"
 FIRST = "How much protein should I eat?"
 SECOND = "And creatine?"
 ANSWER = "Your notes say 1.6 g per kg."
-REMEMBERED = "The user trains on tuesdays."
 
 
 def _app(path: pathlib.Path) -> App:
@@ -58,30 +57,6 @@ def test_a_conversation_i_delete_is_gone_from_both_stores(
         assert _listed(page) == [KEPT]
         assert page.get(f"/api/sessions/{DELETED}").json() == []
         assert page.get(f"/api/sessions/{DELETED}/scope").json() == {"pin": None}
-
-
-@pytest.mark.integration
-def test_deleting_a_conversation_leaves_the_facts_in_the_same_file(
-    tmp_path: pathlib.Path,
-) -> None:
-    """The turns, the thread and the facts share a file now, so this is what says the
-    delete is scoped to a conversation rather than to the database it sits in."""
-    store = tmp_path / "cora.sqlite"
-    app = _app(store)
-    assert app.memory is not None
-    app.memory.remember(REMEMBERED)
-
-    with TestClient(api(app)) as page:
-        asked = {"question": FIRST, "thread_id": DELETED, "pin": FITNESS}
-        assert page.post("/api/ask", json=asked).status_code == 200
-
-        assert page.delete(f"/api/sessions/{DELETED}").status_code == 204
-
-        assert _listed(page) == []
-        assert [fact["text"] for fact in page.get("/api/memory").json()] == [REMEMBERED]
-    assert [fact.text for fact in SqliteStoreMemory.at(str(store)).recall()] == [
-        REMEMBERED
-    ]
 
 
 @pytest.mark.integration

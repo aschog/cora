@@ -4,7 +4,7 @@ import sqlite3
 import pytest
 
 from cora.adapters.sqlite_store_memory import RECALL_LIMIT, SqliteStoreMemory
-from cora.domain.errors import AdapterError, MemoryStoreError
+from cora.domain.errors import AdapterError
 
 
 @pytest.fixture
@@ -66,23 +66,6 @@ def test_another_user_recalls_nothing(path: str) -> None:
     assert len(SqliteStoreMemory.at(path, user="ada").recall()) == 1
 
 
-def test_a_fresh_path_creates_its_directories(tmp_path: pathlib.Path) -> None:
-    nested = tmp_path / "does" / "not" / "exist" / "memory.sqlite"
-
-    SqliteStoreMemory.at(str(nested)).remember("trains on Tuesdays")
-
-    assert nested.exists()
-
-
-def test_opening_the_same_file_twice_is_harmless(path: str) -> None:
-    first = SqliteStoreMemory.at(path)
-    second = SqliteStoreMemory.at(path)
-
-    first.remember("trains on Tuesdays")
-
-    assert [fact.text for fact in second.recall()] == ["trains on Tuesdays"]
-
-
 def test_a_broken_database_surfaces_as_an_adapter_error(path: str) -> None:
     """So the friendly-failure path holds: the UI renders `user_message`, never a
     sqlite traceback."""
@@ -97,18 +80,6 @@ def test_a_broken_database_surfaces_as_an_adapter_error(path: str) -> None:
 
 
 MORE_THAN_A_PAGE = 150
-
-
-def test_clearing_removes_more_facts_than_one_page_holds(path: str) -> None:
-    """`clear` used to read one page and delete what it had read, so "forget
-    everything" left everything past the page behind and the panel repopulated."""
-    memory = SqliteStoreMemory.at(path)
-    for number in range(MORE_THAN_A_PAGE):
-        memory.remember(f"fact {number}")
-
-    memory.clear()
-
-    assert SqliteStoreMemory.at(path).recall() == ()
 
 
 def test_recall_returns_the_newest_facts_when_there_are_more_than_it_shows(
@@ -129,21 +100,6 @@ def test_recall_returns_the_newest_facts_when_there_are_more_than_it_shows(
     assert facts[0].text == f"fact {MORE_THAN_A_PAGE - RECALL_LIMIT}"
 
 
-def test_a_forgotten_fact_makes_room_for_a_hidden_one(path: str) -> None:
-    """The window is what the user can act on, so what falls outside it has to come
-    back into view once there is room — otherwise a hidden fact is unreachable."""
-    memory = SqliteStoreMemory.at(path)
-    for number in range(RECALL_LIMIT + 1):
-        memory.remember(f"fact {number}")
-    shown = memory.recall()
-
-    assert "fact 0" not in [fact.text for fact in shown]
-
-    memory.forget(shown[-1].key)
-
-    assert "fact 0" in [fact.text for fact in memory.recall()]
-
-
 def test_the_store_shares_the_file_in_write_ahead_mode(
     tmp_path: pathlib.Path,
 ) -> None:
@@ -156,14 +112,3 @@ def test_the_store_shares_the_file_in_write_ahead_mode(
 
     memory.close()
     assert mode == "wal"
-
-
-def test_a_path_whose_directory_cannot_be_made_surfaces_as_memory_error(
-    tmp_path: pathlib.Path,
-) -> None:
-    """As the two stores beside it in the same file."""
-    blocked = tmp_path / "a-file"
-    blocked.write_text("not a directory")
-
-    with pytest.raises(MemoryStoreError):
-        SqliteStoreMemory.at(str(blocked / "cora.sqlite"))

@@ -3,7 +3,7 @@
 
 REACT := cora.frontends.react.server
 
-.PHONY: run run-env plugins plugins-env ui ui-build ui-test ui-test-browser docs docs-serve diagram
+.PHONY: run run-env plugins plugins-env ui ui-build ui-test e2e e2e-store e2e-live docs docs-serve diagram
 
 # cora, as one process serving the page and the API on 127.0.0.1:8000. It builds first
 # because the server only ever reads `ui/dist` — without that a source change is
@@ -34,8 +34,27 @@ ui-build:
 ui-test:
 	cd frontends/react/ui && npm test
 
-ui-test-browser:
-	cd frontends/react/ui && npm run test:browser
+# The browser suite: cora driven through chromium against a real server. The store is
+# laid out fresh each run — a suite that deletes a document and a conversation has to
+# start from the same place every time — and the plugin is copied rather than linked,
+# because one of the things a deployment can do to a dropped plugin is delete it.
+# Playwright starts the servers itself and stops them again; `playwright.config.ts` says
+# which. Local only: it needs a browser, and CI has enough to say about a push already.
+E2E_STORE := .cora/e2e
+
+e2e-store:
+	rm -rf $(E2E_STORE)
+	mkdir -p $(E2E_STORE)/plugins
+	cp tests/e2e/plugins/*.py $(E2E_STORE)/plugins/
+
+e2e: ui-build e2e-store
+	cd frontends/react/ui && npx playwright test
+
+# The same suite's one live spec, against the model a deployment actually answers from.
+# Reads the key from .env, like every other live tier, and is run by hand before a
+# submission rather than on a schedule.
+e2e-live: ui-build e2e-store
+	set -a; . ./.env; set +a; cd frontends/react/ui && CORA_E2E_LIVE=1 npx playwright test
 
 # MkDocs has forked: its owner is publishing a v2 that drops the plugin system, and
 # `properdocs` is a continuation of 1.x that arrives here transitively. Both sides warn on
@@ -59,9 +78,8 @@ docs-serve:
 # there is no layout to search for. The domain map is read out of the classes by pyreverse
 # and laid out by graphviz, which this target needs installed. The session maps read one
 # method each, and the graph off the nodes the runner declares, and space themselves to
-# what is said on them. Every SVG is committed, and the guards beside them fail when a
-# committed file is behind the source, so a port, a class or a call added without a redraw
-# is a red test.
+# what is said on them. Every SVG is committed, and CI runs this target and fails on a
+# diff, so a port, a class or a call added without a redraw is a red build.
 diagram:
 	uv run python scripts/gen_component_map.py
 	uv run python scripts/gen_domain_map.py

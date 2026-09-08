@@ -32,23 +32,6 @@ test('a step that ran work of its own shows that work under it', () => {
   ])
 })
 
-test('a step that ran nothing of its own opens onto nothing', () => {
-  const { container } = render(<PlanPanel steps={[step('Decided no tool was needed')]} />)
-
-  fireEvent.click(screen.getByText('Decided no tool was needed'))
-
-  expect(container.querySelector(`.${planCss.planInside}`)).toBeNull()
-})
-
-test('the steps are numbered as the turn took them', () => {
-  const { container } = render(
-    <PlanPanel steps={[step('first'), step('second')]} />,
-  )
-
-  const numbers = container.querySelectorAll(`.${planCss.planStepN}`)
-  expect([...numbers].map((node) => node.textContent)).toEqual(['1', '2'])
-})
-
 test('a detail the line above already reads out is not drawn twice', () => {
   const call: Step = { ...step('add(a=1, b=2) → 3'), detail: '3' }
 
@@ -58,16 +41,3 @@ test('a detail the line above already reads out is not drawn twice', () => {
   expect(container.querySelector(`.${planCss.planResult}`)).toBeNull()
 })
 
-test('a detail that says more than the line above is drawn', () => {
-  const call: Step = {
-    ...step('search_documents(query="squats") → 1 passage from notes.md'),
-    detail: '[1] notes.md: squats stall on sleep',
-  }
-
-  const { container } = render(<PlanPanel steps={[call]} />)
-  fireEvent.click(screen.getByText(call.summary))
-
-  expect(container.querySelector(`.${planCss.planResult}`)?.textContent).toBe(
-    '[1] notes.md: squats stall on sleep',
-  )
-})

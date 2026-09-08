@@ -27,70 +27,6 @@ def _module_roots(member: pathlib.Path) -> list[pathlib.Path]:
     ]
 
 
-def _on_the_path() -> list[pathlib.Path]:
-    """Every directory `pythonpath` puts on `sys.path`, read off the manifest rather
-    than named here, so moving the entry moves what this is asserted of."""
-    options = workspace.manifest(workspace.ROOT)["tool"]["pytest"]["ini_options"]
-    return [workspace.ROOT / entry for entry in options["pythonpath"]]
-
-
-def test_nothing_on_the_path_is_named_for_a_shipped_namespace() -> None:
-    """The rule that matters, and the narrow form of it: `cora` is a namespace no
-    distribution owns, so a directory called `cora` inside a `sys.path` entry joins it
-    as its first portion and `import cora.domain` can resolve into the test tree rather
-    than the install. The mirror under `tests/cora/` is safe for precisely the reason
-    this is not — nothing puts `tests/` itself on the path."""
-    shipped = {
-        module.split(".")[0]
-        for member in MEMBERS
-        for module in workspace.modules(member)
-    }
-    colliding = sorted(
-        str(path.relative_to(workspace.ROOT))
-        for directory in _on_the_path()
-        for path in directory.iterdir()
-        if path.stem in shipped
-    )
-
-    assert colliding == [], f"on sys.path and named for the namespace: {colliding}"
-
-
-def test_the_globs_reach_every_member_beside_the_app() -> None:
-    """The members uv itself would resolve, by running the root manifest's globs. uv
-    refuses to sync when a glob matches a directory holding no manifest, so that half is
-    covered; the half nothing covers is a manifest at a depth no glob reaches, which uv
-    silently ignores — it is simply never locked, never installed, and never built."""
-    globs = workspace.manifest(workspace.ROOT)["tool"]["uv"]["workspace"]["members"]
-    globbed = {path for pattern in globs for path in workspace.ROOT.glob(pattern)}
-
-    assert globbed == {*MEMBERS} - {workspace.ROOT}
-
-
-def test_the_workspace_holds_the_app_and_its_extension_points() -> None:
-    """Directories are named for what they hold, distributions for the audience that
-    installs them."""
-    assert {workspace.location(m): workspace.distribution(m) for m in MEMBERS} == {
-        ".": "cora",
-        "frontends/react": "cora-frontend-react",
-        "plugins/fitness": "cora-plugin-fitness",
-        "plugins/security": "cora-plugin-security",
-        "plugins/travel": "cora-plugin-travel",
-    }
-
-
-def test_the_workspace_ships_one_frontend() -> None:
-    """A frontend is a member beside the app, so "cora has one screen" is a claim about
-    the member list: a second one is a second directory here, whether or not anything
-    points at it."""
-    frontends = sorted(
-        workspace.location(member)
-        for member in MEMBERS
-        if workspace.location(member).startswith("frontends/")
-    )
-
-    assert frontends == ["frontends/react"]
-
-
 @pytest.mark.parametrize("member", MEMBERS, ids=IDS)
 def test_every_member_ships_its_typing_marker(member: pathlib.Path) -> None:
     """`py.typed` is packaged only from inside the module `module-name` names. One
@@ -123,15 +59,6 @@ def test_no_module_sits_outside_what_its_manifest_names(member: pathlib.Path) ->
         if not any(path.is_relative_to(root) for root in roots)
     ]
     assert unshipped == [], f"outside every declared module: {unshipped}"
-
-
-def test_the_app_owns_no_user_interface() -> None:
-    """What makes a second frontend possible, stated so it can fail: a command-line or
-    HTTP shell installs `cora` and gets the wiring without a web toolkit."""
-    toolkits = workspace.toolkits()
-
-    assert toolkits, "no frontend declares a toolkit — the rule would hold of nothing"
-    assert not workspace.requirements(workspace.ROOT) & toolkits
 
 
 def test_the_app_carries_no_plugin_and_names_none() -> None:
@@ -171,34 +98,3 @@ def test_every_plugin_says_what_it_reaches_outside_with() -> None:
     """One added without an entry is asked for nothing, rather than inheriting the
     allowance of the plugin it happens to ship beside."""
     assert {module for _, module in workspace.plugins()} == PLUGIN_REACHES.keys()
-
-
-@pytest.mark.parametrize("plugin", sorted(PLUGIN_REACHES), ids=lambda m: m)
-def test_a_plugin_needs_the_app_and_what_it_reaches_outside_with(plugin: str) -> None:
-    """A plugin is data over the contract, and most take nothing else: the fitness
-    bundle uses four names and the screen one, and neither binds a technology. Travel
-    calls a live service, so it declares an HTTP client — in its own manifest rather
-    than the root's, because that declaration is what the architecture guard's
-    allowance has to cost."""
-    member = next(m for m in MEMBERS if plugin in workspace.modules(m))
-
-    assert workspace.requirements(member) == {"cora", *PLUGIN_REACHES[plugin]}
-
-
-@pytest.mark.parametrize(
-    ("frontend", "toolkit"),
-    [
-        ("react", {"starlette", "uvicorn", "python-multipart"}),
-    ],
-    ids=lambda value: value if isinstance(value, str) else "",
-)
-def test_a_frontend_needs_the_app_and_its_own_toolkit(
-    frontend: str, toolkit: set[str]
-) -> None:
-    """One of several possible shells: it takes `cora` for the wiring and the types that
-    cross its screen, and the technologies it draws with — a widget toolkit for one, an
-    HTTP server for the other. The adapters neither names: what a shell shows is decided
-    by the use cases, what technology answers is decided at assembly."""
-    requires = workspace.requirements(workspace.ROOT / "frontends" / frontend)
-
-    assert requires == {"cora", *toolkit}

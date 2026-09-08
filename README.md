@@ -291,8 +291,8 @@ network. Sorted by what you came for:
 
 `make diagram` redraws all six — the component map from `cora.app.assembly`, the
 domain's classes through pyreverse and graphviz, and the four sequences on the
-walkthrough page out of the methods that take them. The SVGs are committed, and a guard
-fails when one is behind the source.
+walkthrough page out of the methods that take them. The SVGs are committed, and CI
+redraws them and fails on a diff, so one behind its source is a red build.
 
 ## Stack
 
@@ -319,12 +319,21 @@ uv run ruff format . && uv run ruff check . && uv run ty check
 The hook runs those four on commit and CI runs them on every push; commit messages
 follow [Conventional Commits](https://www.conventionalcommits.org).
 
-The page has its own four, which CI runs and the hook does not — they need Node, and a
+The page has its own three, which CI runs and the hook does not — they need Node, and a
 commit that touches no TypeScript should not wait for it:
 
 ```sh
-npm --prefix frontends/react/ui run lint          # eslint, plus what it cannot see
-npx --prefix frontends/react/ui tsc -b            # type check
-npm --prefix frontends/react/ui test              # unit tier, happy-dom
-npm --prefix frontends/react/ui run test:browser  # the tier that needs a real cascade
+npm --prefix frontends/react/ui run lint    # eslint, plus what it cannot see
+npx --prefix frontends/react/ui tsc -b      # type check
+npm --prefix frontends/react/ui test        # unit tier, happy-dom
 ```
+
+And one more that nothing runs for you. `make e2e` drives cora through a real browser
+against a real server — the real page, the real API, the real stores, the real turn —
+with `scripts/fake_model_service.py` standing in for the provider, so a run costs
+nothing and says the same thing every time. It covers a question answered and cited, a
+document uploaded and deleted, the card a turn stops on, the gate an effect waits at,
+a conversation pinned to a field, and a conversation and a fact deleted from the rails.
+`make e2e-live` runs its one live spec against the model a deployment actually answers
+from, reading the key from `.env`. Local only: it wants a browser, and CI has enough to
+say about a push already.

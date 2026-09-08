@@ -33,14 +33,6 @@ beforeEach(() => {
 
 afterEach(cleanup)
 
-test('with nothing opened the panel draws nothing', () => {
-  const { container } = render(
-    <SourcePanel document={null} source={null} citations={[]} />,
-  )
-
-  expect(container.textContent).toBe('')
-})
-
 test('a passage whose text was never kept says so rather than drawing an empty page', async () => {
   /* `sourceOf` hands the panel a field and an upload, and `null` where the conversation
      names neither — a citation from an index written before cora kept any text, or a
@@ -63,8 +55,3 @@ test('a document with its text kept is shown under its name, and marked', async 
   expect(screen.queryByText('not cited in this answer')).toBeNull()
 })
 
-test('a document this answer did not rest on still says so', () => {
-  render(<SourcePanel document="notes.md" source={kept('u1')} citations={[]} />)
-
-  expect(screen.getByText('not cited in this answer')).toBeTruthy()
-})

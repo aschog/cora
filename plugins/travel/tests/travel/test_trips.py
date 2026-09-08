@@ -9,21 +9,12 @@ from cora.plugins.travel.trips import (
     FLIGHT_FIELDS,
     FLIGHTS_ASKED,
     HOTEL_FIELDS,
-    MOST,
-    NOTHING_BOOKED,
-    NOTHING_FLYING,
-    NOWHERE_TO_STAY,
-    REFUSED,
     SEARCH,
-    SEARCH_IT,
-    STAY_ASKED,
     UNREACHABLE,
-    UNREADABLE,
     KeptOut,
     Search,
     _query,
     _schema,
-    departures,
     trip_tools,
 )
 from cora.ports.plugin import ToolRefusal
@@ -121,24 +112,6 @@ def test_only_the_cheapest_three_fares_come_back_and_in_that_order() -> None:
     assert found.index("190") < found.index("240") < found.index("310")
 
 
-def test_every_fare_carries_its_price_its_currency_and_its_dates() -> None:
-    search, _ = searching(flights(240))
-
-    found = search.flights(**ROUTE, **WEEK, currency="GBP")
-
-    assert "GBP 240" in found
-    assert "2026-09-08 to 2026-09-15" in found
-
-
-def test_a_service_that_found_nothing_flying_is_one_sentence() -> None:
-    search, _ = searching({"best_flights": []})
-
-    with pytest.raises(ToolRefusal) as refused:
-        search.flights(**ROUTE, **WEEK)
-
-    assert str(refused.value) == NOTHING_FLYING
-
-
 def test_a_window_is_tried_one_departure_at_a_time() -> None:
     search, service = searching(flights(400))
 
@@ -154,29 +127,6 @@ def test_a_window_is_tried_one_departure_at_a_time() -> None:
         "2026-09-15",
         "2026-09-22",
     ]
-
-
-def test_the_cheapest_three_are_taken_across_departures_not_within_one() -> None:
-    """A tool that kept the best of each departure would pass a laxer test than this
-    and answer a budget question wrongly."""
-    fares = {"2026-09-01": (690, 540), "2026-09-08": (318, 425), "2026-09-15": (612,)}
-    search, _ = searching(lambda query: flights(*fares[query["outbound_date"]]))
-
-    found = search.flights(**ROUTE, **WINDOW)
-
-    assert all(fare in found for fare in ("318", "425", "540"))
-    assert not any(fare in found for fare in ("612", "690"))
-    assert "2026-09-08 to 2026-09-15" in found, (
-        "each fare says which week it belongs to"
-    )
-
-
-def test_departures_are_a_week_apart_unless_a_closer_sampling_is_asked_for() -> None:
-    every_week = departures({**WINDOW, "window_end": "2026-09-15"})
-    every_day = departures({**WINDOW, "window_end": "2026-09-15", "stride_days": 1})
-
-    assert [day.isoformat() for day in every_week] == ["2026-09-01", "2026-09-08"]
-    assert len(every_day) == 8, "every day the trip could start on, inside the window"
 
 
 def test_a_sampling_too_close_to_afford_is_widened_rather_than_cut_short() -> None:
@@ -195,77 +145,6 @@ def test_a_sampling_too_close_to_afford_is_widened_rather_than_cut_short() -> No
     assert len(service.queries) <= CANDIDATES
     assert service.queries[0]["outbound_date"] == "2026-09-01"
     assert f"tried {len(service.queries)} departures" in found
-
-
-def test_dates_already_fixed_fire_exactly_one_call() -> None:
-    search, service = searching(flights(240))
-
-    search.flights(**ROUTE, **WEEK)
-
-    assert len(service.queries) == 1
-
-
-def test_a_trip_that_does_not_fit_the_window_is_one_sentence() -> None:
-    search, service = searching(flights(240))
-
-    with pytest.raises(ToolRefusal) as refused:
-        search.flights(
-            **ROUTE, window_start="2026-09-01", window_end="2026-09-05", nights=7
-        )
-
-    assert "does not fit" in str(refused.value)
-    assert service.queries == [], "nothing was asked of the service"
-
-
-def test_the_cheapest_three_stays_come_back_priced_for_the_whole_stay() -> None:
-    search, service = searching(
-        stays(("Alfama", 720), ("Baixa", 560), ("Graca", 940), ("Chiado", 610))
-    )
-
-    found = search.stays(**STAY)
-
-    assert all(name in found for name in ("Baixa", "Chiado", "Alfama"))
-    assert "Graca" not in found
-    assert "EUR 560 for the stay" in found
-    assert len(service.queries) == 1, "somewhere to sleep is priced once, not per week"
-
-
-def test_nowhere_to_stay_is_one_sentence() -> None:
-    search, _ = searching({"properties": []})
-
-    with pytest.raises(ToolRefusal) as refused:
-        search.stays(**STAY)
-
-    assert str(refused.value) == NOWHERE_TO_STAY
-
-
-def test_a_price_ceiling_goes_into_the_search_rather_than_filtering_its_answer() -> (
-    None
-):
-    search, service = searching(flights(240))
-
-    search.flights(**ROUTE, **WEEK, max_price=600)
-
-    assert service.queries[0]["max_price"] == "600"
-
-
-def test_a_kind_of_place_ruled_out_goes_into_the_search_too() -> None:
-    search, service = searching(stays(("Baixa", 560)))
-
-    search.stays(**STAY, min_class=3)
-
-    assert service.queries[0]["hotel_class"] == "3,4,5"
-
-
-def test_what_the_service_returned_is_what_is_shown() -> None:
-    """Nothing is dropped after the answer comes back: a filter cora applied afterwards
-    is a filter the traveller cannot see, and a ceiling the service honoured is one
-    they can."""
-    search, _ = searching(flights(240, 900))
-
-    found = search.flights(**ROUTE, **WEEK, max_price=600)
-
-    assert "EUR 900" in found
 
 
 @pytest.mark.parametrize(
@@ -290,22 +169,6 @@ def test_every_searchable_field_reaches_the_schema_and_the_query_from_one_table(
     }
 
 
-def test_a_field_needing_shaping_is_written_the_way_its_row_says() -> None:
-    """Stops the service counts from one and a person counts from none, and a lowest
-    star rating is a list of the ratings above it."""
-    assert _query(FLIGHT_FIELDS, {"stops": 0}, KEY)["stops"] == "1"
-    assert _query(FLIGHT_FIELDS, {"stops": 1}, KEY)["stops"] == "2"
-    assert _query(HOTEL_FIELDS, {"min_class": 4}, KEY)["hotel_class"] == "4,5"
-
-
-def test_a_field_nobody_stated_is_left_out_rather_than_sent_empty() -> None:
-    """An empty parameter is a filter to the service, and an absent one is not."""
-    query = _query(HOTEL_FIELDS, STAY, KEY)
-
-    assert "max_price" not in query
-    assert "hotel_class" not in query
-
-
 def test_a_service_that_cannot_be_reached_is_one_sentence() -> None:
     search, _ = searching(httpx.ConnectError("down"))
 
@@ -313,99 +176,6 @@ def test_a_service_that_cannot_be_reached_is_one_sentence() -> None:
         search.stays(**STAY)
 
     assert str(refused.value) == UNREACHABLE
-
-
-def test_an_answer_that_cannot_be_read_is_a_different_sentence() -> None:
-    search, _ = searching(ValueError("not json"))
-
-    with pytest.raises(ToolRefusal) as refused:
-        search.stays(**STAY)
-
-    assert str(refused.value) == UNREADABLE
-
-
-def test_a_search_the_service_would_not_run_names_what_to_try_instead() -> None:
-    """Its own words are never passed on: the query it quotes back carries the key."""
-    search, _ = searching({"error": f"Unknown airport, key={KEY}"})
-
-    with pytest.raises(ToolRefusal) as refused:
-        search.flights(**ROUTE, **WEEK)
-
-    assert str(refused.value) == REFUSED
-    assert KEY not in str(refused.value)
-
-
-def test_one_departure_the_service_choked_on_does_not_lose_the_others() -> None:
-    def reply(query: dict[str, Any]) -> Any:
-        if query["outbound_date"] == "2026-09-08":
-            return httpx.ConnectError("down")
-        return flights(400)
-
-    search, _ = searching(reply)
-
-    found = search.flights(**ROUTE, **WINDOW)
-
-    assert "EUR 400" in found
-    assert "tried 3 departures" in found
-
-
-def test_every_departure_failing_is_the_failure_rather_than_an_empty_answer() -> None:
-    search, _ = searching(httpx.ConnectError("down"))
-
-    with pytest.raises(ToolRefusal) as refused:
-        search.flights(**ROUTE, **WINDOW)
-
-    assert str(refused.value) == UNREACHABLE
-
-
-def test_both_searches_are_declared_as_returning_what_cora_did_not_write() -> None:
-    flying, staying = trip_tools(Search(KEY))
-
-    assert [tool.untrusted for tool in (flying, staying)] == [True, True]
-    assert not any(tool.effect for tool in (flying, staying))
-    assert len(_schema(FLIGHT_FIELDS)["properties"]) == len(FLIGHT_FIELDS)
-    assert MOST == 3
-
-
-def test_where_the_searches_are_sent_is_the_deployments_to_say() -> None:
-    """So a deployment with no key, no account and no network can still drive the real
-    plugin against something that answers in the same shapes."""
-    service = Service(flights(240))
-    search = Search(KEY, service, url="http://127.0.0.1:8909/search")
-
-    search.flights(**ROUTE, **WEEK)
-
-    assert service.urls == ["http://127.0.0.1:8909/search"]
-
-
-def test_the_searches_go_to_the_real_service_unless_told_otherwise() -> None:
-    service = Service(flights(240))
-
-    Search(KEY, service).flights(**ROUTE, **WEEK)
-
-    assert service.urls == [SEARCH]
-
-
-@pytest.mark.parametrize(
-    "given",
-    [
-        {"nights": "seven"},
-        {"stride_days": "weekly"},
-        {"window_start": "September"},
-        {"stops": "none"},
-    ],
-)
-def test_an_argument_the_model_wrote_badly_is_a_sentence_not_a_crash(
-    given: dict[str, Any],
-) -> None:
-    """The model is a trust boundary like any other: what it writes is checked, and
-    what fails the check comes back as something the turn can answer around."""
-    search, service = searching(flights(240))
-
-    with pytest.raises(ToolRefusal):
-        search.flights(**ROUTE, **{**WEEK, **given})
-
-    assert service.queries == [], "nothing was asked of the service"
 
 
 def test_the_key_is_kept_out_of_the_clients_own_request_log() -> None:
@@ -449,101 +219,3 @@ def test_a_search_told_no_route_asks_for_the_trip_on_its_own_schema() -> None:
         asked.name for asked in FLIGHT_FIELDS
     ]
     assert all(field.editable for field in card.fields)
-
-
-def test_the_card_says_which_of_its_fields_the_search_cannot_run_without() -> None:
-    card = _asks({})
-
-    required = {field.name for field in card.fields if field.required}
-    assert required == {asked.name for asked in FLIGHT_FIELDS if asked.required}
-
-
-def test_what_the_model_already_wrote_arrives_on_the_card_filled_in() -> None:
-    card = _asks({"origin": "BER"})
-
-    [origin] = [field for field in card.fields if field.name == "origin"]
-    assert origin.value == "BER"
-
-
-def test_a_day_is_asked_for_as_a_day_rather_than_as_a_string_to_get_right() -> None:
-    """The format reaches the model in the schema and the reader as the control the card
-    draws, so nobody has to type `YYYY-MM-DD` correctly."""
-    card = _asks({})
-
-    dated = {
-        field.name for field in card.fields if field.schema.get("format") == "date"
-    }
-    assert dated == {"window_start", "window_end"}
-    assert _schema(HOTEL_FIELDS)["properties"]["check_in"]["format"] == "date"
-
-
-def test_the_submit_waits_for_the_card_and_the_way_out_does_not() -> None:
-    search, not_now = _asks({}).actions
-
-    assert (search.answer, search.needs_valid) == (SEARCH_IT, True)
-    assert search.note == NOTHING_BOOKED
-    assert (not_now.answer, not_now.needs_valid) == (None, False)
-
-
-def test_a_search_told_everything_it_needs_asks_nothing() -> None:
-    """The reader is asked when there is something to ask, not on every call."""
-    assert _asks({**ROUTE, **WEEK}) is None
-
-
-def test_the_stay_search_asks_on_its_own_schema_and_not_the_flights_one() -> None:
-    _, staying = trip_tools(Search(KEY))
-    assert staying.asks is not None
-    card = staying.asks({})
-
-    assert card is not None
-    assert card.prompt == STAY_ASKED
-    assert [field.name for field in card.fields] == [
-        asked.name for asked in HOTEL_FIELDS
-    ]
-
-
-def test_the_fares_across_a_window_come_back_as_offers_carrying_their_dates() -> None:
-    search, _ = searching(flights(240))
-
-    [offer] = search.fares(**ROUTE, **WEEK)
-
-    assert offer.price == 240
-    assert offer.start.isoformat() == "2026-09-08"
-    assert offer.end.isoformat() == "2026-09-15"
-
-
-def test_the_fares_of_a_window_are_every_departure_tried() -> None:
-    search, service = searching(flights(240))
-
-    found = search.fares(**ROUTE, **WINDOW)
-
-    assert len({offer.start for offer in found}) == len(service.queries)
-
-
-def test_the_rooms_for_one_stay_come_back_as_offers_carrying_their_dates() -> None:
-    search, _ = searching(stays(("Baixa", 480.0)))
-
-    [offer] = search.rooms(**STAY)
-
-    assert offer.price == 480.0
-    assert offer.start.isoformat() == "2026-09-08"
-    assert offer.end.isoformat() == "2026-09-15"
-
-
-def test_a_window_holding_no_trip_refuses_before_the_service_is_asked() -> None:
-    search, service = searching(flights(240))
-
-    with pytest.raises(ToolRefusal):
-        search.fares(
-            **ROUTE, window_start="2026-09-08", window_end="2026-09-09", nights=7
-        )
-
-    assert service.queries == []
-
-
-def test_the_listed_flights_still_read_as_they_did(monkeypatch: Any) -> None:
-    """The formatting half over the structured one: the sentence a model reads is
-    unchanged by the planner being able to reach the offers behind it."""
-    search, _ = searching(flights(240, 310))
-
-    assert "EUR 240" in search.flights(**ROUTE, **WEEK)

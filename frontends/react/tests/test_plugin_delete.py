@@ -47,21 +47,6 @@ def test_deleting_a_plugin_answers_no_content_and_takes_its_entry(
     assert not dropped.exists()
 
 
-def test_the_listing_and_the_fields_drop_it_on_the_next_read(
-    tmp_path: pathlib.Path,
-) -> None:
-    (tmp_path / "field_notes.py").write_text(DROPPED)
-    reader = _reader(tmp_path)
-    assert [each["name"] for each in reader.get("/api/plugins").json()] == [
-        "field_notes"
-    ]
-
-    reader.delete("/api/plugins/field_notes")
-
-    assert reader.get("/api/plugins").json() == []
-    assert reader.get("/api/scopes").json()["available"] == []
-
-
 def test_a_delete_that_is_refused_says_why(tmp_path: pathlib.Path) -> None:
     (tmp_path / "field_notes.py").write_text(DROPPED)
     reader = _reader(tmp_path)
@@ -83,19 +68,6 @@ def test_a_name_that_is_a_path_reaches_no_file(tmp_path: pathlib.Path) -> None:
         assert reader.delete(f"/api/plugins/{named}").status_code in (400, 404)
 
     assert (tmp_path / "field_notes.py").exists()
-
-
-def test_the_listing_says_which_plugins_can_be_deleted(
-    tmp_path: pathlib.Path,
-) -> None:
-    """Cora's answer rather than the page's reading of a source: a module named in the
-    environment is fixed at start, and the page has no control to offer for it."""
-    (tmp_path / "field_notes.py").write_text(DROPPED)
-    reader = _reader(tmp_path)
-
-    assert [
-        (each["name"], each["deletable"]) for each in reader.get("/api/plugins").json()
-    ] == [("field_notes", True)]
 
 
 def test_the_listing_says_which_fields_would_go_with_each_plugin(

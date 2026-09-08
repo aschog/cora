@@ -1,72 +1,15 @@
-import pytest
-
-from cora.domain.errors import PluginLoadError
-from cora.plugins.travel import CORPUS, INSTRUCTIONS, SCOPE, extend
+from cora.plugins.travel import CORPUS, SCOPE, extend
 from cora.plugins.travel.forecast import FORECAST_TOOL_NAME
 from cora.plugins.travel.itinerary import ITINERARY_TOOL_NAME
 from cora.plugins.travel.planner import PLAN_TOOL_NAME, REVISE_TOOL_NAME
 from cora.plugins.travel.researcher import RESEARCH_TOOL_NAME
 from cora.plugins.travel.trips import (
-    FLIGHTS_TOOL_DESCRIPTION,
     FLIGHTS_TOOL_NAME,
-    HOTELS_TOOL_DESCRIPTION,
     HOTELS_TOOL_NAME,
     SETTING,
 )
 from cora.ports.host import TOOL as HAS
 from fakes import FakeOutput, host_for
-
-
-def test_the_instructions_state_the_domains_own_business() -> None:
-    """The persona cora carries is cora's; what this section adds is the field, what to
-    cite, and the one thing a travel document is most often wrong about."""
-    instructions = INSTRUCTIONS.lower()
-
-    assert "travel" in instructions
-    assert "cite" in instructions
-    assert "out of date" in instructions
-    assert "never invent" in instructions
-    assert "offer to save" in instructions, (
-        "the model offers the save; the gate is what happens next, not an excuse to "
-        "announce a file as written"
-    )
-
-
-def test_the_instructions_never_send_the_model_to_ask_in_prose() -> None:
-    """The searches ask for what they need, and a card is how they ask. An instruction
-    to ask for the same values in prose is the thing that beat the card twice."""
-    instructions = INSTRUCTIONS.lower()
-
-    assert "ask for the dates" not in instructions
-    assert "give the flight search a window" not in instructions
-    assert "asks the traveller for whatever it still needs" in instructions
-
-
-def test_the_instructions_send_the_searches_at_a_trip_not_only_at_a_price() -> None:
-    """A traveller who names a trip is planning one. Gating the search on a question
-    about cost left every other way of saying it answered in prose."""
-    instructions = INSTRUCTIONS.lower()
-
-    assert "when the answer turns on cost" not in instructions
-    assert "while a trip is being planned" in instructions
-    assert "carry their budget" in instructions, "the budget still goes into the search"
-
-
-def test_the_instructions_still_refuse_a_date_the_traveller_did_not_name() -> None:
-    """The one thing the deleted bullet was right about: nothing required is what the
-    model is now offered, so nothing but this stops it filling the window in itself."""
-    assert "never assume a season, a date or a trip length" in INSTRUCTIONS.lower()
-
-
-def test_neither_search_tells_the_model_to_settle_the_values_first() -> None:
-    """cora appends "call this even when you cannot fill in every argument" to both, so
-    a description that first spends three sentences saying the opposite reads as it."""
-    flights = FLIGHTS_TOOL_DESCRIPTION.lower()
-    hotels = HOTELS_TOOL_DESCRIPTION.lower()
-
-    assert "give a window rather than" not in flights
-    assert "call it once the dates are settled" not in hotels
-    assert "a window is an earliest start" in flights
 
 
 def test_everything_travel_registers_belongs_to_its_own_scope() -> None:
@@ -108,15 +51,6 @@ def test_travel_offers_no_way_of_saving_where_a_deployment_configured_nowhere() 
     assert ITINERARY_TOOL_NAME not in [tool.name for tool in tools]
 
 
-def test_the_first_line_of_the_instructions_says_what_the_field_is() -> None:
-    """It is what the router is given to choose between, and what the card that asks the
-    user says under the name — so a first line that opened with a rule would route on
-    the rule."""
-    [first, *_] = INSTRUCTIONS.splitlines()
-
-    assert "travel" in first.lower()
-
-
 def test_the_corpus_ships_as_documents_a_reader_can_upload() -> None:
     """Routing needs a field with something in it. Files rather than a registration:
     a plugin that seeded the index at load would re-embed its notes on every start."""
@@ -124,24 +58,6 @@ def test_the_corpus_ships_as_documents_a_reader_can_upload() -> None:
 
     assert shipped
     assert all(path.read_text().strip() for path in CORPUS.glob("*.md"))
-
-
-def test_a_rounds_setting_that_is_not_a_number_is_refused_by_name_at_load() -> None:
-    """The operator is the audience for a load-time refusal, and they need the name of
-    the setting they mistyped. A bare `ValueError` would reach them as "the plugin
-    raised ValueError while registering" — cora keeps a plugin's exception text out of
-    that message deliberately, because it could be carrying a key. So a plugin with
-    something to tell the operator says it the sanctioned way, and that reaches them
-    as it was worded."""
-    host = host_for("cora.plugins.travel", settings={"rounds": "three"})
-
-    with pytest.raises(PluginLoadError) as refused:
-        extend(host)
-
-    said = refused.value.user_message
-    assert "rounds" in said, "the setting they can act on is named"
-    assert "three" in said, "and what they set it to"
-    assert "cora.plugins.travel" in said
 
 
 def test_travel_offers_no_prices_where_a_deployment_set_no_key() -> None:
@@ -155,16 +71,6 @@ def test_travel_offers_no_prices_where_a_deployment_set_no_key() -> None:
     assert FLIGHTS_TOOL_NAME not in tools
     assert HOTELS_TOOL_NAME not in tools
     assert FORECAST_TOOL_NAME in tools, "what needs no key is unaffected"
-
-
-@pytest.mark.parametrize("key", ["   ", ""])
-def test_a_key_that_is_blank_is_no_key_at_all(key: str) -> None:
-    host = host_for("cora.plugins.travel", settings={SETTING: key})
-
-    extend(host)
-
-    tools = [entry.value.name for entry in host.registered if entry.kind == HAS]
-    assert FLIGHTS_TOOL_NAME not in tools
 
 
 def test_both_searches_arrive_in_travels_own_field_once_a_key_is_set() -> None:

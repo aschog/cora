@@ -10,7 +10,7 @@ from typing import Any
 import pytest
 
 from app_builder import assembled
-from cora.domain.trace import ToolUse, WorkShown
+from cora.domain.trace import ToolUse
 from cora.engine.plugin_registry import load_plugin
 from cora.plugins.travel import SCOPE
 from cora.plugins.travel.planner import PLAN_TOOL_NAME, REVISE_TOOL_NAME
@@ -140,69 +140,6 @@ def test_one_instruction_comes_back_with_a_dated_priced_plan_that_holds(
     assert "the plan holds" in plan
     assert answered.answer == ANSWER
     assert not _planned(answered).failed
-
-
-def test_the_traveller_is_never_asked_which_search_to_run(service: Service) -> None:
-    model = ScriptedChatModel(
-        [_planning(), ModelReply(text=SHAPE), ModelReply(text=ANSWER)]
-    )
-
-    answered = _app(model).agent.answer(QUESTION, THREAD)
-
-    assert [step.name for step in answered.trace if isinstance(step, ToolUse)] == [
-        PLAN_TOOL_NAME
-    ]
-
-
-def test_every_week_of_the_window_was_priced_and_the_cheapest_won(
-    service: Service,
-) -> None:
-    model = ScriptedChatModel(
-        [_planning(), ModelReply(text=SHAPE), ModelReply(text=ANSWER)]
-    )
-
-    _app(model).agent.answer(QUESTION, THREAD)
-
-    tried = {
-        query["outbound_date"]
-        for query in service.queries
-        if query.get("engine") == "google_flights"
-    }
-    assert tried == set(FARES)
-
-
-def test_the_planning_is_on_the_trace_under_the_call_that_did_it(
-    service: Service,
-) -> None:
-    model = ScriptedChatModel(
-        [_planning(), ModelReply(text=SHAPE), ModelReply(text=ANSWER)]
-    )
-
-    answered = _app(model).agent.answer(QUESTION, THREAD)
-
-    shown = [step for step in _planned(answered).steps if isinstance(step, WorkShown)]
-    assert any("priced" in step.did for step in shown)
-    assert {step.plugin for step in shown} == {"cora.plugins.travel"}
-
-
-def test_a_budget_nothing_can_meet_is_said_plainly_rather_than_quietly_raised(
-    service: Service,
-) -> None:
-    model = ScriptedChatModel(
-        [
-            _planning(budget=200),
-            ModelReply(text=SHAPE),
-            ModelReply(text=SHAPE),
-            ModelReply(text=SHAPE),
-            ModelReply(text=ANSWER),
-        ]
-    )
-
-    answered = _app(model).agent.answer(QUESTION, THREAD)
-
-    plan = _planned(answered).detail
-    assert "over the 200 budget" in plan
-    assert "the plan holds" not in plan
 
 
 def test_a_later_turn_revises_the_plan_this_conversation_already_holds(

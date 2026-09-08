@@ -34,18 +34,6 @@ def members() -> list[pathlib.Path]:
     ]
 
 
-def toolkits() -> set[str]:
-    """What the frontends take beyond the app itself. Derived rather than listed, so
-    the rule that the app owns no interface covers whatever the next frontend draws or
-    serves with without anyone remembering to add it."""
-    return {
-        requirement
-        for member in members()
-        if location(member).startswith("frontends/")
-        for requirement in requirements(member)
-    } - {"cora"}
-
-
 def location(member: pathlib.Path) -> str:
     """A member as the docs and the failure messages name it: `.` for the app."""
     return str(member.relative_to(ROOT)) or "."
@@ -72,19 +60,6 @@ def modules(member: pathlib.Path) -> list[str]:
     five portions of one namespace."""
     declared = manifest(member)["tool"]["uv"]["build-backend"]["module-name"]
     return [declared] if isinstance(declared, str) else list(declared)
-
-
-def member_of(module: str) -> pathlib.Path:
-    """The member a module ships from — which is what to ask for its requirements."""
-    for member in members():
-        if module in modules(member):
-            return member
-    raise AssertionError(f"no workspace member ships {module}")
-
-
-def carrier_of(module: str) -> str:
-    """The distribution a module ships from."""
-    return distribution(member_of(module))
 
 
 def plugins() -> list[tuple[str, str]]:

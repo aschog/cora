@@ -1,0 +1,11 @@
+# The layers this one may not reach for. Enforced by ruff on every file under here,
+# hierarchically: the nearest config wins, so a file added to the layer is covered by
+# having been put here rather than by a list somebody keeps.
+extend = "../../../pyproject.toml"
+
+[lint.flake8-tidy-imports.banned-api]
+"cora.adapters".msg = "the use cases and the slots they drive are what every outer layer depends on, so they may depend on none of them"
+"cora.plugins".msg = "the contract and the engine may depend on no outer layer"
+"cora.app".msg = "the contract and the engine may depend on no outer layer"
+"cora.frontends".msg = "the contract and the engine may depend on no outer layer"
+"pytest".msg = "a test-only framework has no business in a shipped wheel"

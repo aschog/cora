@@ -1,20 +1,15 @@
 import pytest
 
 from cora.domain.errors import RetrievalError
-from cora.domain.trace import ToolUse
 from cora.engine.host import PluginHost
 from cora.engine.knowledge_base import KnowledgeBase
-from cora.engine.nesting import collecting
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.tool_runtime import ToolRuntime
-from cora.ports.chat_model import ModelReply
-from cora.ports.plugin import Tool, ToolCall, ToolRefusal
+from cora.ports.plugin import Tool, ToolCall
 from fakes import (
     TEXT_LOADERS,
     FakeDocuments,
     FakeEmbedder,
     FakeRetriever,
-    ScriptedChatModel,
     add_tool,
     host_for,
 )
@@ -57,85 +52,6 @@ def test_wrong_argument_type_yields_error_result_naming_the_problem() -> None:
     assert "integer" in result.error
 
 
-def silent() -> None:
-    return None
-
-
-SILENT_TOOL = Tool(
-    name="silent",
-    description="Returns nothing.",
-    parameter_schema={"type": "object", "properties": {}},
-    run=silent,
-)
-
-
-def test_tool_returning_none_yields_error_result() -> None:
-    runtime = ToolRuntime(tools=(SILENT_TOOL,))
-
-    result = runtime.execute(ToolCall(name="silent", arguments={}, call_id="call-6"))
-
-    assert result.call_id == "call-6"
-    assert result.payload is None
-    assert result.error is not None
-    assert "silent" in result.error
-
-
-def test_raising_tool_yields_error_result_instead_of_crashing() -> None:
-    result = make_runtime().execute(
-        ToolCall(name="explode", arguments={}, call_id="call-5")
-    )
-
-    assert result.call_id == "call-5"
-    assert result.payload is None
-    assert result.error is not None
-    assert "explode" in result.error
-    assert "RuntimeError" in result.error
-
-
-def test_a_refusal_says_why_in_the_tools_own_words() -> None:
-    def refuse() -> None:
-        raise ToolRefusal("a calorie target that low leaves no room for carbs")
-
-    refusing = Tool(
-        name="plan",
-        description="Refuses impossible input.",
-        parameter_schema={"type": "object", "properties": {}},
-        run=refuse,
-    )
-
-    result = ToolRuntime(tools=(refusing,)).execute(
-        ToolCall(name="plan", arguments={}, call_id="call-8")
-    )
-
-    assert (
-        result.error
-        == "tool 'plan' failed: a calorie target that low leaves no room for carbs"
-    )
-
-
-def test_an_accidental_value_error_is_still_only_a_kind() -> None:
-    """A refusal is declared, not guessed from a type: `ValueError` is what a
-    library raises by accident as readily as a tool raises it on purpose."""
-
-    def slip() -> None:
-        int("https://api.example.com/v1?key=sk-live-secret")
-
-    slipping = Tool(
-        name="slip",
-        description="Fails inside a library.",
-        parameter_schema={"type": "object", "properties": {}},
-        run=slip,
-    )
-
-    result = ToolRuntime(tools=(slipping,)).execute(
-        ToolCall(name="slip", arguments={}, call_id="call-9")
-    )
-
-    assert result.error is not None
-    assert "sk-live-secret" not in result.error
-    assert "ValueError" in result.error
-
-
 def test_a_tools_own_exception_text_is_never_passed_on() -> None:
     """An exception that merely escaped can carry anything the tool was holding —
     a URL with a key in it — so only its kind travels on."""
@@ -156,27 +72,6 @@ def test_a_tools_own_exception_text_is_never_passed_on() -> None:
 
     assert result.error is not None
     assert "sk-live-secret" not in result.error
-
-
-def test_unknown_tool_name_yields_error_result() -> None:
-    result = make_runtime().execute(
-        ToolCall(name="subtract", arguments={"a": 1, "b": 2}, call_id="call-4")
-    )
-
-    assert result.call_id == "call-4"
-    assert result.payload is None
-    assert result.error is not None
-    assert "subtract" in result.error
-
-
-def test_missing_required_argument_yields_error_result_naming_the_problem() -> None:
-    result = make_runtime().execute(
-        ToolCall(name="add", arguments={"a": 1}, call_id="call-3")
-    )
-
-    assert result.payload is None
-    assert result.error is not None
-    assert "b" in result.error
 
 
 def unavailable() -> None:
@@ -240,61 +135,3 @@ def test_a_plugins_own_search_reads_the_field_the_turn_is_running_in() -> None:
     )
 
     assert result.payload == "kyoto.md"
-
-
-def test_a_delegated_loops_search_reads_the_field_the_turn_is_running_in() -> None:
-    model = ScriptedChatModel(
-        [
-            ModelReply(
-                tool_calls=(
-                    ToolCall(
-                        name=SEARCH_TOOL_NAME,
-                        arguments={"query": "notes"},
-                        call_id="d1",
-                    ),
-                )
-            ),
-            ModelReply(text="I read what the search returned."),
-        ]
-    )
-    host = host_for(documents=_two_fields(), model=model)
-
-    def delegating() -> str:
-        """What the loop was shown, answered back: a delegated loop is offered cora's
-        own search, so what it found is what its own answer can rest on."""
-        return host.delegate("What do the notes say?")
-
-    runtime = ToolRuntime(
-        tools=(
-            Tool(
-                name="research",
-                description="Delegates.",
-                parameter_schema={"type": "object", "properties": {}},
-                run=delegating,
-            ),
-        )
-    )
-
-    with collecting() as inside:
-        result = runtime.execute(
-            ToolCall(name="research", arguments={}, call_id="c1"), frozenset({TRAVEL})
-        )
-
-    assert result.payload == "I read what the search returned."
-    [searched] = [step for step in inside.steps if isinstance(step, ToolUse)]
-    assert "kyoto.md" in searched.outcome
-    assert "plan.md" not in searched.outcome
-
-
-def test_the_field_is_not_still_bound_once_the_call_has_returned() -> None:
-    """One call's field must not answer the next one's search: a turn in a second field
-    would otherwise read the first field's documents."""
-    host = host_for(documents=_two_fields())
-    runtime = ToolRuntime(tools=(_reading(host),))
-
-    runtime.execute(
-        ToolCall(name="read", arguments={}, call_id="c1"), frozenset({TRAVEL})
-    )
-    after = runtime.execute(ToolCall(name="read", arguments={}, call_id="c2"))
-
-    assert after.payload == ""

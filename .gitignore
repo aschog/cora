@@ -38,3 +38,8 @@ site/
 
 # The editor's own workspace.
 .obsidian/
+
+# What a browser run leaves behind: the store it drove, the traces of a failed spec,
+# and the report nobody committed to reading.
+/frontends/react/ui/test-results/
+/frontends/react/ui/playwright-report/

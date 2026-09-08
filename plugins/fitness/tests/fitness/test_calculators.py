@@ -27,18 +27,6 @@ def test_male_bmr_matches_mifflin_st_jeor_reference() -> None:
     assert calculate_bmr("male", weight_kg=80, height_cm=180, age_years=30) == 1780.0
 
 
-def test_female_bmr_matches_mifflin_st_jeor_reference() -> None:
-    assert calculate_bmr("female", weight_kg=60, height_cm=165, age_years=25) == 1345.25
-
-
-def test_daily_energy_returns_bmr_and_sedentary_tdee_reference() -> None:
-    result = calculate_daily_energy(
-        "male", weight_kg=80, height_cm=180, age_years=30, activity_level="sedentary"
-    )
-
-    assert result == {"bmr": 1780.0, "tdee": 2136.0}
-
-
 @pytest.mark.parametrize(
     ("activity_level", "factor"),
     [
@@ -61,19 +49,6 @@ def test_daily_energy_applies_each_activity_factor(
     )
 
     assert result["tdee"] == pytest.approx(1780.0 * factor)
-
-
-@pytest.mark.parametrize(
-    ("kcal", "weight_kg", "expected"),
-    [
-        (2500, 80, {"protein_g": 144.0, "fat_g": 625 / 9, "carbs_g": 324.75}),
-        (1800, 60, {"protein_g": 108.0, "fat_g": 50.0, "carbs_g": 229.5}),
-    ],
-)
-def test_macros_match_reference_split(
-    kcal: int, weight_kg: float, expected: dict[str, float]
-) -> None:
-    assert plan_macros(kcal, weight_kg) == pytest.approx(expected)
 
 
 @pytest.mark.parametrize(

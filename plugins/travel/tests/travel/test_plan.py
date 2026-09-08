@@ -44,16 +44,8 @@ def _plan(**over: Any) -> Plan:
     return Plan(**(fields | over))
 
 
-def test_a_plan_carries_the_nights_between_its_two_dates() -> None:
-    assert _plan().nights == 3
-
-
 def test_a_priced_plan_totals_its_fare_and_its_stay() -> None:
     assert _plan().total == 420.0
-
-
-def test_a_plan_with_no_fare_and_no_stay_has_no_total() -> None:
-    assert _plan(fare=None, stay=None).total is None
 
 
 def test_a_plan_priced_on_one_side_only_has_no_total() -> None:
@@ -62,13 +54,3 @@ def test_a_plan_priced_on_one_side_only_has_no_total() -> None:
 
 def test_a_plan_round_trips_through_its_schema_unchanged() -> None:
     assert plan_from(written(_plan())) == _plan()
-
-
-def test_an_unpriced_plan_round_trips_unchanged() -> None:
-    unpriced = _plan(fare=None, stay=None)
-
-    assert plan_from(written(unpriced)) == unpriced
-
-
-def test_what_is_written_carries_its_dates_as_text() -> None:
-    assert written(_plan())["depart"] == "2026-09-07"

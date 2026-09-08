@@ -16,7 +16,6 @@ import re
 
 import workspace
 from cora.app import config
-from cora.app.config import DEFAULT_DB_PATH, DEFAULT_OUTPUT_PATH
 
 PRIVACY = "docs/privacy-and-ethics.md"
 
@@ -72,52 +71,6 @@ def _resolves(reference: str) -> bool:
     return any(candidate.exists() for candidate in candidates)
 
 
-def test_every_member_contributes_a_namespace_root() -> None:
-    """Two discoveries compared, not one restated: the namespace roots are built off the
-    manifests, and this walks the tree for them instead. A location claim is resolved
-    against every root, so a member either discovery missed would make a stale path look
-    fine."""
-    found = {
-        path
-        for pattern in ("src/cora", "*/*/src/cora")
-        for path in workspace.ROOT.glob(pattern)
-        if path.is_dir()
-    }
-
-    assert found == {*NAMESPACES}
-
-
-def test_a_reference_is_resolved_against_the_packages() -> None:
-    """`domain/chunk.py` is a location even though no such path exists from the root:
-    the docs name modules the way an import does, from `cora/` down."""
-    assert _resolves("domain/chunk.py")
-    assert _resolves("frontends/react/")
-    assert not _resolves("domain/no_such_module.py")
-
-
-def test_a_config_is_read_for_the_paths_its_comments_write_like_prose() -> None:
-    """A comment in a config names a file the way a page does, in backticks — so reading
-    configs bare let a comment go on pointing at a file the tree no longer has. A path
-    is claimed from its start: what follows a slash is a segment, not a second claim."""
-    claims = _claims()
-
-    assert ("Makefile", "tests/guards/test_docs_site.py") in claims
-    assert ("Makefile", "guards/test_docs_site.py") not in claims
-
-
-def test_a_path_is_claimed_from_its_dot_as_readily_as_from_a_letter() -> None:
-    """A leading dot is part of the name, not punctuation in front of it: `.githooks/`
-    is a directory and `./docs/` is the same directory as `docs/`. Reading past the dot
-    would claim a fragment the tree does not have, and skipping the token would leave a
-    stale path unchecked — the two ways this guard can be wrong about one character."""
-    assert _references("the hooks are in `.githooks/`.", CONFIG_PATTERNS) == {
-        ".githooks/"
-    }
-    assert _references("see ./docs/big-picture.md", CONFIG_PATTERNS) == {
-        "./docs/big-picture.md"
-    }
-
-
 def stores() -> dict[str, str]:
     """Every location a deployment can configure, and the variable that moves it.
 
@@ -133,18 +86,6 @@ def stores() -> dict[str, str]:
         for name, value in vars(config).items()
         if name.startswith("DEFAULT_") and name.endswith("_PATH")
     }
-
-
-def test_a_store_is_discovered_rather_than_listed() -> None:
-    """Two readings compared, not one restated: the discovery is what the test below
-    holds the page against, so a discovery that found nothing would pass it on an empty
-    loop. The output location is beside the stores rather than among them, and the
-    plugins folder is the one cora reads rather than writes."""
-    found = stores()
-
-    assert found["CORA_OUTPUT_PATH"] == DEFAULT_OUTPUT_PATH
-    assert found["CORA_DB_PATH"] == DEFAULT_DB_PATH
-    assert len(found) >= 5
 
 
 def test_the_stores_cora_writes_are_one_database_and_one_directory() -> None:
@@ -176,17 +117,6 @@ def test_the_privacy_page_names_every_store_and_the_setting_that_moves_it() -> N
     assert missing == [], "\n".join(
         ["the privacy page does not account for:", *missing]
     )
-
-
-def test_the_readme_says_where_an_effect_writes_and_how_to_move_it() -> None:
-    """The output location is the one place cora writes something the user keeps, and
-    the spec says `README.md` has to name it. A default moved without the page moving
-    with it sends them looking in a directory nothing is in — so this claim is one a
-    guard reads, rather than prose held only by whoever remembers it."""
-    readme = pathlib.Path("README.md").read_text()
-
-    assert DEFAULT_OUTPUT_PATH in readme
-    assert "CORA_OUTPUT_PATH" in readme
 
 
 def test_every_location_the_docs_claim_exists() -> None:

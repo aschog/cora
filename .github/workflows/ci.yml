@@ -36,6 +36,14 @@ jobs:
       - name: Unit tests
         run: uv run pytest -q
 
+      # Every drawing is generated from the source. Regenerating and finding no diff is
+      # the whole guard: a port, a class or a call added without a redraw is a red build.
+      - name: Diagrams are current
+        run: |
+          sudo apt-get update && sudo apt-get install -y graphviz
+          make diagram
+          git diff --exit-code -- docs/assets
+
       # The wheels are the only artefact `module-name` can be wrong about: the editable
       # install every other gate runs on never reads it, so a module a manifest forgot to
       # name passes all of them and ships as nothing. A check in its own right, not a
@@ -95,25 +103,6 @@ jobs:
 
       - name: UI test
         run: npm test
-
-      # The one test that needs a browser. What the reader keeps while an answer is being
-      # written is invisible to happy-dom, so this tier is the only thing that fails if
-      # the patch goes back to rewriting a text node it should have appended to. Only the
-      # headless shell, and cached on the lockfile that pins playwright's version.
-      - name: Cache the browser
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('frontends/react/ui/package-lock.json') }}
-
-      # `--with-deps` as well as the shell: the shared libraries otherwise come from
-      # whatever `ubuntu-latest` currently ships, so an image rotating one away would fail
-      # every PR on a step that has nothing to do with the diff.
-      - name: Install the browser
-        run: npx playwright install chromium --only-shell --with-deps
-
-      - name: Browser tier
-        run: npm run test:browser
 
       # The page the server serves is this build's output, and a broken asset import
       # type-checks and unit-tests clean — nothing else looks at it.

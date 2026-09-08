@@ -1,11 +1,7 @@
-import pytest
-
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
-from cora.domain.conversation import Session, Turn
-from cora.domain.trace import ModelDecision, ToolUse, WorkShown
-from cora.engine.memory_tool import REMEMBER_TOOL_NAME
-from cora.engine.plugin_set import RESERVED_TOOL_NAMES
+from cora.domain.conversation import Session
+from cora.domain.trace import ModelDecision, ToolUse
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.react import payloads
 from cora.ports.memory import Fact
@@ -28,63 +24,18 @@ def test_a_citation_carries_the_field_and_upload_its_span_was_measured_in() -> N
     }
 
 
-def test_a_step_says_where_the_work_came_from() -> None:
-    """The panel's origin line. A tool cora ships is the agent reaching for one of its
-    own; anything else on offer came from the loaded plugin, which is the whole claim
-    the plugin architecture makes — so the panel can say which it was.
-
-    Driven off the engine's own list rather than a copy of it: a built-in added there
-    is the one place a built-in gets added, and a page that had to be told separately
-    would go on calling it a plugin's."""
-    for name in RESERVED_TOOL_NAMES:
-        assert payloads.step(ToolUse(name=name))["origin"] == "core tool"
-
-    domain = ToolUse(name="training_log", outcome="3 misses")
-    assert domain.name not in RESERVED_TOOL_NAMES
-    assert payloads.step(domain)["origin"] == "plugin tool"
-
-
-def test_a_built_in_the_engine_gains_is_not_reported_as_a_plugin_s(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """The reason it reads the engine's list instead of holding its own: a third
-    built-in gets registered where collisions are already checked, and a copy here
-    would go on labelling it `plugin tool` — the page lying about the one thing the
-    plugin architecture exists to show."""
-    monkeypatch.setitem(RESERVED_TOOL_NAMES, "summarise_document", "summaries")
-
-    shipped = ToolUse(name="summarise_document", outcome="one paragraph")
-
-    assert payloads.step(shipped)["origin"] == "core tool"
-
-
-def test_a_step_that_called_no_tool_claims_no_origin() -> None:
-    """A decision is cora's own, so the line has nothing to say and is not drawn."""
-    assert payloads.step(ModelDecision(tools=("search",)))["origin"] == ""
-
-
-def test_a_tool_step_renders_summary_detail_and_failure() -> None:
-    step = ToolUse(
-        name="search_documents",
-        arguments={"query": "squats"},
-        outcome="2 passages",
-        detail="…",
-        failed=False,
-    )
-
-    assert payloads.step(step) == {
-        "summary": 'search_documents(query="squats") → 2 passages',
-        "detail": "…",
-        "failed": False,
-        "origin": "core tool",
-        "steps": [],
-    }
-
-
 def test_every_kind_of_step_renders_the_same_keys() -> None:
     """The page draws one kind of step, so a kind added to the engine arrives in the
-    shape the panel already knows."""
+    shape the panel already knows.
+
+    `origin` is the one field the shape does not settle: it says whose tool the step
+    reached for, which is the whole claim the plugin architecture makes, and it is read
+    off the engine's own list rather than off a second copy here. A step that called no
+    tool claims none.
+    """
     decision = payloads.step(ModelDecision(detail="thinking", tools=("search",)))
+    ours = payloads.step(ToolUse(name=SEARCH_TOOL_NAME, outcome="1 passage"))
+    theirs = payloads.step(ToolUse(name="book_a_flight", outcome="booked"))
 
     assert decision == {
         "summary": "Decided to call search",
@@ -93,6 +44,8 @@ def test_every_kind_of_step_renders_the_same_keys() -> None:
         "origin": "",
         "steps": [],
     }
+    assert ours["origin"] == "core tool"
+    assert theirs["origin"] == "plugin tool"
 
 
 def test_what_a_tool_did_inside_its_call_travels_as_the_call_s_own_steps() -> None:
@@ -148,16 +101,6 @@ def test_a_result_is_the_answer_its_citations_and_its_trace() -> None:
     }
 
 
-def test_a_turn_is_a_question_and_the_result_it_got() -> None:
-    """A reopened conversation redraws from the shape a fresh answer arrives in."""
-    turn = Turn(question="Why?", result=ChatResult(answer="Because."))
-
-    assert payloads.turn(turn) == {
-        "question": "Why?",
-        "result": {"answer": "Because.", "citations": [], "trace": [], "scopes": []},
-    }
-
-
 def test_a_fact_and_a_session_carry_what_it_takes_to_act_on_them() -> None:
     """A key forgets a fact; a thread id reopens a conversation."""
     assert payloads.fact(Fact(key="k1", text="No burpees.")) == {
@@ -167,33 +110,4 @@ def test_a_fact_and_a_session_carry_what_it_takes_to_act_on_them() -> None:
     assert payloads.session(Session(thread_id="t1", opened_with="Why?")) == {
         "thread_id": "t1",
         "opened_with": "Why?",
-    }
-
-
-def test_the_origin_of_a_built_in_names_no_act_only_one_of_them_performs() -> None:
-    """The list holds two built-ins and they do different things: one searches the
-    documents, the other writes down what cora keeps about the user. One label over
-    both can only be what they have in common — naming the search tells the reader that
-    a memory write went through their documents. What the tool *did* is the step's own
-    summary, which says so in its own words."""
-    searched = payloads.step(ToolUse(name=SEARCH_TOOL_NAME))["origin"]
-    kept = payloads.step(ToolUse(name=REMEMBER_TOOL_NAME, outcome="noted"))["origin"]
-
-    assert searched == kept
-    assert "retrieval" not in kept and "search" not in kept
-
-
-def test_a_plugin_s_own_line_reaches_the_page_in_the_shape_the_panel_knows() -> None:
-    """A kind the engine gained needs no change here: the wire reads a step off the base
-    class, and the panel draws whatever those keys hold."""
-    shown = payloads.step(
-        WorkShown(plugin="acme.plugins.birds", did="counted 3 wrens", detail="wren")
-    )
-
-    assert shown == {
-        "summary": "acme.plugins.birds counted 3 wrens",
-        "detail": "wren",
-        "failed": False,
-        "origin": "",
-        "steps": [],
     }

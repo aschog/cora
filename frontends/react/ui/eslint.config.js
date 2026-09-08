@@ -11,7 +11,7 @@ import tseslint from 'typescript-eslint'
    components, so a save replaces it rather than reloading the page and losing the
    conversation on it. */
 export default [
-  { ignores: ['dist', 'coverage', 'browser/__screenshots__'] },
+  { ignores: ['dist', 'coverage', 'test-results', 'playwright-report'] },
   js.configs.recommended,
   ...tseslint.configs.recommended,
   reactHooks.configs.flat['recommended-latest'],
@@ -33,7 +33,7 @@ export default [
     },
   },
   {
-    files: ['**/*.test.{ts,tsx}', 'browser/**/*.ts'],
+    files: ['**/*.test.{ts,tsx}', 'e2e/**/*.ts'],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
   },
   /* The checks that run beside eslint rather than in it. Node, not a browser — and not

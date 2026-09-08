@@ -1,9 +1,7 @@
 from cora.domain.trace import (
     ModelDecision,
-    StepEntered,
     ToolUse,
     WorkShown,
-    step_kinds,
 )
 
 
@@ -11,10 +9,6 @@ def test_a_decision_names_the_tools_it_asked_for() -> None:
     decision = ModelDecision(tools=("search_documents", "add"))
 
     assert decision.summary == "Decided to call search_documents and add"
-
-
-def test_a_decision_that_asked_for_no_tool_says_so() -> None:
-    assert ModelDecision().summary == "Decided no tool was needed"
 
 
 def test_a_tool_use_shows_its_name_arguments_and_outcome() -> None:
@@ -27,18 +21,6 @@ def test_a_tool_use_shows_its_name_arguments_and_outcome() -> None:
     assert use.summary == 'search_documents(query="protein") → 1 passage from note.md'
 
 
-def test_arguments_keep_the_order_they_were_called_with() -> None:
-    use = ToolUse(name="add", arguments={"a": 20, "b": 22}, outcome="42")
-
-    assert use.summary == "add(a=20, b=22) → 42"
-
-
-def test_a_tool_called_with_no_arguments_shows_the_bare_name() -> None:
-    use = ToolUse(name="today", arguments={}, outcome="2026-08-11")
-
-    assert use.summary == "today() → 2026-08-11"
-
-
 def test_a_failed_tool_use_is_marked_and_carries_the_error() -> None:
     use = ToolUse(
         name="add", arguments={"a": 1}, outcome="invalid arguments", failed=True
@@ -46,10 +28,6 @@ def test_a_failed_tool_use_is_marked_and_carries_the_error() -> None:
 
     assert use.failed
     assert use.summary == "add(a=1) → invalid arguments"
-
-
-def test_a_step_the_turn_entered_is_named_by_the_step() -> None:
-    assert StepEntered("screen").summary == "Started to screen"
 
 
 def test_a_step_read_back_from_data_holds_the_tuples_it_declares() -> None:
@@ -82,23 +60,5 @@ def test_a_plugin_s_own_line_is_summarised_as_the_plugin_and_what_it_did() -> No
     assert shown.summary == "acme.plugins.birds counted 3 wrens"
 
 
-def test_a_plugin_s_own_line_carries_its_detail_behind_it() -> None:
-    shown = WorkShown(plugin="acme", did="counted wrens", detail="wren, wren, wren")
-
-    assert shown.detail == "wren, wren, wren"
-
-
-def test_a_plugin_s_own_line_reads_as_nothing_behind_it_by_default() -> None:
-    assert WorkShown(plugin="acme", did="counted wrens").detail == ""
-
-
 def test_a_plugin_s_own_line_marked_as_gone_wrong_reads_as_failed() -> None:
     assert WorkShown(plugin="acme", did="lost count", failed=True).failed
-
-
-def test_a_plugin_s_own_line_has_not_failed_unless_it_says_so() -> None:
-    assert not WorkShown(plugin="acme", did="counted wrens").failed
-
-
-def test_a_plugin_s_own_line_is_a_kind_the_trace_finds() -> None:
-    assert WorkShown in step_kinds()

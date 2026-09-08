@@ -13,3 +13,9 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "cora.plugins.security"
+
+# A layer's import bans live in a `.ruff.toml` in the directory they govern — that is
+# how ruff applies them — and ruff writes its cache beside one. Neither is something an
+# installed wheel has any use for, and the cache is a developer's machine in a binary.
+wheel-exclude = ["**/.ruff.toml", "**/.ruff_cache"]
+source-exclude = ["**/.ruff.toml", "**/.ruff_cache"]

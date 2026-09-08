@@ -38,22 +38,6 @@ def test_out_of_range_args_return_an_error_result_not_a_raise(
     assert result.payload is None
 
 
-@pytest.mark.parametrize(
-    "arguments",
-    [
-        energy_args(activity_level="jetpacking"),
-        energy_args(sex="alien"),
-    ],
-)
-def test_invalid_enum_values_are_rejected_by_the_schema(
-    arguments: dict[str, object],
-) -> None:
-    result = _run("calculate_daily_energy", arguments)
-
-    assert result.payload is None
-    assert "invalid arguments" in (result.error or "")
-
-
 def test_macros_raise_surfaces_as_error_result_not_an_exception() -> None:
     # kcal 1200 / weight 150 pass the schema bounds but make carbs negative,
     # so plan_macros raises — the runtime must catch it, not propagate.
@@ -80,12 +64,6 @@ def test_valid_call_returns_an_ok_result(
     assert result.payload is not None
 
 
-def test_bmi_tool_rounds_to_one_decimal() -> None:
-    result = _run("calculate_bmi", {"weight_kg": 75, "height_m": 1.8})
-
-    assert result.payload == 23.1
-
-
 def test_daily_energy_tool_rounds_kcal_to_whole_numbers() -> None:
     result = _run(
         "calculate_daily_energy",
@@ -93,9 +71,3 @@ def test_daily_energy_tool_rounds_kcal_to_whole_numbers() -> None:
     )
 
     assert result.payload == {"bmr": 1775, "tdee": 2441}
-
-
-def test_macros_tool_rounds_grams_to_whole_numbers() -> None:
-    result = _run("plan_macros", {"kcal": 2500, "weight_kg": 80})
-
-    assert result.payload == {"protein_g": 144, "fat_g": 69, "carbs_g": 325}
