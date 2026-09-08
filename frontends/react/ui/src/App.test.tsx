@@ -881,9 +881,6 @@ test('a fact is forgotten only once i have said so', async () => {
   await waitFor(() => expect(screen.queryByText(FACT.text)).toBeNull())
 })
 
-/** The documents rail's own fixture: what the field lists, minus what has been deleted. */
-  screen.getByRole('button', { name: `Delete ${name}` })
-
 test('the conversation being read is named in the address', async () => {
   /* A conversation the reader is in should be one they can link to, come back to, and
      press back out of — none of which is possible while every conversation has the same
