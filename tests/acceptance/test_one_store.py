@@ -35,7 +35,7 @@ def test_everything_cora_keeps_for_itself_is_in_the_one_file_the_setting_names(
         }
 
     assert sorted(path.name for path in tmp_path.glob("*.sqlite")) == ["cora.sqlite"]
-    assert {"store", "turns", "checkpoints", "passages"} <= tables
+    assert {"store", "cora_turns", "checkpoints", "cora_passages"} <= tables
     assert [fact.text for fact in app.memory.recall()] == ["lifts on tuesdays"]
     assert [turn.question for turn in app.conversations.turns("t1")] == [
         "How much protein?"

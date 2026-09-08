@@ -9,12 +9,17 @@ from pathlib import Path
 from cora.app.config import Config
 
 
-def store_config(root: Path, *, debug: bool = False) -> Config:
+def store_config(
+    root: Path,
+    *,
+    debug: bool = False,
+    plugin_modules: tuple[str, ...] = (),
+) -> Config:
     return Config(
         api_key="k",
         model="openai/gpt-4o-mini",
         base_url="https://openrouter.ai/api/v1",
-        plugin_modules=(),
+        plugin_modules=plugin_modules,
         top_k=3,
         max_tool_rounds=4,
         history_turns=6,

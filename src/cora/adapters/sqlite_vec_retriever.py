@@ -1,10 +1,10 @@
-import pathlib
 import sqlite3
 from collections.abc import Callable
 from functools import wraps
 
 import sqlite_vec
 
+from cora.adapters.sqlite_store import connect
 from cora.domain.chunk import Chunk
 from cora.domain.errors import RetrievalError
 from cora.ports.retrieval import RetrievedChunk
@@ -64,11 +64,7 @@ class SqliteVecRetriever:
     @classmethod
     @_translate_errors
     def at(cls, path: str, user: str = LOCAL) -> "SqliteVecRetriever":
-        pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(
-            path, check_same_thread=False, isolation_level=None
-        )
-        connection.execute("pragma journal_mode = wal")
+        connection = connect(path)
         connection.enable_load_extension(True)
         sqlite_vec.load(connection)
         connection.enable_load_extension(False)

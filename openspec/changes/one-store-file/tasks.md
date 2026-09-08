@@ -38,3 +38,13 @@
 ## 6. Done
 
 - [x] 6.1 Drop the `xfail` marker from 1.1 and watch the outer test pass.
+
+## 7. Review findings
+
+- [x] 7.1 Write a test that each store opens the shared file in write-ahead mode, which
+  SQLite's own default is not.
+- [x] 7.2 Give the four writers one `connect`, so the journal mode and the busy timeout
+  are cora's own doing rather than a library's incidental pragma.
+- [x] 7.3 Prefix `turns` as the retriever's tables are prefixed, so every table cora
+  owns is named apart from the libraries sharing the file.
+- [x] 7.4 Fold the third copy of the test configuration into the shared helper.

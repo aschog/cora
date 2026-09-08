@@ -8,6 +8,7 @@ from typing import Any
 import pytest
 
 from app_builder import assembled, indexed
+from app_config import store_config
 from cora.adapters.langgraph_runner import LangGraphRunner
 from cora.adapters.openrouter_chat_model import OpenRouterChatModel
 from cora.adapters.sqlite_conversations import SqliteConversations
@@ -535,28 +536,11 @@ def test_assemble_announces_the_plugins_it_was_given_by_module_path(
 
 
 def _config(root: Path, *, debug: bool = False) -> Config:
-    """Every store under one directory of the test's own, as a deployment keeps them
-    under `.cora` — the index among them now that it is a file rather than a folder."""
-    return Config(
-        api_key="k",
-        model="openai/gpt-4o-mini",
-        base_url="https://openrouter.ai/api/v1",
-        plugin_modules=("fixture_plugins.valid",),
-        top_k=3,
-        max_tool_rounds=4,
-        history_turns=6,
-        max_output_tokens=1024,
-        request_timeout_seconds=30,
-        reasoning_effort="low",
-        db_path=str(root / "cora.sqlite"),
-        documents_path=str(root / "documents"),
-        log_path=str(root / "logs" / "cora.log"),
-        # Pinned under the test's own directory, because the default is the folder the
-        # docs tell an operator to drop plugins into — a suite reading that one runs
-        # whatever the developer left there, and fails on it.
-        plugins_path=str(root / "plugins"),
-        debug=debug,
-    )
+    """The shipped configuration under a directory of the test's own, with the plugins
+    folder pinned there too: the default is the one the docs tell an operator to drop
+    plugins into, and a suite reading that one runs whatever the developer left there.
+    """
+    return store_config(root, debug=debug, plugin_modules=("fixture_plugins.valid",))
 
 
 @pytest.mark.integration
@@ -1076,10 +1060,10 @@ def test_build_puts_every_store_and_the_checkpoints_in_one_database(
             )
         }
 
-    assert "turns" in tables, "the turns the page redraws"
+    assert "cora_turns" in tables, "the turns the page redraws"
     assert "checkpoints" in tables, "and the thread the model is given"
     assert "store" in tables, "and the facts it keeps about the user"
-    assert "passages" in tables, "and where every indexed passage sits"
+    assert "cora_passages" in tables, "and where every indexed passage sits"
     assert [fact.text for fact in app.memory.recall()] == ["lifts on tuesdays"]
     assert [turn.question for turn in app.conversations.turns("t1")] == ["q"]
     assert app.knowledge_base.list_sources() == ["l.txt"]

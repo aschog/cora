@@ -1,11 +1,11 @@
 import json
-import pathlib
 import sqlite3
 from collections.abc import Callable
 from dataclasses import asdict
 from functools import wraps
 from typing import Any
 
+from cora.adapters.sqlite_store import connect
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
@@ -16,7 +16,7 @@ STEPS = "steps"
 """The field a step keeps its own steps in, which is the one that nests."""
 
 SCHEMA = (
-    "create table if not exists turns ("
+    "create table if not exists cora_turns ("
     "id integer primary key autoincrement, thread text not null, turn text not null)"
 )
 
@@ -43,34 +43,31 @@ class SqliteConversations:
     @classmethod
     @_translate_errors
     def at(cls, path: str) -> "SqliteConversations":
-        pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(
-            path, check_same_thread=False, isolation_level=None
-        )
+        connection = connect(path)
         connection.execute(SCHEMA)
         return cls(connection)
 
     @_translate_errors
     def record(self, thread_id: str, turn: Turn) -> None:
         self._connection.execute(
-            "insert into turns (thread, turn) values (?, ?)",
+            "insert into cora_turns (thread, turn) values (?, ?)",
             (thread_id, json.dumps(_as_data(turn))),
         )
 
     @_translate_errors
     def turns(self, thread_id: str) -> tuple[Turn, ...]:
         rows = self._connection.execute(
-            "select turn from turns where thread = ? order by id", (thread_id,)
+            "select turn from cora_turns where thread = ? order by id", (thread_id,)
         ).fetchall()
         return tuple(_from_data(json.loads(row[0])) for row in rows)
 
     @_translate_errors
     def sessions(self) -> tuple[Session, ...]:
         rows = self._connection.execute(
-            "select thread, turn from turns where id in "
-            "(select min(id) from turns group by thread) "
-            "order by (select max(id) from turns as newest where newest.thread = "
-            "turns.thread) desc"
+            "select thread, turn from cora_turns where id in "
+            "(select min(id) from cora_turns group by thread) "
+            "order by (select max(id) from cora_turns as newest where newest.thread = "
+            "cora_turns.thread) desc"
         ).fetchall()
         return tuple(
             Session(thread_id=row[0], opened_with=json.loads(row[1])["question"])
@@ -79,7 +76,9 @@ class SqliteConversations:
 
     @_translate_errors
     def forget(self, thread_id: str) -> None:
-        self._connection.execute("delete from turns where thread = ?", (thread_id,))
+        self._connection.execute(
+            "delete from cora_turns where thread = ?", (thread_id,)
+        )
 
     def close(self) -> None:
         self._connection.close()

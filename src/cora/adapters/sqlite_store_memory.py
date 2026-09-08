@@ -1,4 +1,3 @@
-import pathlib
 import sqlite3
 import time
 import uuid
@@ -7,6 +6,7 @@ from functools import wraps
 
 from langgraph.store.sqlite import SqliteStore
 
+from cora.adapters.sqlite_store import connect
 from cora.domain.errors import MemoryStoreError
 from cora.ports.memory import Fact
 
@@ -51,10 +51,7 @@ class SqliteStoreMemory:
     @classmethod
     @_translate_errors
     def at(cls, path: str, user: str = DEFAULT_USER) -> "SqliteStoreMemory":
-        pathlib.Path(path).parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(
-            path, check_same_thread=False, isolation_level=None
-        )
+        connection = connect(path)
         store = SqliteStore(connection)
         store.setup()
         return cls(store, user)

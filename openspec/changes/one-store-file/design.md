@@ -29,10 +29,11 @@
   a third name would be a third thing to learn.
 - The two retired variables are dropped rather than deprecated, since no deployment of
   cora is older than this sprint.
-- WAL is left as SQLite's default under these connections, because four readers of one
-  file is what it was built for.
+- Every store opens the file through one `connect`, which sets write-ahead logging and
+  a busy timeout — SQLite's own default is a journal that locks readers out.
 - Rejected one shared connection: each adapter's lifetime and error translation are its
-  own, and a shared handle makes closing one close them all.
+  own, and a shared handle makes closing one close them all — they share how they open
+  it, not the handle.
 - Rejected a migration: the stores were cleared for the retriever change, so there is
   nothing to carry.
 - The privacy page's store guard reads the `DEFAULT_*_PATH` constants, so deleting two
@@ -41,7 +42,8 @@
 ## Risks / Trade-offs
 
 - Four connections on one file can contend under concurrent writes → WAL takes
-  concurrent readers with one writer, which is what a single-user deployment does.
+  concurrent readers with one writer, and a busy timeout makes the second writer wait
+  rather than fail.
 - One file cannot be thrown away in parts any more → losing the index alone stops being
   `rm -rf`, and re-uploading is the way back.
 - A deployment still setting the retired variables gets the default instead → the
