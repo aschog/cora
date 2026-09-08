@@ -62,8 +62,11 @@ export default defineConfig({
   workers: 1,
   forbidOnly: true,
   reporter: [['list']],
-  timeout: 30_000,
-  expect: { timeout: 10_000 },
+  /* A stubbed turn is milliseconds and a live one is a minute or more, so the two runs
+     wait on entirely different scales. One place, rather than a number threaded through
+     every helper the specs share. */
+  timeout: live ? 300_000 : 30_000,
+  expect: { timeout: live ? 150_000 : 10_000 },
   use: { baseURL: PAGE, trace: 'retain-on-failure' },
   testIgnore: live ? undefined : /live\.spec\.ts/,
   testMatch: live ? /live\.spec\.ts/ : undefined,

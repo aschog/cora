@@ -19,6 +19,7 @@ from cora.domain.decision import TurnPaused
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.react.api import api
+from cora.plugins import fitness
 from cora.plugins.fitness.tools import DAILY_ENERGY_TOOL
 from live import live_config
 from sse import frames
@@ -32,6 +33,10 @@ Spread it over three or four meals.
 """
 IN_THE_SUBJECT = "How much protein should I eat per kg of bodyweight?"
 LIVE_PLUGINS = ("cora.plugins.security", "cora.plugins.fitness")
+COACHING = fitness.SCOPE
+"""The field the coaching plugin registers, read off the plugin rather than written
+here. A field owns its documents and a turn searches the one it runs in, so a document
+seeded anywhere else is one this tier's questions cannot reach."""
 
 
 def _live_app(store: Path) -> App:
@@ -45,7 +50,7 @@ def _holding_the_protein_doc(store: Path) -> App:
     """Indexed behind the page's back, for the tests whose subject starts at the
     question. The happy path uploads the same document over the API instead."""
     app = _live_app(store)
-    app.knowledge_base.add_file(PROTEIN_DOC, "protein.md")
+    app.knowledge_base.add_file(PROTEIN_DOC, "protein.md", scope=COACHING)
     return app
 
 
@@ -81,8 +86,9 @@ def _steps(turn: dict) -> str:
     return "\n".join(f"{step['summary']}\n{step['detail']}" for step in turn["trace"])
 
 
-def _documents(page: TestClient) -> list[str]:
-    return page.get("/api/documents").json()
+def _documents(page: TestClient, scope: str = COACHING) -> list[str]:
+    """The rail lists the field it is set to, so a listing has to name one."""
+    return page.get("/api/documents", params={"scope": scope}).json()
 
 
 def _remembered(page: TestClient) -> str:
@@ -105,10 +111,16 @@ def test_a_whole_session_uploads_asks_calculates_and_remembers(tmp_path: Path) -
     keep reaches the store the memory panel reads."""
     app = _live_app(tmp_path)
     with _page(app) as page:
-        added = page.post("/api/documents", files=UPLOADED)  # the embedder loads here
+        # The embedder loads here. The field is named, as the rail names it: an upload
+        # that landed in the default one is a document the coaching turns never see.
+        added = page.post("/api/documents", files=UPLOADED, data={"scope": COACHING})
 
         assert added.status_code == 200, added.text
-        assert added.json() == {"document": "protein.md", "chunks": 1}
+        assert added.json() == {
+            "document": "protein.md",
+            "chunks": 1,
+            "scope": COACHING,
+        }
         assert _documents(page) == ["protein.md"]
 
         asked = _turn(page, IN_THE_SUBJECT)
@@ -153,7 +165,7 @@ def test_a_real_model_cites_a_passage_the_reader_can_open(tmp_path: Path) -> Non
         )
         [cited, *_] = turn["citations"]
         assert cited["document"] == "protein.md"
-        opened = page.get(f"/api/uploads/{cited['upload']}")
+        opened = page.get(f"/api/uploads/{cited['scope']}/{cited['upload']}")
 
         assert opened.status_code == 200, opened.text
         passage = opened.json()["text"][cited["start"] : cited["end"]]

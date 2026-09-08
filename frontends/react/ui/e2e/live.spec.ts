@@ -6,20 +6,18 @@ import { answered, ask, fresh, rightRail } from './helpers'
    A real model phrases an answer differently every time; what it may not do is fail to
    search, fail to cite, or fail to answer. */
 
-test.describe.configure({ timeout: 180_000 })
-
 test('a real model searches the documents and cites what it used', async ({ page }) => {
   await fresh(page)
 
   await ask(page, 'What do my notes say about protein? Search them first.')
   await answered(page)
 
-  await expect(page.getByLabel('Open cited source 1')).toBeVisible({ timeout: 120_000 })
+  await expect(page.getByLabel('Open cited source 1')).toBeVisible()
 
   await page.getByLabel('Open cited source 1').click()
   await expect(page.getByRole('dialog')).toContainText('rotein')
   await page.keyboard.press('Escape')
 
   await rightRail(page, 'STEPS')
-  await expect(page.getByText('search_documents')).toBeVisible()
+  await expect(page.getByRole('button', { name: /search_documents\(query/ })).toBeVisible()
 })

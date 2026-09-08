@@ -21,11 +21,11 @@ export async function ask(page: Page, question: string) {
   await page.getByRole('button', { name: 'Ask', exact: true }).click()
 }
 
-/** The turn is over when the button that sends one is usable again. */
+/** The turn is over when the button that sends one is usable again. How long that takes
+ *  is the run's to say — `playwright.config.ts` sets it, because a stubbed turn and a
+ *  live one are not the same order of wait. */
 export async function answered(page: Page) {
-  await expect(page.getByRole('button', { name: 'Ask', exact: true })).toBeEnabled({
-    timeout: 20_000,
-  })
+  await expect(page.getByRole('button', { name: 'Ask', exact: true })).toBeEnabled()
 }
 
 /** The conversation has a name in the address once it has answered, which is what a
