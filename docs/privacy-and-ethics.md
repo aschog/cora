@@ -62,7 +62,7 @@ be moved without moving the others.
 | Where | What is in it | Setting |
 | --- | --- | --- |
 | `.cora/documents` | The cleaned text of every document you uploaded, one Markdown file per upload, under a directory per field | `CORA_DOCUMENTS_PATH` |
-| `.cora/chroma` | The embeddings, and where each passage sits in the file above | `CORA_DB_PATH` |
+| `.cora/index.sqlite` | The embeddings, and where each passage sits in the file above | `CORA_DB_PATH` |
 | `.cora/memory.sqlite` | The facts you asked cora to remember | `CORA_MEMORY_PATH` |
 | `.cora/conversations.sqlite` | Every recorded turn — question, answer, citations, trace — and a checkpoint of every turn's state: the brief, the transcript, and the tool results the model was shown | `CORA_CONVERSATIONS_PATH` |
 | `.cora/logs/cora.log` | Written only under `CORA_DEBUG`. cora's own lines cut each prompt, reply and passage to 120 characters; see below for what is not cut | `CORA_LOG_PATH` |

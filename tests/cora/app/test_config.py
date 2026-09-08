@@ -150,6 +150,15 @@ def test_the_memory_default_sits_beside_the_document_store() -> None:
     assert Path(config.conversations_path).parent == Path(config.db_path).parent
 
 
+def test_the_index_default_is_a_file_rather_than_a_directory() -> None:
+    """The index is one SQLite file cora opens itself, so the default names a file —
+    a deployment pointing this at a directory is pointing it at nothing."""
+    config = Config.from_env({"OPENROUTER_API_KEY": "key-123"})
+
+    assert Path(config.db_path).suffix == ".sqlite"
+    assert Path(config.db_path).parent == Path(".cora")
+
+
 def test_the_output_location_is_not_under_the_stores_cora_keeps_for_itself() -> None:
     """What an effect produces is the user's to keep, so it does not land among the
     indexes and databases cora would delete to start clean."""

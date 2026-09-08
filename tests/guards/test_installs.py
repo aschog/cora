@@ -61,8 +61,24 @@ def test_a_name_the_workspace_does_not_ship_is_an_error() -> None:
 
 SERVES_A_PAGE = frozenset({"starlette", "streamlit"})
 """The frameworks a frontend is written against. `uvicorn` is deliberately not among
-them: chromadb resolves it whatever cora does, so its presence says nothing about the
+them: a server resolves it whatever cora does, so its presence says nothing about the
 app owning an interface, and a rule naming it would be false the day it was written."""
+
+RETIRED = "chromadb"
+"""The store the index used to be, held out by name: it brought twenty megabytes and a
+server's worth of transitive dependencies behind one adapter."""
+
+
+def test_nothing_in_the_workspace_resolves_the_store_the_index_left() -> None:
+    """The index is cora's own SQLite file now, and this is what keeps the store it
+    replaced from arriving again under some other member's manifest."""
+    reaching = sorted(
+        distribution
+        for member in workspace.members()
+        if RETIRED in _resolved(distribution := workspace.distribution(member))
+    )
+
+    assert reaching == [], f"these still bring {RETIRED} in: {reaching}"
 
 
 def test_the_app_resolves_without_any_user_interface() -> None:

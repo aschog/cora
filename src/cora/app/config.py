@@ -41,7 +41,9 @@ model that does not reason: `openai/gpt-4o-mini`, which `DEFAULT_MODEL` still na
 asked with `low` set and answered normally, so such a model ignores the key rather than
 refusing it. No test holds that — only the provider can answer it."""
 DEFAULT_HISTORY_TURNS = 20
-DEFAULT_DB_PATH = ".cora/chroma"
+DEFAULT_DB_PATH = ".cora/index.sqlite"
+"""The index: one SQLite file holding each passage's span beside its embedding. A
+file rather than a directory, because cora opens it itself."""
 DEFAULT_MEMORY_PATH = ".cora/memory.sqlite"
 DEFAULT_DOCUMENTS_PATH = ".cora/documents"
 """Where a scope keeps its documents: a directory per field under this root, and one

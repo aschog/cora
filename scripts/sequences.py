@@ -137,7 +137,7 @@ def _fields(klass: ast.ClassDef) -> dict[str, str]:
 def providers() -> dict[str, str]:
     """What fills each port, off the composition root — the component map's own reading.
 
-    A lifeline says what is really there: `retriever: ChromaRetriever`, because a
+    A lifeline says what is really there: `retriever: SqliteVecRetriever`, because a
     sequence is one run of the app and one run has one adapter behind each port.
     """
     return {

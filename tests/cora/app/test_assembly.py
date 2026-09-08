@@ -532,7 +532,9 @@ def test_assemble_announces_the_plugins_it_was_given_by_module_path(
     assert "plugins loaded: fixture_plugins.screen, fixture_plugins.domain" in logged
 
 
-def _config(db_path: Path, *, debug: bool = False) -> Config:
+def _config(root: Path, *, debug: bool = False) -> Config:
+    """Every store under one directory of the test's own, as a deployment keeps them
+    under `.cora` — the index among them now that it is a file rather than a folder."""
     return Config(
         api_key="k",
         model="openai/gpt-4o-mini",
@@ -544,15 +546,15 @@ def _config(db_path: Path, *, debug: bool = False) -> Config:
         max_output_tokens=1024,
         request_timeout_seconds=30,
         reasoning_effort="low",
-        db_path=str(db_path),
-        memory_path=str(db_path / "memory.sqlite"),
-        documents_path=str(db_path / "documents"),
-        conversations_path=str(db_path / "conversations.sqlite"),
-        log_path=str(db_path / "logs" / "cora.log"),
+        db_path=str(root / "index.sqlite"),
+        memory_path=str(root / "memory.sqlite"),
+        documents_path=str(root / "documents"),
+        conversations_path=str(root / "conversations.sqlite"),
+        log_path=str(root / "logs" / "cora.log"),
         # Pinned under the test's own directory, because the default is the folder the
         # docs tell an operator to drop plugins into — a suite reading that one runs
         # whatever the developer left there, and fails on it.
-        plugins_path=str(db_path / "plugins"),
+        plugins_path=str(root / "plugins"),
         debug=debug,
     )
 

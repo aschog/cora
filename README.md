@@ -297,10 +297,10 @@ fails when one is behind the source.
 ## Stack
 
 Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangGraph · LangChain over
-OpenRouter · Chroma · sentence-transformers · React over Starlette, with TanStack
-Query holding what the rails read — with ruff, ty and pytest as quality gates on the
-Python, and eslint, tsc and vitest on the page. Runtime dependencies are added
-feature-by-feature, story by story.
+OpenRouter · SQLite with sqlite-vec · sentence-transformers · React over Starlette,
+with TanStack Query holding what the rails read — with ruff, ty and pytest as quality
+gates on the Python, and eslint, tsc and vitest on the page. Runtime dependencies are
+added feature-by-feature, story by story.
 
 ## The packages
 

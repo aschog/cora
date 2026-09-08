@@ -24,7 +24,7 @@ from fakes import FakeConversations, FakeEmbedder, ScriptedChatModel
 from fixture_plugins import make_plugin
 
 if TYPE_CHECKING:
-    from cora.adapters.chroma_retriever import ChromaRetriever
+    from cora.adapters.sqlite_vec_retriever import SqliteVecRetriever
 
 FITNESS, TRAVEL = "fitness", "travel"
 PLAN = b"The block holds intensity and drops volume in the fourth week."
@@ -85,7 +85,7 @@ NOTES = ModelReply(text="They say the maples turn in November [1].")
 @pytest.mark.integration
 def test_a_document_i_delete_is_searched_and_cited_no_more(
     tmp_path: Path,
-    make_chroma: "Callable[[], ChromaRetriever]",
+    make_index: "Callable[[], SqliteVecRetriever]",
 ) -> None:
     """Over the real index and the real files, because both halves are the subject: a
     document gone from one of them is a document that is still half there."""
@@ -93,7 +93,7 @@ def test_a_document_i_delete_is_searched_and_cited_no_more(
     app = assembled(
         chat_model=ScriptedChatModel([SEARCH, NOTES]),
         embedder=FakeEmbedder(),
-        retriever=make_chroma(),
+        retriever=make_index(),
         documents=FileDocuments.at(str(files)),
         conversations=FakeConversations(),
         plugins=(
