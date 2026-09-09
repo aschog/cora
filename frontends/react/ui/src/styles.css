@@ -97,12 +97,29 @@ button {
    quotation out: the reader lost the very mark they were selecting. Mixed from the accent
    rather than written as a fourth blue, so it cannot drift from it. */
 ::selection {
-  /* The mix stated twice: `color-mix` needs a newer browser than this build targets,
-     and where it is not understood the declaration is dropped — leaving the UA's own
-     opaque highlight, which is the thing this rule exists to replace. */
+  /* The mix is what ships, and the literal under it is the floor: `color-mix` needs a
+     newer browser than this build targets, and where it is not understood the
+     declaration is dropped — leaving the UA's own opaque highlight, which is the thing
+     this rule exists to replace. The two are one value written twice, so moving
+     `--accent` means editing both. */
   background: rgba(47, 129, 247, 0.32);
   background: color-mix(in srgb, var(--accent) 32%, transparent);
   color: var(--text);
+}
+
+/* Read out, never drawn: news a live region carries, and a reason a control has no room
+   for. Global because two rails need the same nine lines, and a class drawn as a
+   literal is what `scripts/check-styles.mjs` allows a global to be. */
+.told-not-shown {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }
 
 .micro {

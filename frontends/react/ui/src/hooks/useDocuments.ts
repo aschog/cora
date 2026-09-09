@@ -51,8 +51,10 @@ export function useDocuments({
 
   /* The last upload that went through, for the region that reads news out. Its own
      state rather than a notice: nothing is drawn for it, because the list is what says
-     it to a reader who can see the list. */
-  const [indexed, setIndexed] = useState<string | null>(null)
+     it to a reader who can see the list. Stamped with its field for the reason a
+     running upload is — news about a desk they have left is not read out over the one
+     they are at. */
+  const [indexed, setIndexed] = useState<{ name: string; scope: string } | null>(null)
 
   /** An upload the reader started and then left behind. Ingestion takes seconds and
    *  nothing stops them opening another conversation while it runs, so the notice is
@@ -67,12 +69,16 @@ export function useDocuments({
        takes its own row away and not the other's. */
     const started = { name: file.name, scope: field }
     setRunning((uploads) => [...uploads, started])
+    /* What is running clears what finished. A live region announces what changes in
+       it, and the same sentence set twice is a region that never changed — so the same
+       file uploaded again would be indexed in silence. */
+    setIndexed(null)
     return cora
       .upload(file, field)
       .then((added) => {
         if (here.current === from) {
           setNotice(ingested(added))
-          setIndexed(added.chunks ? added.document : null)
+          setIndexed(added.chunks ? { name: added.document, scope: started.scope } : null)
         }
         return refresh()
       })
@@ -109,7 +115,7 @@ export function useDocuments({
     setNotice,
     upload,
     erase,
-    indexed,
+    indexed: indexed?.scope === field ? indexed.name : null,
     /* This field's, because a rail switched to another one lists another field's
        documents: a row for an upload landing elsewhere would name a file that is not
        going to appear there. */

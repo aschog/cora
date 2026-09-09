@@ -18,7 +18,10 @@ export default defineConfig({
   css: modules,
   test: {
     environment: 'happy-dom',
-    include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
+    // `e2e/` holds the browser tier, which Playwright runs — but its helpers are pure
+    // functions of a colour string, and a spec that reads a ratio off the page is only
+    // as true as they are.
+    include: ['src/**/*.test.ts', 'src/**/*.test.tsx', 'e2e/**/*.test.ts'],
     // A click whose default action is a navigation is a click this suite asserts about,
     // never one it should perform: left on, happy-dom dials the href.
     environmentOptions: {

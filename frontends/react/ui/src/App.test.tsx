@@ -413,12 +413,15 @@ test('a file uploaded twice is added quietly, and then said to be there already'
   await screen.findByText('notes.md')
 
   upload('notes.md')
-  /* Nothing is said about the one that worked: the rail lists it, and a sentence saying
-     so is the same news twice. */
+  /* Nothing is *drawn* about the one that worked: the rail lists it, and a sentence
+     saying so is the same news twice. It is read out, though — a list is not something
+     a screen reader is told changed. */
   await waitFor(() =>
     expect(screen.getByRole('status', { name: 'Indexing' }).textContent).toBe(''),
   )
   expect(screen.queryByText(/passages\./)).toBeNull()
+  const said = screen.getByRole('status', { name: 'Last upload' })
+  await waitFor(() => expect(said.textContent).toContain('is indexed'))
 
   upload('notes.md')
   expect(

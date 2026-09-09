@@ -68,7 +68,7 @@ test('deleting the same name in another field leaves the panel reading', async (
 /** An upload held open, so what the rail draws *during* one is what is asserted. */
 function Uploading({ field = 'cora' }: { field?: string }) {
   const here = useRef('thread')
-  const { indexing, notice, upload } = useDocuments({
+  const { indexing, indexed, notice, upload } = useDocuments({
     field,
     here,
     refresh: async () => {},
@@ -81,6 +81,7 @@ function Uploading({ field = 'cora' }: { field?: string }) {
         upload
       </button>
       <p>{indexing.join(', ') || 'nothing indexing'}</p>
+      <p>{indexed ? `indexed ${indexed}` : 'nothing indexed'}</p>
       <p>{notice ? notice.said : 'nothing said'}</p>
     </>
   )
@@ -182,4 +183,81 @@ test('a row is drawn in the field it was uploaded into, and in no other', async 
 
   upload.done({ document: 'deadlift.pdf', chunks: 3 })
   await waitFor(() => expect(screen.getByText('nothing indexing')).toBeTruthy())
+})
+
+test('an upload that indexed something is named for the region that reads it out', async () => {
+  const upload = held()
+  render(<Uploading />)
+
+  start()
+  upload.done({ document: 'deadlift.pdf', chunks: 12 })
+
+  await waitFor(() =>
+    expect(screen.getByText('indexed deadlift.pdf')).toBeTruthy(),
+  )
+})
+
+test('the same file indexed twice is named again, not held from the first time', async () => {
+  /* A live region announces what changes in it. Holding the same sentence across a
+     second upload is a region that does not change, and a reader who hears nothing —
+     so what is running clears it, and the answer sets it again. */
+  const first = held()
+  render(<Uploading />)
+
+  start()
+  first.done({ document: 'deadlift.pdf', chunks: 12 })
+  await waitFor(() => expect(screen.getByText('indexed deadlift.pdf')).toBeTruthy())
+
+  const again = held()
+  start()
+  await waitFor(() => expect(screen.getByText('nothing indexed')).toBeTruthy())
+
+  again.done({ document: 'deadlift.pdf', chunks: 12 })
+  await waitFor(() => expect(screen.getByText('indexed deadlift.pdf')).toBeTruthy())
+})
+
+test('bytes the field already had are not announced as indexed', async () => {
+  const upload = held()
+  render(<Uploading />)
+
+  start()
+  upload.done({ document: 'deadlift.pdf', chunks: 0 })
+
+  await waitFor(() =>
+    expect(
+      screen.getByText('“deadlift.pdf” is already in your documents.'),
+    ).toBeTruthy(),
+  )
+  expect(screen.getByText('nothing indexed')).toBeTruthy()
+})
+
+test('an upload that failed announces nothing', async () => {
+  let refuse = () => {}
+  const answer = new Promise((_, broken) => {
+    refuse = () => broken(new Error('ingest failed'))
+  })
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({ ok: true, json: () => answer }) as unknown as Response),
+  )
+  render(<Uploading />)
+
+  start()
+  refuse()
+
+  await waitFor(() => expect(screen.getByText('nothing indexing')).toBeTruthy())
+  expect(screen.getByText('nothing indexed')).toBeTruthy()
+})
+
+test('what was indexed in another field is not announced over this one', async () => {
+  const upload = held()
+  const { rerender } = render(<Uploading field="fitness" />)
+
+  start()
+  upload.done({ document: 'deadlift.pdf', chunks: 12 })
+  await waitFor(() => expect(screen.getByText('indexed deadlift.pdf')).toBeTruthy())
+
+  rerender(<Uploading field="travel" />)
+
+  expect(screen.getByText('nothing indexed')).toBeTruthy()
 })

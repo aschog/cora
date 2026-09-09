@@ -21,6 +21,11 @@ test('a document is uploaded, listed, and deleted only once i have said so', asy
   await expect(page.getByRole('status', { name: 'Indexing' })).toContainText('second.md')
   await expect(page.getByRole('button', { name: 'second.md', exact: true })).toBeVisible()
   await expect(page.getByRole('status', { name: 'Indexing' })).toHaveText('')
+  /* Read out, not drawn: the list says it to anyone who can see the list, and this is
+     the same news for a reader who cannot. */
+  await expect(page.getByRole('status', { name: 'Last upload' })).toContainText(
+    'second.md',
+  )
 
   await page.getByLabel('Delete second.md').click()
   const asked = page.getByRole('dialog', { name: 'DELETE DOCUMENT' })

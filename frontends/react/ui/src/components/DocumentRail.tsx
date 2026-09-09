@@ -80,7 +80,7 @@ export default function DocumentRail({
           the sentence rather than after it. */}
       <div role="status" aria-label="Last upload">
         {indexed && (
-          <p className={styles.toldNotShown}>{`“${indexed}” is indexed.`}</p>
+          <p className="told-not-shown">{`“${indexed}” is indexed.`}</p>
         )}
         {upload && (
           <UploadNotice

@@ -24,7 +24,7 @@ export default function NewSession({ canStart, onNew }: Props) {
         New session
       </button>
       {!canStart && (
-        <span id="new-session-why" className={styles.toldNotShown}>
+        <span id="new-session-why" className="told-not-shown">
           {NOTHING_TO_START}
         </span>
       )}
