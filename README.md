@@ -19,8 +19,6 @@ gave it something that does — and then only once you have said yes.
 ## Start here
 
 - [Get started](docs/how-to/get-started.md) — install, run, gates
-- [What cora does](docs/what-it-does.md)
-- [What ships with it](docs/what-ships-with-it.md)
 - [Write a plugin](docs/how-to/write-a-plugin.md)
 - [The docs](docs/index.md) — `make docs` builds them, `make docs-serve` serves them
 
