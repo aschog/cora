@@ -95,7 +95,7 @@ time, asking first.
   which is what makes "everything" true.
 - **A plugin** takes every field only it brought — those fields' documents, and every
   conversation pinned to them. What that leaves is
-  [what cora does](what-it-does.md#plugins-once-they-are-loaded).
+  [what cora does](what-it-does.md#deleting-what-it-holds).
 
 ## What this is not
 

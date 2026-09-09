@@ -17,7 +17,23 @@ git config core.hooksPath .githooks        # enable pre-commit + commit-msg hook
 
 ## Load the plugins
 
-A plugin does not have to be installed: drop it in the folder and cora loads it.
+A bare cora answers, and loads nothing it was not given. This repository's three go in
+by dropping them in the folder — linked, so an edit is live:
+
+<!-- --8<-- [start:plugins] -->
+```sh
+mkdir -p .cora/plugins
+for each in security fitness travel; do
+  ln -s "$(pwd)"/plugins/$each/src/cora/plugins/$each .cora/plugins/$each
+done
+```
+<!-- --8<-- [end:plugins] -->
+
+- That makes it a coach and a travel companion, with a prompt-injection screen over
+  both. Remove a link to see what the box does without it.
+- The fields come with them: `fitness` and `travel` are offered because those two
+  register them. `CORA_SCOPES` is for a field *no* plugin brings, which is how a field
+  holding only documents exists: `CORA_SCOPES=notes`.
 - The rest of what the folder does: [load plugins](load-plugins.md).
 
 ## Run
