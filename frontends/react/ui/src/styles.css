@@ -92,8 +92,12 @@ button {
   outline-offset: 2px;
 }
 
+/* A veil rather than a slab. The other highlight this page draws — the passage an answer
+   quotes — is a tint the text reads through, and an opaque selection over one painted the
+   quotation out: the reader lost the very mark they were selecting. Mixed from the accent
+   rather than written as a fourth blue, so it cannot drift from it. */
 ::selection {
-  background: var(--accent-ring);
+  background: color-mix(in srgb, var(--accent) 32%, transparent);
   color: var(--text);
 }
 
