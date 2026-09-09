@@ -110,3 +110,22 @@ def test_one_value_is_asked_for_in_prose_and_a_confirm_card_still_stands() -> No
     assert [field["editable"] for field in waiting["card"]["fields"]] == [False]
     [turn] = _of(confirmed.text, "turn")
     assert turn["answer"] == PRICED
+
+
+def test_a_form_asked_for_one_value_twice_still_ends_in_an_answer() -> None:
+    """A model that takes the refusal and asks again spends a round, not the turn: each
+    refusal is a tool message the round carries on from, so the answer still arrives."""
+    replies = (_asking_for_one(), _asking_for_one(), ModelReply(text=ASKED_IN_PROSE))
+    with TestClient(api(_app(*replies))) as reader:
+        asked = reader.post(
+            "/api/ask",
+            json={"question": "What is my BMI?", "thread_id": "the-bmi-asked-twice"},
+        )
+
+    assert _of(asked.text, "paused") == []
+    [turn] = _of(asked.text, "turn")
+    assert turn["answer"] == ASKED_IN_PROSE
+    refused = [step for step in turn["trace"] if step.get("failed")]
+    assert len(refused) == 2, (
+        "each ask is a call that failed, and both are on the trace"
+    )

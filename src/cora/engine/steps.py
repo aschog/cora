@@ -25,6 +25,7 @@ from cora.engine import keeping
 from cora.engine.ask_tool import (
     ASK_FOR_TOOL_NAME,
     ASK_TOOL_NAME,
+    ONE_VALUE,
     card_from,
     decision_from,
 )
@@ -606,17 +607,6 @@ sentence would have a card the model never reaches, and the declaration is alrea
 place the fact is stated once."""
 
 
-ONE_VALUE = (
-    "'{name}' is one value, and a card is how two or more of them are asked for. Ask "
-    "for it in your answer instead, in a sentence — the user replies in prose, and the "
-    "next turn has it."
-)
-"""What the model is told about a card that asks for one thing.
-
-A form earns the stop when filling it in is the cheaper way to say four things at once.
-For one value it is a box, a button and a turn spent where a sentence would have done —
-and the sentence is what the model can write anyway.
-"""
 BROKEN_ASKS = "it could not work out what to ask you for"
 NOT_A_CARD = "it asked you for something the page cannot draw"
 FILLED_IN = "The user filled this call in — {values}. It ran on those.\n\n"
@@ -870,6 +860,14 @@ UNFILLED_CALL = (
 as what happened rather than as what somebody did, for the reason `DECLINED_CALL` is,
 and followed by the way on: the turn still has an answer to give."""
 
+UNCONFIRMED_CALL = (
+    "tool '{name}' was not run: the user was put what it would run on and did not "
+    "confirm it. Answer without it, and say plainly that you did not run it."
+)
+"""What the model is told about a card that asked for nothing and was left. A card of
+read-only fields withholds no value, so `UNFILLED_CALL` would have the model tell the
+user they gave nothing when nothing was asked of them."""
+
 
 @dataclass(frozen=True)
 class GateStep:
@@ -958,13 +956,18 @@ class GateStep:
             try:
                 card = _card_for(offered.get(call.name), call)
             except ToolRefusal as broke:
-                messages.append(
-                    Message(
-                        role="tool",
-                        content=REFUSED_CALL.format(name=call.name, reason=broke),
-                        tool_call_id=call.call_id,
-                    )
+                # Traced as the call it cost, the way the ask step traces its own
+                # refusals: a card refused and no step for it reads back as a model
+                # that never asked.
+                refused = _settled(
+                    call,
+                    asked="",
+                    said=REFUSED_CALL.format(name=call.name, reason=broke),
+                    outcome=str(broke),
+                    failed=True,
                 )
+                messages.extend(refused["messages"])
+                trace.extend(refused["trace"])
                 continue
             if card is None:
                 outstanding.append(call)
@@ -973,16 +976,23 @@ class GateStep:
             trace.append(
                 CardFilled(tool=call.name, fields=tuple(sorted(written or ())))
             )
+            asked_for = any(field.editable for field in card.fields)
             if written is None:
                 messages.append(
                     Message(
                         role="tool",
-                        content=UNFILLED_CALL.format(name=call.name),
+                        content=(
+                            UNFILLED_CALL if asked_for else UNCONFIRMED_CALL
+                        ).format(name=call.name),
                         tool_call_id=call.call_id,
                     )
                 )
                 continue
-            filled[call.call_id] = written
+            # A card that asked for nothing leaves nothing to write over the call, and
+            # nothing to tell the model was written: it runs as the model wrote it, with
+            # a yes behind it.
+            if asked_for:
+                filled[call.call_id] = written
             outstanding.append(replace(call, arguments={**call.arguments, **written}))
         return tuple(outstanding), filled
 
@@ -1037,8 +1047,18 @@ class AskStep:
         try:
             return settling(call)
         except ToolRefusal as refused:
+            # The prompt rather than the arguments: an ask carries its fields as a
+            # nested list, and `_settled` falls back to tracing the whole of it — which
+            # fills the panel with JSON for a call that never reached the reader.
+            asked = str(
+                call.arguments.get("prompt") or call.arguments.get("question", "")
+            )
             return _settled(
-                call, asked="", said=str(refused), outcome=str(refused), failed=True
+                call,
+                asked=asked,
+                said=str(refused),
+                outcome=str(refused),
+                failed=True,
             )
 
     def _picked(self, call: ToolCall) -> AgentState:
