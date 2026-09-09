@@ -7,7 +7,7 @@ On the showcase: [showcase.turingcollege.com](https://showcase.turingcollege.com
 ## Why
 
 An agent that is good at your subject usually means somebody built an app for that
-subject. cora turns that around: the agent is the part that stays, and the subject is
+subject. Cora turns that around: the agent is the part that stays, and the subject is
 the part you write — a fitness coach, a trip, a lab notebook.
 
 ## With nothing loaded
