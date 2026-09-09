@@ -120,6 +120,16 @@ def test_a_form_of_one_value_is_refused_by_the_tool_the_model_reads() -> None:
     assert "height" in str(refused.value), "the message names the value to ask for"
 
 
+def test_a_form_of_one_field_that_is_not_even_a_field_is_still_refused() -> None:
+    """Refused rather than raised: the arguments are the model's, so a list of one
+    string is a call that costs a round — not a turn that ends in a traceback."""
+    with pytest.raises(ToolRefusal):
+        card_from({"prompt": WANTED, "fields": ["height"]})
+
+    with pytest.raises(ToolRefusal):
+        card_from({"prompt": WANTED, "fields": [{"description": "No name"}]})
+
+
 def test_the_form_tool_declares_that_it_takes_two_values_or_more() -> None:
     offered = ask_for_tool()
 

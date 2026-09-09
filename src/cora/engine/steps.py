@@ -615,10 +615,11 @@ FILLED_IN = "The user filled this call in — {values}. It ran on those.\n\n"
 def _refuse_one_value(card: Card) -> None:
     """Refuse a card that asks the reader for a single value.
 
-    Called from both places a card is built for the reader — a plugin's `asks`, and
-    cora's own form — so the rule holds whoever wrote the card. The other two cards a
-    turn can stop on reach the reader by neither path: the fork between remembered
-    values, and the call awaiting approval, whose fields are read rather than written.
+    The rule over a plugin's card. Cora's own form is held to it by `card_from`, which
+    reads the fields the model named before there is a card at all — the same sentence,
+    at the earliest place each kind of ask can be refused. The other two cards a turn
+    can stop on are held to nothing: the fork between remembered values, and the call
+    awaiting approval, whose fields are read rather than written.
 
     What is counted is the fields the reader may write. A card of four rows asking for
     one value is asking for one, and a card of one row nobody writes in is asking for
@@ -973,10 +974,14 @@ class GateStep:
                 outstanding.append(call)
                 continue
             written = _written(card, self.approve(card))
-            trace.append(
-                CardFilled(tool=call.name, fields=tuple(sorted(written or ())))
-            )
             asked_for = any(field.editable for field in card.fields)
+            trace.append(
+                CardFilled(
+                    tool=call.name,
+                    fields=tuple(sorted(written or ())),
+                    asked=asked_for,
+                )
+            )
             if written is None:
                 messages.append(
                     Message(
@@ -1088,7 +1093,6 @@ class AskStep:
             ToolRefusal: The call is not an ask cora can put to a reader.
         """
         card = card_from(call.arguments)
-        _refuse_one_value(card)
         written = _written(card, self.pause(card))
         if not written:
             return _settled(

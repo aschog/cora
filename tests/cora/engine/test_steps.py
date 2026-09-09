@@ -633,6 +633,13 @@ def _proposing(*names: str) -> AgentState:
     return {"messages": [Message(role="assistant", content="", tool_calls=calls)]}
 
 
+def _calling(name: str, **arguments: Any) -> AgentState:
+    """One call, with the arguments a test needs it to carry — where `_proposing`'s own
+    `{"what": name}` would be refused by the tool's schema before it ran."""
+    call = ToolCall(name=name, arguments=arguments, call_id="c1")
+    return {"messages": [Message(role="assistant", content="", tool_calls=(call,))]}
+
+
 def _yes(*call_ids: str) -> Answered:
     def approve(asks: Asks) -> Answer:
         named = asks.card.actions[0].answer
@@ -975,7 +982,7 @@ def test_a_card_that_asked_for_nothing_does_not_say_the_reader_gave_nothing() ->
     and nothing to tell the model was written: it ran on what the model wrote, with a
     yes behind it."""
     confirming = replace(_gathering(), asks=lambda _: CONFIRM)
-    state = _proposing(ASKING)
+    state = _calling(ASKING, origin="BER")
 
     contributed = GateStep(registry=_offering(confirming), approve=_confirmed())(state)
 
@@ -984,7 +991,51 @@ def test_a_card_that_asked_for_nothing_does_not_say_the_reader_gave_nothing() ->
         {**state, "filled": contributed["filled"]}
     )
     [message] = ran["messages"]
-    assert "filled this call in" not in message.content
+    assert message.content == "searched", (
+        "the tool ran, and its return is all the model reads"
+    )
+
+
+def test_a_card_that_asked_for_nothing_is_confirmed_on_the_trace() -> None:
+    """The reader is owed the same account the model gets: they confirmed the call, and
+    "you gave it nothing" is a charge of withholding what nobody asked for."""
+    confirming = replace(_gathering(), asks=lambda _: CONFIRM)
+
+    contributed = GateStep(registry=_offering(confirming), approve=_confirmed())(
+        _calling(ASKING, origin="BER")
+    )
+
+    [step] = contributed["trace"]
+    assert step.summary == f"You confirmed {ASKING}"
+
+
+def test_a_value_sent_for_a_field_put_up_to_be_read_is_dropped() -> None:
+    """The answer reaches the run from outside it, so a value for a read-only field is
+    dropped rather than written over the argument the reader was shown beside it."""
+    confirming = replace(_gathering(), asks=lambda _: CONFIRM)
+
+    def meddling(asks: Asks) -> Answer:
+        return Answer(action="Search", values={"trip": "Tokyo, one way"})
+
+    contributed = GateStep(registry=_offering(confirming), approve=meddling)(
+        _calling(ASKING, origin="BER")
+    )
+
+    assert contributed["filled"] == {}
+    [call] = _requested_calls({**_calling(ASKING, origin="BER"), "filled": {}})
+    assert call.arguments == {"origin": "BER"}, "it runs on what the model wrote"
+
+
+def test_a_refused_ask_traces_its_prompt_and_not_the_fields_it_named() -> None:
+    """An ask carries its fields as a nested list, and a panel full of JSON for a call
+    that never reached the reader is a panel nobody reads."""
+    partial = AskStep(pause=_Chosen(SEND))(
+        _asked(_form_call(fields=[{"name": "height", "description": "Your height"}]))
+    )
+
+    [step] = partial["trace"]
+    assert isinstance(step, ToolUse)
+    assert step.arguments == {"question": WANTED}
 
 
 def test_a_card_that_asked_for_nothing_and_was_declined_says_so() -> None:
