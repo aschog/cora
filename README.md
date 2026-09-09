@@ -97,8 +97,10 @@ fields are empty cannot be sent — you fill it in, or you leave it.
 One value is not a card, though. Where a single thing is all cora is missing, it asks in
 a sentence and you answer in the composer: a form of one box is a stop that the sentence
 had already made, and the box costs you the turn as well. So a card is what two or more
-values are worth stopping for. A card that asks for fewer is refused before it reaches
-you, whichever plugin wrote it.
+values are worth stopping for. A card asking for exactly one is refused before it
+reaches you, whichever plugin wrote it — while a card asking for none is a different
+thing and stands: a call waiting on your yes, or what cora worked out put up to be
+confirmed.
 
 A conversation you are finished with is deleted from the list under *SESSIONS*, from the
 control at the end of its row — which asks first, and says what is lost and what is not.

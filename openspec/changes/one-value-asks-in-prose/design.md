@@ -20,13 +20,17 @@ effect proposal, whose card is read-only fields and no ask at all.
 
 ## Decisions
 
-- The rule is a guard the two card-building paths call, not a fourth pause step.
-- It raises `ToolRefusal`, which both paths already answer with a refused call.
+- The rule is a guard on the way to the reader, not a fourth pause step.
+- Each kind of ask is caught at the earliest point it can be: cora's form where the
+  model names its fields, a plugin's card at the gate that would put it.
+- Both raise `ToolRefusal`, which each path already answers with a refused call.
 - It counts writable fields, so a read-only card is not an ask and is left alone.
 - Not in `Card.__post_init__`: a card is data a plugin may build for any reason, and a
   settled card read back from a checkpoint must reconstruct.
 - Not one call site: the ask step never runs a plugin's `asks`, and the gate never reads
   a form call, so neither is on the other's path.
+- A card that asked for nothing settles on the action alone, and both accounts of it say
+  so — the model reads the tool's own return, and the trace says the reader confirmed it.
 - `Proposed.card` stays off the rule's path, and the docstrings say so rather than
   claiming a single choke point the code does not have.
 - The form's schema takes two fields or more, so a well-formed call cannot be refused by

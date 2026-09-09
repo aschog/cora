@@ -30,8 +30,9 @@ list is what a review of that commit found, and what makes the code match the de
 
 ## 5. The fixtures and the prose
 
-- [x] 5.1 Write a test that the gate fixture's tool takes every argument its card asks
-      for, so a card cannot ask for what its schema does not declare.
+- [x] 5.1 Make the gate fixture's tool declare every argument its card asks for, and
+      write a test that a call it accepts really runs — the fixture had made every call
+      through it invalid, so the test above it was reading a refusal.
 - [x] 5.2 Write a test that a schema asked over yields a field per property however many
       are known, which is what the how-to's `asks` example turns on.
 
@@ -57,7 +58,32 @@ list is what a review of that commit found, and what makes the code match the de
 - [x] 8.5 Make the browser tier assert the row appears under the control, rather than
       that an empty region is empty.
 
-## 6. Done
+## 9. What the reader reads, and the shapes nobody sends on purpose
 
-- [x] 6.1 Drop 1.1's marker and watch the outer test pass — early, because item 2 is
+- [x] 9.1 Write a test that a card which asked for nothing reads on the trace as one the
+      reader confirmed, not as one they gave nothing to.
+- [x] 9.2 Write a test that a value sent for a read-only field is dropped rather than
+      written over the argument it was shown beside.
+- [x] 9.3 Write a test that a form of one field which is not even a field is refused
+      rather than raised, so a malformed call costs a round and not the turn.
+- [x] 9.4 Write a test that a refused ask traces its prompt and not the fields it named.
+- [x] 9.5 Delete the ask path's own call of the rule, dead since the form's schema
+      refuses one field ahead of it, and say in the docstring where the rule now sits.
+
+## 11. The page, as a third review found it
+
+- [x] 11.1 Write a test that the same file indexed twice is announced twice, where
+      setting the live region to the sentence it already held announced nothing.
+- [x] 11.2 Write a test that what was indexed in one field is not read out over another.
+- [x] 11.3 Write a test that a duplicate upload and a failed one announce nothing.
+- [x] 11.4 Write a test that the rail reads out what was indexed, over the real rail and
+      in the browser, not only where a prop is handed in.
+- [x] 11.5 Write a table test for the colour helpers a browser spec reads ratios
+      through, and bring `e2e/` under the unit tier so it can run.
+- [x] 11.6 Write a test that a translucent colour is refused rather than rated, which is
+      the contract the helper's own docstring states.
+
+## 10. Done
+
+- [x] 10.1 Drop 1.1's marker and watch the outer test pass — early, because item 2 is
       what the outer criterion turned on and items 3 to 5 are the rest of the findings.
