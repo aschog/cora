@@ -195,7 +195,7 @@ the well-behaved-plugin case, which matters as much as the malicious one:
   under another's — but what the line *says* is the plugin's own, and a reader takes it
   at face value.
 
-[`make plugins`](how-to/get-started.md#loading-plugins) prints what each loaded plugin
+[`make plugins`](how-to/load-plugins.md) prints what each loaded plugin
 registered. That tells you what a plugin *claims*; only its source tells you what it
 does. Read the listing before you trust a plugin, and read the source if it came from
 someone you do not know.

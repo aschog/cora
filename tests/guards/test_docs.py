@@ -29,6 +29,7 @@ PAGES = (
     "docs/what-it-does.md",
     "docs/what-ships-with-it.md",
     "docs/how-to/get-started.md",
+    "docs/how-to/load-plugins.md",
     PRIVACY,
     "docs/workflow.md",
     "docs/how-to/write-a-plugin.md",

@@ -35,8 +35,9 @@ Why cora is built the way it is.
 
 One task each, for when you are already working.
 
-- [Get started](how-to/get-started.md) — install it, run it, load plugins into it, and
-  run the gates it is held to
+- [Get started](how-to/get-started.md) — install it, run it, and run the gates it is
+  held to
+- [Load plugins](how-to/load-plugins.md) — name a module, or drop one in the folder
 - [Write a plugin](how-to/write-a-plugin.md) — a persona, tools and a hand in the turn,
   as a package to install
 - [Run the React shell](how-to/run-the-react-shell.md) — the same app over HTTP, with a

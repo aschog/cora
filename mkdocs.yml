@@ -56,6 +56,7 @@ nav:
       - Privacy, and what a plugin costs: privacy-and-ethics.md
   - How-to:
       - Get started: how-to/get-started.md
+      - Load plugins: how-to/load-plugins.md
       - Write a plugin: how-to/write-a-plugin.md
       - Run the React shell: how-to/run-the-react-shell.md
       - Watch a turn happen: how-to/watch-a-turn.md

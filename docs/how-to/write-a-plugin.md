@@ -237,8 +237,9 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    anything else gets neither. The screen above is system-wide, and nothing a turn is
    running under can switch it off — which is what a safety check needs.
 
-   Which fields a turn *may* run in is the deployment's to say, in `CORA_SCOPES`. Which
-   of them it does run in is the turn's: a pinned conversation is answered in its field,
+   A field is offered because you registered under it, and a deployment need name
+   nothing for that — `CORA_SCOPES` is for a field no plugin brings. Which field a turn
+   runs in is the turn's: a pinned conversation is answered in its field,
    and an unpinned one has its question read for the field it belongs to. The first line
    of your instructions is what the router is given to choose between, and what the card
    that asks the reader says under your scope's name — so open by saying what the field
@@ -385,7 +386,7 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    dependency cora's environment lacks is a refusal naming the plugin. A plugin that
    wants dependencies of its own is a package, which is step 1. What the folder does
    with what it finds — load order, `CORA_PLUGINS_PATH`, the symlink, and what a name
-   claimed twice costs — is [get started](get-started.md#loading-plugins).
+   claimed twice costs — is [load plugins](load-plugins.md).
 
    The folder is live, so a plugin still being written is edited in place — reload the
    page, no restart.
