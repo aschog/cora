@@ -68,6 +68,14 @@ comes back as that call's result. The fork is put once a turn — asked twice, c
 guessing at a value it already holds — and a form as often as the round budget allows,
 because a box the reader skipped is a gap nothing else can close.
 
+A form of one field is refused before it is put, and the model is told to ask for that
+value in its answer instead: one box is a stop the sentence had already made, and the
+reader's next message carries what it would have collected. The check sits at the one
+place every card passes on its way to the reader, so it holds over a plugin's card as
+well as cora's own — and it counts fields rather than stops, which leaves a card of
+*none* alone: a fork between two remembered values and a call awaiting approval are not
+asks.
+
 Whatever the turn stopped on — a question between remembered values, a call awaiting
 approval, a form to fill — reaches the page as one `Card`: a prompt, its fields and its
 actions. One pause port over all three, because what parks a run is the card and nothing

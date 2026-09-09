@@ -35,6 +35,7 @@ from cora.engine.steps import (
     CORA_PREAMBLE,
     DECLINED_CALL,
     HELD_AT_SEVERAL,
+    ONE_VALUE,
     REFUSED_CALL,
     ROUTED,
     UNFILLED_CALL,
@@ -448,6 +449,22 @@ def test_the_step_puts_the_card_the_ask_describes() -> None:
     assert [field.name for field in pause.shown.card.fields] == ["origin", "depart"]
 
 
+def test_an_ask_for_one_value_is_refused_and_never_reaches_the_reader() -> None:
+    """A form is worth the stop when it settles several things at once. For one value it
+    is a box and a button where a sentence would have done, so the model is told to ask
+    in its answer — which the reader replies to in the composer."""
+    pause = _Chosen(SEND, height="1.75")
+    one = _form_call(
+        fields=[{"name": "height", "description": "Your height in metres"}]
+    )
+
+    partial = AskStep(pause=pause)(_asked(one))
+
+    [message] = partial["messages"]
+    assert ONE_VALUE.format(name="height") in message.content
+    assert pause.shown is None, "one value is asked for in prose, not on a card"
+
+
 def test_what_the_reader_wrote_comes_back_as_the_answer_to_the_call() -> None:
     partial = AskStep(pause=_Chosen(SEND, origin="BER", depart="2026-10-01"))(
         _asked(_form_call("f7"))
@@ -672,13 +689,22 @@ def test_a_declined_call_is_answered_where_it_was_proposed() -> None:
 
 ASKING = "ask_first"
 FILL_IN = "Give me the trip."
+SEARCH_IT = (
+    ActionOffered(label="Search", answer="Search", needs_valid=True),
+    ActionOffered(label="Not now", answer=None),
+)
 TRIP = Card(
     prompt=FILL_IN,
-    fields=(FieldAsked(name="origin", required=True),),
-    actions=(
-        ActionOffered(label="Search", answer="Search", needs_valid=True),
-        ActionOffered(label="Not now", answer=None),
+    fields=(
+        FieldAsked(name="origin", required=True),
+        FieldAsked(name="depart"),
     ),
+    actions=SEARCH_IT,
+)
+ONE_VALUE_CARD = Card(
+    prompt=FILL_IN,
+    fields=(FieldAsked(name="origin", required=True),),
+    actions=SEARCH_IT,
 )
 
 
@@ -803,6 +829,29 @@ def test_a_card_the_reader_gave_nothing_to_leaves_the_call_unrun() -> None:
     [told] = contributed["messages"]
     assert told.tool_call_id == "c1"
     assert told.content == UNFILLED_CALL.format(name=ASKING)
+
+
+def test_a_card_asking_for_one_value_is_refused_and_never_put() -> None:
+    """One value is a sentence, not a form. The call is refused the way a broken `asks`
+    is — the round is told what to do instead, and nothing stops the reader."""
+    seen: list[Asks] = []
+
+    def answer(asks: Asks) -> Answer:
+        seen.append(asks)
+        return Answer(action="Search", values={"origin": "BER"})
+
+    asking_for_one = replace(_gathering(), asks=lambda _: ONE_VALUE_CARD)
+
+    contributed = GateStep(registry=_offering(asking_for_one), approve=answer)(
+        _proposing(ASKING)
+    )
+
+    assert seen == [], "a one-field card is never put in front of the reader"
+    [told] = contributed["messages"]
+    assert told.content == REFUSED_CALL.format(
+        name=ASKING, reason=ONE_VALUE.format(name="origin")
+    )
+    assert contributed["filled"] == {}
 
 
 def test_a_plugin_whose_asks_breaks_costs_the_call_and_not_the_turn() -> None:
