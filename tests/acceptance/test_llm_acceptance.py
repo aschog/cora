@@ -224,3 +224,32 @@ def test_a_real_model_asks_which_value_to_use_instead_of_picking_one(
     assert "75" in rested_on, (
         f"the answer does not rest on the value chosen: {rested_on!r}"
     )
+
+
+MISSING_ONE = (
+    "I am a 34-year-old man, 80 kg, training hard four times a week. What is my total "
+    "daily energy expenditure?"
+)
+"""Everything the calculator takes except the height — one value, and nothing anywhere
+holds it. Memory is left empty, so `ASK_RULE` has no conflict to fire on and the only
+rule in play is the one about asking for what cora does not have."""
+ASKING_FOR_ONE = "llm-one-value"
+HEIGHT_ASKED = re.compile(r"\bheight\b|\btall\b|\bcm\b", re.IGNORECASE)
+
+
+def test_a_real_model_asks_for_one_missing_value_in_prose(tmp_path: Path) -> None:
+    """The rule holds against a real model, which is the half a stub cannot show: a
+    scripted model asks however the script says, so only this can say whether a model
+    takes the refusal and asks in its answer.
+
+    Which way it gets there is not asserted. A model may raise the form and be refused,
+    or ask in prose without trying — both are the behaviour the story asked for, and
+    pinning one would be a test of the model's habits rather than of cora.
+    """
+    app = _live_app(tmp_path)
+
+    answered = app.agent.answer(MISSING_ONE, ASKING_FOR_ONE)
+
+    assert HEIGHT_ASKED.search(answered.answer), (
+        f"the answer does not ask for the one value it lacks: {answered.answer!r}"
+    )
