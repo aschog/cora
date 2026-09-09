@@ -19,11 +19,13 @@ from cora.domain.trace import (
     ModelDecision,
     ScopeSettled,
     StepEntered,
+    ToolUse,
 )
 from cora.engine import keeping
 from cora.engine.ask_tool import (
     ASK_FOR_TOOL_NAME,
     ASK_TOOL_NAME,
+    ONE_VALUE,
     SEND,
 )
 from cora.engine.plugin_set import Registry
@@ -37,6 +39,7 @@ from cora.engine.steps import (
     HELD_AT_SEVERAL,
     REFUSED_CALL,
     ROUTED,
+    UNCONFIRMED_CALL,
     UNFILLED_CALL,
     AnswerStep,
     AskStep,
@@ -448,6 +451,22 @@ def test_the_step_puts_the_card_the_ask_describes() -> None:
     assert [field.name for field in pause.shown.card.fields] == ["origin", "depart"]
 
 
+def test_an_ask_for_one_value_is_refused_and_never_reaches_the_reader() -> None:
+    """A form is worth the stop when it settles several things at once. For one value it
+    is a box and a button where a sentence would have done, so the model is told to ask
+    in its answer — which the reader replies to in the composer."""
+    pause = _Chosen(SEND, height="1.75")
+    one = _form_call(
+        fields=[{"name": "height", "description": "Your height in metres"}]
+    )
+
+    partial = AskStep(pause=pause)(_asked(one))
+
+    [message] = partial["messages"]
+    assert ONE_VALUE.format(name="height") in message.content
+    assert pause.shown is None, "one value is asked for in prose, not on a card"
+
+
 def test_what_the_reader_wrote_comes_back_as_the_answer_to_the_call() -> None:
     partial = AskStep(pause=_Chosen(SEND, origin="BER", depart="2026-10-01"))(
         _asked(_form_call("f7"))
@@ -614,6 +633,13 @@ def _proposing(*names: str) -> AgentState:
     return {"messages": [Message(role="assistant", content="", tool_calls=calls)]}
 
 
+def _calling(name: str, **arguments: Any) -> AgentState:
+    """One call, with the arguments a test needs it to carry — where `_proposing`'s own
+    `{"what": name}` would be refused by the tool's schema before it ran."""
+    call = ToolCall(name=name, arguments=arguments, call_id="c1")
+    return {"messages": [Message(role="assistant", content="", tool_calls=(call,))]}
+
+
 def _yes(*call_ids: str) -> Answered:
     def approve(asks: Asks) -> Answer:
         named = asks.card.actions[0].answer
@@ -672,13 +698,44 @@ def test_a_declined_call_is_answered_where_it_was_proposed() -> None:
 
 ASKING = "ask_first"
 FILL_IN = "Give me the trip."
+SEARCH_IT = (
+    ActionOffered(label="Search", answer="Search", needs_valid=True),
+    ActionOffered(label="Not now", answer=None),
+)
 TRIP = Card(
     prompt=FILL_IN,
-    fields=(FieldAsked(name="origin", required=True),),
-    actions=(
-        ActionOffered(label="Search", answer="Search", needs_valid=True),
-        ActionOffered(label="Not now", answer=None),
+    fields=(
+        FieldAsked(name="origin", required=True),
+        FieldAsked(name="depart"),
     ),
+    actions=SEARCH_IT,
+)
+ONE_VALUE_CARD = Card(
+    prompt=FILL_IN,
+    fields=(FieldAsked(name="origin", required=True),),
+    actions=SEARCH_IT,
+)
+CONFIRM = Card(
+    prompt=FILL_IN,
+    fields=(FieldAsked(name="trip", value="Kyoto in May", editable=False),),
+    actions=SEARCH_IT,
+)
+"""One field, and nobody writes in it: the reader is confirming what the tool worked out
+rather than being asked for anything."""
+PRE_FILLED = Card(
+    prompt=FILL_IN,
+    fields=(FieldAsked(name="origin", value="BER", required=True),),
+    actions=SEARCH_IT,
+)
+"""One value, in a box already holding what the model wrote: still one value asked for,
+because the reader is being asked to correct it rather than told about it."""
+CONFIRM_AND_ONE = Card(
+    prompt=FILL_IN,
+    fields=(
+        FieldAsked(name="trip", value="Kyoto in May", editable=False),
+        FieldAsked(name="origin", required=True),
+    ),
+    actions=SEARCH_IT,
 )
 
 
@@ -688,13 +745,26 @@ def _gathering(effect: bool = False) -> Tool:
         description=DOES,
         parameter_schema={
             "type": "object",
-            "properties": {"origin": {"type": "string"}},
+            "properties": {
+                "origin": {"type": "string"},
+                "depart": {"type": "string", "format": "date"},
+            },
             "required": ["origin"],
+            "additionalProperties": False,
         },
         run=lambda **_: "searched",
         effect=effect,
         asks=lambda arguments: None if arguments.get("origin") else TRIP,
     )
+
+
+def _confirmed() -> Answered:
+    """The reader taking the way on off a card that asked for nothing."""
+
+    def answer(asks: Asks) -> Answer:
+        return Answer(action="Search", values={})
+
+    return answer
 
 
 def _filled(origin: str | None) -> Answered:
@@ -803,6 +873,182 @@ def test_a_card_the_reader_gave_nothing_to_leaves_the_call_unrun() -> None:
     [told] = contributed["messages"]
     assert told.tool_call_id == "c1"
     assert told.content == UNFILLED_CALL.format(name=ASKING)
+
+
+def test_a_card_asking_for_one_value_is_refused_and_never_put() -> None:
+    """One value is a sentence, not a form. The call is refused the way a broken `asks`
+    is — the round is told what to do instead, and nothing stops the reader."""
+    seen: list[Asks] = []
+
+    def answer(asks: Asks) -> Answer:
+        seen.append(asks)
+        return Answer(action="Search", values={"origin": "BER"})
+
+    asking_for_one = replace(_gathering(), asks=lambda _: ONE_VALUE_CARD)
+
+    contributed = GateStep(registry=_offering(asking_for_one), approve=answer)(
+        _proposing(ASKING)
+    )
+
+    assert seen == [], "a one-field card is never put in front of the reader"
+    [told] = contributed["messages"]
+    assert told.content == REFUSED_CALL.format(
+        name=ASKING, reason=ONE_VALUE.format(name="origin")
+    )
+    assert contributed["filled"] == {}
+
+
+def test_a_card_of_one_field_nobody_writes_in_is_put_and_the_call_runs() -> None:
+    """A card of one read-only field asks for nothing: it puts what the tool worked out
+    and waits for a yes, which is a stop the sentence could not have made."""
+    seen: list[Asks] = []
+
+    def answer(asks: Asks) -> Answer:
+        seen.append(asks)
+        return Answer(action="Search", values={})
+
+    confirming = replace(_gathering(), asks=lambda _: CONFIRM)
+
+    contributed = GateStep(registry=_offering(confirming), approve=answer)(
+        _proposing(ASKING)
+    )
+
+    assert [asks.card for asks in seen] == [CONFIRM]
+    assert contributed["messages"] == [], "nothing settles a call that is about to run"
+    [call] = _requested_calls({**_proposing(ASKING), "filled": contributed["filled"]})
+    assert call.arguments == {"what": ASKING}, "it runs on what the model wrote"
+
+
+def test_a_card_of_one_writable_field_is_refused_whatever_it_shows() -> None:
+    """The count is of the fields the reader may write, not of the rows on the card: a
+    card showing four things and asking for one is still asking for one."""
+    seen: list[Asks] = []
+
+    def answer(asks: Asks) -> Answer:
+        seen.append(asks)
+        return Answer(action="Search", values={"origin": "BER"})
+
+    asking_beside = replace(_gathering(), asks=lambda _: CONFIRM_AND_ONE)
+
+    contributed = GateStep(registry=_offering(asking_beside), approve=answer)(
+        _proposing(ASKING)
+    )
+
+    assert seen == []
+    [told] = contributed["messages"]
+    assert told.content == REFUSED_CALL.format(
+        name=ASKING, reason=ONE_VALUE.format(name="origin")
+    )
+
+
+def test_a_card_of_one_writable_field_already_filled_is_refused_too() -> None:
+    """What makes it an ask is that the reader may write in it, not that it is empty:
+    a box holding the model's guess is still a box asking for one value."""
+    seen: list[Asks] = []
+
+    def answer(asks: Asks) -> Answer:
+        seen.append(asks)
+        return Answer(action="Search", values={"origin": "BER"})
+
+    asking_again = replace(_gathering(), asks=lambda _: PRE_FILLED)
+
+    contributed = GateStep(registry=_offering(asking_again), approve=answer)(
+        _proposing(ASKING)
+    )
+
+    assert seen == []
+    [told] = contributed["messages"]
+    assert told.content == REFUSED_CALL.format(
+        name=ASKING, reason=ONE_VALUE.format(name="origin")
+    )
+
+
+def test_a_refused_card_is_on_the_trace_as_the_call_it_cost() -> None:
+    """The reader is asked in prose instead, and the trace is where that turn is read
+    back: a card refused and no step for it reads as a model that simply asked."""
+    contributed = GateStep(
+        registry=_offering(replace(_gathering(), asks=lambda _: ONE_VALUE_CARD)),
+        approve=_filled("BER"),
+    )(_proposing(ASKING))
+
+    [step] = contributed["trace"]
+    assert isinstance(step, ToolUse)
+    assert (step.name, step.failed) == (ASKING, True)
+    assert "origin" in step.outcome
+
+
+def test_a_card_that_asked_for_nothing_does_not_say_the_reader_gave_nothing() -> None:
+    """A card of read-only fields asks for nothing, so there is nothing to write over
+    and nothing to tell the model was written: it ran on what the model wrote, with a
+    yes behind it."""
+    confirming = replace(_gathering(), asks=lambda _: CONFIRM)
+    state = _calling(ASKING, origin="BER")
+
+    contributed = GateStep(registry=_offering(confirming), approve=_confirmed())(state)
+
+    assert contributed["filled"] == {}, "nothing was written, so nothing writes over"
+    ran = ToolStep(ToolRuntime(tools=(confirming,)))(
+        {**state, "filled": contributed["filled"]}
+    )
+    [message] = ran["messages"]
+    assert message.content == "searched", (
+        "the tool ran, and its return is all the model reads"
+    )
+
+
+def test_a_card_that_asked_for_nothing_is_confirmed_on_the_trace() -> None:
+    """The reader is owed the same account the model gets: they confirmed the call, and
+    "you gave it nothing" is a charge of withholding what nobody asked for."""
+    confirming = replace(_gathering(), asks=lambda _: CONFIRM)
+
+    contributed = GateStep(registry=_offering(confirming), approve=_confirmed())(
+        _calling(ASKING, origin="BER")
+    )
+
+    [step] = contributed["trace"]
+    assert step.summary == f"You confirmed {ASKING}"
+
+
+def test_a_value_sent_for_a_field_put_up_to_be_read_is_dropped() -> None:
+    """The answer reaches the run from outside it, so a value for a read-only field is
+    dropped rather than written over the argument the reader was shown beside it."""
+    confirming = replace(_gathering(), asks=lambda _: CONFIRM)
+
+    def meddling(asks: Asks) -> Answer:
+        return Answer(action="Search", values={"trip": "Tokyo, one way"})
+
+    contributed = GateStep(registry=_offering(confirming), approve=meddling)(
+        _calling(ASKING, origin="BER")
+    )
+
+    assert contributed["filled"] == {}
+    [call] = _requested_calls({**_calling(ASKING, origin="BER"), "filled": {}})
+    assert call.arguments == {"origin": "BER"}, "it runs on what the model wrote"
+
+
+def test_a_refused_ask_traces_its_prompt_and_not_the_fields_it_named() -> None:
+    """An ask carries its fields as a nested list, and a panel full of JSON for a call
+    that never reached the reader is a panel nobody reads."""
+    partial = AskStep(pause=_Chosen(SEND))(
+        _asked(_form_call(fields=[{"name": "height", "description": "Your height"}]))
+    )
+
+    [step] = partial["trace"]
+    assert isinstance(step, ToolUse)
+    assert step.arguments == {"question": WANTED}
+
+
+def test_a_card_that_asked_for_nothing_and_was_declined_says_so() -> None:
+    """Declining a confirmation is not leaving a form empty, and the model is owed the
+    difference: nothing was asked for, so nothing was withheld."""
+    confirming = replace(_gathering(), asks=lambda _: CONFIRM)
+
+    contributed = GateStep(registry=_offering(confirming), approve=_filled(None))(
+        _proposing(ASKING)
+    )
+
+    [told] = contributed["messages"]
+    assert told.content == UNCONFIRMED_CALL.format(name=ASKING)
 
 
 def test_a_plugin_whose_asks_breaks_costs_the_call_and_not_the_turn() -> None:

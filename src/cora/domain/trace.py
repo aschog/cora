@@ -215,14 +215,21 @@ class CardFilled(TraceStep):
     On the trace for the reason an approval is: cora stopped and asked, and a turn is
     read back rather than guessed at. Giving nothing is not a failure — the call is not
     run and the turn answers around it — so `failed` stays false either way.
+
+    `asked` is whether the card had anything for the reader to write. One of read-only
+    fields asks for nothing, so an empty `fields` there is a card they confirmed rather
+    than a card they left empty.
     """
 
     tool: str = ""
     fields: tuple[str, ...] = ()
+    asked: bool = True
 
     @property
     def summary(self) -> str:
-        """Who filled it in, in the second person: the reader did this."""
+        """What the reader did, in the second person: they did this."""
+        if not self.asked:
+            return f"You confirmed {self.tool}"
         if not self.fields:
             return f"You gave {self.tool} nothing"
         return f"You filled in {self.tool}"

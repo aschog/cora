@@ -1,5 +1,6 @@
 """The two tools that stop a turn: which of two facts was meant, and what cora lacks."""
 
+from collections.abc import Mapping
 from typing import Any
 
 from jsonschema import Draft202012Validator, ValidationError
@@ -86,11 +87,13 @@ def decision_from(arguments: dict[str, Any]) -> Decision:
 
 ASK_FOR_TOOL_NAME = "ask_user_for"
 ASK_FOR_TOOL_DESCRIPTION = (
-    "Ask the user for values you do not have and cannot look up, then wait. They are "
-    "put one form of the fields you name, and what they write comes back as this "
-    "call's result. Use it rather than asking for them in your answer: an answer that "
-    "asks is a turn spent, and a form is not. Name the values the answer turns on and "
-    "no others, never one you could look up, and never one they have already given."
+    "Ask the user for two or more values you do not have and cannot look up, then "
+    "wait. They are put one form of the fields you name, and what they write comes "
+    "back as this call's result. Use it rather than asking for them in your answer: an "
+    "answer that asks for four things is a turn spent, and a form is not. Where one "
+    "value is all you are missing, ask for that one in your answer instead — a form of "
+    "one box is a stop the sentence already made. Name the values the answer turns on "
+    "and no others, never one you could look up, and never one they have already given."
 )
 DRAWN = ("string", "integer", "number", "boolean")
 """The kinds of value a field may ask for. Not every JSON Schema type: an object or an
@@ -110,8 +113,11 @@ ASK_FOR_SCHEMA: dict[str, Any] = {
         },
         "fields": {
             "type": "array",
-            "description": "The values you need, in the order they are best filled in.",
-            "minItems": 1,
+            "description": (
+                "The values you need, in the order they are best filled in. Two or "
+                "more: one value is asked for in your answer, not on a card."
+            ),
+            "minItems": 2,
             "maxItems": MOST_FIELDS,
             "items": {
                 "type": "object",
@@ -160,11 +166,42 @@ ASK_FOR_SCHEMA: dict[str, Any] = {
     "required": ["prompt", "fields"],
 }
 
+ONE_VALUE = (
+    "'{name}' is one value, and a card is how two or more of them are asked for. Ask "
+    "for it in your answer instead, in a sentence — the user replies in prose, and the "
+    "next turn has it."
+)
+"""What the model is told about a card that asks for one thing.
+
+A form earns the stop when filling it in is the cheaper way to say four things at once.
+For one value it is a box, a button and a turn spent where a sentence would have done —
+and the sentence is what the model can write anyway. Here rather than beside the step
+that enforces it, because the form's schema says the same thing and the two would
+otherwise drift.
+"""
+
 SEND = "Send"
 NOT_NOW = "Not now"
 SENT = "You filled it in."
 NOT_SENT = "You did not fill it in."
 ASKED_TWICE = "two fields are called '{name}', so one of them could not be asked for"
+
+
+def _refuse_one_field(fields: Any) -> None:
+    """Refuse a form of one field before the schema does.
+
+    The schema refuses it too — it takes two fields or more — but says only that the
+    list is too short. What the model needs is what to do instead, and it is the same
+    sentence a plugin's one-value card is refused with.
+
+    Raises:
+        ToolRefusal: One field was named, and the message says to ask in prose.
+    """
+    if not isinstance(fields, list) or len(fields) != 1:
+        return
+    [named] = fields
+    asked = named.get("name") if isinstance(named, Mapping) else None
+    raise ToolRefusal(ONE_VALUE.format(name=asked or "the value"))
 
 
 def card_from(arguments: dict[str, Any]) -> Card:
@@ -179,6 +216,7 @@ def card_from(arguments: dict[str, Any]) -> Card:
             wrong, so the model can ask properly rather than spend the turn's question
             on a card nobody could answer.
     """
+    _refuse_one_field(arguments.get("fields"))
     try:
         Draft202012Validator(ASK_FOR_SCHEMA).validate(arguments)
     except ValidationError as invalid:

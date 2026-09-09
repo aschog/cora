@@ -396,7 +396,7 @@ const upload = (name: string) => {
   fireEvent.change(picker, { target: { files: [new File(['notes'], name)] } })
 }
 
-test('a file uploaded twice is added, and then said to be there already', async () => {
+test('a file uploaded twice is added quietly, and then said to be there already', async () => {
   const counts = [12, 0]
   vi.stubGlobal(
     'fetch',
@@ -413,7 +413,15 @@ test('a file uploaded twice is added, and then said to be there already', async 
   await screen.findByText('notes.md')
 
   upload('notes.md')
-  expect(await screen.findByText('Added “notes.md” — 12 passages.')).toBeTruthy()
+  /* Nothing is *drawn* about the one that worked: the rail lists it, and a sentence
+     saying so is the same news twice. It is read out, though — a list is not something
+     a screen reader is told changed. */
+  await waitFor(() =>
+    expect(screen.getByRole('status', { name: 'Indexing' }).textContent).toBe(''),
+  )
+  expect(screen.queryByText(/passages\./)).toBeNull()
+  const said = screen.getByRole('status', { name: 'Last upload' })
+  await waitFor(() => expect(said.textContent).toContain('is indexed'))
 
   upload('notes.md')
   expect(
@@ -657,7 +665,13 @@ test('the rail lists and uploads into the field it is set to', async () => {
   expect(screen.queryByText('notes.md')).toBeNull()
 
   upload('kyoto.md')
-  await screen.findByText(/Added/)
+  /* The row it indexes under is drawn in the field it was uploaded into, and the request
+     carried that field. */
+  await waitFor(() =>
+    expect(screen.getByRole('status', { name: 'Indexing' }).textContent).toContain(
+      'kyoto.md',
+    ),
+  )
   expect(into).toBe('travel')
 })
 

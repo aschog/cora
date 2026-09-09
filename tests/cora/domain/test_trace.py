@@ -1,4 +1,5 @@
 from cora.domain.trace import (
+    CardFilled,
     ModelDecision,
     ToolUse,
     WorkShown,
@@ -62,3 +63,18 @@ def test_a_plugin_s_own_line_is_summarised_as_the_plugin_and_what_it_did() -> No
 
 def test_a_plugin_s_own_line_marked_as_gone_wrong_reads_as_failed() -> None:
     assert WorkShown(plugin="acme", did="lost count", failed=True).failed
+
+
+def test_a_card_the_reader_filled_in_says_so_and_one_they_left_says_that() -> None:
+    assert CardFilled(tool="price_it", fields=("origin",)).summary == (
+        "You filled in price_it"
+    )
+    assert CardFilled(tool="price_it").summary == "You gave price_it nothing"
+
+
+def test_a_card_that_asked_for_nothing_says_the_reader_let_it_run() -> None:
+    """A card of read-only fields asks for nothing, so "you gave it nothing" would
+    charge the reader with withholding what nobody wanted: they confirmed it."""
+    confirmed = CardFilled(tool="price_it", asked=False)
+
+    assert confirmed.summary == "You confirmed price_it"

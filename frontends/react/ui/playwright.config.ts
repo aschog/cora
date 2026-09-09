@@ -68,7 +68,10 @@ export default defineConfig({
   timeout: live ? 300_000 : 30_000,
   expect: { timeout: live ? 150_000 : 10_000 },
   use: { baseURL: PAGE, trace: 'retain-on-failure' },
-  testIgnore: live ? undefined : /live\.spec\.ts/,
+  /* `*.test.ts` beside the specs is the unit tier's — the colour helpers a spec reads
+     ratios through are pure functions, and vitest runs them. Ignored here rather than
+     moved, so a helper and its test sit together. */
+  testIgnore: live ? [/\.test\.ts$/] : [/live\.spec\.ts/, /\.test\.ts$/],
   testMatch: live ? /live\.spec\.ts/ : undefined,
   webServer: [
     ...(live ? [] : [model]),

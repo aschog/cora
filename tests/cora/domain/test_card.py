@@ -81,3 +81,27 @@ def test_a_parked_turn_carries_the_card_whatever_stopped_it() -> None:
     parked = Pending(asked="What is my BMR?", card=Decision(question="Which?").card)
 
     assert parked.card.prompt == "Which?"
+
+
+def test_a_schema_asked_over_yields_a_field_per_property_however_many_are_known() -> (
+    None
+):
+    """What a card built from a schema asks for is every property, filled or not — so a
+    call missing one of two arguments still puts two boxes, one of them already
+    written in. The plugin how-to's example turns on this."""
+    schema = {
+        "type": "object",
+        "properties": {
+            "origin": {"type": "string"},
+            "depart": {"type": "string", "format": "date"},
+        },
+        "required": ["origin", "depart"],
+    }
+
+    fields = fields_of(schema, {"origin": "BER"})
+
+    assert [(field.name, field.value) for field in fields] == [
+        ("origin", "BER"),
+        ("depart", None),
+    ]
+    assert all(field.editable for field in fields)

@@ -39,6 +39,107 @@
   display: none;
 }
 
+/* An upload that has not answered yet. It wears the list's shape rather than a row of it:
+   the name, and under it what cora is doing to the file. */
+.indexing {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.indexing:not(:empty) {
+  margin-bottom: 2px;
+}
+
+.indexing-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  /* The left inset is the document row's own: its 3px bar and the gap after it, so a
+     name being indexed starts where every name below it starts. */
+  padding: 7px 8px 7px 21px;
+  margin-left: -8px;
+  border-radius: var(--radius);
+  background: var(--sunken);
+  font-size: 14px;
+  color: var(--n600);
+}
+
+.indexing-name {
+  line-height: 1.3;
+}
+
+.indexing-state {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.indexing-word {
+  color: var(--accent-text);
+}
+
+.indexing-ring {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid var(--accent-ring);
+  border-top-color: var(--accent);
+  border-radius: var(--pill);
+  animation: coraSpin 0.8s linear infinite;
+}
+
+/* Indeterminate on purpose: ingestion answers when the embeddings are written and reports
+   nothing on the way, so a bar filling to a percentage would be inventing one. */
+.indexing-bar {
+  position: relative;
+  flex: 1;
+  max-width: 90px;
+  height: 3px;
+  border-radius: var(--pill);
+  background: var(--n400);
+  overflow: hidden;
+}
+
+.indexing-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 45%;
+  border-radius: var(--pill);
+  background: var(--accent);
+  animation: coraSweep 1.3s ease-in-out infinite;
+}
+
+@keyframes coraSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes coraSweep {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(222%);
+  }
+}
+
+/* A reader who asked their system for less movement still has to be able to tell that
+   something is running, so the animations stop and what they moved stays visible. */
+@media (prefers-reduced-motion: reduce) {
+  .indexing-ring {
+    animation: none;
+  }
+
+  /* The bar keeps its declared 45% rather than filling: a full bar is what a finished
+     upload would look like, which is the one thing this row exists to deny. */
+  .indexing-bar::after {
+    animation: none;
+  }
+}
+
 /* The row and its control, side by side: the row is disabled unless this answer cited
    the document, so the control cannot live inside it. */
 .doc-line {

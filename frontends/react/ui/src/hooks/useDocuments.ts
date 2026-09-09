@@ -5,21 +5,19 @@ import { message } from '../fail'
 import type { Notice } from '../components/UploadNotice'
 import type { Read } from './useSource'
 
-/** What an upload did, in the words the page uses for what a document is made of. A store
- *  that already had those bytes indexes nothing and says so — the count is how the two
- *  outcomes differ, and it is the one thing the page used to throw away. */
+/** What an upload did, where the list it changed does not already say it. A document
+ *  added appears under the name it was uploaded as, so a sentence saying so is the same
+ *  news twice. A store that already had those bytes indexes nothing and changes no list —
+ *  the count is how the two outcomes differ, and it is the only one that needs words. */
 const ingested = ({
   document,
   chunks,
 }: {
   document: string
   chunks: number
-}): Notice =>
+}): Notice | null =>
   chunks
-    ? {
-        said: `Added “${document}” — ${chunks} ${chunks === 1 ? 'passage' : 'passages'}.`,
-        wrong: false,
-      }
+    ? null
     : { said: `“${document}” is already in your documents.`, wrong: true }
 
 /** What the reader can do to the documents rail. The listing itself comes from
@@ -44,6 +42,20 @@ export function useDocuments({
      reader was at. */
   const [notice, setNotice] = useState<Notice | null>(null)
 
+  /* Every upload still running, by the name it was uploaded as and the field it is
+     landing in. Ingestion parses, chunks and embeds before it answers, which is seconds
+     the reader is otherwise told nothing about: the file is in neither place they look —
+     not in the list, which does not hold it yet, and not in a sentence, because the one
+     that worked no longer writes one. */
+  const [running, setRunning] = useState<{ name: string; scope: string }[]>([])
+
+  /* The last upload that went through, for the region that reads news out. Its own
+     state rather than a notice: nothing is drawn for it, because the list is what says
+     it to a reader who can see the list. Stamped with its field for the reason a
+     running upload is — news about a desk they have left is not read out over the one
+     they are at. */
+  const [indexed, setIndexed] = useState<{ name: string; scope: string } | null>(null)
+
   /** An upload the reader started and then left behind. Ingestion takes seconds and
    *  nothing stops them opening another conversation while it runs, so the notice is
    *  stamped with the one they started it in — news about a desk they have left is not
@@ -53,16 +65,33 @@ export function useDocuments({
    *  sentence are not stamped — a document is added, or refused, wherever they are. */
   const upload = (file: File) => {
     const from = here.current
+    /* Held by identity rather than by name, so the same file uploaded twice at once
+       takes its own row away and not the other's. */
+    const started = { name: file.name, scope: field }
+    setRunning((uploads) => [...uploads, started])
+    /* What is running clears what finished. A live region announces what changes in
+       it, and the same sentence set twice is a region that never changed — so the same
+       file uploaded again would be indexed in silence. */
+    setIndexed(null)
     return cora
       .upload(file, field)
       .then((added) => {
-        if (here.current === from) setNotice(ingested(added))
+        if (here.current === from) {
+          setNotice(ingested(added))
+          setIndexed(added.chunks ? { name: added.document, scope: started.scope } : null)
+        }
         return refresh()
       })
       .catch((failed) => {
-        if (here.current === from) setNotice(null)
+        if (here.current === from) {
+          setNotice(null)
+          setIndexed(null)
+        }
         setTrouble(message(failed))
       })
+      .finally(() =>
+        setRunning((uploads) => uploads.filter((each) => each !== started)),
+      )
   }
 
   /** A document deleted, and the panel reading it let go of: it would otherwise draw a
@@ -81,5 +110,17 @@ export function useDocuments({
         ),
       )
 
-  return { notice, setNotice, upload, erase }
+  return {
+    notice,
+    setNotice,
+    upload,
+    erase,
+    indexed: indexed?.scope === field ? indexed.name : null,
+    /* This field's, because a rail switched to another one lists another field's
+       documents: a row for an upload landing elsewhere would name a file that is not
+       going to appear there. */
+    indexing: running
+      .filter((each) => each.scope === field)
+      .map((each) => each.name),
+  }
 }

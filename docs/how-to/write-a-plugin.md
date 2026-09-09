@@ -159,6 +159,13 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    the card: an argument the schema requires and the card omits is one nobody supplies,
    and the call is refused for want of it.
 
+   **A card asks for two values or more.** cora refuses a card whose writable fields
+   come to one, before it is put, and tells the model to ask for that value in its
+   answer — so a schema of one property gets no card at all. A call missing one of two
+   arguments still gets one: `fields_of` hands back a field per property, so the card
+   above stands with two boxes and one of them already filled. Read-only fields are not
+   counted, so a card put up to be confirmed rather than filled in is left alone.
+
    **`asks` has to be pure.** The step that puts your card is replayed every time the
    turn is picked up, so cora calls `asks` again on each of them — always with the same
    arguments, and expecting the same answer. One that reads a clock, a counter or a file

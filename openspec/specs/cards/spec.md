@@ -176,14 +176,21 @@ it.
 ### Requirement: Cora asks for values it does not hold
 
 Cora SHALL be able to stop a turn and ask the reader for named values it does not hold
-and cannot look up. The ask SHALL reach the reader as one card of those values, and
-SHALL be cora's own — available to a deployment that has loaded no plugin.
+and cannot look up. The ask SHALL name two values or more, SHALL reach the reader as one
+card of them, and SHALL be cora's own — available to a deployment that has loaded no
+plugin. An ask of a single value SHALL be refused, and cora SHALL ask for it in prose.
 
 #### Scenario: Four values are asked as one card
 
 - **GIVEN** a turn whose answer needs a route, two dates and a budget
 - **WHEN** cora asks the reader for them
 - **THEN** one card stands with a field for each, under a prompt saying what it is for
+
+#### Scenario: One value is asked in the answer
+
+- **GIVEN** a turn whose answer needs only a height nobody has written down
+- **WHEN** cora asks for it
+- **THEN** no card stands, and the answer asks for the height in a sentence
 
 #### Scenario: A bare cora can ask
 
@@ -197,23 +204,74 @@ SHALL be cora's own — available to a deployment that has loaded no plugin.
 - **WHEN** the card is drawn
 - **THEN** the reader is offered a date control, a number control, and those three
 
+### Requirement: A card asks for two values or more
+
+A card that asks for exactly one value SHALL be refused before the reader is put it, and
+the turn SHALL carry on. The model SHALL be told which value it was and to ask for it in
+its answer. The rule SHALL hold over every card, whoever wrote it, and SHALL count the
+fields the reader may write rather than the fields the card shows.
+
+#### Scenario: A form of one value is asked for in prose
+
+- **GIVEN** a turn whose answer needs one value nobody has written down
+- **WHEN** cora asks the reader for it as a form
+- **THEN** no card stands, the turn answers, and the answer asks for that value
+
+#### Scenario: A plugin's card of one value is refused with its call
+
+- **GIVEN** a tool whose card asks the reader for one value
+- **WHEN** the model calls it without that value
+- **THEN** no card stands, the tool does not run, and the round is told why
+
+#### Scenario: The trace carries the card that was refused
+
+- **GIVEN** a turn whose card was refused for asking one value
+- **WHEN** the trace is read
+- **THEN** it carries that ask as a call that failed, and says which value it wanted
+
+#### Scenario: A card of no writable fields still stops the turn
+
+- **GIVEN** a call awaiting approval, whose card shows the tool and no argument
+- **WHEN** the turn reaches the gate
+- **THEN** the reader is put the card, because nothing on it is being asked for
+
+#### Scenario: A card of one field nobody writes in still stops the turn
+
+- **GIVEN** a tool whose card shows one value it worked out, for confirming
+- **WHEN** the model calls it
+- **THEN** the reader is put the card, and the call runs on what they confirm
+
 ### Requirement: What the reader writes settles the ask
 
 The values the reader writes SHALL reach the turn that asked, and the answer SHALL rest
 on them. A reader who writes nothing SHALL settle the ask too: the turn SHALL carry on
-without the values and SHALL say what it still needs.
+without the values and SHALL say what it still needs. A card that asked for nothing —
+one the reader is put to confirm — SHALL settle on the action alone, and the model SHALL
+be told what happened rather than that values were withheld.
 
 #### Scenario: The turn answers on what was written
 
-- **GIVEN** a turn stopped asking for a departure city
-- **WHEN** the reader writes one and submits the card
+- **GIVEN** a turn stopped asking for a departure city and a day
+- **WHEN** the reader writes them and submits the card
 - **THEN** the turn continues and its answer rests on that city
 
 #### Scenario: Nothing written still settles it
 
-- **GIVEN** a turn stopped asking for a departure city
-- **WHEN** the reader takes the way out without writing one
-- **THEN** the turn answers without it and says plainly what it still needs
+- **GIVEN** a turn stopped asking for a departure city and a day
+- **WHEN** the reader takes the way out without writing either
+- **THEN** the turn answers without them and says plainly what it still needs
+
+#### Scenario: A confirmed card is not reported as filled in
+
+- **GIVEN** a turn stopped on a card of read-only fields, which the reader confirms
+- **WHEN** the tool runs
+- **THEN** the model is told what it returned, and not that the reader gave nothing
+
+#### Scenario: A card left unconfirmed says that, and not that a value was withheld
+
+- **GIVEN** that same card, which the reader leaves
+- **WHEN** the turn carries on
+- **THEN** the model is told it was not confirmed, and answers saying it did not run
 
 #### Scenario: The trace carries the ask
 
@@ -224,10 +282,11 @@ without the values and SHALL say what it still needs.
 ### Requirement: A form may be raised again where a fork may not
 
 A turn SHALL put its fork between remembered values once, and a second SHALL be refused.
-A form SHALL be raised as often as the round budget allows: a reader who skipped a box
-left a gap cora cannot fill from anywhere else, and the alternative is the prose the form
-exists to replace. A form raised with the rounds spent SHALL end the turn the way any
-other tool asked for at the budget does.
+A form SHALL be raised as often as the round budget allows, where two values or more are
+still missing: a reader who skipped those boxes left a gap cora cannot fill from anywhere
+else. Where one box is all that is still missing, cora SHALL ask for it in prose. A form
+raised with the rounds spent SHALL end the turn the way any other tool asked for at the
+budget does.
 
 #### Scenario: A second fork is refused
 
@@ -237,9 +296,15 @@ other tool asked for at the budget does.
 
 #### Scenario: A form after a filled form still reaches the reader
 
-- **GIVEN** a turn whose form came back with a required value skipped
+- **GIVEN** a turn whose form came back with two required values skipped
 - **WHEN** cora asks for what is still missing
-- **THEN** a second card stands, and the reader is not asked for it in prose
+- **THEN** a second card stands, and the reader is not asked for them in prose
+
+#### Scenario: One value still missing is asked in the answer
+
+- **GIVEN** a turn whose form came back with one required value skipped
+- **WHEN** cora asks for what is still missing
+- **THEN** no second card stands, and the answer asks for that value
 
 #### Scenario: A round that asks both ways puts the one still open
 

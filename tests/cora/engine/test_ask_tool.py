@@ -4,6 +4,7 @@ from cora.domain.decision import Decision, Option
 from cora.engine.ask_tool import (
     ASK_TOOL_NAME,
     MOST_FIELDS,
+    ask_for_tool,
     ask_tool,
     card_from,
     decision_from,
@@ -108,6 +109,31 @@ def test_two_fields_of_the_same_name_are_refused() -> None:
         )
 
     assert "origin" in str(refused.value)
+
+
+def test_a_form_of_one_value_is_refused_by_the_tool_the_model_reads() -> None:
+    """The rule the core holds, said where the model reads: a schema inviting a call
+    the core always refuses spends the round that made it."""
+    with pytest.raises(ToolRefusal) as refused:
+        card_from(_asking({"name": "height", "description": "Your height"}))
+
+    assert "height" in str(refused.value), "the message names the value to ask for"
+
+
+def test_a_form_of_one_field_that_is_not_even_a_field_is_still_refused() -> None:
+    """Refused rather than raised: the arguments are the model's, so a list of one
+    string is a call that costs a round — not a turn that ends in a traceback."""
+    with pytest.raises(ToolRefusal):
+        card_from({"prompt": WANTED, "fields": ["height"]})
+
+    with pytest.raises(ToolRefusal):
+        card_from({"prompt": WANTED, "fields": [{"description": "No name"}]})
+
+
+def test_the_form_tool_declares_that_it_takes_two_values_or_more() -> None:
+    offered = ask_for_tool()
+
+    assert offered.parameter_schema["properties"]["fields"]["minItems"] == 2
 
 
 def test_a_form_longer_than_anyone_fills_is_refused() -> None:

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { answered, ask, contrast, fresh, PROSE, resolved, rightRail, SEARCH } from './helpers'
+import { answered, ask, contrast, over, fresh, PROSE, resolved, rightRail, SEARCH } from './helpers'
 
 test('a question is answered, and the answer lands on the page', async ({ page }) => {
   await fresh(page)
@@ -52,8 +52,16 @@ test('an answer from a document cites it, and the citation opens the passage', a
 
   expect(drawn.background).toBe(amber)
   expect(drawn.background).not.toBe(accent)
-  expect(contrast(drawn.selection, page_bg)).toBeGreaterThan(1.5)
-  expect(contrast(drawn.selected, drawn.selection)).toBeGreaterThan(4.5)
+  /* The selection is a veil, so what the reader sees is it laid over what it covers:
+     the quotation where it falls on one, and the page where it does not. Rated as the
+     opaque blue it is mixed from, both numbers would describe a colour nobody sees.
+     One floor for both, because it is one property — that a selection is visible over
+     whatever it fell on — and set with room, so a palette edit that keeps it visible
+     does not read as a failure. */
+  const veiling_a_quote = over(drawn.selection, drawn.background)
+  expect(contrast(over(drawn.selection, page_bg), page_bg)).toBeGreaterThan(1.4)
+  expect(contrast(veiling_a_quote, drawn.background)).toBeGreaterThan(1.4)
+  expect(contrast(drawn.selected, veiling_a_quote)).toBeGreaterThan(4.5)
 })
 
 test('the steps of the turn are on the trace', async ({ page }) => {

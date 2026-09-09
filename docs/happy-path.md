@@ -68,6 +68,17 @@ comes back as that call's result. The fork is put once a turn — asked twice, c
 guessing at a value it already holds — and a form as often as the round budget allows,
 because a box the reader skipped is a gap nothing else can close.
 
+A form of one field is refused before it is put, and the model is told to ask for that
+value in its answer instead: one box is a stop the sentence had already made, and the
+reader's next message carries what it would have collected. Cora's own form is refused
+where the model names the fields, before there is a card at all, and a plugin's card at
+the gate that would put it — the same sentence, each at the earliest point that kind of
+ask can be caught. What is counted is the fields the reader may write, so a card of none
+is a different thing and stands: the fork between remembered values, the call awaiting
+approval, and what a tool worked out put up to be confirmed. A confirmed card of that
+kind runs on what the model wrote, and says so — the model is not told the reader gave
+nothing, and neither is the trace.
+
 Whatever the turn stopped on — a question between remembered values, a call awaiting
 approval, a form to fill — reaches the page as one `Card`: a prompt, its fields and its
 actions. One pause port over all three, because what parks a run is the card and nothing
