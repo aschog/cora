@@ -2,7 +2,7 @@
 
 Having it running. What cora *is* is the [front door](../index.md).
 
-## Install and run
+## Install
 
 Python 3.12, [uv](https://docs.astral.sh/uv/), Node 22 — the page is built from
 source — and an [OpenRouter key](https://openrouter.ai/keys):
@@ -15,22 +15,22 @@ git config core.hooksPath .githooks        # enable pre-commit + commit-msg hook
 ```
 <!-- --8<-- [end:install] -->
 
+## Load the plugins
+
+A plugin does not have to be installed: drop it in the folder and cora loads it.
+- The rest of what the folder does: [load plugins](load-plugins.md).
+
+## Run
+
 <!-- --8<-- [start:run] -->
 ```sh
 export OPENROUTER_API_KEY=sk-or-...
-export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness,cora.plugins.travel
 make run                                   # or: make run-env, to read the key from .env
 ```
 <!-- --8<-- [end:run] -->
 
-- `make run` builds the page and serves it with the API from one process on
-  `127.0.0.1:8000`; `make run-env` reads the environment from `.env` instead.
-- Nothing loads unless named, so `CORA_PLUGINS` is what turns a bare cora into the
-  coaching app with a prompt-injection screen.
-- The fields come with the plugins — `fitness` and `travel` are offered because those
-  two register them. `CORA_SCOPES` is for a field *no* plugin brings, which is how a
-  field holding only documents exists: `CORA_SCOPES=notes`.
-- A plugin need not be installed at all: [load plugins](load-plugins.md).
+`make run` builds the page and serves it with the API from one process on
+`127.0.0.1:8000`; `make run-env` reads the environment from `.env` instead.
 
 ## Gates
 

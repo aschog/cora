@@ -4,7 +4,7 @@
 `127.0.0.1:8000`. That is cora — there is no second screen to choose between.
 
 `make run-env` is the same command reading its environment from `.env` instead of from
-the shell you typed in, which is how the live test tier is run too. Put `CORA_PLUGINS`
+the shell you typed in, which is how the live test tier is run too. Put the key
 there as well, or cora starts with none.
 
 Both need Node 22 and the page's dependencies — `npm ci --prefix frontends/react/ui`,

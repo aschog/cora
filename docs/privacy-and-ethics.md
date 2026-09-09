@@ -105,7 +105,7 @@ loaded, which is the first thing the next section is about.
 
 **There is no screen unless the deployment asked for one.** cora loads no plugin unless
 it is named, and the injection screen is a plugin: `cora.plugins.security`. A cora
-started without it in `CORA_PLUGINS` reads nothing at all before the model does. It says
+started without it loaded reads nothing at all before the model does. It says
 so in the log at startup — *no plugin screens what the user types* — and nowhere else, so
 check what you are running. The line in [get started](how-to/get-started.md) names it;
 a deployment that copied only half of that line does not have it.

@@ -110,7 +110,7 @@ conversation pinned there. What cora remembers about you is left, and so is anyt
 approved effect wrote, because those are yours rather than the field's. A symlink is
 unlinked and what it points at is untouched, so a deployment that linked this repo's
 plugins in loses the link and nothing else. A field the configuration named carries no
-control, having no plugin behind it, and neither does one a module `CORA_PLUGINS` names
+control, having no plugin behind it, and neither does one a named module brings
 — that one is fixed at start and would be back at the next one.
 
 A plugin keeps what it worked out. What it puts under a name of its own is there on the

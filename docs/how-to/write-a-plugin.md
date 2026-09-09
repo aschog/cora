@@ -362,15 +362,7 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
    version check. The number tells you about a contract that *changed*, not one that
    grew.
 
-9. **Load it.** Two ways, and neither is a fork. Name the module in `CORA_PLUGINS`,
-   separated by commas, in order:
-
-   ```sh
-   export CORA_PLUGINS=cora.plugins.security,cora.plugins.birds
-   make run
-   ```
-
-   Or drop a single `.py` file into `./.cora/plugins/` and skip the packaging entirely:
+9. **Load it.** Drop it into the folder cora reads, and skip the packaging entirely:
 
    ```sh
    cp field_notes.py .cora/plugins/

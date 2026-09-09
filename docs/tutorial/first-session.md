@@ -10,23 +10,27 @@ You need what [get started](../how-to/get-started.md) lists, and an
 
 --8<-- "docs/how-to/get-started.md:install"
 
-## 2. Start it with plugins
+## 2. Load the plugins
+
+--8<-- "docs/how-to/get-started.md:plugins"
+
+That is what makes this a coach and a travel companion rather than a bare cora, with a
+prompt-injection screen over both.
+
+## 3. Start it
 
 --8<-- "docs/how-to/get-started.md:run"
 
 Your key goes in the first line — [openrouter.ai/keys](https://openrouter.ai/keys).
 
-The second line is what turns this from a bare cora into a coach and a travel companion
-with a prompt-injection screen. Drop it to see what the box does on its own.
-
-## 3. Pick a field, or let cora pick
+## 4. Pick a field, or let cora pick
 
 Leave the strip above the conversation on *Chat* and each question is answered in the
 field it belongs to. Pick one under *+ Plugin* and every later turn is answered in it —
 a pin is set once, so use a conversation you are willing to keep there.
 [Why](../what-it-does.md#fields).
 
-## 4. Ask it something
+## 5. Ask it something
 
 1. Pick `travel` under *+ Plugin*.
 2. Upload a note in the rail on the left. An upload lands in the field the conversation is running in, and a turn answers from that field only.

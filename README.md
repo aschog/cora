@@ -18,7 +18,6 @@ gave it something that does — and then only once you have said yes.
 
 ## Start here
 
-- [Your first session](docs/tutorial/first-session.md) — the tutorial
 - [Get started](docs/how-to/get-started.md) — install, run, gates
 - [What cora does](docs/what-it-does.md)
 - [What ships with it](docs/what-ships-with-it.md)
