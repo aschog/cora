@@ -94,8 +94,8 @@ time, asking first.
 - **A fact** goes by its key. Forgetting everything reads to the end of the store first,
   which is what makes "everything" true.
 - **A plugin** takes every field only it brought — those fields' documents, and every
-  conversation pinned to them. What cora remembers about you stays, and so does anything
-  an approved effect wrote, because those are yours rather than the field's.
+  conversation pinned to them. What that leaves is
+  [what cora does](what-it-does.md#plugins-once-they-are-loaded).
 
 ## What this is not
 

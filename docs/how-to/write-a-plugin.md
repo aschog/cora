@@ -378,23 +378,17 @@ any mix of them. cora imports no plugin of its own, so nothing here edits the en
 
    A dropped file is named for itself — `field_notes.py` is the `field_notes` plugin,
    which heads its section of the brief and names its settings. The name has to be a
-   plain identifier, because it also spells a variable in the environment. The folder is
-   read in name order after the modules `CORA_PLUGINS` names, because load order is the
-   only precedence there is, and `CORA_PLUGINS_PATH` moves the folder.
+   plain identifier, because it also spells a variable in the environment. A plugin that
+   has grown past one file drops in as a folder, and is named for the folder.
 
-   A plugin that has grown past one file drops in the same way: copy its folder — a
-   directory holding `__init__.py` — and it is one plugin named for the folder, its
-   relative imports working as written. Either shape may import anything installed;
-   nothing is installed *for* it, so a dependency cora's environment lacks is a refusal
-   naming the plugin. A plugin that wants dependencies of its own is a package, which
-   is step 1.
+   Either shape may import anything installed; nothing is installed *for* it, so a
+   dependency cora's environment lacks is a refusal naming the plugin. A plugin that
+   wants dependencies of its own is a package, which is step 1. What the folder does
+   with what it finds — load order, `CORA_PLUGINS_PATH`, the symlink, and what a name
+   claimed twice costs — is [get started](get-started.md#loading-plugins).
 
-   The folder is live: a plugin dropped while cora serves is installed by the next
-   request, a deleted one is removed, and an edited one serves its new code — reload
-   the page, no restart. The field it registers under arrives with it and leaves with
-   it, and a symlink counts as its target — a plugin still being written deploys by
-   `ln -s` and edits live. A drop that cannot load refuses that request readably and
-   what was already loaded keeps serving.
+   The folder is live, so a plugin still being written is edited in place — reload the
+   page, no restart.
 
 10. **See what loaded.** `make plugins` prints every plugin under where it came from,
     with what each registered and the scope it applies in — and a registration carrying

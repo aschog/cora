@@ -8,15 +8,22 @@ Install it, run it, load plugins into it, and run the gates it is held to. What 
 Python 3.12, [uv](https://docs.astral.sh/uv/), Node 22 — the page is built from
 source — and an [OpenRouter key](https://openrouter.ai/keys):
 
+<!-- --8<-- [start:install] -->
 ```sh
 uv sync                                    # install the environment
 npm ci --prefix frontends/react/ui         # and the page's
 git config core.hooksPath .githooks        # enable pre-commit + commit-msg hooks
+```
+<!-- --8<-- [end:install] -->
+
+<!-- --8<-- [start:run] -->
+```sh
 export OPENROUTER_API_KEY=sk-or-...
 export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness,cora.plugins.travel
 export CORA_SCOPES=fitness,travel
 make run                                   # or: make run-env, to read the key from .env
 ```
+<!-- --8<-- [end:run] -->
 
 `make run` builds the page and serves it with the API from one process on
 `127.0.0.1:8000`. The target exists so the command survives the next time a package
@@ -70,8 +77,10 @@ refused before its `extend` is called.
 ## What a plugin reads as its settings
 
 A plugin reads its own settings from the environment, under its own name:
-`CORA_PLUGIN_FITNESS_UNITS=imperial` reaches `cora.plugins.fitness` as `units`. Cora's
-own `CORA_` variables are a separate namespace, so no plugin can read them.
+`CORA_PLUGIN_TRAVEL_SERPAPI_KEY` reaches `cora.plugins.travel` as `serpapi_key`, which
+is the one setting a shipped plugin takes. Cora's own `CORA_` variables are a separate
+namespace, so no plugin can read them, and cora reads the environment so a plugin does
+not have to.
 
 ## The packages
 

@@ -4,40 +4,28 @@ Half an hour, one document, and a model you pay for by the token. By the end you
 have uploaded a document, had it answered from, followed a citation back to the passage
 it came from, and asked cora to remember something about you.
 
-You need Python 3.12, [uv](https://docs.astral.sh/uv/), Node 22 — the page is built
-from source, and neither the build nor its dependencies are committed — and an
+You need what [get started](../how-to/get-started.md) lists, and an
 [OpenRouter key](https://openrouter.ai/keys).
 
 ## 1. Install
 
-```sh
-uv sync
-npm ci --prefix frontends/react/ui
-```
+--8<-- "docs/how-to/get-started.md:install"
 
 ## 2. Start it with plugins
 
-```sh
-export OPENROUTER_API_KEY=sk-or-...        # required (https://openrouter.ai/keys)
-export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness,cora.plugins.travel
-export CORA_SCOPES=fitness,travel
-make run                                   # or: make run-env, to read the key from .env
-```
+--8<-- "docs/how-to/get-started.md:run"
 
-cora loads no plugin unless asked, so the second line is what turns this from a bare
-cora into a coach and a travel companion with a prompt-injection screen. Drop it to see
-what the box does on its own. `CORA_SCOPES` says which fields a turn may run in: the
-coaching persona and the calculators are the fitness scope's, the travel persona is
-travel's, and the medical filter holds either way. `make run-env` reads its environment
-from `.env` instead, so put both there rather than exporting them.
+Your key goes in the first line — [openrouter.ai/keys](https://openrouter.ai/keys).
+
+The second line is what turns this from a bare cora into a coach and a travel companion
+with a prompt-injection screen. Drop it to see what the box does on its own.
 
 ## 3. Pick a field, or let cora pick
 
-With two fields loaded, cora reads each question and answers it in the one it belongs
-to — the *STEPS* tab says which, and a question that fits both stops to ask you. That
-is *Chat*, above the conversation. If it is about one field, pick it under *+ Plugin*:
-every later turn is answered in it, and it survives a reload. A pin is set once, so a
-second field means a new session.
+Leave the strip above the conversation on *Chat* and cora reads each question into the
+field it belongs to. If yours is about one of them, pick it under *+ Plugin* — every
+later turn is answered in it. Why it works that way:
+[what cora does](../what-it-does.md#fields).
 
 Give travel something to answer from by uploading the notes it ships, in
 `plugins/travel/src/cora/plugins/travel/corpus/` — with `travel` picked under

@@ -1,9 +1,8 @@
 # What ships with it
 
-cora loads no plugin unless it is named, so a bare cora is the whole of it: it searches
-its documents, remembers what it is told, asks when it cannot tell, and cites what it
-used. This repository ships three plugins beyond that, and everything below is theirs
-rather than cora's — a deployment that names none of them has none of it.
+cora loads no plugin unless it is named. Everything on this page belongs to the three
+plugins this repository ships, not to cora — a deployment that names none of them has
+none of it, and still answers.
 
 The medical filter and the prompt-injection screen are `cora.plugins.security`, and they
 are system-wide: they hold whatever a turn is running as. The coaching persona and its

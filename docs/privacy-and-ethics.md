@@ -138,9 +138,8 @@ card looks like cora asking. Read a form the way you would read the answer above
 be no freer with what you type into it.
 
 **The approval gate covers what was declared to cora.** A tool a plugin registered with
-`effect=True` cannot run on the model's word. The turn stops, you see what the tool says
-it does and the arguments the model wrote, and nothing outside cora happens until you
-approve. Decline and the tool is never called.
+`effect=True` cannot run on the model's word — [what cora does](what-it-does.md#effects-and-the-gate-they-wait-at)
+is the account of what you are shown and what happens either way.
 
 What the gate cannot see is what a plugin's own code does *inside* a call it was allowed
 to make. A tool that declares no effect and writes a file anyway will write it. The gate
@@ -196,10 +195,10 @@ the well-behaved-plugin case, which matters as much as the malicious one:
   under another's — but what the line *says* is the plugin's own, and a reader takes it
   at face value.
 
-`make plugins` prints exactly what each loaded plugin registered, and `GET /api/plugins`
-carries the same listing. That tells you what a plugin *claims*; only its source tells
-you what it does. Read the listing before you trust a plugin, and read the source
-if it came from someone you do not know.
+[`make plugins`](how-to/get-started.md#loading-plugins) prints what each loaded plugin
+registered. That tells you what a plugin *claims*; only its source tells you what it
+does. Read the listing before you trust a plugin, and read the source if it came from
+someone you do not know.
 
 ### What cora enforces whatever a plugin does
 

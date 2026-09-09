@@ -18,17 +18,12 @@ gave it something that does — and then only once you have said yes.
 
 ## Start here
 
-- [Your first session](docs/tutorial/first-session.md) — install it, upload a document,
-  follow a citation back to the passage it came from
-- [Get started](docs/how-to/get-started.md) — install, run, load plugins, the gates
-- [What cora does](docs/what-it-does.md) — the fields, the cards, the gate, and what
-  deleting any of it takes
-- [What ships with it](docs/what-ships-with-it.md) — the three plugins in this
-  repository, and what each one brings
-- [Write a plugin](docs/how-to/write-a-plugin.md) — a persona, tools and a hand in the
-  turn, with a worked example
-- [The docs](docs/index.md) — sorted the way Diátaxis sorts them. `make docs` builds
-  them as a site, `make docs-serve` reads it on http://127.0.0.1:8001
+- [Your first session](docs/tutorial/first-session.md) — the tutorial
+- [Get started](docs/how-to/get-started.md) — install, run, gates
+- [What cora does](docs/what-it-does.md)
+- [What ships with it](docs/what-ships-with-it.md)
+- [Write a plugin](docs/how-to/write-a-plugin.md)
+- [The docs](docs/index.md) — `make docs` builds them, `make docs-serve` serves them
 
 ## Stack
 

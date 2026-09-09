@@ -96,11 +96,9 @@ its tools, which a plugin can neither switch off nor imitate, because no handler
 a turn. It covers what is declared to cora, which is every tool a plugin registered;
 what a plugin's *own* code does inside a call is the trust you extend by loading it.
 
-What an effect produces is a file you keep. It lands under `cora-output` — beside cora's
-stores rather than in them, because everything in `.cora/` is bookkeeping a deployment may
-delete and an itinerary you approved is not. `CORA_OUTPUT_PATH` moves it. A plugin is
-handed the location rather than choosing one, and a filename that would climb out of it is
-refused, so no plugin writes that check itself.
+What an effect produces is a file you keep, under `cora-output` rather than in cora's
+own stores — [where your data lives](data-storage.md#what-an-effect-wrote-is-not-coras)
+says why, and what moves it.
 
 ## Plugins, once they are loaded
 
