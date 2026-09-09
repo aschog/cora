@@ -6,11 +6,11 @@
 # door and links here rather than repeating any of it. docs/workflow.md documents the
 # process rather than the product, so it is not a page here.
 site_name: cora
-# `site_description` is not written here. It is the sentence README.md opens with — the
-# description every built page carries — and `scripts/site_description.py` reads it off
-# that file at build time, because YAML cannot.
-hooks:
-  - scripts/site_description.py
+# The description every built page carries. Written here now: the front door leads with
+# its artwork rather than a paragraph, so there is no opening sentence to read off it.
+site_description: >-
+  cora is a core that runs a turn — screening, retrieval, memory, asking and
+  citations — and everything it knows besides arrives as a plugin.
 docs_dir: docs
 use_directory_urls: true
 
@@ -50,9 +50,12 @@ nav:
   - Understand:
       - What it is made of: big-picture.md
       - What happens when you ask: happy-path.md
+      - What cora does: what-it-does.md
+      - What ships with it: what-ships-with-it.md
       - Where your data lives: data-storage.md
       - Privacy, and what a plugin costs: privacy-and-ethics.md
   - How-to:
+      - Get started: how-to/get-started.md
       - Write a plugin: how-to/write-a-plugin.md
       - Run the React shell: how-to/run-the-react-shell.md
       - Watch a turn happen: how-to/watch-a-turn.md
