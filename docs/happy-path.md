@@ -1,5 +1,9 @@
 # What happens when you ask
 
+Four sequences, drawn out of the methods that take them. `make diagram` redraws them,
+and a guard holds the walk they draw against the composition root — so a step added
+without one is a red test.
+
 ## A document goes in
 
 ![A UML sequence diagram of an upload: cora.frontends calls add_file on the knowledge
@@ -9,9 +13,12 @@ any text was kept, or ingests, embeds, keeps and indexes it — the text as a fi
 the field's own directory, the passages as spans in the field's own
 index.](assets/upload-map.svg)
 
-An upload names the field it lands in, and every step of the sequence is asked within it:
-a field is a directory of Markdown files and a collection of spans, so the same document
-uploaded into two fields is two copies and neither is reachable from the other.
+An upload names the field it lands in — the default one where it names none — and every
+step is asked within it: `add_file`
+hashes the bytes, asks whether that field already holds them, and otherwise ingests,
+embeds, keeps the cleaned text as a file under the field's directory, and adds the
+passages as spans to that field's index. The text is kept before the index, so a citable
+passage always opens onto something. One document in two fields is two copies.
 
 ## A turn, as a frontend asks for one
 
@@ -20,77 +27,27 @@ the thread on the graph runner, reports each new step to the caller as the state
 asks whether the turn stopped to ask, and records the turn before handing back a
 ChatResult.](assets/turn-map.svg)
 
-## A round, as the graph walks it
+A frontend calls `Agent.answer`. The agent runs the thread on the graph runner, reports
+each step as the states arrive, asks the runner whether the turn stopped to ask — raising
+`TurnPaused` if it did — records the turn, and hands back a `ChatResult`.
 
-A turn walks named steps: *screen* admits the question and opens the turn, *route* reads
-which field the turn belongs to, *focus* states what cora is under that field, *work* is
-where the rounds are spent, and *answer* settles what the user reads. The steps are named
-where they are wired, so a turn that grows one grows it there.
+The walk is named steps, named where they are wired in the composition root: `screen`
+admits the question, `route` reads which field it belongs to, `focus` states what cora is
+under that field, `work` is where the rounds are spent, `answer` settles what the reader
+gets.
 
-*route* comes after *screen* and before *focus*, and both are deliberate. A question cora
-will not accept is refused before the model is asked to read it, and the brief cannot be
-written until the field is known. A pinned conversation is answered in its field without
-reading the question at all; an unpinned one is read every turn.
+- `screen` runs before `route` deliberately: a question cora will not accept is refused
+  before any model reads it. cora's own screening is registered through the same door a
+  plugin uses.
+- `route` settles the field four ways, in order: the conversation's pin, scopes a caller
+  named, the single field a deployment offers, then the question itself read by the
+  model — which costs a call only in that last case. Every way ends in the same key, so
+  only the trace says which was taken.
+- A question the model reads as belonging to two fields is put to the reader at `focus`,
+  not at `route`, because a stopped step is replayed from its first line: reading again
+  on the way back could answer in a field nobody chose.
 
-A question that belongs to two fields is put to the reader, and that stop is *focus*'s
-rather than *route*'s. A stopped step is replayed from its first line when the turn is
-picked up, so the reading has to be a step behind the stop: read again on the way back,
-a question can be read differently, and the answer would arrive in a field the reader
-never chose.
-
-Every round runs model → *gate* → tools, and the stop for the reader leads into the gate
-as well. The gate is what a call that changes something outside cora waits at: it puts
-each such call to the user, settles every one of them before the tools run, and answers a
-declined one where it was proposed, so the tools need no notion of approval at all. It is
-a step of the core rather than a point a plugin subscribes to — no handler may stop a
-turn — and it stands on the only path from the model to the tools, which is what makes it
-unbypassable by construction rather than by anyone remembering to call it. A round
-proposing nothing that declares an effect passes straight through, at the cost of the one
-superstep the sizing allows for.
-
-The gate runs no tool, and that is why it can be replayed. A stopped node is walked again
-from its first line when the turn is picked up, so a round of two effects stops twice,
-comes back with both answers in the order they were asked, and runs neither until both
-are settled — an effect that already happened can never run a second time.
-
-Filling a call in happens there too, and for the same reason. A tool may declare `asks`,
-which is handed the arguments the model wrote and answers with a card to put to the
-reader; the gate puts it, writes what they filled in over those arguments, and re-issues
-the call so the tools are handed values a person stated. Ahead of the proposals, so a
-call that both asks and acts is approved as it will really be made.
-
-Cora asks on its own account through two tools of its own, both settled by the ask step
-ahead of the round's tools: `ask_user`, which puts a fact it holds at two values, and
-`ask_user_for`, which puts a form of values it does not hold at all. The model names the
-fields and cora builds the card from them, so an answer that needs four things nobody has
-written down is one form rather than four questions in prose, and what the reader wrote
-comes back as that call's result. The fork is put once a turn — asked twice, cora is
-guessing at a value it already holds — and a form as often as the round budget allows,
-because a box the reader skipped is a gap nothing else can close.
-
-A form of one field is refused before it is put, and the model is told to ask for that
-value in its answer instead: one box is a stop the sentence had already made, and the
-reader's next message carries what it would have collected. Cora's own form is refused
-where the model names the fields, before there is a card at all, and a plugin's card at
-the gate that would put it — the same sentence, each at the earliest point that kind of
-ask can be caught. What is counted is the fields the reader may write, so a card of none
-is a different thing and stands: the fork between remembered values, the call awaiting
-approval, and what a tool worked out put up to be confirmed. A confirmed card of that
-kind runs on what the model wrote, and says so — the model is not told the reader gave
-nothing, and neither is the trace.
-
-Whatever the turn stopped on — a question between remembered values, a call awaiting
-approval, a form to fill — reaches the page as one `Card`: a prompt, its fields and its
-actions. One pause port over all three, because what parks a run is the card and nothing
-else, and one renderer on the page, which knows none of the three apart. A field carries
-the JSON Schema it was read out of, so a plugin's own card is drawn without the page
-having been told about it.
-
-Four points inside that walk are open to a plugin — the question being screened, the
-brief being settled, a tool call about to run, a tool result coming back. A handler
-subscribed to one is handed a frozen value and answers with a refusal, an amendment or
-nothing. What a return means at each point is `cora.engine.events`, and the trace names
-the plugin behind every one of them. Cora's own screening goes through the same door.
+## A round, inside the graph
 
 ![A UML sequence diagram of one turn inside the graph: the runner takes the screen, route
 and focus steps and then the work step, loops over the model step and the router, and on
@@ -98,24 +55,52 @@ the router's answer either takes the round to the gate and on to its tools, stop
 decision to the reader before the gate, or leaves the loop for the answer
 step.](assets/round-map.svg)
 
-## The tool that reaches the documents
+Every round is model → router → gate → tools, and the ask route leads into the gate as
+well — which is what makes the gate the only path from the model to the tools. A round
+proposing no effect still costs the gate's superstep, which the sizing allows for.
 
-`ToolStep` never knows which tool it ran. It asks `ToolRuntime` for the name the model
-gave, and hands back whatever came out — numbered `[n]` first if the result can cite
-itself.
+- The gate is a step of the core, not a point a plugin subscribes to, and it runs no
+  tool — which is what makes it free to replay. It puts each proposed effect on its own,
+  settles every one before the tools run, and answers a declined call with a tool
+  message, so the tools need no notion of approval.
+- Filling a call in happens there too, ahead of the proposals: a tool declaring `asks`
+  is handed the arguments the model wrote and answers with a card. The gate puts it,
+  writes what the reader filled in over those arguments, and re-issues the call — so a
+  call that both asks and acts is approved as it will really be made.
+- Cora asks on its own account through two tools of its own: `ask_user`, a fork between
+  values it holds twice, and `ask_user_for`, a form of two values or more that it holds
+  not at all. Both are settled at the `ask` step, ahead of the round's tools — a stopped
+  step is replayed from its first line, so a tool that had already run would run twice.
+  The fork is put once a turn, the form as often as the round budget allows.
+- A plugin's card is held to one rule: asking for exactly one writable value is refused
+  and the model told to ask in prose, while asking for none still stands — what a tool
+  worked out, put up for a yes.
+- Whatever the turn stopped on — a fork between remembered values, a call awaiting
+  approval, a form to fill — reaches the page as one `Card` of a prompt, fields and
+  actions, through one pause port, and one component draws all three. A field carries the
+  JSON Schema it was read out of.
+- Five points in the walk are open to a plugin: the question being screened, the brief
+  being settled, a tool call about to run, a tool result coming back, and the answer
+  settled and not yet handed over. A handler is given one frozen value and answers with
+  nothing, or with the one thing its point takes — a refusal at the question and at a
+  tool call, an amendment at the brief, a tool result and the answer. No handler may
+  pause a turn.
+- `ToolStep` never knows which tool it ran: it asks the runtime for the name the model
+  gave and hands back whatever came out, numbered `[n]` first where the payload can cite
+  itself.
 
-The round it runs in binds the turn's field, and the search reads it rather than being
-handed it. That is what makes one rule out of four readers: cora's own search, a plugin
-reading `Host.documents`, a handler at any of the five points, and a loop delegated from
-inside a call all read the field the turn is in — and a plugin cannot see the turn it is
-running in, so a parameter would be one nobody could fill.
+## A search, inside a call
 
 ![A UML sequence diagram of a document search: the tool runtime runs the tool, which asks
-its context source to search; the knowledge base reads the field the turn is running in,
-embeds the question with the same embedder the chunks went through, queries that field's
-index for the nearest spans, and reads each passage's words back out of the file its span
-was measured in.](assets/search-map.svg)
+its context source to search; the knowledge base embeds the question with the same
+embedder the chunks went through, reads the field the turn is running in, queries that
+field's index for the nearest spans, and reads each passage's words back out of the file
+its span was measured in.](assets/search-map.svg)
 
-The index keeps the span and the file keeps the words, so what a search hands back is cut
-out of the file rather than copied a second time into the index — and a passage whose
-file is gone is left out rather than handed back empty.
+The round binds the turn's field and the search reads it rather than being handed it —
+one rule over four readers: cora's own search, a plugin reading `Host.documents`, a
+handler at any of the five points — screening reads the thread's pin, because it runs
+before the field is routed — and a loop delegated from inside a call.
+
+The index keeps the span and the file keeps the words, so a retrieved passage is cut out
+of its file. A passage whose file is gone is left out rather than handed back empty.

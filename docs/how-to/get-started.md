@@ -46,7 +46,8 @@ make run                                   # or: make run-env, to read the key f
 <!-- --8<-- [end:run] -->
 
 `make run` builds the page and serves it with the API from one process on
-`127.0.0.1:8000`; `make run-env` reads the environment from `.env` instead.
+`127.0.0.1:8000`; `make run-env` reads `.env` as well as the shell it was started
+from, and a variable already exported there wins over the file.
 
 ## Gates
 

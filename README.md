@@ -8,13 +8,13 @@ On the showcase: [showcase.turingcollege.com](https://showcase.turingcollege.com
 
 An agent that is good at your subject usually means somebody built an app for that
 subject. Cora turns that around: the agent is the part that stays, and the subject is
-the part you write — a fitness coach, a trip, a lab notebook.
+the part you build yourself — a fitness coach, a trip, a lab notebook.
 
 ## With nothing loaded
 
 It still answers: it searches its documents, remembers what it is told, asks when it
 cannot tell, and cites what it used. It changes nothing outside itself unless a plugin
-gave it something that does — and then only once you have said yes.
+gave it something that does.
 
 ## Start here
 
