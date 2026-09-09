@@ -1,3 +1,17 @@
+/* Read out, never drawn: an upload that finished is in the list for anyone who can see
+   it, and this is the same sentence for a reader who cannot. */
+.told-not-shown {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
 .rail-heading h2 {
   font-size: inherit;
   font-weight: inherit;
@@ -55,12 +69,14 @@
   display: flex;
   flex-direction: column;
   gap: 5px;
-  padding: 7px 8px;
+  /* The left inset is the document row's own: its 3px bar and the gap after it, so a
+     name being indexed starts where every name below it starts. */
+  padding: 7px 8px 7px 21px;
   margin-left: -8px;
   border-radius: var(--radius);
-  background: var(--n300);
+  background: var(--sunken);
   font-size: 14px;
-  color: var(--n700);
+  color: var(--n600);
 }
 
 .indexing-name {
@@ -131,8 +147,9 @@
     animation: none;
   }
 
+  /* The bar keeps its declared 45% rather than filling: a full bar is what a finished
+     upload would look like, which is the one thing this row exists to deny. */
   .indexing-bar::after {
-    width: 100%;
     animation: none;
   }
 }

@@ -14,8 +14,11 @@ test('a document is uploaded, listed, and deleted only once i have said so', asy
 
   await page.locator('input[type=file]').setInputFiles(NOTE)
 
-  /* The list is what says the upload worked — the page says nothing else about one that
-     did, and the row it was indexing under goes when the document arrives. */
+  /* Indexing is seconds of real work — the embeddings are written before the request
+     answers — so the row stands under the control while it runs, and goes when the
+     document arrives in the list. The list is what says it worked; the page says
+     nothing else about an upload that did. */
+  await expect(page.getByRole('status', { name: 'Indexing' })).toContainText('second.md')
   await expect(page.getByRole('button', { name: 'second.md', exact: true })).toBeVisible()
   await expect(page.getByRole('status', { name: 'Indexing' })).toHaveText('')
 

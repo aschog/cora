@@ -49,6 +49,11 @@ export function useDocuments({
      that worked no longer writes one. */
   const [running, setRunning] = useState<{ name: string; scope: string }[]>([])
 
+  /* The last upload that went through, for the region that reads news out. Its own
+     state rather than a notice: nothing is drawn for it, because the list is what says
+     it to a reader who can see the list. */
+  const [indexed, setIndexed] = useState<string | null>(null)
+
   /** An upload the reader started and then left behind. Ingestion takes seconds and
    *  nothing stops them opening another conversation while it runs, so the notice is
    *  stamped with the one they started it in — news about a desk they have left is not
@@ -65,11 +70,17 @@ export function useDocuments({
     return cora
       .upload(file, field)
       .then((added) => {
-        if (here.current === from) setNotice(ingested(added))
+        if (here.current === from) {
+          setNotice(ingested(added))
+          setIndexed(added.chunks ? added.document : null)
+        }
         return refresh()
       })
       .catch((failed) => {
-        if (here.current === from) setNotice(null)
+        if (here.current === from) {
+          setNotice(null)
+          setIndexed(null)
+        }
         setTrouble(message(failed))
       })
       .finally(() =>
@@ -98,6 +109,7 @@ export function useDocuments({
     setNotice,
     upload,
     erase,
+    indexed,
     /* This field's, because a rail switched to another one lists another field's
        documents: a row for an upload landing elsewhere would name a file that is not
        going to appear there. */

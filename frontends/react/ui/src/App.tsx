@@ -152,7 +152,7 @@ function Page() {
      moment they say so — and comes back, with a sentence, if the store refuses. */
   const removing = useRemoving({ reread, setTrouble })
   const { read, setRead, cited, sourceOf, passagesIn } = useSource(entries, field)
-  const { notice, setNotice, upload, erase, indexing } = useDocuments({
+  const { notice, setNotice, upload, erase, indexing, indexed } = useDocuments({
     field,
     here,
     refresh,
@@ -320,6 +320,7 @@ function Page() {
                 cited={cited}
                 field={namedAbove ? null : field}
                 indexing={indexing}
+                indexed={indexed}
                 onOpen={open}
                 onUpload={upload}
                 onDelete={(name) =>

@@ -97,6 +97,10 @@ button {
    quotation out: the reader lost the very mark they were selecting. Mixed from the accent
    rather than written as a fourth blue, so it cannot drift from it. */
 ::selection {
+  /* The mix stated twice: `color-mix` needs a newer browser than this build targets,
+     and where it is not understood the declaration is dropped — leaving the UA's own
+     opaque highlight, which is the thing this rule exists to replace. */
+  background: rgba(47, 129, 247, 0.32);
   background: color-mix(in srgb, var(--accent) 32%, transparent);
   color: var(--text);
 }

@@ -11,6 +11,7 @@ const rail = (documents: string[], cited: string[], onDelete = vi.fn()) => {
       cited={new Set(cited)}
       field="cora"
       indexing={[]}
+      indexed={null}
       onOpen={vi.fn()}
       onUpload={vi.fn()}
       onDelete={onDelete}
@@ -54,6 +55,7 @@ test('what an upload did is announced in that same region', () => {
       cited={new Set<string>()}
       field="cora"
       indexing={[]}
+      indexed={null}
       onOpen={vi.fn()}
       onUpload={vi.fn()}
       onDelete={vi.fn()}
@@ -78,6 +80,7 @@ test('a file being indexed is listed as indexing, and the control says how many'
       cited={new Set<string>()}
       field="cora"
       indexing={['deadlift-form-guide.pdf']}
+      indexed={null}
       onOpen={vi.fn()}
       onUpload={vi.fn()}
       onDelete={vi.fn()}
@@ -102,6 +105,7 @@ test('two files at once are counted, and one at a time is not pluralised', () =>
       cited={new Set<string>()}
       field="cora"
       indexing={['one.md', 'two.md']}
+      indexed={null}
       onOpen={vi.fn()}
       onUpload={vi.fn()}
       onDelete={vi.fn()}
@@ -111,4 +115,48 @@ test('two files at once are counted, and one at a time is not pluralised', () =>
   )
 
   expect(screen.getByText('Indexing 2 files…')).toBeTruthy()
+})
+
+/* The label wraps the file input, so the label's text is the input's accessible name.
+   The count belongs to the list below it, not to the control. */
+test('the control still says what it does while a file is indexing', () => {
+  render(
+    <DocumentRail
+      documents={[]}
+      cited={new Set<string>()}
+      field="cora"
+      indexing={['deadlift-form-guide.pdf']}
+      indexed={null}
+      onOpen={vi.fn()}
+      onUpload={vi.fn()}
+      onDelete={vi.fn()}
+      upload={null}
+      onDismissUpload={vi.fn()}
+    />,
+  )
+
+  expect(screen.getByLabelText('Add a document')).toBeTruthy()
+})
+
+/* The list says an upload arrived to anyone who can see it. A reader who cannot is
+   owed the same news, and a row leaving a live region is not announced. */
+test('a document just indexed is said where a screen reader hears it', () => {
+  render(
+    <DocumentRail
+      documents={['deadlift-form-guide.pdf']}
+      cited={new Set<string>()}
+      field="cora"
+      indexing={[]}
+      indexed="deadlift-form-guide.pdf"
+      onOpen={vi.fn()}
+      onUpload={vi.fn()}
+      onDelete={vi.fn()}
+      upload={null}
+      onDismissUpload={vi.fn()}
+    />,
+  )
+
+  const said = screen.getByRole('status', { name: 'Last upload' })
+  expect(said.textContent).toContain('deadlift-form-guide.pdf')
+  expect(said.textContent).toContain('indexed')
 })

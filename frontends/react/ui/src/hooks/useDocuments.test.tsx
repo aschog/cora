@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { useRef, useState } from 'react'
 import { useDocuments } from './useDocuments'
@@ -100,11 +100,17 @@ const held = () => {
   return { done: (added: { document: string; chunks: number }) => done(added) }
 }
 
+/** The click through `fireEvent`, so React has flushed by the time an assertion runs.
+ *  A raw `.click()` leaves the first synchronous `waitFor` check reading the render
+ *  before the upload started — where "nothing indexing" is already true, and a test
+ *  that only ever asserted that cannot fail. */
+const start = () => fireEvent.click(screen.getByText('upload'))
+
 test('a file is listed as indexing while its upload runs, and not after', async () => {
   const upload = held()
   render(<Uploading />)
 
-  screen.getByText('upload').click()
+  start()
   await waitFor(() => expect(screen.getByText('deadlift.pdf')).toBeTruthy())
 
   upload.done({ document: 'deadlift.pdf', chunks: 12 })
@@ -116,7 +122,8 @@ test('an upload that indexed something says nothing: the list says it', async ()
   const upload = held()
   render(<Uploading />)
 
-  screen.getByText('upload').click()
+  start()
+  await waitFor(() => expect(screen.getByText('deadlift.pdf')).toBeTruthy())
   upload.done({ document: 'deadlift.pdf', chunks: 12 })
 
   await waitFor(() => expect(screen.getByText('nothing indexing')).toBeTruthy())
@@ -127,7 +134,8 @@ test('bytes the field already had are said, because the list will not change', a
   const upload = held()
   render(<Uploading />)
 
-  screen.getByText('upload').click()
+  start()
+  await waitFor(() => expect(screen.getByText('deadlift.pdf')).toBeTruthy())
   upload.done({ document: 'deadlift.pdf', chunks: 0 })
 
   await waitFor(() =>
@@ -138,13 +146,40 @@ test('bytes the field already had are said, because the list will not change', a
 })
 
 test('an upload that failed leaves nothing indexing', async () => {
+  /* Held open first, so the row is on screen before the request answers: a row that
+     never arrived cannot be seen to go, and cleanup on the success path only would
+     leave the rail saying `Indexing 1 file…` until a reload. */
+  let refuse = () => {}
+  const answer = new Promise((_, broken) => {
+    refuse = () => broken(new Error('ingest failed'))
+  })
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}) }) as Response),
+    vi.fn(async () => ({ ok: true, json: () => answer }) as unknown as Response),
   )
   render(<Uploading />)
 
-  screen.getByText('upload').click()
+  start()
+  await waitFor(() => expect(screen.getByText('deadlift.pdf')).toBeTruthy())
 
+  refuse()
+
+  await waitFor(() => expect(screen.getByText('nothing indexing')).toBeTruthy())
+})
+
+test('a row is drawn in the field it was uploaded into, and in no other', async () => {
+  const upload = held()
+  const { rerender } = render(<Uploading field="fitness" />)
+
+  start()
+  await waitFor(() => expect(screen.getByText('deadlift.pdf')).toBeTruthy())
+
+  rerender(<Uploading field="travel" />)
+  expect(screen.getByText('nothing indexing')).toBeTruthy()
+
+  rerender(<Uploading field="fitness" />)
+  expect(screen.getByText('deadlift.pdf')).toBeTruthy()
+
+  upload.done({ document: 'deadlift.pdf', chunks: 3 })
   await waitFor(() => expect(screen.getByText('nothing indexing')).toBeTruthy())
 })

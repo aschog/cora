@@ -16,6 +16,10 @@ type Props = {
    *  a row of its own: it is not a document of the field until the index holds it, so
    *  there is nothing to open and nothing to delete. */
   indexing: string[]
+  /** The last upload that finished, or nothing. The list is what says an upload arrived
+   *  to a reader who can see it; this is the same news for one who cannot, because a row
+   *  *leaving* a live region is not announced. */
+  indexed: string | null
   onOpen: (document: string) => void
   onUpload: (file: File) => void
   onDelete: (document: string) => void
@@ -30,6 +34,7 @@ export default function DocumentRail({
   cited,
   field,
   indexing,
+  indexed,
   onOpen,
   onUpload,
   onDelete,
@@ -54,8 +59,12 @@ export default function DocumentRail({
             ? `Indexing ${indexing.length} file${indexing.length === 1 ? '' : 's'}…`
             : 'Add a document'}
         </span>
+        {/* Named explicitly, because the label wraps the input and its text is
+            therefore the input's own name: while anything is indexing that name would
+            become the count, and a control has to say what taking it does. */}
         <input
           type="file"
+          aria-label="Add a document"
           accept=".txt,.md,.pdf"
           onChange={(e) => {
             const [file] = Array.from(e.target.files ?? [])
@@ -70,6 +79,9 @@ export default function DocumentRail({
           carries a second one for its own notices, and a name is what a reader hears before
           the sentence rather than after it. */}
       <div role="status" aria-label="Last upload">
+        {indexed && (
+          <p className={styles.toldNotShown}>{`“${indexed}” is indexed.`}</p>
+        )}
         {upload && (
           <UploadNotice
             said={upload.said}
@@ -84,16 +96,14 @@ export default function DocumentRail({
           first row is not. */}
       <div className={styles.indexing} role="status" aria-label="Indexing">
         {indexing.map((name, at) => (
-          /* Keyed by position as well as name, because one name can be uploaded twice
-             before either upload has answered. */
-          <div className={styles.indexingRow} key={`${name}-${at}`}>
+          /* Keyed by position: one name can be uploaded twice before either upload
+             has answered, and these rows hold no state of their own to lose when a
+             finished one shifts the rest along. */
+          <div className={styles.indexingRow} key={at}>
             <span className={styles.indexingName}>{name}</span>
             <span className={styles.indexingState}>
               <span className={styles.indexingRing} aria-hidden="true" />
               <span className={joined('micro', styles.indexingWord)}>INDEXING</span>
-              {/* How long is not knowable — the server answers when the embeddings are
-                  written and says nothing before that — so the bar says work is happening
-                  and never claims a fraction of it. */}
               <span className={styles.indexingBar} aria-hidden="true" />
             </span>
           </div>
