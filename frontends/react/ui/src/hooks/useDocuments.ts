@@ -5,21 +5,19 @@ import { message } from '../fail'
 import type { Notice } from '../components/UploadNotice'
 import type { Read } from './useSource'
 
-/** What an upload did, in the words the page uses for what a document is made of. A store
- *  that already had those bytes indexes nothing and says so — the count is how the two
- *  outcomes differ, and it is the one thing the page used to throw away. */
+/** What an upload did, where the list it changed does not already say it. A document
+ *  added appears under the name it was uploaded as, so a sentence saying so is the same
+ *  news twice. A store that already had those bytes indexes nothing and changes no list —
+ *  the count is how the two outcomes differ, and it is the only one that needs words. */
 const ingested = ({
   document,
   chunks,
 }: {
   document: string
   chunks: number
-}): Notice =>
+}): Notice | null =>
   chunks
-    ? {
-        said: `Added “${document}” — ${chunks} ${chunks === 1 ? 'passage' : 'passages'}.`,
-        wrong: false,
-      }
+    ? null
     : { said: `“${document}” is already in your documents.`, wrong: true }
 
 /** What the reader can do to the documents rail. The listing itself comes from
@@ -44,6 +42,13 @@ export function useDocuments({
      reader was at. */
   const [notice, setNotice] = useState<Notice | null>(null)
 
+  /* Every upload still running, by the name it was uploaded as and the field it is
+     landing in. Ingestion parses, chunks and embeds before it answers, which is seconds
+     the reader is otherwise told nothing about: the file is in neither place they look —
+     not in the list, which does not hold it yet, and not in a sentence, because the one
+     that worked no longer writes one. */
+  const [running, setRunning] = useState<{ name: string; scope: string }[]>([])
+
   /** An upload the reader started and then left behind. Ingestion takes seconds and
    *  nothing stops them opening another conversation while it runs, so the notice is
    *  stamped with the one they started it in — news about a desk they have left is not
@@ -53,6 +58,10 @@ export function useDocuments({
    *  sentence are not stamped — a document is added, or refused, wherever they are. */
   const upload = (file: File) => {
     const from = here.current
+    /* Held by identity rather than by name, so the same file uploaded twice at once
+       takes its own row away and not the other's. */
+    const started = { name: file.name, scope: field }
+    setRunning((uploads) => [...uploads, started])
     return cora
       .upload(file, field)
       .then((added) => {
@@ -63,6 +72,9 @@ export function useDocuments({
         if (here.current === from) setNotice(null)
         setTrouble(message(failed))
       })
+      .finally(() =>
+        setRunning((uploads) => uploads.filter((each) => each !== started)),
+      )
   }
 
   /** A document deleted, and the panel reading it let go of: it would otherwise draw a
@@ -81,5 +93,16 @@ export function useDocuments({
         ),
       )
 
-  return { notice, setNotice, upload, erase }
+  return {
+    notice,
+    setNotice,
+    upload,
+    erase,
+    /* This field's, because a rail switched to another one lists another field's
+       documents: a row for an upload landing elsewhere would name a file that is not
+       going to appear there. */
+    indexing: running
+      .filter((each) => each.scope === field)
+      .map((each) => each.name),
+  }
 }

@@ -14,8 +14,10 @@ test('a document is uploaded, listed, and deleted only once i have said so', asy
 
   await page.locator('input[type=file]').setInputFiles(NOTE)
 
-  await expect(page.getByRole('status', { name: 'Last upload' })).toContainText('second.md')
+  /* The list is what says the upload worked — the page says nothing else about one that
+     did, and the row it was indexing under goes when the document arrives. */
   await expect(page.getByRole('button', { name: 'second.md', exact: true })).toBeVisible()
+  await expect(page.getByRole('status', { name: 'Indexing' })).toHaveText('')
 
   await page.getByLabel('Delete second.md').click()
   const asked = page.getByRole('dialog', { name: 'DELETE DOCUMENT' })

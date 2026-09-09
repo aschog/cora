@@ -12,6 +12,10 @@ type Props = {
    *  something: routing can settle a field nobody picked, and that is the one case
    *  where an upload would otherwise land somewhere unannounced. */
   field: string | null
+  /** Every upload still running in this field, by the name it was uploaded as. Drawn as
+   *  a row of its own: it is not a document of the field until the index holds it, so
+   *  there is nothing to open and nothing to delete. */
+  indexing: string[]
   onOpen: (document: string) => void
   onUpload: (file: File) => void
   onDelete: (document: string) => void
@@ -25,6 +29,7 @@ export default function DocumentRail({
   documents,
   cited,
   field,
+  indexing,
   onOpen,
   onUpload,
   onDelete,
@@ -44,7 +49,11 @@ export default function DocumentRail({
 
       <label className={styles.upload}>
         <span>＋</span>
-        <span>Add a document</span>
+        <span>
+          {indexing.length
+            ? `Indexing ${indexing.length} file${indexing.length === 1 ? '' : 's'}…`
+            : 'Add a document'}
+        </span>
         <input
           type="file"
           accept=".txt,.md,.pdf"
@@ -68,6 +77,27 @@ export default function DocumentRail({
             onDismiss={onDismissUpload}
           />
         )}
+      </div>
+
+      {/* Mounted whether or not anything is indexing, for the reason the region above it
+          is: a live region a row arrives *into* is announced, one that arrives with its
+          first row is not. */}
+      <div className={styles.indexing} role="status" aria-label="Indexing">
+        {indexing.map((name, at) => (
+          /* Keyed by position as well as name, because one name can be uploaded twice
+             before either upload has answered. */
+          <div className={styles.indexingRow} key={`${name}-${at}`}>
+            <span className={styles.indexingName}>{name}</span>
+            <span className={styles.indexingState}>
+              <span className={styles.indexingRing} aria-hidden="true" />
+              <span className={joined('micro', styles.indexingWord)}>INDEXING</span>
+              {/* How long is not knowable — the server answers when the embeddings are
+                  written and says nothing before that — so the bar says work is happening
+                  and never claims a fraction of it. */}
+              <span className={styles.indexingBar} aria-hidden="true" />
+            </span>
+          </div>
+        ))}
       </div>
 
       <div className={styles.docList}>
