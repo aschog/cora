@@ -67,7 +67,8 @@ database; what you can read yourself is kept beside it as files.
 | `cora-output` | What an approved effect produced — an itinerary you said yes to | `CORA_OUTPUT_PATH` |
 
 `.cora/plugins/` is the one location cora reads rather than writes: single-file plugins
-you dropped in yourself, moved by `CORA_PLUGINS_PATH`.
+you dropped in yourself, moved by `CORA_PLUGINS_PATH`. How the one file is divided, and
+what the directory beside it holds, is [where your data lives](data-storage.md).
 
 The 120-character cap is cora's own, and it covers the three kinds of line above and
 nothing else. A malformed tool call is logged with the arguments the model wrote, in

@@ -25,6 +25,7 @@ PAGES = (
     "docs/index.md",
     "docs/big-picture.md",
     "docs/happy-path.md",
+    "docs/data-storage.md",
     PRIVACY,
     "docs/workflow.md",
     "docs/how-to/write-a-plugin.md",

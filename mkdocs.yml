@@ -50,6 +50,7 @@ nav:
   - Understand:
       - What it is made of: big-picture.md
       - What happens when you ask: happy-path.md
+      - Where your data lives: data-storage.md
       - Privacy, and what a plugin costs: privacy-and-ethics.md
   - How-to:
       - Write a plugin: how-to/write-a-plugin.md
