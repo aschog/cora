@@ -8,18 +8,30 @@ You need what [get started](../how-to/get-started.md) lists, and an
 
 ## 1. Install
 
---8<-- "docs/how-to/get-started.md:install"
+```sh
+uv sync                                    # install the environment
+npm ci --prefix frontends/react/ui         # and the page's
+git config core.hooksPath .githooks        # enable pre-commit + commit-msg hooks
+```
 
 ## 2. Load the plugins
 
---8<-- "docs/how-to/get-started.md:plugins"
+```sh
+mkdir -p .cora/plugins
+for each in security fitness travel; do
+  ln -s "$(pwd)"/plugins/$each/src/cora/plugins/$each .cora/plugins/$each
+done
+```
 
 That is what makes this a coach and a travel companion rather than a bare cora, with a
 prompt-injection screen over both.
 
 ## 3. Start it
 
---8<-- "docs/how-to/get-started.md:run"
+```sh
+export OPENROUTER_API_KEY=sk-or-...
+make run                                   # or: make run-env, to read the key from .env
+```
 
 Your key goes in the first line — [openrouter.ai/keys](https://openrouter.ai/keys).
 

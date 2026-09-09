@@ -75,6 +75,10 @@ and says the same thing every time. `make e2e-live` runs its one live spec again
 model a deployment answers from, reading the key from `.env`. Local only: they want a
 browser, and nothing runs them for you.
 
+It covers a question answered and cited, a document uploaded and deleted, the card a turn
+stops on, the gate an effect waits at, a conversation pinned to a field, and a
+conversation and a fact deleted from the rails.
+
 ## The packages
 
 The repository root is the app: a `uv` workspace sharing the `cora` namespace. Install

@@ -14,8 +14,9 @@ site_description: >-
 docs_dir: docs
 use_directory_urls: true
 
-# docs/index.md opens with README.md's opening, included rather than copied: what cora
-# is is written in the front door and nowhere else.
+# Snippets is here for one job: the tutorial pulls its commands out of the get-started
+# how-to, so the two pages cannot drift. The front door states no paragraph for a page to
+# include any more — the site states its own description above.
 markdown_extensions:
   - pymdownx.snippets:
       base_path: ["."]
@@ -42,6 +43,11 @@ theme:
 validation:
   links:
     anchors: warn
+  # A page nobody put in the nav is logged at INFO, where no gate reads it — the same
+  # silence the anchors above used to keep. Turned up, the strict build is what catches
+  # the next page added and not listed.
+  nav:
+    omitted_files: warn
 
 nav:
   - Home: index.md

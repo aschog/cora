@@ -23,12 +23,18 @@ untrusted-data label a passage carries, and earns no `[n]`, because a citation o
 onto a file you uploaded and a forecast is not one. A service that is down costs that
 call, not the turn.
 
-**It plans.** Ask for three days in a month under a budget and it prices every week the
-window allows, pairs the cheapest with a stay, then *checks* what it built: the stay
-covers every night, the return matches the check-out, the total is inside the budget, no
-outdoor day sits under a forecast that rules it out. A plan that fails is revised twice,
-then handed over naming every rule it could not satisfy — nothing is quietly relaxed.
-The plan is a shape cora keeps, so *make it cheaper* revises what was verified.
+**It plans.** Ask for three days in a month under a budget and it asks the model what to
+do on each day, prices every week the window allows, pairs the cheapest with a stay, then
+*checks* what it built: the stay covers every night, the nights match what was asked, the
+total is inside the budget, no day is empty, and no outdoor day sits under a forecast that
+rules it out. A plan that fails is revised twice, then handed over naming every rule it
+could not satisfy — nothing is quietly relaxed. The plan is a shape cora keeps, so *make
+it cheaper* revises what was verified.
+
+**It saves, once you say so.** `save_itinerary` declares that it changes something
+outside cora, so asking travel to save the trip stops the turn: you see the call, and
+only then does a file land under `cora-output`. It writes the plan that passed — handed
+anything else, it refuses, saying that is not the trip it checked.
 
 ## Prices, and the one key cora needs
 

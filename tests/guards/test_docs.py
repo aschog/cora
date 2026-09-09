@@ -222,6 +222,31 @@ def test_every_make_target_the_docs_name_exists() -> None:
     )
 
 
+SHARED = ("install", "plugins", "run")
+"""The command blocks the tutorial and the how-to both carry. Marked in the how-to, so
+one page is where they are edited."""
+TUTORIAL = "docs/tutorial/first-session.md"
+STARTED = "docs/how-to/get-started.md"
+
+
+def _marked(text: str, name: str) -> str:
+    return text.split(f"[start:{name}] -->", 1)[1].split("<!-- --8<--", 1)[0].strip()
+
+
+def test_the_tutorial_runs_the_same_commands_the_how_to_gives() -> None:
+    """Written twice on purpose: a MkDocs snippet renders as its own directive on
+    GitHub, and a tutorial whose first step is a line of markup is a tutorial nobody can
+    follow. So the two copies are held equal here instead."""
+    started = pathlib.Path(STARTED).read_text()
+    walked = pathlib.Path(TUTORIAL).read_text()
+
+    drifted = [name for name in SHARED if _marked(started, name) not in walked]
+
+    assert drifted == [], "\n".join(
+        [f"the tutorial no longer carries {STARTED}'s block:", *drifted]
+    )
+
+
 def test_every_location_the_docs_claim_exists() -> None:
     stale = [
         f"{name}: {reference}"

@@ -16,8 +16,9 @@ The behaviour you meet. Why a turn runs that way is
 
 ## Cards
 
-- One shape over every stop: a fork between two remembered values, a call about to
-  change something outside cora, a form to fill in.
+- One shape over every stop: a fork between two remembered values, a question about
+  which field the turn belongs to, a call about to change something outside cora, and a
+  form to fill in.
 - A field carries the JSON Schema it came from, so a plugin's card needs no change to
   the page.
 - A card whose required fields are empty cannot be sent.
@@ -39,8 +40,11 @@ The behaviour you meet. Why a turn runs that way is
   and the arguments the model wrote, and nothing happens until you approve.
 - Decline and nothing outside cora changed, the model is told, and the turn still
   answers.
-- The gate is a step of the core on the only path from the model to its tools — no
-  plugin can switch it off or imitate it, and it covers every tool a plugin declared.
+- The gate is a step of the core on the only path from the model to its tools: no plugin
+  can switch it off, subscribe to it, or reach a tool around it, and no handler may pause
+  a turn. It covers every tool a plugin declared. A plugin's own card can *look* like the
+  gate's, though — cora draws every card with one component — so what says the gate ran
+  is the trace.
 
 ## What a plugin keeps
 

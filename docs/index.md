@@ -2,9 +2,10 @@
 
 cora is a core that runs a turn: it screens what you asked, searches your documents,
 remembers what you tell it, asks when it cannot tell, and cites what it used. Everything
-else arrives as a plugin — a field, tools, rules, and a say in the steps of a turn. Two
-things no plugin may have: the gate an effect waits at, and the label that marks what
-cora did not write.
+else arrives as a plugin, which registers three kinds of thing — tools, instructions and
+a handler at a named point in the turn — each under a field of its own or in every turn.
+What a plugin may not have is [what cora enforces whatever a plugin
+does](privacy-and-ethics.md#what-loading-a-plugin-costs-in-trust).
 
 The pages are sorted by what you came for.
 
@@ -37,9 +38,9 @@ One task each, for when you are already working.
 
 - [Get started](how-to/get-started.md) — install it, run it, and run the gates it is
   held to
-- [Load plugins](how-to/load-plugins.md) — name a module, or drop one in the folder
+- [Load plugins](how-to/load-plugins.md) — the folder cora reads, and its rules
 - [Write a plugin](how-to/write-a-plugin.md) — a persona, tools and a hand in the turn,
-  as a package to install
+  as a file you drop in the folder
 - [Run the React shell](how-to/run-the-react-shell.md) — the same app over HTTP, with a
   React page
 - [Watch a turn happen](how-to/watch-a-turn.md) — the trace, the port log, and the live
@@ -51,6 +52,12 @@ The facts, as the source states them.
 
 - [`cora.domain`](api/cora/domain/index.md), [`cora.ports`](api/cora/ports/index.md),
   [`cora.engine`](api/cora/engine/index.md) and [`cora.app`](api/cora/app/index.md) —
-  generated from the source, one page per module. These four are what anything outside
+  generated from the source by `scripts/gen_reference.py`, one page per module. These four are what anything outside
   the app imports; `cora.adapters` is not here, because every class in it implements a
   port and its pages would repeat `cora.ports`.
+
+## Process
+
+Not pages of this site: [the TDD workflow](https://github.com/TuringCollegeSubmissions/gwirte-AE.AFA.4.6/blob/main/docs/workflow.md)
+this was built with, and the sprint briefs under `docs/sprints/`. They record how cora
+was built rather than what it does.

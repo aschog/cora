@@ -45,7 +45,7 @@ class Registry:
     """Everything registered, in the order it was registered — cora's own included.
 
     One list rather than one field per kind: the listing, the collision check and the
-    log line are each written once, and a fifth kind of contribution adds an entry
+    log line are each written once, and a fourth kind of contribution adds an entry
     rather than widening a shape. Each entry carries the module that made it, because
     that is what a refusal quotes back to the deployment, and the scope it applies in.
 

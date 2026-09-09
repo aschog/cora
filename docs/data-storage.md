@@ -6,7 +6,7 @@ you can read beside it. Which paths, and what moves each, is the table in
 
 ## One file, four writers
 
-`.cora/cora.sqlite` holds four stores. One file, so a deployment moves all of it by
+`.cora/cora.sqlite` holds four writers, in five tables. One file, so a deployment moves all of it by
 naming one path and a backup is one file. Write-ahead logging and autocommit, because
 four writers and every reader of the page share it. Nothing migrates: every table is
 made by the first writer that needs it.
@@ -44,6 +44,8 @@ would really reach.
 ## Deleting
 
 - **A document** — its passages out of both tables in one transaction, then the file.
+  The rail lists a name and the stores keep uploads, so deleting a name takes every
+  upload of it in that field, and the same file in another field is left alone.
   That order: a file left behind is unreachable and overwritten by the next upload of
   those bytes, while an index left behind cites a file nobody can open.
 - **A conversation** — the thread first, then its turns, so a failure halfway leaves it

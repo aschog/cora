@@ -49,6 +49,9 @@ with.
 A test that needs a class imports the module and reads the name off it, because the name
 in the file is not the name in the DOM.
 
+TanStack Query holds what the rails read — the documents, the sessions, the facts and the
+fields — so a rail is a query with a key rather than state a component owns.
+
 ## The address bar
 
 A conversation you open is named in the address as `#/c/<thread>`, which makes it

@@ -53,8 +53,9 @@ def extend(cora: Host) -> None:
   `CORA_PLUGIN_FIELD_NOTES_UNITS` reaches it as `units`.
 - Nothing is installed for a drop-in. An import cora's environment lacks refuses the
   plugin, so a plugin with dependencies of its own is a workspace package —
-  `plugins/travel` is that shape. A package is importable once the root names it in
-  `[tool.uv.sources]` and `[dependency-groups] dev`.
+  `plugins/travel` is that shape, importable once the root names it in
+  `[tool.uv.sources]` and `[dependency-groups] dev`. It still loads by being in the
+  folder: this repository's own three are symlinks into it.
 
 ## Tools
 
@@ -103,7 +104,9 @@ def asks(arguments: dict) -> Card | None:
     )
 ```
 
-- Build the fields from the schema you registered, so the two cannot drift. The model is
+- Build the fields from the schema you registered, so the two cannot drift. A field's
+  own schema picks its control: `format: "date"` draws a date input, a short `enum` a row
+  of choices, and anything the page cannot draw falls back to text. The model is
   offered that schema with `required` stripped, because the card is what requires it —
   but the call is validated against the schema as registered, so a card that leaves out
   a required argument can only produce a refused call.
@@ -123,7 +126,9 @@ def asks(arguments: dict) -> Card | None:
 ## Handlers
 
 `register_handler(event=…, handle=…, scope=…)` subscribes to one of the five points in
-`cora.ports.host`. An unknown name is refused. Your handler is called with one value and
+`cora.ports.host` — `SCREENING`, `BRIEFING`, `CALLING`, `RETURNING` and `ANSWERING`,
+which carry the strings `screen`, `brief`, `tool_call`, `tool_result` and `answer`. An
+unknown name is refused. Your handler is called with one value and
 its return is the whole of its decision — `None` changes nothing, at every event.
 
 | event | handed | a return |
