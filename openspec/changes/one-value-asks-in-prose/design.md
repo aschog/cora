@@ -34,8 +34,10 @@ effect proposal, whose card is read-only fields and no ask at all.
 
 ## Risks / Trade-offs
 
-- A model that ignores the description spends a round on a refusal; the round budget ends
-  the turn with an answer either way.
+- A model that ignores the description spends a round on a refusal, and a model that
+  never stops spends the budget — which ends the turn with an error, not an answer.
+- So the rule is stated where the model reads: the form takes two fields or more, and
+  the refusal names the value and says to ask for it in prose.
 - A plugin whose schema has one property now gets no card, and must read the value out of
   the reader's next message; the how-to says so.
 - The guard is on the engine's side of the seam, so a plugin cannot opt out — which is

@@ -74,6 +74,44 @@ plugin. An ask of a single value SHALL be refused, and cora SHALL ask for it in 
 - **WHEN** the card is drawn
 - **THEN** the reader is offered a date control, a number control, and those three
 
+### Requirement: What the reader writes settles the ask
+
+The values the reader writes SHALL reach the turn that asked, and the answer SHALL rest
+on them. A reader who writes nothing SHALL settle the ask too: the turn SHALL carry on
+without the values and SHALL say what it still needs. A card that asked for nothing —
+one the reader is put to confirm — SHALL settle on the action alone, and the model SHALL
+be told what happened rather than that values were withheld.
+
+#### Scenario: The turn answers on what was written
+
+- **GIVEN** a turn stopped asking for a departure city and a day
+- **WHEN** the reader writes them and submits the card
+- **THEN** the turn continues and its answer rests on that city
+
+#### Scenario: Nothing written still settles it
+
+- **GIVEN** a turn stopped asking for a departure city and a day
+- **WHEN** the reader takes the way out without writing either
+- **THEN** the turn answers without them and says plainly what it still needs
+
+#### Scenario: A confirmed card is not reported as filled in
+
+- **GIVEN** a turn stopped on a card of read-only fields, which the reader confirms
+- **WHEN** the tool runs
+- **THEN** the model is told what it returned, and not that the reader gave nothing
+
+#### Scenario: A card left unconfirmed says that, and not that a value was withheld
+
+- **GIVEN** that same card, which the reader leaves
+- **WHEN** the turn carries on
+- **THEN** the model is told it was not confirmed, and answers saying it did not run
+
+#### Scenario: The trace carries the ask
+
+- **GIVEN** a turn that stopped for values and was answered
+- **WHEN** the trace is read
+- **THEN** it says what was asked for and which fields came back filled
+
 ### Requirement: A form may be raised again where a fork may not
 
 A turn SHALL put its fork between remembered values once, and a second SHALL be refused.

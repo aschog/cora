@@ -70,11 +70,12 @@ because a box the reader skipped is a gap nothing else can close.
 
 A form of one field is refused before it is put, and the model is told to ask for that
 value in its answer instead: one box is a stop the sentence had already made, and the
-reader's next message carries what it would have collected. The check sits at the one
-place every card passes on its way to the reader, so it holds over a plugin's card as
-well as cora's own — and it counts fields rather than stops, which leaves a card of
-*none* alone: a fork between two remembered values and a call awaiting approval are not
-asks.
+reader's next message carries what it would have collected. The check sits on both paths
+that build a card *for the reader* — the ask step reading cora's own form, and the gate
+running a plugin's `asks` — so it holds over a plugin's card as well as cora's own. What
+it counts is the fields the reader may write. The fork between remembered values and the
+call awaiting approval reach the reader by neither path, and are cards of nothing
+writable besides: neither is an ask, and neither is touched.
 
 Whatever the turn stopped on — a question between remembered values, a call awaiting
 approval, a form to fill — reaches the page as one `Card`: a prompt, its fields and its

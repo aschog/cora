@@ -11,6 +11,8 @@ A card of one box stops the conversation to collect what a sentence could have a
 - A card of no writable fields is untouched: the fork, and the approval gate.
 - A card whose single field is read-only is untouched: nothing is being asked for.
 - **BREAKING** a skipped single value is asked in prose, where a second card stood.
+- **BREAKING** a thread parked on a one-box card resumes into a refusal, losing what
+  was submitted.
 
 ## Impact
 
