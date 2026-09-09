@@ -706,6 +706,21 @@ ONE_VALUE_CARD = Card(
     fields=(FieldAsked(name="origin", required=True),),
     actions=SEARCH_IT,
 )
+CONFIRM = Card(
+    prompt=FILL_IN,
+    fields=(FieldAsked(name="trip", value="Kyoto in May", editable=False),),
+    actions=SEARCH_IT,
+)
+"""One field, and nobody writes in it: the reader is confirming what the tool worked out
+rather than being asked for anything."""
+CONFIRM_AND_ONE = Card(
+    prompt=FILL_IN,
+    fields=(
+        FieldAsked(name="trip", value="Kyoto in May", editable=False),
+        FieldAsked(name="origin", required=True),
+    ),
+    actions=SEARCH_IT,
+)
 
 
 def _gathering(effect: bool = False) -> Tool:
@@ -852,6 +867,48 @@ def test_a_card_asking_for_one_value_is_refused_and_never_put() -> None:
         name=ASKING, reason=ONE_VALUE.format(name="origin")
     )
     assert contributed["filled"] == {}
+
+
+def test_a_card_of_one_field_nobody_writes_in_is_put_and_the_call_runs() -> None:
+    """A card of one read-only field asks for nothing: it puts what the tool worked out
+    and waits for a yes, which is a stop the sentence could not have made."""
+    seen: list[Asks] = []
+
+    def answer(asks: Asks) -> Answer:
+        seen.append(asks)
+        return Answer(action="Search", values={})
+
+    confirming = replace(_gathering(), asks=lambda _: CONFIRM)
+
+    contributed = GateStep(registry=_offering(confirming), approve=answer)(
+        _proposing(ASKING)
+    )
+
+    assert [asks.card for asks in seen] == [CONFIRM]
+    assert contributed["messages"] == [], "nothing settles a call that is about to run"
+    assert contributed["filled"] == {"c1": {}}, "the reader wrote nothing to write over"
+
+
+def test_a_card_of_one_writable_field_is_refused_whatever_it_shows() -> None:
+    """The count is of the fields the reader may write, not of the rows on the card: a
+    card showing four things and asking for one is still asking for one."""
+    seen: list[Asks] = []
+
+    def answer(asks: Asks) -> Answer:
+        seen.append(asks)
+        return Answer(action="Search", values={"origin": "BER"})
+
+    asking_beside = replace(_gathering(), asks=lambda _: CONFIRM_AND_ONE)
+
+    contributed = GateStep(registry=_offering(asking_beside), approve=answer)(
+        _proposing(ASKING)
+    )
+
+    assert seen == []
+    [told] = contributed["messages"]
+    assert told.content == REFUSED_CALL.format(
+        name=ASKING, reason=ONE_VALUE.format(name="origin")
+    )
 
 
 def test_a_plugin_whose_asks_breaks_costs_the_call_and_not_the_turn() -> None:

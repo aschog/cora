@@ -615,9 +615,7 @@ ONE_VALUE = (
 
 A form earns the stop when filling it in is the cheaper way to say four things at once.
 For one value it is a box, a button and a turn spent where a sentence would have done —
-and the sentence is what the model can write anyway. A card of *no* fields is not an
-ask and is unaffected: a decision between two remembered facts, and an effect waiting to
-be approved, stop the turn as they always did.
+and the sentence is what the model can write anyway.
 """
 BROKEN_ASKS = "it could not work out what to ask you for"
 NOT_A_CARD = "it asked you for something the page cannot draw"
@@ -625,17 +623,25 @@ FILLED_IN = "The user filled this call in — {values}. It ran on those.\n\n"
 
 
 def _refuse_one_value(card: Card) -> None:
-    """Refuse a card that asks for a single value.
+    """Refuse a card that asks the reader for a single value.
 
-    The one rule, at the one place every card passes on its way to the reader, so it
-    holds over a plugin's card and cora's own alike.
+    Called from both places a card is built for the reader — a plugin's `asks`, and
+    cora's own form — so the rule holds whoever wrote the card. The other two cards a
+    turn can stop on reach the reader by neither path: the fork between remembered
+    values, and the call awaiting approval, whose fields are read rather than written.
+
+    What is counted is the fields the reader may write. A card of four rows asking for
+    one value is asking for one, and a card of one row nobody writes in is asking for
+    nothing at all — it puts what a tool worked out and waits for a yes, which is a stop
+    no sentence could have made.
 
     Raises:
         ToolRefusal: The card asks for exactly one value, and says which — so the model
             asks for it in prose rather than asking again the same way.
     """
-    if len(card.fields) == 1:
-        raise ToolRefusal(ONE_VALUE.format(name=card.fields[0].name))
+    asked = tuple(field for field in card.fields if field.editable)
+    if len(asked) == 1:
+        raise ToolRefusal(ONE_VALUE.format(name=asked[0].name))
 
 
 def _card_for(tool: Tool | None, call: ToolCall) -> Card | None:
