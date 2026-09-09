@@ -3,6 +3,11 @@
 The design is *hexagonal* — ports and adapters. The tests show how the code works;
 `docs/sprints/` shows how it was built.
 
+Both drawings below are generated: `make diagram` redraws all six — this map from
+`cora.app.assembly`, the domain through pyreverse and graphviz, and the four sequences on
+[what happens when you ask](happy-path.md). The SVGs are committed, and a guard reads
+each for what it draws, so one behind its source is a red test.
+
 ## The map
 
 ![cora as a UML component diagram: the React frontend, the engine and its parts, ten

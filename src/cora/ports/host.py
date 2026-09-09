@@ -142,7 +142,7 @@ class Contributed:
 
     `name` is the tool's name or the event a handler subscribed to, and blank where the
     kind has no name of its own, as a section of the brief has not. One field over every
-    kind, so a fifth kind is listed without this shape widening.
+    kind, so a fourth kind is listed without this shape widening.
 
     `note` is whatever else this registration says about itself, in words a reader can
     take at face value — a tool that has an effect says so here. A note rather than a
@@ -182,7 +182,7 @@ class Listed:
     def of(self, kind: str) -> tuple[Contributed, ...]:
         """Everything it registered of one kind, in the order it registered them.
 
-        One reader over the kinds rather than a property per kind: a fifth kind is
+        One reader over the kinds rather than a property per kind: a fourth kind is
         already listed, and would otherwise want a fourth accessor to be read by.
         """
         return tuple(each for each in self.contributions if each.kind == kind)

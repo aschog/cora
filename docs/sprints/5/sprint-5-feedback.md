@@ -18,14 +18,14 @@ the cut in `spec.md`; an item with no story is deferred there, with its reason.
 
 ## Reviewer findings
 
-- [ ] **`README.md` does not convey the main idea** — *the reviewer's first point.* The
+- [x] **`README.md` does not convey the main idea** — *the reviewer's first point.* The
       opening is one or two sentences; a reader does not learn what the solution is for.
       The retrospective names the cause: the README was cut last, deliberately, and
       proposals for it were discarded. → the retro's own action is **write the paragraph on
       day one, before the code**.
       → **story 1**, and it is written first.
 
-- [ ] **The two-store architecture is heavy for what it buys** — Chroma plus a SQL store
+- [x] **The two-store architecture is heavy for what it buys** — Chroma plus a SQL store
       duplicate the raw text, and the duplication exists to highlight a chunk inside its
       plain text. The reviewer's alternative, discussed in the review: one Markdown file per
       source document, addressed individually by the algorithm. Same capability, one store
@@ -33,7 +33,7 @@ the cut in `spec.md`; an item with no story is deferred there, with its reason.
       → **story 8**. It is an adapter swap behind the `Documents` port, which already
       exists; `sqlite_conversations.py` and `sqlite_store_memory.py` are untouched.
 
-- [ ] **Multi-domain layout is unexplained** — with one domain the two stores work, but
+- [x] **Multi-domain layout is unexplained** — with one domain the two stores work, but
       nothing says how they are laid out for a *second* domain: per-domain stores, shared
       store with a namespace, or something else. The reviewer asks for this in `README.md`,
       not only in the design. cora's whole pitch is that the domain comes from a plugin, so
@@ -41,7 +41,7 @@ the cut in `spec.md`; an item with no story is deferred there, with its reason.
       → **stories 6 and 8**, in the code and in `README.md`. A scope owns its documents, so
       the layout is a directory per scope rather than a scheme to explain.
 
-- [ ] **One agent should be a sequence of steps** — a single agent receives and processes
+- [x] **One agent should be a sequence of steps** — a single agent receives and processes
       the whole query; breaking the logical processes into an agentic workflow would be less
       fragile, more stable and easier to control. The retrospective records the same doubt
       held all sprint without acting on it, and the retro's action list makes it **the first
@@ -63,21 +63,22 @@ Restated from the sprint-4 retrospective (branch `retro/submission-retrospective
       The editing environment was doing double duty as a reading environment, and the reading
       half was the half that failed.
       → in force from story 1.
-- [ ] **Refactor the tests, 20/80** — find the fifth of the 1,247 tests that carries most of
+- [x] **Refactor the tests, 20/80** — find the fifth of the 1,247 tests that carries most of
       the protection and extend only those; archive the rest under `tests` and delete the
       archive after the capstone. Membership is decided by what would go undetected, not by
       count.
       → a **chore** in `spec.md`, not a story: no failing test names it.
-- [ ] **Break the one agent into a workflow** — first story of the sprint. Same item as the
+- [x] **Break the one agent into a workflow** — first story of the sprint. Same item as the
       reviewer's fourth finding above; two routes reached it independently.
       → **stories 3 and 6**, third in the merge order — the reviewer's finding above says
       why the README and the one-frontend story go ahead of it.
-- [ ] **README before the code** — the paragraph that conveys the idea gets written day one.
+- [x] **README before the code** — the paragraph that conveys the idea gets written day one.
       → **story 1**.
-- [ ] **An architecture note for the frontend before its first story** — sprint 4 had none
+- [x] **An architecture note for the frontend before its first story** — sprint 4 had none
       and said so.
-      → a **chore**, due before story 6 puts the scope pin on the screen.
-- [ ] **Reviewer feedback as a backlog on day one** — this file. The only action from the
+      → a **chore**, and honoured late: `docs/the-page.md` was written at the end of the
+      sprint, not before story 6 put the scope pin on the screen.
+- [x] **Reviewer feedback as a backlog on day one** — this file. The only action from the
       previous retro that visibly changed behaviour.
       → this file, written before the story cut.
 - [ ] **Decide about mid-sprint feedback rather than carrying it** — book it or strike it. An
@@ -104,11 +105,12 @@ Open when sprint 4 closed, still open now.
       what each public service accepts, returns and promises. **Unticked by design**; an empty
       box reads as "still in force".
       → standing; every story carries it.
-- [ ] **No way to remove a document or clear the store** *(finding #8)* — the sidebar lists
+- [x] **No way to remove a document or clear the store** *(finding #8)* — the sidebar lists
       sources with no chunk count, no removal and no clear. Memory clearing shipped; document
       removal did not.
-      → **not this sprint** (`spec.md`, *Not in this sprint*), carried again. Cheap once
-      story 8 makes a source a file, so it is the first thing added if the sprint runs early.
+      → **shipped**: the sprint ran early enough. A source is a file after story 8, and the
+      document rail lists them with a delete that asks first. Clearing the whole store is
+      still deleting `.cora/`.
 - [ ] **The page's heading outline and its tablist** — `SourcePanel`'s `<h2>` is the React
       page's only heading, and the `role="tab"` buttons have no `aria-controls` and no
       `role="tabpanel"` to point at. Referred back deliberately in sprint 4: the fix decides
@@ -125,8 +127,10 @@ Open when sprint 4 closed, still open now.
       this sprint, so a number for it would be measuring sprint 4.
 - [ ] **PostgreSQL + pgvector instead of Chroma** — an adapter swap behind the `Retriever`
       port. Cheap to do later; note that the reviewer's store finding above may decide it.
-      → **not this sprint**. Story 8 empties the index of text — embeddings and offsets
-      stay — but the engine behind the `Retriever` port is unchanged.
+      → **not this sprint**, and the store it names is gone: story 8 replaced Chroma with
+      `sqlite-vec` behind the same `Retriever` port, which is the swap this item said was
+      cheap. A move to pgvector is now the same shape of change from a different starting
+      point.
 - [ ] **Second-stage semantic reranking** — a wider candidate set through a cross-encoder
       before context selection.
       → **not this sprint**; retrieval quality is not this sprint's axis.
@@ -139,7 +143,7 @@ Open when sprint 4 closed, still open now.
 The review said in conversation that cora is not a real agentic application — it is more like
 agentic RAG. It is not in the write-up above, and it is what the sprint now answers.
 
-- [ ] **cora can decide but cannot act** — every tool it owns reads its own documents, so a
+- [x] **cora can decide but cannot act** — every tool it owns reads its own documents, so a
       well-planned turn only ever produced a better answer. Reach, consequence and a gate in
       front of both.
       → **stories 9, 10 and 11**, and it is the capstone's headline.

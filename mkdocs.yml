@@ -6,16 +6,17 @@
 # door and links here rather than repeating any of it. docs/workflow.md documents the
 # process rather than the product, so it is not a page here.
 site_name: cora
-# `site_description` is not written here. It is the sentence README.md opens with — the
-# description every built page carries — and `scripts/site_description.py` reads it off
-# that file at build time, because YAML cannot.
-hooks:
-  - scripts/site_description.py
+# The description every built page carries. Written here now: the front door leads with
+# its artwork rather than a paragraph, so there is no opening sentence to read off it.
+site_description: >-
+  cora is a core that runs a turn — screening, retrieval, memory, asking and
+  citations — and everything it knows besides arrives as a plugin.
 docs_dir: docs
 use_directory_urls: true
 
-# docs/index.md opens with README.md's opening, included rather than copied: what cora
-# is is written in the front door and nowhere else.
+# Snippets is here for one job: the tutorial pulls its commands out of the get-started
+# how-to, so the two pages cannot drift. The front door states no paragraph for a page to
+# include any more — the site states its own description above.
 markdown_extensions:
   - pymdownx.snippets:
       base_path: ["."]
@@ -42,6 +43,11 @@ theme:
 validation:
   links:
     anchors: warn
+  # A page nobody put in the nav is logged at INFO, where no gate reads it — the same
+  # silence the anchors above used to keep. Turned up, the strict build is what catches
+  # the next page added and not listed.
+  nav:
+    omitted_files: warn
 
 nav:
   - Home: index.md
@@ -50,8 +56,14 @@ nav:
   - Understand:
       - What it is made of: big-picture.md
       - What happens when you ask: happy-path.md
+      - What cora does: what-it-does.md
+      - What ships with it: what-ships-with-it.md
+      - How the page is built: the-page.md
+      - Where your data lives: data-storage.md
       - Privacy, and what a plugin costs: privacy-and-ethics.md
   - How-to:
+      - Get started: how-to/get-started.md
+      - Load plugins: how-to/load-plugins.md
       - Write a plugin: how-to/write-a-plugin.md
       - Run the React shell: how-to/run-the-react-shell.md
       - Watch a turn happen: how-to/watch-a-turn.md

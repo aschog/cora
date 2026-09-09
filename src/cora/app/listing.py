@@ -21,7 +21,7 @@ SCOPE_WIDTH = 12
 def rendered(plugins: tuple[Listed, ...]) -> str:
     """Every plugin under its source, and every registration under its plugin.
 
-    One line per registration, of one shape whatever kind it is: a fifth kind of
+    One line per registration, of one shape whatever kind it is: a fourth kind of
     contribution prints without this being rewritten.
     """
     if not plugins:

@@ -1,73 +1,65 @@
 # Run the React shell
 
 `make run` builds the page and serves it with the API from one process on
-`127.0.0.1:8000`. That is cora — there is no second screen to choose between.
+`127.0.0.1:8000` — install, plugins, the `.env` semantics and
+[the gates](get-started.md#gates) are [get started](get-started.md). This page is what
+only matters once you are working on the page itself.
 
-`make run-env` is the same command reading its environment from `.env` instead of from
-the shell you typed in, which is how the live test tier is run too. Put `CORA_PLUGINS`
-there as well, or cora starts with none.
-
-Both need Node 22 and the page's dependencies — `npm ci --prefix frontends/react/ui`,
-once per clone. Neither the dependencies nor the build is committed, so without that
-first step it is the build that fails rather than the server.
+The server reads the *built* page — `CORA_UI_PATH`, or `frontends/react/ui/dist` where
+that is unset — and mounts nothing when it is absent, so a source change is invisible
+until something rebuilds it. `make ui-build` is that build on its own.
 
 ## Working on the page
 
-The server reads only the build at `frontends/react/ui/dist`, so a source change is
-invisible until something rebuilds it. `make run` does that first, which is enough for
-running cora but not for writing the page: rebuilding on every keystroke is not a loop.
+Run `make ui` beside `make run`: the dev server comes up on Vite's default
+`127.0.0.1:5173` and proxies `/api` to `127.0.0.1:8000`, so a saved file is on the screen
+without a rebuild. `127.0.0.1:8000` still shows the last build.
 
-Run `make run` and `make ui` side by side instead. Vite serves the page on `5173` and
-proxies `/api` to the first, so a saved file is on the screen immediately. `make ui-build`
-is the same build on its own, for when you want the served page current without the dev
-server.
+A setting cora cannot use is refused as one line on stderr and a non-zero exit rather
+than a traceback — and under `make run` the page is built before that line appears,
+because the target builds first.
 
-A setting the shell cannot use is refused before anything is built, as one line on
-stderr and a non-zero exit.
+## The style guard
 
-## The page's own gates
+`npm run lint`, inside `frontends/react/ui`, is two tools: eslint, and its own
+`scripts/check-styles.mjs`.
 
-Three, and CI runs all of them; the commit hook runs none, because they need Node and a
-commit that touches no TypeScript should not wait for it:
+- eslint runs the JS and TypeScript recommended sets, plus the React rules a type
+  checker cannot state: the order hooks are called in, a dependency array that has
+  fallen behind its closure, and `react-refresh/only-export-components` — which is what
+  lets a save replace a component rather than reload the page and lose the conversation
+  on it.
+- `vite/client` types a CSS module as a string-indexed record, so `styles.narrow`
+  type-checks whether or not `.narrow` is declared, and is `undefined` at runtime: the
+  element is drawn with the word "undefined" for a class. `check-styles.mjs` is the only
+  thing in the toolchain that looks.
+- It also catches a rule left in the global sheet naming a class only a module now
+  declares — the dead rule a split stylesheet leaves behind. It reads class literals off
+  the components, so a class reached only through `joined()` or a ternary reads as
+  undrawn: where a module also declares that name, the check fails naming a rule that is
+  not dead. Loud at lint rather than silent in the page.
 
-```sh
-npm --prefix frontends/react/ui run lint    # eslint, plus what it cannot see
-npx --prefix frontends/react/ui tsc -b      # type check
-npm --prefix frontends/react/ui test        # unit tier, happy-dom
-```
+Styles are per component — `Answer.module.css` beside `Answer.tsx` — declared kebab-case
+in the sheet and reachable only as the camelCase name from TypeScript, because
+`camelCaseOnly` drops the kebab key. A module two components share is named for the
+thing instead, like `dialog.module.css`. That leaves `src/styles.css` holding the
+tokens, the resets, the keyframes and the handful of names more than one component draws
+with.
 
-A fourth that nothing runs for you: `make e2e`, from the repository root, drives the
-page through a real browser against a real server, with
-`scripts/fake_model_service.py` standing in for the provider so a run costs nothing and
-says the same thing every time. `make e2e-live` runs its one live spec against the model
-a deployment answers from. Local only — they want a browser, and CI has enough to say
-about a push already.
+A test that needs a class imports the module and reads the name off it, because the name
+in the file is not the name in the DOM.
 
-`lint` is the one no type checker can stand in for. Two halves: eslint, for the order
-hooks are called in and a dependency array that has fallen behind the closure it belongs
-to — and `scripts/check-styles.mjs`, for what a stylesheet cannot be typed into saying.
-`vite/client` types a module as `Record<string, string>`, so `styles.narrow` type-checks
-whether or not `.narrow` exists and is `undefined` at runtime; the element is then drawn
-with the word "undefined" for a class, and the only symptom is a control that quietly
-loses its shape. It also catches a rule left in the global sheet naming a class that has
-moved into a module, which is how a compound selector dies when a stylesheet is split.
-
-Styles are per component — `Answer.module.css` beside `Answer.tsx` — so a class reaches
-what the file it sits beside draws and nothing else. `src/styles.css` keeps what is
-genuinely everyone's: the colour and spacing tokens, the resets, and the few utilities
-several components share. A test that needs a class imports the module and reads the name
-off it, because the name in the file is not the name in the DOM.
+TanStack Query holds what the rails read — the documents, the sessions, the facts and the
+fields — so a rail is a query with a key rather than state a component owns.
 
 ## The address bar
 
-A conversation you open is named in the address, as `#/c/<thread>`. That makes it a link
-you can send, a page you can reload back into, and something the back button walks. The
-hash rather than the path because the built page is served as static files with no
+A conversation you open is named in the address as `#/c/<thread>`, which makes it
+linkable, reloadable and walkable with the back button. Starting a new one takes the name
+back out.
+
+The hash rather than the path, because the built page is served as static files with no
 fallback: `/c/<thread>` would ask the server for a file it does not have.
 
-Starting a new conversation takes it back out — a fresh thread is in no store and there is
-nothing to link to yet.
-
-A card left open still outranks the address on a reload. A conversation named there is
-listed under SESSIONS and is one click away; a thread parked on its first question has
-answered nothing, is listed nowhere, and is reachable by the stow and by nothing else.
+A card left open still outranks the address on a reload — what the page stowed comes
+first, then the address, then a new conversation.

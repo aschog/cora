@@ -1,11 +1,8 @@
-# front-door Specification
+As a stranger opening the repository,\
+I want a front door I can read in one screen,\
+so that I learn what cora is for without reading a manual.
 
-## Purpose
-
-How cora introduces itself: one screen that says what it is for and links everything
-else, a site that states its own description, and a test over the names the pages claim.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: The front door says what cora is for
 
@@ -30,6 +27,20 @@ SHALL be a link.
 - **WHEN** the front door reaches installing or running cora
 - **THEN** it links the page that holds the commands, and states none itself
 
+## REMOVED Requirements
+
+### Requirement: One sentence says what cora is, written once
+
+**Reason**: Its premise was that `README.md` holds the sentence and everything else
+derives it. The front door now leads with artwork and states no such paragraph, so there
+is nothing to derive: the include is gone, and so is the build hook that read the file.
+
+**Migration**: The site states its own `site_description` in `mkdocs.yml` and its own
+opening on `docs/index.md`. Nothing reads `README.md` at build time. What replaces the
+requirement is *The site describes itself*, below.
+
+## ADDED Requirements
+
 ### Requirement: The site describes itself
 
 The docs site SHALL state the description every page carries, and no build step SHALL
@@ -46,6 +57,7 @@ SHALL state it and the other SHALL link that one.
 
 - **WHEN** two pages would state the same fact about what cora does
 - **THEN** one of them states it and the other links that one
+
 
 ### Requirement: What the docs name, cora has
 

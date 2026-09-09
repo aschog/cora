@@ -1,66 +1,55 @@
 # Your first session
 
-Half an hour, one document, and a model you pay for by the token. By the end you will
-have uploaded a document, had it answered from, followed a citation back to the passage
-it came from, and asked cora to remember something about you.
+By the end you will have uploaded a document, had it answered from, followed a citation
+back to the passage it came from, and asked cora to remember something about you.
 
-You need Python 3.12, [uv](https://docs.astral.sh/uv/), Node 22 — the page is built
-from source, and neither the build nor its dependencies are committed — and an
+You need what [get started](../how-to/get-started.md) lists, and an
 [OpenRouter key](https://openrouter.ai/keys).
 
 ## 1. Install
 
 ```sh
-uv sync
-npm ci --prefix frontends/react/ui
+uv sync                                    # install the environment
+npm ci --prefix frontends/react/ui         # and the page's
+git config core.hooksPath .githooks        # enable pre-commit + commit-msg hooks
 ```
 
-## 2. Start it with plugins
+## 2. Load the plugins
 
 ```sh
-export OPENROUTER_API_KEY=sk-or-...        # required (https://openrouter.ai/keys)
-export CORA_PLUGINS=cora.plugins.security,cora.plugins.fitness,cora.plugins.travel
-export CORA_SCOPES=fitness,travel
+mkdir -p .cora/plugins
+for each in security fitness travel; do
+  ln -s "$(pwd)"/plugins/$each/src/cora/plugins/$each .cora/plugins/$each
+done
+```
+
+That is what makes this a coach and a travel companion rather than a bare cora, with a
+prompt-injection screen over both.
+
+## 3. Start it
+
+```sh
+export OPENROUTER_API_KEY=sk-or-...
 make run                                   # or: make run-env, to read the key from .env
 ```
 
-cora loads no plugin unless asked, so the second line is what turns this from a bare
-cora into a coach and a travel companion with a prompt-injection screen. Drop it to see
-what the box does on its own. `CORA_SCOPES` says which fields a turn may run in: the
-coaching persona and the calculators are the fitness scope's, the travel persona is
-travel's, and the medical filter holds either way. `make run-env` reads its environment
-from `.env` instead, so put both there rather than exporting them.
+Your key goes in the first line — [openrouter.ai/keys](https://openrouter.ai/keys).
 
-## 3. Pick a field, or let cora pick
+## 4. Pick a field, or let cora pick
 
-With two fields loaded, cora reads each question and answers it in the one it belongs
-to — the *STEPS* tab says which, and a question that fits both stops to ask you. That
-is *Chat*, above the conversation. If it is about one field, pick it under *+ Plugin*:
-every later turn is answered in it, and it survives a reload. A pin is set once, so a
-second field means a new session.
+Leave the strip above the conversation on *Chat* and each question is answered in the
+field it belongs to. Pick one under *+ Plugin* and every later turn is answered in it —
+a pin is set once, so use a conversation you are willing to keep there.
+[Why](../what-it-does.md#fields).
 
-Give travel something to answer from by uploading the notes it ships, in
-`plugins/travel/src/cora/plugins/travel/corpus/` — with `travel` picked under
-*+ Plugin*, because a field answers from its own documents and no others. Picking it
-here pins the conversation, so do this in one you are willing to keep in travel.
+## 5. Ask it something
 
-## 4. Ask it something
-
-Upload a document (txt/md/pdf) in the documents rail on the left. It lands in the field
-the conversation is running in — whichever *+ Plugin* is showing, or the one beside
-*YOUR DOCUMENTS* while that says *Chat* — and the rail lists that field's documents. A
-turn answers from the field it runs in, so a document put in the other one is a document
-it will not find. Then ask about it: answers cite the passages they used. Click
-a `[1]` in an answer and that document opens with the cited passage highlighted, read
-back out of the Markdown file cora kept it as. The steps appear as cora takes them,
-under the *STEPS* tab on the right: what it decided, which tool it ran and what came
-back. A
-question that needs no documents is answered without searching them.
-
-Ask it to remember something — "remember that I train on Tuesdays and Thursdays",
-"I'm vegetarian, keep that in mind" — and it keeps that between sessions: the *MEMORY*
-tab lists every fact it holds, forgets one at a time, or forgets everything. It only remembers when you ask it to, never on its own judgement,
-and each save appears in the trace.
+1. Pick `travel` under *+ Plugin*.
+2. Upload a note in the rail on the left. An upload lands in the field the conversation is running in, and a turn answers from that field only.
+3. Ask about it. The answer cites what it used — click a `[1]` and the document opens at
+   the passage. *STEPS*, on the right, is what cora did to get there.
+4. Say "remember that I train on Tuesdays and Thursdays". It keeps that between
+   sessions, and only ever when you ask: *MEMORY* lists what it holds and forgets it.
 
 ## Where to go next
 
