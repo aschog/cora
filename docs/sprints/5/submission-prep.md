@@ -18,7 +18,11 @@
 
 ## Said first, not found
 
-Injection screening is still two regexes, and nothing scans a document's text at ingest.
+Injection screening is still two regexes over the user's question, in a plugin a
+deployment has to name, and nothing scans a document's text at ingest. Two holes in the
+untrusted notice, found by testing it: cora opens the block and never closes it, so a
+document can print its own ending, and a fact the model saved with `remember` from what
+it read reaches every later system message with nothing checking where it came from.
 The React page has no heading outline and no tab/panel wiring. There is no retrieval
 evaluation set. There is no hosted deployment: `make run` is how it is demonstrated. Code
 as cora's subject, and a second frontend, are cuts rather than limits of the contract.
