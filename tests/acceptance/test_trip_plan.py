@@ -29,6 +29,7 @@ STAY = 240.0
 TRIP: dict[str, Any] = {
     "origin": "BER",
     "destination": "Lisbon",
+    "arrival": "LIS",
     "window_start": "2026-09-01",
     "window_end": "2026-09-22",
     "nights": 3,

@@ -76,6 +76,19 @@ UNPRICED = (
     "No search service is configured, so this plan has no prices: the days are planned "
     "and everything that does not need a price has been checked."
 )
+UNPRICED_FAILED = (
+    "The searches could not price this trip, so the days are planned and nothing is "
+    "priced: everything that does not need a price has been checked. The trace says "
+    "what the service answered."
+)
+"""Said apart from `UNPRICED`, because a deployment that set no key and a service that
+refused the search are two different things to tell the reader — and one of them is
+worth looking into."""
+UNREADABLE_SHAPE = "the day shape came back unreadable"
+"""Shown when the delegated call answers with something that is not the JSON it was
+asked for. On the trace rather than swallowed: an unreadable shape and a shape that
+merely failed its checks both leave the loop revising, and only the trace tells the
+reader which was happening."""
 NOTHING_KEPT = (
     "No trip has been planned in this conversation yet, so there is nothing to revise. "
     "Plan one first."
@@ -90,10 +103,16 @@ FAILED_HEAD = "the plan could not be made to satisfy: "
 
 @dataclass(frozen=True)
 class Trip:
-    """What the traveller asked for, as the planner was given it."""
+    """What the traveller asked for, as the planner was given it.
+
+    `destination` is where it goes in the traveller's words, which is what the days are
+    shaped around and what the stays are searched by. `arrival` is the airport code the
+    flights engine reads — the same place, spelled as each of the two services takes it.
+    """
 
     origin: str
     destination: str
+    arrival: str
     window_start: datetime.date
     window_end: datetime.date
     nights: int
@@ -116,6 +135,7 @@ def _trip_from(given: dict[str, Any]) -> Trip:
     return Trip(
         origin=str(given["origin"]),
         destination=str(given["destination"]),
+        arrival=str(given.get("arrival") or ""),
         window_start=_day(given["window_start"], "window_start"),
         window_end=_day(given["window_end"], "window_end"),
         nights=_whole(given["nights"], "nights"),
@@ -161,8 +181,13 @@ def _days_from(written_days: str) -> tuple[Day, ...]:
     return tuple(days)
 
 
-def _read_out(plan: Plan, failed: Sequence[str]) -> str:
-    """The plan as the model is handed it, and what it could not be made to satisfy."""
+def _read_out(plan: Plan, failed: Sequence[str], unpriced: str = UNPRICED) -> str:
+    """The plan as the model is handed it, and what it could not be made to satisfy.
+
+    Args:
+        unpriced: What a missing total is put down to — no search service, or searches
+            that could not price it.
+    """
     lines = [
         f"{plan.origin} to {plan.destination}, {plan.depart} to {plan.back}, "
         f"{plan.nights} nights"
@@ -174,7 +199,7 @@ def _read_out(plan: Plan, failed: Sequence[str]) -> str:
     if plan.total is not None:
         lines.append(f"total: {plan.currency} {plan.total:g}")
     else:
-        lines.append(UNPRICED)
+        lines.append(unpriced)
     for day in plan.days:
         lines.append(f"{day.on}: {', '.join(day.doing) or 'nothing planned'}")
     lines.append(HELD if not failed else FAILED_HEAD + "; ".join(failed))
@@ -226,6 +251,7 @@ class Planner:
                 {
                     "origin": held.origin,
                     "destination": held.destination,
+                    "arrival": held.arrival,
                     "window_start": window_start,
                     "window_end": window_end,
                     "nights": nights,
@@ -268,7 +294,7 @@ class Planner:
         # `_candidates` never comes back empty — it answers with the unpriced plan
         # where it could price nothing — so the second arm is the type's and not a
         # path a turn can take.
-        return _read_out(best, failed) if best is not None else NO_PLAN
+        return _read_out(best, failed, self._unpriced) if best is not None else NO_PLAN
 
     def _kept(self, plan: Plan, trip: Trip) -> str:
         """Keep the plan that held, and the ceiling it was checked against.
@@ -280,7 +306,11 @@ class Planner:
         self.cora.state.keep(
             BUDGET_KEPT, None if trip.budget is None else str(trip.budget)
         )
-        return _read_out(plan, ())
+        return _read_out(plan, (), self._unpriced)
+
+    @property
+    def _unpriced(self) -> str:
+        return UNPRICED if self.search is None else UNPRICED_FAILED
 
     def _shape(self, trip: Trip, failed: Sequence[str]) -> tuple[Day, ...]:
         """The day-by-day shape, which is the one part of this that is judgement."""
@@ -292,7 +322,11 @@ class Planner:
         )
         if failed:
             task += NARROWER.format(failed="; ".join(failed))
-        return _days_from(self.cora.delegate(task))
+        written_days = self.cora.delegate(task)
+        days = _days_from(written_days)
+        if not days:
+            self.cora.show(UNREADABLE_SHAPE, detail=written_days[:200], failed=True)
+        return days
 
     def _forecast(self, trip: Trip) -> dict[str, str] | None:
         """What the sky is doing, or nothing where it could not be had.
@@ -323,6 +357,7 @@ class Planner:
         bare = Plan(
             origin=trip.origin,
             destination=trip.destination,
+            arrival=trip.arrival,
             depart=trip.window_start,
             back=trip.window_start + datetime.timedelta(days=trip.nights),
             days=days,
@@ -333,7 +368,7 @@ class Planner:
         try:
             fares = self.search.fares(
                 origin=trip.origin,
-                destination=trip.destination,
+                destination=trip.arrival or trip.destination,
                 window_start=trip.window_start.isoformat(),
                 window_end=trip.window_end.isoformat(),
                 nights=trip.nights,
@@ -387,6 +422,7 @@ class Planner:
             Plan(
                 origin=bare.origin,
                 destination=bare.destination,
+                arrival=bare.arrival,
                 depart=fare.start,
                 back=fare.end,
                 days=shifted,
@@ -397,6 +433,9 @@ class Planner:
         )
 
 
+ARRIVAL = "arrival"
+"""The airport the flights are priced to, which only a deployment that prices flights
+asks for."""
 PLAN_SCHEMA_FIELDS: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -407,6 +446,14 @@ PLAN_SCHEMA_FIELDS: dict[str, Any] = {
         "destination": {
             "type": "string",
             "description": "Where it goes, in the traveller's own words.",
+        },
+        ARRIVAL: {
+            "type": "string",
+            "description": (
+                "The airport it flies into, as a three-letter code like LIS. The "
+                "flight search reads codes and not names, so a trip to Lisbon is LIS. "
+                "Leave out where there is no flight to price."
+            ),
         },
         "window_start": {
             "type": "string",
@@ -431,7 +478,14 @@ PLAN_SCHEMA_FIELDS: dict[str, Any] = {
             "description": "What the traveller said they want out of the trip.",
         },
     },
-    "required": ["origin", "destination", "window_start", "window_end", "nights"],
+    "required": [
+        "origin",
+        "destination",
+        ARRIVAL,
+        "window_start",
+        "window_end",
+        "nights",
+    ],
     "additionalProperties": False,
 }
 
@@ -455,6 +509,27 @@ REVISE_SCHEMA: dict[str, Any] = {
 }
 
 
+def _plan_schema(prices: bool) -> dict[str, Any]:
+    """The plan schema as this deployment can honour it.
+
+    A deployment with no search service is not asked for an airport: there is nothing to
+    price, and a required field nothing reads is a code the model has to invent for a
+    trip that may not even fly.
+    """
+    if prices:
+        return PLAN_SCHEMA_FIELDS
+    return PLAN_SCHEMA_FIELDS | {
+        "properties": {
+            name: shape
+            for name, shape in PLAN_SCHEMA_FIELDS["properties"].items()
+            if name != ARRIVAL
+        },
+        "required": [
+            name for name in PLAN_SCHEMA_FIELDS["required"] if name != ARRIVAL
+        ],
+    }
+
+
 def planning_tools(
     cora: Host,
     search: Search | None = None,
@@ -466,7 +541,7 @@ def planning_tools(
         Tool(
             name=PLAN_TOOL_NAME,
             description=PLAN_TOOL_DESCRIPTION,
-            parameter_schema=PLAN_SCHEMA_FIELDS,
+            parameter_schema=_plan_schema(search is not None),
             run=planner.plan,
             untrusted=True,
         ),
