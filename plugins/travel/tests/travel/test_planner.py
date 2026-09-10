@@ -1,17 +1,19 @@
 import datetime
-import json
 from typing import Any
 
 import httpx
+import pytest
 
 from cora.plugins.travel.planner import (
+    DAY_SHAPE,
+    NO_DAYS,
     PASSES,
     UNPRICED,
     UNPRICED_FAILED,
-    UNREADABLE_SHAPE,
     Planner,
 )
 from cora.plugins.travel.trips import Search
+from cora.ports.plugin import ToolRefusal
 
 KEY = "a-key"
 TRIP: dict[str, Any] = {
@@ -23,13 +25,13 @@ TRIP: dict[str, Any] = {
     "nights": 3,
     "budget": 800,
 }
-SHAPE = json.dumps(
-    [
+SHAPE: dict[str, Any] = {
+    "days": [
         {"on": "2026-09-01", "doing": ["Alfama"], "outdoor": False},
         {"on": "2026-09-02", "doing": ["Belem"], "outdoor": True},
         {"on": "2026-09-03", "doing": ["Market"], "outdoor": False},
     ]
-)
+}
 
 
 class Answer:
@@ -104,15 +106,22 @@ class Cora:
     """The host the planner is closed over, written out: it answers the delegated call
     with whatever shape the test scripts, and keeps what the planner keeps."""
 
-    def __init__(self, *shapes: str) -> None:
+    def __init__(self, *shapes: Any) -> None:
         self._shapes = list(shapes) or [SHAPE]
         self.tasks: list[str] = []
+        self.shapes: list[Any] = []
         self.shown: list[tuple[str, str, bool]] = []
         self.kept: dict[str, str] = {}
 
-    def delegate(self, task: str, tools: Any = (), rounds: int = 3) -> str:
+    def delegate(
+        self, task: str, tools: Any = (), rounds: int = 3, *, shape: Any = None
+    ) -> Any:
         self.tasks.append(task)
-        return self._shapes[min(len(self.tasks) - 1, len(self._shapes) - 1)]
+        self.shapes.append(shape)
+        answered = self._shapes[min(len(self.tasks) - 1, len(self._shapes) - 1)]
+        if isinstance(answered, ToolRefusal):
+            raise answered
+        return answered
 
     def show(self, did: str, detail: str = "", failed: bool = False) -> None:
         self.shown.append((did, detail, failed))
@@ -231,15 +240,59 @@ def test_prices_that_could_not_be_had_are_not_reported_as_none_configured() -> N
     assert UNPRICED in absent
 
 
-def test_a_shape_that_cannot_be_read_is_shown_and_not_only_revised() -> None:
-    """A truncated or prose answer leaves the loop revising exactly as a shape that
-    failed its checks does — so without a line on the trace a model that has stopped
-    answering in JSON reads as a trip that cannot be made to hold."""
-    cora = Cora("here is a lovely week in Lisbon, day by day")
+def test_the_days_are_asked_for_as_a_shape_and_read_as_a_value() -> None:
+    """No JSON found in prose: the loop is given the shape its answer must satisfy, and
+    what comes back is the value — so a model that stops answering in it fails the call
+    instead of yielding a plan with no days."""
+    cora = Cora()
+
+    read = _planner(cora, Service()).plan(**TRIP)
+
+    assert cora.shapes == [DAY_SHAPE]
+    assert DAY_SHAPE["required"] == ["days"], "an empty answer must not satisfy it"
+    assert "Alfama" in read
+
+
+def test_days_that_came_back_empty_are_shown_and_revised() -> None:
+    """An answer satisfying the shape can still hold nothing to plan, and that leaves
+    the loop revising exactly as a plan failing its checks does — so without a line on
+    the trace it reads as a trip that cannot be made to hold."""
+    cora = Cora({"days": []})
 
     _planner(cora, Service()).plan(**TRIP)
 
-    assert any(did == UNREADABLE_SHAPE and failed for did, _, failed in cora.shown)
+    assert any(did == NO_DAYS and failed for did, _, failed in cora.shown)
+    assert len(cora.tasks) == PASSES + 1, "the passes were spent revising"
+
+
+def test_a_day_whose_date_cannot_be_read_is_dropped() -> None:
+    """A shape saying `date` is not a date read: `format` is not what a JSON Schema
+    validator checks, so the planner still reads the days itself."""
+    cora = Cora(
+        {
+            "days": [
+                {"on": "the first", "doing": ["Alfama"]},
+                {"on": "2026-09-02", "doing": ["Belem"]},
+            ]
+        }
+    )
+
+    # No search service, so the days keep the dates the model gave them.
+    read = _planner(cora).plan(**TRIP)
+
+    assert "2026-09-02: Belem" in read
+    assert "the first" not in read
+
+
+def test_a_loop_that_will_not_answer_in_the_shape_fails_the_call() -> None:
+    """The refusal is the point: a plan with no days used to read as a trip that could
+    not be made to hold, and every pass was spent proving it again."""
+    cora = Cora(ToolRefusal("the sub-agent wrote prose"))
+
+    with pytest.raises(ToolRefusal):
+        _planner(cora, Service()).plan(**TRIP)
+
+    assert len(cora.tasks) == 1, "it is not asked twice for what it will not answer"
 
 
 def test_a_datetime_free_planner_needs_no_clock() -> None:

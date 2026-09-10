@@ -8,6 +8,7 @@ from cora.domain.errors import PluginLoadError
 from cora.engine import keeping
 from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.host import (
+    ANSWER_TOOL_NAME,
     DELEGATE_BRIEF,
     MAX_DELEGATED_ROUNDS,
     STOPPED_EARLY,
@@ -19,7 +20,7 @@ from cora.engine.retrieval_tool import (
 )
 from cora.ports.chat_model import ModelReply
 from cora.ports.host import SCREENING, TOOL
-from cora.ports.plugin import Tool, ToolCall
+from cora.ports.plugin import Tool, ToolCall, ToolRefusal
 from cora.ports.retrieval import RetrievedChunk
 from fakes import (
     FakeContextSource,
@@ -324,3 +325,165 @@ def test_a_plugin_shows_what_it_did_to_the_call_it_is_in() -> None:
     assert shown.summary == f"{MODULE} counted 3 wrens"
     assert shown.detail == "wren, wren, wren"
     assert not shown.failed
+
+
+# ── the shape a loop may be asked to answer in ──
+
+FOUND: dict[str, object] = {
+    "type": "object",
+    "properties": {"found": {"type": "array", "items": {"type": "string"}}},
+    "required": ["found"],
+}
+
+
+def _shaped(*replies: ModelReply) -> ScriptedChatModel:
+    return ScriptedChatModel(list(replies))
+
+
+def _answered(**arguments: object) -> ModelReply:
+    return ModelReply(
+        tool_calls=(ToolCall(name=ANSWER_TOOL_NAME, arguments=arguments, call_id="a1"),)
+    )
+
+
+def test_a_shaped_loop_is_offered_the_shape_as_a_tool_beside_the_search() -> None:
+    """The shape is put to the model the one way a model is held to a schema: as the
+    parameters of something it may call. Described in the brief it would be a request,
+    and a request is what this change exists to stop relying on."""
+    model = _shaped(_answered(found=["one"]))
+
+    host_for(MODULE, model=model).delegate("Find one.", shape=FOUND)
+
+    offered = {tool.name for tool in model.last_tools or ()}
+    assert offered == {SEARCH_TOOL_NAME, ANSWER_TOOL_NAME}
+    [answering] = [
+        tool for tool in model.last_tools or () if tool.name == ANSWER_TOOL_NAME
+    ]
+    assert answering.parameter_schema == FOUND
+
+
+def test_an_unshaped_loop_is_offered_no_way_to_answer_but_prose() -> None:
+    model = _shaped(ModelReply(text="one"))
+
+    host_for(MODULE, model=model).delegate("Find one.")
+
+    assert ANSWER_TOOL_NAME not in {tool.name for tool in model.last_tools or ()}
+
+
+def test_a_tool_named_for_the_shape_is_refused_rather_than_shadowed() -> None:
+    """As one named for cora's search is: a call would reach cora's, and the plugin
+    would watch its own tool never run."""
+    model = _shaped(_answered(found=["one"]))
+
+    with pytest.raises(ToolRefusal) as refused:
+        host_for(MODULE, model=model).delegate(
+            "Find one.", tools=(_reading(ANSWER_TOOL_NAME),), shape=FOUND
+        )
+
+    assert ANSWER_TOOL_NAME in str(refused.value)
+    assert model.completions == 0
+
+
+def test_a_shape_that_is_not_a_schema_is_refused_before_a_round_is_spent() -> None:
+    model = _shaped(ModelReply(text="one"))
+
+    with pytest.raises(ToolRefusal):
+        host_for(MODULE, model=model).delegate("Find one.", shape={"type": "nonsense"})
+
+    assert model.completions == 0
+
+
+def test_a_shape_requiring_nothing_is_refused_before_a_round_is_spent() -> None:
+    """An empty answer satisfies a shape that requires nothing, so a loop could answer
+    with `{}` and the caller would read a default it never asked for — the silent
+    fallback this change removes, arriving by the front door."""
+    model = _shaped(ModelReply(text="one"))
+
+    with pytest.raises(ToolRefusal) as refused:
+        host_for(MODULE, model=model).delegate(
+            "Find one.", shape={"type": "object", "properties": {"found": {}}}
+        )
+
+    assert "requires" in str(refused.value)
+    assert model.completions == 0
+
+
+def test_a_clean_answer_ends_the_loop_and_comes_back_as_the_value() -> None:
+    model = _shaped(_answered(found=["one", "two"]))
+
+    answered = host_for(MODULE, model=model).delegate("Find two.", shape=FOUND)
+
+    assert answered == {"found": ["one", "two"]}
+
+
+def test_a_shaped_answer_costs_no_round_prose_would_not_have() -> None:
+    """The answer arrives as a call, on the round the loop was going to end on — so a
+    shape narrows nothing about what the loop may spend on looking things up."""
+    shaped = _shaped(_answered(found=["one"]))
+    prose = _shaped(ModelReply(text="one"))
+
+    host_for(MODULE, model=shaped).delegate("Find one.", shape=FOUND)
+    host_for(MODULE, model=prose).delegate("Find one.")
+
+    assert shaped.completions == prose.completions == 1
+
+
+def test_an_answer_that_fails_the_shape_is_told_to_the_loop_and_answered_again() -> (
+    None
+):
+    """The correction is the loop's own mechanism: a call whose arguments the schema
+    refuses comes back as a result the model reads, in a round it already had."""
+    model = _shaped(_answered(found="not a list"), _answered(found=["one"]))
+
+    answered = host_for(MODULE, model=model).delegate("Find one.", shape=FOUND)
+
+    assert answered == {"found": ["one"]}
+    assert model.completions == 2
+    said = model.last_messages
+    assert said is not None
+    assert "invalid arguments" in said[-1].content
+
+
+def test_a_loop_that_writes_prose_where_a_shape_was_asked_for_refuses() -> None:
+    model = _shaped(ModelReply(text="I found one and two."))
+
+    with pytest.raises(ToolRefusal) as refused:
+        host_for(MODULE, model=model).delegate("Find two.", shape=FOUND)
+
+    assert "prose" in str(refused.value)
+
+
+def test_a_shaped_loop_that_spends_its_allowance_refuses_rather_than_writing_up() -> (
+    None
+):
+    """A write-up is prose headed by a warning, and a caller holding a shape has
+    nowhere to put either. So the rounds are reported as spent, not as an answer."""
+    model = _spending_everything(ModelReply(text="the sum is 2"))
+
+    with pytest.raises(ToolRefusal):
+        host_for(MODULE, model=model).delegate(
+            "Loop forever.", tools=(add_tool(),), rounds=10_000, shape=FOUND
+        )
+
+    assert model.completions == MAX_DELEGATED_ROUNDS + 1, "no write-up was asked for"
+
+
+def test_a_citation_number_inside_the_value_is_stripped_as_it_is_from_prose() -> None:
+    """The numbers belong to the turn wherever the loop puts them: a `[1]` riding back
+    in a field would reach the transcript and draw a button onto the wrong document."""
+    model = _shaped(_answered(found=["sleep, not volume [1]"]))
+
+    answered = host_for(MODULE, model=model).delegate("Why?", shape=FOUND)
+
+    assert answered == {"found": ["sleep, not volume"]}
+
+
+def test_the_answer_the_loop_gave_is_on_the_trace_under_the_call() -> None:
+    model = _shaped(_answered(found=["one"]))
+
+    with collecting() as taken:
+        host_for(MODULE, model=model).delegate("Find one.", shape=FOUND)
+
+    assert any(getattr(step, "name", "") == ANSWER_TOOL_NAME for step in taken.steps), (
+        "the shaped answer reads as the call it was"
+    )

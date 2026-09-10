@@ -63,11 +63,46 @@ departure it allows, and only the cheapest few are worth a second call each."""
 SHAPE_TASK = (
     "Plan what to do on each of {nights} days in {destination}, from {depart}.\n\n"
     "{asked}\n\n"
-    "Answer with JSON and nothing else: a list of "
-    '{{"on": "YYYY-MM-DD", "doing": ["...", "..."], "outdoor": true|false}}, one per '
-    "day, in order. Mark a day outdoor when what you planned needs the weather to "
-    "hold. Use the user's own documents where they say anything about the place."
+    "One day per day, in order, from {depart}. Use the user's own documents where they "
+    "say anything about the place."
 )
+DAY_SHAPE: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "days": {
+            "type": "array",
+            "description": "One entry per day of the trip, in order.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "on": {
+                        "type": "string",
+                        "format": "date",
+                        "description": "The day, as YYYY-MM-DD.",
+                    },
+                    "doing": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "What is planned for it, one thing per line.",
+                    },
+                    "outdoor": {
+                        "type": "boolean",
+                        "description": (
+                            "True where what is planned needs the weather to hold."
+                        ),
+                    },
+                },
+                "required": ["on", "doing"],
+            },
+        }
+    },
+    "required": ["days"],
+}
+"""What the days must come back as, put to the model as the answer's own schema.
+
+Object-rooted with `days` inside it, because a shape has to require something of an
+answer — and a bare list is not a thing a schema can require anything of.
+"""
 NARROWER = (
     "\n\nThe plan you gave failed these checks, so give a narrower one that does not: "
     "{failed}"
@@ -84,11 +119,13 @@ UNPRICED_FAILED = (
 """Said apart from `UNPRICED`, because a deployment that set no key and a service that
 refused the search are two different things to tell the reader — and one of them is
 worth looking into."""
-UNREADABLE_SHAPE = "the day shape came back unreadable"
-"""Shown when the delegated call answers with something that is not the JSON it was
-asked for. On the trace rather than swallowed: an unreadable shape and a shape that
-merely failed its checks both leave the loop revising, and only the trace tells the
-reader which was happening."""
+NO_DAYS = "the day shape came back with no days"
+"""Shown when the answer satisfied its shape and still held nothing to plan. On the
+trace rather than swallowed: no days and days that failed their checks both leave the
+loop revising, and only the trace tells the reader which was happening.
+
+A shape the model will not answer in at all is not this — it refuses the call, and the
+reader is told by the failure rather than by a line under it."""
 NOTHING_KEPT = (
     "No trip has been planned in this conversation yet, so there is nothing to revise. "
     "Plan one first."
@@ -145,23 +182,14 @@ def _trip_from(given: dict[str, Any]) -> Trip:
     )
 
 
-def _days_from(written_days: str) -> tuple[Day, ...]:
-    """The day shape a delegated loop wrote, or nothing where it wrote no JSON.
+def _days_from(read: Sequence[Any]) -> tuple[Day, ...]:
+    """The days a delegated loop answered with, minus any whose date will not read.
 
-    Nothing rather than a guess: an unreadable shape leaves the days empty, the check
-    for an empty day fails, and the loop revises — which is the same path a shape that
-    was merely wrong takes.
+    The shape says `date`, and a JSON Schema validator does not check `format` — so the
+    day the model wrote is read here, and one that will not read is dropped. Nothing
+    rather than a guess: what is left may be empty, the check for an empty day fails,
+    and the loop revises.
     """
-    opened = written_days.find("[")
-    closed = written_days.rfind("]")
-    if opened < 0 or closed < opened:
-        return ()
-    try:
-        read = json.loads(written_days[opened : closed + 1])
-    except json.JSONDecodeError:
-        return ()
-    if not isinstance(read, list):
-        return ()
     days: list[Day] = []
     for entry in read:
         if not isinstance(entry, dict) or "on" not in entry:
@@ -322,10 +350,12 @@ class Planner:
         )
         if failed:
             task += NARROWER.format(failed="; ".join(failed))
-        written_days = self.cora.delegate(task)
-        days = _days_from(written_days)
+        answered = self.cora.delegate(task, shape=DAY_SHAPE)
+        days = _days_from(answered["days"])
         if not days:
-            self.cora.show(UNREADABLE_SHAPE, detail=written_days[:200], failed=True)
+            self.cora.show(
+                NO_DAYS, detail=f"{len(answered['days'])} came back", failed=True
+            )
         return days
 
     def _forecast(self, trip: Trip) -> dict[str, str] | None:

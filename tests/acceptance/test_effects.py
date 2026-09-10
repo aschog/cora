@@ -1,8 +1,8 @@
 """The outer test for story 11."""
 
 import datetime
-import json
 import pathlib
+from typing import Any
 
 import pytest
 from starlette.testclient import TestClient
@@ -12,6 +12,7 @@ from cora.adapters.file_output import FileOutput
 from cora.app.assembly import App
 from cora.domain.approval import TOOL
 from cora.domain.decision import TurnPaused
+from cora.engine.host import ANSWER_TOOL_NAME
 from cora.frontends.react.api import api
 from cora.plugins.travel import SCOPE
 from cora.plugins.travel.itinerary import ITINERARY_TOOL_NAME, flat
@@ -38,13 +39,13 @@ ANSWER = "Saved it — the three days are on disk now."
 
 
 DEPART = datetime.date(2026, 9, 7)
-SHAPE = json.dumps(
-    [
+SHAPE: dict[str, Any] = {
+    "days": [
         {"on": "2026-09-07", "doing": ["Fushimi Inari at dawn"]},
         {"on": "2026-09-08", "doing": ["Arashiyama"]},
         {"on": "2026-09-09", "doing": ["Nishiki"]},
     ]
-)
+}
 PLANNED = Plan(
     origin="BER",
     destination="Kyoto",
@@ -97,7 +98,9 @@ def _plans_then_saves(answer: str) -> ScriptedChatModel:
     )
 
 
-SHAPE_REPLY = ModelReply(text=SHAPE)
+SHAPE_REPLY = ModelReply(
+    tool_calls=(ToolCall(name=ANSWER_TOOL_NAME, arguments=SHAPE, call_id="d1"),)
+)
 
 
 def _travel() -> Extension:

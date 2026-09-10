@@ -4,13 +4,13 @@ The plugin, its planning loop and the whole turn are the real ones; the model an
 search service are stubbed, which is the boundary a stub is for.
 """
 
-import json
 from typing import Any
 
 import pytest
 
 from app_builder import assembled
 from cora.domain.trace import ToolUse
+from cora.engine.host import ANSWER_TOOL_NAME
 from cora.engine.plugin_registry import load_plugin
 from cora.plugins.travel import SCOPE
 from cora.plugins.travel.planner import PLAN_TOOL_NAME, REVISE_TOOL_NAME
@@ -35,12 +35,15 @@ TRIP: dict[str, Any] = {
     "nights": 3,
     "budget": BUDGET,
 }
-SHAPE = json.dumps(
-    [
+SHAPE: dict[str, Any] = {
+    "days": [
         {"on": "2026-09-01", "doing": ["Alfama"], "outdoor": False},
         {"on": "2026-09-02", "doing": ["Belem"], "outdoor": False},
         {"on": "2026-09-03", "doing": ["Nishiki market"], "outdoor": False},
     ]
+}
+SHAPE_REPLY = ModelReply(
+    tool_calls=(ToolCall(name=ANSWER_TOOL_NAME, arguments=SHAPE, call_id="d1"),)
 )
 
 
@@ -126,9 +129,7 @@ def test_one_instruction_comes_back_with_a_dated_priced_plan_that_holds(
 ) -> None:
     """The criterion: a place, a month and a budget in — and out comes a day-by-day
     plan on a week that was really priced, inside the budget, with nothing failing."""
-    model = ScriptedChatModel(
-        [_planning(), ModelReply(text=SHAPE), ModelReply(text=ANSWER)]
-    )
+    model = ScriptedChatModel([_planning(), SHAPE_REPLY, ModelReply(text=ANSWER)])
 
     answered = _app(model).agent.answer(QUESTION, THREAD)
 
@@ -149,7 +150,7 @@ def test_a_later_turn_revises_the_plan_this_conversation_already_holds(
     model = ScriptedChatModel(
         [
             _planning(),
-            ModelReply(text=SHAPE),
+            SHAPE_REPLY,
             ModelReply(text=ANSWER),
             ModelReply(
                 tool_calls=(
@@ -160,7 +161,7 @@ def test_a_later_turn_revises_the_plan_this_conversation_already_holds(
                     ),
                 )
             ),
-            ModelReply(text=SHAPE),
+            SHAPE_REPLY,
             ModelReply(text="Still 340."),
         ]
     )
