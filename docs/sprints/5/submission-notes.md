@@ -174,6 +174,29 @@ said the same way twice.
   plugin passed to `register_tool`, `register_instructions` and `register_handler`.
   `KnowledgeBase` never learns a plugin's name at all.
 
+- **Where structured output is** — a plugin can ask a delegated loop for a shape instead
+  of prose: `cora.delegate(task, shape=DAY_SHAPE)` hands back a validated `dict` with
+  nothing left to parse. The travel planner is the caller, and it dropped its own
+  `json.loads` over the model's text.
+- **How the shape is put to the model** — as one more tool, `answer`, whose parameter
+  schema *is* the shape. A tool schema is already a JSON Schema the provider enforces and
+  `ToolRuntime` validates, so the shape is sent as a schema rather than described in
+  words, and nothing new was built to send it. The loop ends on the round the clean
+  `answer` call arrives in, so a shaped answer costs no round prose would not have cost.
+- **Why not `response_format`** — OpenRouter supports it per endpoint, and an endpoint
+  without it drops the parameter *silently*. That leaves the schema asked for in words,
+  which is the failure the change exists to remove. `with_structured_output` was rejected
+  with it: no top-level array, it rewrites the caller's schema under `strict`, it breaks
+  the adapter's streaming path, and its parser validates nothing.
+- **What happens when the shape is not met** — arguments that fail it come back to the
+  loop as `invalid arguments:`, which it corrects in a round it already had. Prose where
+  a shape was asked for, or an allowance spent without answering, refuses the call and
+  says which. A shape requiring nothing of an answer is refused before a round is spent,
+  an empty answer being one that satisfies it. No path hands back a value read loosely.
+- **What the shape does not check** — `Draft202012Validator` ignores `format`, so a field
+  saying `date` is not a date. The planner reads its own dates and drops the days that
+  will not parse.
+
 ## Documents
 
 - **What `scope` and `name` are in `KnowledgeBase.forget(scope, name)`** — two different
@@ -247,6 +270,20 @@ said the same way twice.
   A passage row therefore holds the id that points at its vector and the hash that
   points at its file, and nothing in SQLite enforces either — which is why `add` and
   `forget` do both tables in one transaction, and why the vectors go first.
+
+- **Answering "document text goes into the system message"** — it does not, and the
+  premise is checkable in one file. `prompt_from` in `src/cora/domain/transcript.py`
+  builds the system message out of the brief alone. A passage arrives as a `tool`
+  message carrying the untrusted notice, which is exactly the separation the finding
+  asks for, and the paragraph below says where each half is written. So the regex over
+  the question is not the only guard, and indirect injection does not walk past it.
+
+  Two real holes sit next to it, and both are said first rather than waited for. The
+  notice opens the untrusted block and never closes it, so a document can print its own
+  ending and write past the wrapper. And a fact the model saved with `remember` out of
+  something it read is recalled into the brief by `FocusStep`, which *is* the system
+  message — one real path from a document into cora's own rules, with nothing checking
+  where the fact came from.
 
 - **Where a document's text sits in the prompt** — never in the system message. A turn
   builds one system message, and `prompt_from` in `src/cora/domain/transcript.py` fills
