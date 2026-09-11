@@ -90,6 +90,18 @@ the result, so no plugin can take it off — but it is a sentence addressed to a
 model, not an enforcement boundary. Upload text you did not write and you are trusting
 the model's compliance.
 
+**The notice opens the untrusted block and never closes it.** A passage is handed over
+under a sentence saying where it came from, and nothing marks where it stops. A document
+that writes its own ending is writing past the wrapper, and what follows reads as cora
+again.
+
+**A remembered fact is in the brief, whoever wrote it.** Everything else a document says
+reaches the model as a `tool` message behind the notice, never as cora's own rules. A
+fact is the one exception: the model can save one with `remember` out of something it
+just read, and from then on it is recalled into the system message with nothing
+recording where it came from. Read what cora remembers if you uploaded text you did not
+write.
+
 **A card's prompt and boxes are somebody's own words.** cora's own form is the model's:
 it names the fields, their labels and their types — two to twelve of them, strings,
 numbers and booleans. A card a plugin's tool puts up is that plugin's, with no field
