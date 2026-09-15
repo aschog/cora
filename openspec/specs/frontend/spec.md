@@ -2,8 +2,8 @@
 
 ## Purpose
 
-What cora is used through: one screen, served with the API from one process, and one
-documented command that starts it.
+What cora is used through: a page and a chat, each over the same assembled app, and
+each started by a documented command of its own.
 
 ## Requirements
 
