@@ -49,6 +49,9 @@ make run                                   # or: make run-env, to read the key f
 `127.0.0.1:8000`; `make run-env` reads `.env` as well as the shell it was started
 from, and a variable already exported there wins over the file.
 
+`make bot` runs the same app in a chat instead of a browser — two settings of its own,
+and [a page about them](run-the-telegram-bot.md).
+
 ## Gates
 
 ```sh

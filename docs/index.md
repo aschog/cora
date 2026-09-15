@@ -26,8 +26,8 @@ Why cora is built the way it is.
   at, and what deleting any of it takes.
 - [What ships with it](what-ships-with-it.md) — the three plugins in this repository,
   and what each one brings.
-- [How the page is built](the-page.md) — the one frontend: who owns which state, and
-  why a broken rail leaves the conversation standing.
+- [How the page is built](the-page.md) — the React frontend: who owns which state,
+  and why a broken rail leaves the conversation standing.
 - [Where your data lives](data-storage.md) — one SQLite file, the documents beside it,
   and what deleting takes.
 - [Privacy, and what a plugin costs in trust](privacy-and-ethics.md) — what leaves your
@@ -45,6 +45,8 @@ One task each, for when you are already working.
   as a file you drop in the folder
 - [Run the React shell](how-to/run-the-react-shell.md) — the same app over HTTP, with a
   React page
+- [Run the Telegram bot](how-to/run-the-telegram-bot.md) — the same app in a chat, for
+  the machine you are not sitting at
 - [Watch a turn happen](how-to/watch-a-turn.md) — the trace, the port log, and the live
   session test
 

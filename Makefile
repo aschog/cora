@@ -2,8 +2,9 @@
 # here is a thin wrapper over `uv run` — the real definitions are in pyproject.toml.
 
 REACT := cora.frontends.react.server
+TELEGRAM := cora.frontends.telegram.server
 
-.PHONY: run run-env plugins plugins-env ui ui-build ui-test e2e e2e-store e2e-live docs docs-serve diagram
+.PHONY: run run-env bot bot-env plugins plugins-env ui ui-build ui-test e2e e2e-store e2e-live docs docs-serve diagram
 
 # cora, as one process serving the page and the API on 127.0.0.1:8000. It builds first
 # because the server only ever reads `ui/dist` — without that a source change is
@@ -14,6 +15,16 @@ run: ui-build
 # Reads it from .env instead, which is how the live tier is run too.
 run-env: ui-build
 	uv run --env-file .env python -m $(REACT)
+
+# cora in a Telegram chat, for the machine you are not sitting at. The bot polls out,
+# so nothing has to reach in. Reads CORA_TELEGRAM_TOKEN and CORA_TELEGRAM_CHATS beside
+# OPENROUTER_API_KEY, and refuses to start without either of the two.
+bot:
+	uv run python -m $(TELEGRAM)
+
+# The same, reading its environment from .env — as `run-env` is to `run`.
+bot-env:
+	uv run --env-file .env python -m $(TELEGRAM)
 
 # What this deployment loaded, and what each plugin registered. It assembles the app the
 # environment describes rather than reading the manifests, so what prints is what runs.
