@@ -45,9 +45,6 @@ FLIGHTS = {
     "2026-09-08": (318, 425),
     "2026-09-15": (612, 388),
 }
-"""What the service answers for each candidate departure. Three departures fit a
-weekly stride inside the window, and the cheapest three fares are spread across two of
-them — so a tool that kept the best of one departure would fail this."""
 
 CHEAPEST = ("318", "388", "425")
 DEARER = ("540", "612", "690")

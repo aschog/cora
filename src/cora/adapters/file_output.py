@@ -8,9 +8,6 @@ ESCAPES = (
     "'{name}' is not a name I can write: it has to name a file that stays under the "
     "output location, not a path out of it"
 )
-"""What a plugin is told when a name would leave the root. Worded for the model, which
-is what reads a refused call — and it says what a name may be rather than only what it
-may not."""
 
 
 @dataclass(frozen=True)

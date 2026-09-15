@@ -16,8 +16,6 @@ import cora.ports
 import workspace
 
 DISTRIBUTIONS = tuple(workspace.distribution(member) for member in workspace.members())
-"""Found, not listed: a distribution added to the workspace and forgotten here would
-otherwise go unversioned and unimported by every test in this file."""
 
 
 def _carrier(module: ModuleType) -> str:

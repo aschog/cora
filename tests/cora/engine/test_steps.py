@@ -711,15 +711,11 @@ CONFIRM = Card(
     fields=(FieldAsked(name="trip", value="Kyoto in May", editable=False),),
     actions=SEARCH_IT,
 )
-"""One field, and nobody writes in it: the reader is confirming what the tool worked out
-rather than being asked for anything."""
 PRE_FILLED = Card(
     prompt=FILL_IN,
     fields=(FieldAsked(name="origin", value="BER", required=True),),
     actions=SEARCH_IT,
 )
-"""One value, in a box already holding what the model wrote: still one value asked for,
-because the reader is being asked to correct it rather than told about it."""
 CONFIRM_AND_ONE = Card(
     prompt=FILL_IN,
     fields=(

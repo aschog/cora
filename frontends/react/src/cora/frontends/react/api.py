@@ -40,27 +40,16 @@ from cora.ports.host import DEFAULT_SCOPE
 log = logging.getLogger(__name__)
 
 UNAVAILABLE = 503
-"""What a store that went away answers with: the request was well formed and the
-infrastructure behind it was not there, which is a different thing from a file cora
-cannot read."""
 REFUSED = 400
 NO_CONTENT = 204
 TOO_LARGE = 413
 NO_LENGTH_GIVEN = 411
 
 MULTIPART_FRAMING = 64 * 1024
-"""What a multipart body costs on top of the file inside it: two boundaries, the part's
-headers, a filename. Generous, because refusing a document cora would accept is the one
-thing the ceiling below must never do."""
 MAX_REQUEST_BYTES = DEFAULT_MAX_BYTES + MULTIPART_FRAMING
-"""The largest upload cora will read. The cap on a *document* is `ingest`'s, and it is
-applied to a part the parser has already spooled to disk and read whole — so the request
-carrying it is bounded here instead, before any of it is read."""
 
 
 Apps = Callable[[], App]
-"""How a handler reads the app: taken once per request, so a turn runs whole on the
-composition it started with, whatever the plugins folder does meanwhile."""
 
 
 def api(
@@ -139,17 +128,12 @@ def _allowed(request: Request, status: int) -> dict[str, str]:
 
 NOT_THAT_WAY = 405
 BODILESS = frozenset({204, 304})
-"""Statuses a response may not carry a body under. A client that reads one anyway is
-reading the next response on the connection."""
 
 REFUSALS: dict[Any, Any] = {
     CoreError: _refused,
     FormParserError: _unreadable,
     HTTPException: _as_sentence,
 }
-"""Every failure this app answers, and the shape it answers in. Named rather than built
-inside `api` so a handler can be driven by a test over a route that fails on demand —
-no real route can be made to fail these ways."""
 
 
 def _documents(apps: Apps) -> Callable[[Request], Any]:
@@ -213,8 +197,6 @@ def _ingest(apps: Apps) -> Callable[[Request], Any]:
 
 
 MOST_OF_A_NAME = 40
-"""How much of a name a refusal quotes back. The name is the client's, so what is echoed
-is capped rather than reasoned about."""
 
 
 def _no_such_field(named: str, scopes: tuple[str, ...]) -> str:
@@ -243,42 +225,22 @@ def _over_ceiling(request: Request) -> JSONResponse | None:
 
 STREAM = "text/event-stream"
 UNBUFFERED = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
-"""A proxy that buffers the response undoes the endpoint: the steps would arrive
-together at the end, which is the shape this exists not to have."""
 NOT_A_QUESTION = "Ask with a question and the thread it belongs to."
 ESCAPED_CHARACTER_BYTES = 12
-"""The most one character of a question can cost on the wire. The page sends raw UTF-8,
-where the widest character is four bytes; a client that escapes non-ASCII writes that
-same character as two `\\uXXXX` sequences. A ceiling sized for the page alone refuses
-questions cora would answer, and the difference is kilobytes."""
 MAX_ASK_BYTES = MAX_INPUT_CHARS * ESCAPED_CHARACTER_BYTES + 1024
-"""What a question may weigh, with a kilobyte over it for the thread id and the JSON
-around the two. Whether the question is too long is the engine's rule — this is only how
-much cora reads to find out."""
 TOO_LONG_TO_ASK = "That question is longer than cora reads."
 NOT_A_DECISION = (
     "Settling a card needs the conversation it belongs to, and the action taken."
 )
-"""What a malformed answer is refused with. Both, because an answer bound to nothing is
-not one: a missing action would settle whichever card happened to be outstanding, and
-must not read as a decline either."""
 NOT_FILLED_IN = "The values written into a card have to be a JSON object."
 NOT_THAT_CARD = (
     "That is not one of the ways off the card this conversation is waiting on."
 )
-"""What an answer naming an action nobody offered is refused with. The step waiting
-would read it as a decline, which is safe and says nothing — so a page holding a card
-the conversation has moved past is told, rather than settling the turn on its behalf."""
 NO_SUCH_SCOPE = (
     "cora is not running that field, so a conversation cannot be pinned to it."
 )
 WENT_WRONG = "Something went wrong answering that. Please try again."
-"""What an unmodelled failure says. A `CoreError` was written to be read by whoever
-asked; anything else was not, so its text goes to the log and the reader gets a sentence
-that is true without quoting a stack."""
 DONE = None
-"""What the worker puts on the queue when there is nothing further to send. A stream
-that is not closed is a page still spinning under an answer that already failed."""
 
 
 def _ask(apps: Apps) -> Callable[[Request], Any]:
@@ -403,9 +365,6 @@ def _said(half: Any) -> bool:
 
 
 Turning = Callable[[Callable[[TraceStep], None], TextSink], ChatResult]
-"""A turn waiting to be walked: begun, or picked up from where it stopped. Both report
-their steps and write their text the same way, so the stream above is told how to run
-one rather than which of the two it is."""
 
 
 def _run(turning: Turning, deliver: Callable[[str | None], None]) -> None:
@@ -452,9 +411,6 @@ def _upload(apps: Apps) -> Callable[[Request], Any]:
 
 
 UNKEPT = "cora cannot open that passage's document."
-"""One sentence for either way a document is not there. The store cannot tell a
-deleted document from one whose text was never kept — both read as nothing — so what
-the reader is told is true of both rather than guessing between them."""
 
 
 def _sessions(apps: Apps) -> Callable[[Request], Any]:

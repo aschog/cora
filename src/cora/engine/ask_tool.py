@@ -96,13 +96,7 @@ ASK_FOR_TOOL_DESCRIPTION = (
     "and no others, never one you could look up, and never one they have already given."
 )
 DRAWN = ("string", "integer", "number", "boolean")
-"""The kinds of value a field may ask for. Not every JSON Schema type: an object or an
-array is a shape the page has no control for, and a card the reader cannot answer is
-worse than an ask that was refused."""
 MOST_FIELDS = 12
-"""The longest form cora will put up. A card past this is one the reader abandons, and
-an abandoned card tells the model nothing — refused, it asks for what the answer turns
-on instead."""
 ASK_FOR_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -171,14 +165,6 @@ ONE_VALUE = (
     "for it in your answer instead, in a sentence — the user replies in prose, and the "
     "next turn has it."
 )
-"""What the model is told about a card that asks for one thing.
-
-A form earns the stop when filling it in is the cheaper way to say four things at once.
-For one value it is a box, a button and a turn spent where a sentence would have done —
-and the sentence is what the model can write anyway. Here rather than beside the step
-that enforces it, because the form's schema says the same thing and the two would
-otherwise drift.
-"""
 
 SEND = "Send"
 NOT_NOW = "Not now"

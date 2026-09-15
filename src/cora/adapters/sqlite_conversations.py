@@ -13,7 +13,6 @@ from cora.domain.errors import ConversationStoreError
 from cora.domain.trace import TraceStep, step_kinds
 
 STEPS = "steps"
-"""The field a step keeps its own steps in, which is the one that nests."""
 
 SCHEMA = (
     "create table if not exists cora_turns ("

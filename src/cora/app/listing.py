@@ -9,8 +9,6 @@ from cora.ports.host import Listed
 
 NOTHING = "No plugin is loaded. cora answers as itself."
 SYSTEM_WIDE = "system-wide"
-"""What a registration carrying no scope is shown as. Spelt out rather than left blank,
-because a claim on every turn is a visible act and not a quiet field."""
 
 INDENT = "  "
 KIND_WIDTH = 14

@@ -14,26 +14,12 @@ from cora.ports.host import CONTRACT, Extension, name_of
 
 EXTEND = "extend"
 DECLARED = "CONTRACT"
-"""What a plugin names to ask for a version of the contract. Read before `extend` is
-called, because refusing a plugin whose code has already run is not refusing it."""
 
 DROPPED = "cora_dropped"
-"""The namespace a file dropped in the folder is imported under.
-
-It has to be imported under *some* name that outlives the import: a module absent from
-`sys.modules` cannot resolve its own annotations, so an ordinary dataclass in a dropped
-file fails on code that is correct everywhere else. Under a namespace of cora's own
-rather than under the file's own stem, so dropping `json.py` in the folder still cannot
-change what `import json` means anywhere.
-"""
 
 SUFFIX = ".py"
 INIT = "__init__.py"
-"""What makes a dropped directory a plugin: the same marker that makes it a package."""
 SKIPPED = ("_", ".")
-"""How an entry in the folder says it is not a plugin: `__init__.py` and anything an
-author named as private, and anything hidden — a volume that has been near a Mac keeps
-`._name.py` beside every file, and one of those refuses the whole deployment."""
 
 
 def load_plugins(

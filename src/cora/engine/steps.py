@@ -78,11 +78,6 @@ CORA_PREAMBLE = (
     "tools you are offered. Be direct and concrete, say what you do not know, and "
     "never invent a source."
 )
-"""What cora is, before any plugin says what it is for — which is why it takes no
-subject of its own: a scope is a plugin's to give, and an app carrying none is a general
-assistant rather than a specialist that was handed nothing. Which tools to reach for is
-`AGENT_RULES`' business. Cora's own, because N plugins each opening with a persona would
-be N answers to one question."""
 AGENT_RULES = (
     f"Call the {SEARCH_TOOL_NAME} tool whenever the answer should rest on the "
     "user's own documents, and cite the numbered passages it returns as [n]. "
@@ -114,16 +109,11 @@ ASK_FOR_RULE = (
     "stop the sentence already made. Ask for what the answer turns on and no more, "
     "and mark a field required only where you cannot proceed without it."
 )
-"""Why the model is told this and not left to the tool's own description: cora states a
-rule per tool it offers, in one place and in one voice, and a tool left out of that list
-is the one whose use has to be inferred."""
 NOTHING_CHOSEN = (
     "The user chose none of the options. Carry on without one, say what you could not "
     "settle, and do not ask again."
 )
 CHOSE_NOTHING = "nothing chosen"
-"""What the reader's plan says a decline came to. The sentence above is written for the
-model and tells it what to do next, which is no part of what happened."""
 WRITTEN_IN = "The user filled the form in — {values}. Those are their own words."
 NOTHING_WRITTEN = (
     "The user filled in nothing. Carry on without those values, say plainly what you "
@@ -131,9 +121,6 @@ NOTHING_WRITTEN = (
 )
 WROTE_NOTHING = "nothing filled in"
 FILLED = "filled in: {fields}"
-"""What the reader's plan says a form came to: which fields came back, not what was in
-them — the values are on the card they were written on, and a plan is not where a form
-is read back."""
 REMEMBERED_HEADING = "What you already know about this user:"
 HELD_AT_SEVERAL = "'{subject}' is held at {count} different values above"
 HELD_AT_SEVERAL_NOTICE = (
@@ -155,8 +142,6 @@ ROUTE = "route"
 FOCUS = "focus"
 WORK = "work"
 ANSWER = "answer"
-"""The steps a turn walks, in the order it walks them. A name is what a turn is *in*:
-it heads that step's trace, and a failure is reported under it."""
 
 ROUTING_RULE = (
     "Sort the question below into the field it belongs to. The fields are listed under "
@@ -166,9 +151,6 @@ ROUTING_RULE = (
     "Answer with 'none' if it belongs to none of them. Never explain, and never answer "
     "the question itself."
 )
-"""What the router is told. It is handed no tools and no history: which field a question
-belongs to is a reading of that question, and a router given the thread would drift with
-it — the pin is what makes a decision about the conversation."""
 WHICH_FIELD = "Which field did you mean?"
 NEITHER_FIELD = "Neither — answer it plainly"
 
@@ -181,9 +163,6 @@ CHOSEN = "chosen by you"
 NOTHING_CHOSEN_FIELD = "no field chosen"
 BELONGS_TO_NONE = "the question belongs to none of them"
 UNREAD = "the question could not be read"
-"""How a turn came to be in the scope it ran in, in the words the trace shows. The
-reading rather than the reason: a reader answered by the wrong specialist needs to know
-whether the conversation decided that or the question did."""
 
 
 def _nothing(state: AgentState) -> AgentState:
@@ -541,11 +520,6 @@ GATHERS = (
     "you are missing, ask for that one in your answer instead — the call is refused, "
     "and their reply is what you call it with."
 )
-"""What a tool that declares `asks` says to the model, over what it says about itself.
-
-Added by cora rather than left to whoever wrote the tool: a plugin that forgot the
-sentence would have a card the model never reaches, and the declaration is already the
-place the fact is stated once."""
 
 
 BROKEN_ASKS = "it could not work out what to ask you for"
@@ -604,8 +578,6 @@ def _gathers(tool: Tool) -> Tool:
 
 
 REFUSED_CALL = "tool '{name}' was refused: {reason}"
-"""What the model is told about a call a handler would not let run. Worded as a refusal
-rather than as a failure: nothing broke, and the turn answers around it."""
 
 
 @dataclass(frozen=True)
@@ -730,28 +702,16 @@ DECLINED_CALL = (
     "tool '{name}' was not run: it changes something outside cora and was not "
     "approved. Answer without it, and say plainly that you did not do it."
 )
-"""What the model is told about a call that was not approved. Worded as what happened
-rather than as what somebody did — a frontend that cannot ask declines on the reader's
-behalf, and "the user declined" would then be a sentence nobody said. What follows is
-what to do next: the model is owed a way on, and the turn still has an answer to give.
-The story asks the answer to say what it did not do, and this is where it is asked for —
-a brief cannot say it, because a brief does not know which call."""
 
 UNFILLED_CALL = (
     "tool '{name}' was not run: it asked the user for what was missing and they gave "
     "nothing. Answer without it, and say plainly what you still need."
 )
-"""What the model is told about a call the user was asked to fill in and did not. Worded
-as what happened rather than as what somebody did, for the reason `DECLINED_CALL` is,
-and followed by the way on: the turn still has an answer to give."""
 
 UNCONFIRMED_CALL = (
     "tool '{name}' was not run: the user was put what it would run on and did not "
     "confirm it. Answer without it, and say plainly that you did not run it."
 )
-"""What the model is told about a card that asked for nothing and was left. A card of
-read-only fields withholds no value, so `UNFILLED_CALL` would have the model tell the
-user they gave nothing when nothing was asked of them."""
 
 
 @dataclass(frozen=True)

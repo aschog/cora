@@ -34,9 +34,6 @@ Spread it over three or four meals.
 IN_THE_SUBJECT = "How much protein should I eat per kg of bodyweight?"
 LIVE_PLUGINS = ("cora.plugins.security", "cora.plugins.fitness")
 COACHING = fitness.SCOPE
-"""The field the coaching plugin registers, read off the plugin rather than written
-here. A field owns its documents and a turn searches the one it runs in, so a document
-seeded anywhere else is one this tier's questions cannot reach."""
 
 
 def _live_app(store: Path) -> App:
@@ -163,19 +160,6 @@ CONFLICTING = (
     "bodyweight 85 kg, from the physio letter",
 )
 NEEDS_A_WEIGHT = "I am a 34-year-old man, 180 cm tall. What is my basal metabolic rate?"
-"""Everything the calculation needs except the one thing memory holds three of.
-
-The height, the age and the sex are given because a question missing those as well fires
-both of cora's ask rules at once — `ASK_RULE`, because memory holds three bodyweights,
-and `ASK_FOR_RULE`, because nothing anywhere holds the rest.
-
-The engine now names the conflict in the brief rather than leaving the model to spot it,
-which took the shorter question from one run in two to three in five. The rest is the
-collision itself: with both rules live the model still sometimes raises the form and
-leaves the ambiguity for later. That is written up here rather than asserted, because
-what this test is for is the rule on its own — bodyweight is still never mentioned, and
-nothing asks to be asked.
-"""
 DECIDING = "llm-decision"
 
 
@@ -213,9 +197,6 @@ MISSING_ONE = (
     "I am a 34-year-old man, 80 kg, training hard four times a week. What is my total "
     "daily energy expenditure?"
 )
-"""Everything the calculator takes except the height — one value, and nothing anywhere
-holds it. Memory is left empty, so `ASK_RULE` has no conflict to fire on and the only
-rule in play is the one about asking for what cora does not have."""
 ASKING_FOR_ONE = "llm-one-value"
 HEIGHT_ASKED = re.compile(r"\bheight\b|\btall\b|\bcm\b", re.IGNORECASE)
 

@@ -13,8 +13,6 @@ from dataclasses import dataclass
 from .plan import Plan
 
 WET = ("rain", "shower", "snow", "storm", "thunder")
-"""What a forecast has to say for an outdoor day to be ruled out. Words rather than a
-code, because the forecast arrives already read into prose a person would recognise."""
 
 
 @dataclass(frozen=True)
@@ -93,8 +91,6 @@ RULES: tuple[Callable[[Plan, Asked], str | None], ...] = (
     every_day_has_something,
     nights_match_what_was_asked,
 )
-"""Every rule that needs only the plan and what was asked for. A rule somebody wants
-later is a function above and a line here, never a branch inside `check`."""
 
 
 def check(

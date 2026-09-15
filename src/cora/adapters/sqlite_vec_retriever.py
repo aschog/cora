@@ -10,8 +10,6 @@ from cora.domain.errors import RetrievalError
 from cora.ports.retrieval import RetrievedChunk
 
 LOCAL = "local"
-"""The one user a deployment has. The column is here so a second one costs a value
-rather than an alter and a backfill."""
 
 PASSAGES = (
     "create table if not exists cora_passages ("
@@ -25,12 +23,6 @@ VECTORS = (
     "id integer primary key, embedding float[{width}] distance_metric=cosine, "
     "scope text partition key)"
 )
-"""The width is the first vector's, and the file keeps it: an embedder of another width
-cannot be indexed into a store already holding one.
-
-ponytail: fixed at the first write, and the way out is deleting the store and uploading
-again — which is what a changed embedder needs anyway, its old vectors meaning nothing.
-"""
 
 
 def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:

@@ -37,9 +37,6 @@ _CATEGORIES: tuple[tuple[type[Exception], type[LlmError]], ...] = (
     (openai.RateLimitError, LlmBusyError),
     (openai.AuthenticationError, LlmKeyRejectedError),
 )
-"""Ordered, not a mapping: the provider's classes overlap by inheritance, and the
-overflow errors are `BadRequestError`/`APIError` subclasses that a broader entry would
-swallow. First match wins, so the most specific category comes first."""
 
 
 def to_model_reply(reply: AIMessage) -> ModelReply:

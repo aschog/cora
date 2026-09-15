@@ -25,16 +25,9 @@ from .plan import Priced
 SEARCH = "https://serpapi.com/search"
 SETTING = "serpapi_key"
 ENDPOINT = "search_url"
-"""What a deployment sets to send the searches somewhere else — a stand-in that answers
-in the same shapes, so the plugin can be driven with no account and no network. A
-setting rather than a flag: nothing branches on it, and the one address is still the
-one address."""
 TIMEOUT = 20.0
 MOST = 3
-"""How many options come back. Three is what a person compares without a spreadsheet."""
 CANDIDATES = 8
-"""The most departures one search may try. The service counts every one of them against
-an hourly allowance, so a window sampled daily is widened rather than run."""
 STRIDE = 7
 WORKERS = 4
 DEFAULTS = {"currency": "EUR"}

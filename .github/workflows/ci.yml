@@ -34,10 +34,10 @@ jobs:
         run: uv run ty check
 
       # Named on its own because no lint rule states it: pydocstyle only ever demands a
-      # docstring, never forbids one, so a private name carrying prose fails here
-      # instead of as one dot in the run below.
-      - name: No docstrings on private names
-        run: uv run pytest -q tests/guards/test_architecture.py -k no_private_name
+      # docstring, never forbids one, so a private name or a constant carrying prose
+      # fails here instead of as one dot in the run below.
+      - name: No docstrings on private names or assignments
+        run: uv run pytest -q tests/guards/test_architecture.py -k carries_a_docstring
 
       - name: Unit tests
         run: uv run pytest -q

@@ -3,11 +3,7 @@
 from cora.ports.host import SCREENING, Host
 
 CORA = "cora"
-"""The module name cora's own contributions are registered under. It is a plugin of
-itself here: there is one door into a turn, and cora goes through it too."""
 MAX_INPUT_CHARS = 4000
-"""What a question may run to. Beside the handler that enforces it, as the fact bound is
-beside the tool it sizes."""
 
 
 def refuse_nothing_to_answer(question: str) -> str | None:

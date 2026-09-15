@@ -23,6 +23,3 @@ class Loader(Protocol):
 
 
 Loaders = Mapping[str, Loader]
-"""Which extensions can be read, and by what. Injected rather than fixed in core: the
-formats a deployment accepts are its choice, and adding one is a new entry here
-instead of an edit inside ingestion."""

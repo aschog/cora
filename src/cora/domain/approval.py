@@ -10,9 +10,6 @@ DECLINE = "Decline"
 APPROVED = "You approved it."
 DECLINED = "You declined it. Nothing outside cora was changed."
 TOOL = "the tool"
-"""The field the call's own name stands in, above the arguments it was written with.
-Spaced, because a JSON Schema property could be called `tool` and two fields of one name
-are two rows the reader cannot tell apart."""
 
 
 @dataclass(frozen=True)

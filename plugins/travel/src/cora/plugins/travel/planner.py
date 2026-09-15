@@ -42,23 +42,9 @@ REVISE_TOOL_DESCRIPTION = (
 )
 
 KEPT = "plan"
-"""What the plan is kept under, for the length of the conversation."""
 BUDGET_KEPT = "budget"
-"""What the plan was checked against, kept beside it.
-
-Beside rather than inside, because a budget is what the traveller *asked*, not part of
-the trip that came back — and a revision that names no new ceiling is a revision under
-the old one, never one under none.
-"""
 PASSES = 2
-"""How many revisions the loop may make before it offers what it has.
-
-Two because a plan that is still failing after two narrowings is failing on something a
-third would not fix — and the trace is what makes a wrong guess here visible.
-"""
 CANDIDATES = 3
-"""How many departures are paired with a stay. The window is priced across every
-departure it allows, and only the cheapest few are worth a second call each."""
 
 SHAPE_TASK = (
     "Plan what to do on each of {nights} days in {destination}, from {depart}.\n\n"

@@ -98,7 +98,6 @@ def _nothing(state: AgentState) -> AgentState:
 
 
 STEPS = 3
-"""What a turn walks besides its rounds: it screens, it works, and it answers."""
 
 
 def _walk(

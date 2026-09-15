@@ -35,14 +35,9 @@ _ASKING = (
 _ASKS_TO_BE_DIAGNOSED = re.compile(
     rf"\b(?:{'|'.join(_ASKING)})\b[^?]{{0,30}}?(?:{_CONDITION})"
 )
-"""The condition has to be what is being asked about, not merely present: "am I
-diabetic" against "I have diabetes, am I training enough?", which is a training
-question from someone who told cora why they are asking."""
 _ASKS_IF_IT_IS_ONE = re.compile(
     rf"\b(?:is|are|could)\b[^?]*?\ban?\s+(?:\w+\s+){{0,2}}(?:{_CONDITION})"
 )
-"""Asking whether something *is* a condition, which reads as a mention until you notice
-the article: "is my chest pain a heart condition" against "I have a heart condition"."""
 
 
 def refuse_medical(question: str) -> str | None:

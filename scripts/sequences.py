@@ -386,8 +386,6 @@ def _ordered(node: ast.AST) -> list[ast.Call]:
 
 
 SIGNATURE = "\x00signature"
-"""A reply the drawing takes off the signature rather than off a name: a value that is
-returned or tested is never bound to anything the source could be asked for."""
 
 
 @dataclass

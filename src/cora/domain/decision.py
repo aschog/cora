@@ -6,9 +6,6 @@ from cora.domain.card import ActionOffered, Card
 
 NO_OPTION = "None of them"
 DECLINED = "You chose none of them."
-"""A way out of every card, whether or not the model wrote one. The page has nothing
-else to offer while a card is open, so one with no action on it is a conversation the
-reader cannot leave."""
 
 
 @dataclass(frozen=True)

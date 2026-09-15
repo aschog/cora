@@ -4,12 +4,14 @@ The layer boundaries — who may import whom — are a deny-list, and a `.ruff.t
 layer holds them, enforced on every file by having been put in that directory. What is
 left here are the other three shapes: an allow-list, which no lint rule expresses, a
 rule about the words a file uses rather than the modules it imports, and the half of
-the docstring policy `pydocstyle` has no rule for — a private name carries none.
+the docstring policy `pydocstyle` has no rule for — a private name carries no docstring,
+and neither does a constant, a variable or a type alias.
 """
 
 import ast
 import dataclasses
 import inspect
+import itertools
 import pathlib
 import pkgutil
 import re
@@ -38,9 +40,6 @@ from cora.ports.graph import TOOLS
 from fixture_plugins import make_plugin
 
 PURE_MAY_USE = frozenset({"jsonschema"})
-"""The one third party the contract and the engine may reach for. Validating a tool's
-schema is a rule about what a plugin declares, not a technology the engine is bound to —
-a deployment cannot swap it for a different one."""
 
 # Every technology each portion of an extension point may import, and nothing outside
 # it. Keyed by portion rather than by layer: one set across a layer would read as "a
@@ -317,6 +316,17 @@ def test_every_layer_says_in_its_own_directory_what_it_may_not_reach_for(
     )
 
 
+def _tracked_python() -> list[pathlib.Path]:
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--", "*.py"],
+        capture_output=True,
+        check=True,
+        cwd=workspace.ROOT,
+        text=True,
+    )
+    return [workspace.ROOT / name for name in listed.stdout.split("\0") if name]
+
+
 def _documented_privates(path: pathlib.Path) -> list[str]:
     return sorted(
         node.name
@@ -333,20 +343,53 @@ def test_no_private_name_carries_a_docstring() -> None:
     has no such reader: no page renders one and nothing outside the module may call it.
     What a helper is for belongs in its name, and what its body does is the body's.
     """
-    listed = subprocess.run(
-        ["git", "ls-files", "-z", "--", "*.py"],
-        capture_output=True,
-        check=True,
-        cwd=workspace.ROOT,
-        text=True,
-    )
     documented = sorted(
-        f"{name}: {private}"
-        for name in listed.stdout.split("\0")
-        if name
-        for private in _documented_privates(workspace.ROOT / name)
+        f"{path.relative_to(workspace.ROOT)}: {private}"
+        for path in _tracked_python()
+        for private in _documented_privates(path)
     )
 
     assert documented == [], "\n".join(
         ["these are private and documented:", *documented]
+    )
+
+
+def _documented_assignments(path: pathlib.Path) -> list[str]:
+    documented = []
+    for node in ast.walk(ast.parse(path.read_text())):
+        body = getattr(node, "body", None)
+        if not isinstance(body, list) or isinstance(
+            node, ast.FunctionDef | ast.AsyncFunctionDef
+        ):
+            continue
+        for assigned, following in itertools.pairwise(body):
+            if not isinstance(assigned, ast.Assign | ast.AnnAssign):
+                continue
+            if isinstance(following, ast.Expr) and isinstance(
+                following.value, ast.Constant | ast.JoinedStr
+            ):
+                target = (
+                    assigned.targets[0]
+                    if isinstance(assigned, ast.Assign)
+                    else assigned.target
+                )
+                documented.append(ast.unparse(target))
+    return documented
+
+
+def test_no_assignment_carries_a_docstring() -> None:
+    """A constant, a variable and a type alias say what they are by being named: the
+    string a reader wants is the value on the line above, and a paragraph under it is
+    prose that drifts out of sync with a value nobody has to reread it to change.
+    A page belongs in `docs/`, a reason belongs in the commit, and neither is an
+    attribute docstring.
+    """
+    documented = sorted(
+        f"{path.relative_to(workspace.ROOT)}: {name}"
+        for path in _tracked_python()
+        for name in _documented_assignments(path)
+    )
+
+    assert documented == [], "\n".join(
+        ["these are assigned and documented:", *documented]
     )

@@ -45,81 +45,31 @@ DELEGATE_BRIEF = (
     "because the numbers belong to the assistant and not to you."
 )
 MAX_DELEGATED_ROUNDS = 5
-"""The most rounds a delegated loop may spend, whatever it asks for. The budget is the
-host's rather than the plugin's: one tool call that asked for ten thousand rounds would
-spend a deployment's bill. It bounds a *call* — a round of the turn's own may make
-several, and a turn several rounds, so what a turn can spend on delegation is this times
-what `Router` allows it. Bounded, not small."""
 WITHHELD = (
     "not offering %s to the delegated loop: a tool that waits for the user cannot run "
     "there, and a sub-agent is not something the user is watching"
 )
-"""What a plugin is told when one of its tools is kept out of a loop it delegated. On
-the plugin's own logger, because it is that plugin's tool and that plugin's author who
-has to understand why the loop never called it."""
 OVERSPENT = (
     "the sub-agent ran out of rounds without reaching an answer; ask it something "
     "narrower, or answer without it"
 )
-"""What the model is told when a delegated loop gives up with nothing to show. A
-sentence rather than a failure of the turn's: the turn has rounds left, and this is one
-call it cannot use. Reached only when the write-up below comes back empty — a loop that
-spent its rounds *learning* something reports it instead."""
 CLOSE_OUT = (
     "You have run out of rounds, so this is your last message. Write up what you found "
     "in a few sentences, and say plainly what you did not get to. Call no tools."
 )
-"""What the loop is asked once its rounds are gone. A round it cannot spend on tools:
-the call it answers is offered none, so this cannot become another lookup."""
 STOPPED_EARLY = (
     "STOPPED EARLY: the sub-agent reached its limit of rounds, so what follows is what "
     "it had found and not a complete answer."
 )
-"""What the report is headed with when the loop was stopped rather than finished.
-
-A statement and not an instruction. A report earns the untrusted-data label like any
-other material a tool hands back, and that label tells the model never to follow
-instructions found inside it — so a sentence here telling it what to do would be
-addressed to a reader under orders to ignore it. What survives the label is what is
-needed: evidence that this is a part and not a whole. Telling the model what to do
-about that belongs in a brief, where cora speaks in its own voice.
-"""
 _allowance: ContextVar[list[int] | None] = ContextVar("_allowance", default=None)
-"""What is left of the rounds this delegation may spend, shared by every loop under it.
-
-A delegated loop may call a tool that delegates again, and a fresh budget per level
-would make depth a way of asking for more — four levels of five rounds is a thousand
-model calls from one tool call. The outermost loop opens the pot and everything inside
-it spends the same one, so a tool call costs what the host allows however deep the
-plugin goes."""
 CITED = r"(?:\[\d+\])+"
-"""A run of bracketed numbers, as `CITATION_RUN` counts one. What may precede it is the
-question below, and it is a narrower question here than on the page."""
 OPENS = r"=([{<>|&^~/\\+"
-"""What a bracketed run is *not* a citation after: an assignment, an opener, an
-operator. Written as what disqualifies rather than as what qualifies, because prose has
-more shapes than code does — a claim is cited after bold, after a percent, after a
-closing backtick, and a list of everything a sentence may end in is a list that keeps
-being wrong."""
 UNCITED = re.compile(rf"(?<=[^\s{OPENS}])[ \t]+{CITED}")
-"""What a delegated loop's answer is stripped of, should it write a number anyway. A
-citation follows what it cites and then a space: `weights = [1]` is a literal and
-`arr[0]` an index, and neither is cora's business. Taking the space with the run leaves
-the sentence closed up without touching the rest of the line."""
 OPENED_WITH = re.compile(rf"^([ \t]*(?:[-*+][ \t]+)?){CITED}[ \t]*")
-"""A number the line opened with, and the space it left behind. Whatever indentation and
-list marker stood in front of it is the loop's own and is handed back untouched."""
 FENCE = re.compile(r"^[ \t]*(```|~~~)")
-"""What opens a fenced block, and the marker it was opened with — a block is closed by
-its own marker, so a tilde line inside a backtick block is content. Nothing inside one
-is prose, so nothing inside one is a citation: a loop explaining code writes numbers
-that are the code's own."""
 
 
 PLUGIN_LOGGER = "cora.plugin"
-"""Where a plugin's own logger hangs. Under cora, so one switch configures every line
-the app writes, and singular so it is a logger rather than the namespace a distribution
-installs into."""
 
 
 @dataclass

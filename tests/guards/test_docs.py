@@ -44,8 +44,6 @@ CONFIGS = ("Makefile",)
 SUFFIXES = (".py", ".md", ".toml", "/")
 
 NAMED = re.compile(r"`(CORA_[A-Z0-9_]+)")
-"""A `CORA_` variable a page names. Backticked, because prose about the prefix itself —
-"cora's own `CORA_` variables" — is not a claim that one exists."""
 TARGET = re.compile(r"`make ([a-z][a-z-]*)`")
 LOCATION = r"(?:\.{1,2}/)*\.?[A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+"
 BACKTICKED = re.compile(rf"`({LOCATION})`")
@@ -206,8 +204,6 @@ def test_every_make_target_the_docs_name_exists() -> None:
 
 
 SHARED = ("install", "plugins", "run")
-"""The command blocks the tutorial and the how-to both carry. Marked in the how-to, so
-one page is where they are edited."""
 TUTORIAL = "docs/tutorial/first-session.md"
 STARTED = "docs/how-to/get-started.md"
 

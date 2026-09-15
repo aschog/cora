@@ -125,7 +125,8 @@ convention = "google"
 # page per module, and an undocumented public name there is a blank space on a page
 # someone opened on purpose. Everything else keeps the older rule — a docstring appears
 # only if it states something the code cannot. The other half of the policy — that a
-# private name carries no docstring at all, in any of these trees — is a guard in
+# private name carries no docstring at all, in any of these trees, and that no constant,
+# variable or type alias carries one either — is a guard in
 # `tests/guards/test_architecture.py`, because pydocstyle has no rule that forbids one.
 [tool.ruff.lint.per-file-ignores]
 # Every class in here implements a port, and a Protocol implementation inherits no

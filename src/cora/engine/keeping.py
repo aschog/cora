@@ -16,11 +16,6 @@ from contextlib import contextmanager
 from contextvars import ContextVar
 
 Kept = dict[str, dict[str, str]]
-"""What every plugin kept, by the name cora loaded it under and then by its own names.
-
-Text, and dictionaries of it, so what a plugin keeps travels through a checkpoint as
-data the serialiser already carries. What the text means is the plugin's own.
-"""
 
 _kept: ContextVar[Kept | None] = ContextVar("_kept", default=None)
 

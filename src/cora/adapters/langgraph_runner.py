@@ -30,26 +30,8 @@ from cora.ports.graph import (
 
 MODEL = "model"
 GATE = "gate"
-"""The two nodes of a round that are not the tools. Named here rather than in
-`cora.ports.graph`: the router's vocabulary is what a graph engine is told, and these
-are where this engine put the steps it was handed."""
 SUPERSTEPS_PER_ROUND = 3
 HEADROOM = 2
-"""Supersteps to spare, over the limit the longest walk of a turn was measured to need.
-
-The limit is spent one `run` at a time, so the longest walk is a turn that never pauses
-and spends every round: each named step once, then a model call, the gate and the tools
-per round. The gate costs a superstep on every round whether or not it stops anything,
-which is what a path that cannot be skipped costs.
-
-The limit such a walk needs is `SUPERSTEPS_PER_ROUND * rounds + steps`, one more than
-it spends, measured across budgets 1 to 12 and grown walks. The test walks it at the
-sizing *minus* this slack, which is that measured limit exactly, so every term of the
-formula is pinned from below and only the slack is free. Slack at all because how
-LangGraph counts a superstep is its business rather than a contract, and the cost of
-being one out is a legitimate turn reported as a runaway one. A pause cannot be the
-longest walk: it ends the run it was in, and the resumed one pays for none of the steps
-before the loop."""
 CHECKPOINTED_DATA = (
     ("cora.ports.chat_model", "Message"),
     ("cora.ports.plugin", "ToolCall"),
@@ -62,10 +44,6 @@ CHECKPOINTED_DATA = (
     ("cora.domain.card", "ActionOffered"),
     ("cora.domain.card", "Answer"),
 )
-"""What a thread's state is made of besides its trace. Named because the alternative is
-LangGraph's default — deserialise anything and log a warning saying it will be blocked
-one day — which would make a lock bump the thing that breaks conversations, silently: a
-logged warning is invisible to a test suite."""
 
 
 def checkpointed_types() -> tuple[tuple[str, str], ...]:

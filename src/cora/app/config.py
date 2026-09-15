@@ -11,49 +11,18 @@ from cora.ports.host import name_of
 DEFAULT_MODEL = "openai/gpt-4o-mini"
 DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_PLUGINS: tuple[str, ...] = ()
-"""A plugin is an extension, so cora starts with none: a scope, a screen or any other
-plugin is named by the deployment that wants it."""
 DEFAULT_SCOPES: tuple[str, ...] = ()
-"""What a turn runs under where the deployment named nothing: only what is system-wide,
-which is a bare cora with whatever screens a plugin registered for every turn. Named
-here until a turn can be routed into a scope of its own."""
 DEFAULT_PLUGINS_PATH = ".cora/plugins"
-"""Where a plugin may be dropped in as a single file, needing no packaging at all.
-Beside cora's other stores, because it is one more thing the deployment keeps here."""
 DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
 DEFAULT_MAX_OUTPUT_TOKENS = 8192
-"""A reasoning model bills its thinking to the budget it writes the answer from, so the
-cap has to cover both: `gpt-5-mini` spent ~1200 tokens thinking before the first word of
-a training plan, and ~3200 in all. The cap is a ceiling, not a reservation — a short
-answer costs what it costs."""
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 90
-"""Long enough that the cap above is what limits an answer, not the clock: the same
-`gpt-5-mini` plan took 37-56 seconds to arrive, and a deadline inside that range only
-swaps a truncated answer for a timed-out one."""
 REASONING_EFFORTS = ("low", "medium", "high")
 DEFAULT_REASONING_EFFORT = "low"
-"""How much of the budget above the model may spend thinking. Measured on one question,
-`gpt-5-mini` answered in 22-25s at `low` against 32-61s at the provider's own `medium`,
-searching the documents and citing them either way — and at `high` it spent all 8192
-tokens thinking and returned no answer at all. Sent on every request, including to a
-model that does not reason: `openai/gpt-4o-mini`, which `DEFAULT_MODEL` still names, was
-asked with `low` set and answered normally, so such a model ignores the key rather than
-refusing it. No test holds that — only the provider can answer it."""
 DEFAULT_HISTORY_TURNS = 20
 DEFAULT_DB_PATH = ".cora/cora.sqlite"
-"""Everything cora keeps for itself, in one SQLite file: each passage's span beside its
-embedding, the facts, the recorded turns and the checkpoint of every thread. Each store
-owns its own tables and opens its own connection — one file, four writers, so a
-deployment moves what cora keeps by naming one path."""
 DEFAULT_DOCUMENTS_PATH = ".cora/documents"
-"""Where a scope keeps its documents: a directory per field under this root, and one
-Markdown file per source under that. A directory rather than a database file, because
-the point of it is that a person can open it and read what cora has."""
 DEFAULT_OUTPUT_PATH = "cora-output"
-"""Where an approved effect writes what it produced. Beside cora's stores rather than
-under them: everything in `.cora/` is cora's own bookkeeping and a deployment may delete
-it to start clean, while an itinerary the user approved is theirs to keep."""
 DEFAULT_LOG_PATH = LOG_FILE
 
 
@@ -193,9 +162,6 @@ def int_setting(env: Mapping[str, str], key: str, default: int, *, minimum: int)
 
 
 PLUGIN_PREFIX = "CORA_PLUGIN_"
-"""Where a plugin's settings live, kept clear of cora's own `CORA_` variables: a plugin
-whose module ended in `log` would otherwise read `CORA_LOG_PATH` and be handed the path
-to the user's log file."""
 
 
 def plugin_settings(

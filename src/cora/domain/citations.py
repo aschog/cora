@@ -13,10 +13,6 @@ from cora.ports.retrieval import RetrievedChunk
 
 NO_MATCHES = "No matching documents."
 CITATION_RUN = re.compile(r"(?<![\w\]])(?:\[\d+\])+")
-"""What counts as a citation in written text, for everyone who has to agree: a run of
-brackets that does not continue a word or another bracket. The renderer draws buttons by
-this rule and `cited_numbers` resolves by it, so a citation the reader can click and a
-citation the answer rests on are the same thing by construction."""
 
 
 @dataclass(frozen=True)
@@ -192,8 +188,6 @@ class CitableHits(Citable):
 
     hits: list[RetrievedChunk]
     nothing: Nothing = field(default=NOTHING_FOUND)
-    """What an empty result means *here*: a search of a store nothing was uploaded to
-    says something a search that merely matched nothing does not."""
 
     def register(self, known: tuple[Citation, ...]) -> Context:
         """The hits as a numbered block, or this search's own word for nothing."""

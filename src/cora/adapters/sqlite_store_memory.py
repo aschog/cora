@@ -15,10 +15,6 @@ DEFAULT_USER = "local"
 TEXT = "text"
 PAGE = 100
 RECALL_LIMIT = 100
-"""How many facts `recall` hands back: the newest, because a fact just learned is the
-one a turn is likeliest to need and a hidden fact is one the user cannot delete. It is
-a deliberate window, not a page — everything kept is still there, and forgetting brings
-an older fact back into view."""
 
 
 def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:

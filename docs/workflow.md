@@ -184,9 +184,12 @@ functional test goes green  →  feature done
 > A **private** name never carries one, anywhere: a docstring is written for a reader
 > who cannot see the body, and no page renders a `_helper` and nothing outside its
 > module may call it. What it is for goes in the name, what it does is the body.
-> `ruff` holds the public half, the boundary written once in `pyproject.toml`, and a
-> guard in `tests/guards/test_architecture.py` holds the private one — no lint rule
-> states it. This is decided; don't relitigate it file by file.
+> A **constant, a variable or a type alias** never carries one either, public or not,
+> and does not get the same paragraph back as a `#` comment: the string a reader wants
+> is the value on the line above it. `ruff` holds the public half, the boundary written
+> once in `pyproject.toml`, and a guard in `tests/guards/test_architecture.py` holds the
+> other two — no lint rule states them. This is decided; don't relitigate it file by
+> file.
 
 > Don't narrate the diff — the reviewer reads it. After a step, say only what the
 > diff can't show: a decision, a surprise, anything urgent or important. Silence

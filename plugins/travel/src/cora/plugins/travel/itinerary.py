@@ -45,9 +45,6 @@ ITINERARY_SCHEMA: dict[str, Any] = {
     "required": ["title", "depart", "back", "flight", "stay", "total", "days"],
     "additionalProperties": False,
 }
-"""Flat rather than one nested plan, because the card put to the traveller lays out one
-read-only field per top-level argument: a plan inside one field is a plan nobody read
-before approving it."""
 
 NOTHING_PLANNED = (
     "No trip has been planned in this conversation, so there is nothing verified to "
@@ -61,17 +58,10 @@ UNNAMEABLE = (
     "'{title}' leaves no filename behind once it is made safe to write; give the "
     "itinerary a title with some letters or digits in it"
 )
-"""What the model is told when a title reduces to nothing. The plugin's own refusal,
-because the plugin is what turns a title into a name — cora refuses a name that escapes
-the location, and this is the case that never reaches it."""
 UNPRICED = "unpriced"
 SUFFIX = ".md"
 UNSAFE = re.compile(r"[^a-z0-9]+")
 HASH_LENGTH = 12
-"""How much of the itinerary's hash goes in its filename, as `FileDocuments` puts the
-head of an upload's hash in its own. It is what makes one title saved twice two files
-rather than one overwritten — a revised plan is not a correction of the plan the user
-already approved, and this is a file they keep."""
 
 
 def flat(plan: Plan) -> dict[str, Any]:
