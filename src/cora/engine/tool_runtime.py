@@ -16,18 +16,15 @@ from cora.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult
 class ToolRuntime:
     """The tools a turn may call, and the one place a call is actually made.
 
-    A tool's `ToolRefusal` is quoted; any other exception escaped rather than being
+    A tool's `ToolRefusal` is quoted. Any other exception escaped rather than being
     written, so only its kind is passed on — its message could be carrying anything the
     tool was holding, and it reaches the model, the log and the user's trace alike.
 
     It is also where a result earns the untrusted label, by either of the two things
     that can earn it: a tool that declared what it returns is not cora's own words, and
-    a payload that cites the user's documents. One place, because the label is one
-    claim — and here rather than in the step, because this is where the tool itself is
-    in hand, and because it runs before any handler sees the result. A declaring tool's
-    *refusal* earns it too: the sentence may quote what the tool found.
+    a payload that cites the user's documents. A declaring tool's refusal earns it too.
 
-    `tools` are cora's own, callable in every turn; `registry` holds what the plugins
+    `tools` are cora's own, callable in every turn. `registry` holds what the plugins
     registered, and a turn reaches the ones its scopes apply to.
     """
 

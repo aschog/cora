@@ -57,16 +57,14 @@ CORPUS = pathlib.Path(__file__).parent / "corpus"
 def extend(cora: Host) -> None:
     """Instructions and up to seven tools, all under travel and none outside it.
 
-    Six are declared as returning material cora did not write: a service's answer is
-    not cora's words, and neither is a report the researcher built out of documents and
-    a forecast, nor a plan built out of both. The last changes something outside cora
-    and says so, so a call of it waits for the user. Nothing here is system-wide, so a
-    turn about training is offered no weather, no researcher, no prices and no plan.
+    Six are declared as returning material cora did not write: a service's answer is not
+    cora's words, and neither is a report the researcher built out of documents and a
+    forecast. The last changes something outside cora and says so, so a call of it waits
+    for the user. Nothing here is system-wide.
 
     Two of them are offered only where the deployment set a key for the search service,
     and saving only where it configured somewhere to write. A tool the model can call
-    and that can only fail is worse than one it is never offered — the same reason cora
-    offers no `remember` without a memory.
+    and that can only fail is worse than one it is never offered.
 
     Raises:
         PluginLoadError: The rounds setting is not a whole number. Raised as one of

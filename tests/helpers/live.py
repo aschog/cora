@@ -14,19 +14,14 @@ from cora.app.config import Config
 def live_config(
     store: Path, plugins: tuple[str, ...], scopes: tuple[str, ...] = ()
 ) -> Config:
-    """Every location is redirected — the database, the documents beside it, and the
-    drop-in folder: an acceptance run that remembered things would otherwise write into
-    whatever the developer is actually using, and the database is the checkpointer's
-    too, so a thread would carry yesterday's run into today's.
+    """Every location is redirected: the database, the documents beside it, and the
+    folder plugins are dropped into. An acceptance run that remembered things would
+    otherwise write into whatever the developer is actually using, and the database is
+    the checkpointer's too, so a thread would carry yesterday's run into today's.
 
-    The folder for the same reason as the other two, and for one more: a deployment that
-    linked this repo's plugins into `.cora/plugins` carries them by *that* route, and
-    naming one as a module as well is two plugins with one name — which cora refuses,
-    before a question is ever asked. The tier says which plugins it runs, so it reads no
-    folder but its own.
-
-    The plugins are named by the caller rather than taken from the default set, which
-    ships none: a training question needs a plugin that claims training as its subject.
+    The folder for one more reason: a deployment that linked this repo's plugins into
+    `.cora/plugins` carries them by *that* route, and naming one as a module as well is
+    two plugins with one name, which cora refuses. The tier says which plugins it runs.
     """
     if not os.environ.get("OPENROUTER_API_KEY"):
         pytest.skip("OPENROUTER_API_KEY is not set; the llm tier needs a real key")

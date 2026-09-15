@@ -81,15 +81,11 @@ class App:
     what is missing is then missing from the page too, rather than faked.
 
     `scopes` is the fields this composition offers: what was configured, plus every
-    field a loaded plugin registered. The page reads it off the app, because with a
-    live plugins folder it is the composition's fact, not a setting's.
+    field a loaded plugin registered. The page reads it off the app, because with a live
+    plugins folder it is the composition's fact, not a setting's.
 
-    `remove` deletes one dropped plugin and the data of the fields it brought. Bound
-    to this composition, because what a plugin brought is what this composition
-    loaded — a caller names the plugin and nothing else. `plugins_folder` is where a
-    plugin can be deleted from, which is what says whether one is deletable at all,
-    and `configured` is the fields the deployment named itself, which no plugin's
-    deletion empties.
+    `remove` deletes one dropped plugin and the data of the fields it brought, bound to
+    this composition because what a plugin brought is what this composition loaded.
     """
 
     agent: Agent

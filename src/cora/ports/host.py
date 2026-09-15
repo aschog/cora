@@ -43,14 +43,11 @@ class State(Protocol):
     Names are the plugin's own: two plugins choosing one name keep two values, and
     neither can read the other's. What is kept lasts as long as the conversation does
     and goes when it is deleted — it is not what cora knows about the user, which is
-    `Memory` and outlives every conversation.
+    `Memory`.
 
-    Text, because what a plugin keeps is the plugin's own to read back. A shape richer
-    than that would make cora the reader of it.
-
-    Reachable while a tool call of this plugin's is running, which is where a plugin's
-    own code runs inside a turn. Outside one there is no conversation to keep anything
-    for, so a read comes back with nothing and a write is dropped.
+    Text, because what a plugin keeps is the plugin's own to read back. Reachable while
+    a tool call of this plugin's is running, and outside one there is no conversation to
+    keep anything for, so a read comes back with nothing and a write is dropped.
     """
 
     def read(self, name: str) -> str | None:
@@ -280,11 +277,9 @@ class Host(Protocol):
 
         The loop is offered the tools given plus cora's document search, and never a
         tool that writes, stops the turn, or declares an effect — one passed in that
-        declares one is withheld, and the plugin's logger says which. An effect and a
-        stop-to-ask belong in the turn around it, where the gate is. Its steps are
-        reported under the call that ran it, and what it answers carries no citation of
-        its own — and reaches the turn labelled untrusted, because the documents went
-        into it.
+        declares one is withheld, and the plugin's logger says which. Its steps are
+        reported under the call that ran it, and what it answers reaches the turn
+        labelled untrusted and citing nothing of its own.
 
         A loop that spends every round without reaching an answer is asked once more,
         with no tools, to write up what it found: the rounds it spent are not lost, and

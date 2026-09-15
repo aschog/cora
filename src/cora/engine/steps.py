@@ -592,18 +592,14 @@ class ToolStep:
 
         Each is offered to the handlers first, and one they refuse never runs: the model
         is told why, in a `tool` message like any other, and the turn answers on the
-        round it already has. What a tool returned is offered to the handlers too, and
-        what they make of it is what the model is told.
+        round it already has.
 
         A payload that cites its own material is replaced by the numbered block the
         model reads, and the citations it hands out join the conversation's registry —
-        numbering continues from what this round has already added, so two searches in
-        one round do not both claim `[1]`.
+        numbering continues from what this round has already added.
 
-        A call already settled is not run again: an `ask_user` the round asked for was
-        answered by `AskStep`, and a resumed turn arrives here with that one spoken for.
-        A tool that ran work of its own — a plugin delegating to the model — reports it
-        while the call runs, and it is kept under that call rather than beside it.
+        A call already settled is not run again, and a tool that ran work of its own
+        reports it under the call that ran it.
         """
         scopes = scoped(state)
         # The whole round, not the call alone: a payload that cites its own material is
@@ -1022,17 +1018,14 @@ def ask_in(state: AgentState) -> ToolCall | None:
     """The round's ask that may still stop the reader, or nothing that may.
 
     Read in one place because two read it: the router sends the turn to the step that
-    can park it, and the step settles the call — and a rule written twice is one the
-    two can disagree about, which would put a card the router never routed for.
+    can park it, and the step settles the call — a rule written twice is one the two can
+    disagree about, which would put a card the router never routed for.
 
-    A form is here however many the turn has already put. The fork is here only once,
-    so a round raising both after the fork was settled yields the form: the reader is
-    put what is still open rather than the same question twice.
-
-    An open fork wins over a form beside it, whichever the model wrote first. It is the
-    constrained one — once a turn, and the only ask the round budget exempts — so a rule
-    that read the round's order would spend a turn's one question on where in a list the
-    model happened to put it.
+    A form is here however many the turn has already put. The fork is here only once, so
+    a round raising both after the fork was settled yields the form. An open fork wins
+    over a form beside it, whichever the model wrote first: it is the constrained one,
+    and a rule reading the round's order would spend a turn's one question on where the
+    model put it.
     """
     calls = _requested_calls(state)
     if not _already_asked(state):

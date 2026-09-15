@@ -91,13 +91,11 @@ class Field:
     built from these, so a field somebody wants later is a row here rather than an edit
     in two places that drift.
 
-    `sends_as` is the service's own name for it, and blank where the field is the
-    tool's own — a window is planned here and never sent. `write` is how the value is
-    written into the query, for the fields whose meaning is not their digits.
-
-    `fmt` is JSON Schema's `format`, which says what kind of string this is: it reaches
-    the model in the schema and the reader as the control the card draws, so a day is a
-    date picker rather than a box to mistype `YYYY-MM-DD` into.
+    `sends_as` is the service's own name for it, blank where the field is the tool's
+    own. `write` is how the value is written into the query. `fmt` is JSON Schema's
+    `format`, which reaches the model in the schema and the reader as the control the
+    card draws, so a day is a date picker rather than a box to mistype `YYYY-MM-DD`
+    into.
     """
 
     name: str

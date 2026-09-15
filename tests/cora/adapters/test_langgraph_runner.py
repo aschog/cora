@@ -205,19 +205,18 @@ def test_two_threads_share_nothing() -> None:
 
 
 def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
-    """The state that crosses the checkpoint is core dataclasses — messages, tool
-    calls, trace steps, sources. LangGraph allows unregistered types today with a
-    logged warning it says will become a block, and a logger warning is invisible to a
-    test suite; the runner therefore names what it checkpoints, so an unlisted type
-    fails here instead of in a future release. Every trace kind the engine can produce
-    is in this state on purpose — one missing from the allowlist breaks a second turn,
-    and only a second turn reads a checkpoint back.
+    """The state that crosses the checkpoint is core dataclasses — messages, tool calls,
+    trace steps, sources. LangGraph allows unregistered types today with a logged
+    warning it says will become a block, and a logger warning is invisible to a test
+    suite, so the runner names what it checkpoints. Every trace kind the engine can
+    produce is in this state on purpose: one missing from the allowlist breaks a second
+    turn.
 
     Asserted by kind and by what the step says rather than by equality: msgpack has no
     tuple, so a replayed `tools=("add",)` comes back `["add"]`. Nothing reads those
-    fields for anything but iteration and truthiness, and the prompt is built from
-    fresh messages, so the flattening costs nothing — but it is why a replayed step is
-    not `==` to the one that was written."""
+    fields for anything but iteration and truthiness, which is why the flattening costs
+    nothing — and why a replayed step is not `==` to the one that was written.
+    """
 
     every_kind: list[TraceStep] = [
         ModelDecision(detail="thinking", tools=("add",)),

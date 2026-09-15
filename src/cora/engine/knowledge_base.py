@@ -74,16 +74,13 @@ class KnowledgeBase:
 
         The name is what the field lists, and one name may be several uploads — the
         bytes name an upload, so the same filename twice is two documents under one
-        entry. All of them go, because the one entry is what the reader deleted.
+        entry, and all of them go.
 
         Each upload's passages leave the index before its file leaves the directory,
-        which is `add_file`'s order run backwards. A failure between the two then leaves
-        a file nothing can reach, and the next upload of those bytes overwrites it — the
-        other order leaves a document still listed, whose passages every search silently
-        drops and whose citations open onto nothing.
+        which is `add_file`'s order run backwards. The other order leaves a document
+        still listed whose passages every search drops.
 
-        A field owns its documents, so the same file ingested into another field is left
-        where it is. A name nothing was uploaded under is not an error.
+        A field owns its documents, so one ingested into another is left where it is.
 
         Raises:
             RetrievalError: The index could not be read or written.

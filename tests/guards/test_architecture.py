@@ -5,7 +5,8 @@ layer holds them, enforced on every file by having been put in that directory. W
 left here are the other three shapes: an allow-list, which no lint rule expresses, a
 rule about the words a file uses rather than the modules it imports, and the half of
 the docstring policy `pydocstyle` has no rule for — a private name carries no docstring,
-and neither does a constant, a variable or a type alias.
+neither does a constant, a variable or a type alias, and no docstring runs past twelve
+lines of prose.
 """
 
 import ast
@@ -351,6 +352,49 @@ def test_no_private_name_carries_a_docstring() -> None:
 
     assert documented == [], "\n".join(
         ["these are private and documented:", *documented]
+    )
+
+
+MAX_PROSE_LINES = 12
+SECTION = re.compile(r"^(Args|Returns|Yields|Raises|Attributes|Examples?|Notes?):$")
+
+
+def _prose(docstring: str) -> list[str]:
+    lines = docstring.splitlines()
+    sectioned = (index for index, line in enumerate(lines) if SECTION.match(line))
+    return lines[: next(sectioned, len(lines))]
+
+
+def _long_docstrings(path: pathlib.Path) -> list[tuple[str, int]]:
+    documented = (
+        (node.name, ast.get_docstring(node))
+        for node in ast.walk(ast.parse(path.read_text()))
+        if isinstance(node, ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef)
+    )
+    return [
+        (name, len(_prose(docstring)))
+        for name, docstring in documented
+        if docstring and len(_prose(docstring)) > MAX_PROSE_LINES
+    ]
+
+
+def test_no_docstring_runs_past_twelve_lines_of_prose() -> None:
+    """A docstring is read beside the signature, not instead of it, and one that fills
+    a screen is a page written in the wrong file: past this much there is a flow being
+    retold, and `docs/big-picture.md` and `docs/happy-path.md` are where a flow lives.
+
+    The prose, not the whole: a Google section is a table keyed to the signature, and
+    `assemble` takes eighteen arguments. A module is not counted either — it has no
+    signature to be read beside, and a file's opening is the one place a page belongs.
+    """
+    long = sorted(
+        f"{path.relative_to(workspace.ROOT)}: {name} ({lines} lines)"
+        for path in _tracked_python()
+        for name, lines in _long_docstrings(path)
+    )
+
+    assert long == [], "\n".join(
+        [f"these run past {MAX_PROSE_LINES} lines of prose:", *long]
     )
 
 
