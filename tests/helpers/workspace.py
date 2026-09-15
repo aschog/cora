@@ -7,9 +7,6 @@ import tomllib
 
 
 def _root() -> pathlib.Path:
-    """Found by the manifest that declares the members, not by counting parents: this
-    module has moved twice, and a count is wrong one directory later without saying
-    so."""
     for parent in pathlib.Path(__file__).resolve().parents:
         manifest = parent / "pyproject.toml"
         if manifest.is_file() and "[tool.uv.workspace]" in manifest.read_text():

@@ -270,7 +270,6 @@ def _decode(data: bytes, filename: str) -> str:
 
 
 TEXT_LOADERS: Loaders = {".txt": _decode, ".md": _decode}
-"""What most tests need: no PDF, so no reason to reach for the real registry."""
 
 
 class FakeConversations:

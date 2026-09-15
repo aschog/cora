@@ -12,10 +12,6 @@ from cora.ports.chat_model import TextSink, unheard
 DONE = "done"
 TOOLS = "tools"
 ASK = "ask"
-"""What the router can decide, and therefore what a `GraphRunner` has to understand. It
-belongs beside the port for the same reason `AgentState` marks its accumulating keys: a
-graph engine is told the shape and the vocabulary, and imports nothing of the engine to
-learn them."""
 
 
 class Step(Protocol):
@@ -50,10 +46,6 @@ class NamedStep(Protocol):
 
 Route = Callable[[AgentState], str]
 ModelFor = Callable[[TextSink], Step]
-"""How a graph asks for the step that talks to the model: one per turn, bound to that
-turn's reader. The other steps are the same for every turn and are handed over as
-themselves; this one is not, because an app assembled once answers two readers at once
-and neither may be sent the other's text."""
 
 
 class GraphRunner(Protocol):

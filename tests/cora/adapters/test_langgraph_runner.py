@@ -62,8 +62,6 @@ def _final(
 
 
 def _answered(state: AgentState) -> bool:
-    """A round has been spent this turn: the fake steps read the transcript for it,
-    exactly as the router does."""
     return any(
         message.role == "assistant"
         for message in tuple(state.get("messages", ()))[state.get("turn_start", 0) :]
@@ -75,7 +73,6 @@ def _said(role: Role, content: str) -> list[Message]:
 
 
 def _asked_for_a_tool(content: str) -> list[Message]:
-    """A reply the router reads as unfinished: it is asking for a tool."""
     call = ToolCall(name="add", arguments={"a": 1, "b": 2}, call_id="c1")
     return [Message(role="assistant", content=content, tool_calls=(call,))]
 
@@ -93,8 +90,6 @@ def _ran(state: AgentState) -> AgentState:
 
 
 def _always(step: Step) -> ModelFor:
-    """A model slot that writes nowhere: what a step with nothing to say to the reader
-    looks like when the graph asks for one per turn."""
     return lambda _on_text: step
 
 
@@ -103,7 +98,6 @@ def _nothing(state: AgentState) -> AgentState:
 
 
 STEPS = 3
-"""What a turn walks besides its rounds: it screens, it works, and it answers."""
 
 
 def _walk(
@@ -116,12 +110,6 @@ def _walk(
     rounds: int = ROUNDS,
     after: tuple[NamedStep, ...] = (Named(ANSWER, AnswerStep()),),
 ) -> dict[str, Any]:
-    """The named steps of a turn, with a fake in each place a test wants to watch.
-
-    The gate is the real one unless a test says otherwise: with no effecting tool in
-    front of it there is nothing for it to stop, which is what a round that changes
-    nothing outside cora looks like going past it.
-    """
     return {
         "before": (Named(SCREEN, screen),),
         "loop": Loop(
@@ -217,19 +205,18 @@ def test_two_threads_share_nothing() -> None:
 
 
 def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
-    """The state that crosses the checkpoint is core dataclasses — messages, tool
-    calls, trace steps, sources. LangGraph allows unregistered types today with a
-    logged warning it says will become a block, and a logger warning is invisible to a
-    test suite; the runner therefore names what it checkpoints, so an unlisted type
-    fails here instead of in a future release. Every trace kind the engine can produce
-    is in this state on purpose — one missing from the allowlist breaks a second turn,
-    and only a second turn reads a checkpoint back.
+    """The state that crosses the checkpoint is core dataclasses — messages, tool calls,
+    trace steps, sources. LangGraph allows unregistered types today with a logged
+    warning it says will become a block, and a logger warning is invisible to a test
+    suite, so the runner names what it checkpoints. Every trace kind the engine can
+    produce is in this state on purpose: one missing from the allowlist breaks a second
+    turn.
 
     Asserted by kind and by what the step says rather than by equality: msgpack has no
     tuple, so a replayed `tools=("add",)` comes back `["add"]`. Nothing reads those
-    fields for anything but iteration and truthiness, and the prompt is built from
-    fresh messages, so the flattening costs nothing — but it is why a replayed step is
-    not `==` to the one that was written."""
+    fields for anything but iteration and truthiness, which is why the flattening costs
+    nothing — and why a replayed step is not `==` to the one that was written.
+    """
 
     every_kind: list[TraceStep] = [
         ModelDecision(detail="thinking", tools=("add",)),
@@ -386,8 +373,6 @@ def _effecting(name: str) -> Tool:
 
 
 def _proposes(*names: str) -> Step:
-    """A model that asks for these effecting calls once, then answers."""
-
     def model(state: AgentState) -> AgentState:
         if _answered(state):
             return {"messages": _said("assistant", "done")}
@@ -401,7 +386,6 @@ def _proposes(*names: str) -> Step:
 
 
 def _gated(*names: str) -> tuple[LangGraphRunner, list[str]]:
-    """A turn whose only tools declare effects, and a list of what actually ran."""
     ran: list[str] = []
     tools = tuple(_effecting(name) for name in names)
 

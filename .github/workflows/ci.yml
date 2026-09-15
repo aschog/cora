@@ -33,6 +33,13 @@ jobs:
       - name: Type check
         run: uv run ty check
 
+      # Named on its own because no lint rule states any of it: pydocstyle demands
+      # docstrings and never forbids one, and nothing anywhere measures how long one
+      # runs. A private name, a constant or an essay fails here instead of as one dot
+      # in the run below.
+      - name: The docstring policy no lint rule states
+        run: uv run pytest -q tests/guards/test_architecture.py -k docstring
+
       - name: Unit tests
         run: uv run pytest -q
 

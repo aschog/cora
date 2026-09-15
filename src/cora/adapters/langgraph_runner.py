@@ -30,26 +30,8 @@ from cora.ports.graph import (
 
 MODEL = "model"
 GATE = "gate"
-"""The two nodes of a round that are not the tools. Named here rather than in
-`cora.ports.graph`: the router's vocabulary is what a graph engine is told, and these
-are where this engine put the steps it was handed."""
 SUPERSTEPS_PER_ROUND = 3
 HEADROOM = 2
-"""Supersteps to spare, over the limit the longest walk of a turn was measured to need.
-
-The limit is spent one `run` at a time, so the longest walk is a turn that never pauses
-and spends every round: each named step once, then a model call, the gate and the tools
-per round. The gate costs a superstep on every round whether or not it stops anything,
-which is what a path that cannot be skipped costs.
-
-The limit such a walk needs is `SUPERSTEPS_PER_ROUND * rounds + steps`, one more than
-it spends, measured across budgets 1 to 12 and grown walks. The test walks it at the
-sizing *minus* this slack, which is that measured limit exactly, so every term of the
-formula is pinned from below and only the slack is free. Slack at all because how
-LangGraph counts a superstep is its business rather than a contract, and the cost of
-being one out is a legitimate turn reported as a runaway one. A pause cannot be the
-longest walk: it ends the run it was in, and the resumed one pays for none of the steps
-before the loop."""
 CHECKPOINTED_DATA = (
     ("cora.ports.chat_model", "Message"),
     ("cora.ports.plugin", "ToolCall"),
@@ -62,10 +44,6 @@ CHECKPOINTED_DATA = (
     ("cora.domain.card", "ActionOffered"),
     ("cora.domain.card", "Answer"),
 )
-"""What a thread's state is made of besides its trace. Named because the alternative is
-LangGraph's default — deserialise anything and log a warning saying it will be blocked
-one day — which would make a lock bump the thing that breaks conversations, silently: a
-logged warning is invisible to a test suite."""
 
 
 def checkpointed_types() -> tuple[tuple[str, str], ...]:
@@ -205,18 +183,6 @@ class LangGraphRunner:
         }
 
     def _graph(self, on_text: TextSink) -> Any:
-        """Built per run, which is what lets the model node be this turn's: the sink
-        belongs to the reader waiting on it, and a graph shared between turns could
-        only hold one of them.
-
-        The walk is the sequence it was handed, so a turn that grew a step is a graph
-        with a node more and this method unchanged. The rounds are the one part of it
-        with a shape of their own: the model decides, and the router sends the turn to
-        the gate, to the reader, or on to whatever the walk does next. Every path to the
-        tools runs through the gate — the round's route arrives there and so does the
-        ask's, which is what makes the gate unbypassable by construction rather than by
-        anyone remembering to call it.
-        """
         # ty does not see __required_keys__ on a TypedDict class, so it cannot
         # tell that AgentState satisfies LangGraph's state-schema bound.
         builder = StateGraph(AgentState)  # ty: ignore[invalid-argument-type]
@@ -246,7 +212,6 @@ class LangGraphRunner:
 
     @property
     def _done(self) -> str:
-        """Where a turn goes when the rounds are over: on with the walk, or out."""
         return self.after[0].step if self.after else END
 
 

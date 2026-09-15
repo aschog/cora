@@ -13,56 +13,20 @@ from cora.ports.output import Output
 from cora.ports.plugin import Tool
 
 CONTRACT = 1
-"""The version of this contract cora offers, and what a plugin declares to ask for.
-
-A number rather than a range: cora offers one version, a plugin declaring another is
-refused by name, and a plugin declaring none is taken as asking for this one. What is
-public is everything this module names; what may move is said on the page that teaches
-a plugin to be written.
-
-It moves when the contract *changes*, not when it grows. Surface added to `Host` — a
-register keyword, a property like `output` — leaves it where it is, because a plugin
-asking for this version still gets everything this version promised. The cost is that a
-plugin needing something newly added cannot say so, and finds out by the call failing
-rather than at the version check.
-"""
 
 TOOL = "tool"
 HANDLER = "handler"
 INSTRUCTIONS = "instructions"
-"""What a plugin can register. A kind is a field rather than a class, so the listing,
-the collision check and the log line are each written once over one list — and a fifth
-kind is a method on `Host` and an entry here, not a shape anyone has to widen."""
 
 DEFAULT_SCOPE = "cora"
-"""The field a turn belonging to none of the loaded ones runs in.
-
-A name rather than an empty set, so a turn can always say which scope it ran under and
-a scope always has somewhere to keep its documents. Nothing cora ships registers under
-it: it is what a bare cora is, and a plugin that registers here says "in every field,
-and in none".
-"""
 
 SCREENING = "screen"
 BRIEFING = "brief"
 CALLING = "tool_call"
 RETURNING = "tool_result"
 ANSWERING = "answer"
-"""The points in a turn a handler can be subscribed to, under the names a plugin writes:
-the question being screened, the brief being settled, a tool call about to run, a tool
-result coming back, and the answer settled and not yet handed over. A name is contract,
-which is why it is here; what a handler's return *means* at each is
-`cora.engine.events`, which is not."""
 
 Handler = Callable[[Any], Any]
-"""What a handler is: one frozen value in, and one decision out.
-
-Answering with `None` is answering with nothing, and changes nothing. What else may be
-answered depends on the event — a refusal where an event refuses, an amendment where it
-amends — and what is handed in is that event's value: the question, the brief, a
-`ToolCall`, a `ToolResult`. A handler is never handed the turn's state, and nothing it
-returns reaches the state except through the event it answered.
-"""
 
 
 @dataclass(frozen=True)
@@ -79,14 +43,11 @@ class State(Protocol):
     Names are the plugin's own: two plugins choosing one name keep two values, and
     neither can read the other's. What is kept lasts as long as the conversation does
     and goes when it is deleted — it is not what cora knows about the user, which is
-    `Memory` and outlives every conversation.
+    `Memory`.
 
-    Text, because what a plugin keeps is the plugin's own to read back. A shape richer
-    than that would make cora the reader of it.
-
-    Reachable while a tool call of this plugin's is running, which is where a plugin's
-    own code runs inside a turn. Outside one there is no conversation to keep anything
-    for, so a read comes back with nothing and a write is dropped.
+    Text, because what a plugin keeps is the plugin's own to read back. Reachable while
+    a tool call of this plugin's is running, and outside one there is no conversation to
+    keep anything for, so a read comes back with nothing and a write is dropped.
     """
 
     def read(self, name: str) -> str | None:
@@ -131,9 +92,6 @@ def name_of(module: str) -> str:
 
 
 HAS_AN_EFFECT = "has an effect"
-"""What a tool that changes something outside cora is listed as. One wording for both
-renderings — the terminal's and the page's — because it is the same claim, and the
-reader deciding whether to load a plugin is asking it of both."""
 
 
 @dataclass(frozen=True)
@@ -319,11 +277,9 @@ class Host(Protocol):
 
         The loop is offered the tools given plus cora's document search, and never a
         tool that writes, stops the turn, or declares an effect — one passed in that
-        declares one is withheld, and the plugin's logger says which. An effect and a
-        stop-to-ask belong in the turn around it, where the gate is. Its steps are
-        reported under the call that ran it, and what it answers carries no citation of
-        its own — and reaches the turn labelled untrusted, because the documents went
-        into it.
+        declares one is withheld, and the plugin's logger says which. Its steps are
+        reported under the call that ran it, and what it answers reaches the turn
+        labelled untrusted and citing nothing of its own.
 
         A loop that spends every round without reaching an answer is asked once more,
         with no tools, to write up what it found: the rounds it spent are not lost, and
@@ -346,7 +302,6 @@ class Host(Protocol):
 
 
 Extend = Callable[[Host], None]
-"""What a plugin module defines: `extend(cora)`, called once with a host of its own."""
 
 
 @dataclass(frozen=True)

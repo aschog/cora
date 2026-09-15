@@ -66,11 +66,6 @@ class Aside:
 Written = Piece | Aside
 
 TextSink = Callable[[Written], None]
-"""Where a model writes its reply as it writes it. A reply is still returned whole —
-the pieces are the same text arriving earlier, so a reader is not left watching a still
-page for as long as a model takes. A turn may take several rounds, and only the last of
-them is the answer: `Aside` is how a sink learns that the round it just read was one of
-the others."""
 
 
 def unheard(_: Written) -> None:

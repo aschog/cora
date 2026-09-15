@@ -28,11 +28,6 @@ COACH_QUESTION = "How much protein should I eat?"
 def _two_scopes(
     *replies: ModelReply, offered: tuple[str, ...] = BOTH
 ) -> tuple[App, ScriptedChatModel]:
-    """Two fields, each with a persona and a tool of its own, and nothing system-wide.
-
-    The model comes back beside the app: what a turn was told and what it was
-    offered are what a scope decides, and the model is where both are visible.
-    """
     model = ScriptedChatModel(list(replies))
     return assembled(
         chat_model=model,
@@ -66,7 +61,6 @@ def _offered(model: ScriptedChatModel) -> set[str]:
 
 
 def _focus(result: ChatResult) -> ScopeSettled:
-    """The one step that says which field the turn ran in, and how it got there."""
     [settled] = [step for step in result.trace if isinstance(step, ScopeSettled)]
     return settled
 

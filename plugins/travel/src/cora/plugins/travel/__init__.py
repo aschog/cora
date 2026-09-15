@@ -21,8 +21,6 @@ from .trips import (
 )
 
 SCOPE = "travel"
-"""What this plugin's field is called. Everything it registers is under it: a travel
-persona has no business in a turn about training, and cora is not both at once."""
 
 INSTRUCTIONS = """\
 Answer travel questions — destinations, routes, timing, packing and logistics — from the
@@ -54,28 +52,19 @@ user's own documents.
 """
 
 CORPUS = pathlib.Path(__file__).parent / "corpus"
-"""The notes this plugin ships, as files the user uploads like any other document.
-
-A directory rather than a registration: cora ingests what is uploaded, and a plugin that
-seeded the index at load would re-embed its corpus on every start. A field owning its
-own document directory did not change that: what is uploaded is still the reader's to
-choose, and these are files they may choose.
-"""
 
 
 def extend(cora: Host) -> None:
     """Instructions and up to seven tools, all under travel and none outside it.
 
-    Six are declared as returning material cora did not write: a service's answer is
-    not cora's words, and neither is a report the researcher built out of documents and
-    a forecast, nor a plan built out of both. The last changes something outside cora
-    and says so, so a call of it waits for the user. Nothing here is system-wide, so a
-    turn about training is offered no weather, no researcher, no prices and no plan.
+    Six are declared as returning material cora did not write: a service's answer is not
+    cora's words, and neither is a report the researcher built out of documents and a
+    forecast. The last changes something outside cora and says so, so a call of it waits
+    for the user. Nothing here is system-wide.
 
     Two of them are offered only where the deployment set a key for the search service,
     and saving only where it configured somewhere to write. A tool the model can call
-    and that can only fail is worse than one it is never offered — the same reason cora
-    offers no `remember` without a memory.
+    and that can only fail is worse than one it is never offered.
 
     Raises:
         PluginLoadError: The rounds setting is not a whole number. Raised as one of

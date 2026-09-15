@@ -29,12 +29,7 @@ from cora.ports.plugin import ToolRefusal, ToolResult
 log = logging.getLogger(__name__)
 
 UNSCREENED = "Your question could not be checked, so it was not answered."
-"""What the user reads when a screening handler broke rather than refused. It says what
-happened and stops: what the handler was holding could be anything, so nothing of it is
-quoted — not to the user, and not to the model."""
 UNCHECKED = "a plugin could not check this call"
-"""What the model is told when a handler on a call broke. The call does not run: a check
-that failed is not a check that passed."""
 
 
 @dataclass(frozen=True)
@@ -77,7 +72,6 @@ class Amending:
 
 
 Kind = Refusing | Amending
-"""What an event does with what its handlers answer."""
 
 EVENTS: Mapping[str, Kind] = {
     SCREENING: Refusing(
@@ -108,7 +102,6 @@ EVENTS: Mapping[str, Kind] = {
         holds=str,
     ),
 }
-"""Every point in a turn a plugin can take part in, and what it does there."""
 
 
 def dispatch(
@@ -212,11 +205,6 @@ def _took(
 
 
 def _ending(kind: Refusing, reason: str, trace: list[TraceStep]) -> Exception:
-    """The refusal, carrying the steps the turn took on its way to being refused.
-
-    A turn refused on the way in never reaches a state, so the trace travels on the
-    exception or nowhere: it is what says which plugin refused, and the user is owed it.
-    """
     raised = kind.raised(reason)
     if isinstance(raised, CoreError):
         raised.trace = tuple(trace)

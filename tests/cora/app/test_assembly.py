@@ -102,10 +102,6 @@ def test_coras_own_screen_runs_ahead_of_a_plugins() -> None:
 
 
 def _config(root: Path, *, debug: bool = False) -> Config:
-    """The shipped configuration under a directory of the test's own, with the plugins
-    folder pinned there too: the default is the one the docs tell an operator to drop
-    plugins into, and a suite reading that one runs whatever the developer left there.
-    """
     return replace(
         store_config(root), debug=debug, plugin_modules=("fixture_plugins.valid",)
     )
@@ -242,7 +238,6 @@ def test_an_app_taken_before_a_change_finishes_its_turn_on_its_own_set(
 
 
 def _screening(runner: LangGraphRunner) -> ScreenStep:
-    """The step a turn opens with, off the walk the runner was handed."""
     screen, _, _ = runner.before
     assert isinstance(screen, Named)
     assert isinstance(screen.take, ScreenStep)
@@ -250,7 +245,6 @@ def _screening(runner: LangGraphRunner) -> ScreenStep:
 
 
 def _focusing(runner: LangGraphRunner) -> FocusStep:
-    """The step that writes the brief, which is where the memory slot lands."""
     _, _, focus = runner.before
     assert isinstance(focus, Named)
     assert isinstance(focus.take, FocusStep)

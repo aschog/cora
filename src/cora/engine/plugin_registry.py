@@ -14,26 +14,12 @@ from cora.ports.host import CONTRACT, Extension, name_of
 
 EXTEND = "extend"
 DECLARED = "CONTRACT"
-"""What a plugin names to ask for a version of the contract. Read before `extend` is
-called, because refusing a plugin whose code has already run is not refusing it."""
 
 DROPPED = "cora_dropped"
-"""The namespace a file dropped in the folder is imported under.
-
-It has to be imported under *some* name that outlives the import: a module absent from
-`sys.modules` cannot resolve its own annotations, so an ordinary dataclass in a dropped
-file fails on code that is correct everywhere else. Under a namespace of cora's own
-rather than under the file's own stem, so dropping `json.py` in the folder still cannot
-change what `import json` means anywhere.
-"""
 
 SUFFIX = ".py"
 INIT = "__init__.py"
-"""What makes a dropped directory a plugin: the same marker that makes it a package."""
 SKIPPED = ("_", ".")
-"""How an entry in the folder says it is not a plugin: `__init__.py` and anything an
-author named as private, and anything hidden — a volume that has been near a Mac keeps
-`._name.py` beside every file, and one of those refuses the whole deployment."""
 
 
 def load_plugins(
@@ -152,7 +138,6 @@ class _FreshSource(importlib.machinery.SourceFileLoader):
 
 
 def _dropped_name(path: pathlib.Path) -> str:
-    """A directory's name is taken whole: `stem` would read `acme.birds` as `acme`."""
     return path.name if path.is_dir() else path.stem
 
 
@@ -168,7 +153,6 @@ def _restore(name: str, displaced: dict[str, ModuleType]) -> None:
 
 
 def _files_in(folder: pathlib.Path | None) -> tuple[pathlib.Path, ...]:
-    """The folder's plugins, in name order. A folder that is not there holds none."""
     if folder is None or not folder.is_dir():
         return ()
     return tuple(
@@ -217,12 +201,6 @@ def _stamp(path: pathlib.Path) -> tuple[object, ...]:
 
 
 def _extension(module: ModuleType, *, name: str, source: str) -> Extension:
-    """What the module has to prove before anything of it is kept.
-
-    Raises:
-        PluginLoadError: It asks for a version cora does not offer, defines no
-            `extend`, or defines one that cannot be called.
-    """
     wanted = getattr(module, DECLARED, CONTRACT)
     if wanted != CONTRACT:
         raise PluginLoadError(
@@ -238,16 +216,6 @@ def _extension(module: ModuleType, *, name: str, source: str) -> Extension:
 
 
 def _reject_a_stem_that_is_not_a_name(dropped: tuple[pathlib.Path, ...]) -> None:
-    """Refuse a file whose stem cannot serve as the plugin's name.
-
-    Four things are named by it, and two of them cannot carry an arbitrary string: the
-    settings prefix has to be spellable in a shell, and `name_of` reads everything after
-    the last dot — so `acme.birds.py` would be `birds` to every reader and `acme.birds`
-    to the check meant to stop a second `birds`.
-
-    Raises:
-        ConfigurationError: The stem is not an identifier.
-    """
     for path in dropped:
         if not _dropped_name(path).isidentifier():
             raise ConfigurationError(
@@ -270,14 +238,6 @@ def _reject_a_module_named_twice(named: tuple[str, ...]) -> None:
 def _reject_two_named_alike(
     named: tuple[str, ...], dropped: tuple[pathlib.Path, ...]
 ) -> None:
-    """Refuse two plugins ending in the same name, whichever source each came from.
-
-    A name is what tells two plugins apart: it heads their sections of the brief, and
-    their settings are named for it. A file dropped beside a named module collides with
-    it exactly as two named modules do, which is why both sources are read here — and
-    cora's own name is taken, a plugin holding it being handed cora's own registrations
-    as its own.
-    """
     seen: dict[str, str] = {}
     for name, source in (
         *((name_of(module), module) for module in named),

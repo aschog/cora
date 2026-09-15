@@ -30,8 +30,6 @@ def _remembering() -> ModelReply:
 
 
 def _app(path: pathlib.Path, chat_model: ChatModel) -> App:
-    """A store that outlives the process, which is the whole subject: the fact has to
-    survive an app being thrown away, not a variable being reassigned."""
     return assembled(
         chat_model=chat_model,
         memory=SqliteStoreMemory.at(str(path)),
@@ -40,8 +38,6 @@ def _app(path: pathlib.Path, chat_model: ChatModel) -> App:
 
 
 def _asked(app: App, question: str) -> None:
-    """One turn against an app that is then thrown away. Nothing is handed back: the
-    client's portal closes with the block, so a returned one raises on first use."""
     with TestClient(api(app)) as page:
         page.post("/api/ask", json={"question": question, "thread_id": "t1"})
 

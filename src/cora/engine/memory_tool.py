@@ -8,9 +8,6 @@ from cora.ports.plugin import Tool, ToolRefusal
 
 REMEMBER_TOOL_NAME = "remember"
 MAX_FACT_CHARS = 300
-"""A fact is a sentence about the user. The bound is here because memory is the one
-prompt-visible thing with no cap of its own: history is trimmed by turns and a turn by
-rounds, while a fact opens every future prompt for as long as it is kept."""
 NOTHING_TO_REMEMBER = "There was nothing to remember."
 TOO_LONG_TO_KEEP = "That note is too long to keep — the limit is {limit} characters."
 REMEMBER_TOOL_DESCRIPTION = (

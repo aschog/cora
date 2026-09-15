@@ -45,81 +45,31 @@ DELEGATE_BRIEF = (
     "because the numbers belong to the assistant and not to you."
 )
 MAX_DELEGATED_ROUNDS = 5
-"""The most rounds a delegated loop may spend, whatever it asks for. The budget is the
-host's rather than the plugin's: one tool call that asked for ten thousand rounds would
-spend a deployment's bill. It bounds a *call* — a round of the turn's own may make
-several, and a turn several rounds, so what a turn can spend on delegation is this times
-what `Router` allows it. Bounded, not small."""
 WITHHELD = (
     "not offering %s to the delegated loop: a tool that waits for the user cannot run "
     "there, and a sub-agent is not something the user is watching"
 )
-"""What a plugin is told when one of its tools is kept out of a loop it delegated. On
-the plugin's own logger, because it is that plugin's tool and that plugin's author who
-has to understand why the loop never called it."""
 OVERSPENT = (
     "the sub-agent ran out of rounds without reaching an answer; ask it something "
     "narrower, or answer without it"
 )
-"""What the model is told when a delegated loop gives up with nothing to show. A
-sentence rather than a failure of the turn's: the turn has rounds left, and this is one
-call it cannot use. Reached only when the write-up below comes back empty — a loop that
-spent its rounds *learning* something reports it instead."""
 CLOSE_OUT = (
     "You have run out of rounds, so this is your last message. Write up what you found "
     "in a few sentences, and say plainly what you did not get to. Call no tools."
 )
-"""What the loop is asked once its rounds are gone. A round it cannot spend on tools:
-the call it answers is offered none, so this cannot become another lookup."""
 STOPPED_EARLY = (
     "STOPPED EARLY: the sub-agent reached its limit of rounds, so what follows is what "
     "it had found and not a complete answer."
 )
-"""What the report is headed with when the loop was stopped rather than finished.
-
-A statement and not an instruction. A report earns the untrusted-data label like any
-other material a tool hands back, and that label tells the model never to follow
-instructions found inside it — so a sentence here telling it what to do would be
-addressed to a reader under orders to ignore it. What survives the label is what is
-needed: evidence that this is a part and not a whole. Telling the model what to do
-about that belongs in a brief, where cora speaks in its own voice.
-"""
 _allowance: ContextVar[list[int] | None] = ContextVar("_allowance", default=None)
-"""What is left of the rounds this delegation may spend, shared by every loop under it.
-
-A delegated loop may call a tool that delegates again, and a fresh budget per level
-would make depth a way of asking for more — four levels of five rounds is a thousand
-model calls from one tool call. The outermost loop opens the pot and everything inside
-it spends the same one, so a tool call costs what the host allows however deep the
-plugin goes."""
 CITED = r"(?:\[\d+\])+"
-"""A run of bracketed numbers, as `CITATION_RUN` counts one. What may precede it is the
-question below, and it is a narrower question here than on the page."""
 OPENS = r"=([{<>|&^~/\\+"
-"""What a bracketed run is *not* a citation after: an assignment, an opener, an
-operator. Written as what disqualifies rather than as what qualifies, because prose has
-more shapes than code does — a claim is cited after bold, after a percent, after a
-closing backtick, and a list of everything a sentence may end in is a list that keeps
-being wrong."""
 UNCITED = re.compile(rf"(?<=[^\s{OPENS}])[ \t]+{CITED}")
-"""What a delegated loop's answer is stripped of, should it write a number anyway. A
-citation follows what it cites and then a space: `weights = [1]` is a literal and
-`arr[0]` an index, and neither is cora's business. Taking the space with the run leaves
-the sentence closed up without touching the rest of the line."""
 OPENED_WITH = re.compile(rf"^([ \t]*(?:[-*+][ \t]+)?){CITED}[ \t]*")
-"""A number the line opened with, and the space it left behind. Whatever indentation and
-list marker stood in front of it is the loop's own and is handed back untouched."""
 FENCE = re.compile(r"^[ \t]*(```|~~~)")
-"""What opens a fenced block, and the marker it was opened with — a block is closed by
-its own marker, so a tilde line inside a backtick block is content. Nothing inside one
-is prose, so nothing inside one is a citation: a loop explaining code writes numbers
-that are the code's own."""
 
 
 PLUGIN_LOGGER = "cora.plugin"
-"""Where a plugin's own logger hangs. Under cora, so one switch configures every line
-the app writes, and singular so it is a logger rather than the namespace a distribution
-installs into."""
 
 
 @dataclass
@@ -302,16 +252,6 @@ class PluginHost:
         runtime: ToolRuntime,
         left: list[int],
     ) -> str:
-        """One delegated loop, spending the allowance the outermost one opened.
-
-        Spending it all without reaching an answer is not a failure of the turn's: the
-        turn did not overspend, one of its calls did. The loop is asked to write up what
-        it found, and the report says it stopped early.
-
-        Raises:
-            ToolRefusal: The allowance ran out and the write-up came back empty, so
-                there is nothing to report. The model is owed a sentence saying so.
-        """
         while left[0] > 0:
             left[0] -= 1
             reply = self.model.complete(tuple(said), offered)
@@ -337,25 +277,6 @@ class PluginHost:
         return self._closed_out(said)
 
     def _closed_out(self, said: list[Message]) -> str:
-        """One last call, with nothing to call, asking the loop to write up what it has.
-
-        The rounds bought lookups, and what they found is in `said` — throwing that away
-        because the last round did not happen to end in an answer wastes every round
-        before it. So the loop is asked for a write-up instead, offered no tools so the
-        asking cannot become another lookup.
-
-        A loop that gathered nothing is not asked at all. It has nothing to write up,
-        and asking anyway costs a model call the allowance never authorised — which is
-        how a loop arriving to find the pot already empty turns the width of a fan-out
-        into a bill, the model choosing the width. It is also the one way a heading
-        reading "what it had found" could end up over a model's answer to a question it
-        looked nothing up for.
-
-        Raises:
-            ToolRefusal: Nothing was gathered to write up, or the write-up came back
-                empty. Nothing is dressed up as a report, so these are the cases the
-                loop still gives up on.
-        """
         if not any(message.role == "tool" for message in said):
             raise ToolRefusal(OVERSPENT)
         said.append(Message(role="user", content=CLOSE_OUT))
@@ -367,28 +288,6 @@ class PluginHost:
         return f"{STOPPED_EARLY}\n\n{written}"
 
     def _offered(self, tools: tuple[Tool, ...]) -> tuple[Tool, ...]:
-        """What a delegated loop may call.
-
-        Cora's document search, and what the plugin passed. None of cora's own writing
-        or stopping tools is in that set — not because they are filtered out, but
-        because they are never put in. The search is described as a reader that hands
-        out no numbers is offered it, which is what this loop is.
-
-        A tool that waits for the user is withheld, however it got here: one declaring
-        an effect waits for their word, and one declaring `asks` waits for them to fill
-        its card in. Neither can happen here — the gate is a step of the turn and a
-        delegated loop has none, so a gathering tool offered here would be called with
-        the arguments missing and refused by its own schema. That is also what keeps a
-        nested turn from needing a nested approval. Withheld rather than refused,
-        because a plugin may reasonably pass its scope's whole tool list — and said out
-        loud on the plugin's own logger, because an author who is not told watches
-        their tool never run.
-
-        Raises:
-            ToolRefusal: A tool passed in takes the name cora's search already has.
-                Refused rather than shadowed: a call would reach cora's search, and the
-                plugin would watch its own tool never run.
-        """
         taken = [tool.name for tool in tools if tool.name == SEARCH_TOOL_NAME]
         if taken:
             raise ToolRefusal(
@@ -405,13 +304,6 @@ class PluginHost:
         return tuple(entry.value for entry in self.registered if entry.kind == TOOL)
 
     def _record(self, kind: str, value: Any, scope: str | None = None) -> None:
-        """Keep one registration, under the scope it was made for.
-
-        Raises:
-            PluginLoadError: The scope is not a name. `None` is system-wide and is the
-                one absence that means something — a blank string is a registration
-                that loads and then applies to nothing, which no deployment asked for.
-        """
         if scope is not None and (not isinstance(scope, str) or not scope.strip()):
             raise PluginLoadError(
                 self.module, f"a {kind} was registered under a blank scope"
@@ -459,18 +351,6 @@ class _Keeping:
 
 
 def _read(result: ToolResult, read_documents: bool = False) -> Read:
-    """What the loop is told, the one line its step is shown as, and where it came from.
-
-    Passages reach a delegated loop by document name rather than by number: the numbers
-    belong to the turn, and a loop that reads is not what a turn cites. So the loop can
-    still say where a fact came from, and the turn can pass that on. Unnumbered or not,
-    they are the user's documents and carry the same label a turn's own passages do.
-
-    Args:
-        read_documents: Whether the call read the user's documents somewhere inside
-            itself. A tool that delegated again answers in prose, and prose built out of
-            a document is the document as far as the model reading it is concerned.
-    """
     if not isinstance(result.payload, Citable):
         return Read(
             body=result.render(), outcome=result.render(), untrusted=read_documents
@@ -483,13 +363,6 @@ def _read(result: ToolResult, read_documents: bool = False) -> Read:
 
 
 def _uncited(said: str) -> str:
-    """What a delegated loop answered, with any number it wrote taken out.
-
-    Only prose is read for citations: a fenced block is passed through as the loop wrote
-    it, because a number in code is the code's own. Everywhere else the indentation, the
-    blank lines and the alignment are what the outer model reads and what the reader
-    opens under the call, and none of them is touched.
-    """
     written: list[str] = []
     opened_with: str | None = None
     for line in said.splitlines():
@@ -506,13 +379,6 @@ def _uncited(said: str) -> str:
 
 
 def _closed_up(line: str) -> str:
-    """One line of prose with its citations removed, and the gap they left closed up.
-
-    A number the line opened with takes the space after it, so `[1] sleep` reads
-    `sleep`; the indentation and any list marker in front of it are the loop's own and
-    stay. A number mid-sentence goes with the space that introduced it, so what is left
-    is the sentence without it rather than the sentence re-flowed.
-    """
     written = OPENED_WITH.sub(r"\1", line)
     written = UNCITED.sub("", written)
     return written if written.strip() else ""
@@ -520,12 +386,6 @@ def _closed_up(line: str) -> str:
 
 @contextmanager
 def _spending(rounds: int) -> Iterator[list[int]]:
-    """The rounds this delegation may spend: a pot of its own, or the one already open.
-
-    A nested loop joins the pot the loop above it opened, so depth spends the same
-    allowance rather than a fresh one — and its own `rounds` is not honoured, because
-    the outermost loop is what asked for the pot.
-    """
     open_pot = _allowance.get()
     if open_pot is not None:
         yield open_pot

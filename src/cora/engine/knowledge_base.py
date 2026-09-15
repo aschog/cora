@@ -64,13 +64,6 @@ class KnowledgeBase:
         return len(chunks)
 
     def _repair(self, data: bytes, filename: str, file_hash: str, scope: str) -> None:
-        """Keep the text of an upload that was indexed before any text was kept.
-
-        An index that holds passages whose text was never kept hands out citations that
-        open onto nothing, and `contains` would leave it that way for good. Uploading
-        the same file again is the repair, and it costs the parse rather than the
-        embeddings.
-        """
         if self.documents.read(scope, file_hash) is not None:
             return
         text, _ = ingest(data, filename, self.loaders)
@@ -81,16 +74,13 @@ class KnowledgeBase:
 
         The name is what the field lists, and one name may be several uploads — the
         bytes name an upload, so the same filename twice is two documents under one
-        entry. All of them go, because the one entry is what the reader deleted.
+        entry, and all of them go.
 
         Each upload's passages leave the index before its file leaves the directory,
-        which is `add_file`'s order run backwards. A failure between the two then leaves
-        a file nothing can reach, and the next upload of those bytes overwrites it — the
-        other order leaves a document still listed, whose passages every search silently
-        drops and whose citations open onto nothing.
+        which is `add_file`'s order run backwards. The other order leaves a document
+        still listed whose passages every search drops.
 
-        A field owns its documents, so the same file ingested into another field is left
-        where it is. A name nothing was uploaded under is not an error.
+        A field owns its documents, so one ingested into another is left where it is.
 
         Raises:
             RetrievalError: The index could not be read or written.
@@ -136,12 +126,6 @@ class KnowledgeBase:
         return self.retriever.sources(scope)
 
     def _written(self, hits: list[RetrievedChunk]) -> list[RetrievedChunk]:
-        """Each passage carrying the words at its span, read out of its own file.
-
-        A passage whose file is gone is left out rather than handed back empty: the
-        index is not the copy of record, and an empty passage would be cited as though
-        it said something.
-        """
         written = []
         for hit in hits:
             text = self.documents.read(hit.chunk.scope, hit.chunk.upload)
@@ -155,5 +139,4 @@ class KnowledgeBase:
 
 
 def _span(chunk: Chunk) -> Chunk:
-    """The chunk as the index keeps it: its span, and none of its words."""
     return replace(chunk, text="")

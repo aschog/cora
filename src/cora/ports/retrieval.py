@@ -27,13 +27,11 @@ class Retriever(Protocol):
 
     A chunk goes in belonging to one upload — `file_hash` — and to one field, and comes
     back out stamped with both: a passage's offsets are only meaningful against the text
-    that upload arrived as, and that text is kept under the field it was ingested into.
-    Every method is asked within a field, so a passage of one is unreachable from
-    another rather than merely filtered out of it.
+    that upload arrived as. Every method is asked within a field, so a passage of one is
+    unreachable from another rather than merely filtered out of it.
 
-    The words are not here. A chunk carries its span in, and comes back carrying the
-    span alone — reading it is the document store's job, because that is where the one
-    copy of the text is.
+    The words are not here. A chunk carries its span in and comes back carrying the span
+    alone — reading it is the document store's job, where the one copy of the text is.
 
     Every method raises `RetrievalError` when the store cannot be reached.
     """

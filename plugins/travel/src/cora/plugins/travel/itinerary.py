@@ -45,9 +45,6 @@ ITINERARY_SCHEMA: dict[str, Any] = {
     "required": ["title", "depart", "back", "flight", "stay", "total", "days"],
     "additionalProperties": False,
 }
-"""Flat rather than one nested plan, because the card put to the traveller lays out one
-read-only field per top-level argument: a plan inside one field is a plan nobody read
-before approving it."""
 
 NOTHING_PLANNED = (
     "No trip has been planned in this conversation, so there is nothing verified to "
@@ -61,17 +58,10 @@ UNNAMEABLE = (
     "'{title}' leaves no filename behind once it is made safe to write; give the "
     "itinerary a title with some letters or digits in it"
 )
-"""What the model is told when a title reduces to nothing. The plugin's own refusal,
-because the plugin is what turns a title into a name — cora refuses a name that escapes
-the location, and this is the case that never reaches it."""
 UNPRICED = "unpriced"
 SUFFIX = ".md"
 UNSAFE = re.compile(r"[^a-z0-9]+")
 HASH_LENGTH = 12
-"""How much of the itinerary's hash goes in its filename, as `FileDocuments` puts the
-head of an upload's hash in its own. It is what makes one title saved twice two files
-rather than one overwritten — a revised plan is not a correction of the plan the user
-already approved, and this is a file they keep."""
 
 
 def flat(plan: Plan) -> dict[str, Any]:
@@ -116,17 +106,6 @@ def itinerary_tool(output: Output, cora: Host) -> Tool:
 
 
 def _saved(output: Output, cora: Host, title: str, given: dict[str, Any]) -> str:
-    """Write the plan this conversation verified, and say where it went.
-
-    What arrived is compared against what was kept rather than trusted: the gate shows
-    the traveller these arguments, and a model free to rewrite them between the check
-    and the write would have them approve one plan and save another.
-
-    Raises:
-        ToolRefusal: Nothing has been planned here, what arrived is not the plan that
-            was checked, the title leaves no filename, or the name would not stay under
-            the output location.
-    """
     held = cora.state.read(PLAN_KEPT)
     if held is None:
         raise ToolRefusal(NOTHING_PLANNED)
@@ -140,7 +119,6 @@ def _saved(output: Output, cora: Host, title: str, given: dict[str, Any]) -> str
 
 
 def _written(plan: dict[str, Any]) -> str:
-    """The verified plan as the Markdown that lands in the file."""
     lines = [
         f"**{plan['depart']} to {plan['back']}**",
         "",
@@ -154,16 +132,6 @@ def _written(plan: dict[str, Any]) -> str:
 
 
 def _filename(title: str, kept: str) -> str:
-    """The title as a filename, with the head of what was saved hashed onto the end.
-
-    Made rather than taken, because the title is the model's prose — a slash or a dot
-    in it is a word to the model and a path to a filesystem. The hash is of the text
-    rather than of the moment, so the same plan saved twice is one file and a revised
-    one is a second: nothing the user approved is written over.
-
-    Raises:
-        ToolRefusal: Nothing is left of the title once it is safe to write.
-    """
     stem = UNSAFE.sub("-", title.lower()).strip("-")
     if not stem:
         raise ToolRefusal(UNNAMEABLE.format(title=title))

@@ -37,9 +37,6 @@ _CATEGORIES: tuple[tuple[type[Exception], type[LlmError]], ...] = (
     (openai.RateLimitError, LlmBusyError),
     (openai.AuthenticationError, LlmKeyRejectedError),
 )
-"""Ordered, not a mapping: the provider's classes overlap by inheritance, and the
-overflow errors are `BadRequestError`/`APIError` subclasses that a broader entry would
-swallow. First match wins, so the most specific category comes first."""
 
 
 def to_model_reply(reply: AIMessage) -> ModelReply:
@@ -149,13 +146,6 @@ class OpenRouterChatModel:
 
 
 def _streamed(client: Any, messages: list[BaseMessage], on_text: TextSink) -> AIMessage:
-    """The pieces, handed on as they land and added up as they go. Text is what a reader
-    is shown, so a piece carrying only reasoning or a fragment of a tool call is added
-    to the whole and passed on to nobody.
-
-    A stream that fails part-way fails as its category, like a whole reply that never
-    arrived. The pieces already handed on are not taken back: the caller replaces them
-    with the sentence the failure carries."""
     whole: AIMessageChunk | None = None
     for piece in _pieces(client, messages):
         whole = _added(whole, piece)
@@ -167,9 +157,6 @@ def _streamed(client: Any, messages: list[BaseMessage], on_text: TextSink) -> AI
 
 
 def _pieces(client: Any, messages: list[BaseMessage]) -> Iterator[AIMessageChunk]:
-    """The provider's stream, and nothing else, inside the categories. `on_text` is the
-    caller's code: a sink that fails is not the model being unavailable, and reported as
-    one it would have the reader wait and try again for something no retry can reach."""
     try:
         yield from client.stream(messages)
     except Exception as exc:
@@ -177,9 +164,6 @@ def _pieces(client: Any, messages: list[BaseMessage]) -> Iterator[AIMessageChunk
 
 
 def _added(whole: AIMessageChunk | None, piece: AIMessageChunk) -> AIMessageChunk:
-    """Adding the pieces up is the provider's stream as much as reading them is: the
-    library refuses a field two pieces disagree about, which is a stream that failed
-    rather than anything the caller can be told about."""
     if whole is None:
         return piece
     try:
@@ -189,9 +173,6 @@ def _added(whole: AIMessageChunk | None, piece: AIMessageChunk) -> AIMessageChun
 
 
 def _categorise(exc: Exception) -> LlmError:
-    """A category carries a sentence the reader can act on. What matches none of them
-    carries one that says nothing, so the failure is logged here or it is kept
-    nowhere — the routes deliver a modelled error's sentence without logging it."""
     for provider_error, wrapped in _CATEGORIES:
         if isinstance(exc, provider_error):
             return wrapped()

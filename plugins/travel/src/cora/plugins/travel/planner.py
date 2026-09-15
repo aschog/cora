@@ -42,23 +42,9 @@ REVISE_TOOL_DESCRIPTION = (
 )
 
 KEPT = "plan"
-"""What the plan is kept under, for the length of the conversation."""
 BUDGET_KEPT = "budget"
-"""What the plan was checked against, kept beside it.
-
-Beside rather than inside, because a budget is what the traveller *asked*, not part of
-the trip that came back — and a revision that names no new ceiling is a revision under
-the old one, never one under none.
-"""
 PASSES = 2
-"""How many revisions the loop may make before it offers what it has.
-
-Two because a plan that is still failing after two narrowings is failing on something a
-third would not fix — and the trace is what makes a wrong guess here visible.
-"""
 CANDIDATES = 3
-"""How many departures are paired with a stay. The window is priced across every
-departure it allows, and only the cheapest few are worth a second call each."""
 
 SHAPE_TASK = (
     "Plan what to do on each of {nights} days in {destination}, from {depart}.\n\n"
@@ -107,11 +93,6 @@ class Trip:
 
 
 def _trip_from(given: dict[str, Any]) -> Trip:
-    """The trip a call asked for.
-
-    Raises:
-        ToolRefusal: A date or a number cannot be read.
-    """
     budget = given.get("budget")
     return Trip(
         origin=str(given["origin"]),
@@ -126,12 +107,6 @@ def _trip_from(given: dict[str, Any]) -> Trip:
 
 
 def _days_from(written_days: str) -> tuple[Day, ...]:
-    """The day shape a delegated loop wrote, or nothing where it wrote no JSON.
-
-    Nothing rather than a guess: an unreadable shape leaves the days empty, the check
-    for an empty day fails, and the loop revises — which is the same path a shape that
-    was merely wrong takes.
-    """
     opened = written_days.find("[")
     closed = written_days.rfind("]")
     if opened < 0 or closed < opened:
@@ -162,7 +137,6 @@ def _days_from(written_days: str) -> tuple[Day, ...]:
 
 
 def _read_out(plan: Plan, failed: Sequence[str]) -> str:
-    """The plan as the model is handed it, and what it could not be made to satisfy."""
     lines = [
         f"{plan.origin} to {plan.destination}, {plan.depart} to {plan.back}, "
         f"{plan.nights} nights"
@@ -237,9 +211,6 @@ class Planner:
         )
 
     def _planned(self, trip: Trip) -> str:
-        """The loop: shape, search, score, check, revise — and stop on a check, never
-        on anything the model said.
-        """
         forecast = self._forecast(trip)
         best: Plan | None = None
         failed: tuple[str, ...] = ()
@@ -271,11 +242,6 @@ class Planner:
         return _read_out(best, failed) if best is not None else NO_PLAN
 
     def _kept(self, plan: Plan, trip: Trip) -> str:
-        """Keep the plan that held, and the ceiling it was checked against.
-
-        Only a plan that passed: what is saved is what was verified, and a revision that
-        could not be made to hold leaves the plan that could standing.
-        """
         self.cora.state.keep(KEPT, json.dumps(written(plan)))
         self.cora.state.keep(
             BUDGET_KEPT, None if trip.budget is None else str(trip.budget)
@@ -283,7 +249,6 @@ class Planner:
         return _read_out(plan, ())
 
     def _shape(self, trip: Trip, failed: Sequence[str]) -> tuple[Day, ...]:
-        """The day-by-day shape, which is the one part of this that is judgement."""
         task = SHAPE_TASK.format(
             nights=trip.nights,
             destination=trip.destination,
@@ -295,11 +260,6 @@ class Planner:
         return _days_from(self.cora.delegate(task))
 
     def _forecast(self, trip: Trip) -> dict[str, str] | None:
-        """What the sky is doing, or nothing where it could not be had.
-
-        Nothing rather than a failure: a forecast service that is down costs the plan
-        one rule, not the trip.
-        """
         if self.weather is None:
             return None
         try:
@@ -314,12 +274,6 @@ class Planner:
             return None
 
     def _candidates(self, trip: Trip, days: tuple[Day, ...]) -> list[Plan]:
-        """Every priced trip worth checking, cheapest first.
-
-        The window is priced across its departures, the best few are each paired with a
-        stay for their own week, and the total is what orders them. With no search
-        service there is one candidate and it is unpriced.
-        """
         bare = Plan(
             origin=trip.origin,
             destination=trip.destination,
@@ -356,7 +310,6 @@ class Planner:
     def _with_a_stay(
         self, trip: Trip, days: tuple[Day, ...], bare: Plan, fare: Offer
     ) -> Plan | None:
-        """One fare paired with the cheapest stay for its own week, or nothing."""
         if self.search is None:
             return None
         try:

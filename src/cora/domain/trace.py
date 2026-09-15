@@ -58,13 +58,6 @@ class TraceStep(ABC):
 
 @cache
 def _tuple_fields(kind: type["TraceStep"]) -> tuple[str, ...]:
-    """Which of a kind's fields are declared tuples, worked out once per kind.
-
-    Keyed by the class, which the cache then holds: the kinds are a fixed set declared
-    in this module, so nothing accumulates. A kind declared inside a test would be held
-    for the process and go on being found by `step_kinds`, which is a reason to declare
-    them here rather than a reason not to cache.
-    """
     return tuple(
         name
         for name, declared in get_type_hints(kind).items()

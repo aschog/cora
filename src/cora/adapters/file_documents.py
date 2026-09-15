@@ -6,15 +6,9 @@ from pathlib import Path
 from cora.domain.errors import DocumentStoreError
 
 HASH_LENGTH = 12
-"""How much of an upload's hash names its file. Long enough that two uploads never
-collide, short enough that the name still reads as the document's."""
 BARE_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*\Z")
-"""What a scope may be called, because a scope is a directory here. The name reaches
-this store from an upload, so anything that could walk out of the root is refused
-before a byte is written."""
 UNSAFE = re.compile(r"[^A-Za-z0-9._-]+")
 UPLOAD = re.compile(r"[0-9a-f]{64}\Z")
-"""What an upload is named by: the whole of the hash of the bytes it arrived as."""
 
 
 def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
@@ -80,5 +74,4 @@ class FileDocuments:
 
 
 def _head(upload: str) -> str | None:
-    """What names this upload's file, or nothing where it is not an upload at all."""
     return upload[:HASH_LENGTH] if UPLOAD.match(upload) else None

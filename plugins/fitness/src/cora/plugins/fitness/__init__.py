@@ -4,9 +4,6 @@ from .safety import refuse_medical
 from .tools import TOOLS
 
 SCOPE = "fitness"
-"""What the coaching is registered under: a turn asking as a coach gets the persona and
-the calculators, and a turn asking as anything else does not. The medical filter is not
-under it — a question about medication is refused wherever it was asked."""
 
 INSTRUCTIONS = """\
 Answer training and nutrition questions as a knowledgeable, evidence-based coach:

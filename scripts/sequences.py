@@ -117,7 +117,6 @@ def _method(klass: ast.ClassDef, name: str) -> ast.FunctionDef:
 
 
 def _head(annotation: ast.expr) -> str:
-    """The name an annotation leads with: `Memory | None` is a memory slot."""
     if isinstance(annotation, ast.BinOp):
         return _head(annotation.left)
     if isinstance(annotation, ast.Subscript):
@@ -126,7 +125,6 @@ def _head(annotation: ast.expr) -> str:
 
 
 def _fields(klass: ast.ClassDef) -> dict[str, str]:
-    """The annotated fields of a class, which is what its lifelines are drawn from."""
     return {
         node.target.id: _head(node.annotation)
         for node in klass.body
@@ -160,7 +158,6 @@ class Slot:
 
 
 def _element(annotation: ast.expr) -> str:
-    """What one of a container holds: a step out of `tuple[TraceStep, ...]`."""
     if isinstance(annotation, ast.Subscript):
         inner = annotation.slice
         first = inner.elts[0] if isinstance(inner, ast.Tuple) else inner
@@ -177,7 +174,6 @@ def _annotations(klass: ast.ClassDef) -> dict[str, ast.expr]:
 
 
 def _returned(module: str, kind: str, method: str) -> str:
-    """What one call answers with, off the signature of the interface it is made on."""
     path = _module(module)
     if not path.exists():
         return ""
@@ -189,14 +185,11 @@ def _returned(module: str, kind: str, method: str) -> str:
 
 
 def _argument(node: ast.expr) -> str:
-    """One name as the source writes it, with `self.` left off: the reader knows."""
     written = ast.unparse(node).replace("self.", "")
     return written[1:-1] if isinstance(node, ast.Tuple) else written
 
 
 def _named(node: ast.expr) -> str:
-    """An argument that is itself a call is named rather than written out: the message
-    it stands for is drawn on its own line already."""
     if isinstance(node, ast.Call):
         return f"{_argument(node.func).rsplit('.', 1)[-1]}(…)"
     return _argument(node)
@@ -355,7 +348,6 @@ def _guard(test: ast.expr) -> str:
 
 
 def _iterated(node: ast.expr, held: dict[str, ast.expr], scope: dict[str, str]) -> str:
-    """What a `for` walks, so the loop variable is typed by one of what it holds."""
     if isinstance(node, ast.Attribute) and node.attr in held:
         return _element(held[node.attr])
     if isinstance(node, ast.Name):
@@ -364,14 +356,6 @@ def _iterated(node: ast.expr, held: dict[str, ast.expr], scope: dict[str, str]) 
 
 
 def _refuse(node: ast.stmt, drawn: Callable[[ast.Call], object]) -> None:
-    """Stop where a statement holds a fork this reader cannot draw.
-
-    Only where a message would be lost inside it: a `match` over values nobody sends a
-    message about is nothing the drawing was going to show anyway.
-
-    Raises:
-        SystemExit: The statement holds a shape the reader has no fragment for.
-    """
     for found in ast.walk(node):
         named = CANNOT_DRAW.get(type(found))
         if named is None or not any(drawn(call) for call in _ordered(found)):
@@ -385,21 +369,14 @@ def _refuse(node: ast.stmt, drawn: Callable[[ast.Call], object]) -> None:
 
 
 def _caught(handler: ast.ExceptHandler) -> str:
-    """The exception a handler answers for, as the guard on its `break`."""
     return "" if handler.type is None else _argument(handler.type)
 
 
 def _stops(body: list[ast.stmt]) -> bool:
-    """Whether a branch leaves the method, which makes the rest of it the other path."""
     return any(isinstance(node, ast.Return | ast.Raise) for node in body)
 
 
 def _ordered(node: ast.AST) -> list[ast.Call]:
-    """Every call one statement makes, innermost first — the order they happen in.
-
-    A call written around another runs after it: `self._turn(self.runner.run(…))` sends
-    the run and then the turn, which is the opposite of the order they are read in.
-    """
     found: list[ast.Call] = []
     for child in ast.iter_child_nodes(node):
         found.extend(_ordered(child))
@@ -409,8 +386,6 @@ def _ordered(node: ast.AST) -> list[ast.Call]:
 
 
 SIGNATURE = "\x00signature"
-"""A reply the drawing takes off the signature rather than off a name: a value that is
-returned or tested is never bound to anything the source could be asked for."""
 
 
 @dataclass
@@ -674,7 +649,6 @@ def callers_of(method: str, inside: str) -> str:
 
 
 def _signature(dotted: str, kind: str, method: str) -> str:
-    """A call as its own parameters name it, which is what the caller has to pass."""
     body = _method(_klass(reading.parsed(_module(dotted)), kind), method)
     taken = [one.arg for one in (*body.args.args[1:], *body.args.kwonlyargs)]
     return f"{method}({', '.join(taken)})"
@@ -690,11 +664,6 @@ def _entered(
     by: tuple[str, str] | None = None,
     asked: str = "",
 ) -> Sequence:
-    """One drawing, from the call that opens it: whoever calls the method, then it.
-
-    `by` names the caller where no call site states it — a tool is reached through the
-    port that holds it, so no source mentions the class the runtime is about to run.
-    """
     met = Reading({})
     caller, kind_of = by or (callers_of(method, dotted), "")
     met.met(caller, kind_of)
@@ -802,7 +771,6 @@ class Walk:
 
 
 def _handed_over() -> ast.Call:
-    """The call the composition root builds the runner with."""
     tree = reading.parsed(_module(ASSEMBLY))
     return next(
         node
@@ -814,12 +782,6 @@ def _handed_over() -> ast.Call:
 
 
 def _named_step(node: ast.expr) -> tuple[str, str]:
-    """One `Named(...)` as the name it is walked under and the class it takes.
-
-    Raises:
-        SystemExit: A step the walk names some other way. The drawing would then have a
-            participant it cannot label, which is worse than stopping here.
-    """
     if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
         raise SystemExit(f"a step of the walk is not a named one: {ast.dump(node)}")
     tree = reading.parsed(_module(STEPS))
@@ -917,7 +879,6 @@ class Routing:
 
 
 def _value(tree: ast.Module, imported: dict[str, str], name: str) -> str:
-    """A node's name as the string it stands for, wherever the constant is declared."""
     for where in (tree, *_borrowed(imported, name)):
         try:
             return _constant(where, name)
@@ -977,7 +938,6 @@ def routing() -> Routing:
 
 
 def _role_of(node: ast.expr) -> str:
-    """Which of the runner's own slots a node runs: `self.model(on_text)` is `model`."""
     if isinstance(node, ast.Call):
         return _role_of(node.func)
     if isinstance(node, ast.Attribute):
@@ -991,11 +951,6 @@ GRAPH_PORT = "cora.ports.graph"
 def _step(
     name: str, kind: str, met: Reading, role: str, *, into: bool = True
 ) -> list[Line]:
-    """One step of the walk: the name it is taken under, and what it does.
-
-    `into` is false for the step that only says where the turn is: it takes nothing, so
-    there is nothing to follow it into.
-    """
     met.met(name, kind)
     lines: list[Line] = [Call(role, name, f"{name}(state)")]
     where = engine_classes().get(kind)

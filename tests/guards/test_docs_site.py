@@ -74,7 +74,6 @@ SHOWN = re.compile(r"\]\((assets/[^)]+)\)")
 
 
 def _shown(page: str) -> set[str]:
-    """Every drawing a narrative page puts on itself."""
     return set(SHOWN.findall((workspace.ROOT / "docs" / f"{page}.md").read_text()))
 
 

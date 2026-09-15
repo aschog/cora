@@ -28,8 +28,6 @@ HOTELS = (
 
 
 def _price(seed: str, low: int, spread: int) -> int:
-    """A price that is always the same for the same day, and different for the next
-    one — which is what makes a window worth searching."""
     return low + sum(ord(letter) * 7 for letter in seed) % spread
 
 

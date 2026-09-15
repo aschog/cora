@@ -96,13 +96,7 @@ ASK_FOR_TOOL_DESCRIPTION = (
     "and no others, never one you could look up, and never one they have already given."
 )
 DRAWN = ("string", "integer", "number", "boolean")
-"""The kinds of value a field may ask for. Not every JSON Schema type: an object or an
-array is a shape the page has no control for, and a card the reader cannot answer is
-worse than an ask that was refused."""
 MOST_FIELDS = 12
-"""The longest form cora will put up. A card past this is one the reader abandons, and
-an abandoned card tells the model nothing — refused, it asks for what the answer turns
-on instead."""
 ASK_FOR_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
@@ -171,14 +165,6 @@ ONE_VALUE = (
     "for it in your answer instead, in a sentence — the user replies in prose, and the "
     "next turn has it."
 )
-"""What the model is told about a card that asks for one thing.
-
-A form earns the stop when filling it in is the cheaper way to say four things at once.
-For one value it is a box, a button and a turn spent where a sentence would have done —
-and the sentence is what the model can write anyway. Here rather than beside the step
-that enforces it, because the form's schema says the same thing and the two would
-otherwise drift.
-"""
 
 SEND = "Send"
 NOT_NOW = "Not now"
@@ -188,15 +174,6 @@ ASKED_TWICE = "two fields are called '{name}', so one of them could not be asked
 
 
 def _refuse_one_field(fields: Any) -> None:
-    """Refuse a form of one field before the schema does.
-
-    The schema refuses it too — it takes two fields or more — but says only that the
-    list is too short. What the model needs is what to do instead, and it is the same
-    sentence a plugin's one-value card is refused with.
-
-    Raises:
-        ToolRefusal: One field was named, and the message says to ask in prose.
-    """
     if not isinstance(fields, list) or len(fields) != 1:
         return
     [named] = fields
@@ -246,7 +223,6 @@ def card_from(arguments: dict[str, Any]) -> Card:
 
 
 def _property(field: dict[str, Any]) -> dict[str, Any]:
-    """One field the model named, as the schema of the value it asks for."""
     return {
         "type": field.get("type", "string"),
         "description": field["description"],
@@ -256,17 +232,6 @@ def _property(field: dict[str, Any]) -> dict[str, Any]:
 
 
 def _asked_already(**_: Any) -> str:
-    """The one tool whose work is not its own.
-
-    The router sends the ask that will stop the run to the step that can stop it, ahead
-    of the round's tools — so the dispatcher reaches this only for an ask that will not:
-    a second one in the same round, or one raised after the reader has already been
-    stopped. Either way what the round needs to hear is why, not that it found an
-    unreachable branch.
-
-    Raises:
-        ToolRefusal: Always. The turn has had its question.
-    """
     raise ToolRefusal(ASKED_ALREADY)
 
 

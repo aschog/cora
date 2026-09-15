@@ -44,8 +44,6 @@ CONFIGS = ("Makefile",)
 SUFFIXES = (".py", ".md", ".toml", "/")
 
 NAMED = re.compile(r"`(CORA_[A-Z0-9_]+)")
-"""A `CORA_` variable a page names. Backticked, because prose about the prefix itself —
-"cora's own `CORA_` variables" — is not a claim that one exists."""
 TARGET = re.compile(r"`make ([a-z][a-z-]*)`")
 LOCATION = r"(?:\.{1,2}/)*\.?[A-Za-z_][A-Za-z0-9_.-]*(?:/[A-Za-z0-9_.-]*)+"
 BACKTICKED = re.compile(rf"`({LOCATION})`")
@@ -135,13 +133,6 @@ def _named_in(page: str, pattern: re.Pattern[str]) -> set[str]:
 
 
 def _settings() -> set[str]:
-    """Every `CORA_` variable cora reads, however it reads it.
-
-    Read off the source rather than listed: the path settings come from `stores()`, the
-    rest are named in `cora.app.config` and in the shell's server, and a plugin's own
-    are `CORA_PLUGIN_<NAME>_<SETTING>` — a shape rather than a list, because the plugin
-    names half of it.
-    """
     read = set()
     for module in (config, server):
         read |= set(NAMED.findall(pathlib.Path(module.__file__ or "").read_text()))
@@ -154,9 +145,6 @@ def _settings() -> set[str]:
 
 
 def _plugin_settings_read() -> dict[str, str]:
-    """Every plugin under `plugins/`, by name, against the source that reads its
-    settings. A plugin reads them out of a mapping, so what can be checked is whether
-    the setting's own name is written anywhere in it."""
     found = {}
     for package in sorted(pathlib.Path("plugins").glob("*/src/cora/plugins/*")):
         if package.is_dir():
@@ -167,14 +155,6 @@ def _plugin_settings_read() -> dict[str, str]:
 
 
 def _unread_plugin_setting(name: str) -> str | None:
-    """What is wrong with this `CORA_PLUGIN_…` name, or nothing.
-
-    The variable names the plugin and the setting both — `CORA_PLUGIN_TRAVEL_SEARCH_URL`
-    is `travel` reading `search_url` — so which half is which is settled against the
-    plugins that exist rather than guessed at the underscore. A name matching no shipped
-    plugin says nothing: the plugin how-to names settings of the plugin it is teaching
-    you to write.
-    """
     rest = name.removeprefix(config.PLUGIN_PREFIX).lower()
     read = _plugin_settings_read()
     for plugin, source in read.items():
@@ -224,8 +204,6 @@ def test_every_make_target_the_docs_name_exists() -> None:
 
 
 SHARED = ("install", "plugins", "run")
-"""The command blocks the tutorial and the how-to both carry. Marked in the how-to, so
-one page is where they are edited."""
 TUTORIAL = "docs/tutorial/first-session.md"
 STARTED = "docs/how-to/get-started.md"
 

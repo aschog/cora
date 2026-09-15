@@ -25,16 +25,9 @@ from .plan import Priced
 SEARCH = "https://serpapi.com/search"
 SETTING = "serpapi_key"
 ENDPOINT = "search_url"
-"""What a deployment sets to send the searches somewhere else — a stand-in that answers
-in the same shapes, so the plugin can be driven with no account and no network. A
-setting rather than a flag: nothing branches on it, and the one address is still the
-one address."""
 TIMEOUT = 20.0
 MOST = 3
-"""How many options come back. Three is what a person compares without a spreadsheet."""
 CANDIDATES = 8
-"""The most departures one search may try. The service counts every one of them against
-an hourly allowance, so a window sampled daily is widened rather than run."""
 STRIDE = 7
 WORKERS = 4
 DEFAULTS = {"currency": "EUR"}
@@ -98,13 +91,11 @@ class Field:
     built from these, so a field somebody wants later is a row here rather than an edit
     in two places that drift.
 
-    `sends_as` is the service's own name for it, and blank where the field is the
-    tool's own — a window is planned here and never sent. `write` is how the value is
-    written into the query, for the fields whose meaning is not their digits.
-
-    `fmt` is JSON Schema's `format`, which says what kind of string this is: it reaches
-    the model in the schema and the reader as the control the card draws, so a day is a
-    date picker rather than a box to mistype `YYYY-MM-DD` into.
+    `sends_as` is the service's own name for it, blank where the field is the tool's
+    own. `write` is how the value is written into the query. `fmt` is JSON Schema's
+    `format`, which reaches the model in the schema and the reader as the control the
+    card draws, so a day is a date picker rather than a box to mistype `YYYY-MM-DD`
+    into.
     """
 
     name: str
@@ -121,7 +112,6 @@ def _from(lowest: Any) -> str:
 
 
 def _stops(most: Any) -> str:
-    """The service counts stops from one, where a person counts them from none."""
     return str(int(most) + 1)
 
 
@@ -239,15 +229,6 @@ def _schema(fields: Sequence[Field]) -> dict[str, Any]:
 def _query(
     fields: Sequence[Field], given: Mapping[str, Any], key: str
 ) -> dict[str, Any]:
-    """The query as the service reads it: the key, and the fields that go to it.
-
-    A field the traveller did not state is left out rather than sent empty, because an
-    empty parameter is a filter to the service and an absent one is not.
-
-    Raises:
-        ToolRefusal: A value the model wrote cannot be written into the query — a
-            sentence rather than whatever `int` would have raised from inside a row.
-    """
     query: dict[str, Any] = {"api_key": key}
     for asked in fields:
         value = given.get(asked.name)
@@ -263,12 +244,6 @@ def _query(
 
 
 def _whole(given: Any, called: str) -> int:
-    """One number the model wrote, read.
-
-    Raises:
-        ToolRefusal: It is not a whole number. The model is a trust boundary like any
-            other, so what it writes is checked here rather than raised from `int`.
-    """
     try:
         return int(given)
     except (TypeError, ValueError) as unreadable:
@@ -278,11 +253,6 @@ def _whole(given: Any, called: str) -> int:
 
 
 def _day(given: Any, called: str) -> datetime.date:
-    """One date the model wrote, read.
-
-    Raises:
-        ToolRefusal: It is not a date, which is a sentence rather than a stack trace.
-    """
     try:
         return datetime.date.fromisoformat(str(given))
     except ValueError as unreadable:
@@ -449,11 +419,6 @@ class Search:
     def _fares(
         self, base: dict[str, Any], day: datetime.date, nights: int, currency: str
     ) -> list[Offer] | ToolRefusal:
-        """One departure priced, or the refusal it earned.
-
-        The refusal is carried back rather than raised, because one departure the
-        service choked on must not lose the departures that worked.
-        """
         back = day + datetime.timedelta(days=nights)
         try:
             found = self._read(
@@ -474,13 +439,6 @@ class Search:
         ]
 
     def _read(self, query: dict[str, Any]) -> dict[str, Any]:
-        """One call, read into a shape the rest of this does not have to guard.
-
-        Raises:
-            ToolRefusal: The service could not be reached, could not be read, or
-                refused the search. Its own words are never passed on, because the
-                query it is quoting carries the key.
-        """
         try:
             answer = self.fetch.get(self.url, params=query)
             answer.raise_for_status()
@@ -500,11 +458,6 @@ class Search:
 def _fare(
     flight: Any, out: datetime.date, back: datetime.date, currency: str
 ) -> Offer | None:
-    """One fare as a line, or nothing where the entry is not one.
-
-    A malformed entry beside good ones is dropped rather than refused: the alternative
-    is losing three usable fares to a fourth the service half-filled.
-    """
     if not isinstance(flight, dict):
         return None
     price = flight.get("price")
@@ -529,7 +482,6 @@ def _fare(
 def _stay(
     place: Any, currency: str, check_in: datetime.date, check_out: datetime.date
 ) -> Offer | None:
-    """One place to stay as a line, or nothing where the entry is not one."""
     if not isinstance(place, dict):
         return None
     rate = place.get("total_rate")
@@ -572,12 +524,6 @@ NOT_SEARCHING = "You did not give me the trip, so nothing was searched."
 def _asking(
     fields: Sequence[Field], prompt: str
 ) -> Callable[[dict[str, Any]], Card | None]:
-    """The card this search puts up when the model could not say what to search for.
-
-    Built from the search's own schema, so the fields the reader fills are the fields
-    the service is sent and the two cannot drift. A call that already names everything
-    required raises nothing: the reader is asked when there is something to ask.
-    """
     schema = _schema(fields)
 
     def asks(arguments: dict[str, Any]) -> Card | None:

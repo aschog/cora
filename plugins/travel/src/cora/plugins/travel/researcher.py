@@ -31,12 +31,6 @@ RESEARCH_SCHEMA = {
 
 ROUNDS = "rounds"
 DEFAULT_ROUNDS = 3
-"""How many lookups the researcher may make before it is asked to write up.
-
-Three because a trip question is usually two or three lookups — the documents, the
-forecast, and one thing the first two turned up. The host caps whatever is asked for, so
-this is a default and not a promise.
-"""
 
 TASK = (
     "Research this for someone planning a trip: {question}\n\n"

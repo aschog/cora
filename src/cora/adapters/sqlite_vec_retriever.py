@@ -10,8 +10,6 @@ from cora.domain.errors import RetrievalError
 from cora.ports.retrieval import RetrievedChunk
 
 LOCAL = "local"
-"""The one user a deployment has. The column is here so a second one costs a value
-rather than an alter and a backfill."""
 
 PASSAGES = (
     "create table if not exists cora_passages ("
@@ -25,12 +23,6 @@ VECTORS = (
     "id integer primary key, embedding float[{width}] distance_metric=cosine, "
     "scope text partition key)"
 )
-"""The width is the first vector's, and the file keeps it: an embedder of another width
-cannot be indexed into a store already holding one.
-
-ponytail: fixed at the first write, and the way out is deleting the store and uploading
-again — which is what a changed embedder needs anyway, its old vectors meaning nothing.
-"""
 
 
 def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
@@ -189,8 +181,6 @@ class SqliteVecRetriever:
         self._connection.close()
 
     def _drop(self, scope: str, file_hash: str) -> None:
-        """Every passage of one upload, out of both tables. The vectors go first, while
-        the spans naming them are still there to be selected."""
         upload = (self._user, scope, file_hash)
         self._connection.execute(
             "delete from cora_vectors where scope = ? and id in "
@@ -204,7 +194,6 @@ class SqliteVecRetriever:
         )
 
     def _written(self, scope: str, file_hash: str) -> list[int]:
-        """This user's passage ids for one upload, in the order they were cut."""
         return [
             row[0]
             for row in self._connection.execute(
@@ -215,8 +204,6 @@ class SqliteVecRetriever:
         ]
 
     def _indexed(self) -> bool:
-        """Whether anything has been written yet: the vector table is the first write's
-        doing, and a search before it is an empty field rather than a missing table."""
         return (
             self._connection.execute(
                 "select 1 from sqlite_master "
