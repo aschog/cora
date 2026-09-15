@@ -1,0 +1,22 @@
+[project]
+name = "cora-frontend-telegram"
+version = "0.1.0"
+description = "cora's Telegram frontend: a bot that answers the chats its deployment names"
+requires-python = ">=3.12"
+dependencies = [
+    "cora",
+    "httpx>=0.28.1",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.26,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "cora.frontends.telegram"
+
+# A layer's import bans live in a `.ruff.toml` in the directory they govern — that is
+# how ruff applies them — and ruff writes its cache beside one. Neither is something an
+# installed wheel has any use for, and the cache is a developer's machine in a binary.
+wheel-exclude = ["**/.ruff.toml", "**/.ruff_cache"]
+source-exclude = ["**/.ruff.toml", "**/.ruff_cache"]
