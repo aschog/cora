@@ -80,5 +80,4 @@ class FileDocuments:
 
 
 def _head(upload: str) -> str | None:
-    """What names this upload's file, or nothing where it is not an upload at all."""
     return upload[:HASH_LENGTH] if UPLOAD.match(upload) else None

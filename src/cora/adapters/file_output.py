@@ -50,16 +50,6 @@ class FileOutput:
         return str(landing)
 
     def _under(self, root: pathlib.Path, name: str) -> pathlib.Path:
-        """Where this name lands, once it is known to stay under the root.
-
-        Resolved before it is compared, so `..`, an absolute path and a symlink are all
-        read as what they would really reach — a check on the spelling of a name is a
-        check a second spelling gets round.
-
-        Raises:
-            ToolRefusal: The name is blank, cannot be resolved at all, or resolves to
-                the root itself or outside it.
-        """
         if not name.strip():
             raise ToolRefusal(ESCAPES.format(name=name))
         try:

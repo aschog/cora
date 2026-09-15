@@ -76,12 +76,6 @@ def _loaded(name: str, listing: tuple[Listed, ...]) -> Listed:
 
 
 def _entry(listed: Listed, folder: pathlib.Path | None) -> pathlib.Path:
-    """Where this plugin lies in the plugins folder, refusing one that lies elsewhere.
-
-    Taken from the listing rather than built from the name, so nothing a caller sends
-    can reach a path — and checked against the folder, so a plugin named as a module
-    is refused rather than resolved to a directory that means nothing.
-    """
     if folder is None:
         raise PluginRemovalError(listed.name, NO_FOLDER)
     if not deletable(listed, folder):
@@ -118,15 +112,6 @@ def fields_going(
 
 
 def _pinned_to(fields: tuple[str, ...], agent: Agent) -> tuple[str, ...]:
-    """Every conversation fixed to one of these fields, read one thread at a time.
-
-    A pin is a key of the thread's own state rather than a column of the record, so
-    finding them is a read per conversation — which is what the page already costs to
-    reopen one. A deployment recording no turns has no conversation to enumerate, and
-    so has none to delete. Neither has a thread that has never answered: it is listed
-    nowhere and is reached by nothing, which is what deleting a conversation already
-    leaves behind.
-    """
     if not fields or agent.conversations is None:
         return ()
     return tuple(
@@ -137,18 +122,6 @@ def _pinned_to(fields: tuple[str, ...], agent: Agent) -> tuple[str, ...]:
 
 
 def _delete(name: str, entry: pathlib.Path) -> None:
-    """Take the entry out of the folder, whatever shape it has.
-
-    A symlink is unlinked rather than followed: it answers `is_dir()` when it points at
-    one, and following it would delete the repository a deployment linked out of.
-
-    What the filesystem raises is not a refusal a reader could act on — a second delete
-    of one plugin finds the entry already gone — so it leaves here as cora's own
-    sentence. Nothing else is lost by that: the entry goes last.
-
-    Raises:
-        PluginRemovalError: The entry could not be taken out of the folder.
-    """
     try:
         if entry.is_symlink() or not entry.is_dir():
             entry.unlink()

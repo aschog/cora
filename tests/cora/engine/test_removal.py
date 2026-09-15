@@ -49,7 +49,6 @@ class _Threads:
 
 
 def _conversations(*threads: str) -> FakeConversations:
-    """A store holding one turn per thread, which is what makes it a session."""
     kept = FakeConversations()
     for thread_id in threads:
         kept.record(thread_id, Turn(question="q", result=ChatResult(answer="a")))

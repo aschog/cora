@@ -134,12 +134,6 @@ class Config:
 
 
 def _model(env: Mapping[str, str]) -> str:
-    """The model to ask, under either name.
-
-    The key and the base URL are named `OPENROUTER_*`, so the model gets guessed that
-    way too; `CORA_MODEL` is the documented name and stays the one that wins whenever it
-    names a model — blanks are not a name, and would otherwise outrank the alias.
-    """
     return _named(env, "CORA_MODEL", _named(env, "OPENROUTER_MODEL", DEFAULT_MODEL))
 
 
@@ -154,12 +148,6 @@ def _effort(env: Mapping[str, str]) -> str:
 
 
 def _named(env: Mapping[str, str], key: str, default: str) -> str:
-    """One setting, or its default. A blank is not a value.
-
-    A variable blanked rather than deleted reads as unset to whoever blanked it:
-    `sqlite3.connect("")` opens a private database that dies with the connection, and
-    every fact the user asked to keep goes with it.
-    """
     return env.get(key, "").strip() or default
 
 
@@ -170,7 +158,6 @@ def _plugin_modules(env: Mapping[str, str]) -> tuple[str, ...]:
 def _named_list(
     env: Mapping[str, str], key: str, default: tuple[str, ...]
 ) -> tuple[str, ...]:
-    """A comma-separated setting, in the order it was written, blanks dropped."""
     if key not in env:
         return default
     return tuple(named.strip() for named in env[key].split(",") if named.strip())

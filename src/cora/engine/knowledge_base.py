@@ -64,13 +64,6 @@ class KnowledgeBase:
         return len(chunks)
 
     def _repair(self, data: bytes, filename: str, file_hash: str, scope: str) -> None:
-        """Keep the text of an upload that was indexed before any text was kept.
-
-        An index that holds passages whose text was never kept hands out citations that
-        open onto nothing, and `contains` would leave it that way for good. Uploading
-        the same file again is the repair, and it costs the parse rather than the
-        embeddings.
-        """
         if self.documents.read(scope, file_hash) is not None:
             return
         text, _ = ingest(data, filename, self.loaders)
@@ -136,12 +129,6 @@ class KnowledgeBase:
         return self.retriever.sources(scope)
 
     def _written(self, hits: list[RetrievedChunk]) -> list[RetrievedChunk]:
-        """Each passage carrying the words at its span, read out of its own file.
-
-        A passage whose file is gone is left out rather than handed back empty: the
-        index is not the copy of record, and an empty passage would be cited as though
-        it said something.
-        """
         written = []
         for hit in hits:
             text = self.documents.read(hit.chunk.scope, hit.chunk.upload)
@@ -155,5 +142,4 @@ class KnowledgeBase:
 
 
 def _span(chunk: Chunk) -> Chunk:
-    """The chunk as the index keeps it: its span, and none of its words."""
     return replace(chunk, text="")

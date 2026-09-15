@@ -20,9 +20,6 @@ THREAD = "the-only-conversation"
 
 
 def _app(chat_model: ChatModel | None = None) -> App:
-    """The scripted model says what it is about to do before it does it. A script whose
-    tool round writes nothing agrees with the wire by luck, and would let a claim about
-    the pieces pass while a real model with a preamble broke it."""
     return assembled(
         chat_model=chat_model
         or ScriptedChatModel(

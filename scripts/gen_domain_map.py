@@ -115,7 +115,6 @@ def _abstract(node: nodes.ClassDef) -> bool:
 
 
 def _attribute(drawn: str) -> str:
-    """`name : type` as pyreverse renders it, in UML's `+ name: type`."""
     name, _, kind = drawn.partition(" : ")
     return f"+ {name}: {kind}" if kind else f"+ {name}"
 
@@ -266,13 +265,6 @@ def _compartment(lines: tuple[str, ...], fill: str) -> str:
 
 
 def _label(klass: Klass) -> str:
-    """One class in three compartments: the stereotype small and grey over the name on a
-    tinted head, then a rule above everything the class declares.
-
-    A `TypedDict` is drawn in the accent colour throughout. It is the one class here
-    that is not a value — the state a step returns keys of, and the shape the graph
-    engine merges — so the drawing says so before the stereotype is read.
-    """
     accented = klass.stereotype == ACCENTED
     frame = INK["accent"] if accented else INK["frame"]
     head = INK["accent-head"] if accented else INK["head"]
@@ -497,12 +489,6 @@ def stamp(source: str) -> str:
 
 
 def _class_of(painted: str, stroked: str) -> str:
-    """What this shape is, read off the colours it was drawn in.
-
-    The accent ink names a colour rather than a part, so a run of text carrying it is
-    the accented class's own writing: `accent-ink`, which the dark page recolours with
-    the rest of that box.
-    """
     if painted == INK["accent"] and not stroked:
         return "accent-ink"
     if painted in PAINTED and painted != stroked:
@@ -515,14 +501,6 @@ def _class_of(painted: str, stroked: str) -> str:
 
 
 def _classed(drawn: str) -> str:
-    """Every shape and every run of text named by a class, and stripped of its colour.
-
-    The colour leaves with the class it bought: a shape that kept one would be painted
-    twice — its own way on the light page and the stylesheet's way on the dark one — and
-    the reader whose renderer skips the media query would be shown the light drawing on
-    a dark ground. What is left carries no palette at all.
-    """
-
     def swap(found: re.Match[str]) -> str:
         element = found.group(0)
         attributes = dict(ATTRIBUTE.findall(element))
@@ -538,8 +516,6 @@ def _classed(drawn: str) -> str:
 
 
 def _described(drawn: str) -> str:
-    """The drawing announced to a reader who is hearing it rather than seeing it, the
-    way the component map announces itself."""
     return OPENING.sub(
         lambda found: found.group(1).replace(
             "<svg ", f'<svg role="img" aria-label="{DESCRIPTION}" ', 1
@@ -550,24 +526,10 @@ def _described(drawn: str) -> str:
 
 
 def _to_pixels(drawn: str) -> str:
-    """The drawing measured the way the component map is measured.
-
-    graphviz sizes the root in points and writes the same numbers into the `viewBox`, so
-    a page draws it a third larger than it was laid out — and a third larger than the
-    map beside it. Dropping the unit makes one unit one pixel, which is what the numbers
-    already say.
-    """
     return SIZED.sub(lambda found: f'{found.group(1)}="{found.group(2)}"', drawn, 2)
 
 
 def _to_the_width_it_is_given(drawn: str) -> str:
-    """Wide as whatever it is opened in, and never wider.
-
-    A width in pixels is a demand: a window or a column narrower than the drawing gets
-    it with the right-hand side cut off. The `viewBox` carries the shape already, so
-    asking for the full width and no height leaves the reader's container to say how big
-    it is, and the ratio to say how tall.
-    """
     return SIZED_IN_PIXELS.sub('width="100%"', drawn, count=1)
 
 

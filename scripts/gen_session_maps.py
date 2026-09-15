@@ -111,7 +111,6 @@ def _head_widths(sequence: Sequence) -> list[float]:
 
 
 def _placed(sequence: Sequence) -> tuple[list[Sent], list[Frame], float]:
-    """Every message and every fragment given a height, top down in reading order."""
     column = {line.role: index for index, line in enumerate(sequence.lifelines)}
     sent: list[Sent] = []
     frames: list[Frame] = []
@@ -142,12 +141,6 @@ def _placed(sequence: Sequence) -> tuple[list[Sent], list[Frame], float]:
 
 
 def _centres(sequence: Sequence, sent: list[Sent]) -> list[float]:
-    """Where each lifeline stands: wide enough apart that no label runs into one.
-
-    A message needs room for its own text between the two lifelines it runs between, so
-    the gaps it spans are widened to hold it. Nothing here is a fixed column width: the
-    drawing is as wide as what is said on it.
-    """
     heads = _head_widths(sequence)
     half = [width / 2 for width in heads]
     gaps = [half[index] + half[index + 1] + HEAD_GAP for index in range(len(heads) - 1)]
@@ -168,12 +161,6 @@ def _centres(sequence: Sequence, sent: list[Sent]) -> list[float]:
 
 
 def _overhang(sequence: Sequence, sent: list[Sent]) -> float:
-    """How far past the last lifeline the drawing reaches.
-
-    A message an object sends itself is drawn to the right of its own lifeline, and on
-    the last one there is no next column to widen — so the room is taken off the edge of
-    the drawing instead, where otherwise the label would be clipped away.
-    """
     last = len(sequence.lifelines) - 1
     loops = [one for one in sent if one.frm == one.to == last]
     if not loops:
@@ -182,9 +169,6 @@ def _overhang(sequence: Sequence, sent: list[Sent]) -> float:
 
 
 def _bars(sent: list[Sent]) -> list[tuple[int, float, float]]:
-    """Where each lifeline is busy: from the message that started it to the one that
-    answered. A call the source never answers gets a stub — it says the message was
-    taken, and claims nothing about how long that took."""
     open_: list[Sent] = []
     bars: list[tuple[int, float, float]] = []
     for message in sent:

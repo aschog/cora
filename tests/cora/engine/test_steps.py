@@ -106,9 +106,6 @@ def _searcher(*hits: RetrievedChunk, name: str = SEARCH_TOOL_NAME):
 
 
 def _fetching(name: str = "forecast") -> Tool:
-    """A tool that hands back material cora did not write, said at registration rather
-    than read off the payload: what a service returned is a plain string like any
-    other, so nothing about its shape could have told the turn where it came from."""
     return Tool(
         name=name,
         description="Fetch a forecast.",
@@ -231,7 +228,6 @@ def _registry(
     screens: tuple[Handler, ...] = (),
     briefs: tuple[Handler, ...] = (),
 ) -> Registry:
-    """Cora's own screen first, as an assembled app registers it, then the plugin's."""
     return Registry(
         (
             _subscribed(SCREENING, refuse_nothing_to_answer, CORA),
@@ -251,7 +247,6 @@ def _focus(instructions: str = "SYS", memory: Memory | None = None) -> FocusStep
 
 
 def _routing(*offered: str) -> tuple[RouteStep, ScriptedChatModel]:
-    """A router over named fields, each with instructions of its own to be outlined."""
     model = ScriptedChatModel([ModelReply(text=offered[0] if offered else "none")])
     return (
         RouteStep(
@@ -342,8 +337,6 @@ def test_the_brief_runs_cora_then_the_domains_then_the_users_own_notes() -> None
 def _replied(
     *calls: ToolCall, text: str = "The sum is 3.", rounds: int = 1
 ) -> AgentState:
-    """A turn that has had `rounds` model calls, the last of them this reply. Rounds are
-    counted off the trace, so a test states them by saying what the model decided."""
     earlier = [
         Message(role="assistant", content=f"round {number}")
         for number in range(1, rounds)
@@ -634,8 +627,6 @@ def _proposing(*names: str) -> AgentState:
 
 
 def _calling(name: str, **arguments: Any) -> AgentState:
-    """One call, with the arguments a test needs it to carry — where `_proposing`'s own
-    `{"what": name}` would be refused by the tool's schema before it ran."""
     call = ToolCall(name=name, arguments=arguments, call_id="c1")
     return {"messages": [Message(role="assistant", content="", tool_calls=(call,))]}
 
@@ -759,8 +750,6 @@ def _gathering(effect: bool = False) -> Tool:
 
 
 def _confirmed() -> Answered:
-    """The reader taking the way on off a card that asked for nothing."""
-
     def answer(asks: Asks) -> Answer:
         return Answer(action="Search", values={})
 
@@ -808,8 +797,6 @@ def test_the_values_the_reader_wrote_are_what_the_tools_are_handed() -> None:
 
 
 def _keeper(name: str = "keep", note: str = "note", text: str | None = "Kyoto") -> Tool:
-    """A tool that keeps something while its own call runs, as a plugin's does."""
-
     def run() -> str:
         keeping.keep("keeper", note, text)
         return f"kept {text}"

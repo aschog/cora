@@ -70,7 +70,6 @@ log = logging.getLogger(__name__)
 
 
 def _nothing_to_delete(name: str) -> None:
-    """What an app composed without a plugins folder answers a delete with."""
     raise PluginRemovalError(name, NO_FOLDER)
 
 
@@ -286,12 +285,6 @@ def assemble(
 
 
 def _offered(scopes: tuple[str, ...], registry: Registry) -> tuple[str, ...]:
-    """The configured fields, then everything the loaded plugins registered under.
-
-    One rule for a field: it is offered because something brings it. Sorted past the
-    configured ones and each named once — a field is a field, however many
-    registrations carry it.
-    """
     brought = sorted(
         {entry.scope for entry in registry.entries if entry.scope is not None}
     )
@@ -299,25 +292,11 @@ def _offered(scopes: tuple[str, ...], registry: Registry) -> tuple[str, ...]:
 
 
 def _announce(plugins: tuple[Extension, ...]) -> None:
-    """Say in the log what loaded, before any of it is asked to register.
-
-    Ahead of registering rather than after it, so a plugin that fails to register is
-    read against the list it was named in — an operator debugging a refusal is owed
-    what else was loaded. What loaded is what the deployment named, not what
-    registered: a plugin that registered nothing is the one they most need to see.
-    """
     if plugins:
         log.info("plugins loaded: %s", ", ".join(plugin.source for plugin in plugins))
 
 
 def _warn_unscreened(registry: Registry) -> None:
-    """Warn when nothing a plugin registered screens the user's input.
-
-    A screened app and an unscreened one are otherwise indistinguishable once running,
-    so an unscreened one is a warning: it is the level that reaches the user without
-    `CORA_DEBUG`, where the `cora` logger carries no handler. A plugin may register
-    only tools, so what is announced is the screen, not the count.
-    """
     if not registry.screened_by_a_plugin():
         log.warning("no plugin screens what the user types")
 
@@ -332,19 +311,6 @@ def _registered(
     settings: dict[str, dict[str, str]],
     top_k: int,
 ) -> Registry:
-    """Hand each plugin a host of its own, and keep what it registered.
-
-    Registering is what loading could not do: a host is made of the parts assembled
-    here, so `extend` is called now rather than when the module was imported.
-
-    Cora registers first, under its own name: its screen is a subscriber like any
-    other, and being first is what "cora's screen runs first" is made of.
-
-    Raises:
-        PluginLoadError: A plugin raised while registering. The module is named, and
-            the turn it would have served never starts.
-        ConfigurationError: What they registered cannot be composed.
-    """
     entries = []
     for plugin in (Extension(module=CORA, extend=coras_own_screen), *plugins):
         host = PluginHost(
@@ -374,13 +340,6 @@ def _coras_own_tools(
     top_k: int,
     memory: Memory | None,
 ) -> tuple[Tool, ...]:
-    """What every turn may call, whatever it is running under.
-
-    The plugins' tools are not here: which of them a turn may call depends on its
-    scopes, so they are read off the registry per turn rather than fixed at assembly.
-    No memory slot behind the app means no `remember` offered, so the absence is visible
-    to the model rather than a tool that quietly forgets.
-    """
     remembering = (remember_tool(memory),) if memory is not None else ()
     return (
         search_tool(context_source, top_k),
@@ -427,15 +386,6 @@ def _folder_of(config: Config) -> pathlib.Path:
 def _composer(
     config: Config, folder: pathlib.Path
 ) -> Callable[[tuple[Extension, ...]], App]:
-    """Every slot that outlives a folder change, filled once and closed over.
-
-    The adapters are imported here rather than at the top, so importing `cora.app` costs
-    nothing a frontend does not use — the embedding model in particular is loaded on
-    first use, not on import.
-
-    Raises:
-        AdapterError: A store could not be opened.
-    """
     from cora.adapters.file_documents import FileDocuments
     from cora.adapters.file_output import FileOutput
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel

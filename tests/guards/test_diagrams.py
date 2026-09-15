@@ -24,7 +24,6 @@ SVG = "{http://www.w3.org/2000/svg}"
 
 
 def _text_of(path: pathlib.Path, kind: str) -> set[str]:
-    """Every `text` node the drawing gave that class."""
     root = ET.parse(path).getroot()
     return {
         (node.text or "").strip()

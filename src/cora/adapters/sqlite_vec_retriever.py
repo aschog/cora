@@ -189,8 +189,6 @@ class SqliteVecRetriever:
         self._connection.close()
 
     def _drop(self, scope: str, file_hash: str) -> None:
-        """Every passage of one upload, out of both tables. The vectors go first, while
-        the spans naming them are still there to be selected."""
         upload = (self._user, scope, file_hash)
         self._connection.execute(
             "delete from cora_vectors where scope = ? and id in "
@@ -204,7 +202,6 @@ class SqliteVecRetriever:
         )
 
     def _written(self, scope: str, file_hash: str) -> list[int]:
-        """This user's passage ids for one upload, in the order they were cut."""
         return [
             row[0]
             for row in self._connection.execute(
@@ -215,8 +212,6 @@ class SqliteVecRetriever:
         ]
 
     def _indexed(self) -> bool:
-        """Whether anything has been written yet: the vector table is the first write's
-        doing, and a search before it is an empty field rather than a missing table."""
         return (
             self._connection.execute(
                 "select 1 from sqlite_master "

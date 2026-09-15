@@ -187,7 +187,6 @@ whether the conversation decided that or the question did."""
 
 
 def _nothing(state: AgentState) -> AgentState:
-    """A step with nothing to do, which is what a name alone contributes."""
     return {}
 
 
@@ -272,27 +271,11 @@ class ScreenStep:
 
 
 def _pinned_field(state: AgentState) -> frozenset[str]:
-    """The field a turn is in before it has been routed, which is the thread's pin.
-
-    Screening runs ahead of routing, so the scopes a turn ends up under are not settled
-    here — but a pinned thread's field is, and it is what a screen reading the documents
-    should read. An unpinned turn has no field yet and reads the default one.
-
-    The pin a turn *asks* for counts too, so the turn that pins a thread screens in the
-    same field as every turn after it: `Agent.answer` has already refused a pin that
-    fights the one the thread holds, so what arrives here is either the held field or
-    the field this thread is about to be in for good.
-    """
     pinned = state.get("pin", "") or state.get("pinning", "")
     return frozenset({pinned}) if pinned else scoped(state)
 
 
 def _focused(scopes: tuple[str, ...], how: str) -> AgentState:
-    """The scopes a turn runs under, and the one line saying where they came from.
-
-    `candidates` is emptied by every settling, so a turn that had to ask leaves nothing
-    behind for the next turn on the thread to be asked about again.
-    """
     return {
         "scopes": list(scopes),
         "candidates": [],
@@ -342,12 +325,6 @@ class RouteStep:
         return self._read(state["question"])
 
     def _read(self, question: str) -> AgentState:
-        """Which field the question belongs to, as the model reads it.
-
-        A question belonging to none is answered plainly, and so is one the model could
-        not be asked about: routing that fails leaves a turn less focused, never
-        unanswered. One that belongs to two is left for *focus* to put to the reader.
-        """
         if self.chat_model is None:
             return _focused((DEFAULT_SCOPE,), NO_FIELD_LOADED)
         try:
@@ -362,12 +339,6 @@ class RouteStep:
         return {"scopes": [], "candidates": list(candidates)}
 
     def _named(self, said: str) -> tuple[str, ...]:
-        """The available scopes the reply names, in the order it named them.
-
-        Read against what is on offer rather than trusted: a model answering with prose,
-        with a field nobody loaded, or with 'none' names nothing, and a turn that names
-        nothing is answered plainly.
-        """
         offered = {scope.lower(): scope for scope in self.available}
         found = [
             offered[word]
@@ -422,14 +393,6 @@ class FocusStep:
         return {"brief": self._brief(scoped(state), written), "trace": written}
 
     def _asked(self, contested: tuple[str, ...]) -> AgentState:
-        """Put the fork to the reader rather than picking one of two fields for them.
-
-        The stop is this step's own rather than the round's `ask_user`: the scope has to
-        be settled before the brief is written, which is a step before the model is
-        offered a tool at all. Which makes this the second place a label is checked
-        against the card it was offered on: `AskStep` is the other, through `_offered`,
-        so that rule moves in two places until a pause has one owner.
-        """
         fork = Decision(
             question=WHICH_FIELD,
             options=tuple(
@@ -444,13 +407,6 @@ class FocusStep:
         return _focused((DEFAULT_SCOPE,), NOTHING_CHOSEN_FIELD)
 
     def _brief(self, scopes: frozenset[str], trace: list[TraceStep]) -> str:
-        """Cora first, then the scopes it was given, then the user's own notes.
-
-        No memory in the slot means no remembering: the rule is left out with the tool
-        it names, so the model is never told to call what it was not offered. What the
-        brief's own handlers make of the result is the last word on it — cora's
-        preamble included, because a deployment that loaded a plugin asked for it.
-        """
         facts, unread = self._recalled()
         if unread:
             trace.append(MemoryUnread())
@@ -473,11 +429,6 @@ class FocusStep:
         )
 
     def _recalled(self) -> tuple[tuple[Fact, ...], bool]:
-        """The facts to state, and whether reading them failed.
-
-        A memory that cannot be read costs the brief its facts and nothing more — a
-        question with nothing to do with memory is still a question.
-        """
         if self.memory is None:
             return (), False
         try:
@@ -533,16 +484,6 @@ class ModelStep:
         return {"messages": [appended], "trace": [decided(reply)]}
 
     def _offered(self, state: AgentState) -> tuple[Tool, ...]:
-        """Cora's own tools, and the registered ones this turn's scopes reach.
-
-        A tool out of scope is not offered rather than offered and refused: the model
-        is told what it can do, and a list it cannot use is a list it will try.
-
-        One that gathers is offered saying so. A model shown a required argument it
-        cannot supply asks in prose, which is the right thing to do about every other
-        tool and the wrong thing about this one — the card is what asks, and it is never
-        reached by a call nobody made.
-        """
         return tuple(
             _gathers(tool)
             for tool in (*self.tools, *self.registry.tools(scoped(state)))
@@ -613,40 +554,12 @@ FILLED_IN = "The user filled this call in — {values}. It ran on those.\n\n"
 
 
 def _refuse_one_value(card: Card) -> None:
-    """Refuse a card that asks the reader for a single value.
-
-    The rule over a plugin's card. Cora's own form is held to it by `card_from`, which
-    reads the fields the model named before there is a card at all — the same sentence,
-    at the earliest place each kind of ask can be refused. The other two cards a turn
-    can stop on are held to nothing: the fork between remembered values, and the call
-    awaiting approval, whose fields are read rather than written.
-
-    What is counted is the fields the reader may write. A card of four rows asking for
-    one value is asking for one, and a card of one row nobody writes in is asking for
-    nothing at all — it puts what a tool worked out and waits for a yes, which is a stop
-    no sentence could have made.
-
-    Raises:
-        ToolRefusal: The card asks for exactly one value, and says which — so the model
-            asks for it in prose rather than asking again the same way.
-    """
     asked = tuple(field for field in card.fields if field.editable)
     if len(asked) == 1:
         raise ToolRefusal(ONE_VALUE.format(name=asked[0].name))
 
 
 def _card_for(tool: Tool | None, call: ToolCall) -> Card | None:
-    """What this call has to put to the user first, or nothing to run as called.
-
-    The one place a plugin's `asks` runs, and so the place it is contained: the gate is
-    a step of the core, and a plugin that broke inside it would take the turn down
-    rather than cost it the call. Contained the way `ToolStep._ran` contains a refusing
-    handler — the round hears about it, in the shape a refused call already has.
-
-    Raises:
-        ToolRefusal: The plugin's `asks` broke, or answered with something that is not
-            a card. Either way the call is not run and the round is told why.
-    """
     if tool is None or tool.asks is None:
         return None
     try:
@@ -667,32 +580,14 @@ def _card_for(tool: Tool | None, call: ToolCall) -> Card | None:
 
 
 def _stated(values: dict[str, Any]) -> str:
-    """What the user filled the call in with, said to the model.
-
-    The values live in state rather than in the transcript, so this is the only thing
-    that tells the model what it is answering about: a tool whose result does not
-    restate the city and the dates would otherwise have cora writing about a search
-    nobody can see.
-    """
     return FILLED_IN.format(values=_values(values) or "with nothing")
 
 
 def _values(written: dict[str, Any]) -> str:
-    """What the reader wrote, in the order a reader would check it — by name."""
     return ", ".join(f"{name}={value!r}" for name, value in sorted(written.items()))
 
 
 def _gathers(tool: Tool) -> Tool:
-    """The tool as the model is offered it, saying so if it gathers its arguments.
-
-    Offered with nothing required, because the card is what requires it. A schema
-    naming arguments the model must supply says the opposite of `GATHERS`, and the
-    schema is the half a model reads as binding — so the two cannot be left disagreeing.
-
-    What the tool takes is unchanged. The runtime validates the schema the plugin
-    registered, and the card is built from that one too, so a card must offer every
-    argument the schema requires. One it leaves out is one nobody supplies.
-    """
     if tool.asks is None:
         return tool
     return replace(
@@ -793,17 +688,6 @@ class ToolStep:
         before: list[TraceStep],
         after: list[TraceStep],
     ) -> tuple[ToolResult, Inside]:
-        """One call, checked before it runs and its result handed on afterwards.
-
-        A refusal costs the turn the call and nothing else, so it comes back as the
-        result the model reads — the same shape a tool's own refusal already has.
-
-        Args:
-            before: Where the steps taken ahead of the call go.
-            after: Where the steps taken on its result go, which the caller appends
-                below the call itself: a reader follows a trace downwards, and a step
-                that changed a result cannot stand above the call that produced it.
-        """
         # A copy of the arguments, because a refusing event may refuse its value and
         # may not change it — and a dict inside a frozen call is changeable. One
         # rewritten in place would change what ran and leave no step saying so.
@@ -940,17 +824,6 @@ class GateStep:
         messages: list[Message],
         trace: list[TraceStep],
     ) -> tuple[tuple[ToolCall, ...], dict[str, dict[str, Any]]]:
-        """The round's calls, with every one that asks the user filled in by them.
-
-        Done here rather than in a step of its own for the reason the gate is a step at
-        all: it runs no tool, so a resumed node replays it for free — and a call whose
-        arguments the user wrote still has to pass the gate before it is proposed.
-
-        What they wrote is contributed as state rather than written into the transcript:
-        a call the model made is what the model said, and an assistant message cora
-        forged to carry the user's values would be a round nobody spent. The trace shows
-        the call as it really runs, which is where the reader reads it.
-        """
         outstanding: list[ToolCall] = []
         filled: dict[str, dict[str, Any]] = {}
         for call in calls:
@@ -1004,11 +877,6 @@ class GateStep:
     def _effecting(
         self, calls: tuple[ToolCall, ...], offered: dict[str, Tool]
     ) -> tuple[tuple[ToolCall, Tool], ...]:
-        """The round's outstanding calls that declared an effect, with their tools.
-
-        Paired with the tool because the proposal is worded out of it: what the user is
-        shown is what the tool says it does, not a sentence cora wrote about the name.
-        """
         return tuple(
             (call, tool)
             for call in calls
@@ -1016,7 +884,6 @@ class GateStep:
         )
 
     def _offered(self, state: AgentState) -> dict[str, Tool]:
-        """Every tool this turn may call, by name — cora's own and the scoped ones."""
         return {
             tool.name: tool
             for tool in (*self.tools, *self.registry.tools(scoped(state)))
@@ -1067,11 +934,6 @@ class AskStep:
             )
 
     def _picked(self, call: ToolCall) -> AgentState:
-        """One fact settled between the values the model found.
-
-        Raises:
-            ToolRefusal: The call is not a decision.
-        """
         decision = decision_from(call.arguments)
         chosen = _taken(decision, self.pause(decision))
         return _settled(
@@ -1083,15 +945,6 @@ class AskStep:
         )
 
     def _filled_in(self, call: ToolCall) -> AgentState:
-        """The values the model asked for, as the reader wrote them.
-
-        What they wrote is the call's result rather than a round cora forged on their
-        behalf: the model reads it the way it reads any tool, and nothing in the
-        transcript claims to be something the model said.
-
-        Raises:
-            ToolRefusal: The call is not an ask cora can put to a reader.
-        """
         card = card_from(call.arguments)
         written = _written(card, self.pause(card))
         if not written:
@@ -1154,19 +1007,6 @@ def scoped(state: AgentState) -> frozenset[str]:
 
 
 def _remembered(facts: tuple[Fact, ...]) -> tuple[str, ...]:
-    """The user's own notes as a section of the brief, or no section at all.
-
-    Kept user input, so it is labelled as such and stated after the rules — the same
-    reason retrieved passages travel in a `tool` message behind a notice.
-
-    Where the notes hold one subject at several values, that is said outright rather
-    than left to be noticed. `ASK_RULE` tells the model to spot a fact held two ways and
-    ask which was meant; three models were run against a store holding one at three, and
-    each failed differently — one answered without asking, one raised a form for other
-    values and filled this one in from a guess, one alternated. Cora can see the shape
-    itself, so it says it, and the rule above is left holding only the part that needs a
-    reader: whether this answer turns on it.
-    """
     if not facts:
         return ()
     listed = "\n".join(f"- {fact.text}" for fact in facts)
@@ -1177,14 +1017,6 @@ def _remembered(facts: tuple[Fact, ...]) -> tuple[str, ...]:
 
 
 def _conflicts(facts: tuple[Fact, ...]) -> tuple[str, ...]:
-    """Every subject the notes hold at more than one value, or nothing.
-
-    ponytail: a subject is the words a note opens with before its first figure, which
-    reads "bodyweight 75 kg, from the coach notes" as bodyweight. It finds the numeric
-    disagreements — a weight, a height, a target — and no others; a fact contradicted in
-    prose is still the model's to notice. Widen it when a case turns up that it misses,
-    rather than guessing at one now.
-    """
     held: dict[str, set[str]] = {}
     for fact in facts:
         subject, value = _subject_and_value(fact.text)
@@ -1199,10 +1031,6 @@ def _conflicts(facts: tuple[Fact, ...]) -> tuple[str, ...]:
 
 
 def _subject_and_value(text: str) -> tuple[str, str]:
-    """What a note is about, and the figure it puts on it.
-
-    Neither, where the note carries no figure at all.
-    """
     words = text.split()
     at = next(
         (i for i, word in enumerate(words) if any(c.isdigit() for c in word)), None
@@ -1213,16 +1041,6 @@ def _subject_and_value(text: str) -> tuple[str, str]:
 
 
 def _requested_calls(state: AgentState) -> tuple[ToolCall, ...]:
-    """The round's calls that nothing has answered yet, as they will really be made.
-
-    The last assistant message asked for them and a `tool` message settles one, so a
-    round whose question has already been put to the user arrives at the tools with that
-    call spoken for — and the tools run only what is left of the round.
-
-    A call the user filled in carries their values rather than the model's: the gate put
-    the card and recorded what came back, and every reader of the round from there on is
-    owed the call as it stands rather than as it was written.
-    """
     asked: tuple[ToolCall, ...] = ()
     answered: set[str] = set()
     for message in _this_turn(state):
@@ -1265,19 +1083,6 @@ def ask_in(state: AgentState) -> ToolCall | None:
 
 
 def _already_asked(state: AgentState) -> bool:
-    """Whether this turn has put its one question to the reader already.
-
-    The fork only: asked twice about a fact it holds at two values, cora is guessing at
-    what it already has, and the second question says the first settled nothing. A form
-    is the other way round — the reader who skipped a box left a gap cora cannot fill
-    from anywhere, and the only other way to close it is the prose a form replaces. How
-    many of those a turn may put up is the round budget's to say, as it is for any other
-    tool.
-
-    Read off the trace rather than off the calls: an ask that was refused never reached
-    the reader, and spending the turn's one question on a malformed call would leave
-    cora guessing between the very values it stopped for.
-    """
     return any(
         isinstance(step, ToolUse) and step.name == ASK_TOOL_NAME and not step.failed
         for step in tuple(state.get("trace", ()))[state.get("trace_start", 0) :]
@@ -1285,20 +1090,6 @@ def _already_asked(state: AgentState) -> bool:
 
 
 def _written(card: Card, answer: Answer | None) -> dict[str, Any] | None:
-    """What the reader filled in, out of what came back — or nothing, if they left.
-
-    Read rather than trusted, the way `_taken` reads a label: the answer reached the run
-    from outside it, so an action the card never offered is nobody leaving it filled in,
-    and a value for a field it put up to be read is dropped rather than written over the
-    argument it was shown beside.
-
-    A box that came up empty and went back empty is dropped with them: the reader
-    skipped it rather than answering it with nothing, and written through it would be
-    reported to the model and the trace as filled in. A box that came up holding
-    something is not — emptying that one is the reader striking the value out, and a
-    card that could not carry an erasure would leave them looking at a filter they
-    cleared and a search that still ran on it.
-    """
     if answer is None or answer.action is None:
         return None
     if answer.action not in {action.answer for action in card.actions}:
@@ -1312,21 +1103,10 @@ def _written(card: Card, answer: Answer | None) -> dict[str, Any] | None:
 
 
 def _blank(value: Any) -> bool:
-    """Whether a box holds nothing.
-
-    Whitespace counts, and `False` and `0` do not: a cleared text box arrives as an
-    empty string, and an unticked checkbox is an answer.
-    """
     return value is None or (isinstance(value, str) and not value.strip())
 
 
 def _taken(decision: Decision, answer: Answer | None) -> str | None:
-    """Only an action that was on the card counts as a choice.
-
-    Whatever answered the pause reached the run from outside it, and a value nobody
-    offered would be arbitrary text arriving as a tool result — the one message class a
-    round is not told to distrust.
-    """
     if answer is None or answer.action is None:
         return None
     offered = {action.answer for action in decision.card.actions}
@@ -1336,14 +1116,6 @@ def _taken(decision: Decision, answer: Answer | None) -> str | None:
 def _settled(
     call: ToolCall, *, asked: str, said: str, outcome: str, failed: bool
 ) -> AgentState:
-    """The tool message the round reads, and the step the reader sees.
-
-    `said` is what the round is told and `outcome` what the reader's plan shows: a
-    decline tells the model what to do next, which is no part of what happened. The
-    question is traced rather than the payload it arrived in, because an ask's arguments
-    are a nested list of options that would fill the panel with JSON — and the options
-    are on the card the reader answered.
-    """
     return {
         "messages": [Message(role="tool", content=said, tool_call_id=call.call_id)],
         "trace": [
@@ -1363,9 +1135,4 @@ def _this_turn(state: AgentState) -> tuple[Message, ...]:
 
 
 def _rounds(state: AgentState) -> int:
-    """Model calls this turn, counted off the transcript.
-
-    One assistant message is one round, so the count cannot drift from what was actually
-    said, or survive into the next turn.
-    """
     return sum(1 for message in _this_turn(state) if message.role == "assistant")

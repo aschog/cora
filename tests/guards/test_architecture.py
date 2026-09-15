@@ -2,8 +2,9 @@
 
 The layer boundaries — who may import whom — are a deny-list, and a `.ruff.toml` per
 layer holds them, enforced on every file by having been put in that directory. What is
-left here is the other two shapes: an allow-list, which no lint rule expresses, and a
-rule about the words a file uses rather than the modules it imports.
+left here are the other three shapes: an allow-list, which no lint rule expresses, a
+rule about the words a file uses rather than the modules it imports, and the half of
+the docstring policy `pydocstyle` has no rule for — a private name carries none.
 """
 
 import ast
@@ -74,7 +75,6 @@ def _shipped_as(path: pathlib.Path) -> pathlib.Path:
 
 
 def _imported_roots(path: pathlib.Path) -> set[str]:
-    """The top-level name of every absolute import a file makes."""
     tree = ast.parse(path.read_text())
     roots: set[str] = set()
     for node in ast.walk(tree):
@@ -86,12 +86,6 @@ def _imported_roots(path: pathlib.Path) -> set[str]:
 
 
 def _is_technology(root: str) -> bool:
-    """Anything that is neither the standard library nor `cora` itself.
-
-    Named by what a layer may use, never by what the manifests declare: the environment
-    holds every transitive distribution too, and importing one of those binds a layer
-    exactly as tightly.
-    """
     return root != "cora" and root not in sys.stdlib_module_names
 
 
@@ -125,8 +119,6 @@ def test_an_extension_binds_only_the_technology_its_own_portion_was_given(
 
 
 def _names(source: str) -> set[str]:
-    """Every word a file uses as a name rather than as prose — identifiers, string
-    constants outside docstrings, and anything a docstring quotes as code."""
     tree = ast.parse(source)
     prose = {
         id(node.body[0].value)
@@ -227,8 +219,6 @@ def _domain_module(name: str) -> ModuleType:
 
 
 def _states_a_shape(kind: type) -> bool:
-    """The four things in the domain that are not values: an abstract base, the state a
-    step returns keys of, the pause that is raised, and a protocol."""
     return (
         inspect.isabstract(kind)
         or typing.is_typeddict(kind)
@@ -324,4 +314,39 @@ def test_every_layer_says_in_its_own_directory_what_it_may_not_reach_for(
 ) -> None:
     assert (layer / ".ruff.toml").is_file(), (
         f"{layer} has no .ruff.toml, so ruff bans it from nothing"
+    )
+
+
+def _documented_privates(path: pathlib.Path) -> list[str]:
+    return sorted(
+        node.name
+        for node in ast.walk(ast.parse(path.read_text()))
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+        and node.name.startswith("_")
+        and not (node.name.startswith("__") and node.name.endswith("__"))
+        and ast.get_docstring(node)
+    )
+
+
+def test_no_private_name_carries_a_docstring() -> None:
+    """A docstring is written for a reader who cannot see the body, and a private name
+    has no such reader: no page renders one and nothing outside the module may call it.
+    What a helper is for belongs in its name, and what its body does is the body's.
+    """
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--", "*.py"],
+        capture_output=True,
+        check=True,
+        cwd=workspace.ROOT,
+        text=True,
+    )
+    documented = sorted(
+        f"{name}: {private}"
+        for name in listed.stdout.split("\0")
+        if name
+        for private in _documented_privates(workspace.ROOT / name)
+    )
+
+    assert documented == [], "\n".join(
+        ["these are private and documented:", *documented]
     )

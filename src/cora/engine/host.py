@@ -302,16 +302,6 @@ class PluginHost:
         runtime: ToolRuntime,
         left: list[int],
     ) -> str:
-        """One delegated loop, spending the allowance the outermost one opened.
-
-        Spending it all without reaching an answer is not a failure of the turn's: the
-        turn did not overspend, one of its calls did. The loop is asked to write up what
-        it found, and the report says it stopped early.
-
-        Raises:
-            ToolRefusal: The allowance ran out and the write-up came back empty, so
-                there is nothing to report. The model is owed a sentence saying so.
-        """
         while left[0] > 0:
             left[0] -= 1
             reply = self.model.complete(tuple(said), offered)
@@ -337,25 +327,6 @@ class PluginHost:
         return self._closed_out(said)
 
     def _closed_out(self, said: list[Message]) -> str:
-        """One last call, with nothing to call, asking the loop to write up what it has.
-
-        The rounds bought lookups, and what they found is in `said` — throwing that away
-        because the last round did not happen to end in an answer wastes every round
-        before it. So the loop is asked for a write-up instead, offered no tools so the
-        asking cannot become another lookup.
-
-        A loop that gathered nothing is not asked at all. It has nothing to write up,
-        and asking anyway costs a model call the allowance never authorised — which is
-        how a loop arriving to find the pot already empty turns the width of a fan-out
-        into a bill, the model choosing the width. It is also the one way a heading
-        reading "what it had found" could end up over a model's answer to a question it
-        looked nothing up for.
-
-        Raises:
-            ToolRefusal: Nothing was gathered to write up, or the write-up came back
-                empty. Nothing is dressed up as a report, so these are the cases the
-                loop still gives up on.
-        """
         if not any(message.role == "tool" for message in said):
             raise ToolRefusal(OVERSPENT)
         said.append(Message(role="user", content=CLOSE_OUT))
@@ -367,28 +338,6 @@ class PluginHost:
         return f"{STOPPED_EARLY}\n\n{written}"
 
     def _offered(self, tools: tuple[Tool, ...]) -> tuple[Tool, ...]:
-        """What a delegated loop may call.
-
-        Cora's document search, and what the plugin passed. None of cora's own writing
-        or stopping tools is in that set — not because they are filtered out, but
-        because they are never put in. The search is described as a reader that hands
-        out no numbers is offered it, which is what this loop is.
-
-        A tool that waits for the user is withheld, however it got here: one declaring
-        an effect waits for their word, and one declaring `asks` waits for them to fill
-        its card in. Neither can happen here — the gate is a step of the turn and a
-        delegated loop has none, so a gathering tool offered here would be called with
-        the arguments missing and refused by its own schema. That is also what keeps a
-        nested turn from needing a nested approval. Withheld rather than refused,
-        because a plugin may reasonably pass its scope's whole tool list — and said out
-        loud on the plugin's own logger, because an author who is not told watches
-        their tool never run.
-
-        Raises:
-            ToolRefusal: A tool passed in takes the name cora's search already has.
-                Refused rather than shadowed: a call would reach cora's search, and the
-                plugin would watch its own tool never run.
-        """
         taken = [tool.name for tool in tools if tool.name == SEARCH_TOOL_NAME]
         if taken:
             raise ToolRefusal(
@@ -405,13 +354,6 @@ class PluginHost:
         return tuple(entry.value for entry in self.registered if entry.kind == TOOL)
 
     def _record(self, kind: str, value: Any, scope: str | None = None) -> None:
-        """Keep one registration, under the scope it was made for.
-
-        Raises:
-            PluginLoadError: The scope is not a name. `None` is system-wide and is the
-                one absence that means something — a blank string is a registration
-                that loads and then applies to nothing, which no deployment asked for.
-        """
         if scope is not None and (not isinstance(scope, str) or not scope.strip()):
             raise PluginLoadError(
                 self.module, f"a {kind} was registered under a blank scope"
@@ -459,18 +401,6 @@ class _Keeping:
 
 
 def _read(result: ToolResult, read_documents: bool = False) -> Read:
-    """What the loop is told, the one line its step is shown as, and where it came from.
-
-    Passages reach a delegated loop by document name rather than by number: the numbers
-    belong to the turn, and a loop that reads is not what a turn cites. So the loop can
-    still say where a fact came from, and the turn can pass that on. Unnumbered or not,
-    they are the user's documents and carry the same label a turn's own passages do.
-
-    Args:
-        read_documents: Whether the call read the user's documents somewhere inside
-            itself. A tool that delegated again answers in prose, and prose built out of
-            a document is the document as far as the model reading it is concerned.
-    """
     if not isinstance(result.payload, Citable):
         return Read(
             body=result.render(), outcome=result.render(), untrusted=read_documents
@@ -483,13 +413,6 @@ def _read(result: ToolResult, read_documents: bool = False) -> Read:
 
 
 def _uncited(said: str) -> str:
-    """What a delegated loop answered, with any number it wrote taken out.
-
-    Only prose is read for citations: a fenced block is passed through as the loop wrote
-    it, because a number in code is the code's own. Everywhere else the indentation, the
-    blank lines and the alignment are what the outer model reads and what the reader
-    opens under the call, and none of them is touched.
-    """
     written: list[str] = []
     opened_with: str | None = None
     for line in said.splitlines():
@@ -506,13 +429,6 @@ def _uncited(said: str) -> str:
 
 
 def _closed_up(line: str) -> str:
-    """One line of prose with its citations removed, and the gap they left closed up.
-
-    A number the line opened with takes the space after it, so `[1] sleep` reads
-    `sleep`; the indentation and any list marker in front of it are the loop's own and
-    stay. A number mid-sentence goes with the space that introduced it, so what is left
-    is the sentence without it rather than the sentence re-flowed.
-    """
     written = OPENED_WITH.sub(r"\1", line)
     written = UNCITED.sub("", written)
     return written if written.strip() else ""
@@ -520,12 +436,6 @@ def _closed_up(line: str) -> str:
 
 @contextmanager
 def _spending(rounds: int) -> Iterator[list[int]]:
-    """The rounds this delegation may spend: a pot of its own, or the one already open.
-
-    A nested loop joins the pot the loop above it opened, so depth spends the same
-    allowance rather than a fresh one — and its own `rounds` is not honoured, because
-    the outermost loop is what asked for the pot.
-    """
     open_pot = _allowance.get()
     if open_pot is not None:
         yield open_pot

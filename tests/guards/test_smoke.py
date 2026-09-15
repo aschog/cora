@@ -21,9 +21,6 @@ otherwise go unversioned and unimported by every test in this file."""
 
 
 def _carrier(module: ModuleType) -> str:
-    """Which workspace member a layer was installed from, read off the path rather than
-    the nesting depth — `cora.plugins.fitness` sits two levels deeper than the rest.
-    `test_packaging.py` pins what each member is called as a distribution."""
     path = pathlib.Path(str(module.__file__))
     src = next(parent for parent in path.parents if parent.name == "src")
     return workspace.location(src.parent)

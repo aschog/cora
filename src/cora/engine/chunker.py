@@ -48,13 +48,6 @@ def chunk_text(
 def _split(
     text: str, base: int, chunk_size: int, separators: list[str]
 ) -> list[tuple[int, int]]:
-    """Recursively split text into (start, end) spans no larger than chunk_size.
-
-    Spans are positions in the original text, so each piece is always an exact
-    substring. Packs adjacent fragments greedily at the coarsest separator that
-    fits; any fragment still too large is split at the next finer one. `base`
-    is the offset of `text` within the original.
-    """
     if len(text) <= chunk_size:
         return [(base, base + len(text))]
 
@@ -86,7 +79,6 @@ def _split(
 
 
 def _fragments(text: str, separator: str) -> list[tuple[str, int]]:
-    """Each non-empty fragment with its start offset within `text`."""
     fragments: list[tuple[str, int]] = []
     offset = 0
     for fragment in text.split(separator):
@@ -99,7 +91,6 @@ def _fragments(text: str, separator: str) -> list[tuple[str, int]]:
 def _to_chunks(
     spans: list[tuple[int, int]], text: str, source: str, overlap: int
 ) -> list[Chunk]:
-    """Turn spans into chunks, extending each after the first back by overlap."""
     chunks: list[Chunk] = []
     for index, (base_offset, end) in enumerate(spans):
         start = max(0, base_offset - overlap) if index else base_offset

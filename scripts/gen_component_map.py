@@ -102,9 +102,6 @@ def _slots(tree: ast.Module) -> list[tuple[str, str]]:
 
 
 def _provider(name: str, imported: dict[str, str]) -> str:
-    """Past a factory to the class it returns: `langgraph_for` is how the runner is
-    made, `LangGraphRunner` is what stands behind the interface.
-    """
     module = imported.get(name, "")
     if not module.startswith("cora."):
         return name
@@ -142,9 +139,6 @@ def _assembled(tree: ast.Module) -> dict[str, str]:
 
 
 def _registry_module(tree: ast.Module) -> str:
-    """The module the loader registry lives in. The loaders are functions and a function
-    is no component, so the module that holds them is what provides `Loader`.
-    """
     return reading.imported(tree)["LOADERS"].rsplit(".", 1)[-1]
 
 
@@ -176,9 +170,6 @@ def _parents(node: ast.AST) -> dict[ast.AST, ast.AST]:
 
 
 def _role(call: ast.Call, parents: dict[ast.AST, ast.AST]) -> str | None:
-    """What the engine calls this part: the keyword it is passed as, or the name it is
-    assigned to. A part is drawn `role: Type`, so the role comes off the source as well.
-    """
     node: ast.AST = call
     while node in parents:
         parent = parents[node]
@@ -345,18 +336,15 @@ class Plan:
 
 
 def _wide(text: str, size: float = 13.0, bold: bool = False) -> float:
-    """Roughly how wide a label draws, so a box is made wide enough for its text."""
     per = 0.58 if bold else 0.62 if size < 12 else 0.54
     return len(text) * size * per
 
 
 def _stack(top: float, count: int) -> list[float]:
-    """The tops of `count` boxes on the row pitch, starting at `top`."""
     return [top + index * ROW for index in range(count)]
 
 
 def _framed(rows: int) -> float:
-    """How tall a package frame is that holds `rows` members on the row pitch."""
     return TAB_H + FRAME_PAD + (rows - 1) * ROW + MEMBER_H + FRAME_PAD
 
 
@@ -472,9 +460,6 @@ def _path(points: list[tuple[float, float]], style: str) -> str:
 
 
 def _icon(box: Box, style: str = "glyph") -> list[str]:
-    """The UML component icon, in the corner a component wears it: the shape is what
-    says «component», so the word is not written as well.
-    """
     x = box.right - ICON - 14
     y = box.y + 10
     return [
@@ -496,7 +481,6 @@ def _component(box: Box, name: str) -> list[str]:
 
 
 def _frame(box: Box, name: str) -> list[str]:
-    """A package as UML draws one: the name on its tab, the members in the body."""
     tab = Box(box.x, box.y, _wide(name, 11) + 26, TAB_H)
     body = Box(box.x, box.y + TAB_H, box.w, box.h - TAB_H)
     return [
@@ -507,9 +491,6 @@ def _frame(box: Box, name: str) -> list[str]:
 
 
 def _port_square(x: float, y: float) -> str:
-    """A UML port where a connector leaves the engine: the engine requires what the wire
-    carries, and the square is where it is required.
-    """
     return (
         f'  <rect x="{x - 5:g}" y="{y - 5:g}" width="10" height="10"'
         ' class="socket-port"/>'
@@ -517,7 +498,6 @@ def _port_square(x: float, y: float) -> str:
 
 
 def _cup(x: float, y: float) -> str:
-    """The socket of the component that requires the interface, open to the ball."""
     return (
         f'  <path d="M {x:g} {y - CUP:g} A {CUP:g} {CUP:g} 0 0 0 {x:g} {y + CUP:g}"'
         ' class="socket"/>'
@@ -531,9 +511,6 @@ def _ball(x: float, y: float) -> str:
 def _interface_name(
     x: float, y: float, module: str, port: str, extra: str = ""
 ) -> list[str]:
-    """The interface's qualified name, above the wire it belongs to: the module it is
-    declared in over the name the code uses, so both are read off the drawing.
-    """
     drawn = [
         _text(x, y - 26, module, "stereotype", "start"),
         _text(x, y - 10, port, "port", "start"),
@@ -552,9 +529,6 @@ def _interface_name(
 
 
 def _assembly(at: Plan, port: str, provider: str, modules: dict[str, str]) -> list[str]:
-    """One required interface, drawn on its own row: the engine's port, its socket, the
-    ball of the component that provides it, and a stick to each.
-    """
     engine = at.boxes[ENGINE]
     box = at.boxes[provider]
     y = at.rows[port]
@@ -572,10 +546,6 @@ def _assembly(at: Plan, port: str, provider: str, modules: dict[str, str]) -> li
 def _plugin_assembly(
     at: Plan, providers: tuple[str, ...], modules: dict[str, str]
 ) -> list[str]:
-    """The one interface with more than one provider: a single socket on the engine's
-    stick, and a ball on every plugin that fills it. `[0..*]` is what the engine takes —
-    a plugin set that is empty is a set.
-    """
     engine = at.boxes[ENGINE]
     boxes = [at.boxes[name] for name in providers]
     fan_x = min(box.x for box in boxes) - 200
@@ -605,7 +575,6 @@ IMPORT = "«import»"
 
 
 def _centred(left: float, right: float) -> float:
-    """Where `«import»` starts for it to sit in the middle of a run that wide."""
     return (left + right) / 2 - _wide(IMPORT, 11) / 2
 
 
@@ -618,9 +587,6 @@ COMPOSITION_ROOT = (
 def _route(
     at: Plan, client: str, supplier: str
 ) -> tuple[list[tuple[float, float]], tuple[float, float]]:
-    """The path one import is drawn along, and where its label sits. Every import has a
-    lane of its own, so no two are read as one line.
-    """
     frames, boxes = at.frames, at.boxes
     app, engine = boxes[APP], boxes[ENGINE]
     if supplier == DOMAIN:

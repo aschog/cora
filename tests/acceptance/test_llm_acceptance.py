@@ -40,32 +40,20 @@ seeded anywhere else is one this tier's questions cannot reach."""
 
 
 def _live_app(store: Path) -> App:
-    """The shipped composition root, pointed at stores of its own. Every other default
-    is the deployed one — the model, the preamble and the reminder under test are
-    whatever cora actually ships."""
     return build(live_config(store, LIVE_PLUGINS))
 
 
 def _holding_the_protein_doc(store: Path) -> App:
-    """Indexed behind the page's back, for the tests whose subject starts at the
-    question. The happy path uploads the same document over the API instead."""
     app = _live_app(store)
     app.knowledge_base.add_file(PROTEIN_DOC, "protein.md", scope=COACHING)
     return app
 
 
 def _page(app: App) -> TestClient:
-    """The surface the page reads, with the plugins the deployment configured. No
-    timeout to set: the app runs in this process, so a live turn takes as long as the
-    model takes rather than as long as a socket allows."""
     return TestClient(api(app))
 
 
 def _turn(page: TestClient, question: str, thread: str = "acceptance") -> dict:
-    """One turn as the page receives it: the frames the stream carried, of which the
-    last is the turn itself. A turn that failed carries no answer, and reads as the
-    error frame the page would draw — this tier is run by hand, so a check that fails
-    has to be able to say why."""
     streamed = frames(
         page.post("/api/ask", json={"question": question, "thread_id": thread}).text
     )
@@ -75,10 +63,6 @@ def _turn(page: TestClient, question: str, thread: str = "acceptance") -> dict:
 
 
 def _opens_a_passage(turn: dict) -> bool:
-    """What the Sources panel used to prove, and more: the reader has a citation to
-    open. Read off the citations rather than the text, because a number the domain never
-    resolved — glued to a word, or belonging to no registered passage — reaches the page
-    as text and opens nothing."""
     return turn["citations"] != []
 
 
@@ -87,7 +71,6 @@ def _steps(turn: dict) -> str:
 
 
 def _documents(page: TestClient, scope: str = COACHING) -> list[str]:
-    """The rail lists the field it is set to, so a listing has to name one."""
     return page.get("/api/documents", params={"scope": scope}).json()
 
 

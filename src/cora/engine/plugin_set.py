@@ -161,12 +161,6 @@ class Registry:
 
 
 def _contributed(entry: Registration) -> Contributed:
-    """One registration as the listing shows it, named by what its kind is named by.
-
-    A tool by its own name and a handler by the event it subscribed to. Instructions go
-    unnamed, having no name of their own: a plugin writes one section, and the kind is
-    already what it is called.
-    """
     named = {
         TOOL: lambda value: str(value.name),
         HANDLER: lambda value: str(value.event),
@@ -183,16 +177,8 @@ def _contributed(entry: Registration) -> Contributed:
 
 
 def _opening(instructions: str) -> str:
-    """The first paragraph, unwrapped.
-
-    A line break is where the author's editor wrapped and says nothing about where the
-    thought ends, so what is read is the paragraph rather than the line. The paragraph
-    rather than the sentence, because a full stop is not a sentence boundary either —
-    "e.g." would cut the outline in the middle of the phrase it was explaining.
-    """
     return " ".join(instructions.strip().split("\n\n")[0].split())
 
 
 def _heading(module: str) -> str:
-    """The name a plugin's section of the brief is headed by, taken from its module."""
     return name_of(module).replace("_", " ").strip().capitalize()

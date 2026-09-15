@@ -110,11 +110,6 @@ def _from_data(data: dict[str, Any]) -> Turn:
 
 
 def _as_step(step: TraceStep) -> dict[str, Any]:
-    """One step as data, with the steps taken inside it kept as steps.
-
-    `asdict` would flatten a child into a bare dict and lose which kind it was, so the
-    children are written as this function writes any step: tagged with their kind.
-    """
     # Every kind of step is a frozen dataclass; `TraceStep` itself is the ABC they
     # share, which ty cannot read as a dataclass instance.
     fields = asdict(step)  # ty: ignore[invalid-argument-type]
@@ -124,9 +119,6 @@ def _as_step(step: TraceStep) -> dict[str, Any]:
 
 
 def _step(data: dict[str, Any]) -> TraceStep:
-    """The steps taken inside a step are restored as steps, however deep they go; every
-    other field is handed over as it arrived, and the kind's own `__post_init__` holds
-    the tuples it declares."""
     kind = {step.__name__: step for step in step_kinds()}[data["kind"]]
     return kind(
         **{

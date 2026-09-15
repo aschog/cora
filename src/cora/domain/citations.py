@@ -146,12 +146,6 @@ def _span(citation: Citation) -> tuple[str, str, str, int, int]:
 
 
 def _hit_span(hit: RetrievedChunk) -> tuple[str, str, str, int, int]:
-    """What makes two passages the same passage.
-
-    The field and the upload, because a span means nothing without the text it was
-    measured in, and the name beside them, because an upload whose hash was never
-    recorded would otherwise pool with every other.
-    """
     chunk = hit.chunk
     return (
         chunk.scope,

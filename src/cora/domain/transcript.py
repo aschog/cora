@@ -31,11 +31,6 @@ def prompt_from(
 
 
 def _distilled(past: Sequence[Message]) -> tuple[Message, ...]:
-    """Words, not machinery.
-
-    A past turn's tool calls, tool results and reminders were addressed to a round that
-    has ended.
-    """
     return tuple(
         Message(role=message.role, content=message.content)
         for message in past

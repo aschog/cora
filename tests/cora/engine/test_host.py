@@ -173,7 +173,6 @@ def _adding() -> ModelReply:
 
 
 def _spending_everything(*after: ModelReply) -> ScriptedChatModel:
-    """A loop that asks for a tool every round it has, then whatever comes next."""
     return ScriptedChatModel([_adding()] * (MAX_DELEGATED_ROUNDS + 1) + list(after))
 
 
@@ -243,7 +242,6 @@ def test_a_fenced_block_is_left_as_the_loop_wrote_it() -> None:
 
 
 def _acting(name: str = "book_it") -> Tool:
-    """A tool that changes something outside cora, said on the registration."""
     return Tool(
         name=name,
         description="Book the thing.",
@@ -263,7 +261,6 @@ def _reading(name: str = "look_up") -> Tool:
 
 
 def _gathering(name: str = "price_it") -> Tool:
-    """A tool that stops to have its card filled in, said on the registration."""
     return Tool(
         name=name,
         description="Price a trip.",

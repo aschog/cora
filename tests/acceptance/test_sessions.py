@@ -24,9 +24,6 @@ ANSWER = "Your notes say 1.6 g per kg."
 
 
 def _app(path: pathlib.Path) -> App:
-    """One file for everything cora keeps, which is how a deployment keeps it: the
-    turns a reader comes back to, the thread the model answered on, and the facts that
-    outlive both."""
     return assembled(
         chat_model=ScriptedChatModel([ModelReply(text=ANSWER)] * 2),
         conversations=SqliteConversations.at(str(path)),

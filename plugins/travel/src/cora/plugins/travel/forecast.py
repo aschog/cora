@@ -158,16 +158,6 @@ def _asked(
 
 
 def _located(found: dict[str, Any]) -> Place | None:
-    """The first place the service matched, or nothing where it matched none.
-
-    Matching none and answering unreadably are different answers: the first is a place
-    that does not exist, which the reader can act on by naming a larger town, and the
-    second is the service itself having moved.
-
-    Raises:
-        ToolRefusal: It answered with something that is not a list of places, or with a
-            place carrying no point to forecast.
-    """
     results = found.get("results")
     if results is None or results == []:
         return None
@@ -186,18 +176,6 @@ def _located(found: dict[str, Any]) -> Place | None:
 
 
 def _days(days: dict[str, Any]) -> str:
-    """Every day on one line: the date, a high, a low and a word for the sky.
-
-    One line because a tool that hands back plain prose is shown in the trace under the
-    same text the model is given, so a block would be a paragraph where the reader
-    wanted a line.
-
-    Raises:
-        ToolRefusal: The answer is not shaped like a forecast — no daily block, no days
-            in it, or a reading missing for a day. A day the service left out is
-            refused rather than dropped: dropping it would answer three days with two
-            and say nothing about the third.
-    """
     daily = days.get("daily")
     if not isinstance(daily, dict):
         raise ToolRefusal(UNREADABLE)
@@ -214,12 +192,6 @@ def _days(days: dict[str, Any]) -> str:
 
 
 def _degrees(reading: Any) -> str:
-    """One temperature as a whole number.
-
-    Raises:
-        ToolRefusal: The service left it out, which it does for a day outside the window
-            it holds, or answered with something that is not a temperature.
-    """
     if not isinstance(reading, int | float):
         raise ToolRefusal(UNREADABLE)
     return str(round(reading))

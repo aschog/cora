@@ -30,12 +30,6 @@ def _ignore(step: TraceStep) -> None:
 
 
 def _entered(steps: list[TraceStep]) -> str:
-    """The step the turn had reached, read off the markers in its trace.
-
-    A step names the failures raised inside it, but the rounds of the loop are steps
-    of their own and name none. Where the turn had got to is what the trace says, and
-    it is how a failure out of the loop is reported under the step containing it.
-    """
     return next(
         (step.step for step in reversed(steps) if isinstance(step, StepEntered)), ""
     )
@@ -236,11 +230,6 @@ class Agent:
         return result
 
     def _record(self, thread_id: str, turn: Turn) -> None:
-        """Keep the turn, if there is anywhere to keep it.
-
-        Bookkeeping beside the answer it is about: a store that went away loses the
-        record, never the reply the user asked for.
-        """
         if self.conversations is None:
             return
         try:

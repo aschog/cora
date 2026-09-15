@@ -181,8 +181,12 @@ functional test goes green  →  feature done
 > Everywhere else — the adapters, the plugins, the frontends, the tests — a docstring
 > appears **only if needed**, and a comment always does: write none unless they state
 > a contract the code can't express, and let names + tests be the source of truth.
-> `ruff` holds both halves, the boundary written once in `pyproject.toml`. This is
-> decided; don't relitigate it file by file.
+> A **private** name never carries one, anywhere: a docstring is written for a reader
+> who cannot see the body, and no page renders a `_helper` and nothing outside its
+> module may call it. What it is for goes in the name, what it does is the body.
+> `ruff` holds the public half, the boundary written once in `pyproject.toml`, and a
+> guard in `tests/guards/test_architecture.py` holds the private one — no lint rule
+> states it. This is decided; don't relitigate it file by file.
 
 > Don't narrate the diff — the reviewer reads it. After a step, say only what the
 > diff can't show: a decision, a surprise, anything urgent or important. Silence

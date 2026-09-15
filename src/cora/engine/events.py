@@ -212,11 +212,6 @@ def _took(
 
 
 def _ending(kind: Refusing, reason: str, trace: list[TraceStep]) -> Exception:
-    """The refusal, carrying the steps the turn took on its way to being refused.
-
-    A turn refused on the way in never reaches a state, so the trace travels on the
-    exception or nowhere: it is what says which plugin refused, and the user is owed it.
-    """
     raised = kind.raised(reason)
     if isinstance(raised, CoreError):
         raised.trace = tuple(trace)

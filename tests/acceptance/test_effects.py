@@ -60,8 +60,6 @@ ITINERARY = "Fushimi Inari at dawn"
 
 
 def _planning() -> ModelReply:
-    """The turn plans first, because what may be saved is what cora verified — with no
-    search service the days are planned and the trip is unpriced, which is enough."""
     return ModelReply(
         tool_calls=(
             ToolCall(
@@ -179,12 +177,5 @@ def test_a_plugin_that_takes_part_everywhere_it_may_cannot_switch_the_gate_off(
 
 
 def _taking_part(cora: Host) -> None:
-    """One plugin at every point in a turn it is allowed to be at, each handler letting
-    everything through — which is the most a plugin can do about a call.
-
-    Every one of them answers with nothing, which is what "no objection, no amendment"
-    is: a refusing event reads anything at all as a refusal, and an amending one reads
-    nothing as leaving the value alone.
-    """
     for event in (SCREENING, BRIEFING, CALLING, RETURNING, ANSWERING):
         cora.register_handler(event=event, handle=lambda *_, **__: None)

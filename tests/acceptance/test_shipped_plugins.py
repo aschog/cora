@@ -18,9 +18,6 @@ from cora.ports.host import Extension
 
 
 def _shipped_modules() -> list[str]:
-    """Found through the namespace rather than the manifests: `cora.plugins` spans every
-    plugin installed, and asking it covers them all without knowing which distribution
-    each arrived from."""
     return sorted(
         f"cora.plugins.{found.name}"
         for found in pkgutil.iter_modules(cora.plugins.__path__)

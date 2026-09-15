@@ -205,18 +205,6 @@ class LangGraphRunner:
         }
 
     def _graph(self, on_text: TextSink) -> Any:
-        """Built per run, which is what lets the model node be this turn's: the sink
-        belongs to the reader waiting on it, and a graph shared between turns could
-        only hold one of them.
-
-        The walk is the sequence it was handed, so a turn that grew a step is a graph
-        with a node more and this method unchanged. The rounds are the one part of it
-        with a shape of their own: the model decides, and the router sends the turn to
-        the gate, to the reader, or on to whatever the walk does next. Every path to the
-        tools runs through the gate — the round's route arrives there and so does the
-        ask's, which is what makes the gate unbypassable by construction rather than by
-        anyone remembering to call it.
-        """
         # ty does not see __required_keys__ on a TypedDict class, so it cannot
         # tell that AgentState satisfies LangGraph's state-schema bound.
         builder = StateGraph(AgentState)  # ty: ignore[invalid-argument-type]
@@ -246,7 +234,6 @@ class LangGraphRunner:
 
     @property
     def _done(self) -> str:
-        """Where a turn goes when the rounds are over: on with the walk, or out."""
         return self.after[0].step if self.after else END
 
 

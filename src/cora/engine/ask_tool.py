@@ -188,15 +188,6 @@ ASKED_TWICE = "two fields are called '{name}', so one of them could not be asked
 
 
 def _refuse_one_field(fields: Any) -> None:
-    """Refuse a form of one field before the schema does.
-
-    The schema refuses it too — it takes two fields or more — but says only that the
-    list is too short. What the model needs is what to do instead, and it is the same
-    sentence a plugin's one-value card is refused with.
-
-    Raises:
-        ToolRefusal: One field was named, and the message says to ask in prose.
-    """
     if not isinstance(fields, list) or len(fields) != 1:
         return
     [named] = fields
@@ -246,7 +237,6 @@ def card_from(arguments: dict[str, Any]) -> Card:
 
 
 def _property(field: dict[str, Any]) -> dict[str, Any]:
-    """One field the model named, as the schema of the value it asks for."""
     return {
         "type": field.get("type", "string"),
         "description": field["description"],
@@ -256,17 +246,6 @@ def _property(field: dict[str, Any]) -> dict[str, Any]:
 
 
 def _asked_already(**_: Any) -> str:
-    """The one tool whose work is not its own.
-
-    The router sends the ask that will stop the run to the step that can stop it, ahead
-    of the round's tools — so the dispatcher reaches this only for an ask that will not:
-    a second one in the same round, or one raised after the reader has already been
-    stopped. Either way what the round needs to hear is why, not that it found an
-    unreachable branch.
-
-    Raises:
-        ToolRefusal: Always. The turn has had its question.
-    """
     raise ToolRefusal(ASKED_ALREADY)
 
 

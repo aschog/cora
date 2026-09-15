@@ -111,8 +111,6 @@ def _two_fields() -> KnowledgeBase:
 
 
 def _reading(host: PluginHost) -> Tool:
-    """A plugin's own tool, answering with the documents it found for itself."""
-
     def read() -> str:
         return " ".join(hit.chunk.source for hit in host.documents.search("notes", 5))
 

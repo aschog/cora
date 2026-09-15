@@ -175,10 +175,6 @@ def test_a_tool_call_the_model_malformed_is_not_an_answer() -> None:
 
 
 def _streaming(*chunks: AIMessageChunk) -> type:
-    """A client that streams the chunks it was built over. It offers no `invoke`, so an
-    adapter that asked for the whole reply at once would fail rather than quietly stop
-    streaming."""
-
     class _Streaming:
         def __init__(self, **kwargs: object) -> None: ...
 

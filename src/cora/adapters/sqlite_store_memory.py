@@ -34,9 +34,6 @@ def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
 
 
 def _ordinal() -> str:
-    """A key that sorts oldest first and collides with nothing. The store stamps
-    `created_at` to the second, so two facts remembered in one breath would tie —
-    ordering has to come from the key."""
     return f"{time.time_ns():020d}-{uuid.uuid4().hex[:8]}"
 
 
@@ -67,9 +64,6 @@ class SqliteStoreMemory:
 
     @_translate_errors
     def _everything(self) -> tuple[Fact, ...]:
-        """Every fact this user has, oldest first. The store orders by a timestamp
-        that ties at one second, so ordering is the adapter's own `key` — and reading
-        to the end is what makes "forget everything" true of everything."""
         found = []
         offset = 0
         while True:

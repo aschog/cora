@@ -152,7 +152,6 @@ class _FreshSource(importlib.machinery.SourceFileLoader):
 
 
 def _dropped_name(path: pathlib.Path) -> str:
-    """A directory's name is taken whole: `stem` would read `acme.birds` as `acme`."""
     return path.name if path.is_dir() else path.stem
 
 
@@ -168,7 +167,6 @@ def _restore(name: str, displaced: dict[str, ModuleType]) -> None:
 
 
 def _files_in(folder: pathlib.Path | None) -> tuple[pathlib.Path, ...]:
-    """The folder's plugins, in name order. A folder that is not there holds none."""
     if folder is None or not folder.is_dir():
         return ()
     return tuple(
@@ -217,12 +215,6 @@ def _stamp(path: pathlib.Path) -> tuple[object, ...]:
 
 
 def _extension(module: ModuleType, *, name: str, source: str) -> Extension:
-    """What the module has to prove before anything of it is kept.
-
-    Raises:
-        PluginLoadError: It asks for a version cora does not offer, defines no
-            `extend`, or defines one that cannot be called.
-    """
     wanted = getattr(module, DECLARED, CONTRACT)
     if wanted != CONTRACT:
         raise PluginLoadError(
@@ -238,16 +230,6 @@ def _extension(module: ModuleType, *, name: str, source: str) -> Extension:
 
 
 def _reject_a_stem_that_is_not_a_name(dropped: tuple[pathlib.Path, ...]) -> None:
-    """Refuse a file whose stem cannot serve as the plugin's name.
-
-    Four things are named by it, and two of them cannot carry an arbitrary string: the
-    settings prefix has to be spellable in a shell, and `name_of` reads everything after
-    the last dot — so `acme.birds.py` would be `birds` to every reader and `acme.birds`
-    to the check meant to stop a second `birds`.
-
-    Raises:
-        ConfigurationError: The stem is not an identifier.
-    """
     for path in dropped:
         if not _dropped_name(path).isidentifier():
             raise ConfigurationError(
@@ -270,14 +252,6 @@ def _reject_a_module_named_twice(named: tuple[str, ...]) -> None:
 def _reject_two_named_alike(
     named: tuple[str, ...], dropped: tuple[pathlib.Path, ...]
 ) -> None:
-    """Refuse two plugins ending in the same name, whichever source each came from.
-
-    A name is what tells two plugins apart: it heads their sections of the brief, and
-    their settings are named for it. A file dropped beside a named module collides with
-    it exactly as two named modules do, which is why both sources are read here — and
-    cora's own name is taken, a plugin holding it being handed cora's own registrations
-    as its own.
-    """
     seen: dict[str, str] = {}
     for name, source in (
         *((name_of(module), module) for module in named),
