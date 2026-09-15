@@ -107,6 +107,19 @@ class Field:
     fmt: str = ""
 
 
+CODE = re.compile(r"[A-Za-z]{3}\Z")
+PLACE_ID = ("/m/", "/g/")
+
+
+def _code(place: Any) -> str:
+    written = str(place).strip()
+    if written.startswith(PLACE_ID):
+        return written
+    if not CODE.match(written):
+        raise ValueError(written)
+    return written.upper()
+
+
 def _from(lowest: Any) -> str:
     return ",".join(str(star) for star in range(int(lowest), 6))
 
@@ -119,15 +132,18 @@ FLIGHT_FIELDS = (
     Field(
         "origin",
         "string",
-        "Where the trip starts, as an airport or city code like BER.",
+        "Where the trip starts, as a three-letter airport or city code like BER.",
         "departure_id",
+        write=_code,
         required=True,
     ),
     Field(
         "destination",
         "string",
-        "Where it goes, as an airport or city code like LIS.",
+        "Where it goes, as a three-letter airport or city code like LIS. The engine "
+        "reads codes and not names, so Lisbon is LIS.",
         "arrival_id",
+        write=_code,
         required=True,
     ),
     Field(
@@ -238,7 +254,8 @@ def _query(
             query[asked.sends_as] = asked.write(value)
         except (TypeError, ValueError) as unwritable:
             raise ToolRefusal(
-                f"'{value}' is not something I can search on for {asked.name}."
+                f"'{value}' is not something I can search on for {asked.name}: "
+                f"{asked.description}"
             ) from unwritable
     return query
 
@@ -441,17 +458,20 @@ class Search:
     def _read(self, query: dict[str, Any]) -> dict[str, Any]:
         try:
             answer = self.fetch.get(self.url, params=query)
-            answer.raise_for_status()
         except httpx.HTTPError as unreachable:
             raise ToolRefusal(UNREACHABLE) from unreachable
         try:
             read = answer.json()
-        except Exception as unreadable:
-            raise ToolRefusal(UNREADABLE) from unreadable
+        except Exception:
+            read = None
+        if isinstance(read, dict) and read.get("error"):
+            raise ToolRefusal(REFUSED)
+        try:
+            answer.raise_for_status()
+        except httpx.HTTPError as unreachable:
+            raise ToolRefusal(UNREACHABLE) from unreachable
         if not isinstance(read, dict):
             raise ToolRefusal(UNREADABLE)
-        if read.get("error"):
-            raise ToolRefusal(REFUSED)
         return read
 
 

@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, overload
 
 from jsonschema import Draft202012Validator, SchemaError
 
@@ -43,6 +43,28 @@ DELEGATE_BRIEF = (
     "offered. Be brief and concrete, and answer from what the tools return. Name the "
     "document a fact came from in your own words — never write a citation number, "
     "because the numbers belong to the assistant and not to you."
+)
+ANSWER_TOOL_NAME = "answer"
+ANSWER_TOOL_DESCRIPTION = (
+    "Answer with the fields this takes, and stop. This is the only answer that is "
+    "read: prose is not, and nothing else is called afterwards."
+)
+SHAPED_BRIEF = (
+    "\n\nAnswer only by calling `answer` with the fields it takes. Prose is not "
+    "read, so an answer written as prose is an answer nobody receives."
+)
+TAKEN = "a tool passed to delegate is named '{name}', which is cora's own; rename it"
+UNSHAPED = (
+    "the sub-agent wrote prose where it was given a shape to answer in, so there is no "
+    "value to read; ask it again, or answer without it"
+)
+NOT_A_SHAPE = (
+    "the shape passed to delegate is not valid JSON Schema, so nothing could be held "
+    "to it"
+)
+REQUIRES_NOTHING = (
+    "the shape passed to delegate requires nothing of an answer, so an empty one would "
+    "satisfy it; name what it must have in `required`"
 )
 MAX_DELEGATED_ROUNDS = 5
 WITHHELD = (
@@ -212,7 +234,29 @@ class PluginHost:
         """
         took(WorkShown(plugin=self.module, did=did, detail=detail, failed=failed))
 
-    def delegate(self, task: str, tools: tuple[Tool, ...] = (), rounds: int = 3) -> str:
+    @overload
+    def delegate(
+        self, task: str, tools: tuple[Tool, ...] = (), rounds: int = 3
+    ) -> str: ...
+
+    @overload
+    def delegate(
+        self,
+        task: str,
+        tools: tuple[Tool, ...] = (),
+        rounds: int = 3,
+        *,
+        shape: Mapping[str, Any],
+    ) -> dict[str, Any]: ...
+
+    def delegate(
+        self,
+        task: str,
+        tools: tuple[Tool, ...] = (),
+        rounds: int = 3,
+        *,
+        shape: Mapping[str, Any] | None = None,
+    ) -> str | dict[str, Any]:
         """Run a bounded loop of the model's own, and answer with what it wrote.
 
         Offered the tools given plus cora's document search, and none of cora's own
@@ -228,22 +272,33 @@ class PluginHost:
                 more than this reaches the model, the last with the tools still on the
                 table so a loop can answer in it. Ignored in a loop delegated from
                 another, which spends what the outermost one opened.
+            shape: JSON Schema the answer must satisfy. Given one, the loop answers by
+                calling a tool of that shape and this hands back the validated value
+                rather than prose. It must require something: an answer satisfying a
+                shape that requires nothing is an empty one.
 
         Raises:
             ToolRefusal: The loop gathered nothing before its rounds ran out, or was
                 asked to write up what it had and answered with nothing, or a tool
-                passed in takes the name cora's search already has. The call fails and
-                the model is told why; the turn around it answers anyway.
+                passed in takes a name of cora's own. With a shape: the shape is not one
+                anything could be held to, or the loop wrote prose instead of answering
+                in it, or its rounds ran out. The call fails and the model is told why;
+                the turn around it answers anyway.
             LlmError: The model gave back nothing usable.
         """
-        offered = self._offered(tools)
+        if shape is not None:
+            _checked(shape)
+        offered = self._offered(tools, shape)
         runtime = ToolRuntime(tools=offered)
         said: list[Message] = [
-            Message(role="system", content=DELEGATE_BRIEF),
+            Message(
+                role="system",
+                content=DELEGATE_BRIEF + (SHAPED_BRIEF if shape is not None else ""),
+            ),
             Message(role="user", content=task),
         ]
         with _spending(rounds) as left:
-            return self._rounds(said, offered, runtime, left)
+            return self._rounds(said, offered, runtime, left, shape is not None)
 
     def _rounds(
         self,
@@ -251,12 +306,15 @@ class PluginHost:
         offered: tuple[Tool, ...],
         runtime: ToolRuntime,
         left: list[int],
-    ) -> str:
+        shaped: bool = False,
+    ) -> str | dict[str, Any]:
         while left[0] > 0:
             left[0] -= 1
             reply = self.model.complete(tuple(said), offered)
             took(decided(reply))
             if reply.is_final:
+                if shaped:
+                    raise ToolRefusal(UNSHAPED)
                 return _uncited(reply.text)
             said.append(
                 Message(
@@ -273,7 +331,11 @@ class PluginHost:
                 if read.untrusted:
                     read_untrusted()
                 took(used(call, result, read, tuple(inside.steps)))
+                if shaped and call.name == ANSWER_TOOL_NAME and result.error is None:
+                    return _uncited_value(result.payload)
                 said.append(told(result, read))
+        if shaped:
+            raise ToolRefusal(OVERSPENT)
         return self._closed_out(said)
 
     def _closed_out(self, said: list[Message]) -> str:
@@ -287,18 +349,23 @@ class PluginHost:
             raise ToolRefusal(OVERSPENT)
         return f"{STOPPED_EARLY}\n\n{written}"
 
-    def _offered(self, tools: tuple[Tool, ...]) -> tuple[Tool, ...]:
-        taken = [tool.name for tool in tools if tool.name == SEARCH_TOOL_NAME]
+    def _offered(
+        self, tools: tuple[Tool, ...], shape: Mapping[str, Any] | None = None
+    ) -> tuple[Tool, ...]:
+        own = {SEARCH_TOOL_NAME} | ({ANSWER_TOOL_NAME} if shape is not None else set())
+        taken = [tool.name for tool in tools if tool.name in own]
         if taken:
-            raise ToolRefusal(
-                f"a tool passed to delegate is named '{SEARCH_TOOL_NAME}', which is "
-                "cora's own search; rename it"
-            )
+            raise ToolRefusal(TAKEN.format(name=taken[0]))
         withheld = [tool.name for tool in tools if tool.effect or tool.asks]
         if withheld:
             self.log.info(WITHHELD, ", ".join(withheld))
         reading = tuple(tool for tool in tools if not (tool.effect or tool.asks))
-        return (search_tool(self.documents, self.top_k, cites=False), *reading)
+        answering = (_answering(shape),) if shape is not None else ()
+        return (
+            search_tool(self.documents, self.top_k, cites=False),
+            *reading,
+            *answering,
+        )
 
     def _registered_tools(self) -> tuple[Tool, ...]:
         return tuple(entry.value for entry in self.registered if entry.kind == TOOL)
@@ -348,6 +415,34 @@ class _Keeping:
     def keep(self, name: str, value: str | None) -> None:
         """Keep this text under this name, or drop the name given nothing."""
         keeping.keep(self.plugin, name, value)
+
+
+def _checked(shape: Mapping[str, Any]) -> None:
+    try:
+        Draft202012Validator.check_schema(shape)
+    except SchemaError as invalid:
+        raise ToolRefusal(NOT_A_SHAPE) from invalid
+    if not shape.get("required"):
+        raise ToolRefusal(REQUIRES_NOTHING)
+
+
+def _answering(shape: Mapping[str, Any]) -> Tool:
+    return Tool(
+        name=ANSWER_TOOL_NAME,
+        description=ANSWER_TOOL_DESCRIPTION,
+        parameter_schema=dict(shape),
+        run=lambda **given: given,
+    )
+
+
+def _uncited_value(value: Any) -> Any:
+    if isinstance(value, str):
+        return _uncited(value)
+    if isinstance(value, dict):
+        return {key: _uncited_value(each) for key, each in value.items()}
+    if isinstance(value, list):
+        return [_uncited_value(each) for each in value]
+    return value
 
 
 def _read(result: ToolResult, read_documents: bool = False) -> Read:

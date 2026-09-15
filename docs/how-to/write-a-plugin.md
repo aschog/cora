@@ -166,11 +166,18 @@ its return is the whole of its decision — `None` changes nothing, at every eve
   conversation, under names no other plugin shares, gone when it is deleted. A read
   answers `str | None`, and `keep(name, None)` is how a name is dropped. Bound inside a
   tool call only: elsewhere a read is empty and a write is dropped.
-- `cora.delegate(task, tools=(), rounds=3)` — a bounded loop of its own with the model,
-  offered what you pass plus cora's document search. Tools declaring `effect` or `asks`
-  are withheld, and a tool of yours named `search_documents` fails the call. `rounds` is
-  capped at five, one more than asked reaches the model, and a loop that gathered
-  nothing fails rather than spending a call.
+- `cora.delegate(task, tools=(), rounds=3, shape=None)` — a bounded loop of its own with
+  the model, offered what you pass plus cora's document search. Tools declaring `effect`
+  or `asks` are withheld, and a tool of yours named `search_documents` fails the call.
+  `rounds` is capped at five, one more than asked reaches the model, and a loop that
+  gathered nothing fails rather than spending a call.
+- `shape=` is JSON Schema the answer must satisfy, and what you get back is the value
+  rather than prose. The loop is offered one more tool, `answer`, whose parameters are
+  your shape — so the schema is put to the model as a schema, and an answer that fails
+  it is told to the loop, which corrects it in a round it already had. It costs no round
+  prose would not have cost. A tool of yours named `answer` fails the call, the shape
+  must require something, and prose where the shape was asked for fails the call rather
+  than coming back as a guess. `format` is not checked, so read your own dates.
 - `cora.show(did, detail="", failed=False)` — one line on the trace, signed with your
   plugin's name, under the call it was said inside.
 - `cora.log` — a logger named for the plugin.

@@ -3,7 +3,7 @@
 import logging
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Protocol, overload
 
 from cora.domain.card import Card
 from cora.ports.chat_model import ChatModel
@@ -272,18 +272,40 @@ class Host(Protocol):
         """What this plugin kept for the conversation this turn is answering on."""
         ...
 
-    def delegate(self, task: str, tools: tuple[Tool, ...] = (), rounds: int = 3) -> str:
+    @overload
+    def delegate(
+        self, task: str, tools: tuple[Tool, ...] = (), rounds: int = 3
+    ) -> str: ...
+
+    @overload
+    def delegate(
+        self,
+        task: str,
+        tools: tuple[Tool, ...] = (),
+        rounds: int = 3,
+        *,
+        shape: Mapping[str, Any],
+    ) -> dict[str, Any]: ...
+
+    def delegate(
+        self,
+        task: str,
+        tools: tuple[Tool, ...] = (),
+        rounds: int = 3,
+        *,
+        shape: Mapping[str, Any] | None = None,
+    ) -> str | dict[str, Any]:
         """Run a bounded loop of the model's own, and answer with what it wrote.
 
         The loop is offered the tools given plus cora's document search, and never a
         tool that writes, stops the turn, or declares an effect — one passed in that
         declares one is withheld, and the plugin's logger says which. Its steps are
         reported under the call that ran it, and what it answers reaches the turn
-        labelled untrusted and citing nothing of its own.
+        labelled untrusted and citing nothing of its own. One that spends its rounds
+        without an answer is asked once more, with no tools, to write up what it found.
 
-        A loop that spends every round without reaching an answer is asked once more,
-        with no tools, to write up what it found: the rounds it spent are not lost, and
-        what comes back says it stopped early rather than reading as a whole answer.
+        Given a shape, the loop answers by calling a tool that takes it: the value
+        comes back checked, and a failed check is told to the loop to correct.
 
         Args:
             task: What the loop is being asked to do, as its first message.
@@ -291,11 +313,17 @@ class Host(Protocol):
             rounds: How many rounds it may spend, capped by the host and ignored in a
                 loop delegated from another. One more than this reaches the model, the
                 last with the tools still on the table so a loop can answer in it.
+            shape: JSON Schema the answer must satisfy, and what the loop is offered as
+                the parameters of its answer. It must require something, an answer
+                satisfying a shape that requires nothing being an empty one. A `format`
+                in it is not checked, so a caller wanting dates read still reads them.
 
         Raises:
             ToolRefusal: The loop gathered nothing before its rounds ran out, or the
-                write-up came back empty, or a tool passed in takes the name cora's own
-                search has. Either way the call fails and the turn answers anyway.
+                write-up came back empty, or a tool passed in takes a name of cora's
+                own. With a shape: the shape is not one anything could be held to, the
+                loop wrote prose instead of answering in it, or its rounds ran out.
+                Either way the call fails and the turn answers anyway.
             LlmError: The model gave back nothing usable.
         """
         ...

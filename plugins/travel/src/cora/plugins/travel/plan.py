@@ -36,6 +36,11 @@ class Priced:
 class Plan:
     """A whole trip: where, when, what to do, and what it costs.
 
+    `destination` is the place in the traveller's own words and `arrival` is the airport
+    the flights were priced to, because the two engines read where a trip goes
+    differently and a revision has to price the flights again. Blank where no flight was
+    searched.
+
     `fare` and `stay` are absent where nothing priced them, and a plan missing either is
     unpriced rather than free — a deployment with no search key plans the days and says
     the money is unknown.
@@ -45,6 +50,7 @@ class Plan:
     destination: str
     depart: datetime.date
     back: datetime.date
+    arrival: str = ""
     days: tuple[Day, ...] = ()
     fare: Priced | None = None
     stay: Priced | None = None
@@ -82,6 +88,7 @@ def written(plan: Plan) -> dict[str, Any]:
     return {
         "origin": plan.origin,
         "destination": plan.destination,
+        "arrival": plan.arrival,
         "depart": plan.depart.isoformat(),
         "back": plan.back.isoformat(),
         "days": [_day(day.on, day.doing, day.outdoor) for day in plan.days],
@@ -121,6 +128,7 @@ def plan_from(given: Any) -> Plan:
     return Plan(
         origin=str(given["origin"]),
         destination=str(given["destination"]),
+        arrival=str(given.get("arrival", "")),
         depart=datetime.date.fromisoformat(str(given["depart"])),
         back=datetime.date.fromisoformat(str(given["back"])),
         days=tuple(_read_day(day) for day in given.get("days", ())),

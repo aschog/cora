@@ -9,6 +9,7 @@ from cora.plugins.travel.trips import (
     FLIGHT_FIELDS,
     FLIGHTS_ASKED,
     HOTEL_FIELDS,
+    REFUSED,
     SEARCH,
     UNREACHABLE,
     KeptOut,
@@ -30,11 +31,19 @@ class Answer:
     """One reply, its own object — so several departures in flight at once do not read
     each other's body."""
 
-    def __init__(self, body: Any) -> None:
+    def __init__(self, body: Any, status: int = 200) -> None:
         self._body = body
+        self._status = status
 
     def raise_for_status(self) -> None:
-        return None
+        if self._status < 400:
+            return
+        asked = httpx.Request("GET", SEARCH)
+        raise httpx.HTTPStatusError(
+            f"{self._status}",
+            request=asked,
+            response=httpx.Response(self._status, request=asked),
+        )
 
     def json(self) -> Any:
         if isinstance(self._body, Exception):
@@ -57,6 +66,8 @@ class Service:
         body = self._reply(params) if callable(self._reply) else self._reply
         if isinstance(body, httpx.HTTPError):
             raise body
+        if isinstance(body, tuple):
+            return Answer(*body)
         return Answer(body)
 
 
@@ -156,7 +167,8 @@ def test_every_searchable_field_reaches_the_schema_and_the_query_from_one_table(
     """Said once and read twice, so a field somebody wants later is a row rather than
     an edit in two places that drift."""
     schema = _schema(fields)
-    asked = {field.name: 3 if field.type == "integer" else "x" for field in fields}
+    # Three letters because a route's ends are codes and the rest take any string.
+    asked = {field.name: 3 if field.type == "integer" else "XXX" for field in fields}
     query = _query(fields, asked, KEY)
 
     assert set(schema["properties"]) == {field.name for field in fields}
@@ -176,6 +188,42 @@ def test_a_service_that_cannot_be_reached_is_one_sentence() -> None:
         search.stays(**STAY)
 
     assert str(refused.value) == UNREACHABLE
+
+
+def test_a_search_the_service_would_not_run_says_so_rather_than_unreachable() -> None:
+    """The engine says no by status *and* by message — a 400 quoting the parameter it
+    could not read. Read as unreachable it sends the reader looking at their network for
+    a search that arrived and was refused."""
+    search, service = searching(
+        ({"error": "`arrival_id` should be an uppercase 3-letter code"}, 400)
+    )
+
+    with pytest.raises(ToolRefusal) as refused:
+        search.stays(**STAY)
+
+    assert str(refused.value) == REFUSED
+    assert len(service.queries) == 1, "the search did reach the service"
+
+
+def test_a_city_name_where_the_engine_wants_a_code_is_refused_first() -> None:
+    """The engine takes IATA and nothing else, so a name is a refusal the model can act
+    on rather than a 400 the reader has to interpret."""
+    search, service = searching(flights(300.0))
+
+    with pytest.raises(ToolRefusal) as refused:
+        search.flights(origin="BER", destination="Lisbon", **WEEK)
+
+    assert "code" in str(refused.value)
+    assert service.queries == [], "nothing went out to be refused"
+
+
+def test_a_lowercase_code_is_sent_as_the_engine_spells_it() -> None:
+    search, service = searching(flights(300.0))
+
+    search.flights(origin="ber", destination="lis", **WEEK)
+
+    assert service.queries[0]["departure_id"] == "BER"
+    assert service.queries[0]["arrival_id"] == "LIS"
 
 
 def test_the_key_is_kept_out_of_the_clients_own_request_log() -> None:
