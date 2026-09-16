@@ -12,21 +12,23 @@ from cora.plugins.interview.tools import (
 from cora.ports.plugin import Tool, ToolRefusal
 from fakes import FakeOutput
 
-VERDICT = (
-    "Correctness: 4 — the right idea. Structure: 4 — clear STAR. "
-    "Communication: 4 — concise.\n"
-    "TOTAL: 12/15\n"
-    "NEXT QUESTION: What does the GIL rule out?"
-)
+VERDICT: dict[str, Any] = {
+    "correctness": 4,
+    "structure": 4,
+    "communication": 4,
+    "feedback": "The right idea, clearly put, and concise with it.",
+    "next_question": "What does the GIL rule out?",
+}
 
 
 class Cora:
     """The host the tools keep the interview on, with the delegated loop scripted."""
 
-    def __init__(self, *reports: str) -> None:
+    def __init__(self, *answers: Any) -> None:
         self.kept: dict[str, str] = {}
-        self.reports = list(reports)
+        self.answers = list(answers)
         self.tasks: list[str] = []
+        self.shapes: list[Any] = []
         self.shown: list[str] = []
 
     @property
@@ -37,11 +39,22 @@ class Cora:
         return self.kept.get(name)
 
     def keep(self, name: str, value: str | None) -> None:
-        self.kept[name] = value or ""
+        if value is None:
+            self.kept.pop(name, None)
+        else:
+            self.kept[name] = value
 
-    def delegate(self, task: str, tools: tuple[Any, ...] = (), rounds: int = 3) -> str:
+    def delegate(
+        self,
+        task: str,
+        tools: tuple[Any, ...] = (),
+        rounds: int = 3,
+        *,
+        shape: Any = None,
+    ) -> Any:
         self.tasks.append(task)
-        return self.reports.pop(0)
+        self.shapes.append(shape)
+        return self.answers.pop(0)
 
     def show(self, did: str, detail: str = "", failed: bool = False) -> None:
         self.shown.append(did)
@@ -132,7 +145,8 @@ def test_a_judged_answer_is_kept_scored_and_the_question_advances() -> None:
 
     said = evaluate.run(answer="A callable wrapping a callable.")
 
-    assert said == VERDICT
+    assert VERDICT["feedback"] in said
+    assert "12/15" in said
     held = _running(cora)
     [judged] = held["rounds"]
     assert judged["question"] == "What is a decorator?"
@@ -142,19 +156,74 @@ def test_a_judged_answer_is_kept_scored_and_the_question_advances() -> None:
     assert any("judged answer 1: 12/15" in line for line in cora.shown)
 
 
-def test_a_verdict_the_rubric_cannot_be_read_from_is_kept_unscored() -> None:
-    """The judge is a model, and one that ignored the format loses the number, not
-    the round: the verdict is kept, the score is none, the question stays."""
-    cora = Cora("Q1?", "Meandering feedback with no totals in it.")
+def test_the_next_question_carries_nothing_the_judge_wrote_around_it() -> None:
+    """The scores and the question are read off a shape the loop answered in, so the
+    order the judge wrote them in, and anything it added after, are not the plugin's
+    to parse — and never end up inside the question the user is asked next."""
+    cora = Cora(
+        "Q1?",
+        {
+            "correctness": 4,
+            "structure": 4,
+            "communication": 4,
+            "feedback": "The right idea, clearly put.",
+            "next_question": "What does the GIL rule out?",
+        },
+    )
     start, evaluate = _tools(cora)
     start.run(role="r", seniority="mid", difficulty="easy", interviewer="neutral")
 
     evaluate.run(answer="An answer.")
 
     held = _running(cora)
-    assert held["rounds"][0]["score"] is None
-    assert held["question"] == "Q1?"
-    assert any("unscored" in line for line in cora.shown)
+    assert held["question"] == "What does the GIL rule out?"
+    assert held["rounds"][0]["score"] == 12
+
+
+def test_a_second_start_over_a_judged_interview_is_refused() -> None:
+    """The transcript is the thing the user was promised they could keep, and a model
+    asked for "the same again, but as a staff engineer" calls start, not save."""
+    cora = Cora("Q1?", VERDICT, "Q2?")
+    start, evaluate = _tools(cora)
+    start.run(role="r", seniority="mid", difficulty="easy", interviewer="neutral")
+    evaluate.run(answer="An answer.")
+
+    with pytest.raises(ToolRefusal):
+        start.run(role="r", seniority="staff", difficulty="hard", interviewer="strict")
+
+    assert len(_running(cora)["rounds"]) == 1
+
+
+def test_a_start_over_an_interview_nobody_answered_runs() -> None:
+    """Nothing is lost by restarting one that was never answered, and a user who
+    misread the card would otherwise be stuck with the interview it started."""
+    cora = Cora("Q1?", "Q2?")
+    start, _ = _tools(cora)
+    start.run(role="r", seniority="mid", difficulty="easy", interviewer="neutral")
+
+    said = start.run(
+        role="r", seniority="staff", difficulty="hard", interviewer="strict"
+    )
+
+    assert "Q2?" in said
+
+
+def test_saving_the_report_ends_the_interview_it_wrote() -> None:
+    """The report is what the interview was for: once it is on disk the next start is
+    a new interview rather than a refusal the user cannot get past."""
+    output = FakeOutput()
+    cora = Cora("Q1?", VERDICT, "Q2?")
+    start, evaluate = _tools(cora)
+    start.run(role="r", seniority="mid", difficulty="easy", interviewer="neutral")
+    evaluate.run(answer="An answer.")
+
+    _saving(output, cora).run(filename="report.md")
+
+    assert _saving(output, cora)
+    said = start.run(
+        role="r", seniority="staff", difficulty="hard", interviewer="strict"
+    )
+    assert "Q2?" in said
 
 
 def test_the_report_writes_every_round_and_says_where_it_went() -> None:

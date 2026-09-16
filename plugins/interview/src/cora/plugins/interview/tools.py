@@ -12,6 +12,10 @@ from cora.ports.plugin import Tool, ToolRefusal
 
 KEPT = "interview"
 
+CRITERIA = ("correctness", "structure", "communication")
+PER_CRITERION = 5
+MOST = len(CRITERIA) * PER_CRITERION
+
 START_TOOL_NAME = "start_mock_interview"
 START_TOOL_DESCRIPTION = (
     "Start a mock interview: the user picks the role, the seniority, the difficulty "
@@ -77,6 +81,11 @@ NOTHING_TO_REPORT = (
     "No answers have been judged in this conversation, so there is no report to "
     "save. Run a mock interview first."
 )
+STILL_RUNNING = (
+    "A mock interview with {judged} judged answer(s) is already running, and starting "
+    "another would lose them. Save the report with save_interview_report first — that "
+    "ends this interview — then start the new one."
+)
 UNNAMEABLE = (
     "'{filename}' leaves nothing behind once it is made safe to write; give the "
     "report a filename with some letters or digits in it"
@@ -98,19 +107,53 @@ JUDGING = (
     "interview for a {seniority} {role}.\n\n"
     "Question: {question}\n"
     "Candidate's answer: {answer}\n\n"
-    "Score the answer 1-5 on each of correctness, structure and communication, with "
-    "one sentence of feedback per criterion. Then finish with exactly these two "
-    "lines:\n"
-    "TOTAL: <the three scores added up>/15\n"
-    "NEXT QUESTION: <one new {difficulty} question that follows on from this answer>"
+    "Score the answer on each criterion, say why in a sentence each, and follow on "
+    "from it with one new {difficulty} question."
 )
+VERDICT_SHAPE: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "correctness": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": PER_CRITERION,
+            "description": "How right the answer was.",
+        },
+        "structure": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": PER_CRITERION,
+            "description": "How well the answer was organised.",
+        },
+        "communication": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": PER_CRITERION,
+            "description": "How clearly the answer was put.",
+        },
+        "feedback": {
+            "type": "string",
+            "description": "One sentence on each criterion, addressed to the "
+            "candidate.",
+        },
+        "next_question": {
+            "type": "string",
+            "description": "One new question following on from this answer, and "
+            "nothing else.",
+        },
+    },
+    "required": [
+        "correctness",
+        "structure",
+        "communication",
+        "feedback",
+        "next_question",
+    ],
+    "additionalProperties": False,
+}
 
 OPENING_ROUNDS = 2
 JUDGING_ROUNDS = 1
-
-MOST = 15
-_TOTAL = re.compile(r"TOTAL:\s*(\d{1,2})\s*/\s*15")
-_NEXT = re.compile(r"NEXT QUESTION:\s*(.+)", re.DOTALL)
 
 UNSAFE = re.compile(r"[^a-z0-9]+")
 HASH_LENGTH = 12
@@ -125,6 +168,12 @@ def interview_tools(cora: Host) -> tuple[Tool, Tool]:
     """
 
     def start(role: str, seniority: str, difficulty: str, interviewer: str) -> str:
+        running = cora.state.read(KEPT)
+        judged = len(json.loads(running)["rounds"]) if running else 0
+        # Refused before the loop is delegated: a call that is not going to happen has
+        # no business spending a model round first.
+        if judged:
+            raise ToolRefusal(STILL_RUNNING.format(judged=judged))
         question = cora.delegate(
             OPENING.format(
                 role=role,
@@ -155,11 +204,13 @@ def interview_tools(cora: Host) -> tuple[Tool, Tool]:
         if held is None:
             raise ToolRefusal(NOT_STARTED)
         interview = json.loads(held)
-        verdict = cora.delegate(
-            JUDGING.format(answer=answer, **interview), rounds=JUDGING_ROUNDS
+        judged = cora.delegate(
+            JUDGING.format(answer=answer, **interview),
+            rounds=JUDGING_ROUNDS,
+            shape=VERDICT_SHAPE,
         )
-        score = _score(verdict)
-        follow = _NEXT.search(verdict)
+        score = sum(judged[each] for each in CRITERIA)
+        verdict = _verdict(judged, score)
         interview["rounds"].append(
             {
                 "question": interview["question"],
@@ -168,12 +219,11 @@ def interview_tools(cora: Host) -> tuple[Tool, Tool]:
                 "score": score,
             }
         )
-        if follow:
-            interview["question"] = follow.group(1).strip()
+        interview["question"] = judged["next_question"].strip()
         cora.state.keep(KEPT, json.dumps(interview))
-        judged = len(interview["rounds"])
-        said = f"{score}/{MOST}" if score is not None else "unscored"
-        cora.show(f"judged answer {judged}: {said}", detail=verdict)
+        cora.show(
+            f"judged answer {len(interview['rounds'])}: {score}/{MOST}", detail=verdict
+        )
         return verdict
 
     return (
@@ -227,6 +277,10 @@ def report_tool(output: Output, cora: Host) -> Tool:
             raise ToolRefusal(NOTHING_TO_REPORT)
         kept = _written(interview)
         where = output.write(_filename(filename, kept), kept)
+        # The report is what the interview was for, so writing it ends the interview:
+        # what is on disk cannot be lost by the next start, and there is nothing left
+        # for that start to refuse over.
+        cora.state.keep(KEPT, None)
         return f"Saved the interview report to {where}"
 
     return Tool(
@@ -238,21 +292,15 @@ def report_tool(output: Output, cora: Host) -> Tool:
     )
 
 
-def _score(verdict: str) -> int | None:
-    found = _TOTAL.search(verdict)
-    if found is None:
-        return None
-    return min(int(found.group(1)), MOST)
+def _verdict(judged: dict[str, Any], score: int) -> str:
+    scored = ", ".join(f"{each} {judged[each]}/{PER_CRITERION}" for each in CRITERIA)
+    return f"{judged['feedback']}\n\n{scored} — {score}/{MOST}"
 
 
 def _written(interview: dict[str, Any]) -> str:
     rounds = interview["rounds"]
-    scored = [each["score"] for each in rounds if each["score"] is not None]
-    total = (
-        f"{sum(scored)}/{MOST * len(scored)} over {len(scored)} scored answers"
-        if scored
-        else "unscored"
-    )
+    scored = [each["score"] for each in rounds]
+    total = f"{sum(scored)}/{MOST * len(scored)} over {len(scored)} answers"
     lines = [
         f"# Interview report: {interview['role']}",
         "",

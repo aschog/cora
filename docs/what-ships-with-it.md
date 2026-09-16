@@ -1,10 +1,12 @@
 # What ships with it
 
-Three plugins, and everything here is theirs rather than cora's. A deployment with none
+Four plugins, and everything here is theirs rather than cora's. A deployment with none
 of them still answers.
 
 - **security** — a medical filter and a prompt-injection screen, both system-wide.
 - **fitness** — a coaching persona and its calculators, bringing the `fitness` field.
+- **interview** — the `interview` field: mock interviews run on a card, answers judged
+  against a rubric, and a report the user keeps.
 - **travel** — the `travel` field, and the rest of this page.
 
 ## Travel, in four parts

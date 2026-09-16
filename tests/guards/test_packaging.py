@@ -99,3 +99,25 @@ def test_every_plugin_says_what_it_reaches_outside_with() -> None:
     """One added without an entry is asked for nothing, rather than inheriting the
     allowance of the plugin it happens to ship beside."""
     assert {module for _, module in workspace.plugins()} == PLUGIN_REACHES.keys()
+
+
+EXCLUDED = ["**/.ruff.toml", "**/.ruff_cache"]
+
+
+@pytest.mark.parametrize("member", MEMBERS, ids=IDS)
+def test_no_member_ships_the_lint_config_it_is_governed_by(
+    member: pathlib.Path,
+) -> None:
+    """A layer's import bans sit in a `.ruff.toml` inside the directory they govern,
+    which is inside what the wheel packages, and ruff writes its cache beside one.
+    Excluded per member because the build backend reads each manifest alone — so the
+    member added without the two keys is the one that ships a developer's machine."""
+    build = workspace.manifest(member).get("tool", {}).get("uv", {})
+    backend = build.get("build-backend", {})
+
+    assert backend.get("wheel-exclude") == EXCLUDED, (
+        f"{workspace.location(member)} would ship its lint config in the wheel"
+    )
+    assert backend.get("source-exclude") == EXCLUDED, (
+        f"{workspace.location(member)} would ship its lint config in the sdist"
+    )
