@@ -7,6 +7,7 @@ import pytest
 from cora.frontends.telegram.api import (
     AFTER_A_DROP,
     LONGEST_WAIT,
+    MOST_WAITS,
     BotApi,
     Message,
 )
@@ -221,15 +222,23 @@ def test_a_rate_that_outlasts_one_wait_is_waited_out_again(
 def test_a_rate_that_outlasts_every_wait_still_does_not_end_the_bot(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("cora.frontends.telegram.api.time.sleep", lambda _: None)
+    """The poll is the one call no rate may end: every wait spent and still refused, it
+    is waited out once more and asked again, not raised at the loop."""
+    waited: list[float] = []
+    monkeypatch.setattr("cora.frontends.telegram.api.time.sleep", waited.append)
+    polls = itertools.count(1)
 
     def busy(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(429, json={"ok": False, "parameters": {"retry_after": 1}})
+        if next(polls) <= MOST_WAITS + 1:
+            return httpx.Response(
+                429, json={"ok": False, "parameters": {"retry_after": 1}}
+            )
+        return httpx.Response(200, json={"ok": True, "result": [_text(1, 11, "hello")]})
 
-    bot = _bot(httpx.MockTransport(busy))
+    [first] = itertools.islice(_bot(httpx.MockTransport(busy)).messages(), 1)
 
-    bot.send(11, "hello")
-    assert list(itertools.islice(bot.messages(), 0)) == []
+    assert first == Message(chat=11, text="hello")
+    assert waited == [1.0] * MOST_WAITS + [AFTER_A_DROP]
 
 
 def test_a_wait_longer_than_the_ceiling_is_capped(

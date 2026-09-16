@@ -144,11 +144,11 @@ def parts(text: str) -> Iterator[str]:
     one, at a word where there is not, and nothing dropped at the seam."""
     while _units(text) > CEILING:
         fits = _fits(text, CEILING)
-        cut = text.rfind("\n", 0, fits) + 1 or text.rfind(" ", 0, fits) + 1 or fits
         # A separator at the very front would cut a part with nothing in it, and a
-        # message of nothing is one the API refuses. Take the whole window instead.
-        if not text[:cut].strip():
-            cut = fits
+        # message of nothing is one the API refuses — so a cut that leaves nothing
+        # falls through to the next one rather than straight to the whole window.
+        cuts = (text.rfind("\n", 0, fits) + 1, text.rfind(" ", 0, fits) + 1, fits)
+        cut = next((at for at in cuts if text[:at].strip()), fits)
         yield text[:cut]
         text = text[cut:]
     yield text

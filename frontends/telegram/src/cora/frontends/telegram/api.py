@@ -67,10 +67,11 @@ class BotApi:
         """One message into one chat, as it was written: no parse mode, so nothing in
         it has to be escaped and nothing in it is read as markup.
 
-        What goes wrong with one chat is dropped rather than raised — a reader who
-        blocked the bot, a rate that outlasts the waits, a connection that went while
-        the reply was on its way. None of it is the end of the bot for everybody else,
-        and there is nobody to report it to but the log.
+        Three refusals are dropped rather than raised: a reader who blocked the bot, a
+        rate that outlasts the waits, a connection that went while the reply was on its
+        way. None of them is the end of the bot for everybody else, and there is nobody
+        to report them to but the log. Anything else a chat refuses with is raised —
+        what nobody modelled should stop the run, not scroll past in it.
         """
         if not text.strip():
             return

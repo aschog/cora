@@ -188,6 +188,7 @@ def test_an_effect_is_approved_from_the_chat() -> None:
         allowed=(ALLOWED,),
     )
 
-    assert "x: 7" in telegram.texts[0]
+    card = telegram.texts[0]
+    assert card.index("x: 7") < card.index("1."), card
     assert ran == [7]
     assert telegram.texts[-1] == "Done."

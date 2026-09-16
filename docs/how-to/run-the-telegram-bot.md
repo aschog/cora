@@ -15,7 +15,8 @@ one line on stderr and a non-zero exit, before a model is loaded or a store is o
 
 - `CORA_TELEGRAM_TOKEN` — the bot account, from Telegram's own BotFather.
 - `CORA_TELEGRAM_CHATS` — the chats it answers, as ids separated by commas. Negative
-  ids are groups and channels.
+  ids are groups and channels, and naming one allows everybody in it: the list is of
+  rooms, not of people, and a room you were added to is a room somebody else fills.
 
 `make bot-env` reads them from `.env` instead, as `make run-env` is to `make run`.
 
@@ -24,8 +25,10 @@ cora would answer with your documents. So the list is required, an empty one is 
 rather than read as everybody, and a message from a chat that is not on it is dropped
 without a reply — a reply is a way of saying something is there.
 
-To find your own id, start the bot and message it: a message from a chat nobody named
-is written to the terminal as the chat it came from, and none of what it said.
+To find your own id, start the bot with `CORA_TELEGRAM_CHATS=0` — a chat that is
+nobody, and the list cannot be empty — and message it: a message from a chat nobody
+named is written to the terminal as the chat it came from, and none of what it said.
+Put that number in the list and start it again.
 
 ## What a chat can do
 

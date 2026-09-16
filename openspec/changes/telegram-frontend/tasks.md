@@ -123,3 +123,16 @@ notes somewhere.
 - [x] 10.13 Write a test that a reply of a digit `int` refuses to read settles nothing.
 - [x] 10.14 Write a test that names the chat each answer was delivered to, not only the
       thread it ran on.
+
+## 11. What the second review found
+
+- [x] 11.1 Write a test that a rate outlasting every wait on the *poll* is waited out and
+      asked again — the one the vacuous assertion under 10.5 never drove.
+- [x] 11.2 Write a test that a part is cut at a word where the only line break is at the
+      very front.
+- [x] 11.3 Write a test that an effect's arguments are above the numbered ways off, and
+      not merely somewhere in the message.
+- [x] 11.4 Say in the how-to which list a reader who does not know their chat id yet
+      starts the bot with, since an empty one is refused.
+- [x] 11.5 Say in the how-to that a group id allows everybody in the group.
+- [x] 11.6 Narrow `send`'s docstring to the three refusals it really drops.

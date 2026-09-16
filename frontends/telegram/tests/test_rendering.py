@@ -123,4 +123,5 @@ def test_an_answer_that_opens_with_a_line_break_sends_no_blank_part() -> None:
     answering(chatting(answers=written), telegram, allowed=(ALLOWED,))
 
     assert all(part.strip() for part in telegram.texts)
+    assert all(part.endswith(" ") for part in telegram.texts[:-1])
     assert "".join(telegram.texts) == written
