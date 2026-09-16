@@ -50,6 +50,7 @@ TOOLKITS: dict[str, frozenset[str]] = {
     "react": frozenset({"starlette", "uvicorn", "python_multipart"}),
     "telegram": frozenset({"httpx"}),
     "fitness": frozenset(),
+    "interview": frozenset(),
     "security": frozenset(),
     "travel": frozenset({"httpx"}),
 }

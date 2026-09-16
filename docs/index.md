@@ -24,7 +24,7 @@ Why cora is built the way it is.
   read out of the methods that take them.
 - [What cora does](what-it-does.md) — the fields, the cards, the gate an effect waits
   at, and what deleting any of it takes.
-- [What ships with it](what-ships-with-it.md) — the three plugins in this repository,
+- [What ships with it](what-ships-with-it.md) — the four plugins in this repository,
   and what each one brings.
 - [How the page is built](the-page.md) — the React frontend: who owns which state,
   and why a broken rail leaves the conversation standing.

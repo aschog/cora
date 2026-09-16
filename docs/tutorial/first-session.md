@@ -18,13 +18,13 @@ git config core.hooksPath .githooks        # enable pre-commit + commit-msg hook
 
 ```sh
 mkdir -p .cora/plugins
-for each in security fitness travel; do
+for each in security fitness interview travel; do
   ln -s "$(pwd)"/plugins/$each/src/cora/plugins/$each .cora/plugins/$each
 done
 ```
 
-That is what makes this a coach and a travel companion rather than a bare cora, with a
-prompt-injection screen over both.
+That is what makes this a coach, an interview partner and a travel companion rather
+than a bare cora, with a prompt-injection screen over all three.
 
 ## 3. Start it
 
