@@ -53,10 +53,12 @@ cora-plugin-fitness = { workspace = true }
 cora-plugin-security = { workspace = true }
 cora-plugin-travel = { workspace = true }
 cora-frontend-react = { workspace = true }
+cora-frontend-telegram = { workspace = true }
 
 [dependency-groups]
 dev = [
     "cora-frontend-react",
+    "cora-frontend-telegram",
     "cora-plugin-fitness",
     "cora-plugin-security",
     "cora-plugin-travel",
@@ -81,6 +83,7 @@ root = [
     "src",
     "scripts",
     "frontends/react/src",
+    "frontends/telegram/src",
     "plugins/fitness/src",
     "plugins/security/src",
     "plugins/travel/src",
@@ -92,6 +95,7 @@ src = [
     "src",
     "scripts",
     "frontends/react/src",
+    "frontends/telegram/src",
     "plugins/fitness/src",
     "plugins/security/src",
     "plugins/travel/src",

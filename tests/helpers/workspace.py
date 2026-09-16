@@ -59,6 +59,17 @@ def modules(member: pathlib.Path) -> list[str]:
     return [declared] if isinstance(declared, str) else list(declared)
 
 
+def frontends() -> list[tuple[str, str]]:
+    """Every frontend in the workspace as (distribution, module). Found the way
+    `plugins` finds a plugin, so a rule written over these covers the next one."""
+    return sorted(
+        (distribution(member), module)
+        for member in members()
+        for module in modules(member)
+        if module.startswith("cora.frontends.")
+    )
+
+
 def plugins() -> list[tuple[str, str]]:
     """Every plugin in the workspace as (distribution, module). Recognised by the
     namespace it contributes to rather than by where its directory sits, so a rule

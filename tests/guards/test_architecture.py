@@ -48,6 +48,7 @@ PURE_MAY_USE = frozenset({"jsonschema"})
 # quietly grows an HTTP server.
 TOOLKITS: dict[str, frozenset[str]] = {
     "react": frozenset({"starlette", "uvicorn", "python_multipart"}),
+    "telegram": frozenset({"httpx"}),
     "fitness": frozenset(),
     "security": frozenset(),
     "travel": frozenset({"httpx"}),

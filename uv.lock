@@ -17,6 +17,7 @@ resolution-markers = [
 members = [
     "cora",
     "cora-frontend-react",
+    "cora-frontend-telegram",
     "cora-plugin-fitness",
     "cora-plugin-security",
     "cora-plugin-travel",
@@ -211,6 +212,7 @@ dependencies = [
 [package.dev-dependencies]
 dev = [
     { name = "cora-frontend-react" },
+    { name = "cora-frontend-telegram" },
     { name = "cora-plugin-fitness" },
     { name = "cora-plugin-security" },
     { name = "cora-plugin-travel" },
@@ -243,6 +245,7 @@ requires-dist = [
 [package.metadata.requires-dev]
 dev = [
     { name = "cora-frontend-react", editable = "frontends/react" },
+    { name = "cora-frontend-telegram", editable = "frontends/telegram" },
     { name = "cora-plugin-fitness", editable = "plugins/fitness" },
     { name = "cora-plugin-security", editable = "plugins/security" },
     { name = "cora-plugin-travel", editable = "plugins/travel" },
@@ -277,6 +280,21 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.20,<0.1" },
     { name = "starlette", specifier = ">=0.51" },
     { name = "uvicorn", specifier = ">=0.42" },
+]
+
+[[package]]
+name = "cora-frontend-telegram"
+version = "0.1.0"
+source = { editable = "frontends/telegram" }
+dependencies = [
+    { name = "cora" },
+    { name = "httpx" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cora", editable = "." },
+    { name = "httpx", specifier = ">=0.28.1" },
 ]
 
 [[package]]

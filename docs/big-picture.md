@@ -10,7 +10,7 @@ each for what it draws, so one behind its source is a red test.
 
 ## The map
 
-![cora as a UML component diagram: the React frontend, the engine and its parts, ten
+![cora as a UML component diagram: the two frontends, the engine and its parts, ten
 required interfaces wired to the components that provide them, and the packages each one
 depends on.](assets/component-map.svg)
 

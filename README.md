@@ -33,6 +33,7 @@ lives](docs/data-storage.md) is the whole layout.
 ## Stack
 
 Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangGraph · LangChain over
-OpenRouter · SQLite with sqlite-vec · sentence-transformers · React over Starlette.
+OpenRouter · SQLite with sqlite-vec · sentence-transformers · React over Starlette,
+and a Telegram bot beside it.
 Gates: ruff, ty and pytest on the Python, eslint, tsc and vitest on the page, and a
 browser tier nothing runs for you.

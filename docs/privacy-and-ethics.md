@@ -27,12 +27,19 @@ which part.
 - **Hugging Face, once.** `sentence-transformers/all-MiniLM-L6-v2` is downloaded the
   first time anything is embedded — an upload or a search — and then runs locally, so no
   document text is sent anywhere to be indexed. An offline deployment pre-caches it.
+- **Telegram, where the bot is run.** `make bot` polls `api.telegram.org` and posts its
+  answers back there: the answer itself, the names of the documents it cites, and a
+  card's prompt with the values it already holds. The question arrives from Telegram
+  rather than going to it, because it was typed there. Only the chats
+  `CORA_TELEGRAM_CHATS` names are answered, and the bot token rides in every URL, so
+  it is a credential the same as any other. Nothing is sent where the page is run
+  instead.
 
 Nothing else in cora reaches the network: no general-purpose HTTP client — `httpx`,
 `requests`, `urllib` — is imported anywhere under `src/cora`, no telemetry package is in
 the tree or the lockfile, and the only outbound clients there are the provider's and the
-embedder's, both named above. Every other outbound call belongs to a plugin you chose to
-load, and a plugin can call anything.
+embedder's, both named above. Every other outbound call belongs to a frontend or a
+plugin you chose to run, and a plugin can call anything.
 
 ## What is kept, and where
 

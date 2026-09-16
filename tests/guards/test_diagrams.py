@@ -18,6 +18,7 @@ import xml.etree.ElementTree as ET
 import gen_component_map as components
 import gen_domain_map as domain
 import sequences
+import workspace
 from cora.engine.steps import ANSWER, FOCUS, ROUTE, SCREEN, WORK
 
 SVG = "{http://www.w3.org/2000/svg}"
@@ -50,6 +51,16 @@ def test_the_component_map_labels_every_interface_the_root_binds() -> None:
     bound = {binding.port for binding in components.bindings()}
 
     assert _text_of(components.MAP, "port") == bound
+
+
+def test_the_component_map_draws_every_frontend_the_workspace_ships() -> None:
+    """The map is the answer to "what is cora made of", and a frontend that ships and
+    is not on it makes the drawing say there is one fewer way in than there is. Read
+    off the manifests rather than a list here, so the next frontend is covered by
+    shipping."""
+    shipped = {module.rsplit(".", 1)[-1] for _, module in workspace.frontends()}
+
+    assert shipped <= _text_of(components.MAP, "name")
 
 
 def test_the_domain_map_draws_every_class_the_domain_declares() -> None:

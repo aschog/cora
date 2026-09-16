@@ -66,6 +66,7 @@ nav:
       - Load plugins: how-to/load-plugins.md
       - Write a plugin: how-to/write-a-plugin.md
       - Run the React shell: how-to/run-the-react-shell.md
+      - Run the Telegram bot: how-to/run-the-telegram-bot.md
       - Watch a turn happen: how-to/watch-a-turn.md
   - Reference: api/
 

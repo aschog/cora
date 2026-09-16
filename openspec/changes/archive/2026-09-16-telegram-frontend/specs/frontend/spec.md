@@ -1,11 +1,21 @@
-# frontend Specification
+As someone away from the machine cora runs on,\
+I want to ask it from Telegram,\
+so that I get my answer where I already am.
 
-## Purpose
+## REMOVED Requirements
 
-What cora is used through: a page and a chat, each over the same assembled app, and
-each started by a documented command of its own.
+### Requirement: cora is used through one screen
 
-## Requirements
+**Reason**: The rule counted frontends, and a count is not what the Streamlit removal was
+about — it was about code nobody runs. The rule below holds every frontend to that
+instead, which is what lets a second one ship.
+
+**Migration**: One process for the page and the API is carried into the requirement
+below unchanged. The scenario about Streamlit is carried as the rule that catches it —
+no shipped file imports a framework its own portion was not given — because that is the
+check the repository really has, and it holds of the next removed frontend too.
+
+## ADDED Requirements
 
 ### Requirement: Every frontend cora ships is one that is run
 
@@ -29,62 +39,6 @@ the tree that no command starts is removed rather than kept as a choice.
 - **WHEN** the shipped code is read
 - **THEN** nothing imports a framework the frontend it sits in did not declare, and the
   check names any file that does
-
-### Requirement: A part of the page that cannot be drawn is replaced by a sentence
-
-Where a column or a panel throws while rendering, the page SHALL draw a sentence in its
-place. The sentence SHALL name what could not be drawn, and SHALL replace nothing else.
-
-#### Scenario: A panel that throws says so
-
-- **GIVEN** a store answering with a shape the sessions panel cannot read
-- **WHEN** the reader opens that panel
-- **THEN** they are told that panel could not be drawn
-
-#### Scenario: What threw is on the console
-
-- **GIVEN** a part of the page that throws while rendering
-- **WHEN** it is caught
-- **THEN** the throw and the tree it came from reach the console
-
-### Requirement: The rest of the page is still drawn
-
-A column that could not be drawn SHALL NOT unmount the others. The conversation, the
-rails and the controls outside that column remain usable.
-
-#### Scenario: The conversation survives a broken panel
-
-- **GIVEN** a panel that threw while being drawn
-- **WHEN** the reader looks at the page
-- **THEN** the conversation and the documents rail are still there
-
-### Requirement: A panel that broke is left behind by moving to another
-
-The strip that chooses between panels SHALL stay outside what it chooses. Moving to
-another panel SHALL draw that panel rather than the sentence.
-
-#### Scenario: Switching tabs escapes it
-
-- **GIVEN** a panel that threw while being drawn
-- **WHEN** the reader chooses another panel
-- **THEN** that panel is drawn, and the sentence is gone
-
-### Requirement: Trying again re-draws what threw
-
-The sentence SHALL offer to draw the part again. Taking it SHALL re-draw the children
-rather than reload the page.
-
-#### Scenario: What was mended is drawn
-
-- **GIVEN** a part of the page that threw, and has since been given something it can draw
-- **WHEN** the reader tries again
-- **THEN** it is drawn
-
-#### Scenario: What still throws says so again
-
-- **GIVEN** a part of the page that throws, and still would
-- **WHEN** the reader tries again
-- **THEN** they are told again that it could not be drawn
 
 ### Requirement: cora answers in a Telegram chat
 

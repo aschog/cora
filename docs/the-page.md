@@ -1,8 +1,9 @@
 # How the page is built
 
 One React app over cora's own HTTP API, served as static files by the same process that
-answers them. It is the only frontend, so what it cannot do, cora cannot be asked to do
-from a browser.
+answers them. What it cannot do, cora cannot be asked to do from a browser — the
+[Telegram bot](how-to/run-the-telegram-bot.md) is the same app reached from a chat, and
+has a shorter list of its own.
 
 ## Where state lives
 

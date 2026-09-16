@@ -16,7 +16,6 @@ import re
 
 import workspace
 from cora.app import config
-from cora.frontends.react import server
 
 PRIVACY = "docs/privacy-and-ethics.md"
 
@@ -37,6 +36,7 @@ PAGES = (
     "docs/how-to/write-a-plugin.md",
     "docs/how-to/watch-a-turn.md",
     "docs/how-to/run-the-react-shell.md",
+    "docs/how-to/run-the-telegram-bot.md",
     "docs/tutorial/first-session.md",
 )
 
@@ -133,14 +133,18 @@ def _named_in(page: str, pattern: re.Pattern[str]) -> set[str]:
 
 
 def _settings() -> set[str]:
+    # The frontends are swept rather than imported by name, so the next one's settings
+    # are covered by it shipping rather than by somebody adding it here.
     read = set()
-    for module in (config, server):
-        read |= set(NAMED.findall(pathlib.Path(module.__file__ or "").read_text()))
-        read |= set(
-            re.findall(
-                r'"(CORA_[A-Z0-9_]+)"', pathlib.Path(module.__file__ or "").read_text()
-            )
-        )
+    sources = [pathlib.Path(config.__file__ or "").read_text()]
+    sources += [
+        path.read_text()
+        for member in sorted(pathlib.Path("frontends").glob("*/src"))
+        for path in sorted(member.rglob("*.py"))
+    ]
+    for source in sources:
+        read |= set(NAMED.findall(source))
+        read |= set(re.findall(r'"(CORA_[A-Z0-9_]+)"', source))
     return read | set(stores())
 
 
@@ -184,6 +188,46 @@ def test_every_setting_the_docs_name_is_one_cora_reads() -> None:
 
     assert invented == [], "\n".join(
         ["docs name settings cora does not read:", *invented]
+    )
+
+
+def _recipes() -> dict[str, str]:
+    # Variables are spelled out: a target running `$(REACT)` runs what it was set to.
+    text = pathlib.Path("Makefile").read_text()
+    for name, value in re.findall(r"(?m)^([A-Z_]+)\s*:?=\s*(.+)$", text):
+        text = text.replace(f"$({name})", value.strip())
+    found: dict[str, str] = {}
+    target = None
+    for line in text.splitlines():
+        if named := re.match(r"^([a-z][a-z-]*):", line):
+            target = named.group(1)
+            found.setdefault(target, "")
+        elif line.startswith("\t") and target:
+            found[target] += line
+        elif not line.strip():
+            target = None
+    return found
+
+
+def test_every_frontend_ships_a_documented_command_that_starts_it() -> None:
+    """A frontend nobody can start is a frontend nobody runs, which is the thing the
+    one-frontend rule was really about. Read off the workspace rather than listed, so
+    the next one is covered by being added."""
+    recipes = _recipes()
+    documented = {target for page in PAGES for target in _named_in(page, TARGET)}
+    unstarted = []
+    for _, module in workspace.frontends():
+        starts = {name for name, recipe in recipes.items() if module in recipe}
+        if not starts:
+            unstarted.append(f"{module}: no make target starts it")
+        elif not starts & documented:
+            unstarted.append(f"{module}: no page names {' or '.join(sorted(starts))}")
+
+    assert unstarted == [], "\n".join(
+        [
+            "frontends the workspace ships and nobody documents a command for:",
+            *unstarted,
+        ]
     )
 
 
