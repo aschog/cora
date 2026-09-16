@@ -32,11 +32,14 @@ _TAMPER = (
     "leak",
     "rewrite",
     "what are",
+    "what is",
+    "what's",
+    "tell me",
 )
 # Adjacent, not merely both present: the two word lists as a cross-product refuse
 # "show me how to talk about system prompt design", which is the field itself.
 _EXTRACTION = re.compile(
-    rf"\b(?:{'|'.join(_TAMPER)})\b[^.?!]{{0,12}}?(?:{'|'.join(_OURS)})"
+    rf"\b(?:{'|'.join(_TAMPER)})\b[^.?!]{{0,40}}?(?:{'|'.join(_OURS)})"
 )
 
 _OVERRIDES = ("ignore all previous", "disregard all previous", "jailbreak")

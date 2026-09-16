@@ -29,6 +29,7 @@ class Cora:
         self.answers = list(answers)
         self.tasks: list[str] = []
         self.shapes: list[Any] = []
+        self.rounds: list[int] = []
         self.shown: list[str] = []
 
     @property
@@ -54,7 +55,11 @@ class Cora:
     ) -> Any:
         self.tasks.append(task)
         self.shapes.append(shape)
-        return self.answers.pop(0)
+        self.rounds.append(rounds)
+        answered = self.answers.pop(0)
+        if isinstance(answered, ToolRefusal):
+            raise answered
+        return answered
 
     def show(self, did: str, detail: str = "", failed: bool = False) -> None:
         self.shown.append(did)
@@ -68,12 +73,16 @@ def _saving(output: FakeOutput, cora: Cora) -> Tool:
     return report_tool(output, cora)  # ty: ignore[invalid-argument-type]
 
 
+def _asked(question: str) -> dict[str, Any]:
+    return {"question": question}
+
+
 def _running(cora: Cora) -> dict[str, Any]:
     return json.loads(cora.kept[KEPT])
 
 
 def test_starting_keeps_the_setup_and_returns_the_first_question() -> None:
-    cora = Cora("What is a Python decorator?")
+    cora = Cora(_asked("What is a Python decorator?"))
     start, _ = _tools(cora)
 
     said = start.run(
@@ -134,7 +143,7 @@ def test_an_answer_before_any_interview_is_refused() -> None:
 
 
 def test_a_judged_answer_is_kept_scored_and_the_question_advances() -> None:
-    cora = Cora("What is a decorator?", VERDICT)
+    cora = Cora(_asked("What is a decorator?"), VERDICT)
     start, evaluate = _tools(cora)
     start.run(
         role="backend engineer",
@@ -161,7 +170,7 @@ def test_the_next_question_carries_nothing_the_judge_wrote_around_it() -> None:
     order the judge wrote them in, and anything it added after, are not the plugin's
     to parse — and never end up inside the question the user is asked next."""
     cora = Cora(
-        "Q1?",
+        _asked("Q1?"),
         {
             "correctness": 4,
             "structure": 4,
@@ -180,10 +189,51 @@ def test_the_next_question_carries_nothing_the_judge_wrote_around_it() -> None:
     assert held["rounds"][0]["score"] == 12
 
 
+def test_an_opening_the_loop_could_not_answer_keeps_no_interview() -> None:
+    """The call fails rather than half-starting: no interview is kept, so the next
+    start is a start and not a refusal over a round nobody ran."""
+    cora = Cora(ToolRefusal("the loop did not answer in the shape"))
+    start, _ = _tools(cora)
+
+    with pytest.raises(ToolRefusal):
+        start.run(role="r", seniority="mid", difficulty="easy", interviewer="neutral")
+
+    assert KEPT not in cora.kept
+
+
+def test_both_delegated_calls_answer_in_a_shape_with_a_round_to_correct_in() -> None:
+    """A shape the loop misses is told back to it to correct, which costs a round: one
+    round leaves the correction nowhere to happen, and the call fails on the retry."""
+    cora = Cora(_asked("Q1?"), VERDICT)
+    start, evaluate = _tools(cora)
+    start.run(role="r", seniority="mid", difficulty="easy", interviewer="neutral")
+    evaluate.run(answer="An answer.")
+
+    assert all(shape is not None for shape in cora.shapes)
+    assert all(rounds > 1 for rounds in cora.rounds)
+
+
+def test_a_judging_the_loop_could_not_answer_leaves_the_interview_where_it_was() -> (
+    None
+):
+    """A loop that wrote prose instead of the shape, or spent its rounds, fails the
+    call — and the user's answer is theirs to give again, on the same question, rather
+    than a round the transcript half-recorded."""
+    cora = Cora(_asked("Q1?"), ToolRefusal("the loop did not answer in the shape"))
+    start, evaluate = _tools(cora)
+    start.run(role="r", seniority="mid", difficulty="easy", interviewer="neutral")
+    before = _running(cora)
+
+    with pytest.raises(ToolRefusal):
+        evaluate.run(answer="An answer.")
+
+    assert _running(cora) == before
+
+
 def test_a_second_start_over_a_judged_interview_is_refused() -> None:
     """The transcript is the thing the user was promised they could keep, and a model
     asked for "the same again, but as a staff engineer" calls start, not save."""
-    cora = Cora("Q1?", VERDICT, "Q2?")
+    cora = Cora(_asked("Q1?"), VERDICT, _asked("Q2?"))
     start, evaluate = _tools(cora)
     start.run(role="r", seniority="mid", difficulty="easy", interviewer="neutral")
     evaluate.run(answer="An answer.")
@@ -197,7 +247,7 @@ def test_a_second_start_over_a_judged_interview_is_refused() -> None:
 def test_a_start_over_an_interview_nobody_answered_runs() -> None:
     """Nothing is lost by restarting one that was never answered, and a user who
     misread the card would otherwise be stuck with the interview it started."""
-    cora = Cora("Q1?", "Q2?")
+    cora = Cora(_asked("Q1?"), _asked("Q2?"))
     start, _ = _tools(cora)
     start.run(role="r", seniority="mid", difficulty="easy", interviewer="neutral")
 
@@ -208,11 +258,26 @@ def test_a_start_over_an_interview_nobody_answered_runs() -> None:
     assert "Q2?" in said
 
 
+def test_the_report_can_be_written_again_under_a_better_name() -> None:
+    """Saving ends the interview without destroying it: the user who reads the filename
+    the model picked and wants another one still has a transcript to write."""
+    output = FakeOutput()
+    cora = Cora(_asked("Q1?"), VERDICT)
+    start, evaluate = _tools(cora)
+    start.run(role="r", seniority="mid", difficulty="easy", interviewer="neutral")
+    evaluate.run(answer="An answer.")
+    _saving(output, cora).run(filename="mock")
+
+    said = _saving(output, cora).run(filename="backend-mock-2")
+
+    assert "backend-mock-2" in said
+
+
 def test_saving_the_report_ends_the_interview_it_wrote() -> None:
     """The report is what the interview was for: once it is on disk the next start is
     a new interview rather than a refusal the user cannot get past."""
     output = FakeOutput()
-    cora = Cora("Q1?", VERDICT, "Q2?")
+    cora = Cora(_asked("Q1?"), VERDICT, _asked("Q2?"))
     start, evaluate = _tools(cora)
     start.run(role="r", seniority="mid", difficulty="easy", interviewer="neutral")
     evaluate.run(answer="An answer.")
@@ -228,7 +293,7 @@ def test_saving_the_report_ends_the_interview_it_wrote() -> None:
 
 def test_the_report_writes_every_round_and_says_where_it_went() -> None:
     output = FakeOutput()
-    cora = Cora("Q1?", VERDICT)
+    cora = Cora(_asked("Q1?"), VERDICT)
     start, evaluate = _tools(cora)
     start.run(
         role="backend engineer",
@@ -255,7 +320,7 @@ def test_a_report_before_any_judged_answer_is_refused() -> None:
 
 
 def test_a_filename_of_no_letters_or_digits_is_refused() -> None:
-    cora = Cora("Q1?", VERDICT)
+    cora = Cora(_asked("Q1?"), VERDICT)
     start, evaluate = _tools(cora)
     start.run(role="r", seniority="mid", difficulty="easy", interviewer="neutral")
     evaluate.run(answer="An answer.")

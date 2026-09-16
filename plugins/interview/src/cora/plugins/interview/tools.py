@@ -102,6 +102,18 @@ OPENING = (
     "and aim the question at what you find; with none there, ask a standard opening "
     "question for the role. Answer with the question alone — no preamble."
 )
+QUESTION_SHAPE: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "question": {
+            "type": "string",
+            "description": "The interview question to put to the candidate, and "
+            "nothing else.",
+        }
+    },
+    "required": ["question"],
+    "additionalProperties": False,
+}
 JUDGING = (
     "You are a {interviewer} interviewer judging one answer in a {difficulty} mock "
     "interview for a {seniority} {role}.\n\n"
@@ -115,19 +127,19 @@ VERDICT_SHAPE: dict[str, Any] = {
     "properties": {
         "correctness": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 0,
             "maximum": PER_CRITERION,
             "description": "How right the answer was.",
         },
         "structure": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 0,
             "maximum": PER_CRITERION,
             "description": "How well the answer was organised.",
         },
         "communication": {
             "type": "integer",
-            "minimum": 1,
+            "minimum": 0,
             "maximum": PER_CRITERION,
             "description": "How clearly the answer was put.",
         },
@@ -153,7 +165,9 @@ VERDICT_SHAPE: dict[str, Any] = {
 }
 
 OPENING_ROUNDS = 2
-JUDGING_ROUNDS = 1
+# A shape the loop misses is told back to it to correct, and the correction costs a
+# round of its own: one round leaves it nowhere to happen.
+JUDGING_ROUNDS = 2
 
 UNSAFE = re.compile(r"[^a-z0-9]+")
 HASH_LENGTH = 12
@@ -168,10 +182,11 @@ def interview_tools(cora: Host) -> tuple[Tool, Tool]:
     """
 
     def start(role: str, seniority: str, difficulty: str, interviewer: str) -> str:
-        running = cora.state.read(KEPT)
-        judged = len(json.loads(running)["rounds"]) if running else 0
+        running = json.loads(cora.state.read(KEPT) or "{}")
         # Refused before the loop is delegated: a call that is not going to happen has
-        # no business spending a model round first.
+        # no business spending a model round first. A reported interview is over, and
+        # what is on disk cannot be lost by starting another.
+        judged = 0 if running.get("reported") else len(running.get("rounds", ()))
         if judged:
             raise ToolRefusal(STILL_RUNNING.format(judged=judged))
         question = cora.delegate(
@@ -182,7 +197,8 @@ def interview_tools(cora: Host) -> tuple[Tool, Tool]:
                 interviewer=interviewer,
             ),
             rounds=OPENING_ROUNDS,
-        )
+            shape=QUESTION_SHAPE,
+        )["question"].strip()
         cora.state.keep(
             KEPT,
             json.dumps(
@@ -277,10 +293,10 @@ def report_tool(output: Output, cora: Host) -> Tool:
             raise ToolRefusal(NOTHING_TO_REPORT)
         kept = _written(interview)
         where = output.write(_filename(filename, kept), kept)
-        # The report is what the interview was for, so writing it ends the interview:
-        # what is on disk cannot be lost by the next start, and there is nothing left
-        # for that start to refuse over.
-        cora.state.keep(KEPT, None)
+        # Marked rather than dropped: the interview is over for the next start, and
+        # still there for the user who wants it written again under a better name.
+        interview["reported"] = True
+        cora.state.keep(KEPT, json.dumps(interview))
         return f"Saved the interview report to {where}"
 
     return Tool(
