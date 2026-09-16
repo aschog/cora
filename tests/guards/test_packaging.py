@@ -89,6 +89,7 @@ def test_the_app_carries_no_plugin_and_names_none() -> None:
 # way for the same reason.
 PLUGIN_REACHES: dict[str, set[str]] = {
     "cora.plugins.fitness": set(),
+    "cora.plugins.interview": set(),
     "cora.plugins.security": set(),
     "cora.plugins.travel": {"httpx"},
 }

@@ -19,6 +19,7 @@ members = [
     "cora-frontend-react",
     "cora-frontend-telegram",
     "cora-plugin-fitness",
+    "cora-plugin-interview",
     "cora-plugin-security",
     "cora-plugin-travel",
 ]
@@ -214,6 +215,7 @@ dev = [
     { name = "cora-frontend-react" },
     { name = "cora-frontend-telegram" },
     { name = "cora-plugin-fitness" },
+    { name = "cora-plugin-interview" },
     { name = "cora-plugin-security" },
     { name = "cora-plugin-travel" },
     { name = "httpx" },
@@ -247,6 +249,7 @@ dev = [
     { name = "cora-frontend-react", editable = "frontends/react" },
     { name = "cora-frontend-telegram", editable = "frontends/telegram" },
     { name = "cora-plugin-fitness", editable = "plugins/fitness" },
+    { name = "cora-plugin-interview", editable = "plugins/interview" },
     { name = "cora-plugin-security", editable = "plugins/security" },
     { name = "cora-plugin-travel", editable = "plugins/travel" },
     { name = "httpx", specifier = ">=0.28.1" },
@@ -301,6 +304,17 @@ requires-dist = [
 name = "cora-plugin-fitness"
 version = "0.1.0"
 source = { editable = "plugins/fitness" }
+dependencies = [
+    { name = "cora" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "cora", editable = "." }]
+
+[[package]]
+name = "cora-plugin-interview"
+version = "0.1.0"
+source = { editable = "plugins/interview" }
 dependencies = [
     { name = "cora" },
 ]

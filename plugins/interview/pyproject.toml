@@ -1,0 +1,15 @@
+[project]
+name = "cora-plugin-interview"
+version = "0.1.0"
+description = "An interview-preparation coach for cora: mock interviews started on a card, answers judged against a rubric, and a report the user keeps"
+requires-python = ">=3.12"
+dependencies = [
+    "cora",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.26,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "cora.plugins.interview"
