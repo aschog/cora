@@ -38,8 +38,9 @@ which part.
 **The fitness trainer**, being a page, reaches from your browser rather than from cora:
 `docs.google.com` for the published sheet its plan comes from and `i.ytimg.com` for an
 exercise thumbnail — both on load, before you touch anything — and `cdn.jsdelivr.net` with `storage.googleapis.com` for the pose runtime,
-only once you turn tracking on. A clip opens at `www.youtube.com` in a tab of its own.
-The workout it saves goes to cora and nowhere else.
+only once you turn tracking on. A clip plays from `www.youtube-nocookie.com`, which sets
+no cookie until you play one, and only when you open a clip. The workout it saves goes to
+cora and nowhere else.
 
 Nothing else in cora reaches the network: no general-purpose HTTP client — `httpx`,
 `requests`, `urllib` — is imported anywhere under `src/cora`, no telemetry package is in

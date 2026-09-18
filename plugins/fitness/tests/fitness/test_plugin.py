@@ -64,8 +64,9 @@ REACHES = frozenset(
         "docs.google.com",
         # the thumbnail of an exercise clip, asked for as the plan is drawn
         "i.ytimg.com",
-        # the clip itself, opened in a tab rather than played in the page
-        "www.youtube.com",
+        # the clip itself, played in the frame, from the host that sets no cookie
+        # until it is
+        "www.youtube-nocookie.com",
         # the pose runtime and its model, fetched only when tracking is turned on
         "cdn.jsdelivr.net",
         "storage.googleapis.com",

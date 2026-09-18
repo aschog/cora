@@ -228,7 +228,8 @@ body.resting.view-cam #restview,body.resting.view-clip #restview{display:flex}
   font-size:clamp(110px,20vw,260px);line-height:.9;font-weight:600;
   letter-spacing:-.02em;color:var(--blue);font-variant-numeric:tabular-nums;
 }
-.player video{width:100%;height:100%;display:block;background:#000;object-fit:contain}
+.player video,
+.player iframe{width:100%;height:100%;display:block;border:0;background:#000;object-fit:contain}
 .player a{
   width:100%;height:100%;display:flex;flex-direction:column;
   align-items:center;justify-content:center;gap:9px;
@@ -372,9 +373,6 @@ const save = (k,v) => store.set(k, JSON.stringify(v));
 
 /* ---------- offline thumbnails (filled by inline-thumbs.py) ---------- */
 const THUMBS = {};
-
-/* ---------- offline clips, videoId -> data URI (filled by inline-clips.py) ---------- */
-const CLIPS = {};
 
 /* ---------- offline pose model + runtime (filled by inline-pose.py) ---------- */
 const POSE_ASSETS = {};
@@ -655,15 +653,16 @@ function mountPlayer(p){
   if (key === playerKey) return;
   playerKey = key;
   if (!c){ playerEl.innerHTML = ''; return; }
-  playerEl.innerHTML = '<div class="player">' + (CLIPS[c.v]
-    ? `<video src="${CLIPS[c.v]}" playsinline autoplay loop muted controls
-              controlsList="nodownload noplaybackrate" disablepictureinpicture></video>`
-    : `<a href="https://www.youtube.com/watch?v=${c.v}${c.t?'&t='+c.t+'s':''}"
-         target="_blank" rel="noopener">
-         <span class="yt"></span>
-         <span class="cta">Watch on YouTube</span>
-         <span class="sub">${CLIP_LBL[view] || c.l} · no offline clip</span>
-       </a>`) + '</div>';
+  /* The clip plays here. A link out of the page is a lifter in another tab mid-set,
+     and the clip is what they opened this for. `-nocookie` is the same video from the
+     host that sets none until it is played. Muted, because a video that asks to play
+     with sound is a video the browser refuses to start. */
+  const start = c.t ? '&start=' + c.t : '';
+  playerEl.innerHTML = '<div class="player">'
+    + `<iframe src="https://www.youtube-nocookie.com/embed/${c.v}?autoplay=1&mute=1&rel=0&playsinline=1${start}"
+               title="${CLIP_LBL[view] || c.l}" allow="autoplay; encrypted-media; fullscreen"
+               referrerpolicy="strict-origin-when-cross-origin" loading="lazy"></iframe>`
+    + '</div>';
 }
 
 document.getElementById('app').addEventListener('click', e => {

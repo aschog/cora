@@ -193,3 +193,26 @@ test('a sheet that changes under a running workout leaves what was logged', asyn
   await expect(page.locator('.row', { hasText: 'Exercise c' })).toBeVisible()
   await expect(worked.locator('.st')).toContainText('1/3')
 })
+
+test('a clip plays in the frame rather than sending the lifter to another tab', async ({
+  page,
+}) => {
+  await page.goto(TRAINER)
+  const clip = [{ l: 'Full', v: 'kEBDdhJNhZc', t: 42 }]
+  await page.evaluate(
+    (given) => (window as unknown as { adoptPlan: (p: unknown[]) => void }).adoptPlan(given),
+    [{ id: 'a', s: 3, r: 10, w: 16, n: 'Exercise a', vids: clip }],
+  )
+
+  await page.locator('.thumb').first().click()
+
+  /* In the frame, not a link out of it: a lifter mid-set is not going to come back from
+     another tab, and the clip is the thing they opened the trainer to see. */
+  const player = page.locator('.stage iframe')
+  await expect(player).toBeVisible()
+  const src = await player.getAttribute('src')
+  expect(src).toContain('kEBDdhJNhZc')
+  expect(src, 'it starts where the plan says it does').toContain('start=42')
+  expect(src, 'and asks the host that sets no cookie').toContain('youtube-nocookie.com')
+  await expect(page.locator('.stage a[href*="youtube.com/watch"]')).toHaveCount(0)
+})
