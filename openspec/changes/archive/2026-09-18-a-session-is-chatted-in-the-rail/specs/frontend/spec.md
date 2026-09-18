@@ -29,6 +29,12 @@ there SHALL NOT move the panels to the steps, which would take the chat off the 
 - **WHEN** the reader opens one that is fixed to a field with a page
 - **THEN** the rail is that conversation's chat
 
+#### Scenario: Moving between panels
+
+- **GIVEN** the rail showing a conversation
+- **WHEN** the reader chooses another panel
+- **THEN** that panel is drawn in its place, and the conversation is the one tab back
+
 #### Scenario: A panel that cannot be drawn
 
 - **GIVEN** a panel that throws while being drawn

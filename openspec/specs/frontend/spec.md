@@ -214,3 +214,287 @@ did not SHALL be reported as one sentence with nothing of the failure in it.
 - **GIVEN** a chat whose turn has just failed
 - **WHEN** it asks something else
 - **THEN** that question is answered
+
+### Requirement: A field's page is served beside cora's own
+
+The system SHALL serve a registered page from the process that serves cora's page and
+its API, under a path naming the field. The path it reports for a field SHALL be the
+one that answers, and SHALL answer with the directory's entry page. Every file under
+the directory SHALL be reachable, and nothing outside it SHALL be, whatever a request
+spells.
+
+#### Scenario: The page is asked for
+
+- **GIVEN** a loaded plugin bringing the page of a field
+- **WHEN** the path reported for that field is asked for
+- **THEN** the entry page of its directory is answered
+
+#### Scenario: A file beside the entry page
+
+- **GIVEN** the same page, whose directory holds a script and an image
+- **WHEN** either is asked for under that path
+- **THEN** it is answered as what it is
+
+#### Scenario: A request climbing out of the directory
+
+- **GIVEN** a request under that path spelling its way above the directory
+- **WHEN** it is answered
+- **THEN** it is refused, and no file outside the directory is served
+
+#### Scenario: A link inside the directory pointing out of it
+
+- **GIVEN** a page directory holding a symlink to a file above it
+- **WHEN** that link is asked for
+- **THEN** it is refused, and what it points at is not served
+
+#### Scenario: A field with no page
+
+- **GIVEN** a loaded plugin registering a field and no page
+- **WHEN** that field's path is asked for
+- **THEN** the request is refused, and cora's own page still answers
+
+#### Scenario: A page whose directory is gone
+
+- **GIVEN** a loaded plugin whose page directory has since been removed
+- **WHEN** that field's path is asked for
+- **THEN** the request is refused, and cora answers everything else as usual
+
+### Requirement: A page is served as it stands on disk
+
+The system SHALL answer with the file as it is at the moment of the request, and SHALL
+ask the browser to check back rather than reuse what it holds. A file that has not
+changed SHALL be answerable without being sent again.
+
+#### Scenario: A page file is edited
+
+- **GIVEN** a served page whose file is then changed on disk
+- **WHEN** it is asked for again
+- **THEN** the answer is the file as it now stands
+
+#### Scenario: The browser is told to check back
+
+- **GIVEN** any file served from a page directory
+- **WHEN** the answer is read
+- **THEN** it says it must be revalidated before being reused
+
+### Requirement: A page is served while its plugin is loaded, and no longer
+
+The system SHALL serve a page as soon as the plugin bringing it is loaded, and SHALL
+stop when that plugin is gone. Neither SHALL need a restart, the plugins folder being
+live.
+
+#### Scenario: A plugin is dropped
+
+- **GIVEN** a running cora, and a plugin bringing a page dropped into the folder
+- **WHEN** its field's path is asked for
+- **THEN** its page is answered, with nothing restarted
+
+#### Scenario: A plugin is deleted
+
+- **GIVEN** that plugin deleted from the folder
+- **WHEN** its field's path is asked for again
+- **THEN** the request is refused, and cora's own page still answers
+
+### Requirement: The page says which fields have a page
+
+The system SHALL say, with the fields it offers, which of them has a page and where it
+is served. A field no plugin brought a page for SHALL be named without one.
+
+#### Scenario: A field with a page
+
+- **GIVEN** a loaded plugin bringing the page of its field
+- **WHEN** the fields on offer are asked for
+- **THEN** that field is named with the path its page is served under
+
+#### Scenario: A field without one
+
+- **GIVEN** a loaded plugin registering tools and no page
+- **WHEN** the fields on offer are asked for
+- **THEN** its field is named, and no page is claimed for it
+
+### Requirement: A fixed field's page is what the screen is about
+
+Where the conversation is fixed to a field that has a page, the page SHALL fill the
+middle of the screen and the conversation SHALL move into the rail beside it. Where it
+is fixed to a field with no page, or fixed to nothing, the screen SHALL be as it was.
+
+#### Scenario: A field with a page is fixed to
+
+- **GIVEN** a loaded plugin bringing the page of a field
+- **WHEN** the reader fixes the conversation to that field
+- **THEN** the page is drawn in the middle, and the conversation is in the rail
+
+#### Scenario: One field is the field it is fixed to
+
+- **GIVEN** a deployment offering one field, whose plugin brought a page
+- **WHEN** the reader opens cora, having pinned nothing
+- **THEN** the page is drawn, there being no other field the conversation could be in
+
+#### Scenario: A field with no page
+
+- **GIVEN** a loaded plugin registering a field and no page
+- **WHEN** the reader fixes the conversation to it
+- **THEN** the conversation is in the middle, as it is with nothing fixed
+
+#### Scenario: Nothing is fixed to
+
+- **GIVEN** a conversation answered in a field whose plugin brought a page
+- **WHEN** the reader has fixed it to nothing
+- **THEN** the conversation is in the middle, the page being what a fixed field brings
+
+#### Scenario: The plugin goes while it is being read
+
+- **GIVEN** a page drawn for a fixed field
+- **WHEN** the plugin bringing it is deleted
+- **THEN** the conversation returns to the middle without the reader reloading
+
+### Requirement: The conversation is reachable whatever the rail is showing
+
+Where a conversation fixed to a field with a page is open, the sessions panel SHALL be
+that conversation's chat, filling the rail. It SHALL offer a way back to the list of
+conversations, and opening one from that list SHALL make the rail its chat. A turn asked
+there SHALL NOT move the panels to the steps, which would take the chat off the screen.
+
+#### Scenario: Asking does not take the conversation away
+
+- **GIVEN** a page drawn, and the rail showing its conversation
+- **WHEN** the reader asks something
+- **THEN** the conversation is still shown, with what they typed and what came back
+
+#### Scenario: Back to the others
+
+- **GIVEN** the rail showing a conversation
+- **WHEN** the reader takes the way back
+- **THEN** the list of conversations is shown in its place
+
+#### Scenario: Into another one
+
+- **GIVEN** the list of conversations shown
+- **WHEN** the reader opens one that is fixed to a field with a page
+- **THEN** the rail is that conversation's chat
+
+#### Scenario: Moving between panels
+
+- **GIVEN** the rail showing a conversation
+- **WHEN** the reader chooses another panel
+- **THEN** that panel is drawn in its place, and the conversation is the one tab back
+
+#### Scenario: A panel that cannot be drawn
+
+- **GIVEN** a panel that throws while being drawn
+- **WHEN** the reader looks at the rail
+- **THEN** they are told that panel could not be drawn, and the page is still there
+
+### Requirement: The conversation in the rail says which one it is
+
+Drawn in the rail, under a list its own row is in, the conversation SHALL be headed by
+the question that opened it, so the reader can tell it from the ones listed above.
+
+#### Scenario: The open conversation is named
+
+- **GIVEN** a page drawn, and a conversation that has been answered once
+- **WHEN** the reader looks at the rail
+- **THEN** the conversation is headed by the question it was opened with
+
+#### Scenario: A conversation that has said nothing
+
+- **GIVEN** a page drawn, and a conversation nothing has been asked in
+- **WHEN** the reader looks at the rail
+- **THEN** it is headed as the new one it is, and named by no question
+
+### Requirement: The page can have the whole width
+
+Folding the rail beside a page SHALL give the page the width the rail held. Unfolding it
+SHALL bring the conversation back, with what was said still there.
+
+#### Scenario: Folding for width
+
+- **GIVEN** a page drawn with the conversation beside it
+- **WHEN** the reader folds that rail
+- **THEN** the page is drawn across the width, and the control that unfolds it remains
+
+#### Scenario: Coming back to the conversation
+
+- **WHEN** the reader unfolds the rail again
+- **THEN** the conversation is drawn as they left it
+
+### Requirement: A page is framed as the plugin's own
+
+A page SHALL be framed so that it may use the camera, and SHALL NOT be framed as though
+cora contained it — its reach being the trust the reader extended by loading the plugin.
+The frame SHALL be named for the field it belongs to.
+
+#### Scenario: The frame is named
+
+- **GIVEN** a page drawn for a field
+- **WHEN** the screen is read by name
+- **THEN** the frame is named for that field
+
+#### Scenario: A page asking for the camera
+
+- **GIVEN** a page whose script asks for the camera
+- **WHEN** it asks
+- **THEN** the frame does not refuse it on cora's behalf
+
+### Requirement: A conversation chatted in the rail says which one it is
+
+The chat SHALL be headed by the question that opened the conversation, which is what the
+list beside it calls that conversation too.
+
+#### Scenario: The head of an answered conversation
+
+- **GIVEN** a conversation of two turns fixed to a field with a page
+- **WHEN** it is chatted in the rail
+- **THEN** its head carries the question it was opened with
+
+#### Scenario: A conversation that has said nothing
+
+- **GIVEN** a conversation nothing has been asked in
+- **WHEN** it is chatted in the rail
+- **THEN** its head says it is a new one
+
+### Requirement: A conversation that belongs to a field with a page is marked in the list
+
+Every conversation in the list that is fixed to a field bringing a page SHALL carry a
+mark the others do not, and the list SHALL say what the mark means.
+
+#### Scenario: Marked and unmarked together
+
+- **GIVEN** conversations fixed to a field with a page, and others fixed to nothing
+- **WHEN** the list is read
+- **THEN** the first carry the mark and the rest do not
+
+#### Scenario: What the mark means
+
+- **WHEN** the list holds a marked conversation
+- **THEN** it says that such a conversation opens as a chat in this rail
+
+### Requirement: A conversation beside its field's page does not name the field
+
+Where a conversation is chatted beside the page of the field it is fixed to, the strip
+naming that field SHALL NOT be drawn: the page is the field, in front of the reader, and
+the strip is a label under a control they can no longer use. Where nothing else stands
+for the field, that strip SHALL be drawn as it always was.
+
+#### Scenario: Beside a page
+
+- **GIVEN** a conversation chatted in the rail beside its field's page
+- **WHEN** the reader looks at the rail
+- **THEN** the field is not named there
+
+#### Scenario: In the middle
+
+- **GIVEN** a conversation fixed to a field with no page
+- **WHEN** the reader looks at it
+- **THEN** the strip names the field, nothing else there doing so
+
+### Requirement: A conversation fixed to no page is drawn where it always was
+
+A conversation fixed to a field with no page, or fixed to nothing, SHALL be drawn in the
+middle of the screen, and the sessions panel SHALL be the list alone.
+
+#### Scenario: Opening one that has no page
+
+- **GIVEN** the rail chatting a conversation of a field with a page
+- **WHEN** the reader opens one from the list that is fixed to nothing
+- **THEN** the conversation is drawn in the middle and the rail is the list again

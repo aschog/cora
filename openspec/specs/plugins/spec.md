@@ -561,9 +561,10 @@ configuration at all.
 
 The system SHALL offer one listing of every plugin it loaded, naming for each its
 source, the scopes it registered under, its tools by name, whether it heads a section
-of the brief, and the events it subscribed to. A registration carrying no scope SHALL
-be flagged as system-wide, because it is a claim on every turn. The listing SHALL be
-readable in a terminal and on the screen, and both SHALL say the same thing.
+of the brief, the events it subscribed to, and the page it brings. A registration
+carrying no scope SHALL be flagged as system-wide, because it is a claim on every turn.
+The listing SHALL be readable in a terminal and on the screen, and both SHALL say the
+same thing.
 
 #### Scenario: Each plugin is listed with what it registered
 
@@ -571,6 +572,12 @@ readable in a terminal and on the screen, and both SHALL say the same thing.
 - **WHEN** the listing is read
 - **THEN** each is named with its source, its scopes, its tools, its instructions and
   its events
+
+#### Scenario: A page is listed with the field it is for
+
+- **GIVEN** a plugin bringing the page of its field
+- **WHEN** the listing is read
+- **THEN** that plugin carries a page, under the field it registered it for
 
 #### Scenario: A system-wide registration is flagged
 
@@ -1057,3 +1064,187 @@ conversations again, rather than keep its own account of what changed.
 - **GIVEN** the question shown
 - **WHEN** the reader leaves it
 - **THEN** the plugin, its documents and its conversations are all still there
+
+### Requirement: A plugin brings the page of one field
+
+A plugin SHALL be able to register a directory of its own as the page of one field.
+The field SHALL be named: a page belongs to a field, and there is no page for every
+turn. What is registered SHALL be the directory and nothing about where it is drawn.
+
+#### Scenario: A plugin registers a page
+
+- **GIVEN** a plugin holding a directory of its own
+- **WHEN** it registers that directory as the page of its field
+- **THEN** it loads, and cora holds a page for that field
+
+#### Scenario: A page is not something a field can be without
+
+- **GIVEN** a plugin registering a page under no field
+- **WHEN** cora starts
+- **THEN** it refuses, naming that plugin
+
+### Requirement: A page that is not there costs its own path and nothing else
+
+Registering a page SHALL NOT be held against what is on disk, the disk being free to
+change after any such check. A plugin whose page directory is absent SHALL load, and
+everything else it registered SHALL work. Only the page's own path SHALL be refused.
+
+#### Scenario: The directory is not there
+
+- **GIVEN** a plugin registering a page directory that does not exist
+- **WHEN** cora starts
+- **THEN** it loads, and its tools and instructions are offered as usual
+
+#### Scenario: One broken page is not a broken cora
+
+- **GIVEN** that plugin loaded beside another
+- **WHEN** anything is asked of cora
+- **THEN** it answers, and only that page's path is refused
+
+### Requirement: One field has one page
+
+Two plugins SHALL NOT bring the page of one field. Cora SHALL refuse such a
+composition, naming both plugins and the field, as it refuses two tools of one name.
+
+#### Scenario: Two plugins claim one field
+
+- **GIVEN** two loaded plugins registering a page under the same field
+- **WHEN** cora composes them
+- **THEN** it refuses, naming both plugins and the field
+
+#### Scenario: Two fields, two pages
+
+- **GIVEN** one plugin registering a page under each of two fields
+- **WHEN** cora composes it
+- **THEN** both are held, one page per field
+
+### Requirement: The fitness field brings a trainer
+
+The fitness plugin SHALL bring its field a page: a plan of exercises worked one at a
+time, each with its sets, its weight and whatever clips it has, and a camera to film
+against. The plan SHALL be read from the sheet the page names, and the page SHALL hand
+what it produces to cora and to nothing else. Every other address it reaches SHALL be one
+written down, so a new one is a change somebody made rather than a change nobody saw.
+
+#### Scenario: The field is opened
+
+- **GIVEN** the fitness plugin loaded
+- **WHEN** the reader asks what fields have a page
+- **THEN** fitness is named with the path its trainer is served under
+
+#### Scenario: The trainer is worked
+
+- **GIVEN** the trainer drawn
+- **WHEN** the reader logs a set of the current exercise
+- **THEN** that set reads as done, and the count on that exercise says so
+
+#### Scenario: Where it reaches
+
+- **WHEN** the addresses in the page are read
+- **THEN** the only one it posts to is cora's own, and every other host is one the
+  plugin's own suite names
+
+### Requirement: A finished workout is a document of the fitness field
+
+Finishing a workout SHALL upload it into the fitness field as a Markdown document named
+for the day. The text SHALL be a heading per exercise carrying its load, followed by the
+sets it took. An exercise nothing was logged for SHALL NOT appear.
+
+#### Scenario: A workout is finished
+
+- **GIVEN** a workout with sets logged against one exercise
+- **WHEN** the reader finishes it
+- **THEN** a document named for today is in the fitness field, holding that exercise and
+  its sets
+
+#### Scenario: An exercise that was not worked
+
+- **GIVEN** a workout where one planned exercise logged nothing
+- **WHEN** it is finished
+- **THEN** the document does not name that exercise
+
+#### Scenario: Nothing logged at all
+
+- **WHEN** the reader finishes a workout with no set logged
+- **THEN** nothing is uploaded
+
+### Requirement: What the trainer logged is what cora answers from
+
+A workout uploaded by the trainer SHALL be searched and cited as any other document of
+that field is, so the reader can ask about what they lifted and be shown the day it came
+from.
+
+#### Scenario: Asking about what was lifted
+
+- **GIVEN** a workout finished into the fitness field
+- **WHEN** the reader asks about that exercise with the conversation in that field
+- **THEN** the answer rests on that document and cites it
+
+### Requirement: A workout that could not be saved is not lost
+
+Where the upload fails, the page SHALL say so and SHALL keep the workout's text where the
+reader can still take it. The workout SHALL be added to the page's own history either
+way.
+
+#### Scenario: The upload fails
+
+- **GIVEN** a finished workout that cora refuses or cannot be asked
+- **WHEN** the page reports it
+- **THEN** it says the workout was not saved, and the text is still reachable
+
+#### Scenario: The history holds it regardless
+
+- **WHEN** a workout is finished, whether or not the upload succeeded
+- **THEN** it is in the page's own history and a fresh workout starts
+
+### Requirement: The plan is the sheet's, and the page's when the sheet is not there
+
+The trainer SHALL read its plan from the sheet each time it is opened, taking each row's
+exercise, sets, reps, weight and clips. A row naming no exercise SHALL be skipped. Where
+the sheet cannot be read, the plan last read SHALL stand, and failing that the one written
+into the page — and the reader SHALL be told which of those they are training from.
+
+#### Scenario: A sheet is read
+
+- **GIVEN** a sheet whose rows name exercises, their sets, their reps and their weights
+- **WHEN** the page reads it
+- **THEN** the plan is those rows, in that order
+
+#### Scenario: A row that names no exercise
+
+- **GIVEN** a sheet carrying an empty row between two exercises
+- **WHEN** the page reads it
+- **THEN** that row is not an exercise of the plan
+
+#### Scenario: The sheet cannot be reached
+
+- **GIVEN** a trainer opened with no way to reach the sheet
+- **WHEN** it is drawn
+- **THEN** it is drawn from the plan the page ships with, and says so
+
+### Requirement: Progress survives a plan that changed under it
+
+Where a sheet is read while a workout is under way, an exercise still in the plan SHALL
+keep the sets logged against it.
+
+#### Scenario: The sheet changed mid-workout
+
+- **GIVEN** a workout with sets logged, and a sheet that adds an exercise
+- **WHEN** the new plan is adopted
+- **THEN** what was logged against the exercises still in it is still logged
+
+### Requirement: A clip plays in the frame
+
+Opening an exercise's clip SHALL play it in the frame the plan and the camera share,
+starting where the plan says it starts. It SHALL NOT take the reader out of the page.
+
+#### Scenario: A clip is opened
+
+- **GIVEN** an exercise whose plan names a clip and a moment to start it at
+- **WHEN** the reader opens that clip
+- **THEN** it plays in the frame, from that moment
+
+#### Scenario: Nowhere else to go
+
+- **WHEN** a clip is open
+- **THEN** the frame offers no link that would leave the page
