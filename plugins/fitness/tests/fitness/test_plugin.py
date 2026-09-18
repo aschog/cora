@@ -158,6 +158,27 @@ def test_the_watch_writes_the_field_notice_when_its_screen_opens() -> None:
     assert "this.write(RUNNING)" in opened.group(1)
 
 
+def test_a_second_workout_can_be_finished_from_the_wrist_too() -> None:
+    """`state` is one object for the life of the app, not one per page — so a flag left
+    true by the first workout's tap is a second workout whose control does nothing. It
+    is reset where a workout begins, which is where its screen is created."""
+    drawn = _widget()
+
+    opened = re.search(r"onInit\(\)\s*\{(.*?)\n  \}", drawn, re.S)
+
+    assert opened and "this.state.done = false" in opened.group(1)
+
+
+def test_a_tap_cora_never_took_can_be_tapped_again() -> None:
+    """The one failure the lifter is standing there for: the phone could not reach cora,
+    and a control spent on a write that never landed is a workout they cannot save
+    without starting the whole thing again."""
+    drawn = _widget()
+
+    assert re.search(r"this\.write\(FINISHED\)\s*\.then\(", drawn)
+    assert "this.state.done = false" in drawn.split("finish()")[-1]
+
+
 def test_the_watch_finishes_the_workout_from_a_tap_and_from_nothing_else() -> None:
     """The end of a system workout reaches nothing, so the finish is a click. One
     handler, on the one control — a second way in would be a second way to save a

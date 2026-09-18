@@ -28,7 +28,10 @@ const DURATION = {
 DataWidget(BasePage({
   state: { done: false },
 
+  // A workout begins. `state` is one object for the life of the app rather than one per
+  // page, so last workout's tap is still in it and this is where it is put back.
   onInit() {
+    this.state.done = false
     this.write(RUNNING)
   },
 
@@ -46,24 +49,34 @@ DataWidget(BasePage({
     })
   },
 
-  // Once. A second tap would save a workout the page has already started fresh.
+  // Once per workout. A second tap would save a workout the page has already started
+  // fresh, and onInit is what makes the next workout's tap the first one again.
   finish() {
     if (this.state.done) return
     this.state.done = true
     this.say('saving')
-    this.write(FINISHED)
+    // Spent only once cora has it. A phone that could not reach the machine — asleep,
+    // off the network — leaves the lifter standing there with the workout still theirs
+    // to save, so the control comes back rather than staying dead.
+    this.write(FINISHED).then((took) => { if (!took) this.state.done = false })
   },
 
   // What the wrist is told is the line under the clock and never the button's own
   // label: one widget says everything, so there is one property to be right about.
   write(workout) {
-    const took = workout === FINISHED ? 'saved' : 'linked'
-    this.httpRequest({
+    const word = workout === FINISHED ? 'saved' : 'linked'
+    return this.httpRequest({
       method: 'PUT', url: NOTICE, headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ workout }),
     })
-      .then((r) => this.say(r.status === 200 ? took : 'refused ' + r.status))
-      .catch((e) => this.say('no link: ' + String((e && e.message) || e).slice(0, 40)))
+      .then((r) => {
+        this.say(r.status === 200 ? word : 'refused ' + r.status + ' - tap again')
+        return r.status === 200
+      })
+      .catch((e) => {
+        this.say('no link - tap again: ' + String((e && e.message) || e).slice(0, 28))
+        return false
+      })
   },
 
   // The build may not have run yet when the first write comes back, onInit being before
