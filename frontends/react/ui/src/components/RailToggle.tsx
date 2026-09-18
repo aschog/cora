@@ -1,5 +1,4 @@
 import styles from './RailToggle.module.css'
-import { joined } from '../joined'
 
 type Props = { side: 'left' | 'right'; open: boolean; label: string; onToggle: () => void }
 
@@ -9,7 +8,7 @@ export default function RailToggle({ side, open, label, onToggle }: Props) {
   const rule = side === 'left' ? 7.8 : 12.2
   return (
     <button
-      className={joined(styles.railToggle, open && styles.open)}
+      className={styles.railToggle}
       title={label}
       aria-label={label}
       aria-pressed={open}

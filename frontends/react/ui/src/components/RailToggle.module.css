@@ -5,10 +5,9 @@
   width: 34px;
   height: 34px;
   border-radius: var(--pill);
-  color: var(--n500);
-}
-
-.rail-toggle.open {
+  /* The accent whichever way the rail is: folded, this is the only thing left of that
+     rail, and the last grey mark on an empty edge does not read as the way back. Which
+     state it is in is the pane filled inside its outline, not the colour of it. */
   color: var(--accent);
 }
 
