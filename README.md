@@ -16,6 +16,13 @@ It still answers: it searches its documents, remembers what it is told, asks whe
 cannot tell, and cites what it used. It changes nothing outside itself unless a plugin
 gave it something that does.
 
+## A field can bring a screen
+
+A plugin may hand cora a page of its own, and cora serves it at its field's address. The
+fitness plugin brings one: a kettlebell trainer that logs the workout you just did into
+the field, where the coach can answer from it. Pin the field and it fills the screen,
+with the conversation beside it.
+
 ## One cora, many subjects
 
 A plugin's things live in a field of its own. One SQLite file holds cora's own

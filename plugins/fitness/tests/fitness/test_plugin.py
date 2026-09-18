@@ -1,5 +1,10 @@
+import pathlib
+import re
+import urllib.parse
+
+import cora.plugins.fitness as fitness
 from cora.plugins.fitness import INSTRUCTIONS, SCOPE, extend
-from cora.ports.host import HANDLER, SCREENING, TOOL
+from cora.ports.host import HANDLER, PAGE, SCREENING, TOOL
 from cora.ports.host import INSTRUCTIONS as SAYS
 from fakes import host_for
 
@@ -38,3 +43,69 @@ def test_the_coaching_is_scoped_and_the_medical_screen_is_not() -> None:
     assert under.count((HANDLER, None)) == 1
     [screen] = [entry for entry in host.registered if entry.kind == HANDLER]
     assert screen.value.event == SCREENING
+
+
+def test_the_field_is_brought_a_trainer_shipped_beside_the_module() -> None:
+    """The page is files, so where it is registered from is where the wheel puts it."""
+    host = host_for("cora.plugins.fitness")
+
+    extend(host)
+
+    [page] = [entry for entry in host.registered if entry.kind == PAGE]
+    assert page.scope == SCOPE
+    assert page.value == pathlib.Path(fitness.__file__).parent / "page"
+    assert (page.value / "index.html").is_file()
+
+
+REACHES = frozenset(
+    {
+        # the thumbnail of an exercise clip, asked for as the plan is drawn
+        "i.ytimg.com",
+        # the clip itself, opened in a tab rather than played in the page
+        "www.youtube.com",
+        # the pose runtime and its model, fetched only when tracking is turned on
+        "cdn.jsdelivr.net",
+        "storage.googleapis.com",
+    }
+)
+
+
+def test_the_trainer_reaches_only_the_hosts_it_is_said_to() -> None:
+    """The page is the plugin's own code in the reader's browser, so what it may ask for
+    is a list somebody wrote down rather than a handful of names a test happens to
+    check. Every address in the file, by host, against that list — so a fifth one fails
+    here and is either named or taken out."""
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    reached = {
+        urllib.parse.urlparse(found).hostname or ""
+        for found in re.findall(r"https?://[^\s\'\"<>)]+", drawn)
+    }
+
+    assert reached == REACHES
+
+
+def test_the_trainer_hands_the_workout_to_cora_and_to_nothing_else() -> None:
+    """What it was built around — a log server, a watch listener, a plan synced from a
+    spreadsheet — are answers to problems cora answers, and each would arrive as a
+    second way to do something. The one thing it posts, it posts to cora."""
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    posted = re.findall(r"fetch\(\s*([A-Za-z_$][\w$]*|[\'\"][^\'\"]*[\'\"])", drawn)
+
+    assert posted == ["UPLOAD"]
+    assert "const UPLOAD = '/api/documents'" in drawn
+
+
+def test_the_shipped_plan_is_written_in_the_language_the_coach_answers_in() -> None:
+    """The workout becomes a document this field is searched over, and the persona
+    above answers in English — a plan named in another language is a log the coach
+    retrieves against poorly, in the one field where the reader asks about it."""
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    named = re.findall(r'n:"([^"]*)"', drawn)
+
+    assert named, "the page ships no plan"
+    assert all(each.isascii() for each in named), [
+        each for each in named if not each.isascii()
+    ]

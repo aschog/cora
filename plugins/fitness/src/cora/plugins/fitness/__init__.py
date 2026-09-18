@@ -1,9 +1,13 @@
+import pathlib
+
 from cora.ports.host import SCREENING, Host
 
 from .safety import refuse_medical
 from .tools import TOOLS
 
 SCOPE = "fitness"
+
+PAGE = "page"
 
 INSTRUCTIONS = """\
 Answer training and nutrition questions as a knowledgeable, evidence-based coach:
@@ -22,8 +26,10 @@ clearly, practically, and from the user's own documents.
 
 
 def extend(cora: Host) -> None:
-    """Coaching under its own scope, and one refusal that holds outside it too."""
+    """Coaching under its own scope, a trainer to work in, and one refusal that holds
+    outside it too. The page is a directory shipped beside this module."""
     cora.register_instructions(INSTRUCTIONS, scope=SCOPE)
+    cora.register_page(pathlib.Path(__file__).parent / PAGE, scope=SCOPE)
     for tool in TOOLS:
         cora.register_tool(
             name=tool.name,

@@ -4,10 +4,23 @@ Four plugins, and everything here is theirs rather than cora's. A deployment wit
 of them still answers.
 
 - **security** — a medical filter and a prompt-injection screen, both system-wide.
-- **fitness** — a coaching persona and its calculators, bringing the `fitness` field.
+- **fitness** — a coaching persona, its calculators, and a trainer to work a session in.
 - **interview** — the `interview` field: mock interviews run on a card, answers judged
   against a rubric, and a report the user keeps.
 - **travel** — the `travel` field, and the rest of this page.
+
+## Fitness brings a screen
+
+Pin a conversation to `fitness` and the middle of the page becomes a trainer: the plan
+one exercise at a time, its sets and working weight, the clips for it, and the camera to
+film yourself against. **Save & finish** writes the workout into the `fitness` field as a
+Markdown document named for the day — so the next question about it is answered from your
+own log, with the day cited. Refused or unreachable, the workout goes to the clipboard
+and the strip says so.
+
+The plan that ships is a sample — fifteen kettlebell exercises — and it lives in the
+page, which is a file of the plugin: editing it is how the plan becomes yours. The clips and the pose tracking come from the services they came from, so those
+two want a network. Everything else it does is local.
 
 ## Travel, in four parts
 

@@ -35,6 +35,12 @@ which part.
   it is a credential the same as any other. Nothing is sent where the page is run
   instead.
 
+**The fitness trainer**, being a page, reaches from your browser rather than from cora:
+`i.ytimg.com` for an exercise thumbnail as the plan is drawn — on load, before you touch
+anything — and `cdn.jsdelivr.net` with `storage.googleapis.com` for the pose runtime,
+only once you turn tracking on. A clip opens at `www.youtube.com` in a tab of its own.
+The workout it saves goes to cora and nowhere else.
+
 Nothing else in cora reaches the network: no general-purpose HTTP client — `httpx`,
 `requests`, `urllib` — is imported anywhere under `src/cora`, no telemetry package is in
 the tree or the lockfile, and the only outbound clients there are the provider's and the

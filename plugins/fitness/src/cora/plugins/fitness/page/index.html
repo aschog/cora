@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Training">
+<meta name="theme-color" content="#14161B">
+<title>Training</title>
+<style>
+:root{
+  --iron:#14161B;
+  --surface:#1B1E25;
+  --line:#2A2F38;
+  --chalk:#ECE9E4;
+  --muted:#868D99;
+  --accent:#E8C11C;
+  --blue:#6E8BF0;
+  --done:#2E9E5B;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--iron);
+  color:var(--chalk);
+  font:400 16px/1.35 'Iowan Old Style','Palatino Linotype',Palatino,
+       'Book Antiqua',Georgia,'Times New Roman',serif;
+  font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased;
+  height:100vh;height:100dvh;display:flex;flex-direction:column;
+  padding:0;overflow:hidden;overscroll-behavior-y:contain;
+}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+
+/* ---- header: two buttons, nothing else ---- */
+header{
+  flex:none;z-index:30;
+  background:rgba(20,22,27,.94);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
+  display:flex;align-items:center;gap:10px;
+}
+header button svg{width:17px;height:17px;flex:none}
+header button{
+  height:48px;padding:0 20px;border-radius:999px;
+  border:1px solid var(--line);background:var(--surface);
+  font-size:13px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  display:flex;align-items:center;gap:9px;
+}
+header button:active{background:var(--line)}
+header .go{
+  margin-left:auto;background:var(--blue);border-color:var(--blue);color:#0E1016;
+}
+header .go:active{opacity:.75;background:var(--blue)}
+/* the watch, between the two buttons: both auto margins centre it */
+#watch{margin-left:auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  font-size:13px;font-weight:600;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* ---- one screen: head row, frame, sets, weight — nothing scrolls but the
+   plan inside the frame ---- */
+#app{
+  flex:1;min-height:0;display:flex;flex-direction:column;gap:11px;
+  padding:0 14px calc(10px + env(safe-area-inset-bottom));
+}
+.head{display:flex;align-items:center;gap:10px}
+.head svg,header svg{stroke:currentColor;fill:none;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.ex-name{
+  flex:0 1 auto;min-width:0;margin:0;font-size:clamp(17px,2.1vw,22px);
+  font-weight:700;letter-spacing:-.01em;text-align:left;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.nav{display:flex;gap:8px;flex:none;margin-left:auto}
+.nav button{
+  width:42px;height:38px;border-radius:11px;border:1px solid var(--line);
+  color:var(--muted);font-size:17px;display:grid;place-items:center;
+}
+.nav button:active{background:var(--line)}
+.nav button:disabled{opacity:.3}
+/* the camera and the two clips are one row of square buttons, and whichever
+   of them is filling the frame is the lit one */
+.thumb,.camshot{
+  --box:clamp(44px,7vw,62px);width:var(--box);height:var(--box);flex:none;
+  border-radius:10px;overflow:hidden;position:relative;
+  border:1px solid var(--line);background:var(--surface);
+  display:grid;place-items:center;
+}
+.camshot{color:#9AA0AA}
+.camshot svg{width:48%;height:48%;fill:currentColor;stroke:none}
+.camshot:active{background:var(--line)}
+/* youtube bakes the exercise name into its own frames, so the thumbnail is
+   zoomed past that strip */
+.thumb img{
+  width:100%;height:100%;object-fit:cover;display:block;transform:scale(1.32);
+}
+.thumb:active{opacity:.6}
+.clips{display:flex;gap:8px;flex:none}
+.thumb .lbl{
+  position:absolute;left:0;right:0;bottom:0;
+  background:linear-gradient(transparent,rgba(0,0,0,.85));
+  color:var(--chalk);font-size:8px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;
+  padding:8px 2px 3px;line-height:1;
+}
+.camshot.live,.thumb.playing{
+  border-color:var(--blue);color:var(--blue);
+  background:rgba(110,139,240,.14);box-shadow:0 0 0 1px var(--blue);
+}
+
+/* ---- the frame holds one of three things: the plan, the camera, a clip ---- */
+.stage{
+  flex:1;min-height:0;position:relative;overflow:hidden;
+  border:1px solid var(--line);border-radius:14px;
+  background-color:var(--surface);
+  background-image:radial-gradient(var(--line) 1px, transparent 1px);
+  background-size:9px 9px;
+}
+#rows{
+  position:absolute;inset:0;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:12px;display:flex;flex-direction:column;gap:8px;
+}
+#cam,#player{position:absolute;inset:0;display:none}
+body.view-cam #rows,body.view-clip #rows{display:none}
+body.view-cam #cam{display:block}
+body.view-clip #player{display:block}
+#player .player{width:100%;height:100%;border-radius:0;aspect-ratio:auto}
+
+/* ---- the plan: a row per exercise, the current one lit ---- */
+.row{
+  flex:none;display:flex;align-items:center;gap:14px;text-align:left;
+  padding:11px 15px;border-radius:12px;
+  border:1px solid var(--line);background:rgba(11,12,14,.55);
+}
+.row:active{background:var(--line)}
+.row.on{border-color:var(--blue);background:rgba(110,139,240,.1)}
+.row .ix{flex:none;font-size:13px;font-weight:600;color:var(--muted)}
+.row .nm{
+  flex:1;min-width:0;font-size:17px;font-weight:700;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+/* the break runs on the current exercise, so its seconds are shown on its row */
+.row .rest{display:none;flex:none;font-size:19px;font-weight:700;color:var(--blue)}
+body.resting .row.on .rest{display:block}
+.row .st{
+  flex:none;font-size:12px;font-weight:600;letter-spacing:.09em;
+  text-transform:uppercase;color:var(--muted);
+}
+.row.complete .st{color:var(--done)}
+
+#hud{position:absolute;inset:0;z-index:3;pointer-events:none}
+.player{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:16/9}
+/* the controls sit on the frame: mirror bottom left, pose bottom right */
+#cam .cap{position:absolute;left:13px;right:13px;bottom:11px;z-index:2;display:flex;gap:9px;align-items:center}
+body.cam-live #camflip{color:rgba(236,233,228,.75);text-shadow:0 1px 6px rgba(0,0,0,.8)}
+#cam .ico{
+  flex:none;width:46px;height:42px;border-radius:12px;
+  font-size:15px;color:var(--muted);display:grid;place-items:center;
+  background:var(--iron);border:1px solid var(--line);
+}
+#cam .ico:active{background:var(--line)}
+body:not(.cam-live) #posetog{display:none}
+#posetog.on{color:var(--accent);border-color:currentColor}
+#posetog:disabled{opacity:.55}
+/* top left is the one corner neither the pose readout nor a clip's own
+   controls ever use */
+#setcount{
+  position:absolute;left:14px;top:12px;white-space:nowrap;
+  font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);text-shadow:0 1px 6px rgba(0,0,0,.8);
+}
+body.cam-live #setcount{color:rgba(236,233,228,.75)}
+/* over the plan it would sit on the first row */
+body:not(.view-cam):not(.view-clip) #setcount{display:none}
+#camflip{
+  position:relative;flex:none;margin-right:auto;display:flex;align-items:center;gap:11px;color:var(--muted);
+  font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+}
+#camflip:before{
+  content:'';flex:none;width:34px;height:19px;border-radius:999px;
+  background:var(--line);transition:background .15s;
+}
+#camflip:after{
+  content:'';position:absolute;left:4px;top:50%;margin-top:-6.5px;
+  width:13px;height:13px;border-radius:50%;
+  background:var(--muted);transition:left .15s, background .15s;
+}
+#camflip[aria-pressed=true]:before{background:rgba(110,139,240,.35)}
+#camflip[aria-pressed=true]:after{left:19px;background:var(--blue)}
+
+/* the camera fills the frame it shares with the plan and the clips */
+#camstage{position:absolute;inset:0;overflow:hidden}
+body.cam-live #camstage{background:#000}
+#camview{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;display:block;background:#000;
+}
+#camview.flip{transform:scaleX(-1)}
+/* skeleton sits on its own canvas, sized to the frame so object-fit:cover
+   crops it exactly the way it crops the video underneath */
+#posecanvas{
+  position:absolute;inset:0;width:100%;height:100%;
+  object-fit:cover;display:none;z-index:1;pointer-events:none;
+}
+#posecanvas.flip{transform:scaleX(-1)}
+#posecanvas.on{display:block}
+#posehud{
+  position:absolute;right:12px;top:12px;z-index:2;display:none;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:11px;line-height:1.55;white-space:pre;
+  color:rgba(236,233,228,.92);background:rgba(11,12,14,.62);
+  border:1px solid var(--line);border-radius:10px;padding:8px 10px;
+  text-shadow:0 1px 4px rgba(0,0,0,.7);
+}
+#posehud.on{display:block}
+
+body:not(.cam-live) #camview{display:none}
+/* the overlay spans the whole slot, so only the number itself takes taps —
+   the control row underneath has to stay reachable during a rest */
+#restview{
+  position:absolute;inset:0;pointer-events:none;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;padding:24px;text-align:center;
+}
+body.resting.view-cam #restview,body.resting.view-clip #restview{display:flex}
+#restview .num{
+  pointer-events:auto;cursor:pointer;
+  font-size:clamp(110px,20vw,260px);line-height:.9;font-weight:600;
+  letter-spacing:-.02em;color:var(--blue);font-variant-numeric:tabular-nums;
+}
+.player video{width:100%;height:100%;display:block;background:#000;object-fit:contain}
+.player a{
+  width:100%;height:100%;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:9px;
+  text-decoration:none;color:#fff;background:#0B0C0E;
+}
+.player a:active{opacity:.6}
+.player .yt{
+  width:56px;height:39px;border-radius:9px;background:#FF0033;
+  display:flex;align-items:center;justify-content:center;
+}
+.player .yt:after{
+  content:'';border-style:solid;border-width:8px 0 8px 13px;
+  border-color:transparent transparent transparent #fff;margin-left:3px;
+}
+.player .cta{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.player .sub{font-size:11.5px;color:var(--muted);letter-spacing:.02em}
+/* ---- sets: one box per set, each with its own rep count ---- */
+.sets{display:flex;gap:12px;flex:none}
+.set{
+  flex:1;display:flex;align-items:center;overflow:hidden;
+  height:clamp(50px,6.5vw,64px);
+  border-radius:12px;border:1.5px solid var(--line);
+  transition:background .15s, border-color .15s;
+}
+.set button{height:100%;color:var(--muted)}
+.set button:active{background:var(--line)}
+.set .rep{flex:none;width:clamp(36px,5vw,54px);font-size:22px;font-weight:600}
+/* the count is the log: press it for done, press it again to take it back */
+.set .log{flex:1;min-width:0;font-size:21px;font-weight:700;color:var(--chalk)}
+/* a logged set is chrome blue whatever the bell; the bell colour stays on the weight */
+.set.on{border-color:var(--blue);background:rgba(110,139,240,.13)}
+.set.on .log{color:var(--blue)}
+
+/* ---- weight ---- */
+.wt{display:flex;align-items:center;gap:12px;flex:none}
+.wt button{
+  flex:none;width:clamp(84px,12vw,110px);height:clamp(48px,6vw,58px);
+  border-radius:12px;border:1.5px solid var(--line);
+  font-size:21px;font-weight:600;color:var(--muted);display:grid;place-items:center;
+}
+.wt button:active{background:var(--line)}
+.wt .val{
+  flex:1;text-align:center;font-weight:800;font-size:25px;letter-spacing:-.02em;
+  color:var(--accent);
+}
+.wt .val small{font-size:13px;font-weight:600;color:var(--muted);letter-spacing:.06em;margin-left:3px}
+.wt.bw .val{color:var(--muted);font-size:13px;font-weight:600;letter-spacing:.06em;text-transform:uppercase}
+
+/* ---- history sheet ---- */
+.sheet{
+  position:fixed;inset:0;z-index:40;background:var(--iron);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:calc(14px + env(safe-area-inset-top)) 14px calc(20px + env(safe-area-inset-bottom));
+  display:none;
+}
+.sheet.open{display:block}
+.sheet h3{margin:0 0 14px;font-size:15px;letter-spacing:.16em;text-transform:uppercase;font-weight:800;
+  display:flex;align-items:center}
+.sheet h3 button{font-size:13px;color:var(--muted);letter-spacing:0;text-transform:none;font-weight:600;
+  padding:6px 9px;border:1px solid var(--line);border-radius:8px;margin-left:6px}
+.sheet h3 button:first-of-type{margin-left:auto}
+#box{display:none;width:100%;height:120px;margin-bottom:12px;background:var(--surface);
+  color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:8px;
+  font:12px/1.3 ui-monospace,Menlo,monospace;resize:none}
+#box.open{display:block}
+#warn{display:none;padding:7px 14px;background:#3A2A12;color:#E8C11C;
+  font-size:12.5px;font-weight:600;border-bottom:1px solid var(--line)}
+#warn.on{display:block}
+#warn.ok{background:#12301C;color:#6FD38A}
+.ses{border:1px solid var(--line);border-radius:12px;padding:11px 12px;margin-bottom:8px;background:var(--surface)}
+.ses .top{display:flex;align-items:baseline;gap:8px;font-weight:700;font-size:15px}
+.ses .top em{margin-left:auto;font-style:normal;font-size:13px;color:var(--muted);font-weight:600}
+.ses ul{margin:8px 0 0;padding:0;list-style:none;font-size:13.5px;color:var(--muted)}
+.ses li{display:flex;gap:8px;padding:2px 0}
+.ses li b{margin-left:auto;color:var(--chalk);font-weight:600}
+.empty{color:var(--muted);font-size:14px;text-align:center;padding:40px 0}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<header>
+  <button id="hist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.3 12a8.7 8.7 0 1 0 2.9-6.5L3 8"/><path d="M3 3.6V8h4.4"/><path d="M12 7.6V12l3 1.9"/></svg> History</button>
+  <span id="watch"></span>
+  <button class="go" id="finish"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.7"/><path d="m8.1 12.3 2.7 2.7 5.1-5.5"/></svg> Save &amp; finish</button>
+</header>
+<div id="warn"></div>
+
+<main id="app">
+  <div class="head" id="head"></div>
+
+  <!-- one frame for all three: the plan, the live camera, a clip. They are
+       shown and hidden, never rebuilt, so the stream survives a render -->
+  <div class="stage">
+    <div id="rows"></div>
+    <aside id="cam">
+      <div id="camstage">
+        <video id="camview" playsinline autoplay muted class="flip"></video>
+        <canvas id="posecanvas" class="flip"></canvas>
+        <div id="posehud"></div>
+        <div class="cap">
+          <button id="camflip" aria-pressed="true">Mirror</button>
+          <button id="posetog" class="ico" title="Pose overlay">◉</button>
+        </div>
+      </div>
+    </aside>
+    <div id="player"></div>
+    <div id="hud">
+      <div id="restview"><div class="num" id="restnum">0</div></div>
+      <div id="setcount"></div>
+    </div>
+  </div>
+
+  <div class="sets" id="sets"></div>
+  <div class="wt" id="wt"></div>
+</main>
+
+<section class="sheet" id="sheet">
+  <h3>History
+    <button id="exp">Export</button>
+    <button id="imp">Import</button>
+    <button id="close">Close</button>
+  </h3>
+  <textarea id="box" readonly></textarea>
+  <div id="sessions"></div>
+</section>
+
+<script>
+/* ---------- storage (falls back to memory if blocked) ---------- */
+const store = (() => {
+  let mem = {}, ok = true;
+  try { localStorage.setItem('__t','1'); localStorage.removeItem('__t'); } catch(e){ ok = false; }
+  return {
+    get ok(){ return ok; },
+    get(k){ try { return ok ? localStorage.getItem(k) : (mem[k] ?? null); } catch(e){ return mem[k] ?? null; } },
+    set(k,v){ try { ok ? localStorage.setItem(k,v) : (mem[k]=v); } catch(e){ mem[k]=v; } }
+  };
+})();
+const load = (k,d) => { try { return JSON.parse(store.get(k)) ?? d; } catch(e){ return d; } };
+const save = (k,v) => store.set(k, JSON.stringify(v));
+
+/* ---------- offline thumbnails (filled by inline-thumbs.py) ---------- */
+const THUMBS = {};
+
+/* ---------- offline clips, videoId -> data URI (filled by inline-clips.py) ---------- */
+const CLIPS = {};
+
+/* ---------- offline pose model + runtime (filled by inline-pose.py) ---------- */
+const POSE_ASSETS = {};
+
+/* ---------- plan ---------- */
+let PLAN = [
+  {id:"vragir", s:3, r:10, w:14, n:"Kettlebell around-the-body pass", vids:[{"l": "Full", "v": "kEBDdhJNhZc"}, {"l": "Short", "v": "kEBDdhJNhZc"}]},
+  {id:"vravok", s:3, r:10, w:14, n:"Around-the-body pass with a stop", vids:[{"l": "Full", "v": "7FJh9pIZirs"}, {"l": "Short", "v": "7FJh9pIZirs"}]},
+  {id:"uprnim", s:3, r:10, w:14, n:"Halo", vids:[{"l": "Full", "v": "XdQ_DaAYI2k"}, {"l": "Short", "v": "XdQ_DaAYI2k"}]},
+  {id:"tyagir", s:3, r:10, w:14, n:"One-arm kettlebell high pull", vids:[{"l": "Full", "v": "aXw6VblsV88"}, {"l": "Short", "v": "aXw6VblsV88"}]},
+  {id:"pododn", s:3, r:10, w:14, n:"One-arm pull to head height", vids:[{"l": "Full", "v": "dPUqrZwj5Ys"}, {"l": "Short", "v": "dPUqrZwj5Ys"}]},
+  {id:"mahodn", s:3, r:10, w:14, n:"One-arm kettlebell swing", vids:[{"l": "Full", "v": "Y0urbu8NnIk"}, {"l": "Short", "v": "Y0urbu8NnIk"}]},
+  {id:"statya", s:3, r:10, w:14, n:"Deadlift, conventional", vids:[{"l": "Full", "v": "6-0QQDWC79E"}, {"l": "Short", "v": "6-0QQDWC79E"}]},
+  {id:"zabgir", s:3, r:10, w:14, n:"Kettlebell clean with a turn", vids:[{"l": "Full", "v": "HN2Kdn1BbB8"}, {"l": "Short", "v": "HN2Kdn1BbB8"}]},
+  {id:"statya2", s:3, r:10, w:14, n:"Deadlift, sumo stance", vids:[{"l": "Full", "v": "gKPjwsRu3XA"}, {"l": "Short", "v": "gKPjwsRu3XA"}]},
+  {id:"kac", s:3, r:10, w:14, n:"Two-arm kettlebell swing", vids:[{"l": "Full", "v": "Y-Mv1PjUyAI"}, {"l": "Short", "v": "Y-Mv1PjUyAI"}]},
+  {id:"ryvgir", s:3, r:10, w:14, n:"One-arm kettlebell snatch", vids:[{"l": "Full", "v": "cJ8DZIvaTvA"}, {"l": "Short", "v": "cJ8DZIvaTvA"}]},
+  {id:"tolgir", s:3, r:10, w:14, n:"One-arm kettlebell jerk", vids:[{"l": "Full", "v": "nT6N-4Jkej8"}, {"l": "Short", "v": "nT6N-4Jkej8"}]},
+  {id:"prozhi", s:3, r:10, w:14, n:"Upright row and press", vids:[{"l": "Full", "v": "SBoAm0fwJwo"}, {"l": "Short", "v": "3qiz3eBuRbk"}]},
+  {id:"rustvi", s:3, r:10, w:14, n:"Russian twist", vids:[{"l": "Full", "v": "77Jx4erv_J8"}, {"l": "Short", "v": "77Jx4erv_J8"}]},
+  {id:"otzruk", s:3, r:10, w:0, n:"Wide push-up", vids:[{"l": "Full", "v": "DcyJHEzd82c"}, {"l": "Short", "v": "DcyJHEzd82c"}]}
+];
+/* competition kettlebell colours — the accent follows the bell you pick */
+const COLOR = {8:'#EC7BA8',12:'#3E7BD6',16:'#E8C11C',20:'#8A5FD1',24:'#2E9E5B',28:'#E8801F',32:'#D93A3A',36:'#9AA0AA',40:'#ECE9E4'};
+const bell = w => COLOR[[8,12,16,20,24,28,32,36,40].reduce((a,b)=>Math.abs(b-w)<Math.abs(a-w)?b:a)] || '#E8C11C';
+
+/* One strip under the header for everything worth a line: cora having taken the
+   workout or not. Storage being blocked is the graver and holds the strip once it is
+   shown. */
+const warnEl = document.getElementById('warn');
+function warn(msg, ok){
+  if (warnEl.dataset.hard) return;
+  warnEl.textContent = msg;
+  warnEl.classList.toggle('on', !!msg);
+  warnEl.classList.toggle('ok', !!ok);
+}
+
+/* ---------- state ---------- */
+const PLAN_V = 2;
+let hist = load('kb.hist', []);
+let ses  = load('kb.ses', null);
+let cur  = PLAN[0] && PLAN[0].id;      // the exercise the camera is pointed at
+if (!ses || ses.v !== PLAN_V) ses = newSession();
+else syncSession();
+
+/** A fresh slot: nothing done yet, and last session's weight if there was one. */
+function slotFor(p){
+  const l = lastFor(p.id);
+  return {done: 0, w: l ? l.w : p.w, reps: repsFor(p, l && l.reps)};
+}
+/** One rep count per planned set: last session's if it did that set, else the
+    plan's. Also repairs a slot after the plan changes how many sets it wants. */
+function repsFor(p, had){ return Array.from({length: p.s}, (_,i) => (had && had[i]) || p.r); }
+
+/** Make sure every exercise in PLAN has a slot; drop slots that no longer do,
+    and keep the focused exercise pointing at one that still exists. */
+function syncSession(){
+  const kept = {};
+  PLAN.forEach(p => {
+    const t = kept[p.id] = ses.ex[p.id] || slotFor(p);
+    t.reps = repsFor(p, t.reps);
+    t.done = Math.min(t.done, p.s);
+  });
+  ses.ex = kept;
+  if (!PLAN.some(p => p.id === cur)) cur = PLAN[0] && PLAN[0].id;
+}
+
+function lastFor(id){
+  for (const h of hist) { const e = h.ex.find(x=>x.id===id); if (e) return e; }
+  return null;
+}
+function newSession(){
+  const st = {start: Date.now(), v: PLAN_V, ex:{}};
+  PLAN.forEach(p => { st.ex[p.id] = slotFor(p); });
+  return st;
+}
+
+/* ---------- render ---------- */
+const head = document.getElementById('head'),
+      rows = document.getElementById('rows'),
+      setsEl = document.getElementById('sets'),
+      wtEl = document.getElementById('wt'),
+      playerEl = document.getElementById('player'),
+      setCount = document.getElementById('setcount');
+/** Clips are long first, short second, in both parsers — so they are labelled
+    by position and the plan's own label is left for the screen reader. */
+const CLIP_LBL = ['Full', 'Short'];
+/** What the frame is showing: null the plan, 'cam' the camera, or the index of
+    one of the current exercise's clips. */
+let view = null;
+const curIdx = () => PLAN.findIndex(p => p.id === cur);
+const curEx = () => PLAN[curIdx()];
+/** Move the focus d exercises along the plan; the stream keeps running. */
+function step(d){
+  const next = PLAN[curIdx() + d];
+  if (next){ cur = next.id; render(); }
+}
+/** Put v in the frame. The camera only runs while it is the one showing. */
+function show(v){
+  if (view === 'cam' && v !== 'cam') camStop();
+  const starting = v === 'cam' && view !== 'cam';
+  view = v;
+  render();
+  if (starting) camStart();
+}
+
+function render(){
+  const p = curEx();
+  if (!p) return;
+  const s = ses.ex[p.id], at = curIdx();
+  document.body.classList.toggle('view-cam', view === 'cam');
+  document.body.classList.toggle('view-clip', typeof view === 'number');
+  document.body.style.setProperty('--accent', p.w ? bell(s.w) : '#868D99');
+
+  head.innerHTML = `
+    <button class="camshot${view === 'cam' ? ' live' : ''}" data-cam
+            title="Film this exercise" aria-label="Film this exercise"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="7" width="12.5" height="10" rx="2.5"/><path d="M16.8 12.2 21.5 9.1v5.8z"/></svg></button>
+    <div class="clips">${p.vids.map((c,i) => {
+      // best first: the inlined copy, the plan's frame, youtube's default, then nothing
+      const thumbs = [THUMBS[c.v], `https://i.ytimg.com/vi/${c.v}/mq${p.f||2}.jpg`,
+                      `https://i.ytimg.com/vi/${c.v}/mqdefault.jpg`].filter(Boolean);
+      return `<button class="thumb${view === i ? ' playing' : ''}" data-clip="${i}"
+                title="Watch the ${(CLIP_LBL[i] || c.l).toLowerCase()} clip">
+        <img src="${thumbs[0]}" alt="" loading="lazy" data-fb="${thumbs.slice(1).join(' ')}"
+             onerror="const n=this.dataset.fb.split(' ').filter(Boolean); this.dataset.fb=n.slice(1).join(' '); n[0] ? this.src=n[0] : this.style.display='none'">
+        <span class="lbl">${CLIP_LBL[i] || c.l}</span>
+      </button>`;
+    }).join('')}</div>
+    <h2 class="ex-name" lang="ru">${p.n}</h2>
+    <div class="nav">
+      <button data-nav="-1" title="Previous exercise" ${at ? '' : 'disabled'}>‹</button>
+      <button data-nav="1" title="Next exercise" ${at < PLAN.length-1 ? '' : 'disabled'}>›</button>
+    </div>`;
+
+  rows.innerHTML = PLAN.map((q,i) => {
+    const t = ses.ex[q.id];
+    return `<button class="row${q.id === cur ? ' on' : ''}${t.done >= q.s ? ' complete' : ''}"
+              data-go="${q.id}">
+      <span class="ix">${String(i+1).padStart(2,'0')}</span>
+      <span class="nm" lang="ru">${q.n}</span>
+      ${q.id === cur ? '<span class="rest" id="restrow">0</span>' : ''}
+      <span class="st">${t.done}/${q.s}${q.w ? ' · ' + t.w + ' kg' : ''}</span>
+    </button>`;
+  }).join('');
+
+  setsEl.innerHTML = s.reps.map((r,i) => `
+    <div class="set${i < s.done ? ' on' : ''}">
+      <button class="rep" data-rep="${i}" data-d="-1" aria-label="One rep less">−</button>
+      <button class="log" data-log="${i+1}" title="Log this set">${r}</button>
+      <button class="rep" data-rep="${i}" data-d="1" aria-label="One rep more">+</button>
+    </div>`).join('');
+
+  wtEl.className = 'wt' + (p.w ? '' : ' bw');
+  wtEl.innerHTML = p.w
+    ? `<button data-w="-${p.st||4}">−</button>
+       <div class="val">${s.w}<small>KG</small></div>
+       <button data-w="${p.st||4}">+</button>`
+    : '<div class="val">Bodyweight</div>';
+
+  const total = PLAN.reduce((a,q)=>a+q.s,0);
+  const doneS = PLAN.reduce((a,q)=>a+Math.min(ses.ex[q.id].done,q.s),0);
+  setCount.textContent = doneS + '/' + total + ' sets';
+  mountPlayer(p);
+  save('kb.ses', ses);
+  tick();                      // the row the countdown shows on was just rebuilt
+}
+
+/* The clip is mounted once per clip, not once per render: logging a set must
+   not restart the video. */
+let playerKey = null;
+function mountPlayer(p){
+  const c = typeof view === 'number' ? p.vids[view] : null;
+  const key = c ? p.id + ':' + view : null;
+  if (key === playerKey) return;
+  playerKey = key;
+  if (!c){ playerEl.innerHTML = ''; return; }
+  playerEl.innerHTML = '<div class="player">' + (CLIPS[c.v]
+    ? `<video src="${CLIPS[c.v]}" playsinline autoplay loop muted controls
+              controlsList="nodownload noplaybackrate" disablepictureinpicture></video>`
+    : `<a href="https://www.youtube.com/watch?v=${c.v}${c.t?'&t='+c.t+'s':''}"
+         target="_blank" rel="noopener">
+         <span class="yt"></span>
+         <span class="cta">Watch on YouTube</span>
+         <span class="sub">${CLIP_LBL[view] || c.l} · no offline clip</span>
+       </a>`) + '</div>';
+}
+
+document.getElementById('app').addEventListener('click', e => {
+  const t = e.target;
+  if (t.closest('[data-cam]')){ show(view === 'cam' ? null : 'cam'); return; }
+  const clip = t.closest('[data-clip]');
+  if (clip){ const i = +clip.dataset.clip; show(view === i ? null : i); return; }
+  const nav = t.closest('[data-nav]');
+  if (nav){ step(+nav.dataset.nav); return; }
+  const go = t.closest('[data-go]');
+  if (go){ cur = go.dataset.go; render(); return; }
+  const log = t.closest('[data-log]');
+  if (log){
+    const p = curEx(), s = ses.ex[p.id], i = +log.dataset.log;
+    s.done = (s.done === i) ? i-1 : i;      // tap the last full one to undo
+    if (s.done === i && s.done >= p.s)        // last set: a long break, then move on
+      startRest(REST_EX, () => { if (cur === p.id && s.done >= p.s) step(1); });
+    else if (s.done === i) startRest(REST_SET);
+    if (navigator.vibrate) navigator.vibrate(8);
+    render(); return;
+  }
+  const rep = t.closest('[data-rep]');
+  if (rep){
+    const s = ses.ex[cur], i = +rep.dataset.rep;
+    s.reps[i] = Math.max(1, s.reps[i] + (+rep.dataset.d));
+    render(); return;
+  }
+  const w = t.closest('[data-w]');
+  if (w){
+    const s = ses.ex[cur];
+    s.w = Math.max(4, s.w + (+w.dataset.w));
+    render();
+  }
+});
+
+/* ---------- camera mirror ----------
+   The stream is shown and, when pose is on, read frame by frame in memory.
+   Nothing is captured: no MediaRecorder, no canvas snapshot kept, no upload,
+   nothing written to storage. Closing the camera stops the tracks and drops
+   the frames. Keep it that way -- localStorage holds sets and history only. */
+const camView = document.getElementById('camview');
+let camStream = null;
+
+async function camStart(){
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    alert('Camera unavailable: this page is not on https, or the browser is blocking it.');
+    show(null);
+    return;
+  }
+  camStop();
+  try {
+    camStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+  } catch (e) {
+    alert('No camera access: ' + e.name);
+    show(null);
+    return;
+  }
+  camView.srcObject = camStream;
+  camView.classList.add('flip');            // a selfie camera starts mirrored
+  poseCanvas.classList.add('flip');
+  camFlip.setAttribute('aria-pressed', 'true');
+  document.body.classList.add('cam-live');
+}
+function camStop(){
+  poseStop();
+  document.body.classList.remove('cam-live');
+  if (camStream) camStream.getTracks().forEach(t => t.stop());
+  camStream = null; camView.srcObject = null;
+}
+const camFlip = document.getElementById('camflip');
+camFlip.addEventListener('click', () => {
+  const on = camView.classList.toggle('flip');
+  poseCanvas.classList.toggle('flip', on);
+  camFlip.setAttribute('aria-pressed', on);
+});
+window.addEventListener('pagehide', camStop);
+
+/* ---------- pose overlay ----------
+   MediaPipe Tasks Vision, fetched the first time the camera starts. Needs the
+   network and a secure origin, so serve the page over https or from localhost
+   -- on file:// the mirror still works and the readout says what went wrong. */
+const POSE_VER   = '1.0.1';
+const POSE_CDN   = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@' + POSE_VER;
+const POSE_MODEL = 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/'
+                 + 'pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
+/* BlazePose indices for the joints a rep counter would lean on: left, right */
+const POSE_JOINTS = [['wrists',15,16], ['shoulders',11,12], ['hips',23,24]];
+
+const poseCanvas = document.getElementById('posecanvas');
+const poseHud    = document.getElementById('posehud');
+const poseCtx    = poseCanvas.getContext('2d');
+
+let poseLib = null, poseNet = null, poseDraw = null;
+let poseRAF = 0, poseSeen = -1, poseFps = 0, poseAt = 0, poseHudAt = 0;
+const poseBtn = document.getElementById('posetog');
+let poseState = 'off';                       // off | load | on | err
+
+/** button, overlay and readout all read from poseState */
+function poseUi(){
+  poseBtn.textContent = poseState === 'load' ? '◌' : '◉';
+  poseBtn.disabled = poseState === 'load';
+  poseBtn.classList.toggle('on', poseState === 'on');
+  poseCanvas.classList.toggle('on', poseState === 'on');
+  poseHud.classList.toggle('on', poseState !== 'off');
+}
+poseBtn.addEventListener('click', () => {
+  if (poseState === 'on' || poseState === 'load') poseStop(); else poseStart();
+});
+
+/** base64 -> bytes; the wasm runtime is ~12 MB so this runs once, not per frame */
+function poseBytes(b64){
+  const bin = atob(b64), out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+const poseBlob = (b64, type) => URL.createObjectURL(new Blob([poseBytes(b64)], {type}));
+
+async function poseModel(){
+  if (poseNet) return poseNet;
+  const inlined = !!POSE_ASSETS.wasm;
+  poseHud.textContent = inlined ? 'unpacking model…' : 'loading model…';
+
+  /* file:// cannot fetch the runtime, so the inlined copy becomes blob URLs and
+     the model goes in as bytes -- no network on either path. */
+  let files;
+  if (inlined){
+    poseLib = await import(poseBlob(POSE_ASSETS.bundle, 'text/javascript'));
+    files = {
+      wasmLoaderPath: poseBlob(POSE_ASSETS.loader, 'text/javascript'),
+      wasmBinaryPath: poseBlob(POSE_ASSETS.wasm, 'application/wasm')
+    };
+  } else {
+    poseLib = await import(POSE_CDN + '/vision_bundle.mjs');
+    files = await poseLib.FilesetResolver.forVisionTasks(POSE_CDN + '/wasm');
+  }
+  /* fresh bytes per attempt: createFromOptions may consume the buffer */
+  const opts = delegate => ({
+    baseOptions: inlined
+      ? {modelAssetBuffer: poseBytes(POSE_ASSETS.model), delegate}
+      : {modelAssetPath: POSE_MODEL, delegate},
+    runningMode: 'VIDEO', numPoses: 1
+  });
+  try {
+    poseNet = await poseLib.PoseLandmarker.createFromOptions(files, opts('GPU'));
+  } catch (e) {
+    poseNet = await poseLib.PoseLandmarker.createFromOptions(files, opts('CPU'));
+  }
+  poseDraw = new poseLib.DrawingUtils(poseCtx);
+  return poseNet;
+}
+
+async function poseStart(){
+  if (poseRAF) return;
+  poseState = 'load'; poseUi();
+  poseHud.textContent = 'loading model…';
+  try { await poseModel(); }
+  catch (e){
+    poseState = 'err'; poseUi();
+    poseHud.textContent = 'pose unavailable\n' + String(e.message || e).slice(0, 48);
+    return;
+  }
+  if (poseState !== 'load') return;          // stopped while the model loaded
+  poseState = 'on'; poseUi();
+  poseSeen = -1; poseFps = 0; poseAt = 0;
+  poseRAF = requestAnimationFrame(poseTick);
+}
+
+function poseStop(){
+  if (poseRAF) cancelAnimationFrame(poseRAF);
+  poseRAF = 0;
+  poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
+  poseHud.textContent = '';
+  poseState = 'off'; poseUi();
+}
+poseUi();
+
+/* reads the current frame straight from the <video>; the frame is never
+   copied out, stored or sent anywhere -- only the drawn skeleton survives */
+function poseTick(now){
+  poseRAF = requestAnimationFrame(poseTick);
+  if (!poseNet || !camStream || camView.readyState < 2 || !camView.videoWidth) return;
+  if (camView.currentTime === poseSeen) return;      // same frame, nothing new
+  poseSeen = camView.currentTime;
+
+  if (poseCanvas.width !== camView.videoWidth){
+    poseCanvas.width  = camView.videoWidth;
+    poseCanvas.height = camView.videoHeight;
+  }
+
+  let res;
+  try { res = poseNet.detectForVideo(camView, now); } catch (e){ return; }
+
+  if (poseAt) poseFps = poseFps ? poseFps*.9 + (1000/(now-poseAt))*.1 : 1000/(now-poseAt);
+  poseAt = now;
+
+  poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
+  const lm = res.landmarks && res.landmarks[0];
+  if (lm){
+    poseDraw.drawConnectors(lm, poseLib.PoseLandmarker.POSE_CONNECTIONS,
+                            {color:'rgba(236,233,228,.85)', lineWidth:3});
+    poseDraw.drawLandmarks(lm, {color:'#E8C11C', fillColor:'#E8C11C', radius:4});
+  }
+  if (now - poseHudAt > 250){                        // readable, and no layout thrash
+    poseHudAt = now;
+    poseHud.textContent = poseReadout(lm);
+  }
+}
+
+/** fps plus how sure the model is about each joint pair — low numbers here are
+    the reason a future rep counter would miscount. */
+function poseReadout(lm){
+  const head = Math.round(poseFps) + ' fps · lite';
+  if (!lm) return head + '\nnobody in frame';
+  const vis = i => (lm[i] && typeof lm[i].visibility === 'number') ? lm[i].visibility : NaN;
+  const fmt = v => isNaN(v) ? '  — ' : v.toFixed(2);
+  return head + '\n' + POSE_JOINTS
+    .map(([name, l, r]) => name.padEnd(10) + fmt(vis(l)) + ' ' + fmt(vis(r)))
+    .join('\n');
+}
+
+/* ---------- rest timer ----------
+   Starts itself when a set is logged. It shows over the camera stage, so with
+   the camera closed it runs unseen and only the buzz at zero marks the end. */
+const REST_SET = 30, REST_EX = 60;
+let restEnd = 0, restThen = null;          // restThen runs once the rest is over, buzzed or tapped away
+function startRest(d, then){ restEnd = Date.now() + d*1000; restThen = then || null; }
+function endRest(){ restEnd = 0; const then = restThen; restThen = null; if (then) then(); }
+
+const restView = document.getElementById('restview'),
+      restNum  = document.getElementById('restnum');
+restView.addEventListener('click', () => { endRest(); tick(); });
+
+/* ---------- the watch ----------
+   The listener on this machine holds the latest recording from the wrist.
+   Is it this workout's? A recording newer than the workout becomes its timing;
+   the same one refreshes; an older one is last workout's, still sitting in the
+   listener, and is ignored. */
+function attach(ses, s){
+  if (!s || !s.start) return false;
+  // The same recording, in two guises: its start moved by seconds, or a report
+  // of the whole workout whose window covers the start the page followed — a
+  // page the Workout app made late in the workout began "recording" then. The
+  // window is the truth, so the workout's timing follows it.
+  const same = ses.watch && (Math.abs(ses.watch.start - s.start) < 60000 ||
+    (s.stop && ses.watch.start >= s.start - 60000 && ses.watch.start <= s.stop + 60000));
+  if (same){ ses.watch = s; ses.start = s.start; return true; }
+  if (s.start > ses.start){ ses.watch = s; ses.start = s.start; return true; }
+  return false;
+}
+/* The recording in one line: what the header shows after the stop and what
+   the session ends with. The minutes run to the stop, or to the last sample
+   heard when the watch fell silent. Starts with ♥ so it can never read as a
+   set line. */
+function pulse(w){
+  return '♥ ' + w.avg + ' avg · ' + w.max + ' max · ' + Math.round(((w.stop || w.last) - w.start)/60000) + ' min';
+}
+const watchEl = document.getElementById('watch');
+/* What the header says: nothing, the live recording, a silence, or the
+   summary after the stop. */
+function watchText(w, now){
+  if (!w) return '';
+  if (w.stop) return pulse(w);
+  const quiet = now - w.last;
+  if (w.n > 0 && quiet > 30000) return '♥ not heard for ' + Math.round(quiet/1000) + ' s';   // it did send, then fell silent
+  const s = Math.round((now - w.start)/1000);
+  return '♥ ' + (w.bpm || '–') + ' · ' + Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+}
+
+function tick(){
+  watchEl.textContent = watchText(ses.watch, Date.now());
+  const left = Math.ceil((restEnd - Date.now())/1000);
+  const row = document.getElementById('restrow');
+  if (left > 0){
+    document.body.classList.add('resting');
+    restNum.textContent = left;
+    if (row) row.textContent = left;
+  } else {
+    if (restEnd){ if (navigator.vibrate) navigator.vibrate([30,60,30]); endRest(); }
+    document.body.classList.remove('resting');
+  }
+}
+setInterval(tick, 500); tick();
+
+/* ---------- finish ----------
+   Save the workout and start a new one. From the button it asks first; when
+   the watch ended the workout it does not, and the header says who did. */
+function finish(byWatch){
+  const doneAny = PLAN.some(p => ses.ex[p.id].done > 0);
+  const who = byWatch ? 'Watch ended the workout — ' : '';
+  if (byWatch){ ses.told = ses.watch.start; save('kb.ses', ses); }   // react to this recording's end once
+  if (!doneAny){ warn(who + 'Nothing logged — nothing saved.'); return; }   // a button that did nothing has to say so
+  if (!byWatch && !confirm('Save this workout and start a new one?')) return;
+  const end = ses.watch && ses.watch.stop ? ses.watch.stop : Date.now();
+  hist.unshift({
+    date: Date.now(),
+    min: Math.round((end-ses.start)/60000),
+    ex: PLAN.filter(p=>ses.ex[p.id].done>0).map(p => {
+      const s = ses.ex[p.id];
+      return {id:p.id, n:p.n, w:s.w, done:s.done, r:p.r, reps:s.reps.slice(0, s.done)};
+    })
+  });
+  handoff(sessionText(hist[0].ex, ses.watch), who);   // the page's history is kept whatever the log says
+  hist = hist.slice(0,60);
+  save('kb.hist', hist);
+  ses = newSession();
+  render();
+}
+document.getElementById('finish').addEventListener('click', () => finish(false));
+
+/* Sets of equal length read as 3×10; an exercise cut short reads 10+10+8.
+   Sessions logged before reps were per set only kept the plan's number. */
+function repsText(e){
+  const r = e.reps && e.reps.length ? e.reps : null;
+  if (!r) return e.done + '×' + e.r;
+  return new Set(r).size === 1 ? r.length + '×' + r[0] : r.join('+');
+}
+
+/* The finished workout in the log's own grammar: one heading with the load
+   and one set line per exercise, and the watch's pulse as a note under the
+   last one. The text is the interface — train reads it as it is, whether it
+   arrives over the wire or from the clipboard. */
+function sessionText(ex, w){
+  const text = ex.map(e => {
+    const r = e.reps && e.reps.length ? e.reps : Array(e.done).fill(e.r);
+    const sets = new Set(r).size === 1 ? r.length + ' sets of ' + r[0] : 'sets of ' + r.join(' / ');
+    return '# ' + e.n + ' ' + (e.w ? e.w + ' kg' : 'bw') + '\n' + sets;
+  }).join('\n\n');
+  return text + (w && w.avg ? '\n' + pulse(w) : '') + '\n';   // no pulse heard: no line, rather than zeros
+}
+
+/* ---------- history ---------- */
+const sheet = document.getElementById('sheet');
+document.getElementById('hist').addEventListener('click', () => {
+  const box = document.getElementById('sessions');
+  box.innerHTML = hist.length ? '' : '<div class="empty">Nothing yet. Finish your first workout.</div>';
+  hist.forEach(h => {
+    const d = new Date(h.date);
+    const el = document.createElement('div');
+    el.className = 'ses';
+    el.innerHTML = `<div class="top">${d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}
+        <em>${h.min} min · ${h.ex.length} exercises</em></div>
+      <ul>${h.ex.map(e=>`<li lang="ru">${e.n.split('.')[0]}<b lang="en">${e.w?e.w+' kg · ':''}${repsText(e)}</b></li>`).join('')}</ul>`;
+    box.appendChild(el);
+  });
+  sheet.classList.add('open');
+});
+document.getElementById('close').addEventListener('click', () => sheet.classList.remove('open'));
+
+/* ---------- backup without a server ---------- */
+if (!store.ok){
+  warnEl.textContent = 'Browser storage is blocked — export your history before you close this page.';
+  warnEl.classList.add('on');
+  warnEl.dataset.hard = '1';
+}
+const box = document.getElementById('box');
+
+document.getElementById('exp').addEventListener('click', () => {
+  const txt = JSON.stringify({v:PLAN_V, hist, ses});
+  const fallback = () => {
+    box.value = txt; box.classList.add('open');
+    box.removeAttribute('readonly'); box.select(); box.setAttribute('readonly','');
+  };
+  if (navigator.share) navigator.share({title:'Training — history', text:txt}).catch(fallback);
+  else if (navigator.clipboard) navigator.clipboard.writeText(txt).then(fallback).catch(fallback);
+  else fallback();
+});
+
+document.getElementById('imp').addEventListener('click', () => {
+  const raw = prompt('Paste previously exported data:');
+  if (!raw) return;
+  try {
+    const d = JSON.parse(raw);
+    if (!Array.isArray(d.hist)) throw 0;
+    hist = d.hist;
+    if (d.ses && d.ses.v === PLAN_V) ses = d.ses;
+    save('kb.hist', hist); save('kb.ses', ses);
+    sheet.classList.remove('open');
+    render();
+  } catch(e){ alert('That does not look like workout data. Copy the whole text.'); }
+});
+
+/* ---------- handing the workout to cora ----------
+   The page is served by cora at /pages/<field>/, so the field it belongs to is the
+   path it was opened under, and the upload is the reader's own API call on the
+   reader's own origin — no key, no token, no second server. A workout that cannot be
+   handed over is not lost: it goes to the clipboard, and the strip says so. */
+const FIELD = decodeURIComponent((location.pathname.match(/\/pages\/([^/]+)\//) || [])[1] || '');
+const UPLOAD = '/api/documents';
+
+/** Today, as the document is named — local, because a workout belongs to the day the
+ *  lifter had rather than to UTC's. */
+function today(){
+  const d = new Date();
+  const two = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}.md`;
+}
+
+function handoff(text, who = ''){
+  const copied = why => warn(who + 'Not saved to cora' + (why ? ' (' + why + ')' : '') +
+                             ' — copied to the clipboard instead.');
+  const shown = () => {                  // no clipboard either: leave the text selectable
+    box.value = text; box.classList.add('open'); sheet.classList.add('open');
+    warn(who + 'Not saved to cora — copy the text from History.');
+  };
+  const copy = why => navigator.clipboard
+    ? navigator.clipboard.writeText(text).then(() => copied(why), shown)
+    : shown();
+  if (!FIELD) return copy('opened outside cora');
+  const body = new FormData();
+  body.append('file', new Blob([text], {type: 'text/markdown'}), today());
+  body.append('scope', FIELD);
+  fetch(UPLOAD, {method: 'POST', body})
+    .then(r => r.json().then(answered => r.ok
+      ? warn(who + 'Saved to ' + FIELD + ' — ' + answered.document, true)
+      : Promise.reject(answered.error || ('HTTP ' + r.status))))
+    .catch(why => copy(typeof why === 'string' ? why : ''));
+}
+
+render();
+</script>
+</body>
+</html>
