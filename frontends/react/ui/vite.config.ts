@@ -10,11 +10,14 @@ import react from '@vitejs/plugin-react'
 // class at all — which is a whole tier asserting about the browser's default styles.
 export const modules = { modules: { localsConvention: 'camelCaseOnly' } } as const
 
-// `/api` belongs to the Python server; in dev it runs beside Vite, in production the
-// same process serves both and the proxy is not in the picture.
+// `/api` and `/pages` belong to the Python server — the second being where a plugin's
+// own page is served from. In dev it runs beside Vite, in production the same process
+// serves both and the proxy is not in the picture.
+const SERVER = 'http://127.0.0.1:8000'
+
 export default defineConfig({
   plugins: [react()],
-  server: { proxy: { '/api': 'http://127.0.0.1:8000' } },
+  server: { proxy: { '/api': SERVER, '/pages': SERVER } },
   css: modules,
   test: {
     environment: 'happy-dom',
@@ -25,7 +28,15 @@ export default defineConfig({
     // A click whose default action is a navigation is a click this suite asserts about,
     // never one it should perform: left on, happy-dom dials the href.
     environmentOptions: {
-      happyDOM: { settings: { navigation: { disableMainFrameNavigation: true } } },
+      happyDOM: {
+        settings: {
+          navigation: { disableMainFrameNavigation: true },
+          /* A field's page is a frame pointing at the server, which this tier does not
+             run: left on, every spec drawing one reaches for the network and fails there
+             noisily. What the page itself does is the browser tier's to prove. */
+          disableIframePageLoading: true,
+        },
+      },
     },
   },
 })

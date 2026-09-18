@@ -1,6 +1,8 @@
 """Cora as one plugin is handed it, and where what that plugin registers is kept."""
 
 import logging
+import os
+import pathlib
 import re
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
@@ -26,6 +28,7 @@ from cora.ports.context_source import ContextSource
 from cora.ports.host import (
     HANDLER,
     INSTRUCTIONS,
+    PAGE,
     TOOL,
     Handler,
     Registration,
@@ -225,6 +228,27 @@ class PluginHost:
             raise PluginLoadError(self.module, "instructions must be a string")
         self._record(INSTRUCTIONS, instructions, scope)
 
+    def register_page(self, directory: str | os.PathLike[str], *, scope: str) -> None:
+        """Bring one field its own page, as a directory to serve whole.
+
+        What is on disk is not checked here: a page is read at the request, and a
+        directory that is not there then costs that path a refusal rather than the
+        composition every other request also needs.
+
+        Raises:
+            PluginLoadError: No field was named, or this plugin already brought that
+                field a page.
+        """
+        if scope is None:
+            raise PluginLoadError(
+                self.module, "a page was registered under no field to draw it in"
+            )
+        if any(entry.scope == scope for entry in self._of(PAGE)):
+            raise PluginLoadError(
+                self.module, f"a page for '{scope}' was registered twice"
+            )
+        self._record(PAGE, pathlib.Path(directory), scope)
+
     def show(self, did: str, detail: str = "", failed: bool = False) -> None:
         """Put one line of this plugin's own work on the trace of the call it is in.
 
@@ -368,7 +392,10 @@ class PluginHost:
         )
 
     def _registered_tools(self) -> tuple[Tool, ...]:
-        return tuple(entry.value for entry in self.registered if entry.kind == TOOL)
+        return tuple(entry.value for entry in self._of(TOOL))
+
+    def _of(self, kind: str) -> tuple[Registration, ...]:
+        return tuple(entry for entry in self.registered if entry.kind == kind)
 
     def _record(self, kind: str, value: Any, scope: str | None = None) -> None:
         if scope is not None and (not isinstance(scope, str) or not scope.strip()):

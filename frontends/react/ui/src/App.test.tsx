@@ -80,13 +80,23 @@ const OLDER = {
 
 const served: Record<string, unknown> = {
   '/api/documents': ['notes.md'],
-  '/api/scopes': { available: ['fitness', 'travel'], default: 'cora' },
+  '/api/scopes': { available: ['fitness', 'travel'], default: 'cora', pages: {} },
   '/api/memory': [{ key: 'f1', text: 'No burpees.' }],
-  '/api/sessions': [{ thread_id: 'old', opened_with: OLDER.question }],
+  '/api/sessions': [{ thread_id: 'old', opened_with: OLDER.question, pin: null }],
   '/api/sessions/old': [OLDER],
 }
 
+const BARE = { available: ['fitness', 'travel'], default: 'cora', pages: {} }
+
+/** The fields listing with a page for fitness, as a deployment carrying one answers. */
+const bringsAPage = () => {
+  served['/api/scopes'] = { ...BARE, pages: { fitness: '/pages/fitness/' } }
+}
+
 afterEach(() => {
+  /* A fixture one spec rewrote is a fixture every later one inherits. */
+  served['/api/scopes'] = BARE
+  served['/api/sessions'] = [{ thread_id: 'old', opened_with: OLDER.question, pin: null }]
   turn.release()
   step.release()
   cleanup()
@@ -112,8 +122,20 @@ beforeEach(() => {
       }
       if (path.startsWith('/api/uploads/'))
         return { ok: true, json: async () => ({ text: KEPT }) } as unknown as Response
-      if (path.endsWith('/scope') && !(path in served))
-        return { ok: true, json: async () => ({ pin: taken }) } as unknown as Response
+      if (path.endsWith('/scope') && !(path in served)) {
+        /* A thread the listing knows carries its own pin; one it does not is the
+           conversation on the page, whose pin is whatever was last asked with. */
+        const thread = path.split('/')[3]
+        /* One spec serves a listing the panel cannot read, so this cannot assume one. */
+        const listed = served['/api/sessions']
+        const known = Array.isArray(listed)
+          ? listed.find((each) => each.thread_id === thread)
+          : undefined
+        return {
+          ok: true,
+          json: async () => ({ pin: known ? known.pin : taken }),
+        } as unknown as Response
+      }
       return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
   )
@@ -944,6 +966,9 @@ const pluginFetch = (): { deleted: string[]; read: string[] } => {
         '/api/scopes': {
           available: gone ? ['travel', 'birds'] : ['fitness', 'travel', 'birds'],
           default: 'cora',
+          /* The plugin under deletion brings its field a page, so what a delete does
+             to the screen is what the listing does to this. */
+          pages: gone ? {} : { fitness: '/pages/fitness/' },
         },
         '/api/plugins': gone ? LOADED.slice(1) : LOADED,
       }
@@ -995,3 +1020,362 @@ test('a plugin confirmed away takes its field out of the picker', async () => {
   expect(within(left).getByRole('button', { name: 'travel' })).toBeTruthy()
 })
 
+/* The outer test of the page-in-the-centre story. Held under `test.fails` — vitest's
+   strict xfail — while the list was worked through, so leaving the marker behind was not
+   possible. */
+test('a field with a page is worked in it, with the conversation beside', async () => {
+  const frame = await opened()
+
+  expect(frame.getAttribute('src')).toBe('/pages/fitness/')
+  expect(within(rail()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+})
+
+/* ── a page in the centre ── */
+
+/** The rail the panels live in, which is where the conversation goes beside a page. */
+const rail = () =>
+  document.querySelector('.' + appCss.railPanels) as HTMLElement
+
+/** The region the screen is about — the page where one is drawn, the conversation where
+ *  none is. One landmark either way, so a reader lands on what they came for. */
+const centre = () => screen.getByRole('main')
+
+const opened = async () => {
+  bringsAPage()
+  render(<App />)
+  await screen.findByText('notes.md')
+  pickPlugin('fitness')
+  const frame = (await screen.findByTitle('fitness')) as HTMLIFrameElement
+  /* The conversation is the sessions panel's other state, so that is where it is. */
+  fireEvent.click(within(rail()).getByRole('tab', { name: 'SESSIONS' }))
+  return frame
+}
+
+const ask = (where: HTMLElement, said: string) => {
+  fireEvent.change(within(where).getByPlaceholderText(/Ask a question/), {
+    target: { value: said },
+  })
+  fireEvent.click(within(where).getByRole('button', { name: 'Ask' }))
+  /* The fixture holds the turn open until it is let go, which is how the specs above
+     watch a turn while it runs. These are about where it is drawn, not when. */
+  turn.release()
+}
+
+test('the frame is the plugin’s own: named for its field, allowed the camera, contained in nothing', async () => {
+  const frame = await opened()
+
+  expect(frame.getAttribute('src')).toBe('/pages/fitness/')
+  expect(frame.getAttribute('allow')).toContain('camera')
+  /* Not sandboxed: an opaque origin would cost the page both cora's API and the camera,
+     and a containment that holds neither is worse than saying there is none. */
+  expect(frame.hasAttribute('sandbox')).toBe(false)
+})
+
+test('a fixed field with no page leaves the conversation in the middle', async () => {
+  bringsAPage()
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  pickPlugin('travel')
+
+  expect(screen.queryByTitle('travel')).toBeNull()
+  expect(within(centre()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+})
+
+test('with a page drawn the conversation is in the rail and not in the middle', async () => {
+  await opened()
+
+  expect(within(rail()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+  expect(within(centre()).queryByPlaceholderText(/Ask a question/)).toBeNull()
+})
+
+test('a question asked in the rail is answered there', async () => {
+  await opened()
+
+  ask(rail(), 'How many sets?')
+
+  expect(await within(rail()).findByText(/Sleep, not volume/)).toBeTruthy()
+  expect(within(rail()).getAllByText('How many sets?').length).toBeGreaterThan(0)
+})
+
+test('the region the screen is about holds the page, and the conversation where there is none', async () => {
+  await opened()
+  expect(within(centre()).getByTitle('fitness')).toBeTruthy()
+  expect(screen.getAllByRole('main')).toHaveLength(1)
+
+  cleanup()
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  expect(within(centre()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+})
+
+test('folding the rail and unfolding it draws the conversation with its turns', async () => {
+  await opened()
+  ask(rail(), 'How many sets?')
+  await within(rail()).findByText(/Sleep, not volume/)
+
+  fireEvent.click(screen.getByRole('button', { name: /Plan & memory/ }))
+  expect(within(rail()).queryByPlaceholderText(/Ask a question/)).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: /Plan & memory/ }))
+
+  expect(await within(rail()).findByText(/Sleep, not volume/)).toBeTruthy()
+})
+
+/** A render that throws is a sentence on the page and a line on the console. The spy
+ *  keeps React's own report out of the suite's output, which is otherwise a wall. */
+const quietly = async (draw: () => Promise<void>) => {
+  const said = vi.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    await draw()
+  } finally {
+    said.mockRestore()
+  }
+}
+
+test('a panel that cannot be drawn is a sentence, and the page still stands', async () => {
+  await quietly(async () => {
+    /* A listing the panel cannot read, which is the shape the frontend spec names. Set
+       before the page reads it: the read is held, and a fixture changed afterwards is
+       one nothing asks for again. */
+    served['/api/sessions'] = {} as unknown as []
+    await opened()
+
+    back()
+
+    expect(await within(rail()).findByText('This panel could not be drawn.')).toBeTruthy()
+    expect(screen.getByTitle('fitness')).toBeTruthy()
+  })
+})
+test('the conversation in the rail is a region of its own, inside no second main', async () => {
+  await opened()
+
+  /* A region of its own, named for what it is — which conversation it holds is the
+     heading the panel puts over it. */
+  const talk = within(rail()).getByRole('region', { name: 'Conversation' })
+  expect(within(talk).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+  expect(screen.getAllByRole('main')).toHaveLength(1)
+  expect(
+    within(centre()).queryByRole('region', { name: 'Conversation' }),
+  ).toBeNull()
+})
+
+test('deleting the plugin of the fixed field returns the conversation to the middle', async () => {
+  /* The listings are held from the moment the delete goes out, so what is asserted is
+     what the reader's own act did and not what the read that follows would have done
+     anyway. In a browser that difference is a page left standing over a field that is
+     gone until the network answers. */
+  const reread = held()
+  const deleted: string[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        deleted.push(path)
+        return { ok: true, status: 204 } as unknown as Response
+      }
+      if (deleted.length > 0) await reread.until
+      const listings: Record<string, unknown> = {
+        ...served,
+        '/api/scopes': {
+          available: ['fitness', 'travel', 'birds'],
+          default: 'cora',
+          pages: { fitness: '/pages/fitness/' },
+        },
+        '/api/plugins': LOADED,
+      }
+      return {
+        ok: true,
+        json: async () => listings[route(path)] ?? [],
+      } as unknown as Response
+    }),
+  )
+  render(<App />)
+  const fields = await openMenu()
+  fireEvent.click(within(fields).getByRole('button', { name: 'fitness' }))
+  expect(await screen.findByTitle('fitness')).toBeTruthy()
+
+  /* Pinned, the segment that opens the picker is named for the field rather than for
+     the act — so this is the same menu, reached the way a reader reaches it. */
+  fireEvent.click(screen.getByRole('button', { name: 'fitness' }))
+  fireEvent.click(
+    within(screen.getByRole('list')).getByRole('button', {
+      name: 'Delete the fitness plugin',
+    }),
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Delete plugin' }))
+
+  /* The reader's own act puts it back, and not the read that follows it: asserted
+     before any listing could have been asked for again, so a page still up here is one
+     waiting on the network to take it down. */
+  await flushed()
+  expect(screen.queryByTitle('fitness')).toBeNull()
+  expect(within(centre()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+})
+
+/* The outer test of the chat-in-the-rail story. Held under `test.fails` — vitest's
+   strict xfail — while the list was worked through, so leaving it behind was not
+   possible. */
+test('a fixed field\u2019s conversation is chatted in the rail, the others one click behind', async () => {
+  bringsAPage()
+  served['/api/sessions'] = [
+    { thread_id: 'old', opened_with: OLDER.question, pin: 'fitness' },
+  ]
+  render(<App />)
+  await screen.findByText('notes.md')
+  pickPlugin('fitness')
+  await screen.findByTitle('fitness')
+
+  /* The rail is the conversation, not a list with a conversation under it. */
+  expect(within(rail()).getByRole('heading', { name: /New conversation/ })).toBeTruthy()
+  expect(within(rail()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+
+  fireEvent.click(within(rail()).getByRole('button', { name: /Back to other sessions/i }))
+
+  /* And the others are behind it, each marked for the field it belongs to. */
+  const listed = within(rail()).getByRole('button', { name: OLDER.question })
+  expect(listed).toBeTruthy()
+  expect(within(rail()).queryByPlaceholderText(/Ask a question/)).toBeNull()
+})
+
+/** The sessions panel, with a conversation of a page-bringing field open in it. */
+const chatting = async (
+  sessions: { thread_id: string; opened_with: string; pin: string | null }[] = [
+    { thread_id: 'old', opened_with: OLDER.question, pin: 'fitness' },
+  ],
+) => {
+  bringsAPage()
+  served['/api/sessions'] = sessions
+  render(<App />)
+  await screen.findByText('notes.md')
+  pickPlugin('fitness')
+  await screen.findByTitle('fitness')
+  fireEvent.click(within(rail()).getByRole('tab', { name: 'SESSIONS' }))
+}
+
+const back = () =>
+  fireEvent.click(within(rail()).getByRole('button', { name: /Back to other sessions/i }))
+
+test('a conversation of a field with a page is marked in the list, and others are not', async () => {
+  await chatting([
+    { thread_id: 'old', opened_with: OLDER.question, pin: 'fitness' },
+    { thread_id: 'plain', opened_with: 'Where to start investing', pin: null },
+    { thread_id: 'trip', opened_with: 'A week in Lisbon', pin: 'travel' },
+  ])
+
+  back()
+
+  /* The mark says the rail will chat it, which is the page and not the pin: travel is
+     pinned too and brings no page. */
+  expect(within(rail()).getByLabelText(`${OLDER.question} opens as a chat here`)).toBeTruthy()
+  expect(within(rail()).queryByLabelText('A week in Lisbon opens as a chat here')).toBeNull()
+  expect(
+    within(rail()).queryByLabelText('Where to start investing opens as a chat here'),
+  ).toBeNull()
+  expect(within(rail()).getByText(/opens as a chat in this rail/i)).toBeTruthy()
+})
+
+test('the chat is headed by what opened the conversation, its field and its length', async () => {
+  await chatting()
+
+  expect(within(rail()).getByRole('heading', { name: /New conversation/ })).toBeTruthy()
+
+  ask(rail(), 'How many sets?')
+  await within(rail()).findByText(/Sleep, not volume/)
+
+  /* Headed by the question it was opened with. Which field it is in is the page it is
+     drawn beside, and how long it is, is the scroll. */
+  expect(within(rail()).getByRole('heading', { name: 'How many sets?' })).toBeTruthy()
+})
+
+test('the way back shows the list, and opening a marked one chats it', async () => {
+  await chatting()
+  back()
+
+  expect(within(rail()).queryByPlaceholderText(/Ask a question/)).toBeNull()
+  fireEvent.click(within(rail()).getByRole('button', { name: OLDER.question }))
+
+  expect(await within(rail()).findByRole('heading', { name: OLDER.question })).toBeTruthy()
+  expect(within(rail()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+  /* And the page was never disturbed by any of it. */
+  expect(screen.getByTitle('fitness')).toBeTruthy()
+})
+
+test('a turn asked in the rail leaves the panels on the sessions tab', async () => {
+  await chatting()
+
+  ask(rail(), 'How many sets?')
+  await within(rail()).findByText(/Sleep, not volume/)
+
+  expect(within(rail()).getByRole('tab', { name: 'SESSIONS' }).getAttribute('aria-selected')).toBe(
+    'true',
+  )
+})
+
+test('a turn asked from the middle still moves the panels to the steps', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  ask(centre(), 'Why am I stalling?')
+  await within(centre()).findByText(/Sleep, not volume/)
+
+  expect(within(rail()).getByRole('tab', { name: 'STEPS' }).getAttribute('aria-selected')).toBe(
+    'true',
+  )
+})
+
+test('opening a conversation fixed to nothing returns it to the middle', async () => {
+  await chatting([
+    { thread_id: 'old', opened_with: OLDER.question, pin: 'fitness' },
+    { thread_id: 'plain', opened_with: 'Where to start investing', pin: null },
+  ])
+  back()
+
+  fireEvent.click(within(rail()).getByRole('button', { name: 'Where to start investing' }))
+
+  /* Fixed to nothing is drawn where every conversation without a page is drawn, and the
+     rail goes back to being the list of them. */
+  await waitFor(() =>
+    expect(within(centre()).getByPlaceholderText(/Ask a question/)).toBeTruthy(),
+  )
+  expect(screen.queryByTitle('fitness')).toBeNull()
+  expect(within(rail()).getByRole('button', { name: OLDER.question })).toBeTruthy()
+})
+
+test('a conversation fixed to nothing draws no chat in the rail at all', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.click(within(rail()).getByRole('tab', { name: 'SESSIONS' }))
+
+  expect(within(centre()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+  expect(within(rail()).queryByPlaceholderText(/Ask a question/)).toBeNull()
+  expect(within(rail()).getByRole('button', { name: OLDER.question })).toBeTruthy()
+})
+
+test('the rail does not name the field at all: the page beside it is the field', async () => {
+  await chatting()
+  ask(rail(), 'How many sets?')
+  await within(rail()).findByText(/Sleep, not volume/)
+
+  /* The head already says which conversation this is and which field it is in, so the
+     strip that says the same under it is a second answer to a question nobody asked
+     twice — and the sentence explaining that a pin is for good is two lines of a rail
+     that has none to spare. */
+  expect(within(rail()).queryByRole('group', { name: 'Answer in' })).toBeNull()
+  expect(within(rail()).queryByText(/keeps the field it is pinned to/)).toBeNull()
+  expect(within(rail()).queryByText(/fitness/)).toBeNull()
+})
+
+test('a pinned conversation in the middle still says which field it is in', async () => {
+  /* Nothing else names it there, so the strip is the only answer. */
+  render(<App />)
+  await screen.findByText('notes.md')
+  pickPlugin('travel')
+
+  ask(centre(), 'A week in Lisbon?')
+  await within(centre()).findByText(/Sleep, not volume/)
+
+  expect(within(centre()).getByRole('group', { name: 'Answer in' })).toBeTruthy()
+  expect(within(centre()).getByText(/keeps the field it is pinned to/)).toBeTruthy()
+})

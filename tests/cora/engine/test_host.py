@@ -1,5 +1,7 @@
 """What a plugin is handed, what it may register, and what it is refused for."""
 
+import pathlib
+
 import pytest
 
 from cora.domain.card import ActionOffered, Card
@@ -19,7 +21,7 @@ from cora.engine.retrieval_tool import (
     SEARCH_TOOL_NAME,
 )
 from cora.ports.chat_model import ModelReply
-from cora.ports.host import SCREENING, TOOL
+from cora.ports.host import PAGE, SCREENING, TOOL
 from cora.ports.plugin import Tool, ToolCall, ToolRefusal
 from cora.ports.retrieval import RetrievedChunk
 from fakes import (
@@ -484,3 +486,63 @@ def test_the_answer_the_loop_gave_is_on_the_trace_under_the_call() -> None:
     assert any(getattr(step, "name", "") == ANSWER_TOOL_NAME for step in taken.steps), (
         "the shaped answer reads as the call it was"
     )
+
+
+def test_a_registered_page_is_kept_as_a_directory_under_its_field(
+    tmp_path: pathlib.Path,
+) -> None:
+    host = host_for(MODULE)
+
+    host.register_page(tmp_path / "page", scope="fitness")
+
+    [entry] = host.registered
+    assert (entry.module, entry.kind, entry.scope) == (MODULE, PAGE, "fitness")
+    assert entry.value == tmp_path / "page"
+
+
+def test_a_page_under_no_field_is_refused_by_module(tmp_path: pathlib.Path) -> None:
+    """Every other registration may be system-wide. A page may not: it is drawn where
+    one field is, and a page belonging to every turn belongs to no screen."""
+    host = host_for(MODULE)
+
+    with pytest.raises(PluginLoadError) as refused:
+        host.register_page(tmp_path / "page", scope=None)  # ty: ignore[invalid-argument-type]
+
+    assert MODULE in refused.value.user_message
+    assert "field" in refused.value.user_message
+
+
+def test_a_page_directory_that_is_not_there_still_loads(
+    tmp_path: pathlib.Path,
+) -> None:
+    """The disk is not held against a registration: it is free to change after any
+    check, and a composition that raises refuses every request until it is mended."""
+    host = host_for(MODULE)
+
+    host.register_page(tmp_path / "never-made", scope="fitness")
+    _register_echo(host)
+
+    assert [entry.kind for entry in host.registered] == [PAGE, TOOL]
+
+
+def test_a_second_page_for_one_field_is_refused_by_module(
+    tmp_path: pathlib.Path,
+) -> None:
+    host = host_for(MODULE)
+    host.register_page(tmp_path / "page", scope="fitness")
+
+    with pytest.raises(PluginLoadError) as refused:
+        host.register_page(tmp_path / "other", scope="fitness")
+
+    assert "registered twice" in refused.value.user_message
+
+
+def test_one_plugin_may_bring_a_page_for_each_of_two_fields(
+    tmp_path: pathlib.Path,
+) -> None:
+    host = host_for(MODULE)
+
+    host.register_page(tmp_path / "coach", scope="fitness")
+    host.register_page(tmp_path / "atlas", scope="travel")
+
+    assert [entry.scope for entry in host.registered] == ["fitness", "travel"]

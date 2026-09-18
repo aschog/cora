@@ -4,10 +4,29 @@ Four plugins, and everything here is theirs rather than cora's. A deployment wit
 of them still answers.
 
 - **security** — a medical filter and a prompt-injection screen, both system-wide.
-- **fitness** — a coaching persona and its calculators, bringing the `fitness` field.
+- **fitness** — a coaching persona, its calculators, and a trainer to work a session in.
 - **interview** — the `interview` field: mock interviews run on a card, answers judged
   against a rubric, and a report the user keeps.
 - **travel** — the `travel` field, and the rest of this page.
+
+## Fitness brings a screen
+
+Pin a conversation to `fitness` and the middle of the page becomes a trainer: the plan
+one exercise at a time, its sets and working weight, the clip for it playing in the same frame, and the camera to film yourself against. **Save & finish** writes the workout into the `fitness` field as a
+Markdown document named for the day — so the next question about it is answered from your
+own log, with the day cited. Refused or unreachable, the workout goes to the clipboard
+and the strip says so.
+
+The plan comes from a published Google Sheet, read each time the trainer is opened: one
+row per exercise, with its sets, reps, working weight and clips. Edit the sheet and the
+next open follows it. Which sheet is named in the page, and that is how you point it at
+your own — the page is a file of the plugin, not a setting cora reads, because what is
+handed to your browser is the file as it sits on disk.
+
+Out of signal, the trainer keeps working: the plan last read stands, and failing that
+the one written into the page — fifteen kettlebell exercises, in the language the coach
+answers in. The strip says which of the three you are training from. The sheet, the clips and the pose tracking come from the services they came from, so
+those want a network. Everything else it does is local.
 
 ## Travel, in four parts
 

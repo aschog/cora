@@ -8,6 +8,27 @@
   min-height: 0;
 }
 
+/* Drawn in the rail beside a page: the slot it sits in is what holds the share, and
+   this fills it. Its own inset, because the one the middle uses was measured for a
+   column twice this wide and both would otherwise move together. */
+.in-rail {
+  flex: 1 1 0;
+  min-height: 0;
+  border-top: 1px solid var(--hairline);
+  margin-top: var(--s3);
+  padding-top: var(--s2);
+}
+
+.in-rail .scroller {
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.in-rail .composer-dock {
+  padding-left: 0;
+  padding-right: 0;
+}
+
 /* A block, not a flex row: a flex item is stretched to its container's height, so the
    column's box would stop at the fold with its content overflowing past it — and the
    room it leaves below its last line would sit above that overflow rather than after

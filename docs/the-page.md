@@ -37,6 +37,22 @@ the documents and their uploads, the sessions and one session's turns, memory, p
 and scopes. Every route is one thing the page does, and the page holds no cora logic of
 its own — it asks, and it draws what came back.
 
+## A page a plugin brought
+
+A plugin may register a directory as the page of one field, and the same process serves
+it at `/pages/<field>/` — `GET /api/scopes` says which fields have one and where. It is
+served on cora's own origin, so it calls the API exactly as this page does and with the
+same reach. [Write a plugin](how-to/write-a-plugin.md#a-page) is the contract, and
+[privacy](privacy-and-ethics.md#what-loading-a-plugin-costs-in-trust) is what that costs.
+Where such a page is drawn is this shell's own decision, and not something the directory
+says. This shell draws it in the middle when the conversation is fixed to its field — pinned,
+or the only field there is — and the right rail becomes that conversation's chat: the
+sessions panel has two states, the conversation you are in and the list of the others,
+with a way back between them. A conversation the rail would chat is marked in that list.
+Asking there does not move the panels to the steps, which would take the chat off the
+screen. Folding the rail gives the page the whole width. A field with no page, and a
+conversation fixed to nothing, are drawn exactly as they were.
+
 ## What holds it
 
 `vitest` over the components and the hooks, `tsc` over the types, and `eslint` with

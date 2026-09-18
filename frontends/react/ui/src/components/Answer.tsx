@@ -8,6 +8,7 @@ import type { Citation } from '../api'
 import { reopenable, unanswered } from '../entry'
 import type { Entry } from '../entry'
 import type { Offered } from '../api'
+import { joined } from '../joined'
 import styles from './Answer.module.css'
 
 const WORKING = 'Working…'
@@ -41,6 +42,10 @@ type Props = {
     values: Record<string, unknown>,
   ) => void
   onChange: (entry: Entry, at: number) => void
+  /** Drawn in the rail beside a field's page rather than in the middle of the screen: a
+   *  narrower box that says which conversation it is, the rail listing the others above
+   *  it — and not the region the screen is about, which is then the page. */
+  inRail?: boolean
 }
 
 export default function Answer({
@@ -53,6 +58,7 @@ export default function Answer({
   onCite,
   onTake,
   onChange,
+  inRail = false,
 }: Props) {
   const [question, setQuestion] = useState('')
   const scroller = useRef<HTMLDivElement>(null)
@@ -94,7 +100,10 @@ export default function Answer({
   }
 
   return (
-    <main className={styles.answer}>
+    <section
+      className={joined(styles.answer, inRail && styles.inRail)}
+      aria-label="Conversation"
+    >
       {mode}
       <div
         className={styles.scroller}
@@ -176,7 +185,7 @@ export default function Answer({
         {askingElsewhere && <p className={styles.composerNote}>{ELSEWHERE}</p>}
         {parked && <p className={styles.composerNote}>{DECIDING}</p>}
       </div>
-    </main>
+    </section>
   )
 }
 

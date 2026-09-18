@@ -17,6 +17,25 @@
   min-height: 0;
 }
 
+/* The middle of the screen, holding whichever of the two things it is about. Sized here
+   rather than by what it holds, so the conversation and a page fill it the same way. */
+.centre {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 420px;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* A field's own page. No border and no background of its own: what it draws is the
+   plugin's, and a frame around it would read as cora's opinion of it. */
+.page {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+}
+
 /* ── what a rail holds above its own content ── */
 .rail-top {
   display: flex;
@@ -55,6 +74,22 @@
   flex: 0 1 360px;
   min-width: 268px;
   border-left: 1px solid var(--hairline);
+}
+
+/* Chatting a conversation, the rail stops scrolling itself and gives the panel the
+   whole of it: the chat has a head that stays put and a conversation that scrolls under
+   it, and a composer docked against its own box rather than against the rail. */
+.with-talk {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+.with-talk .panel-slot {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
 }
 
 .tabs {

@@ -4,6 +4,7 @@ from cora.app.listing import SYSTEM_WIDE, main, rendered
 from cora.ports.host import (
     HANDLER,
     INSTRUCTIONS,
+    PAGE,
     TOOL,
     Contributed,
     Listed,
@@ -44,3 +45,21 @@ def test_a_deployment_that_cannot_be_assembled_says_so_in_one_sentence(
     assert stopped.value.code != 0
     assert "OPENROUTER_API_KEY" in capsys.readouterr().err
     assert stopped.value.__cause__ is None, "a traceback is not the answer"
+
+
+def test_a_page_prints_under_its_field_on_a_line_of_its_own() -> None:
+    """A fourth kind renders without the renderer having heard of it: the shape is one
+    line whatever the kind, which is what a page is the first test of."""
+    printed = rendered(
+        (
+            Listed(
+                name="coach",
+                source="/tmp/coach",
+                contributions=(Contributed(PAGE, "", "fitness"),),
+            ),
+        )
+    )
+
+    assert "page" in printed
+    assert "fitness" in printed
+    assert SYSTEM_WIDE not in printed

@@ -1,6 +1,7 @@
 """Cora as a plugin is handed it: what it may register, and what it may use."""
 
 import logging
+import os
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any, Protocol, overload
@@ -17,6 +18,7 @@ CONTRACT = 1
 TOOL = "tool"
 HANDLER = "handler"
 INSTRUCTIONS = "instructions"
+PAGE = "page"
 
 DEFAULT_SCOPE = "cora"
 
@@ -207,6 +209,27 @@ class Host(Protocol):
 
         Args:
             scope: Where the section appears. `None` puts it in every brief.
+        """
+        ...
+
+    def register_page(self, directory: str | os.PathLike[str], *, scope: str) -> None:
+        """Bring one field its own page: a directory served whole, entry page first.
+
+        Where a shell draws it is the shell's rule and nothing here says. Everything
+        under the directory is served to whoever reaches cora, so put nothing there
+        that should not be published, and know that a symlink out of it is not followed.
+
+        Args:
+            directory: What to serve, as this plugin holds it. It is read at the
+                request rather than here, the disk being free to change after any
+                check, so one that is not there costs its own path a refusal and
+                nothing else.
+            scope: The field whose page this is. Required, where every other
+                registration may be system-wide: a page belongs to a subject.
+
+        Raises:
+            PluginLoadError: No field was named, or this plugin already brought that
+                field a page.
         """
         ...
 

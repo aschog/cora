@@ -105,8 +105,18 @@ def fact(fact: Fact) -> dict[str, Any]:
     return {"key": fact.key, "text": fact.text}
 
 
-def session(session: Session) -> dict[str, Any]:
-    return {"thread_id": session.thread_id, "opened_with": session.opened_with}
+def session(session: Session, pin: str | None) -> dict[str, Any]:
+    """One conversation as the list draws it, and the field it is fixed to.
+
+    The pin rather than the fields its turns were answered in: the first is a decision
+    the reader made about the conversation, the second a reading of one question. A
+    listing is where they are told apart, so it is the decision that is sent.
+    """
+    return {
+        "thread_id": session.thread_id,
+        "opened_with": session.opened_with,
+        "pin": pin,
+    }
 
 
 def plugin(listed: Listed, deletable: bool, going: tuple[str, ...]) -> dict[str, Any]:

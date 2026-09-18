@@ -123,6 +123,36 @@ def asks(arguments: dict) -> Card | None:
   picked up, and cora calls `asks` again with the same arguments. One that raises, or
   answers with something that is not a `Card`, costs the call and not the turn.
 
+## A page
+
+`register_page(directory, scope=…)` gives one field a page of its own. cora serves the
+directory whole at `/pages/<field>/`, `index.html` first, and hands that address to
+whatever is drawing the screen.
+
+```python
+import pathlib
+
+
+def extend(cora: Host) -> None:
+    cora.register_instructions(INSTRUCTIONS, scope="notes")
+    cora.register_page(pathlib.Path(__file__).parent / "page", scope="notes")
+```
+
+- The field is required, where every other registration may leave it off: a page belongs
+  to a subject, and there is no page for every turn. Two plugins bringing one field's
+  page is refused when they are composed, naming both.
+- The directory is read at the request, not at registration. One that is not there costs
+  that address a refusal and nothing else — the rest of the plugin loads and answers.
+- It is served live, like everything else in the plugins folder: edit a file and the next
+  request has it, and a directory that was missing at load serves as soon as it is there.
+- **Everything under the directory is public** to whoever reaches cora's port, so put
+  nothing there you would not publish. A symlink pointing out of the directory is not
+  followed.
+- The page is served on cora's own origin, so it may call the API with no token — and
+  every route the reader has, it has. That is the same trust loading the plugin already
+  extended, and [privacy](../privacy-and-ethics.md#what-loading-a-plugin-costs-in-trust)
+  says so plainly.
+
 ## Handlers
 
 `register_handler(event=…, handle=…, scope=…)` subscribes to one of the five points in

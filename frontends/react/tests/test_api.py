@@ -19,7 +19,7 @@ from cora.frontends.react.api import (
     UNKEPT,
     api,
 )
-from cora.ports.host import DEFAULT_SCOPE
+from cora.ports.host import DEFAULT_SCOPE, Extension, Host
 from fakes import (
     FailingConversations,
     FakeConversations,
@@ -232,3 +232,21 @@ def test_an_upload_that_does_not_say_how_large_it_is_is_refused() -> None:
     assert refused.status_code == 411
     assert refused.json()["error"] == NO_LENGTH
     assert app.knowledge_base.list_sources() == []
+
+
+def test_the_plugins_endpoint_carries_a_page_among_the_contributions(
+    tmp_path: pathlib.Path,
+) -> None:
+    """A fourth kind reaches the menu on the shape the other three already use, and
+    carries no directory: what a reader needs is which field it is the page of."""
+
+    def extend(cora: Host) -> None:
+        cora.register_page(tmp_path, scope="b")
+
+    app = assembled(plugin=Extension(module="fixture_plugins.birds", extend=extend))
+
+    [listed] = client(app).get("/api/plugins").json()
+
+    assert listed["contributions"] == [
+        {"kind": "page", "name": "", "scope": "b", "note": ""}
+    ]

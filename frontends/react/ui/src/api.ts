@@ -72,11 +72,24 @@ export const paused = (reply: Reply): reply is Pending => 'asked' in reply
 
 export type Fact = { key: string; text: string }
 
-export type Session = { thread_id: string; opened_with: string }
+/** One conversation in the list, and the field it is fixed to — `null` where it is
+ *  fixed to nothing. The pin rather than the fields its turns were answered in: the
+ *  first is a decision about the conversation, the second a reading of one question. */
+export type Session = {
+  thread_id: string
+  opened_with: string
+  pin: string | null
+}
 
-/** The fields this deployment offers, and the one a question belonging to none is
- *  answered in. A deployment with no field is a bare cora and has nothing to pin. */
-export type Scopes = { available: string[]; default: string }
+/** The fields this deployment offers, the one a question belonging to none is answered
+ *  in, and where the page of a field that brought one is served. A deployment with no
+ *  field is a bare cora and has nothing to pin, and a field with no page is absent from
+ *  `pages` rather than named with nothing. */
+export type Scopes = {
+  available: string[]
+  default: string
+  pages: Record<string, string>
+}
 
 /** One loaded plugin, as the page reads the listing. Both answers are cora's rather
  *  than the page's reading of them: only a plugin in the plugins folder can be deleted,

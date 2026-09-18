@@ -26,7 +26,7 @@ from cora.engine.steps import (
     ScreenStep,
 )
 from cora.ports.chat_model import ModelReply, unheard
-from cora.ports.host import TOOL, Extension
+from cora.ports.host import TOOL, Extension, Host
 from fakes import FakeMemory, FakeRetriever, ScriptedChatModel, host_for
 from fixture_plugins import make_plugin, make_tool, refuses_containing
 
@@ -307,3 +307,38 @@ def test_a_plugin_registering_what_it_may_not_is_refused_by_name(
     assert module in refused.value.user_message
     assert reason in refused.value.user_message
     assert "while registering" not in refused.value.user_message
+
+
+def test_the_app_maps_each_field_with_a_page_to_the_directory_registered_for_it(
+    tmp_path: Path,
+) -> None:
+    """The one thing about a page that crosses into a frontend, derived the way the
+    fields on offer are — a projection of the registrations, not a second record."""
+    coach = tmp_path / "coach"
+
+    def extend(cora: Host) -> None:
+        cora.register_page(coach, scope="fitness")
+
+    app = assembled(plugins=(Extension(module="fixture_plugins.coach", extend=extend),))
+
+    assert app.pages == {"fitness": coach}
+
+
+def test_an_app_whose_plugins_brought_no_page_maps_nothing() -> None:
+    assert assembled().pages == {}
+
+
+def test_a_field_a_plugin_brought_only_a_page_for_is_still_offered(
+    tmp_path: Path,
+) -> None:
+    """A field arrives with whatever registered under it, and a page is now one of the
+    things that can. Offered nowhere, it would be a page advertised for a field the
+    picker never shows and no turn can run in."""
+
+    def extend(cora: Host) -> None:
+        cora.register_page(tmp_path, scope="training")
+
+    app = assembled(plugins=(Extension(module="fixture_plugins.coach", extend=extend),))
+
+    assert app.scopes == ("training",)
+    assert set(app.pages) <= set(app.scopes)

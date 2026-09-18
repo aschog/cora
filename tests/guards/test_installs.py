@@ -93,3 +93,28 @@ def test_every_wheel_carries_every_module_its_package_holds(
             if str(path.relative_to(src)) not in shipped
         ]
     assert missing == [], f"built but not shipped: {missing}"
+
+
+@pytest.mark.integration
+def test_every_wheel_carries_the_files_its_package_ships_that_are_not_python(
+    wheelhouse: pathlib.Path,
+) -> None:
+    """A plugin's page is a directory of HTML, and a wheel that carried only the modules
+    would install a plugin registering a page that is not there. Everything under `src`
+    that is not bookkeeping ships, because a plugin puts nothing there it does not mean
+    to hand over."""
+    aside = (".ruff.toml", ".ruff_cache", "__pycache__", ".DS_Store")
+    missing = []
+    for member in workspace.members():
+        src = member / "src"
+        with zipfile.ZipFile(_wheel(wheelhouse, member)) as archive:
+            shipped = set(archive.namelist())
+        missing += [
+            f"{workspace.location(member)}: {path.relative_to(src)}"
+            for path in sorted(src.rglob("*"))
+            if path.is_file()
+            and path.suffix != ".py"
+            and not any(part in aside for part in path.relative_to(src).parts)
+            and str(path.relative_to(src)) not in shipped
+        ]
+    assert missing == [], f"built but not shipped: {missing}"

@@ -2,8 +2,9 @@
 
 cora is a core that runs a turn: it screens what you asked, searches your documents,
 remembers what you tell it, asks when it cannot tell, and cites what it used. Everything
-else arrives as a plugin, which registers three kinds of thing — tools, instructions and
-a handler at a named point in the turn — each under a field of its own or in every turn.
+else arrives as a plugin, which registers four kinds of thing — tools, instructions, a
+handler at a named point in the turn, and a page. The first three go under a field of
+their own or in every turn, and a page is always one field's.
 What a plugin may not have is [what cora enforces whatever a plugin
 does](privacy-and-ethics.md#what-loading-a-plugin-costs-in-trust).
 
