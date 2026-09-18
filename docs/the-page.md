@@ -53,6 +53,19 @@ Asking there does not move the panels to the steps, which would take the chat of
 screen. Folding the rail gives the page the whole width. A field with no page, and a
 conversation fixed to nothing, are drawn exactly as they were.
 
+## A field's notice
+
+A page reads what the browser can see, and a device beside the reader can see more. So
+cora keeps one notice per field — a small JSON object, written to `PUT
+/api/scopes/<field>/notice` and read from `GET` on the same path — and stamps it with its
+own clock as it arrives, so no writer has to agree with cora about the time. A second
+notice replaces the first whole. What a notice means is between whoever writes it and the
+page that reads it; cora checks that it is small and an object and nothing further.
+
+It is held in memory for as long as the process runs, so a restart loses it and the page
+falls back to what it knows itself. It is what is true now, not a record of what happened
+— a writer that posts faster than the page asks loses the notices in between.
+
 ## What holds it
 
 `vitest` over the components and the hooks, `tsc` over the types, and `eslint` with

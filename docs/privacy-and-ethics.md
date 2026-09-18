@@ -142,6 +142,13 @@ it is the plugin's JavaScript in your browser, on the origin the rest of cora an
 from: there is no password between it and any route on this page, and it reaches the
 camera, the microphone and the storage your browser would give cora itself.
 
+**A field's notice is open on the same terms.** Cora keeps one small value per field
+for a device beside you to write — `PUT /api/scopes/<field>/notice` — and whoever reaches
+the port can write or read it, as they can already reach every other route. It is held in
+memory and never written down, so it goes when cora stops; and a deployment that binds
+past loopback so a phone can reach it puts the whole API on that network, not the notice
+alone.
+
 And cora hands it, through the contract: the document index of the turn's field, the
 memory port — read, add, forget one, clear all, none of it gated — the model, a
 per-conversation store of its own, and a trace line cora signs with its name.
