@@ -13,6 +13,7 @@ import pathlib
 import threading
 from collections.abc import AsyncIterator, Callable
 from typing import Any
+from urllib.parse import quote
 
 from python_multipart.exceptions import FormParserError
 from starlette.applications import Starlette
@@ -41,12 +42,18 @@ log = logging.getLogger(__name__)
 
 UNAVAILABLE = 503
 REFUSED = 400
+NOT_FOUND = 404
 NO_CONTENT = 204
 TOO_LARGE = 413
 NO_LENGTH_GIVEN = 411
 
 MULTIPART_FRAMING = 64 * 1024
 MAX_REQUEST_BYTES = DEFAULT_MAX_BYTES + MULTIPART_FRAMING
+
+PAGES = "/pages"
+# The plugins folder is live, so a page file may differ from the one already served. The
+# validators the static server sets still turn most of these into a short answer.
+REVALIDATE = "no-cache"
 
 
 Apps = Callable[[], App]
@@ -87,6 +94,7 @@ def api(
         Route("/api/plugins", _plugins(apps), methods=["GET"]),
         Route("/api/plugins/{name}", _delete_plugin(apps), methods=["DELETE"]),
         Route("/api/scopes", _scopes(apps), methods=["GET"]),
+        Route(f"{PAGES}/{{scope}}/{{path:path}}", _page(apps), methods=["GET", "HEAD"]),
     ]
     if ui is not None and ui.is_dir():
         routes.append(Mount("/", StaticFiles(directory=ui, html=True)))
@@ -501,11 +509,43 @@ def _delete_plugin(apps: Apps) -> Callable[[Request], Any]:
 
 def _scopes(apps: Apps) -> Callable[[Request], Any]:
     def offered(request: Request) -> JSONResponse:
+        app = apps()
         return JSONResponse(
-            {"available": list(apps().scopes), "default": DEFAULT_SCOPE}
+            {
+                "available": list(app.scopes),
+                "default": DEFAULT_SCOPE,
+                # Composed here and nowhere else: an address is what a frontend has and
+                # the core has not. The trailing slash is part of it — without one a
+                # page's own relative assets are looked for a directory up — and the
+                # field is quoted, a name being free to hold what a URL reads as syntax.
+                "pages": {
+                    scope: f"{PAGES}/{quote(scope, safe='')}/" for scope in app.pages
+                },
+            }
         )
 
     return offered
+
+
+def _page(apps: Apps) -> Callable[[Request], Any]:
+    async def served(request: Request) -> Response:
+        # Off the loop like every other read of the composition: it may recompose over a
+        # changed plugins folder, and a page asks once per file it is made of.
+        app = await run_in_threadpool(apps)
+        directory = app.pages.get(request.path_params["scope"])
+        if directory is None:
+            raise HTTPException(NOT_FOUND)
+        # `check_dir` off and `get_response` rather than the app itself: both of the
+        # static server's own checks raise where a directory has gone, and a live folder
+        # is allowed to lose one — which is a refusal of that path and not a crash. What
+        # is kept is the part worth having: the entry page, `HEAD`, the validators, and
+        # a path resolved and held inside the directory before anything is opened.
+        files = StaticFiles(directory=directory, html=True, check_dir=False)
+        answer = await files.get_response(request.path_params["path"], request.scope)
+        answer.headers["cache-control"] = REVALIDATE
+        return answer
+
+    return served
 
 
 def _scope(apps: Apps) -> Callable[[Request], Any]:

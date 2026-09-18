@@ -1,5 +1,6 @@
 """What the plugins registered, as one list — and what of it a turn takes."""
 
+import pathlib
 from dataclasses import dataclass
 
 from cora.domain.errors import ConfigurationError
@@ -11,6 +12,7 @@ from cora.ports.host import (
     HANDLER,
     HAS_AN_EFFECT,
     INSTRUCTIONS,
+    PAGE,
     SCREENING,
     TOOL,
     Contributed,
@@ -59,11 +61,12 @@ class Registry:
         """Refuse a registry that cannot be composed, before anything is wired to it.
 
         Raises:
-            ConfigurationError: A plugin registered a tool name that is cora's own, or
-                two plugins registered the same one.
+            ConfigurationError: A plugin registered a tool name that is cora's own,
+                two plugins registered the same one, or two brought one field's page.
         """
         self._reject_a_name_of_coras_own()
         self._reject_one_name_registered_twice()
+        self._reject_one_field_given_two_pages()
 
     def tools(self, scopes: frozenset[str] = frozenset()) -> tuple[Tool, ...]:
         """Every tool that applies to a turn under these scopes, as registered."""
@@ -130,6 +133,18 @@ class Registry:
             for plugin in plugins
         )
 
+    def pages(self) -> dict[str, pathlib.Path]:
+        """The directory to serve for each field a plugin brought a page for.
+
+        A field has one page, which `__post_init__` is what makes true, so a mapping is
+        the whole of it — and the one thing about a page that a frontend is handed.
+        """
+        return {
+            str(entry.scope): entry.value
+            for entry in self._of(PAGE)
+            if entry.scope is not None
+        }
+
     def screened_by_a_plugin(self) -> bool:
         """Whether anything but cora itself screens what the user types."""
         return any(
@@ -158,6 +173,17 @@ class Registry:
                     f"'{entry.value.name}'. Load one of them, or rename the tool."
                 )
             registered_by[entry.value.name] = entry.module
+
+    def _reject_one_field_given_two_pages(self) -> None:
+        brought_by: dict[str, str] = {}
+        for entry in self._of(PAGE):
+            first = brought_by.get(str(entry.scope))
+            if first is not None:
+                raise ConfigurationError(
+                    f"'{first}' and '{entry.module}' both bring the page of "
+                    f"'{entry.scope}'. Load one of them."
+                )
+            brought_by[str(entry.scope)] = entry.module
 
 
 def _contributed(entry: Registration) -> Contributed:

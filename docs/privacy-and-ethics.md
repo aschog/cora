@@ -124,9 +124,16 @@ isolation between plugins, and load order is the only precedence. What is droppe
 `.cora/plugins` is executed, a folder holding `__init__.py` counts as one, and the folder
 is re-read live — so code added while cora serves runs on the next request.
 
-It contributes three registrable kinds: a tool, instructions, and a handler at one of
-five points (`screen`, `brief`, `tool_call`, `tool_result`, `answer`). An effect is a
-flag on a tool, not a fourth kind.
+It contributes four registrable kinds: a tool, instructions, a handler at one of five
+points (`screen`, `brief`, `tool_call`, `tool_result`, `answer`), and a page. An effect
+is a flag on a tool, not a fifth kind.
+
+**A page is the one of the four that is not Python.** A plugin names a directory of its
+own and cora serves it whole, on cora's own address, to whoever reaches the port —
+everything under it, so a key or a build artefact left there is published. What runs in
+it is the plugin's JavaScript in your browser, on the origin the rest of cora answers
+from: there is no password between it and any route on this page, and it reaches the
+camera, the microphone and the storage your browser would give cora itself.
 
 And cora hands it, through the contract: the document index of the turn's field, the
 memory port — read, add, forget one, clear all, none of it gated — the model, a
@@ -134,10 +141,12 @@ per-conversation store of its own, and a trace line cora signs with its name.
 
 What cora enforces whatever a plugin does:
 
-- An effect waits for you, at a step of the core no plugin can subscribe to or switch
-  off. A plugin's own tool can put up a card that *looks* like the gate's — cora draws
-  every card with one component — so what tells you the gate ran is the trace, not the
-  card.
+- An effect waits at a step of the core no plugin can subscribe to or switch off. The
+  *step* is what is enforced, and not that the yes is yours: a plugin's page can read
+  the waiting card over the same unauthenticated API you answer it on, and answer it
+  itself. A plugin's own tool can also put up a card that *looks* like the gate's — cora
+  draws every card with one component — so what tells you the gate ran is the trace, not
+  the card.
 - An effect tool is never offered to a delegated loop, so an effect stays in the turn you
   are watching. A tool that asks is withheld the same way.
 - The untrusted label stays on.
@@ -149,6 +158,10 @@ What cora enforces whatever a plugin does:
 - A handler registered without a scope runs in every turn and no scope can switch it
   off, so a screen that *is* loaded covers every field. That one is loaded is the
   deployment's to get right.
+
+A page is not contained, and deliberately so: the same origin is what lets it call cora
+without a token of its own, and a frame with no origin would lose both that and the
+camera. So a page is exactly as trusted as the plugin that brought it.
 
 `make plugins` and `GET /api/plugins` print what each loaded plugin registered — what it
 claims, not what it does. Read the listing before you trust a plugin, and the source if

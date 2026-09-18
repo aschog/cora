@@ -1,6 +1,7 @@
 """The scope, as the page reaches it: what the deployment offers, what a thread is
 pinned to, and the pin travelling in beside a question."""
 
+from pathlib import Path
 from typing import Any
 
 from starlette.testclient import TestClient
@@ -9,7 +10,7 @@ from app_builder import assembled
 from cora.app.assembly import App
 from cora.frontends.react.api import NO_SUCH_SCOPE, api
 from cora.ports.chat_model import ModelReply
-from cora.ports.host import DEFAULT_SCOPE
+from cora.ports.host import DEFAULT_SCOPE, Extension, Host
 from fakes import FakeConversations, ScriptedChatModel
 from fixture_plugins import make_plugin, make_tool
 from sse import frames
@@ -38,11 +39,40 @@ def _asked(reader: TestClient, **body: Any) -> list[tuple[str, dict]]:
 
 def test_the_page_is_told_which_fields_the_deployment_offers() -> None:
     """The picker is drawn from this: a deployment with one field has nothing to pick,
-    and the default is what a question belonging to no field is answered in."""
+    and the default is what a question belonging to no field is answered in. Neither
+    plugin brought a page, so none is claimed for either field."""
     with TestClient(api(_served())) as reader:
         offered = reader.get("/api/scopes").json()
 
-    assert offered == {"available": list(BOTH), "default": DEFAULT_SCOPE}
+    assert offered == {"available": list(BOTH), "default": DEFAULT_SCOPE, "pages": {}}
+
+
+def test_a_field_with_a_page_is_offered_with_the_path_it_is_served_under(
+    tmp_path: Path,
+) -> None:
+    """What the shell looks a page up by: it knows its fields before a conversation has
+    one, and a page it could only see after a turn is one nobody could start from."""
+
+    def extend(cora: Host) -> None:
+        cora.register_instructions("Coach.", scope="fitness")
+        cora.register_page(tmp_path, scope="fitness")
+
+    app = assembled(
+        plugins=(
+            Extension(module="fixture_plugins.coaching", extend=extend),
+            make_plugin(name="trips", tools=(make_tool("route_to"),), scope="travel"),
+        ),
+        scopes=BOTH,
+    )
+
+    with TestClient(api(app)) as reader:
+        offered = reader.get("/api/scopes").json()
+
+    assert offered == {
+        "available": list(BOTH),
+        "default": DEFAULT_SCOPE,
+        "pages": {"fitness": "/pages/fitness/"},
+    }
 
 
 def test_a_second_field_on_a_pinned_thread_is_refused_as_a_sentence() -> None:

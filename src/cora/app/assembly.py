@@ -3,8 +3,8 @@
 import logging
 import pathlib
 import threading
-from collections.abc import Callable
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass, field
 from functools import partial
 
 from cora.adapters.langgraph_runner import interrupting, langgraph_for, saver_at
@@ -80,9 +80,10 @@ class App:
     `memory` and `conversations` are optional because an app can run without either —
     what is missing is then missing from the page too, rather than faked.
 
-    `scopes` is the fields this composition offers: what was configured, plus every
-    field a loaded plugin registered. The page reads it off the app, because with a live
-    plugins folder it is the composition's fact, not a setting's.
+    `scopes` is the fields this composition offers — what was configured, plus every
+    field a loaded plugin registered, which a live plugins folder makes its fact.
+
+    `pages` is the directory to serve for each field a plugin brought a page for.
 
     `remove` deletes one dropped plugin and the data of the fields it brought, bound to
     this composition because what a plugin brought is what this composition loaded.
@@ -91,6 +92,7 @@ class App:
     agent: Agent
     knowledge_base: KnowledgeBase
     plugins: tuple[Listed, ...] = ()
+    pages: Mapping[str, pathlib.Path] = field(default_factory=dict)
     memory: Memory | None = None
     conversations: Conversations | None = None
     scopes: tuple[str, ...] = ()
@@ -264,6 +266,7 @@ def assemble(
         agent=agent,
         knowledge_base=knowledge_base,
         plugins=listing,
+        pages=registry.pages(),
         memory=memory,
         conversations=conversations,
         scopes=offered,

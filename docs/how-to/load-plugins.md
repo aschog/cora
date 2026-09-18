@@ -25,9 +25,9 @@ Writing one is [write a plugin](write-a-plugin.md); running cora at all is
   the folder loads again. The prior set serves on, and a turn already running finishes
   on the plugins it started with.
 - `make plugins` prints what loaded — every plugin under where it came from, its tools,
-  its instructions, the points in a turn it subscribed to, `system-wide` where it
-  registered without a scope, and *has an effect* against a tool that acts outside cora.
-  `GET /api/plugins` carries the same listing.
+  its instructions, the points in a turn it subscribed to, the field it brings a page
+  for, `system-wide` where it registered without a scope, and *has an effect* against a
+  tool that acts outside cora. `GET /api/plugins` carries the same listing.
 - A plugin declares which version of the contract it wants, and one cora does not offer
   is refused before its `extend` is called.
 

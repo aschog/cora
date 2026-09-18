@@ -1,3 +1,5 @@
+import pathlib
+
 import pytest
 
 from cora.domain.errors import ConfigurationError
@@ -7,6 +9,7 @@ from cora.ports.host import (
     HANDLER,
     HAS_AN_EFFECT,
     INSTRUCTIONS,
+    PAGE,
     SCREENING,
     TOOL,
     Extension,
@@ -188,3 +191,44 @@ def test_a_tool_that_changes_something_outside_cora_is_listed_as_doing_so() -> N
         ("bmr", ""),
         ("book_it", HAS_AN_EFFECT),
     ]
+
+
+def test_two_plugins_bringing_one_fields_page_are_refused_by_name() -> None:
+    """A field has one page, so which of two it is cannot be a question the shell
+    answers by picking. Refused where every other combination refusal is raised."""
+    with pytest.raises(ConfigurationError) as refused:
+        Registry(
+            (
+                _registered(FITNESS, PAGE, pathlib.Path("/a"), "fitness"),
+                _registered(SECURITY, PAGE, pathlib.Path("/b"), "fitness"),
+            )
+        )
+
+    assert FITNESS in str(refused.value)
+    assert SECURITY in str(refused.value)
+    assert "fitness" in str(refused.value)
+
+
+def test_two_plugins_bringing_a_page_each_for_their_own_field_compose() -> None:
+    registry = Registry(
+        (
+            _registered(FITNESS, PAGE, pathlib.Path("/a"), "fitness"),
+            _registered(SECURITY, PAGE, pathlib.Path("/b"), "travel"),
+        )
+    )
+
+    assert registry.pages() == {
+        "fitness": pathlib.Path("/a"),
+        "travel": pathlib.Path("/b"),
+    }
+
+
+def test_a_page_is_listed_under_its_field_and_names_no_directory() -> None:
+    """A tool has a name of its own and a page has not, and the directory is a path on
+    this machine that the screen showing the listing has no business carrying."""
+    registry = Registry((_registered(FITNESS, PAGE, pathlib.Path("/a"), "fitness"),))
+
+    [coaching] = registry.listing((_extension(FITNESS),))
+
+    [page] = coaching.of(PAGE)
+    assert (page.name, page.scope, page.note) == ("", "fitness", "")
