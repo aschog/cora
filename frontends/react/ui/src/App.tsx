@@ -34,6 +34,7 @@ const TABS = ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
 type Tab = (typeof TABS)[number]
 
 const UNDRAWABLE = 'That conversation could not be read.'
+const UNDRAWN_TALK = 'This conversation could not be drawn.'
 
 /* What each question says is lost, and what is not — the half a reader cannot see for
    themselves. Written here, beside the rails that raise them. */
@@ -135,6 +136,7 @@ function Page() {
     plugins,
     fields,
     field,
+    page,
     namedAbove,
     trouble: railTrouble,
     refresh: reread,
@@ -273,6 +275,61 @@ function Page() {
     setTab('SOURCE')
   }
 
+  /* Written once and drawn in one of two places — the middle, or the rail beside a
+     page. `inRail` is the conversation's own switch rather than a class handed in,
+     because a rule reaches what the file it sits beside draws and nothing else. */
+  const talking = (
+    <Answer
+      inRail={page !== null}
+      mode={
+        <ScopePicker
+          available={fields}
+          pin={pin}
+          fixed={fixedPin}
+          deletable={fields.filter((scope) => behind(scope) !== null)}
+          onPin={pick}
+          onDelete={(scope) => {
+            const plugin = behind(scope)
+            if (plugin === null) return
+            setConfirming({
+              head: 'DELETE PLUGIN',
+              subject: plugin.name,
+              said: pluginGoes(plugin.going),
+              confirm: 'Delete plugin',
+              send: () => cora.deletePlugin(plugin.name),
+              from: rail.scopes,
+              /* The fields go with the plugin, so the picker loses them at the
+                 moment the reader says so — the same act as a row leaving a rail,
+                 over the listing the picker is drawn from. Their pages go with
+                 them: a field that is gone cannot be the one the screen is about,
+                 and a spread that kept them would leave a page standing over
+                 nothing until the listing was read again. */
+              without: (held: Scopes) => ({
+                ...held,
+                available: held.available.filter(
+                  (each) => !plugin.going.includes(each),
+                ),
+                pages: Object.fromEntries(
+                  Object.entries(held.pages).filter(
+                    ([each]) => !plugin.going.includes(each),
+                  ),
+                ),
+              }),
+            })
+          }}
+        />
+      }
+      thread={thread}
+      entries={conversation}
+      asking={asking}
+      askingElsewhere={working !== null && working !== thread}
+      onAsk={ask}
+      onCite={setOpened}
+      onTake={take}
+      onChange={change}
+    />
+  )
+
   return (
     <div className={styles.app}>
       <div className={styles.banners} role="status" aria-label="Notices">
@@ -342,52 +399,33 @@ function Page() {
           )}
         </aside>
 
-        {/* Each column catches its own, so a rail that cannot be drawn costs the reader
-            that rail rather than the conversation they were reading. */}
-        <ErrorBoundary said="This conversation could not be drawn.">
-          <Answer
-            mode={
-              <ScopePicker
-                available={fields}
-                pin={pin}
-                fixed={fixedPin}
-                deletable={fields.filter((scope) => behind(scope) !== null)}
-                onPin={pick}
-                onDelete={(scope) => {
-                  const plugin = behind(scope)
-                  if (plugin === null) return
-                  setConfirming({
-                    head: 'DELETE PLUGIN',
-                    subject: plugin.name,
-                    said: pluginGoes(plugin.going),
-                    confirm: 'Delete plugin',
-                    send: () => cora.deletePlugin(plugin.name),
-                    from: rail.scopes,
-                    /* The fields go with the plugin, so the picker loses them at the
-                       moment the reader says so — the same act as a row leaving a rail,
-                       over the listing the picker is drawn from. */
-                    without: (held: Scopes) => ({
-                      ...held,
-                      available: held.available.filter(
-                        (each) => !plugin.going.includes(each),
-                      ),
-                    }),
-                  })
-                }}
-              />
-            }
-            thread={thread}
-            entries={conversation}
-            asking={asking}
-            askingElsewhere={working !== null && working !== thread}
-            onAsk={ask}
-            onCite={setOpened}
-            onTake={take}
-            onChange={change}
-          />
-        </ErrorBoundary>
+        {/* The middle holds one of two things, and whichever it is, is what the screen
+            is about — so the landmark is the slot rather than what sits in it, a frame
+            being unable to be one anyway. Each column catches its own, so a rail that
+            cannot be drawn costs the reader that rail rather than what they were
+            reading. A frame is not under one: a page that fails to load throws nothing,
+            so a boundary over it could only ever say nothing, and what the reader gets
+            is the plugin's own blank. */}
+        <main className={styles.centre}>
+          {page === null ? (
+            <ErrorBoundary said={UNDRAWN_TALK}>{talking}</ErrorBoundary>
+          ) : (
+            <iframe
+              className={styles.page}
+              src={page}
+              title={field}
+              allow="camera; microphone; fullscreen"
+            />
+          )}
+        </main>
 
-        <aside className={joined(styles.railPanels, !rightOpen && styles.shut)}>
+        <aside
+          className={joined(
+            styles.railPanels,
+            page !== null && styles.withTalk,
+            !rightOpen && styles.shut,
+          )}
+        >
           <div className={styles.railTop}>
             <RailToggle
               side="right"
@@ -415,68 +453,81 @@ function Page() {
               {/* Keyed on the tab, so a panel that could not be drawn is left behind by
                   moving to another one — the strip above stays outside this for the same
                   reason, as the way out of a panel that broke. */}
-              <ErrorBoundary key={tab} said="This panel could not be drawn.">
-                {tab === 'STEPS' && (
-                  <PlanPanel
-                    steps={live?.thread === thread ? live.steps : lastTrace(entries)}
-                  />
-                )}
-                {tab === 'SOURCE' && (
-                  <SourcePanel
-                    document={read?.document ?? null}
-                    source={read ? sourceOf(read) : null}
-                    citations={read ? passagesIn(read) : []}
-                  />
-                )}
-                {tab === 'SESSIONS' && (
-                  <SessionsPanel
-                    sessions={sessions}
-                    here={thread}
-                    working={working}
-                    onOpen={enterConversation}
-                    onDelete={(session) =>
-                      setConfirming({
-                        head: 'DELETE SESSION',
-                        subject: session.opened_with,
-                        said: SESSION_GOES,
-                        confirm: 'Delete session',
-                        send: () => discard(session),
-                        from: rail.sessions,
-                        without: (listed: Session[]) =>
-                          listed.filter((each) => each.thread_id !== session.thread_id),
-                      })
-                    }
-                  />
-                )}
-                {tab === 'MEMORY' && (
-                  <MemoryPanel
-                    facts={facts}
-                    onForget={(fact) =>
-                      setConfirming({
-                        head: 'FORGET THIS',
-                        subject: fact.text,
-                        said: FACT_GOES,
-                        confirm: 'Forget it',
-                        send: () => cora.forget(fact.key),
-                        from: rail.memory,
-                        without: (listed: Fact[]) =>
-                          listed.filter((each) => each.key !== fact.key),
-                      })
-                    }
-                    onForgetEverything={() =>
-                      setConfirming({
-                        head: 'FORGET EVERYTHING',
-                        subject: 'Everything cora remembers about you',
-                        said: EVERYTHING_GOES,
-                        confirm: 'Forget everything',
-                        send: () => cora.forgetEverything(),
-                        from: rail.memory,
-                        without: () => [],
-                      })
-                    }
-                  />
-                )}
-              </ErrorBoundary>
+              <div className={styles.panelSlot}>
+                <ErrorBoundary key={tab} said="This panel could not be drawn.">
+                  {tab === 'STEPS' && (
+                    <PlanPanel
+                      steps={live?.thread === thread ? live.steps : lastTrace(entries)}
+                    />
+                  )}
+                  {tab === 'SOURCE' && (
+                    <SourcePanel
+                      document={read?.document ?? null}
+                      source={read ? sourceOf(read) : null}
+                      citations={read ? passagesIn(read) : []}
+                    />
+                  )}
+                  {tab === 'SESSIONS' && (
+                    <SessionsPanel
+                      sessions={sessions}
+                      here={thread}
+                      working={working}
+                      onOpen={enterConversation}
+                      onDelete={(session) =>
+                        setConfirming({
+                          head: 'DELETE SESSION',
+                          subject: session.opened_with,
+                          said: SESSION_GOES,
+                          confirm: 'Delete session',
+                          send: () => discard(session),
+                          from: rail.sessions,
+                          without: (listed: Session[]) =>
+                            listed.filter((each) => each.thread_id !== session.thread_id),
+                        })
+                      }
+                    />
+                  )}
+                  {tab === 'MEMORY' && (
+                    <MemoryPanel
+                      facts={facts}
+                      onForget={(fact) =>
+                        setConfirming({
+                          head: 'FORGET THIS',
+                          subject: fact.text,
+                          said: FACT_GOES,
+                          confirm: 'Forget it',
+                          send: () => cora.forget(fact.key),
+                          from: rail.memory,
+                          without: (listed: Fact[]) =>
+                            listed.filter((each) => each.key !== fact.key),
+                        })
+                      }
+                      onForgetEverything={() =>
+                        setConfirming({
+                          head: 'FORGET EVERYTHING',
+                          subject: 'Everything cora remembers about you',
+                          said: EVERYTHING_GOES,
+                          confirm: 'Forget everything',
+                          send: () => cora.forgetEverything(),
+                          from: rail.memory,
+                          without: () => [],
+                        })
+                      }
+                    />
+                  )}
+                </ErrorBoundary>
+              </div>
+
+              {/* Beside a page the conversation is a slot of this rail and not a fifth
+                  panel: the panels are keyed on the tab and a turn moves them to the
+                  steps, so a conversation drawn among them would be unmounted by the
+                  reader's own question. Its own boundary, the rule being about where a
+                  part is drawn and not which column it started in. */}
+              {page !== null && (
+                <div className={styles.talkSlot}>
+                  <ErrorBoundary said={UNDRAWN_TALK}>{talking}</ErrorBoundary>
+                </div>
+              )}
             </>
           )}
         </aside>

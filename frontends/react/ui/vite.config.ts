@@ -28,7 +28,15 @@ export default defineConfig({
     // A click whose default action is a navigation is a click this suite asserts about,
     // never one it should perform: left on, happy-dom dials the href.
     environmentOptions: {
-      happyDOM: { settings: { navigation: { disableMainFrameNavigation: true } } },
+      happyDOM: {
+        settings: {
+          navigation: { disableMainFrameNavigation: true },
+          /* A field's page is a frame pointing at the server, which this tier does not
+             run: left on, every spec drawing one reaches for the network and fails there
+             noisily. What the page itself does is the browser tier's to prove. */
+          disableIframePageLoading: true,
+        },
+      },
     },
   },
 })

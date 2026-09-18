@@ -17,6 +17,25 @@
   min-height: 0;
 }
 
+/* The middle of the screen, holding whichever of the two things it is about. Sized here
+   rather than by what it holds, so the conversation and a page fill it the same way. */
+.centre {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 420px;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* A field's own page. No border and no background of its own: what it draws is the
+   plugin's, and a frame around it would read as cora's opinion of it. */
+.page {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  border: 0;
+}
+
 /* ── what a rail holds above its own content ── */
 .rail-top {
   display: flex;
@@ -55,6 +74,36 @@
   flex: 0 1 360px;
   min-width: 268px;
   border-left: 1px solid var(--hairline);
+}
+
+/* Holding a conversation as well as a panel, the rail stops scrolling itself and each
+   half scrolls on its own — two scrollers inside a third is a reader hunting for the one
+   that moves, and a composer docked against the rail rides away with it. A class rather
+   than asking what it contains: a rule reaches what the file beside it draws, and the
+   conversation's own classes are hashed under its own module. */
+.with-talk {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+/* The panel takes what it needs up to a share of the rail, and the conversation takes
+   the rest against a floor of its own. Both numbers are needed: a panel left to its
+   content takes the whole rail — a document opened in SOURCE is taller than any window —
+   and a conversation with no floor is then a box of no height whose composer is clipped
+   outside the rail entirely. */
+.with-talk .panel-slot {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: 55%;
+  overflow-y: auto;
+}
+
+.with-talk .talk-slot {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 40%;
 }
 
 .tabs {

@@ -61,7 +61,7 @@ export function useRails({
     queryFn: ({ signal }) => cora.plugins(signal),
   })
 
-  const offered: Scopes = scopes.data ?? { available: [], default: '' }
+  const offered: Scopes = scopes.data ?? { available: [], default: '', pages: {} }
   const fields = offered.available
 
   /* Where the rail sits when nothing else has spoken. One field loaded is a field
@@ -73,8 +73,20 @@ export function useRails({
    *  several places that used to write it — a pin outranks the conversation's own turns
    *  because a pinned conversation has one field for good, and a conversation that has
    *  said nothing sits at home. Derived, so nothing can race it: every writer settles one
-   *  of the inputs and none settles the answer. */
-  const field = pin ?? answered ?? home
+   *  of the inputs and none settles the answer.
+   *
+   *  A field a turn was answered in outranks home only while the deployment still offers
+   *  it: the plugin behind it can be deleted while the conversation that named it is
+   *  open, and a rail listing a field that is gone asks for documents nobody can have. */
+  const field = pin ?? (answered !== null && fields.includes(answered) ? answered : home)
+
+  /** The page of the field this conversation is fixed to, or nothing. Fixed rather than
+   *  `field`: a turn routed into a field must not replace the screen, where a pin is the
+   *  reader saying the conversation is that subject for good. One field loaded is fixed
+   *  the same way — routing cannot choose against it and the picker that would pin it is
+   *  not drawn — so it reads the clause `home` is written from. */
+  const fixed = pin ?? (fields.length === 1 ? fields[0] : null)
+  const page = fixed === null ? null : (offered.pages[fixed] ?? null)
 
   /* Keyed on the field, which is what makes an older listing harmless rather than
      dangerous: it is held under the field it asked about, and the rail reads the entry
@@ -123,6 +135,7 @@ export function useRails({
     plugins: plugins.data ?? [],
     fields,
     field,
+    page,
     namedAbove,
     trouble,
     refresh,

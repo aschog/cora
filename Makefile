@@ -56,7 +56,7 @@ E2E_STORE := .cora/e2e
 e2e-store:
 	rm -rf $(E2E_STORE)
 	mkdir -p $(E2E_STORE)/plugins
-	cp tests/e2e/plugins/*.py $(E2E_STORE)/plugins/
+	cp -R tests/e2e/plugins/. $(E2E_STORE)/plugins/
 
 e2e: ui-build e2e-store
 	cd frontends/react/ui && npx playwright test

@@ -8,7 +8,13 @@ import type { Citation } from '../api'
 import { reopenable, unanswered } from '../entry'
 import type { Entry } from '../entry'
 import type { Offered } from '../api'
+import { joined } from '../joined'
 import styles from './Answer.module.css'
+
+/* What the conversation is called in the rail: the question it was opened with, which
+   is also what names the region — so a reader who lands on it by landmark is told which
+   conversation they are in rather than that it is one. */
+const OPEN_HERE = 'open-conversation'
 
 const WORKING = 'Working…'
 const CHANGE = 'Change'
@@ -41,6 +47,10 @@ type Props = {
     values: Record<string, unknown>,
   ) => void
   onChange: (entry: Entry, at: number) => void
+  /** Drawn in the rail beside a field's page rather than in the middle of the screen: a
+   *  narrower box that says which conversation it is, the rail listing the others above
+   *  it — and not the region the screen is about, which is then the page. */
+  inRail?: boolean
 }
 
 export default function Answer({
@@ -53,6 +63,7 @@ export default function Answer({
   onCite,
   onTake,
   onChange,
+  inRail = false,
 }: Props) {
   const [question, setQuestion] = useState('')
   const scroller = useRef<HTMLDivElement>(null)
@@ -94,8 +105,18 @@ export default function Answer({
   }
 
   return (
-    <main className={styles.answer}>
+    <section
+      className={joined(styles.answer, inRail && styles.inRail)}
+      aria-label={inRail ? undefined : 'Conversation'}
+      aria-labelledby={inRail ? OPEN_HERE : undefined}
+    >
       {mode}
+      {inRail && (
+        <p className={styles.openHere}>
+          <span className={styles.openLabel}>OPEN SESSION</span>
+          <span id={OPEN_HERE}>{entries[0]?.question ?? 'New conversation'}</span>
+        </p>
+      )}
       <div
         className={styles.scroller}
         ref={scroller}
@@ -176,7 +197,7 @@ export default function Answer({
         {askingElsewhere && <p className={styles.composerNote}>{ELSEWHERE}</p>}
         {parked && <p className={styles.composerNote}>{DECIDING}</p>}
       </div>
-    </main>
+    </section>
   )
 }
 

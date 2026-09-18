@@ -80,13 +80,23 @@ const OLDER = {
 
 const served: Record<string, unknown> = {
   '/api/documents': ['notes.md'],
-  '/api/scopes': { available: ['fitness', 'travel'], default: 'cora' },
+  '/api/scopes': { available: ['fitness', 'travel'], default: 'cora', pages: {} },
   '/api/memory': [{ key: 'f1', text: 'No burpees.' }],
   '/api/sessions': [{ thread_id: 'old', opened_with: OLDER.question }],
   '/api/sessions/old': [OLDER],
 }
 
+const BARE = { available: ['fitness', 'travel'], default: 'cora', pages: {} }
+
+/** The fields listing with a page for fitness, as a deployment carrying one answers. */
+const bringsAPage = () => {
+  served['/api/scopes'] = { ...BARE, pages: { fitness: '/pages/fitness/' } }
+}
+
 afterEach(() => {
+  /* A fixture one spec rewrote is a fixture every later one inherits. */
+  served['/api/scopes'] = BARE
+  served['/api/sessions'] = [{ thread_id: 'old', opened_with: OLDER.question }]
   turn.release()
   step.release()
   cleanup()
@@ -944,6 +954,9 @@ const pluginFetch = (): { deleted: string[]; read: string[] } => {
         '/api/scopes': {
           available: gone ? ['travel', 'birds'] : ['fitness', 'travel', 'birds'],
           default: 'cora',
+          /* The plugin under deletion brings its field a page, so what a delete does
+             to the screen is what the listing does to this. */
+          pages: gone ? {} : { fitness: '/pages/fitness/' },
         },
         '/api/plugins': gone ? LOADED.slice(1) : LOADED,
       }
@@ -995,3 +1008,255 @@ test('a plugin confirmed away takes its field out of the picker', async () => {
   expect(within(left).getByRole('button', { name: 'travel' })).toBeTruthy()
 })
 
+/* The outer test of the page-in-the-centre story. Held under `test.fails` — vitest's
+   strict xfail — while the list was worked through, so leaving the marker behind was not
+   possible. */
+test('a field with a page is worked in it, with the conversation beside', async () => {
+  bringsAPage()
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  pickPlugin('fitness')
+
+  const frame = (await screen.findByTitle('fitness')) as HTMLIFrameElement
+  expect(frame.getAttribute('src')).toBe('/pages/fitness/')
+  const rail = document.querySelector('.' + appCss.railPanels) as HTMLElement
+  expect(within(rail).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+})
+
+/* ── a page in the centre ── */
+
+/** The rail the panels live in, which is where the conversation goes beside a page. */
+const rail = () =>
+  document.querySelector('.' + appCss.railPanels) as HTMLElement
+
+/** The region the screen is about — the page where one is drawn, the conversation where
+ *  none is. One landmark either way, so a reader lands on what they came for. */
+const centre = () => screen.getByRole('main')
+
+const opened = async () => {
+  bringsAPage()
+  render(<App />)
+  await screen.findByText('notes.md')
+  pickPlugin('fitness')
+  return (await screen.findByTitle('fitness')) as HTMLIFrameElement
+}
+
+const ask = (where: HTMLElement, said: string) => {
+  fireEvent.change(within(where).getByPlaceholderText(/Ask a question/), {
+    target: { value: said },
+  })
+  fireEvent.click(within(where).getByRole('button', { name: 'Ask' }))
+  /* The fixture holds the turn open until it is let go, which is how the specs above
+     watch a turn while it runs. These are about where it is drawn, not when. */
+  turn.release()
+}
+
+test('the frame is the plugin’s own: named for its field, allowed the camera, contained in nothing', async () => {
+  const frame = await opened()
+
+  expect(frame.getAttribute('src')).toBe('/pages/fitness/')
+  expect(frame.getAttribute('allow')).toContain('camera')
+  /* Not sandboxed: an opaque origin would cost the page both cora's API and the camera,
+     and a containment that holds neither is worse than saying there is none. */
+  expect(frame.hasAttribute('sandbox')).toBe(false)
+})
+
+test('a fixed field with no page leaves the conversation in the middle', async () => {
+  bringsAPage()
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  pickPlugin('travel')
+
+  expect(screen.queryByTitle('travel')).toBeNull()
+  expect(within(centre()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+})
+
+test('with a page drawn the conversation is in the rail and not in the middle', async () => {
+  await opened()
+
+  expect(within(rail()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+  expect(within(centre()).queryByPlaceholderText(/Ask a question/)).toBeNull()
+})
+
+test('a question asked in the rail is answered there', async () => {
+  await opened()
+
+  ask(rail(), 'How many sets?')
+
+  expect(await within(rail()).findByText(/Sleep, not volume/)).toBeTruthy()
+  expect(within(rail()).getAllByText('How many sets?').length).toBeGreaterThan(0)
+})
+
+test('the turn moving the panels to the steps leaves the conversation drawn', async () => {
+  await opened()
+
+  ask(rail(), 'How many sets?')
+
+  /* The panels follow the turn, which is the whole point of them — and the conversation
+     is not one of them, so the reader watches both. */
+  expect(await within(rail()).findByText(TURN.trace[0].summary)).toBeTruthy()
+  expect(within(rail()).getAllByText('How many sets?').length).toBeGreaterThan(0)
+})
+
+test('choosing another panel leaves the conversation drawn and unchanged', async () => {
+  await opened()
+  ask(rail(), 'How many sets?')
+  await within(rail()).findByText(/Sleep, not volume/)
+
+  fireEvent.click(within(rail()).getByRole('tab', { name: 'MEMORY' }))
+
+  expect(within(rail()).getByText('No burpees.')).toBeTruthy()
+  expect(within(rail()).getAllByText('How many sets?').length).toBeGreaterThan(0)
+})
+
+test('a question typed and not yet asked survives a move between panels', async () => {
+  await opened()
+  const typed = within(rail()).getByPlaceholderText(/Ask a question/)
+  fireEvent.change(typed, { target: { value: 'Half typed' } })
+
+  fireEvent.click(within(rail()).getByRole('tab', { name: 'MEMORY' }))
+
+  expect(
+    (
+      within(rail()).getByPlaceholderText(
+        /Ask a question/,
+      ) as HTMLTextAreaElement
+    ).value,
+  ).toBe('Half typed')
+})
+
+test('the conversation in the rail is headed by the question that opened it', async () => {
+  await opened()
+  expect(within(rail()).getByText(/New conversation/)).toBeTruthy()
+
+  ask(rail(), 'How many sets?')
+
+  await within(rail()).findByText(/Sleep, not volume/)
+  expect(within(rail()).getAllByText('How many sets?').length).toBeGreaterThan(1)
+})
+
+test('the region the screen is about holds the page, and the conversation where there is none', async () => {
+  await opened()
+  expect(within(centre()).getByTitle('fitness')).toBeTruthy()
+  expect(screen.getAllByRole('main')).toHaveLength(1)
+
+  cleanup()
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  expect(within(centre()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+})
+
+test('folding the rail and unfolding it draws the conversation with its turns', async () => {
+  await opened()
+  ask(rail(), 'How many sets?')
+  await within(rail()).findByText(/Sleep, not volume/)
+
+  fireEvent.click(screen.getByRole('button', { name: /Plan & memory/ }))
+  expect(within(rail()).queryByPlaceholderText(/Ask a question/)).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: /Plan & memory/ }))
+
+  expect(await within(rail()).findByText(/Sleep, not volume/)).toBeTruthy()
+})
+
+/** A render that throws is a sentence on the page and a line on the console. The spy
+ *  keeps React's own report out of the suite's output, which is otherwise a wall. */
+const quietly = async (draw: () => Promise<void>) => {
+  const said = vi.spyOn(console, 'error').mockImplementation(() => {})
+  try {
+    await draw()
+  } finally {
+    said.mockRestore()
+  }
+}
+
+test('a panel that cannot be drawn is a sentence, and the conversation beside it stands', async () => {
+  await quietly(async () => {
+    /* A listing the panel cannot read, which is the shape the frontend spec names. Set
+       before the page reads it: the read is held, and a fixture changed afterwards is
+       one nothing asks for again. */
+    served['/api/sessions'] = {} as unknown as []
+    await opened()
+    ask(rail(), 'How many sets?')
+    await within(rail()).findByText(/Sleep, not volume/)
+
+    fireEvent.click(within(rail()).getByRole('tab', { name: 'SESSIONS' }))
+
+    expect(await within(rail()).findByText('This panel could not be drawn.')).toBeTruthy()
+    expect(
+      within(rail()).getAllByText('How many sets?').length,
+    ).toBeGreaterThan(0)
+    expect(screen.getByTitle('fitness')).toBeTruthy()
+    served['/api/sessions'] = [
+      { thread_id: 'old', opened_with: OLDER.question },
+    ]
+  })
+})
+
+test('the conversation in the rail is a region of its own, inside no second main', async () => {
+  await opened()
+
+  /* Named by the conversation it holds rather than by what it is, so a reader landing
+     on it by landmark is told which one they are in. */
+  const talk = within(rail()).getByRole('region', { name: 'New conversation' })
+  expect(within(talk).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+  expect(screen.getAllByRole('main')).toHaveLength(1)
+  expect(
+    within(centre()).queryByRole('region', { name: 'Conversation' }),
+  ).toBeNull()
+})
+
+test('deleting the plugin of the fixed field returns the conversation to the middle', async () => {
+  /* The listings are held from the moment the delete goes out, so what is asserted is
+     what the reader's own act did and not what the read that follows would have done
+     anyway. In a browser that difference is a page left standing over a field that is
+     gone until the network answers. */
+  const reread = held()
+  const deleted: string[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        deleted.push(path)
+        return { ok: true, status: 204 } as unknown as Response
+      }
+      if (deleted.length > 0) await reread.until
+      const listings: Record<string, unknown> = {
+        ...served,
+        '/api/scopes': {
+          available: ['fitness', 'travel', 'birds'],
+          default: 'cora',
+          pages: { fitness: '/pages/fitness/' },
+        },
+        '/api/plugins': LOADED,
+      }
+      return {
+        ok: true,
+        json: async () => listings[route(path)] ?? [],
+      } as unknown as Response
+    }),
+  )
+  render(<App />)
+  const fields = await openMenu()
+  fireEvent.click(within(fields).getByRole('button', { name: 'fitness' }))
+  expect(await screen.findByTitle('fitness')).toBeTruthy()
+
+  /* Pinned, the segment that opens the picker is named for the field rather than for
+     the act — so this is the same menu, reached the way a reader reaches it. */
+  fireEvent.click(screen.getByRole('button', { name: 'fitness' }))
+  fireEvent.click(
+    within(screen.getByRole('list')).getByRole('button', {
+      name: 'Delete the fitness plugin',
+    }),
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Delete plugin' }))
+
+  /* The reader's own act puts it back, and not the read that follows it: asserted
+     before any listing could have been asked for again, so a page still up here is one
+     waiting on the network to take it down. */
+  await flushed()
+  expect(screen.queryByTitle('fitness')).toBeNull()
+  expect(within(centre()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
+})
