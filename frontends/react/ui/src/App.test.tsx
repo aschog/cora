@@ -1352,3 +1352,30 @@ test('a conversation fixed to nothing draws no chat in the rail at all', async (
   expect(within(rail()).queryByPlaceholderText(/Ask a question/)).toBeNull()
   expect(within(rail()).getByRole('button', { name: OLDER.question })).toBeTruthy()
 })
+
+test('the rail names the field once, in the head of the chat', async () => {
+  await chatting()
+  ask(rail(), 'How many sets?')
+  await within(rail()).findByText(/Sleep, not volume/)
+
+  /* The head already says which conversation this is and which field it is in, so the
+     strip that says the same under it is a second answer to a question nobody asked
+     twice — and the sentence explaining that a pin is for good is two lines of a rail
+     that has none to spare. */
+  expect(within(rail()).getByText('fitness · 1 message')).toBeTruthy()
+  expect(within(rail()).queryByRole('group', { name: 'Answer in' })).toBeNull()
+  expect(within(rail()).queryByText(/keeps the field it is pinned to/)).toBeNull()
+})
+
+test('a pinned conversation in the middle still says which field it is in', async () => {
+  /* Nothing else names it there, so the strip is the only answer. */
+  render(<App />)
+  await screen.findByText('notes.md')
+  pickPlugin('travel')
+
+  ask(centre(), 'A week in Lisbon?')
+  await within(centre()).findByText(/Sleep, not volume/)
+
+  expect(within(centre()).getByRole('group', { name: 'Answer in' })).toBeTruthy()
+  expect(within(centre()).getByText(/keeps the field it is pinned to/)).toBeTruthy()
+})

@@ -38,6 +38,11 @@
 
 - [x] 7.1 Write a browser test that a fixed field's page is drawn, its conversation is chatted in the rail, the way back lists the others, and a question asked there is answered there.
 
-## 8. Close it
+## 8. Found in use
 
-- [x] 8.1 Drop the outer test's marker and watch it pass.
+- [x] 8.1 Write a test that the rail names the field once, in the head of the chat.
+- [x] 8.2 Write a test that a pinned conversation in the middle still says which field it is in.
+
+## 9. Close it
+
+- [x] 9.1 Drop the outer test's marker and watch it pass.

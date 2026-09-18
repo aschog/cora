@@ -46,39 +46,53 @@
 
 /* ── the two states of this panel ── */
 /* The mark that says the rail will chat this one, beside the question rather than in
-   it: a row is one line, and the line is the question. */
+   it: a row is one line, and the line is the question. Unmarked is a dot — a row still
+   needs something holding that column, or every title shifts when one gains a badge. */
 .mark {
   flex: none;
-  width: 18px;
-  height: 18px;
-  border-radius: 6px;
   position: relative;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
 }
 
 .mark::before {
   content: '';
   position: absolute;
-  inset: 45% 35%;
-  border-radius: 1px;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px 0 0 -2px;
+  border-radius: 50%;
   background: var(--n600);
 }
 
+/* Marked: a barbell on the accent — the bar across, a plate at each end. */
 .chatted {
-  background: color-mix(in srgb, var(--accent) 22%, transparent);
-}
-
-/* A dumbbell: the bar, and a weight at each end. */
-.chatted::before {
-  inset: 47% 25%;
   background: var(--accent);
 }
 
+.chatted::before {
+  left: 3px;
+  top: 50%;
+  width: 14px;
+  height: 2px;
+  margin: -1px 0 0 0;
+  border-radius: 1px;
+  background: var(--bg);
+}
+
+/* The weights: shorter than the bar is long, or the two read as an H. */
 .chatted::after {
   content: '';
   position: absolute;
-  inset: 28% 25%;
-  border-left: 3px solid var(--accent);
-  border-right: 3px solid var(--accent);
+  top: 7px;
+  bottom: 7px;
+  left: 3px;
+  right: 3px;
+  border-left: 3px solid var(--bg);
+  border-right: 3px solid var(--bg);
   border-radius: 2px;
 }
 

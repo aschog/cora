@@ -305,6 +305,7 @@ function Page() {
           available={fields}
           pin={pin}
           fixed={fixedPin}
+          namedElsewhere={page !== null}
           deletable={fields.filter((scope) => behind(scope) !== null)}
           onPin={pick}
           onDelete={(scope) => {

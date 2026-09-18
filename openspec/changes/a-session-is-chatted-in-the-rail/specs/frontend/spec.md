@@ -70,6 +70,24 @@ mark the others do not, and the list SHALL say what the mark means.
 - **WHEN** the list holds a marked conversation
 - **THEN** it says that such a conversation opens as a chat in this rail
 
+### Requirement: A field is named once on the screen
+
+Where a conversation chatted in the rail is headed by the field it is fixed to, the
+strip that would say the same under it SHALL NOT be drawn. Where nothing else names the
+field, that strip SHALL be drawn as it always was.
+
+#### Scenario: Beside a page
+
+- **GIVEN** a conversation chatted in the rail, headed by its field
+- **WHEN** the reader looks at it
+- **THEN** the field is named once, in that head
+
+#### Scenario: In the middle
+
+- **GIVEN** a conversation fixed to a field with no page
+- **WHEN** the reader looks at it
+- **THEN** the strip names the field, nothing else there doing so
+
 ### Requirement: A conversation fixed to no page is drawn where it always was
 
 A conversation fixed to a field with no page, or fixed to nothing, SHALL be drawn in the

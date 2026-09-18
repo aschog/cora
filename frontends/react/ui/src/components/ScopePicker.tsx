@@ -10,6 +10,11 @@ type Props = {
   pin: string | null
   /** Whether the pin is settled in the thread's own state, which is what makes it final. */
   fixed: boolean
+  /** Whether something else on the screen already names the field this conversation is
+   *  in — the head over a conversation chatted beside its field's page does. Settled,
+   *  this draws nothing then: a name that cannot be acted on, said twice, is one of them
+   *  too many. The control itself is drawn either way, because picking is not naming. */
+  namedElsewhere?: boolean
   /** The fields whose plugin this deployment can delete. A field the configuration
    *  named has none behind it, and one two plugins bring is not a question this control
    *  could answer — neither carries one. */
@@ -54,6 +59,7 @@ export default function ScopePicker({
   available,
   pin,
   fixed,
+  namedElsewhere = false,
   deletable,
   onPin,
   onDelete,
@@ -101,7 +107,7 @@ export default function ScopePicker({
      cannot is written under the strip, where the promise it replaces was written. A
      description hung off a name nobody can focus is a description nobody is read. */
   if (fixed && pin !== null)
-    return (
+    return namedElsewhere ? null : (
       <div className={styles.modes}>
         <div className={styles.modeStrip} role="group" aria-label={ANSWER_IN}>
           <span className={`${styles.mode} ${styles.settled}`}>{pin}</span>
