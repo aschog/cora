@@ -11,11 +11,6 @@ import type { Offered } from '../api'
 import { joined } from '../joined'
 import styles from './Answer.module.css'
 
-/* What the conversation is called in the rail: the question it was opened with, which
-   is also what names the region — so a reader who lands on it by landmark is told which
-   conversation they are in rather than that it is one. */
-const OPEN_HERE = 'open-conversation'
-
 const WORKING = 'Working…'
 const CHANGE = 'Change'
 const DECIDING = 'cora is waiting on your answer above.'
@@ -107,16 +102,9 @@ export default function Answer({
   return (
     <section
       className={joined(styles.answer, inRail && styles.inRail)}
-      aria-label={inRail ? undefined : 'Conversation'}
-      aria-labelledby={inRail ? OPEN_HERE : undefined}
+      aria-label="Conversation"
     >
       {mode}
-      {inRail && (
-        <p className={styles.openHere}>
-          <span className={styles.openLabel}>OPEN SESSION</span>
-          <span id={OPEN_HERE}>{entries[0]?.question ?? 'New conversation'}</span>
-        </p>
-      )}
       <div
         className={styles.scroller}
         ref={scroller}

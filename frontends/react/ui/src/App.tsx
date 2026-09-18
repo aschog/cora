@@ -110,6 +110,9 @@ function Page() {
      slot, because one question stands at a time — and it carries the act, so each rail
      says its own words rather than the modal knowing everyone's. */
   const [confirming, setConfirming] = useState<(Asked & Removal) | null>(null)
+  /* Whether the rail is showing the list rather than the conversation it would chat.
+     The chat is where a chattable conversation opens, and this is the way back. */
+  const [listing, setListing] = useState(false)
   const [leftOpen, setLeftOpen] = useState(true)
   const [rightOpen, setRightOpen] = useState(true)
   /* Which conversation the address names. Read from it rather than mirrored into state:
@@ -137,10 +140,20 @@ function Page() {
     fields,
     field,
     page,
+    pages,
     namedAbove,
     trouble: railTrouble,
     refresh: reread,
   } = useRails({ pin, answered })
+
+  /* A field with a page is worked in the page, and the conversation about it is the
+     sessions panel — so that is the panel the rail opens on. Without this the reader
+     picks a field, the middle becomes a trainer, and the conversation they were in is
+     behind a tab nobody told them about. */
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (page !== null) setTab('SESSIONS')
+  }, [page])
 
   /** Everything the rails hold, read again — and what the page itself could not do let
    *  go of as it is. A reader asking for the listings again has moved past the upload
@@ -176,7 +189,13 @@ function Page() {
     named: (thread_id) => showThread(thread_id, { replacing: true }),
     setAnswered,
     setRead,
-    setTab,
+    /* A turn moves the panels to its steps — unless the panels *are* the conversation
+       being asked in, where it would take the question, the answer arriving and the
+       composer off the screen at the moment the reader is watching for them. The trace
+       is still one tab away, and staying is what the reader asked for by typing here. */
+    setTab: (to) => {
+      if (page === null || listing) setTab(to)
+    },
     refresh,
   })
 
@@ -212,7 +231,7 @@ function Page() {
        through an async call. */
     if (threadInUrl() || stowed()) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      void enterConversation({ thread_id: thread, opened_with: '' })
+      void enterConversation({ thread_id: thread, opened_with: '', pin: null })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -235,7 +254,7 @@ function Page() {
        address against the old conversation and re-enter a load already running. */
     if (asked === null || asked === here.current) return
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    void enterConversation({ thread_id: asked, opened_with: '' })
+    void enterConversation({ thread_id: asked, opened_with: '', pin: null })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [routed])
 
@@ -422,7 +441,7 @@ function Page() {
         <aside
           className={joined(
             styles.railPanels,
-            page !== null && styles.withTalk,
+            page !== null && !listing && styles.withTalk,
             !rightOpen && styles.shut,
           )}
         >
@@ -472,7 +491,20 @@ function Page() {
                       sessions={sessions}
                       here={thread}
                       working={working}
-                      onOpen={enterConversation}
+                      chats={(session) => session.pin !== null && pages.includes(session.pin)}
+                      chat={page === null || listing ? undefined : talking}
+                      about={{
+                        opened: entries[0]?.question ?? '',
+                        field,
+                        turns: entries.length,
+                      }}
+                      onBack={() => setListing(true)}
+                      onOpen={(session) => {
+                        /* Opening one is asking for that conversation, which is what the
+                           rail then shows — the list is where you went to find it. */
+                        setListing(false)
+                        return enterConversation(session)
+                      }}
                       onDelete={(session) =>
                         setConfirming({
                           head: 'DELETE SESSION',
@@ -518,16 +550,6 @@ function Page() {
                 </ErrorBoundary>
               </div>
 
-              {/* Beside a page the conversation is a slot of this rail and not a fifth
-                  panel: the panels are keyed on the tab and a turn moves them to the
-                  steps, so a conversation drawn among them would be unmounted by the
-                  reader's own question. Its own boundary, the rule being about where a
-                  part is drawn and not which column it started in. */}
-              {page !== null && (
-                <div className={styles.talkSlot}>
-                  <ErrorBoundary said={UNDRAWN_TALK}>{talking}</ErrorBoundary>
-                </div>
-              )}
             </>
           )}
         </aside>

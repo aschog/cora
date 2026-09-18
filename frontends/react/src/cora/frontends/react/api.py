@@ -426,8 +426,14 @@ def _sessions(apps: Apps) -> Callable[[Request], Any]:
         app = apps()
         if app.conversations is None:
             return JSONResponse([])
+        # One read of the pin per conversation listed. A pin lives in the conversation's
+        # own state and nothing else records it, and a person keeps a handful of these —
+        # the day that stops being true, the store is where it belongs.
         return JSONResponse(
-            [payloads.session(each) for each in app.conversations.sessions()]
+            [
+                payloads.session(each, app.agent.pinned(each.thread_id))
+                for each in app.conversations.sessions()
+            ]
         )
 
     return listed

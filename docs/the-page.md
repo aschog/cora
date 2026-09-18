@@ -45,10 +45,12 @@ served on cora's own origin, so it calls the API exactly as this page does and w
 same reach. [Write a plugin](how-to/write-a-plugin.md#a-page) is the contract, and
 [privacy](privacy-and-ethics.md#what-loading-a-plugin-costs-in-trust) is what that costs.
 Where such a page is drawn is this shell's own decision, and not something the directory
-says. This shell draws it in the middle when the conversation is fixed to its field —
-pinned, or the only field there is — and moves the conversation into the right rail
-beside it, under the panels and outside the tab they switch, so asking never takes it off
-the screen. Folding that rail gives the page the whole width. A field with no page, and a
+says. This shell draws it in the middle when the conversation is fixed to its field — pinned,
+or the only field there is — and the right rail becomes that conversation's chat: the
+sessions panel has two states, the conversation you are in and the list of the others,
+with a way back between them. A conversation the rail would chat is marked in that list.
+Asking there does not move the panels to the steps, which would take the chat off the
+screen. Folding the rail gives the page the whole width. A field with no page, and a
 conversation fixed to nothing, are drawn exactly as they were.
 
 ## What holds it

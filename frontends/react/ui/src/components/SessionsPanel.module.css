@@ -43,3 +43,100 @@
   color: var(--text);
   cursor: default;
 }
+
+/* ── the two states of this panel ── */
+/* The mark that says the rail will chat this one, beside the question rather than in
+   it: a row is one line, and the line is the question. */
+.mark {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 6px;
+  position: relative;
+}
+
+.mark::before {
+  content: '';
+  position: absolute;
+  inset: 45% 35%;
+  border-radius: 1px;
+  background: var(--n600);
+}
+
+.chatted {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* A dumbbell: the bar, and a weight at each end. */
+.chatted::before {
+  inset: 47% 25%;
+  background: var(--accent);
+}
+
+.chatted::after {
+  content: '';
+  position: absolute;
+  inset: 28% 25%;
+  border-left: 3px solid var(--accent);
+  border-right: 3px solid var(--accent);
+  border-radius: 2px;
+}
+
+.legend {
+  margin: var(--s3) 0 0;
+  color: var(--n600);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* Chatting one: the head stays put and the conversation under it takes the rest. */
+.chat {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.chat-head {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s2);
+  margin-bottom: var(--s2);
+}
+
+.back {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  background: var(--raised);
+  color: var(--accent);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.back:hover {
+  border-color: var(--accent);
+}
+
+.chat-named {
+  min-width: 0;
+}
+
+.chat-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-meta {
+  margin: 0;
+  color: var(--n600);
+  font-size: 12px;
+}

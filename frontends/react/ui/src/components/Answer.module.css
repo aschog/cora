@@ -29,24 +29,6 @@
   padding-right: 0;
 }
 
-/* Which conversation this is, the rail listing the others directly above it. */
-.open-here {
-  flex: none;
-  margin: 0 0 var(--s2);
-  font-size: 13px;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.open-label {
-  display: block;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  color: var(--n600);
-}
-
 /* A block, not a flex row: a flex item is stretched to its container's height, so the
    column's box would stop at the fold with its content overflowing past it — and the
    room it leaves below its last line would sit above that overflow rather than after

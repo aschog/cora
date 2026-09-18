@@ -87,6 +87,9 @@ export function useRails({
    *  not drawn — so it reads the clause `home` is written from. */
   const fixed = pin ?? (fields.length === 1 ? fields[0] : null)
   const page = fixed === null ? null : (offered.pages[fixed] ?? null)
+  /** Which fields have one at all — what a listed conversation is held against to say
+   *  whether the rail would chat it. */
+  const pages = Object.keys(offered.pages)
 
   /* Keyed on the field, which is what makes an older listing harmless rather than
      dangerous: it is held under the field it asked about, and the rail reads the entry
@@ -136,6 +139,7 @@ export function useRails({
     fields,
     field,
     page,
+    pages,
     namedAbove,
     trouble,
     refresh,

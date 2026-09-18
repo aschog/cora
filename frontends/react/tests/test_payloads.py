@@ -107,7 +107,14 @@ def test_a_fact_and_a_session_carry_what_it_takes_to_act_on_them() -> None:
         "key": "k1",
         "text": "No burpees.",
     }
-    assert payloads.session(Session(thread_id="t1", opened_with="Why?")) == {
+    assert payloads.session(Session(thread_id="t1", opened_with="Why?"), "fitness") == {
         "thread_id": "t1",
         "opened_with": "Why?",
+        "pin": "fitness",
+    }
+    # Fixed to nothing is a field named as none, rather than a key the page has to miss.
+    assert payloads.session(Session(thread_id="t2", opened_with="Why?"), None) == {
+        "thread_id": "t2",
+        "opened_with": "Why?",
+        "pin": None,
     }

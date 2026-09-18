@@ -101,3 +101,24 @@ def test_a_field_the_deployment_does_not_run_is_refused_before_the_turn() -> Non
 
     assert refused.status_code == 400
     assert refused.json()["error"] == NO_SUCH_SCOPE
+
+
+def test_a_listed_conversation_says_which_field_it_is_fixed_to() -> None:
+    """The list is where one conversation is told from another, and a pin is what a
+    conversation is *for* — read per row, a pin living in the conversation's own state
+    and nothing else recording it."""
+    app = _served(
+        ModelReply(text="Protein, then."),
+        # The second conversation is pinned to nothing, so it is routed before it is
+        # answered — one reading, then the answer.
+        ModelReply(text=DEFAULT_SCOPE),
+        ModelReply(text="Anything."),
+    )
+
+    with TestClient(api(app)) as reader:
+        _asked(reader, question="How much protein?", pin="fitness")
+        _asked(reader, question="Anything else?", thread_id="t2")
+        listed = reader.get("/api/sessions").json()
+
+    fixed = {each["opened_with"]: each["pin"] for each in listed}
+    assert fixed == {"How much protein?": "fitness", "Anything else?": None}
