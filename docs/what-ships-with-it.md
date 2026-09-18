@@ -18,9 +18,16 @@ Markdown document named for the day — so the next question about it is answere
 own log, with the day cited. Refused or unreachable, the workout goes to the clipboard
 and the strip says so.
 
-The plan that ships is a sample — fifteen kettlebell exercises — and it lives in the
-page, which is a file of the plugin: editing it is how the plan becomes yours. The clips and the pose tracking come from the services they came from, so those
-two want a network. Everything else it does is local.
+The plan comes from a published Google Sheet, read each time the trainer is opened: one
+row per exercise, with its sets, reps, working weight and clips. Edit the sheet and the
+next open follows it. Which sheet is named in the page, and that is how you point it at
+your own — the page is a file of the plugin, not a setting cora reads, because what is
+handed to your browser is the file as it sits on disk.
+
+Out of signal, the trainer keeps working: the plan last read stands, and failing that
+the one written into the page — fifteen kettlebell exercises, in the language the coach
+answers in. The strip says which of the three you are training from. The sheet, the clips and the pose tracking come from the services they came from, so
+those want a network. Everything else it does is local.
 
 ## Travel, in four parts
 

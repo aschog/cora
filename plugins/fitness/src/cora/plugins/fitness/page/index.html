@@ -401,6 +401,110 @@ let PLAN = [
 const COLOR = {8:'#EC7BA8',12:'#3E7BD6',16:'#E8C11C',20:'#8A5FD1',24:'#2E9E5B',28:'#E8801F',32:'#D93A3A',36:'#9AA0AA',40:'#ECE9E4'};
 const bell = w => COLOR[[8,12,16,20,24,28,32,36,40].reduce((a,b)=>Math.abs(b-w)<Math.abs(a-w)?b:a)] || '#E8C11C';
 
+/* ---------- live plan: published Google Sheet, cached, falls back to the
+   embedded PLAN above when offline or when the sheet is unreachable ------ */
+const SHEET_CSV = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTsn710OSLCB8wmKi_GYCuyKDYyfsAnPEtu4J54a_w-Q6HaYNpmFXFw-d-imgsPEiZb7Hwcp-lFHWQK/pub?gid=1864615730&single=true&output=csv';
+
+const HEAD = {
+  'подходы':'s', 'повторы':'r', 'вес снаряда':'w',
+  'упрожнение':'n', 'упражнение':'n',
+  'длинное видео':'long', 'днлинное видео':'long', 'короткое видео':'short'
+};
+const LAT = {а:'a',б:'b',в:'v',г:'g',д:'d',е:'e',ё:'e',ж:'zh',з:'z',и:'i',й:'y',
+  к:'k',л:'l',м:'m',н:'n',о:'o',п:'p',р:'r',с:'s',т:'t',у:'u',ф:'f',х:'h',
+  ц:'c',ч:'ch',ш:'sh',щ:'sch',ъ:'',ы:'y',ь:'',э:'e',ю:'yu',я:'ya'};
+
+function parseCSV(text){
+  const rows = [[]]; let cell = '', q = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (q){
+      if (c === '"' && text[i+1] === '"'){ cell += '"'; i++; }
+      else if (c === '"') q = false;
+      else cell += c;
+    }
+    else if (c === '"') q = true;
+    else if (c === ','){ rows[rows.length-1].push(cell); cell = ''; }
+    else if (c === '\n'){ rows[rows.length-1].push(cell); cell = ''; rows.push([]); }
+    else if (c !== '\r') cell += c;
+  }
+  rows[rows.length-1].push(cell);
+  return rows;
+}
+
+function makeId(name, taken){
+  const words = (name.toLowerCase().match(/[а-яёa-z]+/g) || []).slice(0,2);
+  let base = words.map(w => [...w].map(ch => LAT[ch] ?? ch).join('').slice(0,3)).join('') || 'ex';
+  let id = base, n = 2;
+  while (taken.has(id)) id = base + (n++);
+  taken.add(id);
+  return id;
+}
+
+function planFromCSV(text){ return planFromRows(parseCSV(text)); }
+
+function planFromRows(rows){
+  const hi = rows.findIndex(r => {
+    const k = r.map(c => HEAD[c.trim().toLowerCase()]);
+    return k.includes('n') && k.includes('s');
+  });
+  if (hi < 0) throw new Error('header row not found');
+  const keys = rows[hi].map(c => HEAD[c.trim().toLowerCase()]);
+  const num = v => { const m = /(\d+)/.exec(v || ''); return m ? +m[1] : 0; };
+  const taken = new Set(), out = [];
+  for (const row of rows.slice(hi+1)){
+    const rec = {};
+    keys.forEach((k, i) => { if (k) rec[k] = (row[i] || '').trim(); });
+    const vids = [];
+    for (const [label, link] of [['разбор', rec.long], ['коротко', rec.short]]){
+      const v = /(?:youtu\.be\/|[?&]v=|\/embed\/)([\w-]{11})/.exec(link || '');
+      if (!v) continue;
+      const clip = {l: label, v: v[1]};
+      const t = /[?&]t=(\d+)/.exec(link);
+      if (t) clip.t = +t[1];
+      vids.push(clip);
+    }
+    if (!rec.n || !vids.length) continue;
+    out.push({id: makeId(rec.n, taken), s: num(rec.s) || 3, r: num(rec.r) || 10,
+              w: num(rec.w), n: rec.n.replace(/\.$/, ''), vids});
+  }
+  if (!out.length) throw new Error('no usable rows');
+  return out;
+}
+
+/** Swap in a new plan, keeping progress for exercises that still exist. */
+function adoptPlan(next){
+  next = next.filter(p => Array.isArray(p.vids) && p.vids.length);   // old cache shape
+  if (!next.length) return;
+  if (JSON.stringify(next) === JSON.stringify(PLAN)) return;
+  PLAN = next;
+  syncSession();
+  const p = curEx();                 // the new current exercise may have fewer clips
+  if (typeof view === 'number' && !(p && p.vids[view])) view = null;
+  render();
+}
+
+/* The published sheet is read straight from the browser: it answers any origin, so the
+   page asks for it itself rather than cora fetching it on the page's behalf. Unreachable
+   or unreadable is not an error — the plan last seen stands, and failing that the one
+   written into this file. */
+async function syncPlan(){
+  const cached = load('kb.plan', null);
+  if (cached) adoptPlan(cached);
+  try {
+    // Google's CDN serves a stale copy of published sheets, so bust it.
+    const r = await fetch(SHEET_CSV + '&_=' + Date.now(), {cache: 'no-store'});
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const next = planFromCSV(await r.text());
+    save('kb.plan', next);
+    adoptPlan(next);
+    warn('');
+  } catch (e) {
+    console.warn('plan sync failed, using cached or embedded plan:', e);
+    warn('Sheet unavailable — training from the plan already in the page.');
+  }
+}
+
 /* One strip under the header for everything worth a line: cora having taken the
    workout or not. Storage being blocked is the graver and holds the strip once it is
    shown. */
@@ -982,6 +1086,7 @@ function handoff(text, who = ''){
 }
 
 render();
+syncPlan();
 </script>
 </body>
 </html>

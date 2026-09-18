@@ -59,6 +59,9 @@ def test_the_field_is_brought_a_trainer_shipped_beside_the_module() -> None:
 
 REACHES = frozenset(
     {
+        # the plan: a published sheet, read on load and fallen back from when it is
+        # not there. It answers any origin, so the page asks rather than cora asking
+        "docs.google.com",
         # the thumbnail of an exercise clip, asked for as the plan is drawn
         "i.ytimg.com",
         # the clip itself, opened in a tab rather than played in the page
@@ -85,14 +88,17 @@ def test_the_trainer_reaches_only_the_hosts_it_is_said_to() -> None:
     assert reached == REACHES
 
 
-def test_the_trainer_hands_the_workout_to_cora_and_to_nothing_else() -> None:
-    """What it was built around — a log server, a watch listener, a plan synced from a
-    spreadsheet — are answers to problems cora answers, and each would arrive as a
-    second way to do something. The one thing it posts, it posts to cora."""
+def test_the_trainer_asks_for_its_plan_and_hands_the_workout_to_cora() -> None:
+    """Two things it fetches and no third: the plan it trains from, which is read, and
+    the workout it finished, which is the one thing it sends anywhere — and that goes to
+    cora. A log server of its own, a watch listener, a second place to write: each would
+    be an answer to a problem cora answers."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
-    posted = re.findall(r"fetch\(\s*([A-Za-z_$][\w$]*|[\'\"][^\'\"]*[\'\"])", drawn)
+    asked = re.findall(r"fetch\(\s*([A-Za-z_$][\w$]*)", drawn)
+    posted = re.findall(r"fetch\(\s*([A-Za-z_$][\w$]*)[^)]*method:\s*'POST'", drawn)
 
+    assert sorted(set(asked)) == ["SHEET_CSV", "UPLOAD"]
     assert posted == ["UPLOAD"]
     assert "const UPLOAD = '/api/documents'" in drawn
 

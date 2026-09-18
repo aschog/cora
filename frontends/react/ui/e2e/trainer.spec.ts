@@ -8,6 +8,13 @@ import { fresh } from './helpers'
 
 const TRAINER = '/pages/fitness/'
 
+/* The page asks its sheet for the plan on load. No spec here wants that answer — one
+   asserts what happens without it, and the rest are about what the trainer does with
+   whatever plan it has — so the suite never reaches Google, on a train or otherwise. */
+test.beforeEach(async ({ page }) => {
+  await page.route('**/docs.google.com/**', (asked) => asked.abort())
+})
+
 test('the trainer writes a workout in the session grammar', async ({ page }) => {
   await page.goto(TRAINER)
 
@@ -112,4 +119,77 @@ test('a workout with nothing logged is not saved, and says so', async ({ page })
 
   await expect(page.locator('#warn')).toContainText(/[Nn]othing logged/)
   expect(asked, 'nothing was uploaded').toBe(0)
+})
+
+test('the plan is read from the sheet the page is pointed at', async ({ page }) => {
+  await page.goto(TRAINER)
+
+  /* The parsing, against the columns the sheet really has — headers in the owner's own
+     language, a name column spelled two ways, and a row with no exercise on it. The
+     fetch itself is not exercised here: a suite that reached Google would fail on a
+     train. */
+  const read = await page.evaluate(() => {
+    const draw = (
+      window as unknown as {
+        planFromCSV: (csv: string) => { n: string; s: number; r: number; w: number }[]
+      }
+    ).planFromCSV
+    return draw(
+      [
+        'Подходы,Повторы,Вес снаряда,Упрожнение,Длинное видео,Короткое видео',
+        '4,12,16,Рывок,https://youtu.be/kEBDdhJNhZc,https://youtu.be/7FJh9pIZirs',
+        ',,,,,',
+        '3,10,24,Толчок,https://youtu.be/XdQ_DaAYI2k,',
+      ].join('\n'),
+    )
+  })
+
+  expect(read.map((each) => [each.n, each.s, each.r, each.w])).toEqual([
+    ['Рывок', 4, 12, 16],
+    ['Толчок', 3, 10, 24],
+  ])
+})
+
+test('a sheet that cannot be read leaves the plan the page ships with', async ({
+  page,
+}) => {
+  /* The one failure a lifter in a gym actually has: no signal — which is how every
+     spec here runs. The plan already in the page is what they train from, and the strip
+     says why it is that one. */
+  await page.goto(TRAINER)
+
+  await expect(page.locator('#warn')).toContainText('Sheet unavailable')
+  /* And the exercises are the shipped ones, named as the coach speaks. */
+  await expect(page.locator('.row .nm').first()).toHaveText(
+    'Kettlebell around-the-body pass',
+  )
+})
+
+test('a sheet that changes under a running workout leaves what was logged', async ({
+  page,
+}) => {
+  await page.goto(TRAINER)
+  const clip = [{ l: 'Full', v: 'kEBDdhJNhZc' }]
+  const plan = (ids: string[]) =>
+    ids.map((id) => ({ id, s: 3, r: 10, w: 16, n: `Exercise ${id}`, vids: clip }))
+
+  /* A plan of this spec's own, so what is asserted is what a changed sheet does to
+     progress rather than what the shipped plan happens to be. */
+  await page.evaluate(
+    (given) => (window as unknown as { adoptPlan: (p: unknown[]) => void }).adoptPlan(given),
+    plan(['a', 'b']),
+  )
+  await page.locator('.set').first().click()
+  const worked = page.locator('.row', { hasText: 'Exercise a' })
+  await expect(worked.locator('.st')).toContainText('1/3')
+
+  /* The sheet gained an exercise while the lifter was working. What they have already
+     done is theirs, and an exercise still in the plan keeps it. */
+  await page.evaluate(
+    (given) => (window as unknown as { adoptPlan: (p: unknown[]) => void }).adoptPlan(given),
+    plan(['c', 'a', 'b']),
+  )
+
+  await expect(page.locator('.row', { hasText: 'Exercise c' })).toBeVisible()
+  await expect(worked.locator('.st')).toContainText('1/3')
 })

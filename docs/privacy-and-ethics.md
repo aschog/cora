@@ -36,8 +36,8 @@ which part.
   instead.
 
 **The fitness trainer**, being a page, reaches from your browser rather than from cora:
-`i.ytimg.com` for an exercise thumbnail as the plan is drawn — on load, before you touch
-anything — and `cdn.jsdelivr.net` with `storage.googleapis.com` for the pose runtime,
+`docs.google.com` for the published sheet its plan comes from and `i.ytimg.com` for an
+exercise thumbnail — both on load, before you touch anything — and `cdn.jsdelivr.net` with `storage.googleapis.com` for the pose runtime,
 only once you turn tracking on. A clip opens at `www.youtube.com` in a tab of its own.
 The workout it saves goes to cora and nowhere else.
 
