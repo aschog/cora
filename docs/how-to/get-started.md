@@ -83,6 +83,32 @@ It covers a question answered and cited, a document uploaded and deleted, the ca
 stops on, the gate an effect waits at, a conversation pinned to a field, and a
 conversation and a fact deleted from the rails.
 
+## The fitness field's watch
+
+The fitness trainer can be started and finished from an Amazfit watch: one screen added
+to a sport in the watch's own workout app, which writes the field's
+[notice](../the-page.md#a-fields-notice) when it opens and when its control is tapped.
+The trainer follows that notice — the workout's clock starts when the wrist does, and a
+tap saves the workout into the field without the page being touched.
+
+```sh
+npm i -g @zeppos/zeus-cli      # once
+make watch                     # prints a QR code; scan it in Zepp with developer mode on
+```
+
+The address is baked in, a watch having no settings screen to type one into, and it is
+this machine's name on the network rather than loopback — the phone is what does the
+HTTP. Override either end with `make watch CORA_AT=http://host:8000 WATCH_FIELD=fitness`.
+
+**Cora has to be reachable from the phone**, which means `CORA_HOST=0.0.0.0 make run` —
+and that puts every route on that network, not the notice alone. On a network you do not
+trust, leave the watch off.
+
+The end of a workout reaches nothing: a Zepp OS workout extension is torn down without
+its last message getting to the phone, so finishing is a tap on that screen rather than
+something the watch notices. Ending the workout itself stays what it always was, on the
+watch, and Zepp keeps its own record of the session whatever the page did.
+
 ## The packages
 
 The repository root is the app: a `uv` workspace sharing the `cora` namespace. Install

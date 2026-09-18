@@ -371,6 +371,10 @@ const store = (() => {
 const load = (k,d) => { try { return JSON.parse(store.get(k)) ?? d; } catch(e){ return d; } };
 const save = (k,v) => store.set(k, JSON.stringify(v));
 
+/* Which field this page belongs to: the path cora serves it under. The plugin never
+   writes its own name in here — the same file under another field is that field's. */
+const FIELD = decodeURIComponent((location.pathname.match(/\/pages\/([^/]+)\//) || [])[1] || '');
+
 /* ---------- offline thumbnails (filled by inline-thumbs.py) ---------- */
 const THUMBS = {};
 
@@ -899,43 +903,53 @@ const restView = document.getElementById('restview'),
 restView.addEventListener('click', () => { endRest(); tick(); });
 
 /* ---------- the watch ----------
-   The listener on this machine holds the latest recording from the wrist.
-   Is it this workout's? A recording newer than the workout becomes its timing;
-   the same one refreshes; an older one is last workout's, still sitting in the
-   listener, and is ignored. */
-function attach(ses, s){
-  if (!s || !s.start) return false;
-  // The same recording, in two guises: its start moved by seconds, or a report
-  // of the whole workout whose window covers the start the page followed — a
-  // page the Workout app made late in the workout began "recording" then. The
-  // window is the truth, so the workout's timing follows it.
-  const same = ses.watch && (Math.abs(ses.watch.start - s.start) < 60000 ||
-    (s.stop && ses.watch.start >= s.start - 60000 && ses.watch.start <= s.stop + 60000));
-  if (same){ ses.watch = s; ses.start = s.start; return true; }
-  if (s.start > ses.start){ ses.watch = s; ses.start = s.start; return true; }
-  return false;
+   Cora keeps one notice per field, and whatever is on the wrist writes it: a workout
+   running when its screen opens, finished when the control on it is tapped. A notice
+   is what is true now rather than a record of what happened, so this page is the
+   memory — a start it never read is a start it cannot recover, and it falls back to
+   its own, which is what it does with no watch at all.
+
+   Why a tap and not the end of the workout: nothing sent from a workout extension as
+   it is torn down reaches the phone. A probe posting from every lifecycle point was
+   heard at onInit and onPause and never once at onDestroy. */
+const NOTICE = FIELD ? '/api/scopes/' + encodeURIComponent(FIELD) + '/notice' : '';
+const ASK_WATCH_EVERY = 5000;
+/** When the last finish acted on arrived, by cora's clock. Kept, because a reload must
+    not save the same workout twice off a notice still standing. */
+let acted = load('kb.acted', 0);
+
+function followWatch(held){
+  const said = held && held.notice;
+  if (!said || !said.workout) return;
+  if (said.workout === 'running'){
+    // A start older than this workout is last workout's, still standing in the field.
+    if (held.at > ses.start){ ses.start = ses.watch = held.at; render(); }
+    return;
+  }
+  if (said.workout !== 'finished' || held.at <= acted || held.at < ses.start) return;
+  acted = held.at; save('kb.acted', acted);
+  finish(true);
 }
-/* The recording in one line: what the header shows after the stop and what
-   the session ends with. The minutes run to the stop, or to the last sample
-   heard when the watch fell silent. Starts with ♥ so it can never read as a
-   set line. */
-function pulse(w){
-  return '♥ ' + w.avg + ' avg · ' + w.max + ' max · ' + Math.round(((w.stop || w.last) - w.start)/60000) + ' min';
+
+function askWatch(){
+  fetch(NOTICE, {cache: 'no-store'})
+    .then(r => r.ok ? r.json() : null)
+    .then(followWatch)
+    .catch(() => {});                    // no cora, no watch: the trainer works as ever
 }
+if (NOTICE){ askWatch(); setInterval(askWatch, ASK_WATCH_EVERY); }
+
 const watchEl = document.getElementById('watch');
-/* What the header says: nothing, the live recording, a silence, or the
-   summary after the stop. */
-function watchText(w, now){
-  if (!w) return '';
-  if (w.stop) return pulse(w);
-  const quiet = now - w.last;
-  if (w.n > 0 && quiet > 30000) return '♥ not heard for ' + Math.round(quiet/1000) + ' s';   // it did send, then fell silent
-  const s = Math.round((now - w.start)/1000);
-  return '♥ ' + (w.bpm || '–') + ' · ' + Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
+/** How long the workout the watch started has run. Blank until it starts one: with no
+    watch there is nothing here to say. */
+function watchText(now){
+  if (!ses.watch) return '';
+  const s = Math.max(0, Math.round((now - ses.start)/1000));
+  return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0');
 }
 
 function tick(){
-  watchEl.textContent = watchText(ses.watch, Date.now());
+  watchEl.textContent = watchText(Date.now());
   const left = Math.ceil((restEnd - Date.now())/1000);
   const row = document.getElementById('restrow');
   if (left > 0){
@@ -955,19 +969,17 @@ setInterval(tick, 500); tick();
 function finish(byWatch){
   const doneAny = PLAN.some(p => ses.ex[p.id].done > 0);
   const who = byWatch ? 'Watch ended the workout — ' : '';
-  if (byWatch){ ses.told = ses.watch.start; save('kb.ses', ses); }   // react to this recording's end once
   if (!doneAny){ warn(who + 'Nothing logged — nothing saved.'); return; }   // a button that did nothing has to say so
   if (!byWatch && !confirm('Save this workout and start a new one?')) return;
-  const end = ses.watch && ses.watch.stop ? ses.watch.stop : Date.now();
   hist.unshift({
     date: Date.now(),
-    min: Math.round((end-ses.start)/60000),
+    min: Math.round((Date.now()-ses.start)/60000),
     ex: PLAN.filter(p=>ses.ex[p.id].done>0).map(p => {
       const s = ses.ex[p.id];
       return {id:p.id, n:p.n, w:s.w, done:s.done, r:p.r, reps:s.reps.slice(0, s.done)};
     })
   });
-  handoff(sessionText(hist[0].ex, ses.watch), who);   // the page's history is kept whatever the log says
+  handoff(sessionText(hist[0].ex), who);   // the page's history is kept whatever the log says
   hist = hist.slice(0,60);
   save('kb.hist', hist);
   ses = newSession();
@@ -984,16 +996,15 @@ function repsText(e){
 }
 
 /* The finished workout in the log's own grammar: one heading with the load
-   and one set line per exercise, and the watch's pulse as a note under the
-   last one. The text is the interface — train reads it as it is, whether it
-   arrives over the wire or from the clipboard. */
-function sessionText(ex, w){
+   and one set line per exercise. The text is the interface — cora reads it as
+   it is, whether it arrives over the wire or from the clipboard. */
+function sessionText(ex){
   const text = ex.map(e => {
     const r = e.reps && e.reps.length ? e.reps : Array(e.done).fill(e.r);
     const sets = new Set(r).size === 1 ? r.length + ' sets of ' + r[0] : 'sets of ' + r.join(' / ');
     return '# ' + e.n + ' ' + (e.w ? e.w + ' kg' : 'bw') + '\n' + sets;
   }).join('\n\n');
-  return text + (w && w.avg ? '\n' + pulse(w) : '') + '\n';   // no pulse heard: no line, rather than zeros
+  return text + '\n';
 }
 
 /* ---------- history ---------- */
@@ -1052,7 +1063,6 @@ document.getElementById('imp').addEventListener('click', () => {
    path it was opened under, and the upload is the reader's own API call on the
    reader's own origin — no key, no token, no second server. A workout that cannot be
    handed over is not lost: it goes to the clipboard, and the strip says so. */
-const FIELD = decodeURIComponent((location.pathname.match(/\/pages\/([^/]+)\//) || [])[1] || '');
 const UPLOAD = '/api/documents';
 
 /** Today, as the document is named — local, because a workout belongs to the day the
