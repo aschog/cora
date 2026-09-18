@@ -133,6 +133,14 @@ export const sessions = (signal?: AbortSignal) =>
   read<Session[]>('/api/sessions', { signal })
 export const plugins = (signal?: AbortSignal) =>
   read<Plugin[]>('/api/plugins', { signal })
+/* The one live value cora holds for a field, written by whatever is beside the reader
+   rather than by this page. `at` is cora's own clock as the notice arrived; a field
+   nobody has written to answers with none. */
+export const notice = (scope: string, signal?: AbortSignal) =>
+  read<{ notice: Record<string, unknown> | null; at?: number }>(
+    `/api/scopes/${encodeURIComponent(scope)}/notice`,
+    { signal },
+  )
 /* Every thread reaching a path is escaped on the way in — here, and in the three below
    that take one. The router already refuses an address that could mean a different path,
    and this is the same guard at the other end: one place every caller routes through,

@@ -9,6 +9,7 @@ import { useRoutedThread } from './hooks/useHash'
 import { useConversation } from './hooks/useConversation'
 import { useDocuments } from './hooks/useDocuments'
 import { usePin } from './hooks/usePin'
+import { useNotices } from './hooks/useNotices'
 import { rail, useRails } from './hooks/useRails'
 import { useRemoving } from './hooks/useRemoving'
 import type { Removal } from './hooks/useRemoving'
@@ -145,6 +146,12 @@ function Page() {
     trouble: railTrouble,
     refresh: reread,
   } = useRails({ pin, answered })
+
+  /* And what those fields are doing while the reader is elsewhere: a notice written to
+     one of them opens its own conversation, which is how starting a workout on a watch
+     puts the trainer on the screen. It writes the address and nothing else — the effect
+     below that follows the address is what then opens the conversation. */
+  useNotices({ pages, sessions, here: thread })
 
   /* A field with a page is worked in the page, and the conversation about it is the
      sessions panel — so that is the panel the rail opens on. Without this the reader

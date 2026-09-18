@@ -66,6 +66,13 @@ It is held in memory for as long as the process runs, so a restart loses it and 
 falls back to what it knows itself. It is what is true now, not a record of what happened
 — a writer that posts faster than the page asks loses the notices in between.
 
+The shell watches those notices too, and a field that is written to opens its own newest
+conversation — so starting a workout on a watch puts the trainer on the screen wherever
+the reader had got to. What the notice *says* is never read: a shell that branched on
+`{"workout":"running"}` would be a shell that knows one plugin's vocabulary. The first
+answer from a field is a baseline, a notice outliving the page that wrote it, and a field
+no conversation is pinned to opens nothing — only a turn writes a pin.
+
 ## What holds it
 
 `vitest` over the components and the hooks, `tsc` over the types, and `eslint` with
