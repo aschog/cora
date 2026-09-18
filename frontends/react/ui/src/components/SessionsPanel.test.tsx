@@ -78,7 +78,7 @@ test('the panel is the conversation when it is given one, with a way back', () =
       working={null}
       chats={() => true}
       chat={<p>the conversation itself</p>}
-      about={{ opened: 'Squat stalling', field: 'fitness', turns: 2 }}
+      about={{ opened: 'Squat stalling' }}
       onBack={back}
       onOpen={() => {}}
       onDelete={() => {}}
@@ -86,7 +86,6 @@ test('the panel is the conversation when it is given one, with a way back', () =
   )
 
   expect(screen.getByRole('heading', { name: 'Squat stalling' })).toBeTruthy()
-  expect(screen.getByText('fitness · 2 messages')).toBeTruthy()
   expect(screen.getByText('the conversation itself')).toBeTruthy()
   /* The list is behind it, not beside it. */
   expect(screen.queryByRole('button', { name: OTHER.opened_with })).toBeNull()
@@ -94,22 +93,4 @@ test('the panel is the conversation when it is given one, with a way back', () =
   screen.getByRole('button', { name: 'Back to other sessions' }).click()
 
   expect(back).toHaveBeenCalled()
-})
-
-test('one turn is one message, not one messages', () => {
-  render(
-    <SessionsPanel
-      sessions={[]}
-      here="here"
-      working={null}
-      chats={() => true}
-      chat={<p>talk</p>}
-      about={{ opened: 'Squat stalling', field: 'fitness', turns: 1 }}
-      onBack={() => {}}
-      onOpen={() => {}}
-      onDelete={() => {}}
-    />,
-  )
-
-  expect(screen.getByText('fitness · 1 message')).toBeTruthy()
 })

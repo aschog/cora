@@ -39,14 +39,14 @@ there SHALL NOT move the panels to the steps, which would take the chat off the 
 
 ### Requirement: A conversation chatted in the rail says which one it is
 
-The chat SHALL be headed by the question that opened the conversation, the field it is
-fixed to, and how many turns it holds.
+The chat SHALL be headed by the question that opened the conversation, which is what the
+list beside it calls that conversation too.
 
 #### Scenario: The head of an answered conversation
 
 - **GIVEN** a conversation of two turns fixed to a field with a page
 - **WHEN** it is chatted in the rail
-- **THEN** its head carries the question it was opened with, that field, and its length
+- **THEN** its head carries the question it was opened with
 
 #### Scenario: A conversation that has said nothing
 
@@ -70,17 +70,18 @@ mark the others do not, and the list SHALL say what the mark means.
 - **WHEN** the list holds a marked conversation
 - **THEN** it says that such a conversation opens as a chat in this rail
 
-### Requirement: A field is named once on the screen
+### Requirement: A conversation beside its field's page does not name the field
 
-Where a conversation chatted in the rail is headed by the field it is fixed to, the
-strip that would say the same under it SHALL NOT be drawn. Where nothing else names the
-field, that strip SHALL be drawn as it always was.
+Where a conversation is chatted beside the page of the field it is fixed to, the strip
+naming that field SHALL NOT be drawn: the page is the field, in front of the reader, and
+the strip is a label under a control they can no longer use. Where nothing else stands
+for the field, that strip SHALL be drawn as it always was.
 
 #### Scenario: Beside a page
 
-- **GIVEN** a conversation chatted in the rail, headed by its field
-- **WHEN** the reader looks at it
-- **THEN** the field is named once, in that head
+- **GIVEN** a conversation chatted in the rail beside its field's page
+- **WHEN** the reader looks at the rail
+- **THEN** the field is not named there
 
 #### Scenario: In the middle
 

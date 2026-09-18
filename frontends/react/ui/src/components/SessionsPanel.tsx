@@ -27,9 +27,8 @@ type Props = {
    *  they have not gone back to the list. The panel draws its head; what is passed is
    *  the conversation itself. */
   chat?: ReactNode
-  /** What the conversation is about, for the head above it: the question that opened it,
-   *  the field it is fixed to, and how many turns it holds. */
-  about?: { opened: string; field: string; turns: number }
+  /** What the conversation is about, for the head above it: the question that opened it. */
+  about?: { opened: string }
   onBack?: () => void
 }
 
@@ -57,15 +56,11 @@ export default function SessionsPanel({
           >
             ←
           </button>
-          <div className={styles.chatNamed}>
-            {/* The question it was opened with, which is what the list calls it too. */}
-            <h3 className={styles.chatTitle} title={about.opened}>
-              {about.opened || NEW}
-            </h3>
-            <p className={styles.chatMeta}>
-              {about.field} · {about.turns} {about.turns === 1 ? 'message' : 'messages'}
-            </p>
-          </div>
+          {/* The question it was opened with, which is what the list calls it too. What
+              field it is in is the page beside it, and how long it is, is the scroll. */}
+          <h3 className={styles.chatTitle} title={about.opened}>
+            {about.opened || NEW}
+          </h3>
         </div>
         {chat}
       </div>

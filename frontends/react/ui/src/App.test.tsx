@@ -1279,13 +1279,13 @@ test('the chat is headed by what opened the conversation, its field and its leng
   await chatting()
 
   expect(within(rail()).getByRole('heading', { name: /New conversation/ })).toBeTruthy()
-  expect(within(rail()).getByText('fitness · 0 messages')).toBeTruthy()
 
   ask(rail(), 'How many sets?')
   await within(rail()).findByText(/Sleep, not volume/)
 
+  /* Headed by the question it was opened with. Which field it is in is the page it is
+     drawn beside, and how long it is, is the scroll. */
   expect(within(rail()).getByRole('heading', { name: 'How many sets?' })).toBeTruthy()
-  expect(within(rail()).getByText('fitness · 1 message')).toBeTruthy()
 })
 
 test('the way back shows the list, and opening a marked one chats it', async () => {
@@ -1353,7 +1353,7 @@ test('a conversation fixed to nothing draws no chat in the rail at all', async (
   expect(within(rail()).getByRole('button', { name: OLDER.question })).toBeTruthy()
 })
 
-test('the rail names the field once, in the head of the chat', async () => {
+test('the rail does not name the field at all: the page beside it is the field', async () => {
   await chatting()
   ask(rail(), 'How many sets?')
   await within(rail()).findByText(/Sleep, not volume/)
@@ -1362,9 +1362,9 @@ test('the rail names the field once, in the head of the chat', async () => {
      strip that says the same under it is a second answer to a question nobody asked
      twice — and the sentence explaining that a pin is for good is two lines of a rail
      that has none to spare. */
-  expect(within(rail()).getByText('fitness · 1 message')).toBeTruthy()
   expect(within(rail()).queryByRole('group', { name: 'Answer in' })).toBeNull()
   expect(within(rail()).queryByText(/keeps the field it is pinned to/)).toBeNull()
+  expect(within(rail()).queryByText(/fitness/)).toBeNull()
 })
 
 test('a pinned conversation in the middle still says which field it is in', async () => {

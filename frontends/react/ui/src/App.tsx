@@ -305,7 +305,7 @@ function Page() {
           available={fields}
           pin={pin}
           fixed={fixedPin}
-          namedElsewhere={page !== null}
+          quiet={page !== null}
           deletable={fields.filter((scope) => behind(scope) !== null)}
           onPin={pick}
           onDelete={(scope) => {
@@ -494,11 +494,7 @@ function Page() {
                       working={working}
                       chats={(session) => session.pin !== null && pages.includes(session.pin)}
                       chat={page === null || listing ? undefined : talking}
-                      about={{
-                        opened: entries[0]?.question ?? '',
-                        field,
-                        turns: entries.length,
-                      }}
+                      about={{ opened: entries[0]?.question ?? '' }}
                       onBack={() => setListing(true)}
                       onOpen={(session) => {
                         /* Opening one is asking for that conversation, which is what the
