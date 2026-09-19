@@ -724,3 +724,21 @@ test("a wrist swinging up and back counts one a cycle", async ({ page }) => {
 
   await expect(page.locator("#repnum")).toHaveText("4");
 });
+
+/* The same snatch filmed from twice as far: every length halves, and the counter
+   divides by the torso, so the two sequences are one signal. */
+const distant = (phase: number): Frame =>
+  pose({
+    wrist: { x: 0.5, y: 0.475 + 0.15 * Math.cos(phase) },
+    shoulder: 0.4,
+    hip: 0.6,
+  });
+
+test("the same swing further from the camera counts the same", async ({
+  page,
+}) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(4, distant));
+
+  await expect(page.locator("#repnum")).toHaveText("4");
+});
