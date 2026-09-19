@@ -1,6 +1,6 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the functional test where two saves named for their moments, the later uploaded first, list under one day in the order of their time, marked `@pytest.mark.xfail(strict=True)`.
+- [x] 1.1 Write the functional test where two saves named for their moments, the later uploaded first, list under one day in the order of their time, marked `@pytest.mark.xfail(strict=True)`.
 
 ## 2. The listing reads the moment
 
