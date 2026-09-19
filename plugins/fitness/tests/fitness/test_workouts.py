@@ -7,6 +7,9 @@ import pytest
 from cora.plugins.fitness.workouts import Load, LogError, Session, parse_session
 
 DAY = date(2026, 9, 18)
+# The sheet the trainer follows names its exercises in Russian, and this is one
+# of them: the other script is the point, so the lint on lookalike letters is off.
+ONE_ARM_SWING = "Мах одной рукой"  # noqa: RUF001
 
 
 def _parsed(text: str) -> Session:
@@ -69,3 +72,20 @@ def test_a_document_the_grammar_refuses_is_refused_by_line(
     assert (refused.value.name, refused.value.line) == ("2026-09-18.md", line)
     assert fragment in refused.value.message
     assert str(refused.value).startswith(f"2026-09-18.md:{line}: ")
+
+
+def test_reps_sum_the_sets_and_volume_is_load_times_reps_but_not_at_bodyweight() -> (
+    None
+):
+    deadlift, pull = _parsed(
+        "# Deadlift 14 kg\n3 sets of 10\n\n# Pull-up bw+10\nsets of 5 / 5 / 4\n"
+    ).movements
+
+    assert (deadlift.reps, deadlift.volume) == (30, 420)
+    assert (pull.reps, pull.volume) == (14, None)
+
+
+def test_a_heading_in_another_script_reads_as_any_other() -> None:
+    [swing] = _parsed(f"# {ONE_ARM_SWING} 14 kg\n2 sets of 10\n").movements
+
+    assert (swing.name, swing.load, swing.reps) == (ONE_ARM_SWING, Load("kg", 14), 20)

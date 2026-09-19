@@ -35,6 +35,14 @@ class Movement:
     sets: tuple[int, ...] = ()
     notes: tuple[str, ...] = ()
 
+    @property
+    def reps(self) -> int:
+        return sum(self.sets)
+
+    @property
+    def volume(self) -> float | None:
+        return self.load.value * self.reps if self.load.kind == "kg" else None
+
 
 @dataclass(frozen=True)
 class Session:
