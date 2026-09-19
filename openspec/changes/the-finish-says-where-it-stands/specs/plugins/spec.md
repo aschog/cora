@@ -1,6 +1,6 @@
 As someone training,\
-I want a save that worked to say nothing,\
-so that the trainer stays the trainer.
+I want the finish button to say where the workout stands,\
+so that the trainer stays the trainer and I still know.
 
 ## MODIFIED Requirements
 
@@ -8,8 +8,10 @@ so that the trainer stays the trainer.
 
 Finishing a workout SHALL upload it into the fitness field as a Markdown document named
 for the moment it was saved, the day first and the time behind it. The finish SHALL be
-offered only once a set has been logged. A save cora took SHALL say nothing on the page,
-except who ended the workout when the watch did. The text SHALL open with the workout's
+offered only once a set has been logged, and the button SHALL read where the workout
+stands: that no sets are logged yet, finish, or saved until the next set is logged. A
+save cora took SHALL say nothing on the strip, except who ended the workout when the
+watch did. The text SHALL open with the workout's
 name, taken from the sheet the plan was read from, where the plan came from a sheet.
 Below it SHALL be a heading per exercise carrying its load, followed by the sets it
 took. An exercise nothing was logged for SHALL NOT appear.
@@ -25,7 +27,8 @@ took. An exercise nothing was logged for SHALL NOT appear.
 
 - **GIVEN** a workout finished from the button
 - **WHEN** cora takes it
-- **THEN** the strip says nothing
+- **THEN** the button reads saved and the strip says nothing, until the next set is
+  logged
 
 #### Scenario: The save says which workout it was
 
@@ -55,4 +58,4 @@ took. An exercise nothing was logged for SHALL NOT appear.
 
 - **GIVEN** a workout with no set logged
 - **WHEN** the reader looks for the finish
-- **THEN** it is not enabled, and nothing is uploaded
+- **THEN** it reads that no sets are logged yet, is not enabled, and nothing is uploaded

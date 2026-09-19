@@ -1106,7 +1106,7 @@ function handoff(text, who = ''){
   body.append('scope', FIELD);
   fetch(UPLOAD, {method: 'POST', body})
     .then(r => r.json().then(answered => r.ok
-      ? warn(who + 'Saved to ' + FIELD + ' — ' + answered.document, true)
+      ? warn(who.replace(/\s*—\s*$/, ''), true)   // a save that worked says nothing, unless the watch ended it
       : Promise.reject(answered.error || ('HTTP ' + r.status))))
     .catch(why => copy(typeof why === 'string' ? why : ''));
 }

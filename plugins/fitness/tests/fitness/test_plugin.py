@@ -3,8 +3,6 @@ import pathlib
 import re
 import urllib.parse
 
-import pytest
-
 import cora.plugins.fitness as fitness
 from cora.plugins.fitness import INSTRUCTIONS, SCOPE, extend
 from cora.ports.host import HANDLER, PAGE, SCREENING, TOOL
@@ -307,7 +305,6 @@ def test_the_finish_is_named_so_and_offered_only_once_a_set_is_logged() -> None:
     assert re.search(r"finishEl\.disabled\s*=\s*!PLAN\.some\(", drawn)
 
 
-@pytest.mark.xfail(strict=True, reason="a save that worked writes a line on the strip")
 def test_a_save_cora_took_says_nothing_on_the_strip() -> None:
     """A refused save still says so, and the watch's line stays: what goes is the line
     for a save that worked, which the History and the rail already say."""
