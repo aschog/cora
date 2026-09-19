@@ -880,3 +880,15 @@ test("a logged set starts the count again", async ({ page }) => {
 
   await expect(page.locator("#repnum")).toHaveText("0");
 });
+
+test("another exercise starts the count again", async ({ page }) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(3, snatch));
+  await expect(page.locator("#repnum")).toHaveText("3");
+
+  await page.evaluate(() =>
+    (window as unknown as { step: (d: number) => void }).step(1),
+  );
+
+  await expect(page.locator("#repnum")).toHaveText("0");
+});

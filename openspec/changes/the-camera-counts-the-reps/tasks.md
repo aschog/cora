@@ -25,7 +25,7 @@ test is held with `test.fail()` until the list is done.
 - [x] 3.2 Write a test that it is hidden with the overlay off.
 - [x] 3.3 Write a test that it is hidden while a rest is running.
 - [x] 3.4 Write a test that logging a set puts the count back to nought.
-- [ ] 3.5 Write a test that moving to another exercise puts the count back to nought.
+- [x] 3.5 Write a test that moving to another exercise puts the count back to nought.
 - [ ] 3.6 Write a test that the sets keep the reps the plan and the taps gave them.
 
 ## 4. The finish

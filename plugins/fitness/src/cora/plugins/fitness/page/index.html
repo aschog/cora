@@ -606,10 +606,17 @@ const CLIP_LBL = ['Full', 'Short'];
 let view = null;
 const curIdx = () => PLAN.findIndex(p => p.id === cur);
 const curEx = () => PLAN[curIdx()];
-/** Move the focus d exercises along the plan; the stream keeps running. */
+/** Put the focus on an exercise; the stream keeps running and the count starts over. */
+function goTo(id){
+  if (id === cur) return;
+  cur = id;
+  repReset();
+  render();
+}
+/** Move the focus d exercises along the plan. */
 function step(d){
   const next = PLAN[curIdx() + d];
-  if (next){ cur = next.id; render(); }
+  if (next) goTo(next.id);
 }
 /** Put v in the frame. The camera only runs while it is the one showing. */
 function show(v){
@@ -715,7 +722,7 @@ document.getElementById('app').addEventListener('click', e => {
   const nav = t.closest('[data-nav]');
   if (nav){ step(+nav.dataset.nav); return; }
   const go = t.closest('[data-go]');
-  if (go){ cur = go.dataset.go; render(); return; }
+  if (go){ goTo(go.dataset.go); return; }
   const log = t.closest('[data-log]');
   if (log){
     const p = curEx(), s = ses.ex[p.id], i = +log.dataset.log;
