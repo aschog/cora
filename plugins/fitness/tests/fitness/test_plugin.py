@@ -302,4 +302,26 @@ def test_the_finish_is_named_so_and_offered_only_once_a_set_is_logged() -> None:
 
     assert "Save &amp; finish" not in drawn
     assert re.search(r'id="finish">.*?</svg> Finish</button>', drawn)
-    assert re.search(r"finishEl\.disabled\s*=\s*!PLAN\.some\(", drawn)
+    assert re.search(
+        r"const logged = PLAN\.some\(.*\n\s*finishEl\.disabled = !logged", drawn
+    )
+
+
+def test_a_save_cora_took_says_nothing_on_the_strip() -> None:
+    """A refused save still says so, and the watch's line stays: what goes is the line
+    for a save that worked, which the History and the rail already say."""
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    assert "'Saved to '" not in drawn
+    assert "Not saved to cora" in drawn
+
+
+def test_the_finish_reads_where_the_workout_stands() -> None:
+    """Three faces on one control: nothing logged yet, finish, and saved — the last
+    held until a set is logged again."""
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    assert "No sets logged yet" in drawn
+    assert "CHECK + ' Saved'" in drawn
+    assert "saved = true" in drawn
+    assert "saved = false" in drawn

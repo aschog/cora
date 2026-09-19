@@ -60,7 +60,7 @@ test('a workout finished in the trainer becomes a document of the fitness field'
   page.once('dialog', (asked) => asked.accept())
   await page.getByRole('button', { name: /FINISH/i }).click()
 
-  await expect(page.locator('#warn')).toContainText('Saved to fitness', {
+  await expect(page.getByRole('button', { name: /^saved$/i })).toBeVisible({
     timeout: 15_000,
   })
 
@@ -115,7 +115,7 @@ test('a workout with nothing logged is not saved, and says so', async ({ page })
   })
 
   /* No set logged: there is nothing to hand over, so there is nothing to press. */
-  await expect(page.getByRole('button', { name: /FINISH/i })).toBeDisabled()
+  await expect(page.getByRole('button', { name: /no sets logged yet/i })).toBeDisabled()
   expect(asked, 'nothing was uploaded').toBe(0)
 })
 

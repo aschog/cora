@@ -13,7 +13,8 @@ of them still answers.
 ## Fitness brings a screen
 
 Pin a conversation to `fitness` and the middle of the page becomes a trainer: the plan
-one exercise at a time, its sets and working weight, the clip for it playing in the same frame, and the camera to film yourself against. **Finish**, offered once a set is logged, writes the workout into the `fitness` field as a
+one exercise at a time, its sets and working weight, the clip for it playing in the same frame, and the camera to film yourself against. **Finish** — which reads *no sets logged yet* until one is, and *saved* once cora has
+the workout — writes it into the `fitness` field as a
 Markdown document named for the moment it was saved, opening with the name of the sheet's
 tab the plan came from — so the next question about it is answered from your own log,
 with the day cited. Refused or unreachable, the workout goes to the clipboard
