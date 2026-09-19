@@ -4,6 +4,7 @@ from datetime import date
 from typing import Any
 
 from cora.ports.host import Host
+from cora.ports.plugin import ToolRefusal
 
 NUMBER = r"\d+(?:\.\d+)?"
 DATED = re.compile(r"^(\d{4}-\d{2}-\d{2})\.[A-Za-z0-9]+$")
@@ -102,7 +103,35 @@ def _number(value: float) -> str:
 def list_workouts(
     cora: Host, exercise: str | None = None, since: str | None = None
 ) -> list[dict[str, Any]] | str:
-    return [_listed(session) for session in _sessions(cora)]
+    sessions = _sessions(cora)
+    if exercise:
+        sessions = _only(sessions, exercise)
+    if since:
+        sessions = [session for session in sessions if session.day >= _day(since)]
+    return [_listed(session) for session in sessions]
+
+
+def _only(sessions: list[Session], exercise: str) -> list[Session]:
+    wanted = exercise.casefold()
+    kept = [
+        replace(
+            session,
+            movements=tuple(
+                m for m in session.movements if m.name.casefold() == wanted
+            ),
+        )
+        for session in sessions
+    ]
+    return [session for session in kept if session.movements]
+
+
+def _day(since: str) -> date:
+    try:
+        return date.fromisoformat(since)
+    except ValueError as error:
+        raise ToolRefusal(
+            f"since must be a day as YYYY-MM-DD, not {since!r}"
+        ) from error
 
 
 def _sessions(cora: Host) -> list[Session]:

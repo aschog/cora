@@ -14,6 +14,7 @@ from cora.plugins.fitness.workouts import (
     parse_session,
 )
 from cora.ports.context_source import Document
+from cora.ports.plugin import ToolRefusal
 from fakes import FakeContextSource, host_for
 
 DAY = date(2026, 9, 18)
@@ -160,3 +161,28 @@ def test_a_dated_document_the_grammar_refuses_is_left_out_and_said_so() -> None:
     assert skipped.failed
     assert "2026-09-17.md" in skipped.summary
     assert "2026-09-17.md:1:" in skipped.detail
+
+
+def test_an_exercise_keeps_only_its_movements_and_drops_a_session_left_empty() -> None:
+    listed = _listing(
+        ("2026-09-16.md", SWING),
+        ("2026-09-18.md", f"{DEADLIFT}\n\n{SNATCH}"),
+        exercise="deadlift",
+    )
+
+    assert [(s["date"], [m["name"] for m in s["movements"]]) for s in listed] == [
+        ("2026-09-18", ["Deadlift"])
+    ]
+
+
+def test_a_day_drops_the_sessions_before_it() -> None:
+    listed = _listing(
+        ("2026-09-16.md", SWING), ("2026-09-18.md", DEADLIFT), since="2026-09-18"
+    )
+
+    assert [session["date"] for session in listed] == ["2026-09-18"]
+
+
+def test_a_since_that_is_not_a_day_refuses_the_call() -> None:
+    with pytest.raises(ToolRefusal, match="last week"):
+        _listing(("2026-09-18.md", DEADLIFT), since="last week")
