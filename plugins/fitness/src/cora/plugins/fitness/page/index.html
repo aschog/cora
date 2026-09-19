@@ -987,9 +987,12 @@ function repSaw(lm, now){
   if (swing < REP_MIN_SWING) return;
 
   const x = where[axis], top = hi - swing*REP_EDGE, bottom = lo + swing*REP_EDGE;
-  if (axis !== reps.axis){                     // a coordinate just taken over says nothing
+  /* A coordinate just taken over counts nothing yet, and its latch is set from the
+     oldest frame rather than this one: the side the swing came from is what makes the
+     first full traverse a rep, whichever end of the movement the lifter started at. */
+  if (axis !== reps.axis){
     reps.axis = axis;
-    reps.up = x > top;
+    reps.up = reps.seen[0].where[axis] > top;
     return;
   }
   if (!reps.up && x > top){

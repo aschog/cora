@@ -755,3 +755,23 @@ test("a body crossing the frame is not counted", async ({ page }) => {
 
   await expect(page.locator("#repnum")).toHaveText("0");
 });
+
+/* A push-up: the wrists are planted on the floor and the torso travels to meet them,
+   which is the same signal read the other way round. */
+const pushUp = (phase: number): Frame => {
+  const drop = 0.12 * Math.cos(phase);
+  return pose({
+    wrist: { x: 0.5, y: 0.92 },
+    shoulder: 0.35 + drop,
+    hip: 0.65 + drop,
+  });
+};
+
+test("a torso moving over planted wrists counts one a cycle", async ({
+  page,
+}) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(4, pushUp));
+
+  await expect(page.locator("#repnum")).toHaveText("4");
+});
