@@ -78,6 +78,7 @@ header .go:active{opacity:.75;background:var(--blue)}
 }
 .nav button:active{background:var(--line)}
 .nav button:disabled{opacity:.3}
+#finish:disabled{opacity:.35}
 /* the camera and the two clips are one row of square buttons, and whichever
    of them is filling the frame is the lit one */
 .thumb,.camshot{
@@ -309,7 +310,7 @@ body.resting.view-cam #restview,body.resting.view-clip #restview{display:flex}
 <header>
   <button id="hist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.3 12a8.7 8.7 0 1 0 2.9-6.5L3 8"/><path d="M3 3.6V8h4.4"/><path d="M12 7.6V12l3 1.9"/></svg> History</button>
   <span id="watch"></span>
-  <button class="go" id="finish"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.7"/><path d="m8.1 12.3 2.7 2.7 5.1-5.5"/></svg> Save &amp; finish</button>
+  <button class="go" id="finish"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.7"/><path d="m8.1 12.3 2.7 2.7 5.1-5.5"/></svg> Finish</button>
 </header>
 <div id="warn"></div>
 
@@ -606,6 +607,7 @@ function render(){
   document.body.classList.toggle('view-cam', view === 'cam');
   document.body.classList.toggle('view-clip', typeof view === 'number');
   document.body.style.setProperty('--accent', p.w ? bell(s.w) : '#868D99');
+  finishEl.disabled = !PLAN.some(q => ses.ex[q.id].done > 0);   // nothing to finish yet
 
   head.innerHTML = `
     <button class="camshot${view === 'cam' ? ' live' : ''}" data-cam
@@ -998,7 +1000,8 @@ function finish(byWatch){
   ses = newSession();
   render();
 }
-document.getElementById('finish').addEventListener('click', () => finish(false));
+const finishEl = document.getElementById('finish');
+finishEl.addEventListener('click', () => finish(false));
 
 /* Sets of equal length read as 3×10; an exercise cut short reads 10+10+8.
    Sessions logged before reps were per set only kept the plan's number. */

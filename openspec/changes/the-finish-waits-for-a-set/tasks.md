@@ -4,4 +4,4 @@
 
 ## 2. Close it
 
-- [ ] 2.1 Drop the marker and watch it pass, the browser suite expecting a disabled finish for nothing logged.
+- [x] 2.1 Drop the marker and watch it pass, the browser suite expecting a disabled finish for nothing logged.

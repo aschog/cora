@@ -58,7 +58,7 @@ test('a workout finished in the trainer becomes a document of the fitness field'
   await expect(page.locator('.set.on')).toHaveCount(1)
 
   page.once('dialog', (asked) => asked.accept())
-  await page.getByRole('button', { name: /SAVE & FINISH/i }).click()
+  await page.getByRole('button', { name: /FINISH/i }).click()
 
   await expect(page.locator('#warn')).toContainText('Saved to fitness', {
     timeout: 15_000,
@@ -91,7 +91,7 @@ test('a workout cora would not take is said to be lost and kept all the same', a
   await page.locator('.set').first().click()
 
   page.once('dialog', (asked) => asked.accept())
-  await page.getByRole('button', { name: /SAVE & FINISH/i }).click()
+  await page.getByRole('button', { name: /FINISH/i }).click()
 
   await expect(page.locator('#warn')).toContainText('Not saved to cora')
   /* And it is still the reader's: with no clipboard to put it on, the page opens the
@@ -114,12 +114,8 @@ test('a workout with nothing logged is not saved, and says so', async ({ page })
     return call.continue()
   })
 
-  /* No set logged: there is nothing to hand over, and the reader has to be told that
-     rather than left with a button that did nothing. */
-  page.once('dialog', (shown) => shown.accept())
-  await page.getByRole('button', { name: /SAVE & FINISH/i }).click()
-
-  await expect(page.locator('#warn')).toContainText(/[Nn]othing logged/)
+  /* No set logged: there is nothing to hand over, so there is nothing to press. */
+  await expect(page.getByRole('button', { name: /FINISH/i })).toBeDisabled()
   expect(asked, 'nothing was uploaded').toBe(0)
 })
 
