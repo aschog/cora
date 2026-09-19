@@ -4,7 +4,7 @@
 REACT := cora.frontends.react.server
 TELEGRAM := cora.frontends.telegram.server
 
-.PHONY: run run-env bot bot-env plugins plugins-env ui ui-build ui-test e2e e2e-store e2e-live docs docs-serve diagram
+.PHONY: run run-env bot bot-env plugins plugins-env ui ui-build ui-test e2e e2e-store e2e-live docs docs-serve diagram watch
 
 # cora, as one process serving the page and the API on 127.0.0.1:8000. It builds first
 # because the server only ever reads `ui/dist` — without that a source change is
@@ -100,3 +100,24 @@ diagram:
 	uv run python scripts/gen_component_map.py
 	uv run python scripts/gen_domain_map.py
 	uv run python scripts/gen_session_maps.py
+
+# The fitness field's screen for the wrist: one data page added to a sport in the watch's
+# own workout app, which writes that field's notice when it opens and when its control is
+# tapped. The address is baked in because a watch has no settings screen to type one into
+# — and it is this machine's name on the network, not loopback, because the phone is what
+# does the HTTP. Override it with `make watch CORA_AT=http://…`, and the device with
+# `WATCH_DEVICE=`. The build prints a QR code; scanning it in Zepp with developer mode on
+# is the install.
+WATCH := plugins/fitness/watch
+WATCH_FIELD ?= fitness
+WATCH_DEVICE ?= Amazfit Balance
+CORA_AT ?= http://$(shell scutil --get LocalHostName 2>/dev/null || hostname -s).local:8000
+
+watch:
+	@command -v zeus >/dev/null 2>&1 || { \
+	  echo "zeus is not installed. Install it with: npm i -g @zeppos/zeus-cli"; exit 1; }
+	@printf "export const NOTICE = '%s'\n" \
+	  "$(CORA_AT)/api/scopes/$(WATCH_FIELD)/notice" > $(WATCH)/config.js
+	@echo "wrote $(WATCH)/config.js pointing at $(CORA_AT)"
+	@cd $(WATCH) && [ -d node_modules ] || npm install --silent
+	cd $(WATCH) && zeus preview -t "$(WATCH_DEVICE)"

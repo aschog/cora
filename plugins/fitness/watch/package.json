@@ -1,0 +1,6 @@
+{
+  "name": "cora-fitness-watch",
+  "private": true,
+  "description": "Zepp OS workout extension: one screen inside a system workout that starts and finishes cora's workout",
+  "dependencies": {"@zeppos/zml": "0.0.43"}
+}

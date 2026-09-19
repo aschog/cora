@@ -1,3 +1,4 @@
+import json
 import pathlib
 import re
 import urllib.parse
@@ -90,18 +91,28 @@ def test_the_trainer_reaches_only_the_hosts_it_is_said_to() -> None:
 
 
 def test_the_trainer_asks_for_its_plan_and_hands_the_workout_to_cora() -> None:
-    """Two things it fetches and no third: the plan it trains from, which is read, and
-    the workout it finished, which is the one thing it sends anywhere — and that goes to
-    cora. A log server of its own, a watch listener, a second place to write: each would
-    be an answer to a problem cora answers."""
+    """Three things it fetches and no fourth: the plan it trains from, the field's
+    notice, which says what the wrist is doing, and the workout it finished — which is
+    the one thing it sends anywhere, and goes to cora. A log server of its own, a watch
+    listener, a second place to write: each would answer a problem cora answers."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     asked = re.findall(r"fetch\(\s*([A-Za-z_$][\w$]*)", drawn)
     posted = re.findall(r"fetch\(\s*([A-Za-z_$][\w$]*)[^)]*method:\s*'POST'", drawn)
 
-    assert sorted(set(asked)) == ["SHEET_CSV", "UPLOAD"]
+    assert sorted(set(asked)) == ["NOTICE", "SHEET_CSV", "UPLOAD"]
     assert posted == ["UPLOAD"]
     assert "const UPLOAD = '/api/documents'" in drawn
+    assert "'/api/scopes/' + encodeURIComponent(FIELD) + '/notice'" in drawn
+
+
+def test_the_trainer_asks_for_no_pulse_and_writes_no_heart_line() -> None:
+    """The lifter asked for a clock and not a heartbeat. Nothing writes a pulse once the
+    sensor is gone, and a heart line reading a dash is worse than no heart line."""
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    assert "♥" not in drawn
+    assert "bpm" not in drawn
 
 
 def test_the_shipped_plan_is_written_in_the_language_the_coach_answers_in() -> None:
@@ -116,3 +127,87 @@ def test_the_shipped_plan_is_written_in_the_language_the_coach_answers_in() -> N
     assert all(each.isascii() for each in named), [
         each for each in named if not each.isascii()
     ]
+
+
+WATCH = pathlib.Path(fitness.__file__).parents[4] / "watch"
+
+
+def _widget() -> str:
+    return (WATCH / "data-widget" / "index.js").read_text()
+
+
+def test_the_watch_app_ships_outside_the_module_a_wheel_carries() -> None:
+    """The extension is JavaScript for a watch, built by the Zepp tooling and installed
+    by hand. Under `src` it would ride in the wheel as the page rightly does, and cora
+    would serve a build input at an address."""
+    packaged = pathlib.Path(fitness.__file__).parent
+
+    assert (WATCH / "app.json").is_file()
+    assert WATCH.is_dir() and packaged not in WATCH.parents
+    assert not list(packaged.rglob("data-widget"))
+
+
+def test_the_watch_writes_the_field_notice_when_its_screen_opens() -> None:
+    """onInit and nothing later: the workout app creates this page when the workout
+    starts, and that is the moment the trainer's workout has to start from."""
+    drawn = _widget()
+
+    opened = re.search(r"onInit\(\)\s*\{(.*?)\n  \}", drawn, re.S)
+
+    assert opened, "the widget says nothing at onInit"
+    assert "this.write(RUNNING)" in opened.group(1)
+
+
+def test_a_second_workout_can_be_finished_from_the_wrist_too() -> None:
+    """`state` is one object for the life of the app, not one per page — so a flag left
+    true by the first workout's tap is a second workout whose control does nothing. It
+    is reset where a workout begins, which is where its screen is created."""
+    drawn = _widget()
+
+    opened = re.search(r"onInit\(\)\s*\{(.*?)\n  \}", drawn, re.S)
+
+    assert opened and "this.state.done = false" in opened.group(1)
+
+
+def test_a_tap_cora_never_took_can_be_tapped_again() -> None:
+    """The one failure the lifter is standing there for: the phone could not reach cora,
+    and a control spent on a write that never landed is a workout they cannot save
+    without starting the whole thing again."""
+    drawn = _widget()
+
+    assert re.search(r"this\.write\(FINISHED\)\s*\.then\(", drawn)
+    assert "this.state.done = false" in drawn.split("finish()")[-1]
+
+
+def test_the_watch_finishes_the_workout_from_a_tap_and_from_nothing_else() -> None:
+    """The end of a system workout reaches nothing, so the finish is a click. One
+    handler, on the one control — a second way in would be a second way to save a
+    workout by accident."""
+    drawn = _widget()
+
+    assert drawn.count("click_func") == 1
+    assert "click_func: () => this.finish()" in drawn
+    assert drawn.count("this.finish()") == 1, "one caller, whatever it is bound to"
+    assert re.search(r"finish\(\)\s*\{.*?this\.write\(FINISHED\)", drawn, re.S)
+    assert drawn.count("this.write(") == 2, (
+        "it writes at onInit and at the tap, no more"
+    )
+
+
+def test_the_watch_writes_the_notice_and_reaches_nothing_else() -> None:
+    """One address, and it is the one the build wrote. A host spelled into the source
+    is a watch that keeps writing wherever it was built for."""
+    drawn = _widget()
+
+    assert re.findall(r"httpRequest\(\{[^}]*url: (\w+)", drawn) == ["NOTICE"]
+    assert "import { NOTICE } from '../config'" in drawn
+    assert not re.search(r"https?://", drawn)
+
+
+def test_the_watch_asks_for_no_permission() -> None:
+    """The lifter wanted a clock, not a heartbeat — and a workout extension that reads
+    the pulse is one the wearer is asked to allow."""
+    manifest = json.loads((WATCH / "app.json").read_text())
+
+    assert manifest["permissions"] == []
+    assert "heart" not in _widget().lower()

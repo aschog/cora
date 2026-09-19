@@ -11,6 +11,7 @@ import json
 import logging
 import pathlib
 import threading
+import time
 from collections.abc import AsyncIterator, Callable
 from typing import Any
 from urllib.parse import quote
@@ -72,6 +73,7 @@ def api(
     Handed a `LiveApp`, every request reads the composition the plugins folder
     describes by then; handed an `App`, the page serves that one for good."""
     apps = app.current if isinstance(app, LiveApp) else (lambda: app)
+    notices: dict[str, Notice] = {}
     routes: list[Route | Mount] = [
         Route("/api/documents", _documents(apps), methods=["GET"]),
         Route("/api/documents", _ingest(apps), methods=["POST"]),
@@ -94,6 +96,8 @@ def api(
         Route("/api/plugins", _plugins(apps), methods=["GET"]),
         Route("/api/plugins/{name}", _delete_plugin(apps), methods=["DELETE"]),
         Route("/api/scopes", _scopes(apps), methods=["GET"]),
+        Route("/api/scopes/{scope}/notice", _notice(apps, notices), methods=["GET"]),
+        Route("/api/scopes/{scope}/notice", _noticed(apps, notices), methods=["PUT"]),
         Route(f"{PAGES}/{{scope}}/{{path:path}}", _page(apps), methods=["GET", "HEAD"]),
     ]
     if ui is not None and ui.is_dir():
@@ -355,10 +359,16 @@ async def _read_within(request: Request, ceiling: int) -> bytes | None:
     return bytes(read)
 
 
-async def _json_object(request: Request, refusal: str) -> Any:
-    body = await _read_within(request, MAX_ASK_BYTES)
+async def _json_object(
+    request: Request,
+    refusal: str,
+    *,
+    ceiling: int = MAX_ASK_BYTES,
+    too_long: str = TOO_LONG_TO_ASK,
+) -> Any:
+    body = await _read_within(request, ceiling)
     if body is None:
-        return JSONResponse({"error": TOO_LONG_TO_ASK}, status_code=TOO_LARGE)
+        return JSONResponse({"error": too_long}, status_code=TOO_LARGE)
     try:
         parsed = json.loads(body)
     except ValueError:
@@ -531,6 +541,47 @@ def _scopes(apps: Apps) -> Callable[[Request], Any]:
         )
 
     return offered
+
+
+Notice = dict[str, Any]
+
+KILOBYTE = 1024
+NOTICE_CEILING = 4 * KILOBYTE
+TOO_MUCH_NOTICE = f"A notice is at most the {NOTICE_CEILING // KILOBYTE} KB cora holds."
+NOT_A_NOTICE = "A notice has to be a JSON object."
+
+
+def _notice(apps: Apps, notices: dict[str, Notice]) -> Callable[[Request], Any]:
+    async def held(request: Request) -> JSONResponse:
+        app = await run_in_threadpool(apps)
+        named = request.path_params["scope"]
+        scope = _field(named, app.scopes)
+        if scope is None:
+            return _refusal(named, app.scopes)
+        return JSONResponse(notices.get(scope) or {"notice": None})
+
+    return held
+
+
+def _noticed(apps: Apps, notices: dict[str, Notice]) -> Callable[[Request], Any]:
+    async def take(request: Request) -> JSONResponse:
+        app = await run_in_threadpool(apps)
+        named = request.path_params["scope"]
+        scope = _field(named, app.scopes)
+        if scope is None:
+            return _refusal(named, app.scopes)
+        written = await _json_object(
+            request, NOT_A_NOTICE, ceiling=NOTICE_CEILING, too_long=TOO_MUCH_NOTICE
+        )
+        if isinstance(written, JSONResponse):
+            return written
+        # Cora's own clock and never the writer's: a watch or a sensor has one of its
+        # own and no reason to share this machine's, so the one time in a notice that
+        # anything can reason about is the time it arrived here.
+        notices[scope] = {"notice": written, "at": int(time.time() * 1000)}
+        return JSONResponse(notices[scope])
+
+    return take
 
 
 def _page(apps: Apps) -> Callable[[Request], Any]:

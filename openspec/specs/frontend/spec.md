@@ -498,3 +498,154 @@ middle of the screen, and the sessions panel SHALL be the list alone.
 - **GIVEN** the rail chatting a conversation of a field with a page
 - **WHEN** the reader opens one from the list that is fixed to nothing
 - **THEN** the conversation is drawn in the middle and the rail is the list again
+
+### Requirement: A field keeps one notice
+
+The system SHALL hold, for each field it offers, the last notice written to that
+field, and SHALL answer it to whoever asks. A notice SHALL be a JSON object, and a
+second notice SHALL replace the first whole rather than be merged into it. A field
+SHALL keep a notice of its own, no field reading another's.
+
+#### Scenario: A notice is written and read back
+
+- **GIVEN** a field cora offers
+- **WHEN** a notice is written to it and then asked for
+- **THEN** what was written is answered
+
+#### Scenario: A second notice
+
+- **GIVEN** a field holding a notice naming two things
+- **WHEN** a notice naming one of them is written
+- **THEN** what is answered is the second notice alone
+
+#### Scenario: One field's notice is not another's
+
+- **GIVEN** two fields cora offers, each written a notice of its own
+- **WHEN** each is asked for
+- **THEN** each answers what was written to it
+
+### Requirement: A notice says when cora heard it
+
+The system SHALL record, on every notice it takes, the time it arrived by cora's own
+clock, and SHALL answer that time with the notice. A time the writer states SHALL NOT
+replace it, so no writer's clock has to agree with cora's.
+
+#### Scenario: The arrival is answered with the notice
+
+- **WHEN** a notice is written and then asked for
+- **THEN** the answer carries the time cora took it
+
+#### Scenario: A writer stating its own time
+
+- **GIVEN** a notice carrying a time of the writer's own
+- **WHEN** it is asked for
+- **THEN** the time cora took it is the one the answer is stamped with
+
+### Requirement: A field written to by nobody has no notice
+
+The system SHALL answer that a field has no notice where none has been written, and
+SHALL NOT treat that as a failure. A notice SHALL last as long as the process holding
+it, and SHALL be gone when cora is started again.
+
+#### Scenario: Nothing written yet
+
+- **GIVEN** a field cora offers and nobody has written to
+- **WHEN** its notice is asked for
+- **THEN** the answer says there is none
+
+#### Scenario: Cora is restarted
+
+- **GIVEN** a field whose notice was written before cora was restarted
+- **WHEN** its notice is asked for
+- **THEN** the answer says there is none
+
+### Requirement: A notice belongs to a field cora offers
+
+The system SHALL refuse to hold or answer a notice for a name that is not a field of
+the running composition, and SHALL say which fields there are. A field that arrives
+with a plugin SHALL take a notice from that moment, and one whose plugin is gone
+SHALL refuse both, the plugins folder being live.
+
+#### Scenario: A name that is no field
+
+- **WHEN** a notice is written to a name cora offers no field under
+- **THEN** it is refused, and the refusal names the fields there are
+
+#### Scenario: Asking for one
+
+- **WHEN** the notice of a name that is no field is asked for
+- **THEN** it is refused, and cora answers everything else as usual
+
+#### Scenario: A field arrives with its plugin
+
+- **GIVEN** a running cora, and a plugin bringing a field dropped into the folder
+- **WHEN** a notice is written to that field
+- **THEN** it is taken, with nothing restarted
+
+### Requirement: A notice is small
+
+The system SHALL refuse a notice larger than a few kilobytes, SHALL leave the held
+notice unchanged when it does, and SHALL refuse a body that is not a JSON object.
+
+#### Scenario: Too large
+
+- **GIVEN** a field already holding a notice
+- **WHEN** a notice past the ceiling is written
+- **THEN** it is refused, and the held notice still answers
+
+#### Scenario: Not an object
+
+- **WHEN** a body that is not a JSON object is written
+- **THEN** it is refused, and the held notice is unchanged
+
+### Requirement: A field that speaks takes the screen
+
+The shell SHALL ask each field that has a page for its notice, every few seconds. A
+notice written after the last one that field was seen to hold SHALL open that field's
+newest conversation, whatever the notice says — the shell reads that one was written and
+nothing of what is in it. A field with no conversation pinned to it SHALL open nothing,
+and neither SHALL a notice already standing when the page was loaded.
+
+#### Scenario: A notice is written while the reader is elsewhere
+
+- **GIVEN** a conversation pinned to a field with a page, and another conversation on
+  the screen
+- **WHEN** that field's notice is written
+- **THEN** the pinned conversation is opened, and its field's page is what the screen is
+  about
+
+#### Scenario: The newest of several
+
+- **GIVEN** two conversations pinned to that field
+- **WHEN** its notice is written
+- **THEN** the one that answered most recently is opened
+
+#### Scenario: Already there
+
+- **GIVEN** that field's conversation already on the screen
+- **WHEN** its notice is written
+- **THEN** the screen does not move
+
+#### Scenario: A field nothing is pinned to
+
+- **GIVEN** a field with a page and no conversation pinned to it
+- **WHEN** its notice is written
+- **THEN** nothing is opened and the reader is left where they were
+
+#### Scenario: What was already standing
+
+- **GIVEN** a field whose notice was written before the page was loaded
+- **WHEN** the page loads
+- **THEN** the screen stays on the conversation the address names
+
+#### Scenario: A field with no page
+
+- **GIVEN** a field that brought no page
+- **WHEN** the shell asks for the notices
+- **THEN** that field is not among them
+
+#### Scenario: Nothing answering
+
+- **GIVEN** a notice that cannot be read
+- **WHEN** the shell asks for it
+- **THEN** the rest of the page is unaffected and no banner is raised
