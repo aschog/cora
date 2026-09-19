@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 
+from cora.engine.nesting import collecting
 from cora.plugins.fitness.workouts import (
     Load,
     LogError,
@@ -141,3 +142,21 @@ def test_a_document_not_named_for_a_day_is_not_a_session() -> None:
     listed = _listing(("training-plan.md", PLAN), ("2026-09-16.md", SWING))
 
     assert [session["date"] for session in listed] == ["2026-09-16"]
+
+
+def test_a_dated_document_the_grammar_refuses_is_left_out_and_said_so() -> None:
+    held = [
+        Document(name="2026-09-17.md", text="# Snatch\n10 sets of 10", scope="fitness"),
+        Document(name="2026-09-18.md", text=DEADLIFT, scope="fitness"),
+    ]
+    host = host_for(MODULE, documents=FakeContextSource(held=held))
+
+    with collecting() as taken:
+        listed = list_workouts(host)
+
+    assert isinstance(listed, list)
+    assert [session["date"] for session in listed] == ["2026-09-18"]
+    [skipped] = taken.steps
+    assert skipped.failed
+    assert "2026-09-17.md" in skipped.summary
+    assert "2026-09-17.md:1:" in skipped.detail

@@ -18,7 +18,7 @@
 - [x] 3.1 Write a test that every document named for a day is a session dated from its name, oldest first.
 - [x] 3.2 Write a test that two documents of one day are one session, movements in upload order.
 - [x] 3.3 Write a test that a document not named for a day is not a session.
-- [ ] 3.4 Write a test that a dated document the grammar refuses is left out and said so on the trace.
+- [x] 3.4 Write a test that a dated document the grammar refuses is left out and said so on the trace.
 - [ ] 3.5 Write a test that an exercise keeps only its movements, whatever the case, and drops a session left empty.
 - [ ] 3.6 Write a test that a day drops the sessions before it.
 - [ ] 3.7 Write a test that a movement says whether it rose on the previous session of that exercise.

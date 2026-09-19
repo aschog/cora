@@ -111,7 +111,11 @@ def _sessions(cora: Host) -> list[Session]:
         day = _day_of(document.name)
         if day is None:
             continue
-        parsed = parse_session(document.text, day, document.name)
+        try:
+            parsed = parse_session(document.text, day, document.name)
+        except LogError as refused:
+            cora.show(f"skipped {document.name}", detail=str(refused), failed=True)
+            continue
         by_day.setdefault(day, []).extend(parsed.movements)
     return [Session(day, tuple(moved)) for day, moved in sorted(by_day.items())]
 
