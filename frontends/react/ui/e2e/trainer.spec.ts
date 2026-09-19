@@ -836,3 +836,10 @@ test("a wrist travelling a circle counts one a circle", async ({ page }) => {
 
   await expect(page.locator("#repnum")).toHaveText("4");
 });
+
+test("the count shows over the frame", async ({ page }) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(2, snatch));
+
+  await expect(page.locator("#repview")).toBeVisible();
+});

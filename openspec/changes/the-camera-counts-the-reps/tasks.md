@@ -21,7 +21,7 @@ test is held with `test.fail()` until the list is done.
 
 ## 3. The readout
 
-- [ ] 3.1 Write a test that the count shows over the frame while the overlay is on.
+- [x] 3.1 Write a test that the count shows over the frame while the overlay is on.
 - [ ] 3.2 Write a test that it is hidden with the overlay off.
 - [ ] 3.3 Write a test that it is hidden while a rest is running.
 - [ ] 3.4 Write a test that logging a set puts the count back to nought.

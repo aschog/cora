@@ -229,7 +229,9 @@ body.resting.view-cam #restview,body.resting.view-clip #restview{display:flex}
 /* the count is read, never tapped, and it wears the bell's colour so it is not
    mistaken for the rest timer */
 #repview .num{pointer-events:none;cursor:default;color:var(--accent)}
-body.counting.view-cam #repview{display:flex}
+/* no `view-cam` here: only the pose loop feeds the counter, and it runs only while
+   the camera is the one showing, so the class already carries the view */
+body.counting #repview{display:flex}
 body.resting #repview{display:none}
 .player video,
 .player iframe{width:100%;height:100%;display:block;border:0;background:#000;object-fit:contain}
