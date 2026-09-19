@@ -161,6 +161,24 @@ def test_unasked_for_detail_a_save_names_each_exercise_worked_once() -> None:
     assert listed.splitlines()[0] == "2026-09-18: untitled save: Swing · Deadlift"
 
 
+def test_a_save_named_for_its_moment_and_its_workout_is_that_days_session() -> None:
+    """The name carries the day, the time and then the workout, so a day's saves still
+    sort by their moment and the rail says which workout each was."""
+    listed = _listing((f"2026-09-18-16-20-05-{SNATCH_WORKOUT}.md", TITLED))
+
+    assert listed.splitlines()[0].startswith("2026-09-18: ")
+
+
+def test_a_name_carrying_more_than_a_moment_is_not_a_day_on_its_own() -> None:
+    """The free part follows a whole time and nothing less: a document whose name merely
+    starts with a date is a document, not a session of that day."""
+    listed = _listing(
+        ("2026-09-18-notes.md", DEADLIFT), ("2026-09-18-12-27-00.md", SWING)
+    )
+
+    assert listed.splitlines()[0] == "2026-09-18: untitled save: Swing"
+
+
 def test_a_day_names_its_workouts_first_and_an_untitled_save_marked() -> None:
     listed = _listing(
         ("2026-09-18-12-27-00.md", DEADLIFT),

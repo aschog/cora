@@ -6,7 +6,9 @@ from cora.ports.host import Host
 from cora.ports.plugin import ToolRefusal
 
 NUMBER = r"\d+(?:\.\d+)?"
-DATED = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:-\d{2}[-:]\d{2}[-:]\d{2})?\.[A-Za-z0-9]+$")
+DATED = re.compile(
+    r"^(\d{4}-\d{2}-\d{2})(?:-\d{2}[-:]\d{2}[-:]\d{2}(?:-.*)?)?\.[A-Za-z0-9]+$"
+)
 HEADING = re.compile(
     rf"^#\s+(?P<name>.+?)\s+(?:(?P<kg>{NUMBER})\s*kg|bw(?:\+(?P<bw>{NUMBER}))?)$"
 )

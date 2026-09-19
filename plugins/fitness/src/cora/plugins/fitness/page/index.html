@@ -289,10 +289,6 @@ body.resting.view-cam #restview,body.resting.view-clip #restview{display:flex}
 .sheet h3 button{font-size:13px;color:var(--muted);letter-spacing:0;text-transform:none;font-weight:600;
   padding:6px 9px;border:1px solid var(--line);border-radius:8px;margin-left:6px}
 .sheet h3 button:first-of-type{margin-left:auto}
-#box{display:none;width:100%;height:120px;margin-bottom:12px;background:var(--surface);
-  color:var(--muted);border:1px solid var(--line);border-radius:10px;padding:8px;
-  font:12px/1.3 ui-monospace,Menlo,monospace;resize:none}
-#box.open{display:block}
 #warn{display:none;padding:7px 14px;background:#3A2A12;color:#E8C11C;
   font-size:12.5px;font-weight:600;border-bottom:1px solid var(--line)}
 #warn.on{display:block}
@@ -347,11 +343,8 @@ body.resting.view-cam #restview,body.resting.view-clip #restview{display:flex}
 
 <section class="sheet" id="sheet">
   <h3>History
-    <button id="exp">Export</button>
-    <button id="imp">Import</button>
     <button id="close">Close</button>
   </h3>
-  <textarea id="box" readonly></textarea>
   <div id="sessions"></div>
 </section>
 
@@ -534,7 +527,18 @@ function warn(msg, ok){
 
 /* ---------- state ---------- */
 const PLAN_V = 2;
-let hist = load('kb.hist', []);
+/* ---------- the field's log ----------
+   The page holds the workout in flight and nothing else. What it knows of earlier ones
+   it reads back from the field: the listing names what the field holds, and every name
+   that reads as a moment is a save the finish wrote. */
+const LISTED = FIELD ? '/api/documents?scope=' + encodeURIComponent(FIELD) : '';
+const HELD = FIELD ? '/api/documents/' + encodeURIComponent(FIELD) + '/' : '';
+const MOMENT = /^(\d{4})-(\d{2})-(\d{2})(?:-\d{2}-\d{2}-\d{2}(?:-(.*))?)?\.md$/;
+const SAVES = 60;                        // as many as the History showed when it was here
+const MOST_SETS = 20;                    // a field's document is anyone's to write, and
+                                         // a set count is a length this page allocates
+
+let logged = [];                         // the field's saves, newest first
 let WORKOUT = load('kb.workout', '');   // the sheet's tab, as last read
 let saved = false;                       // cora took the last workout, and no set since
 const finishEl = document.getElementById('finish');
@@ -547,7 +551,7 @@ else syncSession();
 
 /** A fresh slot: nothing done yet, and last session's weight if there was one. */
 function slotFor(p){
-  const l = lastFor(p.id);
+  const l = lastFor(p);
   return {done: 0, w: l ? l.w : p.w, reps: repsFor(p, l && l.reps)};
 }
 /** One rep count per planned set: last session's if it did that set, else the
@@ -567,8 +571,10 @@ function syncSession(){
   if (!PLAN.some(p => p.id === cur)) cur = PLAN[0] && PLAN[0].id;
 }
 
-function lastFor(id){
-  for (const h of hist) { const e = h.ex.find(x=>x.id===id); if (e) return e; }
+/** The exercise as the field last saw it worked. Matched by the name the heading
+    spells, because a save is Markdown and carries no id of the plan's. */
+function lastFor(p){
+  for (const h of logged) { const e = h.ex.find(x => x.n === p.n); if (e) return e; }
   return null;
 }
 function newSession(){
@@ -614,10 +620,11 @@ function render(){
   document.body.classList.toggle('view-clip', typeof view === 'number');
   document.body.style.setProperty('--accent', p.w ? bell(s.w) : '#868D99');
   // the one control says what the workout waits for: a set, the finish, or nothing
-  const logged = PLAN.some(q => ses.ex[q.id].done > 0);
-  finishEl.disabled = !logged;
-  finishEl.className = 'go' + (logged ? '' : saved ? ' saved' : ' idle');
-  finishEl.innerHTML = logged ? CHECK + ' Finish' : saved ? CHECK + ' Saved' : TAP + ' No sets logged yet';
+  const anySet = PLAN.some(q => ses.ex[q.id].done > 0);
+  finishEl.disabled = !anySet || sending;
+  finishEl.className = 'go' + (anySet ? '' : saved ? ' saved' : ' idle');
+  finishEl.innerHTML = sending ? CHECK + ' Saving…'
+    : anySet ? CHECK + ' Finish' : saved ? CHECK + ' Saved' : TAP + ' No sets logged yet';
 
   head.innerHTML = `
     <button class="camshot${view === 'cam' ? ' live' : ''}" data-cam
@@ -705,7 +712,7 @@ document.getElementById('app').addEventListener('click', e => {
   if (log){
     const p = curEx(), s = ses.ex[p.id], i = +log.dataset.log;
     s.done = (s.done === i) ? i-1 : i;      // tap the last full one to undo
-    saved = false;
+    saved = false; s.own = true;
     if (s.done === i && s.done >= p.s)        // last set: a long break, then move on
       startRest(REST_EX, () => { if (cur === p.id && s.done >= p.s) step(1); });
     else if (s.done === i) startRest(REST_SET);
@@ -716,12 +723,14 @@ document.getElementById('app').addEventListener('click', e => {
   if (rep){
     const s = ses.ex[cur], i = +rep.dataset.rep;
     s.reps[i] = Math.max(1, s.reps[i] + (+rep.dataset.d));
+    s.own = true;
     render(); return;
   }
   const w = t.closest('[data-w]');
   if (w){
     const s = ses.ex[cur];
     s.w = Math.max(1, s.w + (+w.dataset.w));
+    s.own = true;
     render();
   }
 });
@@ -730,7 +739,7 @@ document.getElementById('app').addEventListener('click', e => {
    The stream is shown and, when pose is on, read frame by frame in memory.
    Nothing is captured: no MediaRecorder, no canvas snapshot kept, no upload,
    nothing written to storage. Closing the camera stops the tracks and drops
-   the frames. Keep it that way -- localStorage holds sets and history only. */
+   the frames. Keep it that way -- localStorage holds the workout in flight only. */
 const camView = document.getElementById('camview');
 let camStream = null;
 
@@ -995,134 +1004,212 @@ function finish(byWatch){
   const who = byWatch ? 'Watch ended the workout — ' : '';
   if (!doneAny){ warn(who + 'Nothing logged — nothing saved.'); return; }   // a button that did nothing has to say so
   if (!byWatch && !confirm('Save this workout and start a new one?')) return;
-  hist.unshift({
-    date: Date.now(),
-    min: Math.round((Date.now()-ses.start)/60000),
-    ex: PLAN.filter(p=>ses.ex[p.id].done>0).map(p => {
-      const s = ses.ex[p.id];
-      return {id:p.id, n:p.n, w:s.w, done:s.done, r:p.r, reps:s.reps.slice(0, s.done)};
-    })
+  const worked = PLAN.filter(p=>ses.ex[p.id].done>0).map(p => {
+    const s = ses.ex[p.id];
+    return {n:p.n, w:s.w, reps:s.reps.slice(0, s.done)};
   });
-  // titled with the workout's name where the plan came from a sheet; the page's
-  // history is kept whatever the log says
-  handoff((WORKOUT ? WORKOUT + '\n\n' : '') + sessionText(hist[0].ex), who);
-  hist = hist.slice(0,60);
-  save('kb.hist', hist);
-  ses = newSession();
-  render();
+  // titled with the workout's name where the plan came from a sheet; the workout stands
+  // here until cora has it, because the field is now the only place it lives
+  handoff((WORKOUT ? WORKOUT + '\n\n' : '') + sessionText(worked), who);
 }
 finishEl.addEventListener('click', () => finish(false));
 
 /* Sets of equal length read as 3×10; an exercise cut short reads 10+10+8.
    Sessions logged before reps were per set only kept the plan's number. */
 function repsText(e){
-  const r = e.reps && e.reps.length ? e.reps : null;
-  if (!r) return e.done + '×' + e.r;
+  const r = e.reps;
+  if (!r || !r.length) return '';
   return new Set(r).size === 1 ? r.length + '×' + r[0] : r.join('+');
 }
 
 /* The finished workout in the log's own grammar: one heading with the load
    and one set line per exercise. The text is the interface — cora reads it as
-   it is, whether it arrives over the wire or from the clipboard. */
+   it is, and reads it back the same way when the History asks what the field holds. */
 function sessionText(ex){
   const text = ex.map(e => {
-    const r = e.reps && e.reps.length ? e.reps : Array(e.done).fill(e.r);
+    const r = e.reps;
     const sets = new Set(r).size === 1 ? r.length + ' sets of ' + r[0] : 'sets of ' + r.join(' / ');
     return '# ' + e.n + ' ' + (e.w ? e.w + ' kg' : 'bw') + '\n' + sets;
   }).join('\n\n');
   return text + '\n';
 }
 
-/* ---------- history ---------- */
+/* ---------- history ----------
+   Drawn from the field's log, and drawn again when a read of it lands — a sheet opened
+   while the first read was still out would otherwise say the field was empty and stay
+   saying it. */
 const sheet = document.getElementById('sheet');
-document.getElementById('hist').addEventListener('click', () => {
-  const box = document.getElementById('sessions');
-  box.innerHTML = hist.length ? '' : '<div class="empty">Nothing yet. Finish your first workout.</div>';
-  hist.forEach(h => {
-    const d = new Date(h.date);
+const sessionsEl = document.getElementById('sessions');
+
+/** Anything a document can carry, placed as text rather than as markup: the headings and
+    the filenames here were written by whoever uploaded into the field, not by cora. */
+const esc = text => String(text).replace(/[&<>"]/g, c =>
+  ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'})[c]);
+
+function drawSessions(){
+  sessionsEl.innerHTML = logged.length ? '' : '<div class="empty">Nothing yet. Finish your first workout.</div>';
+  logged.forEach(h => {
     const el = document.createElement('div');
     el.className = 'ses';
-    el.innerHTML = `<div class="top">${d.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}
-        <em>${h.min} min · ${h.ex.length} exercises</em></div>
-      <ul>${h.ex.map(e=>`<li lang="ru">${e.n.split('.')[0]}<b lang="en">${e.w?e.w+' kg · ':''}${repsText(e)}</b></li>`).join('')}</ul>`;
-    box.appendChild(el);
+    el.innerHTML = `<div class="top">${h.day.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}
+        <em>${esc(h.name || h.ex.length + ' exercises')}</em></div>
+      <ul>${h.ex.map(e=>`<li lang="ru">${esc(e.n)}<b lang="en">${e.w?e.w+' kg · ':''}${repsText(e)}</b></li>`).join('')}</ul>`;
+    sessionsEl.appendChild(el);
   });
+}
+
+document.getElementById('hist').addEventListener('click', () => {
+  drawSessions();
   sheet.classList.add('open');
 });
 document.getElementById('close').addEventListener('click', () => sheet.classList.remove('open'));
 
-/* ---------- backup without a server ---------- */
+/* Storage holds the workout in flight and the plan, and the log is the field's — so a
+   browser that blocks it costs a reload, not a history. A browser that ran the page
+   before the field was the log is still holding that history: it is nobody's now. */
+try { localStorage.removeItem('kb.hist'); } catch(e){ /* blocked, so there is none */ }
+
 if (!store.ok){
-  warnEl.textContent = 'Browser storage is blocked — export your history before you close this page.';
+  warnEl.textContent = 'Browser storage is blocked — this workout will not survive a reload.';
   warnEl.classList.add('on');
   warnEl.dataset.hard = '1';
 }
-const box = document.getElementById('box');
-
-document.getElementById('exp').addEventListener('click', () => {
-  const txt = JSON.stringify({v:PLAN_V, hist, ses});
-  const fallback = () => {
-    box.value = txt; box.classList.add('open');
-    box.removeAttribute('readonly'); box.select(); box.setAttribute('readonly','');
-  };
-  if (navigator.share) navigator.share({title:'Training — history', text:txt}).catch(fallback);
-  else if (navigator.clipboard) navigator.clipboard.writeText(txt).then(fallback).catch(fallback);
-  else fallback();
-});
-
-document.getElementById('imp').addEventListener('click', () => {
-  const raw = prompt('Paste previously exported data:');
-  if (!raw) return;
-  try {
-    const d = JSON.parse(raw);
-    if (!Array.isArray(d.hist)) throw 0;
-    hist = d.hist;
-    if (d.ses && d.ses.v === PLAN_V) ses = d.ses;
-    save('kb.hist', hist); save('kb.ses', ses);
-    sheet.classList.remove('open');
-    render();
-  } catch(e){ alert('That does not look like workout data. Copy the whole text.'); }
-});
 
 /* ---------- handing the workout to cora ----------
    The page is served by cora at /pages/<field>/, so the field it belongs to is the
    path it was opened under, and the upload is the reader's own API call on the
-   reader's own origin — no key, no token, no second server. A workout that cannot be
-   handed over is not lost: it goes to the clipboard, and the strip says so. */
+   reader's own origin — no key, no token, no second server. A workout cora would not
+   take is not lost either: it stays on the page, logged, with the finish still offered. */
 const UPLOAD = '/api/documents';
 
-/** The moment, as the document is named — the day first, so a day's saves sort and
- *  read in order, and local, because a workout belongs to the day the lifter had
- *  rather than to UTC's. */
+/** The moment and then the workout, as the document is named — the day first, so a
+ *  day's saves sort and read in order, and local, because a workout belongs to the day
+ *  the lifter had rather than to UTC's. The workout's name goes behind the time, where
+ *  it names the save in the rail without disturbing that order; a plan that came from
+ *  no sheet leaves the moment alone. */
 function moment(){
   const d = new Date();
   const two = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}-${two(d.getHours())}-${two(d.getMinutes())}-${two(d.getSeconds())}.md`;
+  const at = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}-${two(d.getHours())}-${two(d.getMinutes())}-${two(d.getSeconds())}`;
+  return at + (WORKOUT ? '-' + WORKOUT.replace(/[\\/:*?"<>|]+/g, ' ').trim() : '') + '.md';
 }
 
+/** cora took the workout: the field is read again, so the save is in the History and in
+    the next workout's weights before that workout starts. A read that fails costs the
+    weights, not the fresh start — the save itself is already in. */
+function took(who){
+  saved = true;
+  warn(who.replace(/\s*—\s*$/, ''), true);   // the button says it; the strip only who
+  /* The fresh workout starts here and not when the read lands: between the two the
+     control would read an enabled "Finish" over a workout cora already has, and a tap
+     on it would send the same session again. The read that follows fills the fresh
+     slots with the field's weights, this save included — `readLog` does that itself. */
+  ses = newSession();
+  sending = false;                       // cora has it; the read behind it is not the save
+  render();
+  return readLog();
+}
+
+const lost = (who, why) => {
+  sending = false;
+  warn(who + 'Not saved to cora' + (why ? ' (' + why + ')' : '') +
+       ' — the workout is still here, finish it again.');
+  render();
+};
+
+/* One save at a time. The session is cleared only once cora has answered, so without
+   this a second tap on a slow link uploads the same workout again under a later name —
+   two saves of one session in the field. */
+let sending = false;
+
 function handoff(text, who = ''){
-  const copied = why => warn(who + 'Not saved to cora' + (why ? ' (' + why + ')' : '') +
-                             ' — copied to the clipboard instead.');
-  const shown = () => {                  // no clipboard either: leave the text selectable
-    box.value = text; box.classList.add('open'); sheet.classList.add('open');
-    warn(who + 'Not saved to cora — copy the text from History.');
-  };
-  const copy = why => navigator.clipboard
-    ? navigator.clipboard.writeText(text).then(() => copied(why), shown)
-    : shown();
-  if (!FIELD) return copy('opened outside cora');
+  if (!FIELD) return lost(who, 'opened outside cora');
+  if (sending) return;
   const body = new FormData();
   body.append('file', new Blob([text], {type: 'text/markdown'}), moment());
   body.append('scope', FIELD);
+  sending = true; render();
   fetch(UPLOAD, {method: 'POST', body})
     .then(r => r.json().then(answered => r.ok
-      ? (saved = true, render(), warn(who.replace(/\s*—\s*$/, ''), true))   // the button says it; the strip only who
+      ? took(who)
       : Promise.reject(answered.error || ('HTTP ' + r.status))))
-    .catch(why => copy(typeof why === 'string' ? why : ''));
+    .catch(why => lost(who, typeof why === 'string' ? why : ''));
 }
+
+/** One save, read back in the grammar the finish wrote: the workout's name on its own
+    line, then a heading per exercise carrying its load, then the sets it took. A line
+    the grammar does not know is a note, and is passed over. */
+function readSession(text){
+  const ex = [];
+  let name = '';
+  for (const raw of text.split('\n')){
+    const line = raw.trim();
+    if (!line) continue;
+    const head = /^#\s+(.+?)\s+(?:([\d.]+)\s*kg|bw(?:\+[\d.]+)?)$/.exec(line);
+    if (head){
+      // a heading whose load is not a number is bodyweight, not NaN: NaN would reach the
+      // weight control, which cannot add its way out of it, and be written back as bw
+      const w = head[2] ? +head[2] : 0;
+      ex.push({n: head[1], w: Number.isFinite(w) ? w : 0, reps: []});
+      continue;
+    }
+    if (!ex.length){ if (!name) name = line; continue; }
+    const same = /^(\d+)\s+sets\s+of\s+(\d+)$/.exec(line);
+    const each = /^sets\s+of\s+(\d+(?:\s*\/\s*\d+)+)$/.exec(line);
+    if (same) ex[ex.length-1].reps = Array(Math.min(+same[1], MOST_SETS)).fill(+same[2]);
+    else if (each) ex[ex.length-1].reps = each[1].split('/').map(n => +n.trim());
+  }
+  return {name, ex};
+}
+
+/** What the field holds, newest first. The listing names the documents and every name
+    that reads as a moment is a save; each is read by that name, and one name may be
+    several saves, as two of a day are. Unreachable is not an error — the log last read
+    stands, and a workout is still logged and still finished without it. */
+let reading = 0;                         // the read now current; an older one is stale
+
+function readLog(){
+  if (!FIELD) return Promise.resolve();
+  const mine = ++reading;
+  return fetch(LISTED, {cache: 'no-store'})
+    .then(r => r.ok ? r.json() : Promise.reject('HTTP ' + r.status))
+    .then(names => Promise.all(names
+      .filter(n => MOMENT.test(n)).sort().reverse().slice(0, SAVES)
+      .map(name => fetch(HELD + encodeURIComponent(name), {cache: 'no-store'})
+        .then(r => r.ok ? r.json() : [])
+        .then(held => held.map(each => {
+          const read = readSession(each.text);
+          // the finish writes the name above the headings and into the filename; a save
+          // that carries only the second is still that workout
+          return {day: dayOf(name), ex: read.ex, name: read.name || nameOf(name)};
+        })))))
+    .catch(why => { console.warn('the field could not be read:', why); return null; })
+    .then(read => {
+      // a read overtaken while it was out says nothing: its listing predates the save
+      // that overtook it, and writing it back would lose that save
+      if (read === null || mine !== reading) return;
+      logged = read.flat();
+      /* Exercise by exercise: one the lifter has touched at all -- a set logged, a
+         weight dialled, a rep count changed -- is theirs, and every other one takes what
+         the field last saw. A slot written by a page that did not mark ownership is
+         read as touched if anything is logged against it, because it may well be. The
+         workout's start and whether the watch began it are its own either way. */
+      const fresh = newSession().ex;
+      PLAN.forEach(p => {
+        const held = ses.ex[p.id];
+        if (!held || !(held.own || held.done > 0)) ses.ex[p.id] = fresh[p.id];
+      });
+      drawSessions();
+      render();
+    });
+}
+
+const dayOf = name => { const [,y,m,d] = MOMENT.exec(name); return new Date(+y, +m-1, +d); };
+const nameOf = name => (MOMENT.exec(name)[4] || '').trim();
 
 render();
 syncPlan();
+readLog();
 </script>
 </body>
 </html>

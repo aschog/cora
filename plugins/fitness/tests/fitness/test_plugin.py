@@ -126,20 +126,32 @@ def test_the_trainer_reaches_only_the_hosts_it_is_said_to() -> None:
     assert reached == REACHES
 
 
-def test_the_trainer_asks_for_its_plan_and_hands_the_workout_to_cora() -> None:
-    """Three things it fetches and no fourth: the plan it trains from, the field's
-    notice, which says what the wrist is doing, and the workout it finished — which is
-    the one thing it sends anywhere, and goes to cora. A log server of its own, a watch
-    listener, a second place to write: each would answer a problem cora answers."""
+def test_the_trainer_asks_for_its_plan_its_field_and_hands_the_workout_over() -> None:
+    """Five things it fetches and no sixth: the plan it trains from, the field's notice,
+    which says what the wrist is doing, the field's own log, which is the only history
+    it has, and the workout it finished — which is the one thing it sends anywhere, and
+    goes to cora. A log server of its own, a watch listener, a second place to write:
+    each would answer a problem cora answers."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     asked = re.findall(r"fetch\(\s*([A-Za-z_$][\w$]*)", drawn)
     posted = re.findall(r"fetch\(\s*([A-Za-z_$][\w$]*)[^)]*method:\s*'POST'", drawn)
 
-    assert sorted(set(asked)) == ["NOTICE", "SHEET_CSV", "UPLOAD"]
+    assert sorted(set(asked)) == ["HELD", "LISTED", "NOTICE", "SHEET_CSV", "UPLOAD"]
     assert posted == ["UPLOAD"]
     assert "const UPLOAD = '/api/documents'" in drawn
     assert "'/api/scopes/' + encodeURIComponent(FIELD) + '/notice'" in drawn
+
+
+def test_the_trainer_carries_nothing_between_browsers() -> None:
+    """With the log in the field there is nothing on the page to carry: the export, the
+    import and the box they were copied through go, and so does the clipboard."""
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    assert 'id="exp"' not in drawn
+    assert 'id="imp"' not in drawn
+    assert 'id="box"' not in drawn
+    assert "clipboard" not in drawn
 
 
 def test_the_trainer_asks_for_no_pulse_and_writes_no_heart_line() -> None:
@@ -249,9 +261,24 @@ def test_the_watch_asks_for_no_permission() -> None:
     assert "heart" not in _widget().lower()
 
 
-def test_the_trainer_names_a_save_for_its_moment_day_first() -> None:
+def test_the_trainer_keeps_no_history_and_reads_the_fields_own() -> None:
+    """One log, the field's: the page holds the workout in flight and nothing else, and
+    what it shows of earlier ones it reads back from cora."""
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    assert "save('kb.hist'" not in drawn
+    assert "load('kb.hist'" not in drawn
+    # the one mention left is the clearing of what an earlier page kept
+    assert drawn.count("kb.hist") == 1
+    assert "localStorage.removeItem('kb.hist')" in drawn
+    assert "'/api/documents?scope=' + encodeURIComponent(FIELD)" in drawn
+    assert "'/api/documents/' + encodeURIComponent(FIELD) + '/'" in drawn
+
+
+def test_the_trainer_names_a_save_for_its_moment_and_then_its_workout() -> None:
     """One entry in the rail per save, and a day's saves in the order they happened:
-    the name carries the time behind the day, in the lifter's own clock."""
+    the name carries the time behind the day, in the lifter's own clock, and the
+    workout behind the time so the rail says which one it was."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     naming = re.search(r"function moment\(\)\{(.*?)\n\}", drawn, re.S)
@@ -259,8 +286,9 @@ def test_the_trainer_names_a_save_for_its_moment_day_first() -> None:
     assert naming, "the page has no moment()"
     assert (
         "`${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}"
-        "-${two(d.getHours())}-${two(d.getMinutes())}-${two(d.getSeconds())}.md`"
+        "-${two(d.getHours())}-${two(d.getMinutes())}-${two(d.getSeconds())}`"
     ) in naming.group(1)
+    assert "WORKOUT" in naming.group(1), "the workout is named behind the moment"
     assert drawn.count("moment()") == 2, "defined once, and called once at the save"
     assert "today()" not in drawn
 
@@ -303,7 +331,7 @@ def test_the_finish_is_named_so_and_offered_only_once_a_set_is_logged() -> None:
     assert "Save &amp; finish" not in drawn
     assert re.search(r'id="finish">.*?</svg> Finish</button>', drawn)
     assert re.search(
-        r"const logged = PLAN\.some\(.*\n\s*finishEl\.disabled = !logged", drawn
+        r"const anySet = PLAN\.some\(.*\n\s*finishEl\.disabled = !anySet", drawn
     )
 
 
