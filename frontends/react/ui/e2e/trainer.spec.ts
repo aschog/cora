@@ -45,7 +45,9 @@ test('a workout finished in the trainer becomes a document of the fitness field'
 }) => {
   const named = new Date()
   const two = (n: number) => String(n).padStart(2, '0')
-  const today = `${named.getFullYear()}-${two(named.getMonth() + 1)}-${two(named.getDate())}.md`
+  const today = `${named.getFullYear()}-${two(named.getMonth() + 1)}-${two(named.getDate())}`
+  // named for its moment: the day, then the time it was saved at
+  const saved = new RegExp(`^${today}-\\d{2}-\\d{2}-\\d{2}\\.md$`)
 
   await page.goto(TRAINER)
   /* One set of the first exercise: the control carries the rep count, and pressing it
@@ -70,7 +72,7 @@ test('a workout finished in the trainer becomes a document of the fitness field'
     .getByRole('button', { name: 'Plugin' })
     .click()
   await page.getByRole('button', { name: 'fitness', exact: true }).click()
-  await expect(page.getByRole('button', { name: today, exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: saved })).toBeVisible()
 })
 
 test('a workout cora would not take is said to be lost and kept all the same', async ({

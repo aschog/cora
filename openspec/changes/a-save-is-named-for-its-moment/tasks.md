@@ -9,7 +9,7 @@
 
 ## 3. The trainer names the moment
 
-- [ ] 3.1 Write a test that the page names a save for its moment, year to second, the day first.
+- [x] 3.1 Write a test that the page names a save for its moment, year to second, the day first.
 
 ## 4. Close it
 
