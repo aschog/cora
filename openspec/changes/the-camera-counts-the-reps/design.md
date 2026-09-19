@@ -21,11 +21,13 @@ here may name one.
 
 ## Decisions
 
-- **The signal is the dominant coordinate, chosen per frame.** Every rep here is a cycle,
-  but each moves a different part: the wrists for a snatch, the shoulders for a push-up,
-  the hips for a deadlift. So the counter tracks a handful of points, and each frame
-  takes whichever coordinate swung widest over the window. A fixed wrist-height rule was
-  the alternative, and it counts roughly half the plan.
+- **The signal is the dominant wrist coordinate, chosen per frame.** Every rep here is a
+  cycle, and in the torso's frame every one of them moves a wrist: overhead in a snatch,
+  toward planted hands in a push-up, around the body in a halo. So the counter reads four
+  numbers — both wrists, both axes — and each frame takes whichever swung widest over the
+  window. A fixed wrist-height rule was the alternative, and it counts half the plan.
+  Shoulders and hips build the frame rather than feeding it: they sit at a fixed distance
+  from its centre by construction, so they can carry no signal of their own.
 - **The frame of reference is the torso.** Points are measured from the centre of the
   torso box and divided by its length, so distance from the camera and walking about
   drop out. Raw image coordinates were the alternative, and they count a step as a rep.
@@ -35,8 +37,9 @@ here may name one.
 - **Two gates keep noise out.** A swing under a fraction of torso length does not count,
   and neither does one inside a minimum period. This is what stands between the counter
   and a lifter shifting their feet.
-- **The readout is a twin of the rest timer**, sharing its markup and its `.num` rule,
-  shown when the overlay is on and no rest is running. The two never show together.
+- **The readout is a twin of the rest timer**, sharing its markup and its `.num` rule.
+  A rest stops the counter rather than only hiding it, so the two never show together and
+  the bell going down is not the next set's first rep.
 - **The counter is exposed on `window`,** as `sessionText` already is. The page stays one
   file, and the browser tier calls the function the browser actually loaded.
 
@@ -49,7 +52,13 @@ here may name one.
 - A rep slower than the window looks like drift → the window is sized for the slowest
   movement in the plan, and a slower one undercounts.
 - The model runs lite and can lose a joint → a frame with no pose is skipped, not
-  counted as a turning point.
+  counted as a turning point, though a joint the model is guessing at reads as a real one.
+- A movement the arms do not make against the torso counts nothing → the torso is the
+  frame, so a squat with the bell racked is invisible; the plan holds no such exercise,
+  and a second frame of reference is its own change.
+- The one call from the pose loop into the counter is covered by no test → the model and
+  the video are a boundary the browser tier cannot stand up, so a camera is what proves
+  the loop still counts.
 
 ## Ports, guards and diagrams
 

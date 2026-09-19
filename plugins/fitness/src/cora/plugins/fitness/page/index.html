@@ -229,8 +229,10 @@ body.resting.view-cam #restview,body.resting.view-clip #restview{display:flex}
 /* the count is read, never tapped, and it wears the bell's colour so it is not
    mistaken for the rest timer */
 #repview .num{pointer-events:none;cursor:default;color:var(--accent)}
-/* no `view-cam` here: only the pose loop feeds the counter, and it runs only while
-   the camera is the one showing, so the class already carries the view */
+/* no `view-cam` here: the counter is fed only by the pose loop, which runs only while
+   the camera is showing, so `counting` already carries the view. That is a reading of
+   the code rather than a guarantee -- naming the view instead would put every test of
+   this rule behind a real camera. */
 body.counting #repview{display:flex}
 body.resting #repview{display:none}
 .player video,
@@ -918,8 +920,12 @@ function poseTick(now){
   poseShow(res.landmarks && res.landmarks[0], now);
 }
 
-/* What one frame's pose is for: the skeleton, the readout, and the count. One door, so
-   the counter cannot quietly stop being fed while the overlay still draws. */
+/* What one frame's pose is for: the skeleton, the readout, and the count, so the three
+   cannot drift apart. The call in poseTick above is the only one, and no test holds that
+   -- the model and the video it reads are a boundary the suite cannot stand up, so a
+   camera is what proves the loop still calls this.
+   `poseDraw` is null until the model loads, which poseTick cannot outrun; the guard is
+   here so the suite can turn this by hand without MediaPipe. */
 function poseShow(lm, now){
   poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
   if (lm && poseDraw){
@@ -956,7 +962,7 @@ const REP_EDGE = 0.3;         // how far inside the swing the two thresholds sit
 const REP_ENOUGH = 8;         // frames before the window says anything
 
 const repNum = document.getElementById('repnum');
-let reps = null;
+let reps;                                     // repReset below fills it before any reader
 
 function repReset(){
   reps = {count: 0, seen: [], axis: -1, up: false, at: -Infinity};
@@ -982,8 +988,12 @@ function repWhere(lm){
 /* One frame. Every exercise in a plan is a cycle, but each moves a different part, so
    the counter follows whichever coordinate swung widest over the window rather than
    naming a joint per movement. A turning point at the top of that swing is a rep.
-   ponytail: rhythmic movement that is not a rep counts too — the swing and gap below
-   narrow that, they do not close it. Per-exercise signals if it matters. */
+   ponytail: three ceilings. Rhythmic movement that is not a rep counts too, and the
+   swing and gap below only narrow that. A movement the arms do not make against the
+   torso -- a squat with the bell racked -- counts nothing, because the torso is the
+   frame everything is measured in. And a joint the model is guessing at counts the same
+   as one it can see, since `visibility` is read out but never read. Per-exercise
+   signals, or a second frame of reference, if any of it starts to matter. */
 function repSaw(lm, now){
   if (restEnd > Date.now()) return;            // the bell going down is not the next set
   const where = repWhere(lm);

@@ -11,9 +11,11 @@ time, each with its sets, its weight and whatever clips it has, and a camera to 
 against. An exercise's row SHALL carry its number and its name, and no count of sets or
 weight. The weight SHALL move one kilogram a tap, and never below one. With the pose
 overlay on, the trainer SHALL count repetitions from what the camera sees, and show the
-running count over the frame. It SHALL count any exercise that repeats a movement,
-without naming one. The count SHALL be a readout: it SHALL leave every set's reps
-untouched, and SHALL start again at nought when a set is logged or the exercise changes.
+running count over the frame. It SHALL count any repeated movement the hands make
+against the torso, or the torso against planted hands, without naming an exercise. It
+SHALL count nothing while a rest is running. The count SHALL be a readout: it SHALL
+leave every set's reps untouched, and SHALL start again at nought when a set is logged,
+when the exercise changes, and when cora takes the workout.
 The plan SHALL be read from the sheet the page names, and the page SHALL hand what it
 produces to cora and to nothing else. Every other address it reaches SHALL be one written
 down, so a new one is a change somebody made rather than a change nobody saw.
@@ -53,6 +55,18 @@ down, so a new one is a change somebody made rather than a change nobody saw.
 - **WHEN** it is repeated in front of the camera
 - **THEN** it counts the same as a movement the hands make
 
+#### Scenario: A movement the torso carries whole
+
+- **GIVEN** a movement in which the hands ride with the torso
+- **WHEN** it is repeated in front of the camera
+- **THEN** nothing is counted, because nothing moved against the torso
+
+#### Scenario: A rest is not counted through
+
+- **GIVEN** a set logged and its rest running
+- **WHEN** the lifter moves in front of the camera
+- **THEN** the count stands at nought until the rest is over
+
 #### Scenario: Stillness is not counted
 
 - **GIVEN** the pose overlay on
@@ -68,8 +82,14 @@ down, so a new one is a change somebody made rather than a change nobody saw.
 #### Scenario: The count starts again
 
 - **GIVEN** a count standing over the frame
-- **WHEN** a set is logged
+- **WHEN** a set is logged, or the exercise changes, or cora takes the workout
 - **THEN** the count reads nought
+
+#### Scenario: A set taken back is not a set logged
+
+- **GIVEN** a set logged and a count standing over the frame
+- **WHEN** that same set is tapped again to undo it
+- **THEN** the count is left where it was
 
 #### Scenario: Where it reaches
 

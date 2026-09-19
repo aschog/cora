@@ -731,10 +731,10 @@ test("the camera counts the reps it sees", async ({ page }) => {
 });
 
 test("the count starts at nought", async ({ page }) => {
-  await page.goto(TRAINER);
-  await feed(page, []);
+  await page.goto(TRAINER); // no frame given, and nothing reset on the way in
 
   await expect(page.locator("#repnum")).toHaveText("0");
+  await expect(page.locator("#repview")).toBeHidden();
 });
 
 test("a wrist swinging up and back counts one a cycle", async ({ page }) => {
@@ -930,14 +930,7 @@ test("the frame the overlay draws is the frame the counter is given", async ({
   await page.goto(TRAINER);
   /* Through the overlay's own frame handler, not the counter's door: the readout says
      the pose arrived, and the count says the same pose reached the counter. */
-  await page.evaluate((given) => {
-    const w = window as unknown as {
-      repReset: () => void;
-      poseShow: (lm: unknown, now: number) => void;
-    };
-    w.repReset();
-    given.forEach((lm, i) => w.poseShow(lm, (i * 1000) / 30));
-  }, cycles(3, snatch));
+  await feed(page, cycles(3, snatch));
 
   await expect(page.locator("#posehud")).toContainText("wrists");
   await expect(page.locator("#repnum")).toHaveText("3");
@@ -1000,4 +993,41 @@ test("un-logging a set leaves the count where it was", async ({ page }) => {
 
   await expect(page.locator(".set").first()).not.toHaveClass(/\bon\b/);
   await expect(page.locator("#repnum")).toHaveText("3");
+});
+
+test("the row already in the frame does not start the count over", async ({
+  page,
+}) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(3, snatch));
+
+  await page.locator(".row.on").click();
+
+  await expect(page.locator("#repnum")).toHaveText("3");
+});
+
+test("tapping another row starts the count over", async ({ page }) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(3, snatch));
+
+  await page.locator(".row:not(.on)").first().click();
+
+  await expect(page.locator("#repnum")).toHaveText("0");
+});
+
+/* A squat with the bell racked: the whole body rises and falls, and the hands ride with
+   the torso. Nothing moves against the torso, so there is nothing for the counter to
+   read — the plan holds no such exercise, and this is where the counter stops. */
+const racked = (phase: number): Frame => {
+  const sy = 0.3 + 0.12 * Math.cos(phase);
+  return pose({ wrist: { x: 0.5, y: sy + 0.1 }, shoulder: sy, hip: sy + 0.3 });
+};
+
+test("a movement the arms do not make against the torso counts nothing", async ({
+  page,
+}) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(4, racked));
+
+  await expect(page.locator("#repnum")).toHaveText("0");
 });

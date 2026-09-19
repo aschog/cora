@@ -19,7 +19,8 @@ test is held with `test.fail()` until the list is done.
 - [x] 2.8 Write a test that a frame the model found nobody in is skipped, not counted.
 - [x] 2.9 Write a test that a wrist travelling a circle counts one a circle.
 - [x] 2.10 Write a test that the frame the overlay draws is the frame the counter is
-      given — found in flight, because nothing fed the counter at all.
+      given — found in flight, because nothing fed the counter at all. It pins the door,
+      not the pose loop's call to it, which no test reaches.
 
 ## 3. The readout
 
@@ -39,6 +40,8 @@ test is held with `test.fail()` until the list is done.
 - [x] 5.1 Write a test that a rest standing over the frame is not counted through.
 - [x] 5.2 Write a test that a workout cora took leaves no count behind.
 - [x] 5.3 Write a test that un-logging a set leaves the count where it was.
-- [ ] 5.4 Write a test that the row already in the frame does not start the count over.
-- [ ] 5.5 Write a test that tapping another row does.
-- [ ] 5.6 Make 2.1's test read the count before a frame is given, not after a reset.
+- [x] 5.4 Write a test that the row already in the frame does not start the count over.
+- [x] 5.5 Write a test that tapping another row does.
+- [x] 5.6 Make 2.1's test read the count before a frame is given, not after a reset.
+- [x] 5.7 Write a test that a movement the arms do not make against the torso counts
+      nothing, so the counter's ceiling is a specified limit and not a silence.
