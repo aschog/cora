@@ -7,8 +7,8 @@ so that a tool can list what was logged rather than search for it.
 ### Requirement: A plugin reads what its field holds
 
 The host SHALL hand a plugin every document of the field the turn runs in. Each SHALL
-come as its name and its text, in upload order. Two uploads of one name SHALL be two
-documents. A document whose text is gone SHALL be left out. Another field's documents
+come as its name and its text, the names in the order first uploaded and the uploads
+of one name together, oldest first. Two uploads of one name SHALL be two documents. A document whose text is gone SHALL be left out. Another field's documents
 SHALL NOT be among them.
 
 #### Scenario: A field is read whole

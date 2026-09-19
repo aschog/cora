@@ -29,7 +29,8 @@ shows.
 - The name is what the rail shows, and the text is what a citation opens.
 - Two uploads of one name are two documents, because a citation's offsets belong to one
   text.
-- Upload order, which is the order the retriever already lists uploads in.
+- Names in the order first uploaded and the uploads of one name together, which is
+  what the retriever already lists.
 
 **It reads the fields the turn runs in, as search does.**
 

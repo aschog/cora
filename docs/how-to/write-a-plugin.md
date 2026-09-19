@@ -185,6 +185,11 @@ its return is the whole of its decision — `None` changes nothing, at every eve
 - `cora.documents.search(query, k)` — the field the turn is running in, and no other. It
   answers with the top of the ranking whatever the scores, so a count of what came back
   is a count of that, not of what matched.
+- `cora.documents.all()` — every document that field holds, each with its `name`, its
+  `text` and its `scope`, the uploads of one name together and oldest first. Two uploads
+  of one name are two documents, and one whose file is gone is left out. Read it when
+  the question is "all of them" rather than "which ones match": a search ranks and cuts,
+  a reading hands over the shelf.
 - `cora.memory` — what cora keeps about the user, and `None` where the deployment has
   none. Check before you use it.
 - `cora.model` — the model, for a plugin that needs one directly.
