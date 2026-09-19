@@ -853,3 +853,20 @@ test("the count goes with the overlay that fed it", async ({ page }) => {
 
   await expect(page.locator("#repview")).toBeHidden();
 });
+
+test("a rest takes the frame back from the count", async ({ page }) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(2, snatch));
+  await expect(page.locator("#repview")).toBeVisible();
+
+  await page.evaluate(() => {
+    const w = window as unknown as {
+      startRest: (d: number) => void;
+      tick: () => void;
+    };
+    w.startRest(30);
+    w.tick();
+  });
+
+  await expect(page.locator("#repview")).toBeHidden();
+});
