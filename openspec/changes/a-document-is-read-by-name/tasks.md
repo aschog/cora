@@ -10,9 +10,9 @@
 
 ## 3. The route
 
-- [ ] 3.1 Write the test that a name nothing was uploaded under answers 404 with a sentence.
-- [ ] 3.2 Write the test that a field nobody loaded is refused, naming the fields there are.
+- [x] 3.1 Write the test that a name nothing was uploaded under answers 404 with a sentence.
+- [x] 3.2 Write the test that a field nobody loaded is refused, naming the fields there are.
 
 ## 4. Close it
 
-- [ ] 4.1 Drop the marker and watch the outer test pass.
+- [x] 4.1 Drop the marker and watch the outer test pass.
