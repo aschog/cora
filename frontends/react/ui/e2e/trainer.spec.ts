@@ -55,7 +55,7 @@ test('a workout finished in the trainer becomes a document of the fitness field'
      under — the plugin never writes its own name into the page — and the strip below
      says which one took it. */
   await page.locator('.set').first().click()
-  await expect(page.locator('.row.complete, .row .st')).not.toHaveCount(0)
+  await expect(page.locator('.set.on')).toHaveCount(1)
 
   page.once('dialog', (asked) => asked.accept())
   await page.getByRole('button', { name: /SAVE & FINISH/i }).click()
@@ -202,8 +202,7 @@ test('a sheet that changes under a running workout leaves what was logged', asyn
     plan(['a', 'b']),
   )
   await page.locator('.set').first().click()
-  const worked = page.locator('.row', { hasText: 'Exercise a' })
-  await expect(worked.locator('.st')).toContainText('1/3')
+  await expect(page.locator('.set.on')).toHaveCount(1)
 
   /* The sheet gained an exercise while the lifter was working. What they have already
      done is theirs, and an exercise still in the plan keeps it. */
@@ -213,7 +212,7 @@ test('a sheet that changes under a running workout leaves what was logged', asyn
   )
 
   await expect(page.locator('.row', { hasText: 'Exercise c' })).toBeVisible()
-  await expect(worked.locator('.st')).toContainText('1/3')
+  await expect(page.locator('.set.on')).toHaveCount(1)
 })
 
 test('a clip plays in the frame rather than sending the lifter to another tab', async ({

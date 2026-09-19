@@ -3,8 +3,6 @@ import pathlib
 import re
 import urllib.parse
 
-import pytest
-
 import cora.plugins.fitness as fitness
 from cora.plugins.fitness import INSTRUCTIONS, SCOPE, extend
 from cora.ports.host import HANDLER, PAGE, SCREENING, TOOL
@@ -282,7 +280,6 @@ def test_the_trainer_takes_the_workouts_name_off_the_sheet_and_writes_it_first()
     assert "(WORKOUT ? WORKOUT + '\\n\\n' : '') + sessionText(" in drawn
 
 
-@pytest.mark.xfail(strict=True, reason="a row still carries its count and weight")
 def test_a_row_carries_its_number_and_its_name_and_no_readout() -> None:
     """The count and the weight live in the sets panel, where they are worked; a row is
     the exercise, and nothing beside its name."""
