@@ -4,7 +4,8 @@ Four plugins, and everything here is theirs rather than cora's. A deployment wit
 of them still answers.
 
 - **security** — a medical filter and a prompt-injection screen, both system-wide.
-- **fitness** — a coaching persona, its calculators, and a trainer to work a session in.
+- **fitness** — a coaching persona, its calculators, a trainer to work a session in, and
+  the log it wrote, read back as numbers.
 - **interview** — the `interview` field: mock interviews run on a card, answers judged
   against a rubric, and a report the user keeps.
 - **travel** — the `travel` field, and the rest of this page.
@@ -16,6 +17,13 @@ one exercise at a time, its sets and working weight, the clip for it playing in 
 Markdown document named for the day — so the next question about it is answered from your
 own log, with the day cited. Refused or unreachable, the workout goes to the clipboard
 and the strip says so.
+
+Ask what you trained and the coach lists the log rather than searching it.
+`list_workouts` reads every dated document of the field, one session per day, each
+movement with its load, sets, reps, volume and whether it rose on the last time, in
+whatever language the sheet names the exercise. It narrows to one lift, or to the days
+since one. A search finds the sessions worded like the question, and the listing finds
+all of them.
 
 The plan comes from a published Google Sheet, read each time the trainer is opened: one
 row per exercise, with its sets, reps, working weight and clips. Edit the sheet and the
