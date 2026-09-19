@@ -109,6 +109,75 @@ def test_a_field_retrieves_its_own_documents_and_no_others(kb: KnowledgeBase) ->
     assert all(hit.chunk.scope == TRAVEL for hit in hits)
 
 
+def test_a_field_is_read_whole_by_name_and_text_in_upload_order(
+    kb: KnowledgeBase,
+) -> None:
+    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    kb.add_file(b"Rest a week between blocks.", "rest.md", scope=FITNESS)
+
+    with running_in(frozenset({FITNESS})):
+        held = kb.all()
+
+    assert [(each.name, each.text) for each in held] == [
+        ("plan.md", PLAN.decode()),
+        ("rest.md", "Rest a week between blocks."),
+    ]
+
+
+def test_two_uploads_of_one_name_are_two_documents(kb: KnowledgeBase) -> None:
+    """The bytes name an upload, so a day saved twice is two documents under one name —
+    the store keeps them apart, and so does the reading."""
+    kb.add_file(b"# Deadlift 14 kg\n3 sets of 10", "2026-09-18.md", scope=FITNESS)
+    kb.add_file(b"# Swing 14 kg\n2 sets of 10", "2026-09-18.md", scope=FITNESS)
+
+    with running_in(frozenset({FITNESS})):
+        held = kb.all()
+
+    assert [(each.name, each.text) for each in held] == [
+        ("2026-09-18.md", "# Deadlift 14 kg\n3 sets of 10"),
+        ("2026-09-18.md", "# Swing 14 kg\n2 sets of 10"),
+    ]
+
+
+def test_a_document_whose_file_is_gone_is_left_out(
+    kb: KnowledgeBase, retriever: FakeRetriever, documents: FakeDocuments
+) -> None:
+    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    kb.add_file(b"Rest a week between blocks.", "rest.md", scope=FITNESS)
+    [gone] = retriever.uploads(FITNESS, "plan.md")
+    documents.forget(FITNESS, gone)
+
+    with running_in(frozenset({FITNESS})):
+        held = kb.all()
+
+    assert [each.name for each in held] == ["rest.md"]
+
+
+def test_another_fields_document_is_not_listed(kb: KnowledgeBase) -> None:
+    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    kb.add_file(KYOTO, "kyoto.md", scope=TRAVEL)
+
+    with running_in(frozenset({TRAVEL})):
+        held = kb.all()
+
+    assert [(each.name, each.scope) for each in held] == [("kyoto.md", TRAVEL)]
+
+
+def test_a_turn_in_two_fields_is_handed_both_each_saying_which(
+    kb: KnowledgeBase,
+) -> None:
+    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    kb.add_file(KYOTO, "kyoto.md", scope=TRAVEL)
+
+    with running_in(frozenset({FITNESS, TRAVEL})):
+        held = kb.all()
+
+    assert [(each.name, each.scope) for each in held] == [
+        ("plan.md", FITNESS),
+        ("kyoto.md", TRAVEL),
+    ]
+
+
 class _RecordingRetriever(FakeRetriever):
     """What the index was handed, as the port promises it: the span, and no words."""
 

@@ -21,6 +21,7 @@ from cora.engine.retrieval_tool import (
     SEARCH_TOOL_NAME,
 )
 from cora.ports.chat_model import ModelReply
+from cora.ports.context_source import Document
 from cora.ports.host import PAGE, SCREENING, TOOL
 from cora.ports.plugin import Tool, ToolCall, ToolRefusal
 from cora.ports.retrieval import RetrievedChunk
@@ -122,6 +123,19 @@ def test_the_host_hands_over_coras_own_ports_rather_than_copies() -> None:
 
     assert (documents.last_query, documents.last_k) == ("protein", 3)
     assert host.memory is memory
+
+
+def test_the_host_hands_a_plugin_its_field_whole_and_says_it_read_it() -> None:
+    """A plugin listing its field reads what a search would, so the call that listed
+    answers for material cora does not vouch for — the one door stays one door."""
+    held = [Document(name="2026-09-18.md", text="# Deadlift 14 kg", scope="fitness")]
+    host = host_for(MODULE, documents=FakeContextSource(held=held))
+
+    with collecting() as taken:
+        listed = host.documents.all()
+
+    assert listed == held
+    assert taken.untrusted
 
 
 def test_a_plugin_reads_the_settings_named_for_it() -> None:

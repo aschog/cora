@@ -19,7 +19,7 @@ from cora.ports.chat_model import (
     TextSink,
     unheard,
 )
-from cora.ports.context_source import ContextSource
+from cora.ports.context_source import ContextSource, Document
 from cora.ports.loading import Loaders
 from cora.ports.memory import Fact, Memory
 from cora.ports.output import Output
@@ -256,6 +256,7 @@ class FailingChatModel:
 @dataclass
 class FakeContextSource:
     results: list[RetrievedChunk] = field(default_factory=list)
+    held: list[Document] = field(default_factory=list)
     last_query: str | None = None
     last_k: int | None = None
 
@@ -263,6 +264,9 @@ class FakeContextSource:
         self.last_query = query
         self.last_k = k
         return self.results
+
+    def all(self) -> list[Document]:
+        return self.held
 
 
 def _decode(data: bytes, filename: str) -> str:
