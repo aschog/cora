@@ -22,7 +22,8 @@ and the strip says so.
 Ask what you trained and the coach lists the log rather than searching it.
 `list_workouts` reads every dated document of the field and answers in text the coach
 shows as it is: one line per day naming the workouts trained, in whatever language the
-sheet names them, and the exercises of a save that carries no name. Ask for the details and each movement comes with its load, sets,
+sheet names them, the exercises of a save that carries no name, and a last line saying
+how many days and saves it holds. Ask for the details and each movement comes with its load, sets,
 reps, volume and a mark where it rose on the last time. It narrows to one lift, or to
 the days since one. A search finds the sessions worded like the question, and the
 listing finds all of them.
