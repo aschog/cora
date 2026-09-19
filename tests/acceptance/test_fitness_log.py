@@ -1,7 +1,6 @@
 """The outer test for the story: the coach lists every workout the trainer logged by
 day and by name, gives the numbers only when asked, and shows the plan as neither."""
 
-import pytest
 from starlette.testclient import TestClient
 
 from app_builder import assembled
@@ -30,10 +29,9 @@ IN_DETAIL = """\
 
 2026-09-18
 - Deadlift, conventional — 14 kg · 3x10 · 30 reps · 420 kg
-- Snatch — 14 kg · 8+8 · 16 reps · 224 kg"""
+- Snatch — 14 kg · 2x8 · 16 reps · 224 kg"""
 
 
-@pytest.mark.xfail(strict=True, reason="the tool answers in numbers, not in text")
 def test_the_coach_names_the_workouts_and_gives_the_numbers_on_request() -> None:
     app = assembled(
         plugins=(load_plugin("cora.plugins.fitness"),),

@@ -60,7 +60,11 @@ def test_the_field_offers_the_log_read_back_and_it_changes_nothing() -> None:
     ]
     assert listing.scope == SCOPE
     assert not listing.value.effect
-    assert set(listing.value.parameter_schema["properties"]) == {"exercise", "since"}
+    assert set(listing.value.parameter_schema["properties"]) == {
+        "exercise",
+        "since",
+        "detail",
+    }
 
 
 def test_the_brief_routes_the_log_to_the_listing_and_the_rest_to_search() -> None:
@@ -70,6 +74,10 @@ def test_the_brief_routes_the_log_to_the_listing_and_the_rest_to_search() -> Non
 
     assert "list_workouts" in instructions
     assert "search" in instructions
+    # relayed as it is: the tool renders, the model does not translate or tabulate
+    assert "as it is" in instructions
+    assert "translat" in instructions
+    assert "detail" in instructions
 
 
 def test_the_field_is_brought_a_trainer_shipped_beside_the_module() -> None:

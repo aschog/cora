@@ -1,7 +1,6 @@
 import re
 from dataclasses import dataclass, replace
 from datetime import date
-from typing import Any
 
 from cora.ports.host import Host
 from cora.ports.plugin import ToolRefusal
@@ -102,8 +101,11 @@ def _number(value: float) -> str:
 
 
 def list_workouts(
-    cora: Host, exercise: str | None = None, since: str | None = None
-) -> list[dict[str, Any]] | str:
+    cora: Host,
+    exercise: str | None = None,
+    since: str | None = None,
+    detail: bool = False,
+) -> str:
     sessions = _risen(_sessions(cora))
     if exercise:
         sessions = _only(sessions, exercise)
@@ -114,7 +116,32 @@ def list_workouts(
             f" since {since}" if since else ""
         )
         return f"No workout logged{narrowed}."
-    return [_listed(session) for session in sessions]
+    if detail:
+        return "\n\n".join(_detailed(session) for session in sessions)
+    return "\n".join(_named(session) for session in sessions)
+
+
+def _sessions(cora: Host) -> list[Session]:
+    by_day: dict[date, list[Movement]] = {}
+    for document in cora.documents.all():
+        day = _day_of(document.name)
+        if day is None:
+            continue
+        try:
+            parsed = parse_session(document.text, day, document.name)
+        except LogError as refused:
+            cora.show(f"skipped {document.name}", detail=str(refused), failed=True)
+            continue
+        by_day.setdefault(day, []).extend(parsed.movements)
+    return [Session(day, tuple(moved)) for day, moved in sorted(by_day.items())]
+
+
+def _day_of(name: str) -> date | None:
+    dated = DATED.match(name)
+    try:
+        return date.fromisoformat(dated[1]) if dated else None
+    except ValueError:
+        return None
 
 
 def _risen(sessions: list[Session]) -> list[Session]:
@@ -162,41 +189,26 @@ def _day(since: str) -> date:
         ) from error
 
 
-def _sessions(cora: Host) -> list[Session]:
-    by_day: dict[date, list[Movement]] = {}
-    for document in cora.documents.all():
-        day = _day_of(document.name)
-        if day is None:
-            continue
-        try:
-            parsed = parse_session(document.text, day, document.name)
-        except LogError as refused:
-            cora.show(f"skipped {document.name}", detail=str(refused), failed=True)
-            continue
-        by_day.setdefault(day, []).extend(parsed.movements)
-    return [Session(day, tuple(moved)) for day, moved in sorted(by_day.items())]
+def _named(session: Session) -> str:
+    names = dict.fromkeys(movement.name for movement in session.movements)
+    return f"{session.day.isoformat()}: " + " · ".join(names)
 
 
-def _day_of(name: str) -> date | None:
-    dated = DATED.match(name)
-    try:
-        return date.fromisoformat(dated[1]) if dated else None
-    except ValueError:
-        return None
+def _detailed(session: Session) -> str:
+    lines = [f"- {_line(movement)}" for movement in session.movements]
+    return "\n".join([session.day.isoformat(), *lines])
 
 
-def _listed(session: Session) -> dict[str, Any]:
-    return {
-        "date": session.day.isoformat(),
-        "movements": [
-            {
-                "name": movement.name,
-                "load": str(movement.load),
-                "sets": list(movement.sets),
-                "reps": movement.reps,
-                "volume_kg": movement.volume,
-                "rose": movement.rose,
-            }
-            for movement in session.movements
-        ],
-    }
+def _line(movement: Movement) -> str:
+    parts = [str(movement.load), _shown(movement.sets), f"{movement.reps} reps"]
+    if movement.volume is not None:
+        parts.append(f"{_number(movement.volume)} kg")
+    return f"{movement.name} — " + " · ".join(parts) + (" ↑" if movement.rose else "")
+
+
+def _shown(sets: tuple[int, ...]) -> str:
+    if not sets:
+        return "no sets"
+    if len(set(sets)) == 1:
+        return f"{len(sets)}x{sets[0]}"
+    return "+".join(str(reps) for reps in sets)

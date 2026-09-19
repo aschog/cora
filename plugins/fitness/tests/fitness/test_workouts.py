@@ -102,23 +102,20 @@ def test_a_heading_in_another_script_reads_as_any_other() -> None:
     assert (swing.name, swing.load, swing.reps) == (ONE_ARM_SWING, Load("kg", 14), 20)
 
 
-# ── the tool: what the field holds, listed ──
+# ── the tool: what the field holds, listed as text to show ──
 
 MODULE = "cora.plugins.fitness"
 DEADLIFT = "# Deadlift 14 kg\n3 sets of 10"
 SWING = "# Swing 16 kg\n2 sets of 10"
 SNATCH = "# Snatch 14 kg\nsets of 8 / 8"
+PULL_UP = "# Pull-up bw+10\nsets of 5 / 5 / 4"
 PLAN = "# 4-Week Beginner Strength Plan\n\nThree sessions a week."
 
 
-def _listing(*documents: tuple[str, str], **filters: str) -> Any:
+def _listing(*documents: tuple[str, str], **asked: Any) -> str:
     held = [Document(name=name, text=text, scope="fitness") for name, text in documents]
     host = host_for(MODULE, documents=FakeContextSource(held=held))
-    return list_workouts(host, **filters)
-
-
-def _numbers(movement: dict[str, Any]) -> tuple[Any, ...]:
-    return tuple(movement[key] for key in ("name", "load", "sets", "reps", "volume_kg"))
+    return list_workouts(host, **asked)
 
 
 def test_every_document_named_for_a_day_is_a_session_dated_from_it_oldest_first() -> (
@@ -126,23 +123,25 @@ def test_every_document_named_for_a_day_is_a_session_dated_from_it_oldest_first(
 ):
     listed = _listing(("2026-09-18.md", DEADLIFT), ("2026-09-16.md", SWING))
 
-    assert [session["date"] for session in listed] == ["2026-09-16", "2026-09-18"]
-    assert [_numbers(m) for m in listed[1]["movements"]] == [
-        ("Deadlift", "14 kg", [10, 10, 10], 30, 420)
-    ]
+    assert listed == "2026-09-16: Swing\n2026-09-18: Deadlift"
 
 
 def test_two_documents_of_one_day_are_one_session_in_upload_order() -> None:
     listed = _listing(("2026-09-18.md", DEADLIFT), ("2026-09-18.md", SNATCH))
 
-    [session] = listed
-    assert [m["name"] for m in session["movements"]] == ["Deadlift", "Snatch"]
+    assert listed == "2026-09-18: Deadlift · Snatch"
+
+
+def test_unasked_for_detail_a_day_names_each_exercise_worked_once() -> None:
+    listed = _listing(("2026-09-18.md", f"{SWING}\n\n{DEADLIFT}\n\n{SWING}"))
+
+    assert listed == "2026-09-18: Swing · Deadlift"
 
 
 def test_a_document_not_named_for_a_day_is_not_a_session() -> None:
     listed = _listing(("training-plan.md", PLAN), ("2026-09-16.md", SWING))
 
-    assert [session["date"] for session in listed] == ["2026-09-16"]
+    assert listed == "2026-09-16: Swing"
 
 
 def test_a_dated_document_the_grammar_refuses_is_left_out_and_said_so() -> None:
@@ -155,40 +154,37 @@ def test_a_dated_document_the_grammar_refuses_is_left_out_and_said_so() -> None:
     with collecting() as taken:
         listed = list_workouts(host)
 
-    assert isinstance(listed, list)
-    assert [session["date"] for session in listed] == ["2026-09-18"]
+    assert listed == "2026-09-18: Deadlift"
     [skipped] = taken.steps
     assert skipped.failed
     assert "2026-09-17.md" in skipped.summary
     assert "2026-09-17.md:1:" in skipped.detail
 
 
-def test_an_exercise_keeps_only_its_movements_and_drops_a_session_left_empty() -> None:
+def test_asked_for_detail_each_movement_is_a_line_with_its_numbers() -> None:
     listed = _listing(
         ("2026-09-16.md", SWING),
         ("2026-09-18.md", f"{DEADLIFT}\n\n{SNATCH}"),
-        exercise="deadlift",
+        detail=True,
     )
 
-    assert [(s["date"], [m["name"] for m in s["movements"]]) for s in listed] == [
-        ("2026-09-18", ["Deadlift"])
-    ]
-
-
-def test_a_day_drops_the_sessions_before_it() -> None:
-    listed = _listing(
-        ("2026-09-16.md", SWING), ("2026-09-18.md", DEADLIFT), since="2026-09-18"
+    assert listed == (
+        "2026-09-16\n"
+        "- Swing — 16 kg · 2x10 · 20 reps · 320 kg\n"
+        "\n"
+        "2026-09-18\n"
+        "- Deadlift — 14 kg · 3x10 · 30 reps · 420 kg\n"
+        "- Snatch — 14 kg · 2x8 · 16 reps · 224 kg"
     )
 
-    assert [session["date"] for session in listed] == ["2026-09-18"]
+
+def test_a_bodyweight_movements_line_carries_its_reps_and_no_volume() -> None:
+    listed = _listing(("2026-09-18.md", PULL_UP), detail=True)
+
+    assert listed == "2026-09-18\n- Pull-up — bw+10 · 5+5+4 · 14 reps"
 
 
-def test_a_since_that_is_not_a_day_refuses_the_call() -> None:
-    with pytest.raises(ToolRefusal, match="last week"):
-        _listing(("2026-09-18.md", DEADLIFT), since="last week")
-
-
-def test_a_movement_says_whether_it_rose_on_the_previous_session_of_it() -> None:
+def test_a_movement_is_marked_where_it_rose_on_the_previous_session_of_it() -> None:
     days = (
         ("2026-09-16.md", "# Deadlift 14 kg\n3 sets of 10"),
         ("2026-09-18.md", "# Deadlift 14 kg\n3 sets of 12"),
@@ -196,12 +192,33 @@ def test_a_movement_says_whether_it_rose_on_the_previous_session_of_it() -> None
         ("2026-09-22.md", "# Deadlift 16 kg\n3 sets of 8"),
     )
 
-    listed = _listing(*days)
-    lately = _listing(*days, since="2026-09-18")
+    listed = _listing(*days, detail=True)
+    lately = _listing(*days, since="2026-09-18", detail=True)
 
-    assert [s["movements"][0]["rose"] for s in listed] == [False, True, True, False]
+    lines = [line for line in listed.splitlines() if line.startswith("- ")]
+    assert [line.endswith(" ↑") for line in lines] == [False, True, True, False]
     # judged against the whole log, not against what the day narrowed it to
-    assert lately[0]["movements"][0]["rose"] is True
+    assert lately.splitlines()[1].endswith(" ↑")
+
+
+def test_an_exercise_and_a_day_narrow_both_views() -> None:
+    days = (
+        ("2026-09-16.md", SWING),
+        ("2026-09-18.md", f"{DEADLIFT}\n\n{SNATCH}"),
+        ("2026-09-20.md", DEADLIFT),
+    )
+
+    assert _listing(*days, exercise="deadlift") == (
+        "2026-09-18: Deadlift\n2026-09-20: Deadlift"
+    )
+    assert _listing(*days, exercise="deadlift", since="2026-09-20", detail=True) == (
+        "2026-09-20\n- Deadlift — 14 kg · 3x10 · 30 reps · 420 kg"
+    )
+
+
+def test_a_since_that_is_not_a_day_refuses_the_call() -> None:
+    with pytest.raises(ToolRefusal, match="last week"):
+        _listing(("2026-09-18.md", DEADLIFT), since="last week")
 
 
 def test_nothing_logged_answers_in_words_rather_than_an_empty_list() -> None:
