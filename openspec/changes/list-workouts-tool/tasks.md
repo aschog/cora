@@ -1,6 +1,6 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the functional test where three trainer-posted workouts, two on one day, list as two dated sessions with their numbers and not the plan, marked `@pytest.mark.xfail(strict=True)`.
+- [x] 1.1 Write the functional test where three trainer-posted workouts, two on one day, list as two dated sessions with their numbers and not the plan, marked `@pytest.mark.xfail(strict=True)`.
 
 ## 2. The grammar, read back
 
