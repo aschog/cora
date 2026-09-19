@@ -678,11 +678,15 @@ function pose(of: Body): Point[] {
 
 const PER = 30;
 
-/* `n` cycles of a movement at thirty frames each — a second a rep, which is the pace of
+/* `n` cycles of a movement, thirty frames each by default — a second a rep, the pace of
    the plan's slower lifts. Phase nought is the bottom, where a lifter starts. */
-function cycles(n: number, at: (phase: number) => Frame): Frame[] {
-  return Array.from({ length: n * PER }, (_, i) =>
-    at(((i % PER) / PER) * 2 * Math.PI),
+function cycles(
+  n: number,
+  at: (phase: number) => Frame,
+  per: number = PER,
+): Frame[] {
+  return Array.from({ length: n * per }, (_, i) =>
+    at(((i % per) / per) * 2 * Math.PI),
   );
 }
 
@@ -774,4 +778,30 @@ test("a torso moving over planted wrists counts one a cycle", async ({
   await feed(page, cycles(4, pushUp));
 
   await expect(page.locator("#repnum")).toHaveText("4");
+});
+
+/* Shifting weight between the feet: rhythmic, and nowhere near a repetition. */
+const fidget = (phase: number): Frame =>
+  pose({ wrist: { x: 0.5, y: 0.6 + 0.02 * Math.cos(phase) } });
+
+test("a swing too small to be a rep is not counted", async ({ page }) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(4, fidget));
+
+  await expect(page.locator("#repnum")).toHaveText("0");
+});
+
+test("turning points closer together than a rep are counted once", async ({
+  page,
+}) => {
+  await page.goto(TRAINER);
+  /* Twelve cycles at six frames each: five a second, which no lifter does and the
+     counter will not accept. Four fifths of a second of that is one rep at most. */
+  await feed(page, cycles(12, snatch, 6));
+
+  const seen = Number(await page.locator("#repnum").textContent());
+  expect(seen, "the movement was seen").toBeGreaterThan(0);
+  expect(seen, "but not once a cycle").toBeLessThanOrEqual(
+    Math.ceil((12 * 6 * (1000 / 30)) / 350),
+  );
 });

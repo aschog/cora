@@ -14,8 +14,8 @@ test is held with `test.fail()` until the list is done.
 - [x] 2.3 Write a test that the same sequence at half the size counts the same.
 - [x] 2.4 Write a test that a sequence sliding bodily across the frame counts nothing.
 - [x] 2.5 Write a test that a sequence moving the shoulders over planted wrists counts one a cycle.
-- [ ] 2.6 Write a test that a swing under the amplitude gate counts nothing.
-- [ ] 2.7 Write a test that two turning points inside the minimum period count one.
+- [x] 2.6 Write a test that a swing under the amplitude gate counts nothing.
+- [x] 2.7 Write a test that two turning points inside the minimum period count one.
 - [ ] 2.8 Write a test that a frame the model found nobody in is skipped, not counted.
 - [ ] 2.9 Write a test that a wrist travelling a circle counts one a circle.
 
