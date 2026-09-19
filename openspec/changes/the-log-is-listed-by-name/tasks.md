@@ -1,6 +1,6 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the functional test where three trainer-posted workouts list as two lines naming days and exercises, and in detail as movements with numbers, marked `@pytest.mark.xfail(strict=True)`.
+- [x] 1.1 Write the functional test where three trainer-posted workouts list as two lines naming days and exercises, and in detail as movements with numbers, marked `@pytest.mark.xfail(strict=True)`.
 
 ## 2. Two views
 

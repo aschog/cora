@@ -14,7 +14,7 @@ SHALL narrow to one exercise, matched whatever its case, and to sessions since a
 document not named for a day SHALL NOT be a session. One the grammar cannot read SHALL
 be left out, with a line on the trace.
 
-#### Scenario: Every workout, by name
+#### Scenario: Every workout
 
 - **GIVEN** three workouts saved into the fitness field, two on one day
 - **WHEN** the coach is asked what was trained
