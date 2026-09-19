@@ -3,6 +3,8 @@ import pathlib
 import re
 import urllib.parse
 
+import pytest
+
 import cora.plugins.fitness as fitness
 from cora.plugins.fitness import INSTRUCTIONS, SCOPE, extend
 from cora.ports.host import HANDLER, PAGE, SCREENING, TOOL
@@ -247,6 +249,17 @@ def test_the_watch_asks_for_no_permission() -> None:
 
     assert manifest["permissions"] == []
     assert "heart" not in _widget().lower()
+
+
+@pytest.mark.xfail(strict=True, reason="the page still keeps a history of its own")
+def test_the_trainer_keeps_no_history_and_reads_the_fields_own() -> None:
+    """One log, the field's: the page holds the workout in flight and nothing else, and
+    what it shows of earlier ones it reads back from cora."""
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    assert "kb.hist" not in drawn
+    assert "'/api/documents?scope=' + encodeURIComponent(FIELD)" in drawn
+    assert "'/api/documents/' + encodeURIComponent(FIELD) + '/'" in drawn
 
 
 def test_the_trainer_names_a_save_for_its_moment_day_first() -> None:

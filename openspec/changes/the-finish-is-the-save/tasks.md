@@ -1,6 +1,6 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the test that the page keeps no history of its own and reads the field's documents instead, marked `@pytest.mark.xfail(strict=True)`.
+- [x] 1.1 Write the test that the page keeps no history of its own and reads the field's documents instead, marked `@pytest.mark.xfail(strict=True)`.
 
 ## 2. The coach
 
