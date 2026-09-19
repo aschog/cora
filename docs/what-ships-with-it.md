@@ -14,8 +14,8 @@ of them still answers.
 
 Pin a conversation to `fitness` and the middle of the page becomes a trainer: the plan
 one exercise at a time, its sets and working weight, the clip for it playing in the same frame, and the camera to film yourself against. **Save & finish** writes the workout into the `fitness` field as a
-Markdown document named for the day — so the next question about it is answered from your
-own log, with the day cited. Refused or unreachable, the workout goes to the clipboard
+Markdown document named for the moment it was saved — so the next question about it is
+answered from your own log, with the day cited. Refused or unreachable, the workout goes to the clipboard
 and the strip says so.
 
 Ask what you trained and the coach lists the log rather than searching it.

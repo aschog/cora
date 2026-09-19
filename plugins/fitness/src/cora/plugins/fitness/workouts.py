@@ -6,7 +6,7 @@ from cora.ports.host import Host
 from cora.ports.plugin import ToolRefusal
 
 NUMBER = r"\d+(?:\.\d+)?"
-DATED = re.compile(r"^(\d{4}-\d{2}-\d{2})\.[A-Za-z0-9]+$")
+DATED = re.compile(r"^(\d{4}-\d{2}-\d{2})(?:-\d{2}[-:]\d{2}[-:]\d{2})?\.[A-Za-z0-9]+$")
 HEADING = re.compile(
     rf"^#\s+(?P<name>.+?)\s+(?:(?P<kg>{NUMBER})\s*kg|bw(?:\+(?P<bw>{NUMBER}))?)$"
 )
@@ -123,7 +123,9 @@ def list_workouts(
 
 def _sessions(cora: Host) -> list[Session]:
     by_day: dict[date, list[Movement]] = {}
-    for document in cora.documents.all():
+    # by name, stably: a day's saves in the order of their moments, and two of one
+    # name as they were uploaded
+    for document in sorted(cora.documents.all(), key=lambda held: held.name):
         day = _day_of(document.name)
         if day is None:
             continue

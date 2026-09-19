@@ -245,3 +245,19 @@ def test_the_watch_asks_for_no_permission() -> None:
 
     assert manifest["permissions"] == []
     assert "heart" not in _widget().lower()
+
+
+def test_the_trainer_names_a_save_for_its_moment_day_first() -> None:
+    """One entry in the rail per save, and a day's saves in the order they happened:
+    the name carries the time behind the day, in the lifter's own clock."""
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    naming = re.search(r"function moment\(\)\{(.*?)\n\}", drawn, re.S)
+
+    assert naming, "the page has no moment()"
+    assert (
+        "`${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}"
+        "-${two(d.getHours())}-${two(d.getMinutes())}-${two(d.getSeconds())}.md`"
+    ) in naming.group(1)
+    assert drawn.count("moment()") == 2, "defined once, and called once at the save"
+    assert "today()" not in drawn
