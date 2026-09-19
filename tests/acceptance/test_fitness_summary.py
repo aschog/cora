@@ -1,7 +1,6 @@
 """The outer test for the story: the coach's summary says what it is — workouts first,
 an untitled save marked, and a last line saying what else is on file."""
 
-import pytest
 from starlette.testclient import TestClient
 
 from app_builder import assembled
@@ -29,7 +28,6 @@ BY_NAME = (
 )
 
 
-@pytest.mark.xfail(strict=True, reason="the names view says nothing about itself")
 def test_the_summary_says_what_it_is_and_what_else_is_on_file() -> None:
     app = assembled(
         plugins=(load_plugin("cora.plugins.fitness"),),

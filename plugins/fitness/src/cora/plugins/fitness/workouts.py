@@ -57,13 +57,21 @@ class Session:
 
 
 @dataclass(frozen=True)
+class Save:
+    # what one document said of itself: its workout's name, or none, and its lifts
+    name: str
+    lifts: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class Day:
     day: date
     movements: tuple[Movement, ...]
-    # the titled saves' names, each once — and what the day is listed by, which is
-    # those and an untitled save's exercises
-    workouts: tuple[str, ...] = ()
-    named: tuple[str, ...] = ()
+    saves: tuple[Save, ...] = ()
+
+    @property
+    def workouts(self) -> tuple[str, ...]:
+        return tuple(dict.fromkeys(save.name for save in self.saves if save.name))
 
 
 def parse_session(text: str, day: date, name: str = "<session>") -> Session:
@@ -134,11 +142,11 @@ def list_workouts(
         return f"No workout logged{narrowed}."
     if detail:
         return "\n\n".join(_detailed(session) for session in sessions)
-    return "\n".join(_named(session) for session in sessions)
+    return "\n".join([*(_named(session) for session in sessions), _closing(sessions)])
 
 
 def _sessions(cora: Host) -> list[Day]:
-    by_day: dict[date, tuple[list[Movement], list[str], list[str]]] = {}
+    by_day: dict[date, tuple[list[Movement], list[Save]]] = {}
     # by name, stably: a day's saves in the order of their moments, and two of one
     # name as they were uploaded
     for document in sorted(cora.documents.all(), key=lambda held: held.name):
@@ -150,21 +158,13 @@ def _sessions(cora: Host) -> list[Day]:
         except LogError as refused:
             cora.show(f"skipped {document.name}", detail=str(refused), failed=True)
             continue
-        moved, workouts, named = by_day.setdefault(day, ([], [], []))
+        moved, saves = by_day.setdefault(day, ([], []))
         moved.extend(parsed.movements)
-        if parsed.name:
-            workouts.append(parsed.name)
-            named.append(parsed.name)
-        else:
-            named.extend(movement.name for movement in parsed.movements)
+        lifts = tuple(dict.fromkeys(m.name for m in parsed.movements))
+        saves.append(Save(parsed.name, lifts))
     return [
-        Day(
-            day,
-            tuple(moved),
-            tuple(dict.fromkeys(workouts)),
-            tuple(dict.fromkeys(named)),
-        )
-        for day, (moved, workouts, named) in sorted(by_day.items())
+        Day(day, tuple(moved), tuple(saves))
+        for day, (moved, saves) in sorted(by_day.items())
     ]
 
 
@@ -206,10 +206,16 @@ def _only(sessions: list[Day], exercise: str) -> list[Day]:
             movements=tuple(
                 m for m in session.movements if m.name.casefold() == wanted
             ),
-            named=tuple(
-                n
-                for n in session.named
-                if n in session.workouts or n.casefold() == wanted
+            saves=tuple(
+                save
+                for save in (
+                    replace(
+                        save,
+                        lifts=tuple(n for n in save.lifts if n.casefold() == wanted),
+                    )
+                    for save in session.saves
+                )
+                if save.lifts
             ),
         )
         for session in sessions
@@ -227,7 +233,21 @@ def _day(since: str) -> date:
 
 
 def _named(session: Day) -> str:
-    return f"{session.day.isoformat()}: " + " · ".join(session.named)
+    untitled = [save.lifts for save in session.saves if not save.name]
+    parts = [
+        *session.workouts,
+        *(f"untitled save: {' · '.join(lifts)}" for lifts in untitled),
+    ]
+    return f"{session.day.isoformat()}: " + " · ".join(parts)
+
+
+def _closing(sessions: list[Day]) -> str:
+    # what a names view holds beyond the names, said so nothing has to be guessed
+    days, saves = len(sessions), sum(len(session.saves) for session in sessions)
+    counted = (
+        f"{days} day{'s' if days != 1 else ''}, {saves} save{'s' if saves != 1 else ''}"
+    )
+    return f"{counted}. The sets, reps and weights are in the details."
 
 
 def _detailed(session: Day) -> str:
