@@ -139,6 +139,17 @@ def test_two_uploads_of_one_name_are_two_documents(kb: KnowledgeBase) -> None:
     ]
 
 
+def test_a_name_is_read_back_with_every_upload_oldest_first(kb: KnowledgeBase) -> None:
+    kb.add_file(b"# Deadlift 14 kg\n3 sets of 10", "2026-09-18.md", scope=FITNESS)
+    kb.add_file(b"# Swing 14 kg\n2 sets of 10", "2026-09-18.md", scope=FITNESS)
+
+    assert [each.text for each in kb.read(FITNESS, "2026-09-18.md")] == [
+        "# Deadlift 14 kg\n3 sets of 10",
+        "# Swing 14 kg\n2 sets of 10",
+    ]
+    assert kb.read(FITNESS, "never.md") == []
+
+
 def test_a_document_whose_file_is_gone_is_left_out(
     kb: KnowledgeBase, retriever: FakeRetriever, documents: FakeDocuments
 ) -> None:
