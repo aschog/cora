@@ -150,6 +150,28 @@ def test_a_name_is_read_back_with_every_upload_oldest_first(kb: KnowledgeBase) -
     assert kb.read(FITNESS, "never.md") == []
 
 
+def test_a_name_whose_file_is_gone_reads_back_the_uploads_still_there(
+    kb: KnowledgeBase, retriever: FakeRetriever, documents: FakeDocuments
+) -> None:
+    kb.add_file(b"# Deadlift 14 kg\n3 sets of 10", "2026-09-18.md", scope=FITNESS)
+    kb.add_file(b"# Swing 14 kg\n2 sets of 10", "2026-09-18.md", scope=FITNESS)
+    gone, _ = retriever.uploads(FITNESS, "2026-09-18.md")
+    documents.forget(FITNESS, gone)
+
+    assert [each.text for each in kb.read(FITNESS, "2026-09-18.md")] == [
+        "# Swing 14 kg\n2 sets of 10"
+    ]
+
+
+def test_a_name_reads_only_the_field_it_is_asked_of(kb: KnowledgeBase) -> None:
+    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    kb.add_file(KYOTO, "plan.md", scope=TRAVEL)
+
+    assert [(each.text, each.scope) for each in kb.read(TRAVEL, "plan.md")] == [
+        (KYOTO.decode(), TRAVEL)
+    ]
+
+
 def test_a_document_whose_file_is_gone_is_left_out(
     kb: KnowledgeBase, retriever: FakeRetriever, documents: FakeDocuments
 ) -> None:

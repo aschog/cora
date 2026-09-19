@@ -5,8 +5,8 @@
 ## 2. The knowledge base
 
 - [x] 2.1 Write the test that the knowledge base hands back a name's uploads with their texts, oldest first, and nothing for a name never uploaded.
-- [ ] 2.2 Write the test that an upload whose file is gone is left out of the answer.
-- [ ] 2.3 Write the test that another field's document of that name is not answered.
+- [x] 2.2 Write the test that an upload whose file is gone is left out of the answer.
+- [x] 2.3 Write the test that another field's document of that name is not answered.
 
 ## 3. The route
 
