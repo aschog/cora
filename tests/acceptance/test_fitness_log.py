@@ -4,7 +4,6 @@ session per day with its numbers, and the plan beside them is not one."""
 import json
 from typing import Any
 
-import pytest
 from starlette.testclient import TestClient
 
 from app_builder import assembled
@@ -28,7 +27,6 @@ POSTED = [
 ANSWER = "Two days logged: swings on the 16th, then deadlift and snatch on the 18th."
 
 
-@pytest.mark.xfail(strict=True, reason="the fitness field offers no list_workouts yet")
 def test_the_coach_lists_the_workouts_by_day_with_their_numbers() -> None:
     app = assembled(
         plugins=(load_plugin("cora.plugins.fitness"),),

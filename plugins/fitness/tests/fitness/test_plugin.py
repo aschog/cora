@@ -39,11 +39,37 @@ def test_the_coaching_is_scoped_and_the_medical_screen_is_not() -> None:
     extend(host)
 
     under = [(entry.kind, entry.scope) for entry in host.registered]
-    assert under.count((TOOL, SCOPE)) == 3
+    assert under.count((TOOL, SCOPE)) == 4
     assert under.count((SAYS, SCOPE)) == 1
     assert under.count((HANDLER, None)) == 1
     [screen] = [entry for entry in host.registered if entry.kind == HANDLER]
     assert screen.value.event == SCREENING
+
+
+def test_the_field_offers_the_log_read_back_and_it_changes_nothing() -> None:
+    """The fourth tool is the one that closes over the host: it reads the field the
+    turn runs in, so it is registered in `extend` rather than kept in `TOOLS`."""
+    host = host_for("cora.plugins.fitness")
+
+    extend(host)
+
+    [listing] = [
+        entry
+        for entry in host.registered
+        if entry.kind == TOOL and entry.value.name == "list_workouts"
+    ]
+    assert listing.scope == SCOPE
+    assert not listing.value.effect
+    assert set(listing.value.parameter_schema["properties"]) == {"exercise", "since"}
+
+
+def test_the_brief_routes_the_log_to_the_listing_and_the_rest_to_search() -> None:
+    """Search ranks by wording and cuts at k, so a question about what was trained
+    goes to the tool that lists every session — and the brief is what sends it there."""
+    instructions = INSTRUCTIONS.lower()
+
+    assert "list_workouts" in instructions
+    assert "search" in instructions
 
 
 def test_the_field_is_brought_a_trainer_shipped_beside_the_module() -> None:

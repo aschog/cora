@@ -27,9 +27,9 @@
 
 ## 4. The field offers it
 
-- [ ] 4.1 Write a test that the plugin registers a fourth tool under its field, `list_workouts`, with no effect.
-- [ ] 4.2 Write a test that the brief tells the coach to list what was trained and to search the rest.
+- [x] 4.1 Write a test that the plugin registers a fourth tool under its field, `list_workouts`, with no effect.
+- [x] 4.2 Write a test that the brief tells the coach to list what was trained and to search the rest.
 
 ## 5. Close it
 
-- [ ] 5.1 Drop the outer test's `xfail` marker and watch it pass.
+- [x] 5.1 Drop the outer test's `xfail` marker and watch it pass.
