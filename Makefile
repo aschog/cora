@@ -4,7 +4,7 @@
 REACT := cora.frontends.react.server
 TELEGRAM := cora.frontends.telegram.server
 
-.PHONY: run run-env bot bot-env plugins plugins-env ui ui-build ui-test e2e e2e-store e2e-live docs docs-serve diagram watch
+.PHONY: run run-env run-watch bot bot-env plugins plugins-env ui ui-build ui-test e2e e2e-store e2e-live docs docs-serve diagram watch
 
 # cora, as one process serving the page and the API on 127.0.0.1:8000. It builds first
 # because the server only ever reads `ui/dist` — without that a source change is
@@ -15,6 +15,16 @@ run: ui-build
 # Reads it from .env instead, which is how the live tier is run too.
 run-env: ui-build
 	uv run --env-file .env python -m $(REACT)
+
+# The same, for a session the watch takes part in. Two things differ and both are about
+# a device that is not this machine: the phone does the watch's HTTP, so cora listens on
+# the network rather than on loopback alone — which puts every route there, so run it on
+# a network you trust — and the machine has to stay up while the lifter is not touching
+# it, which `caffeinate` is. Where there is no `caffeinate` the run is the same run.
+KEEP_AWAKE := $(shell command -v caffeinate 2>/dev/null)
+
+run-watch: ui-build
+	CORA_HOST=0.0.0.0 $(KEEP_AWAKE) $(if $(KEEP_AWAKE),-i,) uv run --env-file .env python -m $(REACT)
 
 # cora in a Telegram chat, for the machine you are not sitting at. The bot polls out,
 # so nothing has to reach in. Reads CORA_TELEGRAM_TOKEN and CORA_TELEGRAM_CHATS beside
