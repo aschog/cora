@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { fresh } from "./helpers";
 
 /* The fitness trainer, in the only tier that can run it: it is the plugin's own
@@ -642,4 +642,71 @@ test("a clip plays in the frame rather than sending the lifter to another tab", 
   await expect(page.locator('.stage a[href*="youtube.com/watch"]')).toHaveCount(
     0,
   );
+});
+
+/* ---- the rep counter -------------------------------------------------------------
+   The counter is fed one landmark frame a call, the way the pose loop feeds it off the
+   camera. These build the frames by hand, so nothing here needs a camera or the model.
+   Image y grows downward, so a wrist overhead is a small y and a wrist at the hip a
+   large one. */
+
+type Point = { x: number; y: number };
+type Frame = Point[] | null;
+
+type Body = {
+  wrist: Point;
+  cx?: number;
+  shoulder?: number;
+  hip?: number;
+};
+
+/* A pose the counter can read. Only the shoulders, hips and wrists carry anything; the
+   rest is filler so the array indexes the way BlazePose's does. */
+function pose(of: Body): Point[] {
+  const cx = of.cx ?? 0.5;
+  const sy = of.shoulder ?? 0.3;
+  const hy = of.hip ?? 0.7;
+  const lm: Point[] = Array.from({ length: 33 }, () => ({ x: cx, y: 0.5 }));
+  lm[11] = { x: cx - 0.1, y: sy };
+  lm[12] = { x: cx + 0.1, y: sy };
+  lm[23] = { x: cx - 0.08, y: hy };
+  lm[24] = { x: cx + 0.08, y: hy };
+  lm[15] = of.wrist;
+  lm[16] = of.wrist;
+  return lm;
+}
+
+const PER = 30;
+
+/* `n` cycles of a movement at thirty frames each — a second a rep, which is the pace of
+   the plan's slower lifts. Phase nought is the bottom, where a lifter starts. */
+function cycles(n: number, at: (phase: number) => Frame): Frame[] {
+  return Array.from({ length: n * PER }, (_, i) =>
+    at(((i % PER) / PER) * 2 * Math.PI),
+  );
+}
+
+/* A snatch: the wrist travels from the hip to overhead and back, the torso still. */
+const snatch = (phase: number): Frame =>
+  pose({ wrist: { x: 0.5, y: 0.45 + 0.3 * Math.cos(phase) } });
+
+/* Hands the frames to the page one at a time, at the rate the camera delivers them. */
+async function feed(page: Page, frames: Frame[]): Promise<void> {
+  await page.evaluate((given) => {
+    const counter = window as unknown as {
+      repReset: () => void;
+      repSaw: (lm: unknown, now: number) => void;
+    };
+    counter.repReset();
+    given.forEach((lm, i) => counter.repSaw(lm, (i * 1000) / 30));
+  }, frames);
+}
+
+test("the camera counts the reps it sees", async ({ page }) => {
+  test.fail(); // the counter is not written yet
+
+  await page.goto(TRAINER);
+  await feed(page, cycles(3, snatch));
+
+  await expect(page.locator("#repnum")).toHaveText("3");
 });

@@ -4,7 +4,7 @@ test is held with `test.fail()` until the list is done.
 
 ## 1. The outer test
 
-- [ ] 1.1 Write the outer test — the overlay on, a written sequence of landmark frames
+- [x] 1.1 Write the outer test — the overlay on, a written sequence of landmark frames
       fed to the page, and the count over the frame rising one a cycle — under `test.fail()`.
 
 ## 2. The counter
