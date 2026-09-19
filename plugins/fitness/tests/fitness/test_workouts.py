@@ -69,7 +69,7 @@ def test_a_line_that_is_neither_heading_nor_sets_is_a_note_on_the_movement() -> 
 @pytest.mark.parametrize(
     ("text", "line", "fragment"),
     [
-        ("hello\n# Snatch 24 kg\n", 1, "before the first heading"),
+        ("Snatch day\nand more\n# Snatch 24 kg\n", 2, "one name line"),
         ("# Snatch\n10 sets of 10\n", 1, "load"),
         ("# Snatch 24 kg\n10 sets of 10\nsets of 5 / 5\n", 3, "one set line"),
     ],
@@ -100,6 +100,15 @@ def test_a_heading_in_another_script_reads_as_any_other() -> None:
     [swing] = _parsed(f"# {ONE_ARM_SWING} 14 kg\n2 sets of 10\n").movements
 
     assert (swing.name, swing.load, swing.reps) == (ONE_ARM_SWING, Load("kg", 14), 20)
+
+
+def test_one_line_before_the_first_heading_is_the_sessions_name() -> None:
+    titled = _parsed("Рывок гири\n\n# Swing 16 kg\n2 sets of 10\n")
+    untitled = _parsed("# Swing 16 kg\n2 sets of 10\n")
+
+    assert titled.name == "Рывок гири"
+    assert [m.name for m in titled.movements] == ["Swing"]
+    assert untitled.name == ""
 
 
 # ── the tool: what the field holds, listed as text to show ──
@@ -242,3 +251,26 @@ def test_a_days_saves_list_in_the_order_of_their_names_whatever_the_upload() -> 
     )
 
     assert listed == "2026-09-18: Deadlift · Snatch"
+
+
+SNATCH_WORKOUT = "Рывок гири"
+TITLED = f"{SNATCH_WORKOUT}\n\n{SWING}"
+
+
+def test_a_day_names_its_workouts_once_and_an_untitled_saves_exercises() -> None:
+    listed = _listing(
+        ("2026-09-18-12-27-00.md", DEADLIFT),
+        ("2026-09-18-16-20-05.md", TITLED),
+        ("2026-09-18-16-42-10.md", f"{SNATCH_WORKOUT}\n\n{SNATCH}"),
+    )
+
+    assert listed == f"2026-09-18: Deadlift · {SNATCH_WORKOUT}"
+
+
+def test_in_detail_the_days_line_carries_its_workouts_names() -> None:
+    listed = _listing(
+        ("2026-09-18.md", TITLED), ("2026-09-20.md", DEADLIFT), detail=True
+    )
+
+    assert listed.splitlines()[0] == f"2026-09-18 — {SNATCH_WORKOUT}"
+    assert "2026-09-20\n- Deadlift" in listed

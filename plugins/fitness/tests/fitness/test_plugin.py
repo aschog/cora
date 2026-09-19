@@ -261,3 +261,18 @@ def test_the_trainer_names_a_save_for_its_moment_day_first() -> None:
     ) in naming.group(1)
     assert drawn.count("moment()") == 2, "defined once, and called once at the save"
     assert "today()" not in drawn
+
+
+def test_the_trainer_takes_the_workouts_name_off_the_sheet_and_writes_it_first() -> (
+    None
+):
+    """The tab's name is not in the CSV's cells but in the export's filename header,
+    which Google lets any origin read: the page reads it there, keeps it beside the
+    plan for a save made offline, and a save opens with it."""
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    assert "function workoutName(" in drawn
+    assert "workoutName(r.headers.get('content-disposition'))" in drawn
+    assert "save('kb.workout'" in drawn
+    assert "load('kb.workout'" in drawn
+    assert "(WORKOUT ? WORKOUT + '\\n\\n' : '') + sessionText(" in drawn
