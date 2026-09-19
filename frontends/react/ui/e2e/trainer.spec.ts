@@ -805,3 +805,17 @@ test("turning points closer together than a rep are counted once", async ({
     Math.ceil((12 * 6 * (1000 / 30)) / 350),
   );
 });
+
+test("frames the model found nobody in are skipped, not counted", async ({
+  page,
+}) => {
+  await page.goto(TRAINER);
+  /* The same snatch with every seventh frame lost — the clock does not stop, so what
+     is missing is the pose and not the time. */
+  await feed(
+    page,
+    cycles(4, snatch).map((lm, i) => (i % 7 === 0 ? null : lm)),
+  );
+
+  await expect(page.locator("#repnum")).toHaveText("4");
+});
