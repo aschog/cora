@@ -142,11 +142,6 @@ body.view-clip #player{display:block}
 /* the break runs on the current exercise, so its seconds are shown on its row */
 .row .rest{display:none;flex:none;font-size:19px;font-weight:700;color:var(--blue)}
 body.resting .row.on .rest{display:block}
-.row .st{
-  flex:none;font-size:12px;font-weight:600;letter-spacing:.09em;
-  text-transform:uppercase;color:var(--muted);
-}
-.row.complete .st{color:var(--done)}
 
 #hud{position:absolute;inset:0;z-index:3;pointer-events:none}
 .player{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:16/9}
@@ -639,7 +634,6 @@ function render(){
       <span class="ix">${String(i+1).padStart(2,'0')}</span>
       <span class="nm" lang="ru">${q.n}</span>
       ${q.id === cur ? '<span class="rest" id="restrow">0</span>' : ''}
-      <span class="st">${t.done}/${q.s}${q.w ? ' · ' + t.w + ' kg' : ''}</span>
     </button>`;
   }).join('');
 
