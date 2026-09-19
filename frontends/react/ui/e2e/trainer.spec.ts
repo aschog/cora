@@ -696,15 +696,21 @@ const snatch = (phase: number): Frame =>
 
 /* Hands the frames to the page one at a time, at the rate the camera delivers them, and
    through the door the pose loop uses rather than the counter's own. */
-async function feed(page: Page, frames: Frame[]): Promise<void> {
+async function alsoFeed(page: Page, frames: Frame[]): Promise<void> {
   await page.evaluate((given) => {
     const overlay = window as unknown as {
-      repReset: () => void;
       poseShow: (lm: unknown, now: number) => void;
     };
-    overlay.repReset();
     given.forEach((lm, i) => overlay.poseShow(lm, (i * 1000) / 30));
   }, frames);
+}
+
+/* The same, from a counter put back to nought — which is where a set starts. */
+async function feed(page: Page, frames: Frame[]): Promise<void> {
+  await page.evaluate(() =>
+    (window as unknown as { repReset: () => void }).repReset(),
+  );
+  await alsoFeed(page, frames);
 }
 
 test("the camera counts the reps it sees", async ({ page }) => {
@@ -925,4 +931,19 @@ test("the frame the overlay draws is the frame the counter is given", async ({
 
   await expect(page.locator("#posehud")).toContainText("wrists");
   await expect(page.locator("#repnum")).toHaveText("3");
+});
+
+test("a rest standing over the frame is not counted through", async ({
+  page,
+}) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(3, snatch));
+  await page.locator(".set .log").first().click(); // logs the set, starts the rest
+  await expect(page.locator("#repnum")).toHaveText("0");
+
+  /* The bell going down, a stretch, the walk back: the camera sees all of it, and none
+     of it is a rep of the set that has not started. */
+  await alsoFeed(page, cycles(4, snatch));
+
+  await expect(page.locator("#repnum")).toHaveText("0");
 });

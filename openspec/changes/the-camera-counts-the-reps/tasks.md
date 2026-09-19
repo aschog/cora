@@ -33,3 +33,12 @@ test is held with `test.fail()` until the list is done.
 ## 4. The finish
 
 - [x] 4.1 Drop the outer test's `test.fail()` and watch it pass.
+
+## 5. The review's findings
+
+- [x] 5.1 Write a test that a rest standing over the frame is not counted through.
+- [ ] 5.2 Write a test that a workout cora took leaves no count behind.
+- [ ] 5.3 Write a test that un-logging a set leaves the count where it was.
+- [ ] 5.4 Write a test that the row already in the frame does not start the count over.
+- [ ] 5.5 Write a test that tapping another row does.
+- [ ] 5.6 Make 2.1's test read the count before a frame is given, not after a reset.

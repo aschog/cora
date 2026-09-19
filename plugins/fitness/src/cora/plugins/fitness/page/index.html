@@ -985,6 +985,7 @@ function repWhere(lm){
    ponytail: rhythmic movement that is not a rep counts too — the swing and gap below
    narrow that, they do not close it. Per-exercise signals if it matters. */
 function repSaw(lm, now){
+  if (restEnd > Date.now()) return;            // the bell going down is not the next set
   const where = repWhere(lm);
   if (!where) return;                          // nobody in frame is not a turning point
   document.body.classList.add('counting');
