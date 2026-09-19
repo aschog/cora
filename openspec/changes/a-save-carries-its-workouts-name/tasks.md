@@ -1,6 +1,6 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the functional test where a titled save and an untitled one list as one day naming the workout and the untitled save's exercise, and in detail with the name on the day's line, marked `@pytest.mark.xfail(strict=True)`.
+- [x] 1.1 Write the functional test where a titled save and an untitled one list as one day naming the workout and the untitled save's exercise, and in detail with the name on the day's line, marked `@pytest.mark.xfail(strict=True)`.
 
 ## 2. The grammar takes a name
 
