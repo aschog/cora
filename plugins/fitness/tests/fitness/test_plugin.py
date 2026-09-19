@@ -3,8 +3,6 @@ import pathlib
 import re
 import urllib.parse
 
-import pytest
-
 import cora.plugins.fitness as fitness
 from cora.plugins.fitness import INSTRUCTIONS, SCOPE, extend
 from cora.ports.host import HANDLER, PAGE, SCREENING, TOOL
@@ -304,7 +302,9 @@ def test_the_finish_is_named_so_and_offered_only_once_a_set_is_logged() -> None:
 
     assert "Save &amp; finish" not in drawn
     assert re.search(r'id="finish">.*?</svg> Finish</button>', drawn)
-    assert re.search(r"finishEl\.disabled\s*=\s*!PLAN\.some\(", drawn)
+    assert re.search(
+        r"const logged = PLAN\.some\(.*\n\s*finishEl\.disabled = !logged", drawn
+    )
 
 
 def test_a_save_cora_took_says_nothing_on_the_strip() -> None:
@@ -316,7 +316,6 @@ def test_a_save_cora_took_says_nothing_on_the_strip() -> None:
     assert "Not saved to cora" in drawn
 
 
-@pytest.mark.xfail(strict=True, reason="the button says Finish whatever it waits for")
 def test_the_finish_reads_where_the_workout_stands() -> None:
     """Three faces on one control: nothing logged yet, finish, and saved — the last
     held until a set is logged again."""

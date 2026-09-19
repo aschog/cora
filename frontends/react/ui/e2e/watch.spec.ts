@@ -39,7 +39,7 @@ test('a workout finished on the wrist is a document of the fitness field', async
   await page.request.put(NOTICE, { data: RUNNING })
   await page.goto(TRAINER)
   await page.locator('.set').first().click()
-  await expect(page.locator('.row.complete, .row .st')).not.toHaveCount(0)
+  await expect(page.locator('.set.on')).toHaveCount(1)
 
   /* The lifter taps the control on the wrist. Nothing on this page is touched after
      this line — no dialog is accepted, no button is pressed. */
@@ -48,7 +48,7 @@ test('a workout finished on the wrist is a document of the fitness field', async
   await expect(page.locator('#warn')).toContainText('Watch ended the workout', {
     timeout: 20_000,
   })
-  await expect(page.locator('#warn')).toContainText('Saved to fitness')
+  await expect(page.getByRole('button', { name: /^saved$/i })).toBeVisible()
 
   /* And it is a document of that field, which is what the wrist was for. */
   await page.request.put(NOTICE, { data: {} }) // read by nothing: the next spec's slate
