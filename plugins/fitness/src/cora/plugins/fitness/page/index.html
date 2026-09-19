@@ -1091,13 +1091,16 @@ document.getElementById('imp').addEventListener('click', () => {
    handed over is not lost: it goes to the clipboard, and the strip says so. */
 const UPLOAD = '/api/documents';
 
-/** The moment, as the document is named — the day first, so a day's saves sort and
- *  read in order, and local, because a workout belongs to the day the lifter had
- *  rather than to UTC's. */
+/** The moment and then the workout, as the document is named — the day first, so a
+ *  day's saves sort and read in order, and local, because a workout belongs to the day
+ *  the lifter had rather than to UTC's. The workout's name goes behind the time, where
+ *  it names the save in the rail without disturbing that order; a plan that came from
+ *  no sheet leaves the moment alone. */
 function moment(){
   const d = new Date();
   const two = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}-${two(d.getHours())}-${two(d.getMinutes())}-${two(d.getSeconds())}.md`;
+  const at = `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}-${two(d.getHours())}-${two(d.getMinutes())}-${two(d.getSeconds())}`;
+  return at + (WORKOUT ? '-' + WORKOUT.replace(/[\\/:*?"<>|]+/g, ' ').trim() : '') + '.md';
 }
 
 function handoff(text, who = ''){

@@ -262,9 +262,10 @@ def test_the_trainer_keeps_no_history_and_reads_the_fields_own() -> None:
     assert "'/api/documents/' + encodeURIComponent(FIELD) + '/'" in drawn
 
 
-def test_the_trainer_names_a_save_for_its_moment_day_first() -> None:
+def test_the_trainer_names_a_save_for_its_moment_and_then_its_workout() -> None:
     """One entry in the rail per save, and a day's saves in the order they happened:
-    the name carries the time behind the day, in the lifter's own clock."""
+    the name carries the time behind the day, in the lifter's own clock, and the
+    workout behind the time so the rail says which one it was."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     naming = re.search(r"function moment\(\)\{(.*?)\n\}", drawn, re.S)
@@ -272,8 +273,9 @@ def test_the_trainer_names_a_save_for_its_moment_day_first() -> None:
     assert naming, "the page has no moment()"
     assert (
         "`${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}"
-        "-${two(d.getHours())}-${two(d.getMinutes())}-${two(d.getSeconds())}.md`"
+        "-${two(d.getHours())}-${two(d.getMinutes())}-${two(d.getSeconds())}`"
     ) in naming.group(1)
+    assert "WORKOUT" in naming.group(1), "the workout is named behind the moment"
     assert drawn.count("moment()") == 2, "defined once, and called once at the save"
     assert "today()" not in drawn
 

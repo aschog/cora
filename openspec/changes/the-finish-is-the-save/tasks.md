@@ -8,7 +8,7 @@
 
 ## 3. The page
 
-- [ ] 3.1 Write the test that a save is named for its moment and then for the workout, and for the moment alone without one.
+- [x] 3.1 Write the test that a save is named for its moment and then for the workout, and for the moment alone without one.
 - [ ] 3.2 Write the browser test that History lists a saved workout's exercises, load and reps, read from the field.
 - [ ] 3.3 Write the browser test that a fresh workout opens on the weight and reps of the field's latest save of that exercise.
 - [ ] 3.4 Write the browser test that a save cora refused leaves the sets logged and the finish offered, the strip saying why.
