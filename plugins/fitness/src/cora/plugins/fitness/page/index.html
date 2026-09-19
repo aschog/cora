@@ -215,17 +215,22 @@ body.cam-live #camstage{background:#000}
 body:not(.cam-live) #camview{display:none}
 /* the overlay spans the whole slot, so only the number itself takes taps —
    the control row underneath has to stay reachable during a rest */
-#restview{
+#restview,#repview{
   position:absolute;inset:0;pointer-events:none;
   display:none;flex-direction:column;align-items:center;justify-content:center;
   gap:10px;padding:24px;text-align:center;
 }
 body.resting.view-cam #restview,body.resting.view-clip #restview{display:flex}
-#restview .num{
+#restview .num,#repview .num{
   pointer-events:auto;cursor:pointer;
   font-size:clamp(110px,20vw,260px);line-height:.9;font-weight:600;
   letter-spacing:-.02em;color:var(--blue);font-variant-numeric:tabular-nums;
 }
+/* the count is read, never tapped, and it wears the bell's colour so it is not
+   mistaken for the rest timer */
+#repview .num{pointer-events:none;cursor:default;color:var(--accent)}
+body.counting.view-cam #repview{display:flex}
+body.resting #repview{display:none}
 .player video,
 .player iframe{width:100%;height:100%;display:block;border:0;background:#000;object-fit:contain}
 .player a{
@@ -333,6 +338,7 @@ body.resting.view-cam #restview,body.resting.view-clip #restview{display:flex}
     <div id="player"></div>
     <div id="hud">
       <div id="restview"><div class="num" id="restnum">0</div></div>
+      <div id="repview"><div class="num" id="repnum">0</div></div>
       <div id="setcount"></div>
     </div>
   </div>
@@ -922,6 +928,23 @@ function poseReadout(lm){
     .map(([name, l, r]) => name.padEnd(10) + fmt(vis(l)) + ' ' + fmt(vis(r)))
     .join('\n');
 }
+
+/* ---------- rep counter ----------
+   Fed one landmark frame a call by the pose loop, and nothing else reads the camera.
+   It counts, and that is all: no set's reps move, and the workout is logged by hand. */
+const repNum = document.getElementById('repnum');
+let reps = null;
+
+function repReset(){
+  reps = {count: 0};
+  repPaint();
+}
+
+/** The count over the frame, and whether there is one to show at all. */
+function repPaint(){
+  repNum.textContent = reps.count;
+}
+repReset();
 
 /* ---------- rest timer ----------
    Starts itself when a set is logged. It shows over the camera stage, so with

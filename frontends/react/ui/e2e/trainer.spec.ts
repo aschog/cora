@@ -710,3 +710,10 @@ test("the camera counts the reps it sees", async ({ page }) => {
 
   await expect(page.locator("#repnum")).toHaveText("3");
 });
+
+test("the count starts at nought", async ({ page }) => {
+  await page.goto(TRAINER);
+  await feed(page, []);
+
+  await expect(page.locator("#repnum")).toHaveText("0");
+});
