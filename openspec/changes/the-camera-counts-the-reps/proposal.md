@@ -6,7 +6,7 @@ The camera watches the lifter and the pose overlay reads their joints, but nobod
 
 - With the pose overlay on, the trainer counts reps from the landmarks and shows the running count over the frame
 - The count is a readout: it never writes a set's reps, and the set is still logged by hand
-- One counter serves every exercise — it follows whichever tracked point moves most, so no exercise names itself in the code
+- One counter serves every exercise the hands move against the torso, or the torso against planted hands, so no exercise names itself in the code
 - The count starts again at nought when a set is logged or the exercise changes
 - Capability `plugins` — what the trainer does with the camera changes
 

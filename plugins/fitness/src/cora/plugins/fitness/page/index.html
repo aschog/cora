@@ -995,6 +995,7 @@ function repWhere(lm){
    as one it can see, since `visibility` is read out but never read. Per-exercise
    signals, or a second frame of reference, if any of it starts to matter. */
 function repSaw(lm, now){
+  // `restEnd` is the rest timer's, declared below: every path here is post-parse
   if (restEnd > Date.now()) return;            // the bell going down is not the next set
   const where = repWhere(lm);
   if (!where) return;                          // nobody in frame is not a turning point

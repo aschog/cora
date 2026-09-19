@@ -13,7 +13,7 @@ of them still answers.
 ## Fitness brings a screen
 
 Pin a conversation to `fitness` and the middle of the page becomes a trainer: the plan
-one exercise at a time, its sets and working weight, the clip for it playing in the same frame, and the camera to film yourself against. **Finish** — which reads *no sets logged yet* until one is, *saving* while the save is
+one exercise at a time, its sets and working weight, the clip for it playing in the same frame, and the camera to film yourself against. Turn the pose overlay on and a count stands over the frame, one a repetition. It reads the movement rather than the exercise, so a snatch and a push-up both count and a squat with the bell racked does not, and it logs nothing — the sets are still tapped by hand. **Finish** — which reads *no sets logged yet* until one is, *saving* while the save is
 out, and *saved* once cora has the workout — writes it into the `fitness` field as a
 Markdown document named for the moment it was saved and then for the sheet's tab the
 plan came from, opening with that same name — so the next question about it is answered

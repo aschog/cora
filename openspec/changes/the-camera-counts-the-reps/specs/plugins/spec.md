@@ -15,7 +15,7 @@ running count over the frame. It SHALL count any repeated movement the hands mak
 against the torso, or the torso against planted hands, without naming an exercise. It
 SHALL count nothing while a rest is running. The count SHALL be a readout: it SHALL
 leave every set's reps untouched, and SHALL start again at nought when a set is logged,
-when the exercise changes, and when cora takes the workout.
+when the exercise changes, when the overlay goes off, and when cora takes the workout.
 The plan SHALL be read from the sheet the page names, and the page SHALL hand what it
 produces to cora and to nothing else. Every other address it reaches SHALL be one written
 down, so a new one is a change somebody made rather than a change nobody saw.
@@ -82,7 +82,8 @@ down, so a new one is a change somebody made rather than a change nobody saw.
 #### Scenario: The count starts again
 
 - **GIVEN** a count standing over the frame
-- **WHEN** a set is logged, or the exercise changes, or cora takes the workout
+- **WHEN** a set is logged, or the exercise changes, or the overlay goes off, or cora
+  takes the workout
 - **THEN** the count reads nought
 
 #### Scenario: A set taken back is not a set logged
