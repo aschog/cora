@@ -169,6 +169,16 @@ def test_a_save_named_for_its_moment_and_its_workout_is_that_days_session() -> N
     assert listed.splitlines()[0].startswith("2026-09-18: ")
 
 
+def test_a_name_carrying_more_than_a_moment_is_not_a_day_on_its_own() -> None:
+    """The free part follows a whole time and nothing less: a document whose name merely
+    starts with a date is a document, not a session of that day."""
+    listed = _listing(
+        ("2026-09-18-notes.md", DEADLIFT), ("2026-09-18-12-27-00.md", SWING)
+    )
+
+    assert listed.splitlines()[0] == "2026-09-18: untitled save: Swing"
+
+
 def test_a_day_names_its_workouts_first_and_an_untitled_save_marked() -> None:
     listed = _listing(
         ("2026-09-18-12-27-00.md", DEADLIFT),

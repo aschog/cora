@@ -170,7 +170,7 @@ def _read_document(apps: Apps) -> Callable[[Request], Any]:
             return _refusal(named, app.scopes)
         held = app.knowledge_base.read(scope, request.path_params["name"])
         if not held:
-            return JSONResponse({"error": NO_SUCH_DOCUMENT}, status_code=404)
+            return JSONResponse({"error": NO_SUCH_DOCUMENT}, status_code=NOT_FOUND)
         return JSONResponse([{"text": each.text} for each in held])
 
     return read

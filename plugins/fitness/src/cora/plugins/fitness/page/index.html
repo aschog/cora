@@ -535,6 +535,8 @@ const LISTED = FIELD ? '/api/documents?scope=' + encodeURIComponent(FIELD) : '';
 const HELD = FIELD ? '/api/documents/' + encodeURIComponent(FIELD) + '/' : '';
 const MOMENT = /^(\d{4})-(\d{2})-(\d{2})(?:-\d{2}-\d{2}-\d{2}(?:-(.*))?)?\.md$/;
 const SAVES = 60;                        // as many as the History showed when it was here
+const MOST_SETS = 20;                    // a field's document is anyone's to write, and
+                                         // a set count is a length this page allocates
 
 let logged = [];                         // the field's saves, newest first
 let WORKOUT = load('kb.workout', '');   // the sheet's tab, as last read
@@ -618,11 +620,11 @@ function render(){
   document.body.classList.toggle('view-clip', typeof view === 'number');
   document.body.style.setProperty('--accent', p.w ? bell(s.w) : '#868D99');
   // the one control says what the workout waits for: a set, the finish, or nothing
-  const logged = PLAN.some(q => ses.ex[q.id].done > 0);
-  finishEl.disabled = !logged || sending;
-  finishEl.className = 'go' + (logged ? '' : saved ? ' saved' : ' idle');
+  const anySet = PLAN.some(q => ses.ex[q.id].done > 0);
+  finishEl.disabled = !anySet || sending;
+  finishEl.className = 'go' + (anySet ? '' : saved ? ' saved' : ' idle');
   finishEl.innerHTML = sending ? CHECK + ' Saving…'
-    : logged ? CHECK + ' Finish' : saved ? CHECK + ' Saved' : TAP + ' No sets logged yet';
+    : anySet ? CHECK + ' Finish' : saved ? CHECK + ' Saved' : TAP + ' No sets logged yet';
 
   head.innerHTML = `
     <button class="camshot${view === 'cam' ? ' live' : ''}" data-cam
@@ -710,7 +712,7 @@ document.getElementById('app').addEventListener('click', e => {
   if (log){
     const p = curEx(), s = ses.ex[p.id], i = +log.dataset.log;
     s.done = (s.done === i) ? i-1 : i;      // tap the last full one to undo
-    saved = false; ses.own = true;
+    saved = false; s.own = true;
     if (s.done === i && s.done >= p.s)        // last set: a long break, then move on
       startRest(REST_EX, () => { if (cur === p.id && s.done >= p.s) step(1); });
     else if (s.done === i) startRest(REST_SET);
@@ -721,14 +723,14 @@ document.getElementById('app').addEventListener('click', e => {
   if (rep){
     const s = ses.ex[cur], i = +rep.dataset.rep;
     s.reps[i] = Math.max(1, s.reps[i] + (+rep.dataset.d));
-    ses.own = true;
+    s.own = true;
     render(); return;
   }
   const w = t.closest('[data-w]');
   if (w){
     const s = ses.ex[cur];
     s.w = Math.max(1, s.w + (+w.dataset.w));
-    ses.own = true;
+    s.own = true;
     render();
   }
 });
@@ -737,7 +739,7 @@ document.getElementById('app').addEventListener('click', e => {
    The stream is shown and, when pose is on, read frame by frame in memory.
    Nothing is captured: no MediaRecorder, no canvas snapshot kept, no upload,
    nothing written to storage. Closing the camera stops the tracks and drops
-   the frames. Keep it that way -- localStorage holds sets and history only. */
+   the frames. Keep it that way -- localStorage holds the workout in flight only. */
 const camView = document.getElementById('camview');
 let camStream = null;
 
@@ -1063,7 +1065,10 @@ document.getElementById('hist').addEventListener('click', () => {
 document.getElementById('close').addEventListener('click', () => sheet.classList.remove('open'));
 
 /* Storage holds the workout in flight and the plan, and the log is the field's — so a
-   browser that blocks it costs a reload, not a history. */
+   browser that blocks it costs a reload, not a history. A browser that ran the page
+   before the field was the log is still holding that history: it is nobody's now. */
+try { localStorage.removeItem('kb.hist'); } catch(e){ /* blocked, so there is none */ }
+
 if (!store.ok){
   warnEl.textContent = 'Browser storage is blocked — this workout will not survive a reload.';
   warnEl.classList.add('on');
@@ -1151,7 +1156,7 @@ function readSession(text){
     if (!ex.length){ if (!name) name = line; continue; }
     const same = /^(\d+)\s+sets\s+of\s+(\d+)$/.exec(line);
     const each = /^sets\s+of\s+(\d+(?:\s*\/\s*\d+)+)$/.exec(line);
-    if (same) ex[ex.length-1].reps = Array(+same[1]).fill(+same[2]);
+    if (same) ex[ex.length-1].reps = Array(Math.min(+same[1], MOST_SETS)).fill(+same[2]);
     else if (each) ex[ex.length-1].reps = each[1].split('/').map(n => +n.trim());
   }
   return {name, ex};
@@ -1161,8 +1166,11 @@ function readSession(text){
     that reads as a moment is a save; each is read by that name, and one name may be
     several saves, as two of a day are. Unreachable is not an error — the log last read
     stands, and a workout is still logged and still finished without it. */
+let reading = 0;                         // the read now current; an older one is stale
+
 function readLog(){
   if (!FIELD) return Promise.resolve();
+  const mine = ++reading;
   return fetch(LISTED, {cache: 'no-store'})
     .then(r => r.ok ? r.json() : Promise.reject('HTTP ' + r.status))
     .then(names => Promise.all(names
@@ -1175,17 +1183,25 @@ function readLog(){
           // that carries only the second is still that workout
           return {day: dayOf(name), ex: read.ex, name: read.name || nameOf(name)};
         })))))
+    .catch(why => { console.warn('the field could not be read:', why); return null; })
     .then(read => {
+      // a read overtaken while it was out says nothing: its listing predates the save
+      // that overtook it, and writing it back would lose that save
+      if (read === null || mine !== reading) return;
       logged = read.flat();
-      // an untouched workout takes the field's weights; one the lifter has touched at
-      // all -- a set logged, a weight dialled, a rep count changed -- is theirs. Only the
-      // slots: the workout's start and whether the watch began it are its own whatever
-      // the field says.
-      if (!ses.own) ses.ex = newSession().ex;
+      /* Exercise by exercise: one the lifter has touched at all -- a set logged, a
+         weight dialled, a rep count changed -- is theirs, and every other one takes what
+         the field last saw. A slot written by a page that did not mark ownership is
+         read as touched if anything is logged against it, because it may well be. The
+         workout's start and whether the watch began it are its own either way. */
+      const fresh = newSession().ex;
+      PLAN.forEach(p => {
+        const held = ses.ex[p.id];
+        if (!held || !(held.own || held.done > 0)) ses.ex[p.id] = fresh[p.id];
+      });
       drawSessions();
       render();
-    })
-    .catch(why => { console.warn('the field could not be read:', why); });
+    });
 }
 
 const dayOf = name => { const [,y,m,d] = MOMENT.exec(name); return new Date(+y, +m-1, +d); };

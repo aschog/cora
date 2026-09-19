@@ -266,7 +266,11 @@ def test_the_trainer_keeps_no_history_and_reads_the_fields_own() -> None:
     what it shows of earlier ones it reads back from cora."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
-    assert "kb.hist" not in drawn
+    assert "save('kb.hist'" not in drawn
+    assert "load('kb.hist'" not in drawn
+    # the one mention left is the clearing of what an earlier page kept
+    assert drawn.count("kb.hist") == 1
+    assert "localStorage.removeItem('kb.hist')" in drawn
     assert "'/api/documents?scope=' + encodeURIComponent(FIELD)" in drawn
     assert "'/api/documents/' + encodeURIComponent(FIELD) + '/'" in drawn
 
@@ -327,7 +331,7 @@ def test_the_finish_is_named_so_and_offered_only_once_a_set_is_logged() -> None:
     assert "Save &amp; finish" not in drawn
     assert re.search(r'id="finish">.*?</svg> Finish</button>', drawn)
     assert re.search(
-        r"const logged = PLAN\.some\(.*\n\s*finishEl\.disabled = !logged", drawn
+        r"const anySet = PLAN\.some\(.*\n\s*finishEl\.disabled = !anySet", drawn
     )
 
 

@@ -212,6 +212,58 @@ test("a weight dialled before the field is read is the lifter's own", async ({
   await expect(page.locator(".wt .val")).toContainText(dialled);
 });
 
+test("one exercise dialled leaves the rest to the field", async ({ page }) => {
+  /* Two of the plan's exercises, both saved heavier than the plan asks for. */
+  await held(
+    page,
+    `${TODAY}-23-59-51-Two heavy.md`,
+    "# Kettlebell around-the-body pass 26 kg\n3 sets of 10\n\n" +
+      "# Around-the-body pass with a stop 30 kg\n3 sets of 10\n",
+  );
+  const release = await slowly(page);
+
+  await page.goto(TRAINER);
+  /* The first exercise is dialled before the read lands. It is the lifter's. */
+  await page.locator(".wt button").last().click();
+  const dialled = await page.locator(".wt .val").textContent();
+
+  release();
+  await expect(page.locator(".wt .val")).toContainText(
+    String(dialled?.replace(/\D/g, "")),
+  );
+
+  /* The second was not touched, so it is still the field's to say. */
+  await page.getByRole("button", { name: "›" }).click();
+  await expect(page.locator(".wt .val")).toContainText("30");
+});
+
+test("a workout stored before the page knew about ownership is not wiped", async ({
+  page,
+}) => {
+  await held(
+    page,
+    `${TODAY}-23-59-50-Was here.md`,
+    "# Kettlebell around-the-body pass 22 kg\n3 sets of 10\n",
+  );
+  /* A session as the previous page wrote one: sets logged, and no word about who
+     touched it — which a read must not read as "nobody". */
+  await page.addInitScript(() => {
+    globalThis.localStorage.setItem(
+      "kb.ses",
+      JSON.stringify({
+        start: Date.now(),
+        v: 2,
+        ex: { vragir: { done: 2, w: 18, reps: [10, 10, 10] } },
+      }),
+    );
+  });
+
+  await page.goto(TRAINER);
+
+  await expect(page.locator(".set.on")).toHaveCount(2);
+  await expect(page.locator(".wt .val")).toContainText("18");
+});
+
 test("a History opened before the field is read fills when it lands", async ({
   page,
 }) => {
@@ -336,20 +388,71 @@ test("a document that carries markup is read as text", async ({ page }) => {
   await expect(line.locator("b")).toHaveCount(1);
 });
 
-test("a save whose load is not a number leaves a weight that still works", async ({
+test("a save is read back in the grammar the finish wrote it in", async ({
   page,
 }) => {
-  await held(
-    page,
-    `${TODAY}-23-59-54-Odd load.md`,
-    "# Kettlebell around-the-body pass 1.2.3 kg\n1 sets of 5\n",
+  await page.goto(TRAINER);
+
+  /* Read in the page rather than through the field, because what the field holds is
+     what every other spec in this file has been saving into it — an assertion that
+     depends on which of them ran is an assertion about nothing. */
+  const read = await page.evaluate(() => {
+    type Save = {
+      name: string;
+      ex: { n: string; w: number; reps: number[] }[];
+    };
+    const parse = (window as unknown as { readSession: (t: string) => Save })
+      .readSession;
+    return {
+      named: parse("Snatch day\n\n# Swing 24 kg\n3 sets of 10\n"),
+      uneven: parse("# Swing 24 kg\nsets of 10 / 10 / 8\n").ex[0],
+      bodyweight: parse("# Push-up bw\n2 sets of 12\n").ex[0],
+      /* A document of the field is anyone's to write, so neither of these is trusted:
+         a load that is not a number, and a set count no screen could draw. */
+      odd: parse("# Swing 1.2.3 kg\n1 sets of 5\n").ex[0],
+      vast: parse("# Swing 20 kg\n999999999 sets of 5\n").ex[0],
+    };
+  });
+
+  expect(read.named.name).toBe("Snatch day");
+  expect(read.named.ex).toEqual([{ n: "Swing", w: 24, reps: [10, 10, 10] }]);
+  expect(read.uneven.reps).toEqual([10, 10, 8]);
+  expect(read.bodyweight).toEqual({ n: "Push-up", w: 0, reps: [12, 12] });
+  expect(read.odd.w, "a load that is not a number is no load").toBe(0);
+  expect(
+    read.vast.reps.length,
+    "a set count the page cannot draw does not become an array",
+  ).toBeLessThanOrEqual(20);
+});
+
+test("a read still out when a later one lands does not undo it", async ({
+  page,
+}) => {
+  /* Two reads of the field are in the air whenever a save completes before the read
+     the page opened with. The older one must not put the log back as it was. */
+  let calls = 0;
+  await page.route(
+    (url) => url.pathname === "/api/documents" && url.search.includes("scope="),
+    async (asked) => {
+      calls += 1;
+      if (calls === 1) await new Promise((r) => setTimeout(r, 3000));
+      await asked.continue();
+    },
   );
 
   await page.goto(TRAINER);
+  await page.locator(".set").first().click();
+  page.once("dialog", (asked) => asked.accept());
+  await page.getByRole("button", { name: /^finish$/i }).click();
+  await expect(page.getByRole("button", { name: /^saved$/i })).toBeVisible();
 
-  await expect(page.locator(".wt .val")).not.toContainText("NaN");
-  await page.locator(".wt button").last().click();
-  await expect(page.locator(".wt .val")).not.toContainText("NaN");
+  /* The read the page opened with lands last, carrying a listing taken before the
+     save existed. */
+  await page.waitForTimeout(3500);
+  await page.getByRole("button", { name: /history/i }).click();
+  await expect(page.locator(".ses").first()).toContainText(
+    "Kettlebell around-the-body pass",
+  );
 });
 
 test("a save cora would not take leaves the workout standing", async ({
