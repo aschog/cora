@@ -705,6 +705,16 @@ async function alsoFeed(page: Page, frames: Frame[]): Promise<void> {
   }, frames);
 }
 
+/* The rest after a logged set, tapped away — which is what a lifter does when they are
+   ready before the clock is. */
+async function done(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const w = window as unknown as { endRest: () => void; tick: () => void };
+    w.endRest();
+    w.tick();
+  });
+}
+
 /* The same, from a counter put back to nought — which is where a set starts. */
 async function feed(page: Page, frames: Frame[]): Promise<void> {
   await page.evaluate(() =>
@@ -945,5 +955,34 @@ test("a rest standing over the frame is not counted through", async ({
      of it is a rep of the set that has not started. */
   await alsoFeed(page, cycles(4, snatch));
 
+  await expect(page.locator("#repnum")).toHaveText("0");
+});
+
+test("a workout cora took leaves no count behind", async ({ page }) => {
+  await page.goto(TRAINER);
+  await page.route("**/api/documents", (asked) =>
+    asked.request().method() === "POST"
+      ? asked.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            document: "saved.md",
+            chunks: 1,
+            scope: "fitness",
+          }),
+        })
+      : asked.continue(),
+  );
+  await page.locator(".set .log").first().click();
+  await done(page); // the set's rest, waited out
+  await feed(page, cycles(5, snatch));
+  await expect(page.locator("#repnum")).toHaveText("5");
+
+  page.once("dialog", (asked) => asked.accept());
+  await page.getByRole("button", { name: /^finish$/i }).click();
+  await expect(page.getByRole("button", { name: /^saved$/i })).toBeVisible();
+
+  /* The sets are empty and the workout is gone; a count standing over them is last
+     workout's. */
   await expect(page.locator("#repnum")).toHaveText("0");
 });

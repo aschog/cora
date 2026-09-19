@@ -1208,6 +1208,7 @@ function took(who){
      slots with the field's weights, this save included — `readLog` does that itself. */
   ses = newSession();
   sending = false;                       // cora has it; the read behind it is not the save
+  repReset();                            // and the count belongs to the workout that went
   render();
   return readLog();
 }
