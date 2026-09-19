@@ -1,10 +1,19 @@
 """The grammar the trainer writes, read back as movements with their numbers."""
 
 from datetime import date
+from typing import Any
 
 import pytest
 
-from cora.plugins.fitness.workouts import Load, LogError, Session, parse_session
+from cora.plugins.fitness.workouts import (
+    Load,
+    LogError,
+    Session,
+    list_workouts,
+    parse_session,
+)
+from cora.ports.context_source import Document
+from fakes import FakeContextSource, host_for
 
 DAY = date(2026, 9, 18)
 # The sheet the trainer follows names its exercises in Russian, and this is one
@@ -89,3 +98,46 @@ def test_a_heading_in_another_script_reads_as_any_other() -> None:
     [swing] = _parsed(f"# {ONE_ARM_SWING} 14 kg\n2 sets of 10\n").movements
 
     assert (swing.name, swing.load, swing.reps) == (ONE_ARM_SWING, Load("kg", 14), 20)
+
+
+# ── the tool: what the field holds, listed ──
+
+MODULE = "cora.plugins.fitness"
+DEADLIFT = "# Deadlift 14 kg\n3 sets of 10"
+SWING = "# Swing 16 kg\n2 sets of 10"
+SNATCH = "# Snatch 14 kg\nsets of 8 / 8"
+PLAN = "# 4-Week Beginner Strength Plan\n\nThree sessions a week."
+
+
+def _listing(*documents: tuple[str, str], **filters: str) -> Any:
+    held = [Document(name=name, text=text, scope="fitness") for name, text in documents]
+    host = host_for(MODULE, documents=FakeContextSource(held=held))
+    return list_workouts(host, **filters)
+
+
+def _numbers(movement: dict[str, Any]) -> tuple[Any, ...]:
+    return tuple(movement[key] for key in ("name", "load", "sets", "reps", "volume_kg"))
+
+
+def test_every_document_named_for_a_day_is_a_session_dated_from_it_oldest_first() -> (
+    None
+):
+    listed = _listing(("2026-09-18.md", DEADLIFT), ("2026-09-16.md", SWING))
+
+    assert [session["date"] for session in listed] == ["2026-09-16", "2026-09-18"]
+    assert [_numbers(m) for m in listed[1]["movements"]] == [
+        ("Deadlift", "14 kg", [10, 10, 10], 30, 420)
+    ]
+
+
+def test_two_documents_of_one_day_are_one_session_in_upload_order() -> None:
+    listed = _listing(("2026-09-18.md", DEADLIFT), ("2026-09-18.md", SNATCH))
+
+    [session] = listed
+    assert [m["name"] for m in session["movements"]] == ["Deadlift", "Snatch"]
+
+
+def test_a_document_not_named_for_a_day_is_not_a_session() -> None:
+    listed = _listing(("training-plan.md", PLAN), ("2026-09-16.md", SWING))
+
+    assert [session["date"] for session in listed] == ["2026-09-16"]

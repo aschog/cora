@@ -1,8 +1,12 @@
 import re
 from dataclasses import dataclass, replace
 from datetime import date
+from typing import Any
+
+from cora.ports.host import Host
 
 NUMBER = r"\d+(?:\.\d+)?"
+DATED = re.compile(r"^(\d{4}-\d{2}-\d{2})\.[A-Za-z0-9]+$")
 HEADING = re.compile(
     rf"^#\s+(?P<name>.+?)\s+(?:(?P<kg>{NUMBER})\s*kg|bw(?:\+(?P<bw>{NUMBER}))?)$"
 )
@@ -93,3 +97,44 @@ def _sets(line: str) -> tuple[int, ...] | None:
 
 def _number(value: float) -> str:
     return str(int(value)) if value == int(value) else f"{value:.1f}"
+
+
+def list_workouts(
+    cora: Host, exercise: str | None = None, since: str | None = None
+) -> list[dict[str, Any]] | str:
+    return [_listed(session) for session in _sessions(cora)]
+
+
+def _sessions(cora: Host) -> list[Session]:
+    by_day: dict[date, list[Movement]] = {}
+    for document in cora.documents.all():
+        day = _day_of(document.name)
+        if day is None:
+            continue
+        parsed = parse_session(document.text, day, document.name)
+        by_day.setdefault(day, []).extend(parsed.movements)
+    return [Session(day, tuple(moved)) for day, moved in sorted(by_day.items())]
+
+
+def _day_of(name: str) -> date | None:
+    dated = DATED.match(name)
+    try:
+        return date.fromisoformat(dated[1]) if dated else None
+    except ValueError:
+        return None
+
+
+def _listed(session: Session) -> dict[str, Any]:
+    return {
+        "date": session.day.isoformat(),
+        "movements": [
+            {
+                "name": movement.name,
+                "load": str(movement.load),
+                "sets": list(movement.sets),
+                "reps": movement.reps,
+                "volume_kg": movement.volume,
+            }
+            for movement in session.movements
+        ],
+    }
