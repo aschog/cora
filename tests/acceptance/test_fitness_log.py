@@ -22,7 +22,11 @@ POSTED = [
     ("training-plan.md", "# 4-Week Beginner Strength Plan\n\nThree sessions a week.\n"),
 ]
 ANSWER = "Two days logged: swings on the 16th, then deadlift and snatch on the 18th."
-BY_NAME = "2026-09-16: Swing\n2026-09-18: Deadlift, conventional · Snatch"
+BY_NAME = (
+    "2026-09-16: untitled save: Swing\n"
+    "2026-09-18: untitled save: Deadlift, conventional · untitled save: Snatch\n"
+    "2 days, 3 saves. The sets, reps and weights are in the details."
+)
 IN_DETAIL = """\
 2026-09-16
 - Swing — 16 kg · 2x10 · 20 reps · 320 kg

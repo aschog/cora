@@ -24,7 +24,10 @@ POSTED = [
     ),
     ("2026-09-18-12-27-00.md", "# Deadlift, conventional 14 kg\n3 sets of 10\n"),
 ]
-BY_NAME = f"2026-09-18: Deadlift, conventional · {SNATCH_WORKOUT}"
+BY_NAME = (
+    f"2026-09-18: {SNATCH_WORKOUT} · untitled save: Deadlift, conventional\n"
+    "1 day, 2 saves. The sets, reps and weights are in the details."
+)
 IN_DETAIL = (
     f"2026-09-18 — {SNATCH_WORKOUT}\n"
     "- Deadlift, conventional — 14 kg · 3x10 · 30 reps · 420 kg\n"

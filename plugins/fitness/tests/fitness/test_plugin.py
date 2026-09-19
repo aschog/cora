@@ -78,6 +78,8 @@ def test_the_brief_routes_the_log_to_the_listing_and_the_rest_to_search() -> Non
     assert "as it is" in instructions
     assert "translat" in instructions
     assert "detail" in instructions
+    # and nothing of the model's own about what the log holds or lacks
+    assert "holds or lacks" in instructions
 
 
 def test_the_field_is_brought_a_trainer_shipped_beside_the_module() -> None:

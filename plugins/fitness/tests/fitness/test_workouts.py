@@ -119,6 +119,8 @@ SWING = "# Swing 16 kg\n2 sets of 10"
 SNATCH = "# Snatch 14 kg\nsets of 8 / 8"
 PULL_UP = "# Pull-up bw+10\nsets of 5 / 5 / 4"
 PLAN = "# 4-Week Beginner Strength Plan\n\nThree sessions a week."
+SNATCH_WORKOUT = "Рывок гири"
+TITLED = f"{SNATCH_WORKOUT}\n\n{SWING}"
 
 
 def _listing(*documents: tuple[str, str], **asked: Any) -> str:
@@ -127,30 +129,64 @@ def _listing(*documents: tuple[str, str], **asked: Any) -> str:
     return list_workouts(host, **asked)
 
 
+def _closing(days: int, saves: int) -> str:
+    counted = (
+        f"{days} day{'s' if days != 1 else ''}, {saves} save{'s' if saves != 1 else ''}"
+    )
+    return f"{counted}. The sets, reps and weights are in the details."
+
+
 def test_every_document_named_for_a_day_is_a_session_dated_from_it_oldest_first() -> (
     None
 ):
     listed = _listing(("2026-09-18.md", DEADLIFT), ("2026-09-16.md", SWING))
 
-    assert listed == "2026-09-16: Swing\n2026-09-18: Deadlift"
+    assert listed.splitlines()[:2] == [
+        "2026-09-16: untitled save: Swing",
+        "2026-09-18: untitled save: Deadlift",
+    ]
 
 
 def test_two_documents_of_one_day_are_one_session_in_upload_order() -> None:
     listed = _listing(("2026-09-18.md", DEADLIFT), ("2026-09-18.md", SNATCH))
 
-    assert listed == "2026-09-18: Deadlift · Snatch"
+    assert listed.splitlines()[0] == (
+        "2026-09-18: untitled save: Deadlift · untitled save: Snatch"
+    )
 
 
-def test_unasked_for_detail_a_day_names_each_exercise_worked_once() -> None:
+def test_unasked_for_detail_a_save_names_each_exercise_worked_once() -> None:
     listed = _listing(("2026-09-18.md", f"{SWING}\n\n{DEADLIFT}\n\n{SWING}"))
 
-    assert listed == "2026-09-18: Swing · Deadlift"
+    assert listed.splitlines()[0] == "2026-09-18: untitled save: Swing · Deadlift"
+
+
+def test_a_day_names_its_workouts_first_and_an_untitled_save_marked() -> None:
+    listed = _listing(
+        ("2026-09-18-12-27-00.md", DEADLIFT),
+        ("2026-09-18-16-20-05.md", TITLED),
+        ("2026-09-18-16-42-10.md", f"{SNATCH_WORKOUT}\n\n{SNATCH}"),
+    )
+
+    assert listed.splitlines()[0] == (
+        f"2026-09-18: {SNATCH_WORKOUT} · untitled save: Deadlift"
+    )
+
+
+def test_the_names_view_closes_with_what_it_holds_and_where_the_numbers_are() -> None:
+    one = _listing(("2026-09-18.md", TITLED))
+    more = _listing(
+        ("2026-09-16.md", SWING), ("2026-09-18.md", TITLED), ("2026-09-18.md", SNATCH)
+    )
+
+    assert one == f"2026-09-18: {SNATCH_WORKOUT}\n{_closing(1, 1)}"
+    assert more.splitlines()[-1] == _closing(2, 3)
 
 
 def test_a_document_not_named_for_a_day_is_not_a_session() -> None:
     listed = _listing(("training-plan.md", PLAN), ("2026-09-16.md", SWING))
 
-    assert listed == "2026-09-16: Swing"
+    assert listed == f"2026-09-16: untitled save: Swing\n{_closing(1, 1)}"
 
 
 def test_a_dated_document_the_grammar_refuses_is_left_out_and_said_so() -> None:
@@ -163,7 +199,7 @@ def test_a_dated_document_the_grammar_refuses_is_left_out_and_said_so() -> None:
     with collecting() as taken:
         listed = list_workouts(host)
 
-    assert listed == "2026-09-18: Deadlift"
+    assert listed == f"2026-09-18: untitled save: Deadlift\n{_closing(1, 1)}"
     [skipped] = taken.steps
     assert skipped.failed
     assert "2026-09-17.md" in skipped.summary
@@ -185,6 +221,15 @@ def test_asked_for_detail_each_movement_is_a_line_with_its_numbers() -> None:
         "- Deadlift — 14 kg · 3x10 · 30 reps · 420 kg\n"
         "- Snatch — 14 kg · 2x8 · 16 reps · 224 kg"
     )
+
+
+def test_in_detail_the_days_line_carries_its_workouts_names() -> None:
+    listed = _listing(
+        ("2026-09-18.md", TITLED), ("2026-09-20.md", DEADLIFT), detail=True
+    )
+
+    assert listed.splitlines()[0] == f"2026-09-18 — {SNATCH_WORKOUT}"
+    assert "2026-09-20\n- Deadlift" in listed
 
 
 def test_a_bodyweight_movements_line_carries_its_reps_and_no_volume() -> None:
@@ -214,11 +259,13 @@ def test_an_exercise_and_a_day_narrow_both_views() -> None:
     days = (
         ("2026-09-16.md", SWING),
         ("2026-09-18.md", f"{DEADLIFT}\n\n{SNATCH}"),
+        ("2026-09-20.md", TITLED),
         ("2026-09-20.md", DEADLIFT),
     )
 
     assert _listing(*days, exercise="deadlift") == (
-        "2026-09-18: Deadlift\n2026-09-20: Deadlift"
+        "2026-09-18: untitled save: Deadlift\n"
+        f"2026-09-20: untitled save: Deadlift\n{_closing(2, 2)}"
     )
     assert _listing(*days, exercise="deadlift", since="2026-09-20", detail=True) == (
         "2026-09-20\n- Deadlift — 14 kg · 3x10 · 30 reps · 420 kg"
@@ -242,7 +289,9 @@ def test_nothing_logged_answers_in_words_rather_than_an_empty_list() -> None:
 
 
 def test_a_name_carrying_a_time_behind_the_day_is_a_session_of_that_day() -> None:
-    assert _listing(("2026-09-18-16-20-05.md", DEADLIFT)) == "2026-09-18: Deadlift"
+    listed = _listing(("2026-09-18-16-20-05.md", DEADLIFT))
+
+    assert listed.splitlines()[0] == "2026-09-18: untitled save: Deadlift"
 
 
 def test_a_days_saves_list_in_the_order_of_their_names_whatever_the_upload() -> None:
@@ -250,27 +299,6 @@ def test_a_days_saves_list_in_the_order_of_their_names_whatever_the_upload() -> 
         ("2026-09-18-16-42-10.md", SNATCH), ("2026-09-18-16-20-05.md", DEADLIFT)
     )
 
-    assert listed == "2026-09-18: Deadlift · Snatch"
-
-
-SNATCH_WORKOUT = "Рывок гири"
-TITLED = f"{SNATCH_WORKOUT}\n\n{SWING}"
-
-
-def test_a_day_names_its_workouts_once_and_an_untitled_saves_exercises() -> None:
-    listed = _listing(
-        ("2026-09-18-12-27-00.md", DEADLIFT),
-        ("2026-09-18-16-20-05.md", TITLED),
-        ("2026-09-18-16-42-10.md", f"{SNATCH_WORKOUT}\n\n{SNATCH}"),
+    assert listed.splitlines()[0] == (
+        "2026-09-18: untitled save: Deadlift · untitled save: Snatch"
     )
-
-    assert listed == f"2026-09-18: Deadlift · {SNATCH_WORKOUT}"
-
-
-def test_in_detail_the_days_line_carries_its_workouts_names() -> None:
-    listed = _listing(
-        ("2026-09-18.md", TITLED), ("2026-09-20.md", DEADLIFT), detail=True
-    )
-
-    assert listed.splitlines()[0] == f"2026-09-18 — {SNATCH_WORKOUT}"
-    assert "2026-09-20\n- Deadlift" in listed
