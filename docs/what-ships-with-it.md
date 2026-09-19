@@ -19,11 +19,12 @@ own log, with the day cited. Refused or unreachable, the workout goes to the cli
 and the strip says so.
 
 Ask what you trained and the coach lists the log rather than searching it.
-`list_workouts` reads every dated document of the field, one session per day, each
-movement with its load, sets, reps, volume and whether it rose on the last time, in
-whatever language the sheet names the exercise. It narrows to one lift, or to the days
-since one. A search finds the sessions worded like the question, and the listing finds
-all of them.
+`list_workouts` reads every dated document of the field and answers in text the coach
+shows as it is: one line per day naming the exercises worked, in whatever language the
+sheet names them. Ask for the details and each movement comes with its load, sets,
+reps, volume and a mark where it rose on the last time. It narrows to one lift, or to
+the days since one. A search finds the sessions worded like the question, and the
+listing finds all of them.
 
 The plan comes from a published Google Sheet, read each time the trainer is opened: one
 row per exercise, with its sets, reps, working weight and clips. Edit the sheet and the

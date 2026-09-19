@@ -1,8 +1,5 @@
-"""The outer test for the story: the coach lists every workout the trainer logged, one
-session per day with its numbers, and the plan beside them is not one."""
-
-import json
-from typing import Any
+"""The outer test for the story: the coach lists every workout the trainer logged by
+day and by name, gives the numbers only when asked, and shows the plan as neither."""
 
 from starlette.testclient import TestClient
 
@@ -25,9 +22,17 @@ POSTED = [
     ("training-plan.md", "# 4-Week Beginner Strength Plan\n\nThree sessions a week.\n"),
 ]
 ANSWER = "Two days logged: swings on the 16th, then deadlift and snatch on the 18th."
+BY_NAME = "2026-09-16: Swing\n2026-09-18: Deadlift, conventional · Snatch"
+IN_DETAIL = """\
+2026-09-16
+- Swing — 16 kg · 2x10 · 20 reps · 320 kg
+
+2026-09-18
+- Deadlift, conventional — 14 kg · 3x10 · 30 reps · 420 kg
+- Snatch — 14 kg · 2x8 · 16 reps · 224 kg"""
 
 
-def test_the_coach_lists_the_workouts_by_day_with_their_numbers() -> None:
+def test_the_coach_names_the_workouts_and_gives_the_numbers_on_request() -> None:
     app = assembled(
         plugins=(load_plugin("cora.plugins.fitness"),),
         chat_model=ScriptedChatModel(
@@ -36,6 +41,9 @@ def test_the_coach_lists_the_workouts_by_day_with_their_numbers() -> None:
                     text="",
                     tool_calls=(
                         ToolCall(name=TOOL_NAME, arguments={}, call_id="call-1"),
+                        ToolCall(
+                            name=TOOL_NAME, arguments={"detail": True}, call_id="call-2"
+                        ),
                     ),
                 ),
                 ModelReply(text=ANSWER),
@@ -65,23 +73,10 @@ def test_the_coach_lists_the_workouts_by_day_with_their_numbers() -> None:
 
     turn = streamed[-1][1]
     assert turn["answer"] == ANSWER
-    [listed] = [
+    by_name, in_detail = [
         step for step in turn["trace"] if step["summary"].startswith(f"{TOOL_NAME}(")
     ]
-    assert not listed["failed"], listed["detail"]
-    sessions: list[dict[str, Any]] = json.loads(listed["detail"])
-    assert [session["date"] for session in sessions] == ["2026-09-16", "2026-09-18"]
-    swing, (deadlift, snatch) = sessions[0]["movements"], sessions[1]["movements"]
-    assert [(m["name"], m["load"], m["reps"], m["volume_kg"]) for m in swing] == [
-        ("Swing", "16 kg", 20, 320)
-    ]
-    assert (deadlift["name"], deadlift["sets"], deadlift["reps"]) == (
-        "Deadlift, conventional",
-        [10, 10, 10],
-        30,
-    )
-    assert (snatch["name"], snatch["sets"], snatch["volume_kg"]) == (
-        "Snatch",
-        [8, 8],
-        224,
-    )
+    assert not by_name["failed"], by_name["detail"]
+    assert by_name["detail"] == BY_NAME
+    assert not in_detail["failed"], in_detail["detail"]
+    assert in_detail["detail"] == IN_DETAIL

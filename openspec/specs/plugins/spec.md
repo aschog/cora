@@ -1229,24 +1229,31 @@ session is missed for its wording.
 
 ### Requirement: The coach lists the workouts
 
-The fitness field SHALL offer a tool listing every workout logged in it. A session SHALL
-be one day, dated from the document's name, oldest first. Each movement SHALL carry its
-name, load, sets, reps and volume. The list SHALL narrow to one exercise, matched
-whatever its case, and to sessions since a day. A document not named for a day SHALL NOT
-be a session. One the grammar cannot read SHALL be left out, with a line on the trace.
+The fitness field SHALL offer a tool listing every workout logged in it, as text ready to
+show. A session SHALL be one day, dated from the document's name, oldest first. Unasked
+for detail, a session SHALL name the exercises worked, as the log spells them, each once.
+Asked for detail, each movement SHALL carry its load, sets, reps and volume. The list
+SHALL narrow to one exercise, matched whatever its case, and to sessions since a day. A
+document not named for a day SHALL NOT be a session. One the grammar cannot read SHALL
+be left out, with a line on the trace.
 
 #### Scenario: Every workout
 
 - **GIVEN** three workouts saved into the fitness field, two on one day
 - **WHEN** the coach is asked what was trained
-- **THEN** the answer lists two days, and the day saved twice holds both saves' movements
-  in order
+- **THEN** the answer is two lines, a day and its exercises each, and no number
+
+#### Scenario: The numbers, on request
+
+- **GIVEN** the same workouts
+- **WHEN** the reader asks for the details
+- **THEN** each movement is shown with its load, sets, reps and volume
 
 #### Scenario: One exercise over time
 
 - **GIVEN** workouts on three days, two of them with the deadlift
-- **WHEN** the coach is asked about the deadlift
-- **THEN** the answer has those two days with reps and volume, and says whether it rose
+- **WHEN** the coach is asked about the deadlift in detail
+- **THEN** the answer has those two days with reps and volume, and marks where it rose
 
 #### Scenario: Since a day
 
@@ -1275,24 +1282,31 @@ be a session. One the grammar cannot read SHALL be left out, with a line on the 
 
 - **GIVEN** a workout whose exercise names are not in the coach's language
 - **WHEN** the workouts are listed
-- **THEN** it is listed as any other
+- **THEN** it is listed as any other, its names as the log spells them
 
 ### Requirement: The numbers are the tool's
 
 Reps and volume SHALL be computed by the tool. Volume SHALL be load times reps for a
-load in kilograms, and absent for a bodyweight load.
+load in kilograms, and absent for a bodyweight load. The brief SHALL tell the coach to
+show the tool's text as it is, names untranslated, and to ask for detail only when the
+reader asks for numbers.
 
 #### Scenario: Volume of a loaded movement
 
 - **GIVEN** a movement of 3 sets of 10 at 14 kg
-- **WHEN** it is listed
+- **WHEN** it is listed in detail
 - **THEN** it carries 30 reps and 420 kg
 
 #### Scenario: A bodyweight movement
 
 - **GIVEN** a movement at bodyweight
-- **WHEN** it is listed
+- **WHEN** it is listed in detail
 - **THEN** it carries its reps and no volume
+
+#### Scenario: The brief relays
+
+- **WHEN** the fitness brief is read
+- **THEN** it says to pass the listing on as it is, untranslated, and detail only on request
 
 ### Requirement: A workout that could not be saved is not lost
 

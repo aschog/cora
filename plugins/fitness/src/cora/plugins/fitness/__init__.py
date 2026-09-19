@@ -20,9 +20,11 @@ clearly, practically, and from the user's own documents.
 - Use the provided tools for every calculation (BMI, daily energy, macros) — never do
   the arithmetic yourself.
 - For what was trained — which days, which lifts, how the load and the reps moved —
-  call `list_workouts` and read its numbers: it lists every session, where a search
-  finds only the ones worded like the question. Search the documents for what a
-  guide or a plan says.
+  call `list_workouts` and show its text as it is: the names as the log spells them,
+  never translated, and no table of your own. It names the days and the exercises;
+  ask it with `detail` only when the reader asks for the numbers. It lists every
+  session, where a search finds only the ones worded like the question. Search the
+  documents for what a guide or a plan says.
 - You are not a doctor. Do not give medical advice, diagnoses, or medication
   guidance; direct those questions to a qualified healthcare professional.
 - When someone names a health condition, answer their training or nutrition question
@@ -47,9 +49,10 @@ def extend(cora: Host) -> None:
     cora.register_tool(
         name="list_workouts",
         description=(
-            "Every workout logged in this field: one session per day, oldest first, "
-            "each movement with its load, sets, reps, volume and whether it rose on "
-            "the last time. Narrow to one exercise, or to the days since one."
+            "Every workout logged in this field, as text to show: one line per day "
+            "naming the exercises worked, oldest first. With detail, each movement's "
+            "load, sets, reps, volume and whether it rose on the last time. Narrow "
+            "to one exercise, or to the days since one."
         ),
         parameter_schema={
             "type": "object",
@@ -61,6 +64,10 @@ def extend(cora: Host) -> None:
                 "since": {
                     "type": "string",
                     "description": "Only sessions on or after this day, YYYY-MM-DD.",
+                },
+                "detail": {
+                    "type": "boolean",
+                    "description": "Each movement with its numbers, when asked for.",
                 },
             },
         },
