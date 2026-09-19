@@ -287,3 +287,11 @@ def test_a_row_carries_its_number_and_its_name_and_no_readout() -> None:
 
     assert 'class="st"' not in drawn
     assert ".row .st" not in drawn
+
+
+def test_the_weight_moves_one_kilogram_a_tap_and_never_below_one() -> None:
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    assert 'data-w="-1"' in drawn
+    assert 'data-w="1"' in drawn
+    assert "Math.max(1, s.w + (+w.dataset.w))" in drawn
