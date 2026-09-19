@@ -10,7 +10,7 @@ test is held with `test.fail()` until the list is done.
 ## 2. The counter
 
 - [x] 2.1 Write a test that the counter reads nought before it is given a frame.
-- [ ] 2.2 Write a test that a sequence swinging one wrist up and down counts one a cycle.
+- [x] 2.2 Write a test that a sequence swinging one wrist up and down counts one a cycle.
 - [ ] 2.3 Write a test that the same sequence at half the size counts the same.
 - [ ] 2.4 Write a test that a sequence sliding bodily across the frame counts nothing.
 - [ ] 2.5 Write a test that a sequence moving the shoulders over planted wrists counts one a cycle.

@@ -717,3 +717,10 @@ test("the count starts at nought", async ({ page }) => {
 
   await expect(page.locator("#repnum")).toHaveText("0");
 });
+
+test("a wrist swinging up and back counts one a cycle", async ({ page }) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(4, snatch));
+
+  await expect(page.locator("#repnum")).toHaveText("4");
+});

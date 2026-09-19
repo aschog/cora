@@ -932,17 +932,75 @@ function poseReadout(lm){
 /* ---------- rep counter ----------
    Fed one landmark frame a call by the pose loop, and nothing else reads the camera.
    It counts, and that is all: no set's reps move, and the workout is logged by hand. */
+const REP_WINDOW = 2500;      // ms of frames the thresholds are read off
+const REP_MIN_SWING = 0.35;   // torso lengths: under this, nothing is a rep
+const REP_MIN_GAP = 350;      // ms, so one turning point is not counted twice
+const REP_EDGE = 0.3;         // how far inside the swing the two thresholds sit
+const REP_ENOUGH = 8;         // frames before the window says anything
+
 const repNum = document.getElementById('repnum');
 let reps = null;
 
 function repReset(){
-  reps = {count: 0};
+  reps = {count: 0, seen: [], axis: -1, up: false, at: -Infinity};
+  document.body.classList.remove('counting');
   repPaint();
 }
 
-/** The count over the frame, and whether there is one to show at all. */
-function repPaint(){
-  repNum.textContent = reps.count;
+function repPaint(){ repNum.textContent = reps.count; }
+
+/* Both wrists in the torso's own frame: measured from the middle of the torso box and
+   divided by its length, so distance from the camera and walking about drop out. */
+function repWhere(lm){
+  const mid = (a, b) => ({x: (a.x + b.x)/2, y: (a.y + b.y)/2});
+  for (const i of [11, 12, 15, 16, 23, 24]) if (!lm || !lm[i]) return null;
+  const sh = mid(lm[11], lm[12]), hp = mid(lm[23], lm[24]);
+  const len = Math.hypot(sh.x - hp.x, sh.y - hp.y);
+  if (len < 1e-3) return null;                 // folded flat: nothing to divide by
+  const c = mid(sh, hp);
+  const at = p => [(p.x - c.x)/len, (p.y - c.y)/len];
+  return at(lm[15]).concat(at(lm[16]));
+}
+
+/* One frame. Every exercise in a plan is a cycle, but each moves a different part, so
+   the counter follows whichever coordinate swung widest over the window rather than
+   naming a joint per movement. A turning point at the top of that swing is a rep.
+   ponytail: rhythmic movement that is not a rep counts too — the swing and gap below
+   narrow that, they do not close it. Per-exercise signals if it matters. */
+function repSaw(lm, now){
+  const where = repWhere(lm);
+  if (!where) return;                          // nobody in frame is not a turning point
+  document.body.classList.add('counting');
+  reps.seen.push({now, where});
+  while (reps.seen.length && now - reps.seen[0].now > REP_WINDOW) reps.seen.shift();
+  if (reps.seen.length < REP_ENOUGH) return;
+
+  let axis = -1, swing = 0, lo = 0, hi = 0;
+  for (let i = 0; i < where.length; i++){
+    let min = Infinity, max = -Infinity;
+    for (const f of reps.seen){
+      if (f.where[i] < min) min = f.where[i];
+      if (f.where[i] > max) max = f.where[i];
+    }
+    if (max - min > swing){ swing = max - min; axis = i; lo = min; hi = max; }
+  }
+  if (swing < REP_MIN_SWING) return;
+
+  const x = where[axis], top = hi - swing*REP_EDGE, bottom = lo + swing*REP_EDGE;
+  if (axis !== reps.axis){                     // a coordinate just taken over says nothing
+    reps.axis = axis;
+    reps.up = x > top;
+    return;
+  }
+  if (!reps.up && x > top){
+    reps.up = true;
+    if (now - reps.at < REP_MIN_GAP) return;
+    reps.at = now;
+    reps.count++;
+    repPaint();
+  } else if (reps.up && x < bottom){
+    reps.up = false;
+  }
 }
 repReset();
 
