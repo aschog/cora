@@ -742,3 +742,16 @@ test("the same swing further from the camera counts the same", async ({
 
   await expect(page.locator("#repnum")).toHaveText("4");
 });
+
+/* A lifter walking back to the bell: the whole body travels, nothing moves within it. */
+const walking = (phase: number): Frame => {
+  const cx = 0.3 + 0.2 * Math.cos(phase);
+  return pose({ wrist: { x: cx, y: 0.6 }, cx });
+};
+
+test("a body crossing the frame is not counted", async ({ page }) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(4, walking));
+
+  await expect(page.locator("#repnum")).toHaveText("0");
+});
