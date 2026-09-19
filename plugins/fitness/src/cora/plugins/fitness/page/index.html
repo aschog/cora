@@ -884,6 +884,7 @@ function poseStop(){
   poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
   poseHud.textContent = '';
   poseState = 'off'; poseUi();
+  repReset();                                // no overlay, no count to show
 }
 poseUi();
 

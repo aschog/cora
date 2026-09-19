@@ -843,3 +843,13 @@ test("the count shows over the frame", async ({ page }) => {
 
   await expect(page.locator("#repview")).toBeVisible();
 });
+
+test("the count goes with the overlay that fed it", async ({ page }) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(2, snatch));
+  await page.evaluate(() =>
+    (window as unknown as { poseStop: () => void }).poseStop(),
+  );
+
+  await expect(page.locator("#repview")).toBeHidden();
+});
