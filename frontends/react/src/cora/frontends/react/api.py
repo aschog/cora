@@ -77,6 +77,7 @@ def api(
     routes: list[Route | Mount] = [
         Route("/api/documents", _documents(apps), methods=["GET"]),
         Route("/api/documents", _ingest(apps), methods=["POST"]),
+        Route("/api/documents/{scope}/{name}", _read_document(apps), methods=["GET"]),
         Route(
             "/api/documents/{scope}/{name}",
             _delete_document(apps),
@@ -158,6 +159,24 @@ def _documents(apps: Apps) -> Callable[[Request], Any]:
         return JSONResponse(app.knowledge_base.list_sources(scope))
 
     return listed
+
+
+def _read_document(apps: Apps) -> Callable[[Request], Any]:
+    def read(request: Request) -> JSONResponse:
+        app = apps()
+        named = request.path_params["scope"]
+        scope = _field(named, app.scopes)
+        if scope is None:
+            return _refusal(named, app.scopes)
+        held = app.knowledge_base.read(scope, request.path_params["name"])
+        if not held:
+            return JSONResponse({"error": NO_SUCH_DOCUMENT}, status_code=404)
+        return JSONResponse([{"text": each.text} for each in held])
+
+    return read
+
+
+NO_SUCH_DOCUMENT = "That field holds no document of that name."
 
 
 def _delete_document(apps: Apps) -> Callable[[Request], Any]:

@@ -126,6 +126,20 @@ class KnowledgeBase:
         """Every document one field holds a passage from, by its uploaded name."""
         return self.retriever.sources(scope)
 
+    def read(self, scope: str, name: str) -> list[Document]:
+        """Every upload one field holds under a name, each with its text, oldest first.
+
+        The name is what the field lists, and one name may be several uploads — each
+        comes back as its own document, as `all` hands them and as `forget` takes them.
+        One whose text is gone is left out, and a name nothing was uploaded under reads
+        as nothing.
+        """
+        return [
+            Document(name=name, text=text, scope=scope)
+            for upload in self.retriever.uploads(scope, name)
+            if (text := self.documents.read(scope, upload)) is not None
+        ]
+
     def all(self) -> list[Document]:
         """Every document in the fields the turn is running in, by name and by text.
 
@@ -135,11 +149,10 @@ class KnowledgeBase:
         together and oldest first, which is the order the index lists them in.
         """
         return [
-            Document(name=source, text=text, scope=scope)
+            document
             for scope in sorted(here())
             for source in self.retriever.sources(scope)
-            for upload in self.retriever.uploads(scope, source)
-            if (text := self.documents.read(scope, upload)) is not None
+            for document in self.read(scope, source)
         ]
 
     def _written(self, hits: list[RetrievedChunk]) -> list[RetrievedChunk]:

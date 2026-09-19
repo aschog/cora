@@ -15,6 +15,7 @@ from cora.domain.errors import (
 from cora.frontends.react.api import (
     MAX_REQUEST_BYTES,
     NO_LENGTH,
+    NO_SUCH_DOCUMENT,
     OVER_CEILING,
     UNKEPT,
     api,
@@ -204,6 +205,47 @@ def test_a_document_is_deleted_by_its_name_and_leaves_the_listing() -> None:
     assert client.get(f"/api/documents?scope={TRAVEL}").json() == ["notes.md"]
     upload = hashlib.sha256(KYOTO).hexdigest()
     assert client.get(f"/api/uploads/{TRAVEL}/{upload}").status_code == 404
+
+
+def test_a_document_is_read_back_by_its_name_every_upload_oldest_first() -> None:
+    """Two uploads of one name are two documents, and the name reads both — the first
+    upload first, as the rail counts them and the delete takes them."""
+    app = assembled()
+    client = _scoped(app)
+    for data in (b"# Deadlift 14 kg\n3 sets of 10", b"# Swing 14 kg\n2 sets of 10"):
+        client.post(
+            "/api/documents",
+            files={"file": ("2026-09-18.md", data, "text/markdown")},
+            data={"scope": FITNESS},
+        )
+
+    read = client.get(f"/api/documents/{FITNESS}/2026-09-18.md")
+
+    assert read.status_code == 200
+    assert [each["text"] for each in read.json()] == [
+        "# Deadlift 14 kg\n3 sets of 10",
+        "# Swing 14 kg\n2 sets of 10",
+    ]
+
+
+def test_a_name_nothing_was_uploaded_under_reads_as_not_there() -> None:
+    app = assembled()
+    client = _scoped(app)
+
+    read = client.get(f"/api/documents/{FITNESS}/never.md")
+
+    assert read.status_code == 404
+    assert read.json() == {"error": NO_SUCH_DOCUMENT}
+
+
+def test_reading_a_document_of_a_field_nobody_loaded_is_refused() -> None:
+    client = _scoped(assembled())
+
+    refused = client.get("/api/documents/atlantis/never.md")
+
+    assert refused.status_code == 400
+    assert "atlantis" in refused.json()["error"]
+    assert FITNESS in refused.json()["error"]
 
 
 def test_a_refusal_quotes_back_only_so_much_of_the_name_it_was_given() -> None:
