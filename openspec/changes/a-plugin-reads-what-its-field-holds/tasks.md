@@ -1,6 +1,6 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the functional test where a plugin's tool is handed both documents of one name in its field and not another field's, marked `@pytest.mark.xfail(strict=True)`.
+- [x] 1.1 Write the functional test where a plugin's tool is handed both documents of one name in its field and not another field's, marked `@pytest.mark.xfail(strict=True)`.
 
 ## 2. The knowledge base reads a field
 
