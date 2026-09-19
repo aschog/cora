@@ -39,6 +39,7 @@ class Movement:
     load: Load
     sets: tuple[int, ...] = ()
     notes: tuple[str, ...] = ()
+    rose: bool = False
 
     @property
     def reps(self) -> int:
@@ -103,12 +104,39 @@ def _number(value: float) -> str:
 def list_workouts(
     cora: Host, exercise: str | None = None, since: str | None = None
 ) -> list[dict[str, Any]] | str:
-    sessions = _sessions(cora)
+    sessions = _risen(_sessions(cora))
     if exercise:
         sessions = _only(sessions, exercise)
     if since:
         sessions = [session for session in sessions if session.day >= _day(since)]
+    if not sessions:
+        narrowed = (f" with {exercise}" if exercise else "") + (
+            f" since {since}" if since else ""
+        )
+        return f"No workout logged{narrowed}."
     return [_listed(session) for session in sessions]
+
+
+def _risen(sessions: list[Session]) -> list[Session]:
+    # as `train` marks ↑: more volume, or a heavier load, than the previous session of
+    # that exercise — and reps where a bodyweight load has no volume
+    last: dict[str, tuple[float, float]] = {}
+    risen = []
+    for session in sessions:
+        marked = []
+        for movement in session.movements:
+            measure = (
+                movement.volume if movement.volume is not None else movement.reps,
+                movement.load.value,
+            )
+            before = last.get(movement.name.casefold())
+            rose = before is not None and (
+                measure[0] > before[0] or measure[1] > before[1]
+            )
+            last[movement.name.casefold()] = measure
+            marked.append(replace(movement, rose=rose))
+        risen.append(replace(session, movements=tuple(marked)))
+    return risen
 
 
 def _only(sessions: list[Session], exercise: str) -> list[Session]:
@@ -167,6 +195,7 @@ def _listed(session: Session) -> dict[str, Any]:
                 "sets": list(movement.sets),
                 "reps": movement.reps,
                 "volume_kg": movement.volume,
+                "rose": movement.rose,
             }
             for movement in session.movements
         ],

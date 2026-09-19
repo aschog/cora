@@ -186,3 +186,30 @@ def test_a_day_drops_the_sessions_before_it() -> None:
 def test_a_since_that_is_not_a_day_refuses_the_call() -> None:
     with pytest.raises(ToolRefusal, match="last week"):
         _listing(("2026-09-18.md", DEADLIFT), since="last week")
+
+
+def test_a_movement_says_whether_it_rose_on_the_previous_session_of_it() -> None:
+    days = (
+        ("2026-09-16.md", "# Deadlift 14 kg\n3 sets of 10"),
+        ("2026-09-18.md", "# Deadlift 14 kg\n3 sets of 12"),
+        ("2026-09-20.md", "# Deadlift 16 kg\n3 sets of 8"),
+        ("2026-09-22.md", "# Deadlift 16 kg\n3 sets of 8"),
+    )
+
+    listed = _listing(*days)
+    lately = _listing(*days, since="2026-09-18")
+
+    assert [s["movements"][0]["rose"] for s in listed] == [False, True, True, False]
+    # judged against the whole log, not against what the day narrowed it to
+    assert lately[0]["movements"][0]["rose"] is True
+
+
+def test_nothing_logged_answers_in_words_rather_than_an_empty_list() -> None:
+    assert _listing() == "No workout logged."
+    assert _listing(("training-plan.md", PLAN)) == "No workout logged."
+    assert _listing(("2026-09-18.md", DEADLIFT), exercise="snatch") == (
+        "No workout logged with snatch."
+    )
+    assert _listing(("2026-09-18.md", DEADLIFT), since="2026-09-19") == (
+        "No workout logged since 2026-09-19."
+    )
