@@ -1200,10 +1200,11 @@ is a change somebody made rather than a change nobody saw.
 ### Requirement: A finished workout is a document of the fitness field
 
 Finishing a workout SHALL upload it into the fitness field as a Markdown document named
-for the moment it was saved, the day first and the time behind it. The text SHALL open
-with the workout's name, taken from the sheet the plan was read from, where the plan came
-from a sheet. Below it SHALL be a heading per exercise carrying its load, followed by
-the sets it took. An exercise nothing was logged for SHALL NOT appear.
+for the moment it was saved, the day first and the time behind it. The finish SHALL be
+offered only once a set has been logged. The text SHALL open with the workout's name,
+taken from the sheet the plan was read from, where the plan came from a sheet. Below it
+SHALL be a heading per exercise carrying its load, followed by the sets it took. An
+exercise nothing was logged for SHALL NOT appear.
 
 #### Scenario: A workout is finished
 
@@ -1238,8 +1239,9 @@ the sets it took. An exercise nothing was logged for SHALL NOT appear.
 
 #### Scenario: Nothing logged at all
 
-- **WHEN** the reader finishes a workout with no set logged
-- **THEN** nothing is uploaded
+- **GIVEN** a workout with no set logged
+- **WHEN** the reader looks for the finish
+- **THEN** it is not enabled, and nothing is uploaded
 
 ### Requirement: What the trainer logged is what cora answers from
 

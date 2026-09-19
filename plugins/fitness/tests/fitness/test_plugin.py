@@ -295,3 +295,11 @@ def test_the_weight_moves_one_kilogram_a_tap_and_never_below_one() -> None:
     assert 'data-w="-1"' in drawn
     assert 'data-w="1"' in drawn
     assert "Math.max(1, s.w + (+w.dataset.w))" in drawn
+
+
+def test_the_finish_is_named_so_and_offered_only_once_a_set_is_logged() -> None:
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    assert "Save &amp; finish" not in drawn
+    assert re.search(r'id="finish">.*?</svg> Finish</button>', drawn)
+    assert re.search(r"finishEl\.disabled\s*=\s*!PLAN\.some\(", drawn)
