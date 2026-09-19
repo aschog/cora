@@ -271,6 +271,50 @@ test("a finish tapped while its save is out uploads the workout once", async ({
   expect(uploads, "the workout went to cora once").toBe(1);
 });
 
+test("the finish is never offered again for a workout cora already took", async ({
+  page,
+}) => {
+  await held(
+    page,
+    `${TODAY}-23-59-52-Already in.md`,
+    "# Halo 10 kg\n1 sets of 5\n",
+  );
+  await page.goto(TRAINER);
+
+  /* The save lands at once and the read of the field behind it does not. Between the
+     two the workout is cora's, and the page must not offer to send it again. */
+  let uploads = 0;
+  await page.route("**/api/documents", async (asked) => {
+    if (asked.request().method() !== "POST") return asked.continue();
+    uploads += 1;
+    return asked.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        document: "saved.md",
+        chunks: 1,
+        scope: "fitness",
+      }),
+    });
+  });
+  const release = await slowly(page);
+  await page.locator(".set").first().click();
+
+  page.once("dialog", (asked) => asked.accept());
+  await page.getByRole("button", { name: /^finish$/i }).click();
+
+  /* The send is over — and cora took it. Whatever the control says from here, it is
+     not an enabled finish, and a tap on it sends nothing: the workout is in the field
+     already, and the read that follows it is the page catching up, not the save. */
+  await expect(page.getByRole("button", { name: /saving/i })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: /^finish$/i })).toHaveCount(0);
+  await page.locator("#finish").click({ force: true });
+  release();
+
+  await expect(page.getByRole("button", { name: /^saved$/i })).toBeVisible();
+  expect(uploads, "the workout went to cora once").toBe(1);
+});
+
 test("a document that carries markup is read as text", async ({ page }) => {
   /* A field takes documents from anyone who can upload into it, and the trainer now
      draws their headings. They are text. */

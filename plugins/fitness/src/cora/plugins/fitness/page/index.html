@@ -1095,13 +1095,22 @@ function moment(){
 function took(who){
   saved = true;
   warn(who.replace(/\s*—\s*$/, ''), true);   // the button says it; the strip only who
-  const start = () => { ses = newSession(); render(); };
-  readLog().then(start, start);
+  /* The fresh workout starts here and not when the read lands: between the two the
+     control would read an enabled "Finish" over a workout cora already has, and a tap
+     on it would send the same session again. The read that follows fills the fresh
+     slots with the field's weights, this save included — `readLog` does that itself. */
+  ses = newSession();
+  sending = false;                       // cora has it; the read behind it is not the save
+  render();
+  return readLog();
 }
 
-const lost = (who, why) =>
+const lost = (who, why) => {
+  sending = false;
   warn(who + 'Not saved to cora' + (why ? ' (' + why + ')' : '') +
        ' — the workout is still here, finish it again.');
+  render();
+};
 
 /* One save at a time. The session is cleared only once cora has answered, so without
    this a second tap on a slow link uploads the same workout again under a later name —
@@ -1119,8 +1128,7 @@ function handoff(text, who = ''){
     .then(r => r.json().then(answered => r.ok
       ? took(who)
       : Promise.reject(answered.error || ('HTTP ' + r.status))))
-    .catch(why => lost(who, typeof why === 'string' ? why : ''))
-    .finally(() => { sending = false; render(); });
+    .catch(why => lost(who, typeof why === 'string' ? why : ''));
 }
 
 /** One save, read back in the grammar the finish wrote: the workout's name on its own
