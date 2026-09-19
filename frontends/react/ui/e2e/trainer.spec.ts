@@ -819,3 +819,20 @@ test("frames the model found nobody in are skipped, not counted", async ({
 
   await expect(page.locator("#repnum")).toHaveText("4");
 });
+
+/* A halo, or a pass around the body: the wrist travels a circle rather than a line, and
+   one circle is one rep on either coordinate it is read off. */
+const halo = (phase: number): Frame =>
+  pose({
+    wrist: {
+      x: 0.5 + 0.22 * Math.sin(phase),
+      y: 0.5 + 0.22 * Math.cos(phase),
+    },
+  });
+
+test("a wrist travelling a circle counts one a circle", async ({ page }) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(4, halo));
+
+  await expect(page.locator("#repnum")).toHaveText("4");
+});
