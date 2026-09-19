@@ -1,6 +1,6 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the test that a name uploaded twice reads back both texts, oldest first, over the API, marked `@pytest.mark.xfail(strict=True)`.
+- [x] 1.1 Write the test that a name uploaded twice reads back both texts, oldest first, over the API, marked `@pytest.mark.xfail(strict=True)`.
 
 ## 2. The knowledge base
 

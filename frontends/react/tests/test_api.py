@@ -3,6 +3,7 @@ import pathlib
 from collections.abc import Iterator
 from dataclasses import replace
 
+import pytest
 from starlette.testclient import TestClient
 
 from app_builder import assembled, indexed
@@ -204,6 +205,28 @@ def test_a_document_is_deleted_by_its_name_and_leaves_the_listing() -> None:
     assert client.get(f"/api/documents?scope={TRAVEL}").json() == ["notes.md"]
     upload = hashlib.sha256(KYOTO).hexdigest()
     assert client.get(f"/api/uploads/{TRAVEL}/{upload}").status_code == 404
+
+
+@pytest.mark.xfail(strict=True, reason="a document is not yet read back by its name")
+def test_a_document_is_read_back_by_its_name_every_upload_oldest_first() -> None:
+    """Two uploads of one name are two documents, and the name reads both — the first
+    upload first, as the rail counts them and the delete takes them."""
+    app = assembled()
+    client = _scoped(app)
+    for data in (b"# Deadlift 14 kg\n3 sets of 10", b"# Swing 14 kg\n2 sets of 10"):
+        client.post(
+            "/api/documents",
+            files={"file": ("2026-09-18.md", data, "text/markdown")},
+            data={"scope": FITNESS},
+        )
+
+    read = client.get(f"/api/documents/{FITNESS}/2026-09-18.md")
+
+    assert read.status_code == 200
+    assert [each["text"] for each in read.json()] == [
+        "# Deadlift 14 kg\n3 sets of 10",
+        "# Swing 14 kg\n2 sets of 10",
+    ]
 
 
 def test_a_refusal_quotes_back_only_so_much_of_the_name_it_was_given() -> None:
