@@ -870,3 +870,13 @@ test("a rest takes the frame back from the count", async ({ page }) => {
 
   await expect(page.locator("#repview")).toBeHidden();
 });
+
+test("a logged set starts the count again", async ({ page }) => {
+  await page.goto(TRAINER);
+  await feed(page, cycles(3, snatch));
+  await expect(page.locator("#repnum")).toHaveText("3");
+
+  await page.locator(".set .log").first().click();
+
+  await expect(page.locator("#repnum")).toHaveText("0");
+});
