@@ -707,8 +707,6 @@ async function feed(page: Page, frames: Frame[]): Promise<void> {
 }
 
 test("the camera counts the reps it sees", async ({ page }) => {
-  test.fail(); // the counter is not written yet
-
   await page.goto(TRAINER);
   await feed(page, cycles(3, snatch));
 
@@ -891,4 +889,20 @@ test("another exercise starts the count again", async ({ page }) => {
   );
 
   await expect(page.locator("#repnum")).toHaveText("0");
+});
+
+test("the count leaves the sets to the plan and the taps", async ({ page }) => {
+  await page.goto(TRAINER);
+  const logs = page.locator(".set .log");
+  await expect(logs.first()).toBeVisible();   // the plan has to be drawn to be read off
+  const planned = await logs.allTextContents();
+
+  await feed(page, cycles(3, snatch));
+
+  await expect(page.locator("#repnum")).toHaveText("3");
+  expect(await logs.allTextContents()).toEqual(planned);
+
+  /* And the taps still own the number: one more is one more, not four. */
+  await page.locator('.set [data-rep="0"][data-d="1"]').click();
+  expect(await logs.first().textContent()).toBe(String(Number(planned[0]) + 1));
 });
