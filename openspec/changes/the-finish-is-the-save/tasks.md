@@ -4,7 +4,7 @@
 
 ## 2. The coach
 
-- [ ] 2.1 Write the test that a document named for its moment and its workout is a session of that day.
+- [x] 2.1 Write the test that a document named for its moment and its workout is a session of that day.
 
 ## 3. The page
 
