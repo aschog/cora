@@ -1136,8 +1136,10 @@ function readLog(){
           {day: dayOf(name), name: nameOf(name)}, readSession(each.text)))))))
     .then(read => {
       logged = read.flat();
-      // an untouched workout takes the field's weights; one with sets logged is its own
-      if (!PLAN.some(p => (ses.ex[p.id] || {}).done > 0)) ses = newSession();
+      // an untouched workout takes the field's weights; one with sets logged is its own.
+      // Only the slots: the workout's start and whether the watch began it are its own
+      // whatever the field says.
+      if (!PLAN.some(p => (ses.ex[p.id] || {}).done > 0)) ses.ex = newSession().ex;
       render();
     })
     .catch(why => { console.warn('the field could not be read:', why); });

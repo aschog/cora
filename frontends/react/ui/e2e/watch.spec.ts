@@ -181,13 +181,10 @@ test("a workout the wrist ended that cora would not take is said to be lost", as
 
   await expect(page.locator("#warn")).toContainText("Watch ended the workout");
   await expect(page.locator("#warn")).toContainText("Not saved to cora");
-  const kept = await page.evaluate(() =>
-    JSON.parse(globalThis.localStorage.getItem("kb.hist") ?? "[]"),
-  );
-  expect(
-    kept.length,
-    "the workout is in the history whatever cora said",
-  ).toBeGreaterThan(0);
+  /* And it is still the reader's, exactly as it is when the button was the one that
+     failed: the set stays logged and the finish is offered again. */
+  await expect(page.locator(".set.on")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /^finish$/i })).toBeEnabled();
 });
 
 /* And what the notice does to the screen: a field that speaks puts its own conversation
