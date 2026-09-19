@@ -9,8 +9,8 @@
 
 ## 3. The listing names the workout
 
-- [ ] 3.1 Write a test that a day names its workouts each once, and an untitled save's exercises in their place.
-- [ ] 3.2 Write a test that in detail the day's line carries its workouts' names after the date.
+- [x] 3.1 Write a test that a day names its workouts each once, and an untitled save's exercises in their place.
+- [x] 3.2 Write a test that in detail the day's line carries its workouts' names after the date.
 
 ## 4. The trainer names the save
 
@@ -18,4 +18,4 @@
 
 ## 5. Close it
 
-- [ ] 5.1 Drop the outer test's `xfail` marker and watch it pass.
+- [x] 5.1 Drop the outer test's `xfail` marker and watch it pass.

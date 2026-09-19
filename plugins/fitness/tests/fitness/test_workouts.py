@@ -251,3 +251,26 @@ def test_a_days_saves_list_in_the_order_of_their_names_whatever_the_upload() -> 
     )
 
     assert listed == "2026-09-18: Deadlift · Snatch"
+
+
+SNATCH_WORKOUT = "Рывок гири"
+TITLED = f"{SNATCH_WORKOUT}\n\n{SWING}"
+
+
+def test_a_day_names_its_workouts_once_and_an_untitled_saves_exercises() -> None:
+    listed = _listing(
+        ("2026-09-18-12-27-00.md", DEADLIFT),
+        ("2026-09-18-16-20-05.md", TITLED),
+        ("2026-09-18-16-42-10.md", f"{SNATCH_WORKOUT}\n\n{SNATCH}"),
+    )
+
+    assert listed == f"2026-09-18: Deadlift · {SNATCH_WORKOUT}"
+
+
+def test_in_detail_the_days_line_carries_its_workouts_names() -> None:
+    listed = _listing(
+        ("2026-09-18.md", TITLED), ("2026-09-20.md", DEADLIFT), detail=True
+    )
+
+    assert listed.splitlines()[0] == f"2026-09-18 — {SNATCH_WORKOUT}"
+    assert "2026-09-20\n- Deadlift" in listed

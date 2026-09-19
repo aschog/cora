@@ -1,7 +1,6 @@
 """The outer test for the story: a save carries the name of the workout it was, and the
 coach names a day by its workouts rather than by their lifts."""
 
-import pytest
 from starlette.testclient import TestClient
 
 from app_builder import assembled
@@ -33,7 +32,6 @@ IN_DETAIL = (
 )
 
 
-@pytest.mark.xfail(strict=True, reason="a line before the first heading is refused")
 def test_the_coach_names_a_day_by_its_workouts() -> None:
     app = assembled(
         plugins=(load_plugin("cora.plugins.fitness"),),

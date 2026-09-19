@@ -56,6 +56,16 @@ class Session:
     name: str = ""
 
 
+@dataclass(frozen=True)
+class Day:
+    day: date
+    movements: tuple[Movement, ...]
+    # the titled saves' names, each once — and what the day is listed by, which is
+    # those and an untitled save's exercises
+    workouts: tuple[str, ...] = ()
+    named: tuple[str, ...] = ()
+
+
 def parse_session(text: str, day: date, name: str = "<session>") -> Session:
     movements: list[Movement] = []
     title = ""
@@ -127,8 +137,8 @@ def list_workouts(
     return "\n".join(_named(session) for session in sessions)
 
 
-def _sessions(cora: Host) -> list[Session]:
-    by_day: dict[date, list[Movement]] = {}
+def _sessions(cora: Host) -> list[Day]:
+    by_day: dict[date, tuple[list[Movement], list[str], list[str]]] = {}
     # by name, stably: a day's saves in the order of their moments, and two of one
     # name as they were uploaded
     for document in sorted(cora.documents.all(), key=lambda held: held.name):
@@ -140,8 +150,22 @@ def _sessions(cora: Host) -> list[Session]:
         except LogError as refused:
             cora.show(f"skipped {document.name}", detail=str(refused), failed=True)
             continue
-        by_day.setdefault(day, []).extend(parsed.movements)
-    return [Session(day, tuple(moved)) for day, moved in sorted(by_day.items())]
+        moved, workouts, named = by_day.setdefault(day, ([], [], []))
+        moved.extend(parsed.movements)
+        if parsed.name:
+            workouts.append(parsed.name)
+            named.append(parsed.name)
+        else:
+            named.extend(movement.name for movement in parsed.movements)
+    return [
+        Day(
+            day,
+            tuple(moved),
+            tuple(dict.fromkeys(workouts)),
+            tuple(dict.fromkeys(named)),
+        )
+        for day, (moved, workouts, named) in sorted(by_day.items())
+    ]
 
 
 def _day_of(name: str) -> date | None:
@@ -152,7 +176,7 @@ def _day_of(name: str) -> date | None:
         return None
 
 
-def _risen(sessions: list[Session]) -> list[Session]:
+def _risen(sessions: list[Day]) -> list[Day]:
     # as `train` marks ↑: more volume, or a heavier load, than the previous session of
     # that exercise — and reps where a bodyweight load has no volume
     last: dict[str, tuple[float, float]] = {}
@@ -174,13 +198,18 @@ def _risen(sessions: list[Session]) -> list[Session]:
     return risen
 
 
-def _only(sessions: list[Session], exercise: str) -> list[Session]:
+def _only(sessions: list[Day], exercise: str) -> list[Day]:
     wanted = exercise.casefold()
     kept = [
         replace(
             session,
             movements=tuple(
                 m for m in session.movements if m.name.casefold() == wanted
+            ),
+            named=tuple(
+                n
+                for n in session.named
+                if n in session.workouts or n.casefold() == wanted
             ),
         )
         for session in sessions
@@ -197,14 +226,16 @@ def _day(since: str) -> date:
         ) from error
 
 
-def _named(session: Session) -> str:
-    names = dict.fromkeys(movement.name for movement in session.movements)
-    return f"{session.day.isoformat()}: " + " · ".join(names)
+def _named(session: Day) -> str:
+    return f"{session.day.isoformat()}: " + " · ".join(session.named)
 
 
-def _detailed(session: Session) -> str:
+def _detailed(session: Day) -> str:
+    day = session.day.isoformat()
+    if session.workouts:
+        day += " — " + " · ".join(session.workouts)
     lines = [f"- {_line(movement)}" for movement in session.movements]
-    return "\n".join([session.day.isoformat(), *lines])
+    return "\n".join([day, *lines])
 
 
 def _line(movement: Movement) -> str:
