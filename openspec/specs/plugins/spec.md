@@ -1200,14 +1200,15 @@ is a change somebody made rather than a change nobody saw.
 ### Requirement: A finished workout is a document of the fitness field
 
 Finishing a workout SHALL upload it into the fitness field as a Markdown document named
-for the moment it was saved, the day first and the time behind it. The finish SHALL be
+for the moment it was saved, the day first and the time behind it, and then for the
+workout's name where the plan came from a sheet. The finish SHALL be
 offered only once a set has been logged, and the button SHALL read where the workout
 stands: that no sets are logged yet, finish, or saved until the next set is logged. A
 save cora took SHALL say nothing on the strip, except who ended the workout when the
-watch did. The text SHALL open with the workout's
-name, taken from the sheet the plan was read from, where the plan came from a sheet.
-Below it SHALL be a heading per exercise carrying its load, followed by the sets it
-took. An exercise nothing was logged for SHALL NOT appear.
+watch did. A fresh workout SHALL start only once cora took the save. The text SHALL open
+with the workout's name, taken from the sheet the plan was read from, where the plan
+came from a sheet. Below it SHALL be a heading per exercise carrying its load, followed
+by the sets it took. An exercise nothing was logged for SHALL NOT appear.
 
 #### Scenario: A workout is finished
 
@@ -1227,13 +1228,15 @@ took. An exercise nothing was logged for SHALL NOT appear.
 
 - **GIVEN** a plan read from a sheet whose tab is named
 - **WHEN** the reader finishes a workout
-- **THEN** the document's first line is that name
+- **THEN** the document's name ends with that name, behind the moment, and its first
+  line is that name
 
 #### Scenario: The plan written into the page
 
 - **GIVEN** no sheet reachable and no plan cached
 - **WHEN** the reader finishes a workout
-- **THEN** the document opens with its first exercise, and no name
+- **THEN** the document is named for its moment alone, and opens with its first exercise
+  and no name
 
 #### Scenario: Two saves on one day
 
@@ -1275,20 +1278,26 @@ session is missed for its wording.
 ### Requirement: The coach lists the workouts
 
 The fitness field SHALL offer a tool listing every workout logged in it, as text ready to
-show. A session SHALL be one day, dated from the document's name whether or not a time
-follows the day, oldest first, and a day's saves SHALL come in the order of their
-names. Unasked for detail, a session SHALL name the workouts trained, each once, and the
-exercises of a save that carries no name. Asked for detail, a day's line SHALL carry its
-workouts' names, and each movement SHALL carry its load, sets, reps and volume. The list
-SHALL narrow to one exercise, matched whatever its case, and to sessions since a day. A
-document not named for a day SHALL NOT be a session. One the grammar cannot read SHALL
-be left out, with a line on the trace.
+show. A session SHALL be one day, dated from the document's name whether or not a time,
+or a time and a workout's name, follows the day, oldest first, and a day's saves SHALL
+come in the order of their names. Unasked for detail, a session SHALL name the workouts
+trained, each once, and the exercises of a save that carries no name. Asked for detail,
+a day's line SHALL carry its workouts' names, and each movement SHALL carry its load,
+sets, reps and volume. The list SHALL narrow to one exercise, matched whatever its case,
+and to sessions since a day. A document not named for a day SHALL NOT be a session. One
+the grammar cannot read SHALL be left out, with a line on the trace.
 
 #### Scenario: Every workout
 
 - **GIVEN** three workouts saved into the fitness field, two on one day, each titled
 - **WHEN** the coach is asked what was trained
 - **THEN** the answer is two lines, a day and its workouts' names each, and no number
+
+#### Scenario: A save named for its moment and its workout
+
+- **GIVEN** a document named for a day, a time and a workout
+- **WHEN** the workouts are listed
+- **THEN** it is a session of that day
 
 #### Scenario: A save without a name
 
@@ -1378,23 +1387,6 @@ detail only when the reader asks for numbers.
 - **WHEN** the fitness brief is read
 - **THEN** it says to pass the listing on as it is, untranslated, to add nothing about
   what the log holds or lacks, and detail only on request
-
-### Requirement: A workout that could not be saved is not lost
-
-Where the upload fails, the page SHALL say so and SHALL keep the workout's text where the
-reader can still take it. The workout SHALL be added to the page's own history either
-way.
-
-#### Scenario: The upload fails
-
-- **GIVEN** a finished workout that cora refuses or cannot be asked
-- **WHEN** the page reports it
-- **THEN** it says the workout was not saved, and the text is still reachable
-
-#### Scenario: The history holds it regardless
-
-- **WHEN** a workout is finished, whether or not the upload succeeded
-- **THEN** it is in the page's own history and a fresh workout starts
 
 ### Requirement: The plan is the sheet's, and the page's when the sheet is not there
 
@@ -1554,3 +1546,62 @@ the build SHALL stop and name the command that installs it.
 
 - **WHEN** the Zepp command line tool is not installed
 - **THEN** the build stops and names the command that installs it
+
+### Requirement: The trainer's history is the field's
+
+The trainer SHALL keep no history of its own. History SHALL list the field's saved
+workouts, read from the field by name: each save under its day and its workout's name,
+with every exercise's load and reps. A fresh workout SHALL open each exercise on the
+weight and the reps of the field's latest save that worked it, matched by the exercise's
+name as the heading spells it, and on the plan's where none did. The page SHALL offer no
+import and no export.
+
+#### Scenario: History reads the field
+
+- **GIVEN** a workout saved into the fitness field
+- **WHEN** the reader opens History
+- **THEN** that workout is listed under its day with its exercises, loads and reps, and
+  the browser's storage holds no history
+
+#### Scenario: The last weight is the field's
+
+- **GIVEN** a save in the field with the swing at 24 kg for sets of 12
+- **WHEN** a fresh workout is drawn
+- **THEN** the swing opens at 24 kg with 12 reps a set
+
+#### Scenario: An exercise never saved
+
+- **GIVEN** a field with no save working the snatch
+- **WHEN** a fresh workout is drawn
+- **THEN** the snatch opens on the plan's weight and reps
+
+#### Scenario: Nothing to carry between browsers
+
+- **WHEN** the History is read
+- **THEN** it offers no import and no export
+
+### Requirement: A save cora did not take stands
+
+Where the upload fails, the page SHALL say so and why, and the workout SHALL stand as it
+was: its sets logged, the finish offered again. Opened outside cora, the finish SHALL
+say the workout was not saved and change nothing else. The page SHALL keep no copy of
+its own and SHALL offer no clipboard.
+
+#### Scenario: The upload fails
+
+- **GIVEN** a finished workout that cora refuses or cannot be asked
+- **WHEN** the page reports it
+- **THEN** it says the workout was not saved and why, the sets are still logged, and the
+  finish is still offered
+
+#### Scenario: Finished again once cora is back
+
+- **GIVEN** a workout whose upload failed
+- **WHEN** the reader finishes it again and cora takes it
+- **THEN** the button reads saved and a fresh workout starts
+
+#### Scenario: Outside cora
+
+- **GIVEN** the page opened under no field
+- **WHEN** the reader finishes a workout
+- **THEN** it says the workout was not saved to cora, and nothing is uploaded
