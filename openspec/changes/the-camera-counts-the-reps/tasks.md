@@ -18,6 +18,8 @@ test is held with `test.fail()` until the list is done.
 - [x] 2.7 Write a test that two turning points inside the minimum period count one.
 - [x] 2.8 Write a test that a frame the model found nobody in is skipped, not counted.
 - [x] 2.9 Write a test that a wrist travelling a circle counts one a circle.
+- [x] 2.10 Write a test that the frame the overlay draws is the frame the counter is
+      given — found in flight, because nothing fed the counter at all.
 
 ## 3. The readout
 

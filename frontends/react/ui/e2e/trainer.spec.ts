@@ -694,15 +694,16 @@ function cycles(
 const snatch = (phase: number): Frame =>
   pose({ wrist: { x: 0.5, y: 0.45 + 0.3 * Math.cos(phase) } });
 
-/* Hands the frames to the page one at a time, at the rate the camera delivers them. */
+/* Hands the frames to the page one at a time, at the rate the camera delivers them, and
+   through the door the pose loop uses rather than the counter's own. */
 async function feed(page: Page, frames: Frame[]): Promise<void> {
   await page.evaluate((given) => {
-    const counter = window as unknown as {
+    const overlay = window as unknown as {
       repReset: () => void;
-      repSaw: (lm: unknown, now: number) => void;
+      poseShow: (lm: unknown, now: number) => void;
     };
-    counter.repReset();
-    given.forEach((lm, i) => counter.repSaw(lm, (i * 1000) / 30));
+    overlay.repReset();
+    given.forEach((lm, i) => overlay.poseShow(lm, (i * 1000) / 30));
   }, frames);
 }
 
@@ -905,4 +906,23 @@ test("the count leaves the sets to the plan and the taps", async ({ page }) => {
   /* And the taps still own the number: one more is one more, not four. */
   await page.locator('.set [data-rep="0"][data-d="1"]').click();
   expect(await logs.first().textContent()).toBe(String(Number(planned[0]) + 1));
+});
+
+test("the frame the overlay draws is the frame the counter is given", async ({
+  page,
+}) => {
+  await page.goto(TRAINER);
+  /* Through the overlay's own frame handler, not the counter's door: the readout says
+     the pose arrived, and the count says the same pose reached the counter. */
+  await page.evaluate((given) => {
+    const w = window as unknown as {
+      repReset: () => void;
+      poseShow: (lm: unknown, now: number) => void;
+    };
+    w.repReset();
+    given.forEach((lm, i) => w.poseShow(lm, (i * 1000) / 30));
+  }, cycles(3, snatch));
+
+  await expect(page.locator("#posehud")).toContainText("wrists");
+  await expect(page.locator("#repnum")).toHaveText("3");
 });

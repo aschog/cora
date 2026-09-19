@@ -915,13 +915,19 @@ function poseTick(now){
   if (poseAt) poseFps = poseFps ? poseFps*.9 + (1000/(now-poseAt))*.1 : 1000/(now-poseAt);
   poseAt = now;
 
+  poseShow(res.landmarks && res.landmarks[0], now);
+}
+
+/* What one frame's pose is for: the skeleton, the readout, and the count. One door, so
+   the counter cannot quietly stop being fed while the overlay still draws. */
+function poseShow(lm, now){
   poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
-  const lm = res.landmarks && res.landmarks[0];
-  if (lm){
+  if (lm && poseDraw){
     poseDraw.drawConnectors(lm, poseLib.PoseLandmarker.POSE_CONNECTIONS,
                             {color:'rgba(236,233,228,.85)', lineWidth:3});
     poseDraw.drawLandmarks(lm, {color:'#E8C11C', fillColor:'#E8C11C', radius:4});
   }
+  repSaw(lm, now);
   if (now - poseHudAt > 250){                        // readable, and no layout thrash
     poseHudAt = now;
     poseHud.textContent = poseReadout(lm);
