@@ -5,10 +5,10 @@
 ## 2. The knowledge base reads a field
 
 - [x] 2.1 Write a test that the knowledge base lists the running field's documents by name and text, in upload order.
-- [ ] 2.2 Write a test that two uploads of one name are two documents.
-- [ ] 2.3 Write a test that a document whose file is gone is left out and the rest come back.
-- [ ] 2.4 Write a test that another field's document is not listed.
-- [ ] 2.5 Write a test that a turn running in two fields is handed both fields' documents, each saying which.
+- [x] 2.2 Write a test that two uploads of one name are two documents.
+- [x] 2.3 Write a test that a document whose file is gone is left out and the rest come back.
+- [x] 2.4 Write a test that another field's document is not listed.
+- [x] 2.5 Write a test that a turn running in two fields is handed both fields' documents, each saying which.
 
 ## 3. Handed to the plugin
 
