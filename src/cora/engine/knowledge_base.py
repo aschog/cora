@@ -149,11 +149,10 @@ class KnowledgeBase:
         together and oldest first, which is the order the index lists them in.
         """
         return [
-            Document(name=source, text=text, scope=scope)
+            document
             for scope in sorted(here())
             for source in self.retriever.sources(scope)
-            for upload in self.retriever.uploads(scope, source)
-            if (text := self.documents.read(scope, upload)) is not None
+            for document in self.read(scope, source)
         ]
 
     def _written(self, hits: list[RetrievedChunk]) -> list[RetrievedChunk]:
