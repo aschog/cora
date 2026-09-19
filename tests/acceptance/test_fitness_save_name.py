@@ -1,7 +1,6 @@
 """The outer test for the story: a save is named for its moment, and a day's saves
 list in the order they happened whatever order they reached cora in."""
 
-import pytest
 from starlette.testclient import TestClient
 
 from app_builder import assembled
@@ -26,7 +25,6 @@ IN_DETAIL = """\
 - Snatch — 14 kg · 2x8 · 16 reps · 224 kg"""
 
 
-@pytest.mark.xfail(strict=True, reason="a name with a time behind the day is not a day")
 def test_a_days_saves_list_in_the_order_they_happened() -> None:
     app = assembled(
         plugins=(load_plugin("cora.plugins.fitness"),),

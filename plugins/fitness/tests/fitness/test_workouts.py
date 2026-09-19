@@ -230,3 +230,15 @@ def test_nothing_logged_answers_in_words_rather_than_an_empty_list() -> None:
     assert _listing(("2026-09-18.md", DEADLIFT), since="2026-09-19") == (
         "No workout logged since 2026-09-19."
     )
+
+
+def test_a_name_carrying_a_time_behind_the_day_is_a_session_of_that_day() -> None:
+    assert _listing(("2026-09-18-16-20-05.md", DEADLIFT)) == "2026-09-18: Deadlift"
+
+
+def test_a_days_saves_list_in_the_order_of_their_names_whatever_the_upload() -> None:
+    listed = _listing(
+        ("2026-09-18-16-42-10.md", SNATCH), ("2026-09-18-16-20-05.md", DEADLIFT)
+    )
+
+    assert listed == "2026-09-18: Deadlift · Snatch"
