@@ -4,4 +4,4 @@
 
 ## 2. Close it
 
-- [ ] 2.1 Drop the marker and watch it pass.
+- [x] 2.1 Drop the marker and watch it pass.

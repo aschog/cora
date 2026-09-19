@@ -646,9 +646,9 @@ function render(){
 
   wtEl.className = 'wt' + (p.w ? '' : ' bw');
   wtEl.innerHTML = p.w
-    ? `<button data-w="-${p.st||4}">−</button>
+    ? `<button data-w="-1">−</button>
        <div class="val">${s.w}<small>KG</small></div>
-       <button data-w="${p.st||4}">+</button>`
+       <button data-w="1">+</button>`
     : '<div class="val">Bodyweight</div>';
 
   const total = PLAN.reduce((a,q)=>a+q.s,0);
@@ -708,7 +708,7 @@ document.getElementById('app').addEventListener('click', e => {
   const w = t.closest('[data-w]');
   if (w){
     const s = ses.ex[cur];
-    s.w = Math.max(4, s.w + (+w.dataset.w));
+    s.w = Math.max(1, s.w + (+w.dataset.w));
     render();
   }
 });
