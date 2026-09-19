@@ -132,6 +132,25 @@ test("the History is the log the field holds", async ({ page }) => {
   ).toBeNull();
 });
 
+test("a save whose name is only in its filename is named all the same", async ({
+  page,
+}) => {
+  /* The name reaches a save two ways: written above the headings by the finish, and
+     carried by the filename. A save that has only the second is still that workout. */
+  await held(
+    page,
+    `${TODAY}-23-59-57-Jerk day.md`,
+    "# One-arm kettlebell jerk 20 kg\n2 sets of 6\n",
+  );
+
+  await page.goto(TRAINER);
+  await page.getByRole("button", { name: /history/i }).click();
+
+  await expect(
+    page.locator(".ses").filter({ hasText: "Jerk day" }),
+  ).toHaveCount(1);
+});
+
 test("a fresh workout opens on the weight the field last saw", async ({
   page,
 }) => {
@@ -146,6 +165,147 @@ test("a fresh workout opens on the weight the field last saw", async ({
 
   await expect(page.locator(".wt .val")).toContainText("28");
   await expect(page.locator(".sets .log").first()).toHaveText("7");
+});
+
+/** The field's listing, held until a spec lets it go — so a spec can say what the page
+ *  does in the window before its first read of the field lands. */
+function slowly(page: import("@playwright/test").Page) {
+  let release: () => void;
+  const gate = new Promise<void>((r) => {
+    release = r;
+  });
+  const routed = page.route(
+    (url) => url.pathname === "/api/documents" && url.search.includes("scope="),
+    async (asked) => {
+      await gate;
+      await asked.continue();
+    },
+  );
+  return routed.then(() => release);
+}
+
+test("a weight dialled before the field is read is the lifter's own", async ({
+  page,
+}) => {
+  await held(
+    page,
+    `${TODAY}-23-59-56-Light pass.md`,
+    "# Kettlebell around-the-body pass 12 kg\n3 sets of 10\n",
+  );
+  const release = await slowly(page);
+
+  await page.goto(TRAINER);
+  /* Dialled, and nothing logged — which is exactly the workout the read would take
+     for untouched and overwrite with the field's own weights. */
+  const shown = await page.locator(".wt .val").textContent();
+  await page.locator(".wt button").last().click();
+  const dialled = String(Number(shown?.replace(/\D/g, "")) + 1);
+  await expect(page.locator(".wt .val")).toContainText(dialled);
+
+  release();
+
+  await page.getByRole("button", { name: /history/i }).click();
+  await expect(
+    page.locator(".ses").filter({ hasText: "Light pass" }),
+  ).toHaveCount(1);
+  await page.getByRole("button", { name: /close/i }).click();
+  await expect(page.locator(".wt .val")).toContainText(dialled);
+});
+
+test("a History opened before the field is read fills when it lands", async ({
+  page,
+}) => {
+  await held(
+    page,
+    `${TODAY}-23-59-53-Late read.md`,
+    "# Halo 10 kg\n1 sets of 5\n",
+  );
+  const release = await slowly(page);
+
+  await page.goto(TRAINER);
+  await page.getByRole("button", { name: /history/i }).click();
+  await expect(page.locator(".empty")).toBeVisible();
+
+  release();
+
+  await expect(
+    page.locator(".ses").filter({ hasText: "Late read" }),
+  ).toHaveCount(1);
+});
+
+test("a finish tapped while its save is out uploads the workout once", async ({
+  page,
+}) => {
+  await page.goto(TRAINER);
+  let uploads = 0;
+  let release: () => void;
+  const gate = new Promise<void>((r) => {
+    release = r;
+  });
+  await page.route("**/api/documents", async (asked) => {
+    if (asked.request().method() !== "POST") return asked.continue();
+    uploads += 1;
+    await gate;
+    return asked.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        document: "saved.md",
+        chunks: 1,
+        scope: "fitness",
+      }),
+    });
+  });
+  await page.locator(".set").first().click();
+
+  page.once("dialog", (asked) => asked.accept());
+  await page.getByRole("button", { name: /^finish$/i }).click();
+
+  /* The session is cleared only once cora has answered, so the control has to say the
+     save is out — otherwise a second tap sends the same workout again. */
+  const saving = page.getByRole("button", { name: /saving/i });
+  await expect(saving).toBeVisible();
+  await expect(saving).toBeDisabled();
+  release!();
+  await expect(page.getByRole("button", { name: /^saved$/i })).toBeVisible();
+  expect(uploads, "the workout went to cora once").toBe(1);
+});
+
+test("a document that carries markup is read as text", async ({ page }) => {
+  /* A field takes documents from anyone who can upload into it, and the trainer now
+     draws their headings. They are text. */
+  await held(
+    page,
+    `${TODAY}-23-59-55-Marked up.md`,
+    "# <b>Swing</b> 10 kg\n1 sets of 5\n",
+  );
+
+  await page.goto(TRAINER);
+  await page.getByRole("button", { name: /history/i }).click();
+
+  const line = page
+    .locator(".ses")
+    .filter({ hasText: "Marked up" })
+    .locator("li");
+  await expect(line).toContainText("<b>Swing</b>");
+  /* One bold: the reps the page writes, and not the one the document asked for. */
+  await expect(line.locator("b")).toHaveCount(1);
+});
+
+test("a save whose load is not a number leaves a weight that still works", async ({
+  page,
+}) => {
+  await held(
+    page,
+    `${TODAY}-23-59-54-Odd load.md`,
+    "# Kettlebell around-the-body pass 1.2.3 kg\n1 sets of 5\n",
+  );
+
+  await page.goto(TRAINER);
+
+  await expect(page.locator(".wt .val")).not.toContainText("NaN");
+  await page.locator(".wt button").last().click();
+  await expect(page.locator(".wt .val")).not.toContainText("NaN");
 });
 
 test("a save cora would not take leaves the workout standing", async ({

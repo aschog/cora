@@ -619,9 +619,10 @@ function render(){
   document.body.style.setProperty('--accent', p.w ? bell(s.w) : '#868D99');
   // the one control says what the workout waits for: a set, the finish, or nothing
   const logged = PLAN.some(q => ses.ex[q.id].done > 0);
-  finishEl.disabled = !logged;
+  finishEl.disabled = !logged || sending;
   finishEl.className = 'go' + (logged ? '' : saved ? ' saved' : ' idle');
-  finishEl.innerHTML = logged ? CHECK + ' Finish' : saved ? CHECK + ' Saved' : TAP + ' No sets logged yet';
+  finishEl.innerHTML = sending ? CHECK + ' Saving…'
+    : logged ? CHECK + ' Finish' : saved ? CHECK + ' Saved' : TAP + ' No sets logged yet';
 
   head.innerHTML = `
     <button class="camshot${view === 'cam' ? ' live' : ''}" data-cam
@@ -709,7 +710,7 @@ document.getElementById('app').addEventListener('click', e => {
   if (log){
     const p = curEx(), s = ses.ex[p.id], i = +log.dataset.log;
     s.done = (s.done === i) ? i-1 : i;      // tap the last full one to undo
-    saved = false;
+    saved = false; ses.own = true;
     if (s.done === i && s.done >= p.s)        // last set: a long break, then move on
       startRest(REST_EX, () => { if (cur === p.id && s.done >= p.s) step(1); });
     else if (s.done === i) startRest(REST_SET);
@@ -720,12 +721,14 @@ document.getElementById('app').addEventListener('click', e => {
   if (rep){
     const s = ses.ex[cur], i = +rep.dataset.rep;
     s.reps[i] = Math.max(1, s.reps[i] + (+rep.dataset.d));
+    ses.own = true;
     render(); return;
   }
   const w = t.closest('[data-w]');
   if (w){
     const s = ses.ex[cur];
     s.w = Math.max(1, s.w + (+w.dataset.w));
+    ses.own = true;
     render();
   }
 });
@@ -1029,21 +1032,33 @@ function sessionText(ex){
   return text + '\n';
 }
 
-/* ---------- history ---------- */
+/* ---------- history ----------
+   Drawn from the field's log, and drawn again when a read of it lands — a sheet opened
+   while the first read was still out would otherwise say the field was empty and stay
+   saying it. */
 const sheet = document.getElementById('sheet');
-document.getElementById('hist').addEventListener('click', () => {
-  const box = document.getElementById('sessions');
-  box.innerHTML = logged.length ? '' : '<div class="empty">Nothing yet. Finish your first workout.</div>';
+const sessionsEl = document.getElementById('sessions');
+
+/** Anything a document can carry, placed as text rather than as markup: the headings and
+    the filenames here were written by whoever uploaded into the field, not by cora. */
+const esc = text => String(text).replace(/[&<>"]/g, c =>
+  ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'})[c]);
+
+function drawSessions(){
+  sessionsEl.innerHTML = logged.length ? '' : '<div class="empty">Nothing yet. Finish your first workout.</div>';
   logged.forEach(h => {
     const el = document.createElement('div');
     el.className = 'ses';
     el.innerHTML = `<div class="top">${h.day.toLocaleDateString('en-GB',{day:'numeric',month:'short'})}
-        <em>${h.name || h.ex.length + ' exercises'}</em></div>
-      <ul>${h.ex.map(e=>`<li lang="ru">${e.n}<b lang="en">${e.w?e.w+' kg · ':''}${repsText(e)}</b></li>`).join('')}</ul>`;
-    box.appendChild(el);
+        <em>${esc(h.name || h.ex.length + ' exercises')}</em></div>
+      <ul>${h.ex.map(e=>`<li lang="ru">${esc(e.n)}<b lang="en">${e.w?e.w+' kg · ':''}${repsText(e)}</b></li>`).join('')}</ul>`;
+    sessionsEl.appendChild(el);
   });
+}
+
+document.getElementById('hist').addEventListener('click', () => {
+  drawSessions();
   sheet.classList.add('open');
-  readLog();                             // opened is the moment to be current
 });
 document.getElementById('close').addEventListener('click', () => sheet.classList.remove('open'));
 
@@ -1088,16 +1103,24 @@ const lost = (who, why) =>
   warn(who + 'Not saved to cora' + (why ? ' (' + why + ')' : '') +
        ' — the workout is still here, finish it again.');
 
+/* One save at a time. The session is cleared only once cora has answered, so without
+   this a second tap on a slow link uploads the same workout again under a later name —
+   two saves of one session in the field. */
+let sending = false;
+
 function handoff(text, who = ''){
   if (!FIELD) return lost(who, 'opened outside cora');
+  if (sending) return;
   const body = new FormData();
   body.append('file', new Blob([text], {type: 'text/markdown'}), moment());
   body.append('scope', FIELD);
+  sending = true; render();
   fetch(UPLOAD, {method: 'POST', body})
     .then(r => r.json().then(answered => r.ok
       ? took(who)
       : Promise.reject(answered.error || ('HTTP ' + r.status))))
-    .catch(why => lost(who, typeof why === 'string' ? why : ''));
+    .catch(why => lost(who, typeof why === 'string' ? why : ''))
+    .finally(() => { sending = false; render(); });
 }
 
 /** One save, read back in the grammar the finish wrote: the workout's name on its own
@@ -1110,7 +1133,13 @@ function readSession(text){
     const line = raw.trim();
     if (!line) continue;
     const head = /^#\s+(.+?)\s+(?:([\d.]+)\s*kg|bw(?:\+[\d.]+)?)$/.exec(line);
-    if (head){ ex.push({n: head[1], w: head[2] ? +head[2] : 0, reps: []}); continue; }
+    if (head){
+      // a heading whose load is not a number is bodyweight, not NaN: NaN would reach the
+      // weight control, which cannot add its way out of it, and be written back as bw
+      const w = head[2] ? +head[2] : 0;
+      ex.push({n: head[1], w: Number.isFinite(w) ? w : 0, reps: []});
+      continue;
+    }
     if (!ex.length){ if (!name) name = line; continue; }
     const same = /^(\d+)\s+sets\s+of\s+(\d+)$/.exec(line);
     const each = /^sets\s+of\s+(\d+(?:\s*\/\s*\d+)+)$/.exec(line);
@@ -1132,14 +1161,20 @@ function readLog(){
       .filter(n => MOMENT.test(n)).sort().reverse().slice(0, SAVES)
       .map(name => fetch(HELD + encodeURIComponent(name), {cache: 'no-store'})
         .then(r => r.ok ? r.json() : [])
-        .then(held => held.map(each => Object.assign(
-          {day: dayOf(name), name: nameOf(name)}, readSession(each.text)))))))
+        .then(held => held.map(each => {
+          const read = readSession(each.text);
+          // the finish writes the name above the headings and into the filename; a save
+          // that carries only the second is still that workout
+          return {day: dayOf(name), ex: read.ex, name: read.name || nameOf(name)};
+        })))))
     .then(read => {
       logged = read.flat();
-      // an untouched workout takes the field's weights; one with sets logged is its own.
-      // Only the slots: the workout's start and whether the watch began it are its own
-      // whatever the field says.
-      if (!PLAN.some(p => (ses.ex[p.id] || {}).done > 0)) ses.ex = newSession().ex;
+      // an untouched workout takes the field's weights; one the lifter has touched at
+      // all -- a set logged, a weight dialled, a rep count changed -- is theirs. Only the
+      // slots: the workout's start and whether the watch began it are its own whatever
+      // the field says.
+      if (!ses.own) ses.ex = newSession().ex;
+      drawSessions();
       render();
     })
     .catch(why => { console.warn('the field could not be read:', why); });
