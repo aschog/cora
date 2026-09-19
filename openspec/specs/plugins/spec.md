@@ -1187,9 +1187,10 @@ written down, so a new one is a change somebody made rather than a change nobody
 ### Requirement: A finished workout is a document of the fitness field
 
 Finishing a workout SHALL upload it into the fitness field as a Markdown document named
-for the moment it was saved, the day first and the time behind it. The text SHALL be a
-heading per exercise carrying its load, followed by the sets it took. An exercise
-nothing was logged for SHALL NOT appear.
+for the moment it was saved, the day first and the time behind it. The text SHALL open
+with the workout's name, taken from the sheet the plan was read from, where the plan came
+from a sheet. Below it SHALL be a heading per exercise carrying its load, followed by
+the sets it took. An exercise nothing was logged for SHALL NOT appear.
 
 #### Scenario: A workout is finished
 
@@ -1197,6 +1198,18 @@ nothing was logged for SHALL NOT appear.
 - **WHEN** the reader finishes it
 - **THEN** a document named for today and the time is in the fitness field, holding
   that exercise and its sets
+
+#### Scenario: The save says which workout it was
+
+- **GIVEN** a plan read from a sheet whose tab is named
+- **WHEN** the reader finishes a workout
+- **THEN** the document's first line is that name
+
+#### Scenario: The plan written into the page
+
+- **GIVEN** no sheet reachable and no plan cached
+- **WHEN** the reader finishes a workout
+- **THEN** the document opens with its first exercise, and no name
 
 #### Scenario: Two saves on one day
 
@@ -1239,17 +1252,24 @@ session is missed for its wording.
 The fitness field SHALL offer a tool listing every workout logged in it, as text ready to
 show. A session SHALL be one day, dated from the document's name whether or not a time
 follows the day, oldest first, and a day's saves SHALL come in the order of their
-names. Unasked for detail, a session SHALL name the exercises worked, as the log spells
-them, each once. Asked for detail, each movement SHALL carry its load, sets, reps and
-volume. The list SHALL narrow to one exercise, matched whatever its case, and to
-sessions since a day. A document not named for a day SHALL NOT be a session. One the
-grammar cannot read SHALL be left out, with a line on the trace.
+names. Unasked for detail, a session SHALL name the workouts trained, each once, and the
+exercises of a save that carries no name. Asked for detail, a day's line SHALL carry its
+workouts' names, and each movement SHALL carry its load, sets, reps and volume. The list
+SHALL narrow to one exercise, matched whatever its case, and to sessions since a day. A
+document not named for a day SHALL NOT be a session. One the grammar cannot read SHALL
+be left out, with a line on the trace.
 
 #### Scenario: Every workout
 
-- **GIVEN** three workouts saved into the fitness field, two on one day
+- **GIVEN** three workouts saved into the fitness field, two on one day, each titled
 - **WHEN** the coach is asked what was trained
-- **THEN** the answer is two lines, a day and its exercises each, and no number
+- **THEN** the answer is two lines, a day and its workouts' names each, and no number
+
+#### Scenario: A save without a name
+
+- **GIVEN** a day with a titled save and an untitled one
+- **WHEN** the coach is asked what was trained
+- **THEN** the day names the workout, and the untitled save's exercises beside it
 
 #### Scenario: A day's saves in the order they happened
 
@@ -1261,7 +1281,8 @@ grammar cannot read SHALL be left out, with a line on the trace.
 
 - **GIVEN** the same workouts
 - **WHEN** the reader asks for the details
-- **THEN** each movement is shown with its load, sets, reps and volume
+- **THEN** the day's line carries the workout's name, and each movement its load, sets,
+  reps and volume
 
 #### Scenario: One exercise over time
 
