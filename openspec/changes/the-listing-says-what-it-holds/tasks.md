@@ -1,6 +1,6 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the functional test where a titled save and an untitled one list with the workout first, the lift marked untitled, and a closing count, marked `@pytest.mark.xfail(strict=True)`.
+- [x] 1.1 Write the functional test where a titled save and an untitled one list with the workout first, the lift marked untitled, and a closing count, marked `@pytest.mark.xfail(strict=True)`.
 
 ## 2. The names view says what it is
 
