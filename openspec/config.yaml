@@ -97,16 +97,17 @@ operations:
   apply:
     guidance:
       - >-
-        Work one item at a time and stop. Red — write the test and see it fail for the
-        right reason. Green — the minimal code that passes, whole suite green. Refactor
-        — clean code and tests, stay green. Then hand back.
+        Work the list top to bottom, one item at a time. Red — write the test and see it
+        fail for the right reason. Green — the minimal code that passes, whole suite
+        green. Refactor — clean code and tests, stay green. Hand back when the list is
+        done, or when an item blocks.
       - >-
         A failing test is never the thing that gets fixed. Do not edit, weaken or delete
         a red test to make the bar go green: the test is the spec, the production code
         is what moves.
       - >-
-        Never commit. Propose the Conventional Commit subject and wait for approval.
-        Commits on a branch are one line, with no body.
+        Commit each green step yourself: a one-line Conventional Commit, no body, the
+        hooks holding the gates. The branch log is read at hand-back.
       - >-
         Never work on main. A change is applied on its own branch.
       - >-

@@ -139,16 +139,12 @@ write failing functional test   ←── outer loop (feature)
 functional test goes green  →  feature done
 ```
 
-- [ ] Pick the next unchecked item from the change's `tasks.md` — `/opsx:apply` reads
-      it and takes one item at a time
+- [ ] Work the change's `tasks.md` top to bottom — `/opsx:apply` takes the items in
+      order and hands back when the list is done, or when an item blocks
 - [ ] **Red** — write a failing test; run it and *see it fail* for the right reason
 - [ ] **Green** — write the minimal code to make it pass; all tests green
 - [ ] **Refactor** — clean up code *and tests*; stay green
-- [ ] **Explain back** — before approving, I say in my own words what the diff does
-      and why. If I can't, it doesn't get committed: read it, or have it walked
-      through, until I can. **No commit I can't defend** — this is the checkpoint
-      that keeps generated code from becoming unread code
-- [ ] **Auto-commit** the green step after human has approved it (Conventional Commit message; hooks enforce green)
+- [ ] **Auto-commit** the green step (one-line Conventional Commit; hooks enforce green)
       — messages must read as a **history**: the commit log of a branch tells the
       story of the feature growing, each message says *what* changed and *why*
 - [ ] **Update the test list**: tick the item; add any newly discovered items or
@@ -157,6 +153,10 @@ functional test goes green  →  feature done
       **re-plan** (back to Phase 1 with `ai-architect`); don't improvise off-list
 - [ ] When the test list is done, **drop the outer test's `xfail` marker and watch it
       pass**. Still red means the slice isn't finished, whatever the list says
+- [ ] **Hand back, then explain back** — the list done, I say in my own words what
+      each commit on the branch does and why. If I can't, it doesn't merge: read it,
+      or have it walked through, until I can. **No commit I can't defend** — this is
+      the checkpoint that keeps generated code from becoming unread code
 
 > Every green step is a save point. If a cycle goes sideways, reset to the last
 > green commit instead of untangling a big diff.
@@ -205,6 +205,7 @@ functional test goes green  →  feature done
 - [ ] Push the branch and **open a PR** — backs up the local auto-commits and
       kicks off CI; the PR is the review vehicle (diff, CI status, discussion)
 - [ ] Run `ai-code-reviewer` on the **accumulated branch diff** (not single commits)
+      — when asked for, never started on its own
 - [ ] **Human review** of the PR — the AI review is input, not a substitute; a
       person signs off on the diff before it can merge
 - [ ] **Fix every finding** (AI or human) — route each fix back through the Phase 2
