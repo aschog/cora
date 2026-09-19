@@ -61,8 +61,14 @@ def parse_session(text: str, day: date, name: str = "<session>") -> Session:
             )
             movements.append(Movement(found["name"], load))
             continue
+        if not movements:
+            raise LogError(name, number, "text before the first heading")
         sets = _sets(line)
-        if sets is not None:
+        if sets is None:
+            movements[-1] = replace(movements[-1], notes=(*movements[-1].notes, raw))
+        elif movements[-1].sets:
+            raise LogError(name, number, "a movement has one set line")
+        else:
             movements[-1] = replace(movements[-1], sets=sets)
     return Session(day, tuple(movements))
 

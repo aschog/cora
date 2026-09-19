@@ -8,8 +8,8 @@
 - [x] 2.2 Write a test that a heading ending in `bw` or `bw+n` reads as a bodyweight load.
 - [x] 2.3 Write a test that repeated sets read as N sets of R reps, and listed sets as each in turn.
 - [x] 2.4 Write a test that a timed line reads as one set of left plus right reps.
-- [ ] 2.5 Write a test that a line that is neither heading nor sets is a note on the movement above it.
-- [ ] 2.6 Write a test that a heading without a load, or text before the first heading, refuses the document by line.
+- [x] 2.5 Write a test that a line that is neither heading nor sets is a note on the movement above it.
+- [x] 2.6 Write a test that a heading without a load, or text before the first heading, refuses the document by line.
 - [ ] 2.7 Write a test that reps sum the sets, volume is load times reps, and a bodyweight movement has none.
 - [ ] 2.8 Write a test that a heading in another script reads as any other.
 
