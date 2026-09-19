@@ -6,6 +6,7 @@ from dataclasses import dataclass, replace
 from cora.domain.chunk import Chunk
 from cora.engine.ingestion import ingest
 from cora.engine.scoping import here
+from cora.ports.context_source import Document
 from cora.ports.documents import Documents
 from cora.ports.embedding import Embedder
 from cora.ports.host import DEFAULT_SCOPE
@@ -124,6 +125,22 @@ class KnowledgeBase:
     def list_sources(self, scope: str = DEFAULT_SCOPE) -> list[str]:
         """Every document one field holds a passage from, by its uploaded name."""
         return self.retriever.sources(scope)
+
+    def all(self) -> list[Document]:
+        """Every document in the fields the turn is running in, by name and by text.
+
+        Read as `search` reads: the fields are what the work happening now runs in, and
+        a document whose file is gone under cora is left out rather than handed back
+        empty. The names come in the order first uploaded, the uploads of one name
+        together and oldest first, which is the order the index lists them in.
+        """
+        return [
+            Document(name=source, text=text, scope=scope)
+            for scope in sorted(here())
+            for source in self.retriever.sources(scope)
+            for upload in self.retriever.uploads(scope, source)
+            if (text := self.documents.read(scope, upload)) is not None
+        ]
 
     def _written(self, hits: list[RetrievedChunk]) -> list[RetrievedChunk]:
         written = []

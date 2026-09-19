@@ -24,7 +24,7 @@ from cora.engine.rounds import Read, decided, told, used
 from cora.engine.scoping import here
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import ChatModel, Message
-from cora.ports.context_source import ContextSource
+from cora.ports.context_source import ContextSource, Document
 from cora.ports.host import (
     HANDLER,
     INSTRUCTIONS,
@@ -422,6 +422,11 @@ class _Reading:
         """The passages the index holds, and a note that this call has read some."""
         read_untrusted()
         return self.index.search(query, k)
+
+    def all(self) -> list[Document]:
+        """The documents the index holds, and a note that this call has read them."""
+        read_untrusted()
+        return self.index.all()
 
 
 @dataclass(frozen=True)

@@ -3,8 +3,6 @@ holds, by name and by text, and nothing of another field's."""
 
 from typing import Any
 
-import pytest
-
 from app_builder import assembled, indexed
 from cora.ports.chat_model import ModelReply
 from cora.ports.host import Extension, Host
@@ -17,14 +15,11 @@ OTHER = "elsewhere"
 TOOL_NAME = "list_logs"
 # One name saved twice, as a trainer saving twice on one day does.
 NAME = "2026-09-18.md"
-FIRST = "# Deadlift 14 kg\n3 sets of 10\n"
-SECOND = "# Swing 14 kg\n2 sets of 10\n"
-ELSEWHERE = "# Not this field's\n"
+FIRST = "# Deadlift 14 kg\n3 sets of 10"
+SECOND = "# Swing 14 kg\n2 sets of 10"
+ELSEWHERE = "# Not this field's"
 
 
-@pytest.mark.xfail(
-    strict=True, reason="the host hands a plugin search and nothing else"
-)
 def test_a_plugins_tool_is_handed_what_its_field_holds() -> None:
     handed: list[Any] = []
     app = assembled(
@@ -53,8 +48,7 @@ def test_a_plugins_tool_is_handed_what_its_field_holds() -> None:
 def _listing(handed: list[Any]) -> Any:
     def extend(cora: Host) -> None:
         def list_logs() -> str:
-            # The port has no such question yet: the ignore leaves with the marker.
-            handed.extend(cora.documents.all())  # ty: ignore[unresolved-attribute]
+            handed.extend(cora.documents.all())
             return "\n".join(each.text for each in handed)
 
         cora.register_tool(
