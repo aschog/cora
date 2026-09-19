@@ -986,3 +986,18 @@ test("a workout cora took leaves no count behind", async ({ page }) => {
      workout's. */
   await expect(page.locator("#repnum")).toHaveText("0");
 });
+
+test("un-logging a set leaves the count where it was", async ({ page }) => {
+  await page.goto(TRAINER);
+  const first = page.locator(".set .log").first();
+  await first.click();
+  await done(page);
+  await feed(page, cycles(3, snatch));
+  await expect(page.locator("#repnum")).toHaveText("3");
+
+  /* A mis-tap taken back is not a set logged, and the reps in hand are still in hand. */
+  await first.click();
+
+  await expect(page.locator(".set").first()).not.toHaveClass(/\bon\b/);
+  await expect(page.locator("#repnum")).toHaveText("3");
+});

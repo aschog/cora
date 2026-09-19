@@ -731,7 +731,7 @@ document.getElementById('app').addEventListener('click', e => {
     if (s.done === i && s.done >= p.s)        // last set: a long break, then move on
       startRest(REST_EX, () => { if (cur === p.id && s.done >= p.s) step(1); });
     else if (s.done === i) startRest(REST_SET);
-    repReset();                             // the set is on the board; the next one starts at nought
+    if (s.done === i) repReset();           // a set on the board; the next starts at nought
     if (navigator.vibrate) navigator.vibrate(8);
     render(); return;
   }
