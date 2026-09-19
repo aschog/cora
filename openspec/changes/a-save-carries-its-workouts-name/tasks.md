@@ -4,8 +4,8 @@
 
 ## 2. The grammar takes a name
 
-- [ ] 2.1 Write a test that one line before the first heading is the session's name.
-- [ ] 2.2 Write a test that a second line before the first heading refuses the document by line.
+- [x] 2.1 Write a test that one line before the first heading is the session's name.
+- [x] 2.2 Write a test that a second line before the first heading refuses the document by line.
 
 ## 3. The listing names the workout
 

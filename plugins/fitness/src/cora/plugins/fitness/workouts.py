@@ -53,10 +53,12 @@ class Movement:
 class Session:
     day: date
     movements: tuple[Movement, ...]
+    name: str = ""
 
 
 def parse_session(text: str, day: date, name: str = "<session>") -> Session:
     movements: list[Movement] = []
+    title = ""
     for number, raw in enumerate(text.splitlines(), 1):
         line = raw.strip()
         if not line:
@@ -75,7 +77,11 @@ def parse_session(text: str, day: date, name: str = "<session>") -> Session:
             movements.append(Movement(found["name"], load))
             continue
         if not movements:
-            raise LogError(name, number, "text before the first heading")
+            # a Markdown document names itself on its first line, above its headings
+            if title:
+                raise LogError(name, number, "one name line before the first heading")
+            title = line
+            continue
         sets = _sets(line)
         if sets is None:
             movements[-1] = replace(movements[-1], notes=(*movements[-1].notes, raw))
@@ -83,7 +89,7 @@ def parse_session(text: str, day: date, name: str = "<session>") -> Session:
             raise LogError(name, number, "a movement has one set line")
         else:
             movements[-1] = replace(movements[-1], sets=sets)
-    return Session(day, tuple(movements))
+    return Session(day, tuple(movements), title)
 
 
 def _sets(line: str) -> tuple[int, ...] | None:
