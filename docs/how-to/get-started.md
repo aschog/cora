@@ -100,9 +100,11 @@ The address is baked in, a watch having no settings screen to type one into, and
 this machine's name on the network rather than loopback — the phone is what does the
 HTTP. Override either end with `make watch CORA_AT=http://host:8000 WATCH_FIELD=fitness`.
 
-**Cora has to be reachable from the phone**, which means `CORA_HOST=0.0.0.0 make run` —
-and that puts every route on that network, not the notice alone. On a network you do not
-trust, leave the watch off.
+Run cora with `make run-watch` for a session the watch takes part in. It listens on the
+network instead of loopback alone, because **the phone is what has to reach it** — which
+puts every route there, not the notice alone, so use it on a network you trust. And it
+holds the machine awake: a laptop that sleeps while you are lifting is a tap that reaches
+nothing, which the watch shows as `no link - tap again`.
 
 The end of a workout reaches nothing: a Zepp OS workout extension is torn down without
 its last message getting to the phone, so finishing is a tap on that screen rather than
