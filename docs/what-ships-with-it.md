@@ -14,14 +14,15 @@ of them still answers.
 
 Pin a conversation to `fitness` and the middle of the page becomes a trainer: the plan
 one exercise at a time, its sets and working weight, the clip for it playing in the same frame, and the camera to film yourself against. **Save & finish** writes the workout into the `fitness` field as a
-Markdown document named for the moment it was saved — so the next question about it is
-answered from your own log, with the day cited. Refused or unreachable, the workout goes to the clipboard
+Markdown document named for the moment it was saved, opening with the name of the sheet's
+tab the plan came from — so the next question about it is answered from your own log,
+with the day cited. Refused or unreachable, the workout goes to the clipboard
 and the strip says so.
 
 Ask what you trained and the coach lists the log rather than searching it.
 `list_workouts` reads every dated document of the field and answers in text the coach
-shows as it is: one line per day naming the exercises worked, in whatever language the
-sheet names them. Ask for the details and each movement comes with its load, sets,
+shows as it is: one line per day naming the workouts trained, in whatever language the
+sheet names them, and the exercises of a save that carries no name. Ask for the details and each movement comes with its load, sets,
 reps, volume and a mark where it rose on the last time. It narrows to one lift, or to
 the days since one. A search finds the sessions worded like the question, and the
 listing finds all of them.

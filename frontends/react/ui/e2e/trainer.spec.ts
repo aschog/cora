@@ -123,6 +123,26 @@ test('a workout with nothing logged is not saved, and says so', async ({ page })
   expect(asked, 'nothing was uploaded').toBe(0)
 })
 
+test("the workout's name is read off the sheet export's filename", async ({ page }) => {
+  await page.goto(TRAINER)
+
+  /* The header as Google really sends it: a plain filename that says nothing, and the
+     encoded one that names the document and the tab. The tab is what the save is titled
+     with. */
+  const named = await page.evaluate(() => {
+    const read = (window as unknown as { workoutName: (header: string | null) => string })
+      .workoutName
+    const header =
+      'attachment; filename="-.csv"; filename*=UTF-8\'\'' +
+      '%D0%9F%D1%80%D0%BE%D0%B3%D1%80%D0%B0%D0%BC%D0%BC%D0%B0%20%D0%9E%D0%B1%D1%83%D1%87' +
+      '%D0%B5%D0%BD%D0%B8%D0%B5%20%D1%80%D1%8B%D0%B2%D0%BA%D1%83%20%20-%20' +
+      '%D0%A0%D1%8B%D0%B2%D0%BE%D0%BA%20%D0%B3%D0%B8%D1%80%D0%B8.csv'
+    return [read(header), read('attachment; filename="-.csv"'), read(null)]
+  })
+
+  expect(named).toEqual(['Рывок гири', '', ''])
+})
+
 test('the plan is read from the sheet the page is pointed at', async ({ page }) => {
   await page.goto(TRAINER)
 

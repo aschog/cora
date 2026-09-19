@@ -445,6 +445,21 @@ function makeId(name, taken){
 
 function planFromCSV(text){ return planFromRows(parseCSV(text)); }
 
+/* The workout's name is the sheet's tab, which the CSV's cells do not hold but its
+   filename does: Google names the export "<document> - <tab>.csv" and lets any origin
+   read that header. Nothing readable is no name, and the save goes out untitled. */
+function workoutName(disposition){
+  const found = /filename\*=UTF-8''([^;]+)/i.exec(disposition || '')
+             || /filename="([^"]*)"/i.exec(disposition || '');
+  if (!found) return '';
+  let name = found[1];
+  try { name = decodeURIComponent(name); } catch (e) { /* left as sent */ }
+  name = name.replace(/\.csv$/i, '');
+  const cut = name.lastIndexOf(' - ');
+  name = (cut < 0 ? name : name.slice(cut + 3)).trim();
+  return name === '-' ? '' : name;
+}
+
 function planFromRows(rows){
   const hi = rows.findIndex(r => {
     const k = r.map(c => HEAD[c.trim().toLowerCase()]);
@@ -498,8 +513,9 @@ async function syncPlan(){
     const r = await fetch(SHEET_CSV + '&_=' + Date.now(), {cache: 'no-store'});
     if (!r.ok) throw new Error('HTTP ' + r.status);
     const next = planFromCSV(await r.text());
-    save('kb.plan', next);
-    adoptPlan(next);
+    const named = workoutName(r.headers.get('content-disposition'));
+    save('kb.plan', next); save('kb.workout', named);
+    adoptPlan(next); WORKOUT = named;
     warn('');
   } catch (e) {
     console.warn('plan sync failed, using cached or embedded plan:', e);
@@ -521,6 +537,7 @@ function warn(msg, ok){
 /* ---------- state ---------- */
 const PLAN_V = 2;
 let hist = load('kb.hist', []);
+let WORKOUT = load('kb.workout', '');   // the sheet's tab, as last read
 let ses  = load('kb.ses', null);
 let cur  = PLAN[0] && PLAN[0].id;      // the exercise the camera is pointed at
 if (!ses || ses.v !== PLAN_V) ses = newSession();
@@ -979,7 +996,9 @@ function finish(byWatch){
       return {id:p.id, n:p.n, w:s.w, done:s.done, r:p.r, reps:s.reps.slice(0, s.done)};
     })
   });
-  handoff(sessionText(hist[0].ex), who);   // the page's history is kept whatever the log says
+  // titled with the workout's name where the plan came from a sheet; the page's
+  // history is kept whatever the log says
+  handoff((WORKOUT ? WORKOUT + '\n\n' : '') + sessionText(hist[0].ex), who);
   hist = hist.slice(0,60);
   save('kb.hist', hist);
   ses = newSession();

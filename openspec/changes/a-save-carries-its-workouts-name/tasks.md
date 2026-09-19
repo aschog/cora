@@ -14,7 +14,7 @@
 
 ## 4. The trainer names the save
 
-- [ ] 4.1 Write a test that the page reads the workout's name off the CSV's filename header, keeps it with the plan, and writes it first in a save.
+- [x] 4.1 Write a test that the page reads the workout's name off the CSV's filename header, keeps it with the plan, and writes it first in a save.
 
 ## 5. Close it
 
