@@ -1,6 +1,6 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the test that the button reads Finish and each render enables it only with a set logged, marked `@pytest.mark.xfail(strict=True)`.
+- [x] 1.1 Write the test that the button reads Finish and each render enables it only with a set logged, marked `@pytest.mark.xfail(strict=True)`.
 
 ## 2. Close it
 
