@@ -1,6 +1,6 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the functional test where the vocab plugin brings a page, a list posted the way the page posts one lands in the vocab field, and a question about one of its words is answered from that document and cites it, marked `@pytest.mark.xfail(strict=True)`.
+- [x] 1.1 Write the functional test where the vocab plugin brings a page, a list posted the way the page posts one lands in the vocab field, and a question about one of its words is answered from that document and cites it, marked `@pytest.mark.xfail(strict=True)`.
 
 ## 2. The plugin
 
