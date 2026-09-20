@@ -960,7 +960,12 @@ function followWatch(held){
     if (held.at > ses.start){ ses.start = ses.watch = held.at; render(); }
     return;
   }
-  if (said.workout !== 'finished' || held.at <= acted || held.at < ses.start) return;
+  /* A save already in flight takes this same workout, and `handoff` drops a second one
+     silently — so acting now would spend the notice on nothing. The notice is what is
+     true rather than a record of it: it still stands at the next poll, by which time the
+     save has either landed, and its fresh session dates the notice out below, or failed,
+     and the workout is still here to send. */
+  if (said.workout !== 'finished' || held.at <= acted || held.at < ses.start || sending) return;
   acted = held.at; save('kb.acted', acted);
   finish(true);
 }
