@@ -92,6 +92,7 @@ PLUGIN_REACHES: dict[str, set[str]] = {
     "cora.plugins.interview": set(),
     "cora.plugins.security": set(),
     "cora.plugins.travel": {"httpx"},
+    "cora.plugins.vocab": set(),
 }
 
 

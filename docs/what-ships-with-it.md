@@ -1,6 +1,6 @@
 # What ships with it
 
-Four plugins, and everything here is theirs rather than cora's. A deployment with none
+Five plugins, and everything here is theirs rather than cora's. A deployment with none
 of them still answers.
 
 - **security** — a medical filter and a prompt-injection screen, both system-wide.
@@ -8,6 +8,8 @@ of them still answers.
   the log it wrote, read back as numbers.
 - **interview** — the `interview` field: mock interviews run on a card, answers judged
   against a rubric, and a report the user keeps.
+- **vocab** — the `vocab` field: the word lists you are learning from, answered from and
+  cited like any other document, and drilled from a schedule the plugin keeps.
 - **travel** — the `travel` field, and the rest of this page.
 
 ## Fitness brings a screen

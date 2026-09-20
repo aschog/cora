@@ -25,6 +25,7 @@ from cora.ports.memory import Fact, Memory
 from cora.ports.output import Output
 from cora.ports.plugin import Tool
 from cora.ports.retrieval import RetrievedChunk
+from cora.ports.store import Store
 
 
 def _add(a: int, b: int) -> int:
@@ -341,6 +342,22 @@ class FakeOutput:
         return f"{self.root}/{name}"
 
 
+@dataclass
+class FakeStore:
+    """Every plugin's own store, in a dict keyed the way the real one is namespaced."""
+
+    kept: dict[tuple[str, str], str] = field(default_factory=dict)
+
+    def read(self, plugin: str, name: str) -> str | None:
+        return self.kept.get((plugin, name))
+
+    def keep(self, plugin: str, name: str, value: str | None) -> None:
+        if value is None:
+            self.kept.pop((plugin, name), None)
+            return
+        self.kept[(plugin, name)] = value
+
+
 def host_for(
     module: str = "fixture_plugins.valid",
     *,
@@ -348,6 +365,7 @@ def host_for(
     model: ChatModel | None = None,
     memory: Memory | None = None,
     output: Output | None = None,
+    store: Store | None = None,
     settings: dict[str, str] | None = None,
 ) -> PluginHost:
     """A host a test can hand a plugin, with fakes behind cora's own parts.
@@ -361,5 +379,6 @@ def host_for(
         model=model or ScriptedChatModel([ModelReply(text="ok")]),
         memory=memory,
         output=output,
+        kept=store,
         settings=settings or {},
     )

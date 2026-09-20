@@ -15,7 +15,7 @@ Writing one is [write a plugin](write-a-plugin.md); running cora at all is
 - The folder is live. Dropped, deleted or edited, the next request has it — and the
   field it registers arrives and leaves with it. No restart.
 - A symlink counts as its target, which is how this repo's own plugins deploy —
-  [the four of them](get-started.md#load-the-plugins). Deleting a plugin from the page
+  [the five of them](get-started.md#load-the-plugins). Deleting a plugin from the page
   unlinks it rather than following it, so what it pointed at is untouched:
   [what cora does](../what-it-does.md#deleting-what-it-holds).
 

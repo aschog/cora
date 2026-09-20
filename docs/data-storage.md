@@ -4,11 +4,11 @@ Two shapes, both on your own machine: one SQLite file cora keeps for itself, and
 you can read beside it. Which paths, and what moves each, is the table in
 [privacy](privacy-and-ethics.md#what-is-kept-and-where).
 
-## One file, four writers
+## One file, five writers
 
-`.cora/cora.sqlite` holds four writers, in five tables. One file, so a deployment moves all of it by
+`.cora/cora.sqlite` holds five writers, in five tables. One file, so a deployment moves all of it by
 naming one path and a backup is one file. Write-ahead logging and autocommit, because
-four writers and every reader of the page share it. Nothing migrates: every table is
+five writers and every reader of the page share it. Nothing migrates: every table is
 made by the first writer that needs it.
 
 - **Passages** — one row per chunk: the field, the filename, the position, and the
@@ -21,6 +21,10 @@ made by the first writer that needs it.
 - **Turns** — one row per turn, in the order they were taken: the question, the answer,
   the citations, the fields, and the trace as JSON, each step tagged with its kind so a
   nested one reads back as what it was.
+- **What a plugin keeps** — the same table the facts are in, under `kept` and then the
+  plugin's own name: a namespace rather than a table of its own, which is what a
+  LangGraph store is for. One row per name it wrote, and nothing reads it but the
+  plugin that wrote it — not searched, not cited, not recalled, not in any brief.
 - **Checkpoints** — LangGraph's saver: the brief, the transcript, the tool results, what
   a plugin kept, the pin, and any card the turn stopped on. Beside the turns, because a
   deployment deleting the file should lose both or neither.

@@ -5,11 +5,11 @@ import sqlite3
 
 
 def connect(path: str) -> sqlite3.Connection:
-    """A connection onto the shared store, in the mode four writers need.
+    """A connection onto the shared store, in the mode five writers need.
 
     Autocommit, because each store opens its own transactions where it needs one. Write
     ahead logging, because the default journal takes a lock that blocks readers for the
-    length of a write, and this file has four writers and every reader of the page
+    length of a write, and this file has five writers and every reader of the page
     behind it. That mode is the file's own state rather than the connection's, so it
     holds however the deployment opened it first. How long a contended writer waits is
     the connection's, and `sqlite3.connect` already installs its five seconds.

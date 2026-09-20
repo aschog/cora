@@ -53,6 +53,7 @@ TOOLKITS: dict[str, frozenset[str]] = {
     "interview": frozenset(),
     "security": frozenset(),
     "travel": frozenset({"httpx"}),
+    "vocab": frozenset(),
 }
 
 

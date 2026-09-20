@@ -37,6 +37,24 @@ the documents and their uploads, the sessions and one session's turns, memory, p
 and scopes. Every route is one thing the page does, and the page holds no cora logic of
 its own — it asks, and it draws what came back.
 
+## Where a document is added
+
+Two controls, one upload. The documents rail carries **Add a document**, standing over
+the list it changes, and the composer carries a ＋ beside the question being typed. Both
+call the same hook, so a file lands in the same field, the list changes once, and a
+refusal is reported in one place — the notice over the rail's list. While an upload is
+running the composer's control says so and takes no second file: an upload is seconds of
+real indexing, and a reader whose rail is folded has nothing else that would say.
+
+A **photo** added there is read before it is kept. `frontends/react/ui/src/reading.ts`
+fetches Tesseract compiled to WebAssembly from `cdn.jsdelivr.net` the first time one is
+added — the script, its core and the German and English trained data, pinned and then
+cached — and runs it in the browser, so the image is never uploaded. What it recognised
+is put up in a dialog to correct, and only what the reader keeps is uploaded, as a
+Markdown document named after the photo. Discarding keeps nothing. A photo with no text
+in it and a reading that could not be run are two different sentences, because they send
+the reader to fix two different things.
+
 ## A page a plugin brought
 
 A plugin may register a directory as the page of one field, and the same process serves

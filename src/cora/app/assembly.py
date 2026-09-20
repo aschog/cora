@@ -65,6 +65,7 @@ from cora.ports.memory import Memory
 from cora.ports.output import Output
 from cora.ports.plugin import Tool
 from cora.ports.retrieval import Retriever
+from cora.ports.store import Store
 
 log = logging.getLogger(__name__)
 
@@ -171,6 +172,7 @@ def assemble(
     memory: Memory | None = None,
     conversations: Conversations | None = None,
     output: Output | None = None,
+    store: Store | None = None,
     top_k: int = DEFAULT_TOP_K,
     max_tool_rounds: int = DEFAULT_MAX_TOOL_ROUNDS,
     history_turns: int = DEFAULT_HISTORY_TURNS,
@@ -223,6 +225,7 @@ def assemble(
         model=chat_model,
         memory=memory,
         output=output,
+        store=store,
         settings=plugin_settings or {},
         top_k=top_k,
     )
@@ -307,6 +310,7 @@ def _registered(
     model: ChatModel,
     memory: Memory | None,
     output: Output | None,
+    store: Store | None,
     settings: dict[str, dict[str, str]],
     top_k: int,
 ) -> Registry:
@@ -318,6 +322,7 @@ def _registered(
             model=model,
             memory=memory,
             output=output,
+            kept=store,
             settings=settings.get(plugin.module, {}),
             top_k=top_k,
         )
@@ -390,6 +395,7 @@ def _composer(
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
     from cora.adapters.sentence_transformer_embedder import SentenceTransformerEmbedder
     from cora.adapters.sqlite_conversations import SqliteConversations
+    from cora.adapters.sqlite_plugin_store import SqlitePluginStore
     from cora.adapters.sqlite_store_memory import SqliteStoreMemory
     from cora.adapters.sqlite_vec_retriever import SqliteVecRetriever
 
@@ -408,6 +414,7 @@ def _composer(
     memory = SqliteStoreMemory.at(config.db_path)
     conversations = SqliteConversations.at(config.db_path)
     output = FileOutput.at(config.output_path)
+    store = SqlitePluginStore.at(config.db_path)
     # The checkpointer is an adapter like the stores above it: made once, so a folder
     # change recomposes over the same connection instead of opening another onto the
     # same store file.
@@ -431,6 +438,7 @@ def _composer(
             memory=memory,
             conversations=conversations,
             output=output,
+            store=store,
             graph=graph,
             top_k=config.top_k,
             max_tool_rounds=config.max_tool_rounds,

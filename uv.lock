@@ -22,6 +22,7 @@ members = [
     "cora-plugin-interview",
     "cora-plugin-security",
     "cora-plugin-travel",
+    "cora-plugin-vocab",
 ]
 
 [[package]]
@@ -218,6 +219,7 @@ dev = [
     { name = "cora-plugin-interview" },
     { name = "cora-plugin-security" },
     { name = "cora-plugin-travel" },
+    { name = "cora-plugin-vocab" },
     { name = "httpx" },
     { name = "mkdocs" },
     { name = "mkdocs-gen-files" },
@@ -252,6 +254,7 @@ dev = [
     { name = "cora-plugin-interview", editable = "plugins/interview" },
     { name = "cora-plugin-security", editable = "plugins/security" },
     { name = "cora-plugin-travel", editable = "plugins/travel" },
+    { name = "cora-plugin-vocab", editable = "plugins/vocab" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "mkdocs", specifier = ">=1.6.1" },
     { name = "mkdocs-gen-files", specifier = ">=0.6.1" },
@@ -347,6 +350,17 @@ requires-dist = [
     { name = "cora", editable = "." },
     { name = "httpx", specifier = ">=0.28.1,<1" },
 ]
+
+[[package]]
+name = "cora-plugin-vocab"
+version = "0.1.0"
+source = { editable = "plugins/vocab" }
+dependencies = [
+    { name = "cora" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "cora", editable = "." }]
 
 [[package]]
 name = "cuda-bindings"

@@ -27,7 +27,13 @@ from cora.engine.steps import (
 )
 from cora.ports.chat_model import ModelReply, unheard
 from cora.ports.host import TOOL, Extension, Host
-from fakes import FakeMemory, FakeRetriever, ScriptedChatModel, host_for
+from fakes import (
+    FakeMemory,
+    FakeRetriever,
+    FakeStore,
+    ScriptedChatModel,
+    host_for,
+)
 from fixture_plugins import make_plugin, make_tool, refuses_containing
 
 SEED_TEXT = b"protein supports muscle growth"
@@ -342,3 +348,40 @@ def test_a_field_a_plugin_brought_only_a_page_for_is_still_offered(
 
     assert app.scopes == ("training",)
     assert set(app.pages) <= set(app.scopes)
+
+
+def test_a_store_the_deployment_has_reaches_every_plugin() -> None:
+    """One store, handed to each plugin under its own name — so what two plugins keep
+    is kept apart by the assembly rather than by the plugins agreeing not to collide."""
+    store = FakeStore()
+    handed: dict[str, object] = {}
+
+    def looking(name: str) -> Any:
+        def extend(cora: Host) -> None:
+            handed[name] = cora.store
+            if cora.store is not None:
+                cora.store.keep("count", name)
+
+        return extend
+
+    assembled(
+        plugins=(
+            Extension(module="fixture_plugins.first", extend=looking("first")),
+            Extension(module="fixture_plugins.second", extend=looking("second")),
+        ),
+        store=store,
+    )
+
+    assert set(handed) == {"first", "second"}
+    assert store.kept == {("first", "count"): "first", ("second", "count"): "second"}
+
+
+def test_a_deployment_with_no_store_hands_every_plugin_none() -> None:
+    handed: list[object] = []
+
+    def extend(cora: Host) -> None:
+        handed.append(cora.store)
+
+    assembled(plugins=(Extension(module="fixture_plugins.bare", extend=extend),))
+
+    assert handed == [None]

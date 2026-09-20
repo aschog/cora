@@ -1605,3 +1605,170 @@ its own and SHALL offer no clipboard.
 - **GIVEN** the page opened under no field
 - **WHEN** the reader finishes a workout
 - **THEN** it says the workout was not saved to cora, and nothing is uploaded
+
+### Requirement: A plugin is handed a store of its own
+
+Cora SHALL hand a plugin a store it can read and write by name, holding text, which
+outlives the turn, the conversation and the process. What a plugin keeps SHALL be
+namespaced under the name cora loaded it as, so two plugins using one name keep two
+values and neither reads the other's. Keeping nothing under a name SHALL drop it.
+
+#### Scenario: What was kept is read back
+
+- **GIVEN** a plugin that kept text under a name
+- **WHEN** it reads that name in a later turn
+- **THEN** the text it kept comes back
+
+#### Scenario: Two plugins, one name
+
+- **GIVEN** two plugins that kept different text under the same name
+- **WHEN** each reads that name
+- **THEN** each reads its own
+
+#### Scenario: A name nothing was kept under
+
+- **WHEN** a plugin reads a name it never kept anything under
+- **THEN** it reads nothing, and nothing fails
+
+#### Scenario: A name dropped
+
+- **GIVEN** a plugin that kept text under a name
+- **WHEN** it keeps nothing under that name
+- **THEN** reading the name comes back with nothing
+
+### Requirement: A deployment without a store hands none
+
+Where the deployment keeps no file of its own, the store SHALL be absent rather than
+silently empty, so a plugin that needs one can say so instead of losing what it keeps.
+
+#### Scenario: No store to keep anything in
+
+- **GIVEN** a deployment assembled with no store
+- **WHEN** a plugin reads what it was handed
+- **THEN** it is handed nothing, and it is the plugin's to say so
+
+### Requirement: What a plugin keeps is not what cora knows
+
+What a plugin keeps in its own store SHALL NOT appear in the brief, in what cora
+recalls about the user, or in any rail that lists what cora knows.
+
+#### Scenario: A plugin's store is not memory
+
+- **GIVEN** a plugin that kept text in its own store
+- **WHEN** what cora knows about the user is read
+- **THEN** what the plugin kept is not among it
+
+### Requirement: A vocabulary field is brought by a plugin
+
+A plugin SHALL bring cora a `vocab` field carrying instructions and nothing else. The
+field SHALL hold vocabulary lists as its documents, and SHALL be offered and worked in
+exactly as a field with no page is.
+
+#### Scenario: The field is offered
+
+- **GIVEN** the vocab plugin loaded
+- **WHEN** the reader asks what fields there are
+- **THEN** vocab is among them
+
+#### Scenario: What it registers
+
+- **GIVEN** the vocab plugin loaded
+- **WHEN** what it registered is read
+- **THEN** it is instructions under the vocab field, and no tool and no page
+
+### Requirement: A word is answered from the list it is on
+
+A question about a word asked in the vocab field SHALL be answered from the lists that
+field holds, citing the list the word was found on. A word on none of them SHALL be
+said to be on none of them, and SHALL NOT be written into one.
+
+#### Scenario: A word that is on a list
+
+- **GIVEN** a Markdown list of words uploaded to the vocab field
+- **WHEN** the reader asks what one of its words means
+- **THEN** the answer comes from that list and cites it
+
+#### Scenario: A word that is on no list
+
+- **GIVEN** a field whose lists do not hold the word asked about
+- **WHEN** the reader asks what it means
+- **THEN** the answer says the word is on none of the lists
+
+### Requirement: The vocab field drills from a schedule it keeps
+
+The vocab field SHALL keep a schedule of the words it has drilled, in its own store, and
+SHALL hand back the word that is due when asked for one. A word never drilled SHALL
+count as due. Where nothing is due and nothing is new, it SHALL say the session is done
+rather than hand back a word.
+
+#### Scenario: A word is asked for
+
+- **GIVEN** a list in the vocab field and nothing drilled yet
+- **WHEN** the reader asks to practise
+- **THEN** a word from that list is put to them
+
+#### Scenario: Nothing is due
+
+- **GIVEN** every word on the list answered and scheduled beyond today
+- **WHEN** the reader asks for another word
+- **THEN** the field says the session is done rather than repeating a word
+
+### Requirement: Only the side being asked is handed over
+
+A word put to the reader SHALL carry the side they are being asked from and not the side
+they are to produce, whichever way round the drill is running.
+
+#### Scenario: What comes with the word
+
+- **GIVEN** a drill running from German
+- **WHEN** a word is put to the reader
+- **THEN** the German is handed over and the word being learnt is not
+
+### Requirement: What was missed comes back
+
+Saying how a word went SHALL move that word's schedule and nothing else. A word missed
+SHALL be due again in the same session. A word answered right SHALL be due a day later,
+then six days, then at intervals that grow by how easy it has proved — never shorter
+than the last one for a word answered right.
+
+#### Scenario: A word missed
+
+- **GIVEN** a word just put to the reader
+- **WHEN** they miss it
+- **THEN** it is among the words due in this session
+
+#### Scenario: A word answered right
+
+- **GIVEN** a word answered right for the first time
+- **WHEN** the schedule is read
+- **THEN** that word is due a day later, not today
+
+#### Scenario: A word answered right twice
+
+- **GIVEN** a word answered right on two days running
+- **WHEN** the schedule is read
+- **THEN** it is due six days later
+
+#### Scenario: One word's answer moves one word
+
+- **GIVEN** two words drilled
+- **WHEN** one of them is answered
+- **THEN** the other's schedule is what it was
+
+### Requirement: The schedule outlives the conversation
+
+The schedule SHALL be kept in the plugin's own store, so a session started tomorrow
+picks up where today's left off, and SHALL NOT be a document of the field, in the brief,
+or among what cora knows about the user.
+
+#### Scenario: Tomorrow's session
+
+- **GIVEN** words answered in one conversation
+- **WHEN** the reader practises in another conversation
+- **THEN** what they got wrong is what comes back
+
+#### Scenario: The schedule is not a document
+
+- **GIVEN** words answered in the vocab field
+- **WHEN** the field's documents are listed
+- **THEN** only the reader's own lists are there
