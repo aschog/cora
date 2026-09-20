@@ -1044,8 +1044,10 @@ const sessionsEl = document.getElementById('sessions');
 
 /** Anything a document can carry, placed as text rather than as markup: the headings and
     the filenames here were written by whoever uploaded into the field, not by cora. */
-const esc = text => String(text).replace(/[&<>"]/g, c =>
-  ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'})[c]);
+function esc(text){
+  return String(text).replace(/[&<>"]/g, c =>
+    ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'})[c]);
+}
 
 function drawSessions(){
   sessionsEl.innerHTML = logged.length ? '' : '<div class="empty">Nothing yet. Finish your first workout.</div>';
