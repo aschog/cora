@@ -1,10 +1,6 @@
-import pathlib
-
 from cora.ports.host import Host
 
 SCOPE = "vocab"
-
-PAGE = "page"
 
 INSTRUCTIONS = """\
 Answer from the vocabulary lists this field holds: what a word means, where it is on a
@@ -19,6 +15,6 @@ list, and which other words on it are near it.
 
 
 def extend(cora: Host) -> None:
-    """A field that answers from its lists, and the page those lists are written on."""
+    """A field that answers from the word lists it holds, and nothing else: searching
+    them is cora's own tool, and reading a screenshot into one is cora's own screen."""
     cora.register_instructions(INSTRUCTIONS, scope=SCOPE)
-    cora.register_page(pathlib.Path(__file__).parent / PAGE, scope=SCOPE)

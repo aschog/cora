@@ -1,5 +1,5 @@
-"""The outer test for the story: the vocab field brings a page, a list the page saved
-lands in that field as a document, and cora answers about a word from there."""
+"""The outer test for the story: the vocab field holds word lists as documents, and
+cora answers a question about one of its words from the list it is on."""
 
 from starlette.testclient import TestClient
 
@@ -14,8 +14,8 @@ from sse import frames
 
 VOCAB = "vocab"
 LIST = "english-einheit-3.md"
-# What the page writes once the reader has corrected the reading: the heading names the
-# language, and the table is German beside the language being learnt.
+# A list as the field holds one: the heading names the language, and the table is German
+# beside the language being learnt.
 WORDS = (
     "# English — Einheit 3\n\n| Deutsch | English |\n| --- | --- |\n| Hilfe | help |\n"
 )
@@ -23,7 +23,7 @@ QUESTION = "Was heißt Hilfe auf Englisch?"
 ANSWER = "help [1]."
 
 
-def test_the_vocab_page_is_served_and_what_it_saved_is_answered_from() -> None:
+def test_a_word_is_answered_from_the_list_it_was_uploaded_on() -> None:
     app = assembled(
         plugins=(load_plugin("cora.plugins.vocab"),),
         chat_model=ScriptedChatModel(
@@ -45,16 +45,8 @@ def test_the_vocab_page_is_served_and_what_it_saved_is_answered_from() -> None:
     )
 
     with TestClient(api(app)) as reader:
-        where = reader.get("/api/scopes").json()["pages"][VOCAB]
-        served = reader.get(where)
-        assert served.status_code == 200
-        assert "<!doctype html" in served.text.lower()
-        # The page is what writes a list: it reads a screenshot where it was dropped,
-        # and posts what the reader corrected to cora.
-        assert "tesseract" in served.text.lower()
-        assert "/api/documents" in served.text
+        assert VOCAB in reader.get("/api/scopes").json()["available"]
 
-        # What the page posts when the reader saves, and how it posts it.
         added = reader.post(
             "/api/documents",
             files={"file": (LIST, WORDS.encode(), "text/markdown")},

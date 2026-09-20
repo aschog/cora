@@ -8,8 +8,8 @@ of them still answers.
   the log it wrote, read back as numbers.
 - **interview** — the `interview` field: mock interviews run on a card, answers judged
   against a rubric, and a report the user keeps.
-- **vocab** — the `vocab` field: a screenshot of a word list read where it was dropped,
-  corrected by hand, and saved as a list cora answers from.
+- **vocab** — the `vocab` field: the word lists you are learning from, answered from and
+  cited like any other document.
 - **travel** — the `travel` field, and the rest of this page.
 
 ## Fitness brings a screen
@@ -47,26 +47,6 @@ Out of signal, the trainer keeps working: the plan last read stands, and failing
 the one written into the page — fifteen kettlebell exercises, in the language the coach
 answers in. The strip says which of the three you are training from. The sheet, the clips and the pose tracking come from the services they came from, so
 those want a network. Everything else it does is local.
-
-## Vocab reads a screenshot
-
-Pin a conversation to `vocab` and the middle of the page becomes an import: drop a
-screenshot of a word list on it, paste one, or pick a file. The reading is Tesseract
-compiled to WebAssembly, fetched once from `cdn.jsdelivr.net` and run in your own
-browser — the image is never uploaded, to cora or to anybody else.
-
-What it read comes back as rows, German beside the language you are learning, and every
-one of them is yours to fix before anything is saved. It reads the columns of a
-screenshot, a dash between two words, or a single space, and a line it could make no
-pair of arrives half empty rather than being dropped. **Save to cora** writes the rows
-as one Markdown list into the `vocab` field, named for the language and what you called
-the list, and from then on the coach answers from it with the list cited. Nothing read
-and nothing fetched are two different sentences, and the page says which. Refused,
-the list is printed below the table for you to copy and the rows stay where they are.
-
-Two languages are offered, English and Latin, each with the trained data it is read
-with. They are a list in the page, so a third is a line added to that file, as the
-trainer's plan is.
 
 ## Travel, in four parts
 
