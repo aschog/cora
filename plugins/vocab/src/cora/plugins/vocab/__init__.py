@@ -1,6 +1,32 @@
 from cora.ports.host import Host
 
+from .drill import SCHEDULE as SCHEDULE
+from .drill import Drill
+
 SCOPE = "vocab"
+
+WORD_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "direction": {
+            "type": "string",
+            "enum": ["from_german", "from_learning"],
+            "description": "Which side to put to the reader. German by default.",
+        }
+    },
+}
+
+WENT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "word": {"type": "string", "description": "The word that was just put."},
+        "right": {
+            "type": "boolean",
+            "description": "Whether the reader produced it. A hint counts as no.",
+        },
+    },
+    "required": ["word", "right"],
+}
 
 INSTRUCTIONS = """\
 Answer from the vocabulary lists this field holds: what a word means, where it is on a
@@ -11,6 +37,11 @@ list, and which other words on it are near it.
 - Search the documents for any question about a word, and cite the list it came from.
 - When a word is on none of the lists, say so plainly, then answer from what you know.
 - Never translate a word into a list, or say a word is on one without having found it.
+
+Practising runs on the two tools. `next_word` says which word to put — it reads the
+schedule this field keeps and hands back the side being asked. `how_it_went` records
+the reader's answer, and moves that word's schedule. Never pick a word yourself, never
+work out when one is next due, and call `how_it_went` exactly once per answer.
 
 Practising is one word at a time. Give one word, wait for the reader's answer, say how
 it went, then give the next one — never a numbered batch, and never a second word before
@@ -37,6 +68,30 @@ the first is answered.
 
 
 def extend(cora: Host) -> None:
-    """A field that answers from the word lists it holds, and nothing else: searching
-    them is cora's own tool, and reading a screenshot into one is cora's own screen."""
+    """A field that answers from the word lists it holds and drills from a schedule it
+    keeps: searching the lists is cora's own tool, and reading a screenshot into one is
+    cora's own screen."""
     cora.register_instructions(INSTRUCTIONS, scope=SCOPE)
+    drill = Drill(cora)
+    cora.register_tool(
+        name="next_word",
+        description=(
+            "The word to put to the reader now, from the schedule this field keeps: "
+            "what is due, then what has never been drilled. It hands back the side "
+            "being asked and never the side the reader is to produce."
+        ),
+        parameter_schema=WORD_SCHEMA,
+        run=drill.next_word,
+        scope=SCOPE,
+    )
+    cora.register_tool(
+        name="how_it_went",
+        description=(
+            "Say how the word just put went, and the schedule moves: missed comes "
+            "back in this session, right waits a day, then six, then longer. Call it "
+            "once per answer, for the word that was asked."
+        ),
+        parameter_schema=WENT_SCHEMA,
+        run=drill.how_it_went,
+        scope=SCOPE,
+    )

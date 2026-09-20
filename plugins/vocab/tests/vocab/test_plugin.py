@@ -1,16 +1,25 @@
 from cora.plugins.vocab import INSTRUCTIONS, SCOPE, extend
 from cora.ports.host import INSTRUCTIONS as SAYS
+from cora.ports.host import TOOL
 from fakes import host_for
 
 
-def test_the_field_is_a_voice_and_nothing_else() -> None:
-    """A field that answers from its lists: searching them is cora's own tool, and the
-    screen that writes one is cora's own, so the plugin brings neither."""
+def test_the_field_is_a_voice_and_the_two_calls_the_drill_runs_on() -> None:
+    """Searching the lists is cora's own tool and the screen that writes one is cora's
+    own, so what the plugin brings is the spacing: a word to put, and how it went."""
     host = host_for("cora.plugins.vocab")
 
     extend(host)
 
-    assert [(entry.kind, entry.scope) for entry in host.registered] == [(SAYS, SCOPE)]
+    assert [(entry.kind, entry.scope) for entry in host.registered] == [
+        (SAYS, SCOPE),
+        (TOOL, SCOPE),
+        (TOOL, SCOPE),
+    ]
+    assert [entry.value.name for entry in host.registered if entry.kind == TOOL] == [
+        "next_word",
+        "how_it_went",
+    ]
 
 
 def test_the_instructions_say_what_the_field_answers_from() -> None:
@@ -48,3 +57,13 @@ def test_the_instructions_say_which_key_asks_for_a_hint() -> None:
     instructions = INSTRUCTIONS.lower()
 
     assert "`h` on its own asks for a hint" in instructions
+
+
+def test_the_instructions_drill_through_the_tools() -> None:
+    """The spacing is arithmetic and the model is not to do it: which word comes when
+    is the schedule's, as the fitness field's numbers are its calculators'."""
+    instructions = INSTRUCTIONS.lower()
+
+    assert "next_word" in instructions
+    assert "how_it_went" in instructions
+    assert "never pick a word yourself" in instructions

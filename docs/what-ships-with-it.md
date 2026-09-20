@@ -9,7 +9,7 @@ of them still answers.
 - **interview** — the `interview` field: mock interviews run on a card, answers judged
   against a rubric, and a report the user keeps.
 - **vocab** — the `vocab` field: the word lists you are learning from, answered from and
-  cited like any other document.
+  cited like any other document, and drilled from a schedule the plugin keeps.
 - **travel** — the `travel` field, and the rest of this page.
 
 ## Fitness brings a screen
