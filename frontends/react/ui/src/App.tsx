@@ -354,6 +354,8 @@ function Page() {
       onCite={setOpened}
       onTake={take}
       onChange={change}
+      onUpload={upload}
+      uploading={indexing.length > 0}
     />
   )
 

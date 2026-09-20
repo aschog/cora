@@ -12,6 +12,8 @@ import { joined } from '../joined'
 import styles from './Answer.module.css'
 
 const WORKING = 'Working…'
+const ADD = 'Add a file or photo'
+const ADDING = 'Adding a file…'
 const CHANGE = 'Change'
 const DECIDING = 'cora is waiting on your answer above.'
 /** How close to the end still counts as reading the newest turn. A line of slack, so the
@@ -42,6 +44,12 @@ type Props = {
     values: Record<string, unknown>,
   ) => void
   onChange: (entry: Entry, at: number) => void
+  /** A file added beside the question. It is the upload the rail's own control makes —
+   *  same field, same list, same news — drawn a second time where the reader is typing. */
+  onUpload?: (file: File) => void
+  /** Whether an upload is running. The control says so, because a reader whose rail is
+   *  folded has nothing else that does. */
+  uploading?: boolean
   /** Drawn in the rail beside a field's page rather than in the middle of the screen: a
    *  narrower box that says which conversation it is, the rail listing the others above
    *  it — and not the region the screen is about, which is then the page. */
@@ -58,6 +66,8 @@ export default function Answer({
   onCite,
   onTake,
   onChange,
+  onUpload,
+  uploading = false,
   inRail = false,
 }: Props) {
   const [question, setQuestion] = useState('')
@@ -166,6 +176,27 @@ export default function Answer({
           passes behind it. */}
       <div className={styles.composerDock}>
         <div className={styles.composer}>
+          {onUpload && (
+            <label
+              className={styles.composerAdd}
+              title={uploading ? ADDING : ADD}
+              aria-disabled={uploading}
+            >
+              <span aria-hidden="true">＋</span>
+              <input
+                type="file"
+                aria-label={uploading ? ADDING : ADD}
+                disabled={uploading}
+                onChange={(e) => {
+                  const [file] = Array.from(e.target.files ?? [])
+                  /* Disabled is how it is drawn, and this is how it behaves: one upload
+                     at a time however the file arrived. */
+                  if (file && !uploading) onUpload(file)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+          )}
           <input
             value={question}
             placeholder="Ask a question…"

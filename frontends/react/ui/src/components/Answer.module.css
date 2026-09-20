@@ -237,6 +237,35 @@
     0 10px 30px rgba(0, 0, 0, 0.55);
 }
 
+/* The same upload the rail makes, drawn where the question is typed. The file input
+   itself is never seen: the ＋ is what opens it. */
+.composer-add {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--pill);
+  color: var(--n600);
+  font-size: 17px;
+  cursor: pointer;
+}
+
+.composer-add:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+}
+
+.composer-add[aria-disabled='true'] {
+  color: var(--n500);
+  cursor: default;
+}
+
+.composer-add input {
+  display: none;
+}
+
 .composer input:focus-visible {
   outline: none;
 }

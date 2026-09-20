@@ -37,6 +37,15 @@ the documents and their uploads, the sessions and one session's turns, memory, p
 and scopes. Every route is one thing the page does, and the page holds no cora logic of
 its own — it asks, and it draws what came back.
 
+## Where a document is added
+
+Two controls, one upload. The documents rail carries **Add a document**, standing over
+the list it changes, and the composer carries a ＋ beside the question being typed. Both
+call the same hook, so a file lands in the same field, the list changes once, and a
+refusal is reported in one place — the notice over the rail's list. While an upload is
+running the composer's control says so and takes no second file: an upload is seconds of
+real indexing, and a reader whose rail is folded has nothing else that would say.
+
 ## A page a plugin brought
 
 A plugin may register a directory as the page of one field, and the same process serves
