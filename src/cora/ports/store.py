@@ -19,6 +19,9 @@ class Kept(Protocol):
     What is kept here outlives the turn, the conversation and the process. It is text:
     a plugin keeping a schedule or a count writes and reads its own, and what the text
     means is the plugin's business rather than cora's.
+
+    Raises:
+        PluginStoreError: The store could not be reached, on a read or a keep.
     """
 
     def read(self, name: str) -> str | None:
