@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
 import { confirm, fresh } from './helpers'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -81,4 +82,81 @@ test('a file cora refuses is refused the same way from either control', async ({
 
   await expect(page.getByText('That upload is not one cora reads.')).toBeVisible()
   await expect(page.getByLabel(BESIDE)).toBeEnabled()
+})
+
+/* The smallest thing a browser takes as an image: one transparent pixel. Nothing reads
+   words out of it, and nothing here asks the real reader to try — recognition is
+   Tesseract's rather than cora's, so it is stood in for, and what is under test is
+   everything the page does with a reading. */
+const SHOT = {
+  name: 'words.png',
+  mimeType: 'image/png',
+  buffer: Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk' +
+      'YPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==',
+    'base64',
+  ),
+}
+
+const stand = (page: Page, text: string) =>
+  page.addInitScript((said) => {
+    ;(window as unknown as { Tesseract: unknown }).Tesseract = {
+      createWorker: async () => ({
+        recognize: async () => ({ data: { text: said } }),
+        terminate: async () => undefined,
+      }),
+    }
+  }, text)
+
+test('a photo added beside the question is read, corrected and kept', async ({ page }) => {
+  await stand(page, 'Hilfe  heIp')
+  await fresh(page)
+
+  await page.getByLabel(BESIDE).setInputFiles(SHOT)
+
+  const asked = page.getByRole('dialog', { name: 'READ FROM THE IMAGE' })
+  await expect(asked).toContainText('words.png')
+  const read = asked.getByRole('textbox', { name: 'What was read' })
+  await expect(read).toHaveValue('Hilfe  heIp')
+
+  await read.fill('Hilfe  help')
+  await asked.getByRole('button', { name: 'Keep it' }).click()
+
+  await expect(page.getByRole('button', { name: 'words.md', exact: true })).toBeVisible()
+  const held = await page.request.get('/api/documents/cora/words.md')
+  const [upload] = await held.json()
+  expect(upload.text).toBe('Hilfe  help')
+
+  /* The store is the run's, and the spec below asks whether a discarded reading left
+     a document of this name behind. */
+  await page.getByLabel('Delete words.md').click()
+  await confirm(page, 'DELETE DOCUMENT', 'Delete document')
+  await expect(page.getByRole('button', { name: 'words.md', exact: true })).toHaveCount(0)
+})
+
+test('a photo whose reading is discarded leaves the field as it was', async ({ page }) => {
+  await stand(page, 'Haus  house')
+  await fresh(page)
+
+  await page.getByLabel(BESIDE).setInputFiles(SHOT)
+  await page
+    .getByRole('dialog', { name: 'READ FROM THE IMAGE' })
+    .getByRole('button', { name: 'Discard' })
+    .click()
+
+  await expect(page.getByRole('dialog', { name: 'READ FROM THE IMAGE' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'words.md', exact: true })).toHaveCount(0)
+})
+
+test('a photo with no words in it says so rather than offering a document', async ({
+  page,
+}) => {
+  await stand(page, '')
+  await fresh(page)
+
+  await page.getByLabel(BESIDE).setInputFiles(SHOT)
+
+  const asked = page.getByRole('dialog', { name: 'READ FROM THE IMAGE' })
+  await expect(asked).toContainText('Nothing was read')
+  await expect(asked.getByRole('button', { name: 'Keep it' })).toBeDisabled()
 })

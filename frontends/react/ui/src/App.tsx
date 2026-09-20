@@ -18,6 +18,7 @@ import { useTurn } from './hooks/useTurn'
 import Answer from './components/Answer'
 import CitationModal from './components/CitationModal'
 import ConfirmModal from './components/ConfirmModal'
+import ReadImage from './components/ReadImage'
 import type { Asked } from './components/ConfirmModal'
 import DocumentRail from './components/DocumentRail'
 import ErrorBoundary from './components/ErrorBoundary'
@@ -30,6 +31,7 @@ import SessionsPanel from './components/SessionsPanel'
 import SourcePanel from './components/SourcePanel'
 import styles from './App.module.css'
 import { joined } from './joined'
+import { read as readImage } from './reading'
 
 const TABS = ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
 type Tab = (typeof TABS)[number]
@@ -111,6 +113,9 @@ function Page() {
      slot, because one question stands at a time — and it carries the act, so each rail
      says its own words rather than the modal knowing everyone's. */
   const [confirming, setConfirming] = useState<(Asked & Removal) | null>(null)
+  /* A photo that has been read and not yet kept. It is the reading, not the image: the
+     image never leaves this browser, and what is kept is what the reader corrects. */
+  const [reading, setReading] = useState<{ image: string; read: string } | null>(null)
   /* Whether the rail is showing the list rather than the conversation it would chat.
      The chat is where a chattable conversation opens, and this is the way back. */
   const [listing, setListing] = useState(false)
@@ -301,6 +306,24 @@ function Page() {
     setTab('SOURCE')
   }
 
+  /* A file added beside the question. A photo is read here first, because cora reads
+     text: what it holds is the reading the reader corrected, and the image itself stays
+     in this browser. Anything else is the upload it always was. */
+  const added = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      upload(file)
+      return
+    }
+    setNotice(null)
+    readImage(file)
+      .then((said) => setReading({ image: file.name, read: said }))
+      .catch(() =>
+        setTrouble(
+          'That photo could not be read: the reading is fetched the first time it is used, and it did not arrive.',
+        ),
+      )
+  }
+
   /* Written once and drawn in one of two places — the middle, or the rail beside a
      page. `inRail` is the conversation's own switch rather than a class handed in,
      because a rule reaches what the file it sits beside draws and nothing else. */
@@ -354,7 +377,7 @@ function Page() {
       onCite={setOpened}
       onTake={take}
       onChange={change}
-      onUpload={upload}
+      onUpload={added}
       uploading={indexing.length > 0}
     />
   )
@@ -562,6 +585,18 @@ function Page() {
       </div>
 
       {opened && <CitationModal citation={opened} onClose={() => setOpened(null)} />}
+      {reading && (
+        <ReadImage
+          image={reading.image}
+          read={reading.read}
+          onKeep={(file) => {
+            setReading(null)
+            upload(file)
+          }}
+          onDiscard={() => setReading(null)}
+        />
+      )}
+
       {confirming && (
         <ConfirmModal
           {...confirming}

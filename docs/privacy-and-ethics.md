@@ -42,6 +42,12 @@ only once you turn tracking on. A clip plays from `www.youtube-nocookie.com`, wh
 no cookie until you play one, and only when you open a clip. The workout it saves goes to
 cora and nowhere else.
 
+**Reading a photo**, being the page's own work, reaches from your browser rather than
+from cora: `cdn.jsdelivr.net` for the recognition runtime and the trained data of the
+languages it reads with, fetched the first time you add a photo and cached after that.
+The photo itself is read on your machine and is never uploaded — what reaches cora is
+the text, once you have corrected it and said to keep it.
+
 Nothing else in cora reaches the network: no general-purpose HTTP client — `httpx`,
 `requests`, `urllib` — is imported anywhere under `src/cora`, no telemetry package is in
 the tree or the lockfile, and the only outbound clients there are the provider's and the
