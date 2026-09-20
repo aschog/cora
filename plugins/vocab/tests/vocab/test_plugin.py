@@ -18,3 +18,12 @@ def test_the_instructions_say_what_the_field_answers_from() -> None:
 
     assert "vocabular" in instructions
     assert "cite" in instructions
+
+
+def test_the_instructions_keep_the_answers_back_while_practising() -> None:
+    """A drill whose answers are on the screen is a reading exercise: what the field is
+    for is the word the reader has to produce, so the other half stays hidden."""
+    instructions = INSTRUCTIONS.lower()
+
+    assert "one word at a time" in instructions
+    assert "do not show" in instructions
