@@ -1122,6 +1122,29 @@ test('folding the rail and unfolding it draws the conversation with its turns', 
   expect(await within(rail()).findByText(/Sleep, not volume/)).toBeTruthy()
 })
 
+test('a page that asks for the screen has it while both rails are folded', async () => {
+  await opened()
+  const asks = (wanted: boolean) =>
+    fireEvent(
+      window,
+      new MessageEvent('message', {
+        data: { cora: 'screen', wanted },
+        origin: window.location.origin,
+      }),
+    )
+  const alone = () => centre().classList.contains(appCss.alone)
+
+  /* Asked beside an open rail the frame stays where it was; with both folded it has the
+     screen; let go, it is back where it was. */
+  asks(true)
+  expect(alone()).toBe(false)
+  fireEvent.click(screen.getByRole('button', { name: /Documents/ }))
+  fireEvent.click(screen.getByRole('button', { name: /Plan & memory/ }))
+  expect(alone()).toBe(true)
+  asks(false)
+  expect(alone()).toBe(false)
+})
+
 /** A render that throws is a sentence on the page and a line on the console. The spy
  *  keeps React's own report out of the suite's output, which is otherwise a wall. */
 const quietly = async (draw: () => Promise<void>) => {

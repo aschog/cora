@@ -392,6 +392,22 @@ function Page() {
     />
   )
 
+  /* A page may ask for the screen — the trainer does while its camera runs — and has it
+     while both rails are folded: the frame is then drawn over everything, folded rails
+     included. Said in a message on cora's own origin, and forgotten with the page. */
+  const [wanted, setWanted] = useState(false)
+  useEffect(() => {
+    const heard = (said: MessageEvent) => {
+      if (said.origin !== window.location.origin) return
+      const asked = said.data as { cora?: unknown; wanted?: unknown } | null
+      if (asked?.cora === 'screen') setWanted(asked.wanted === true)
+    }
+    window.addEventListener('message', heard)
+    return () => window.removeEventListener('message', heard)
+  }, [])
+  useEffect(() => setWanted(false), [page])
+  const alone = wanted && page !== null && !leftOpen && !rightOpen
+
   return (
     <div className={styles.app}>
       <div className={styles.banners} role="status" aria-label="Notices">
@@ -468,7 +484,7 @@ function Page() {
             reading. A frame is not under one: a page that fails to load throws nothing,
             so a boundary over it could only ever say nothing, and what the reader gets
             is the plugin's own blank. */}
-        <main className={styles.centre}>
+        <main className={joined(styles.centre, alone && styles.alone)}>
           {page === null ? (
             <ErrorBoundary said={UNDRAWN_TALK}>{talking}</ErrorBoundary>
           ) : (

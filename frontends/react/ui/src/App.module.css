@@ -27,6 +27,14 @@
   min-height: 0;
 }
 
+/* A page that asked for the screen, with both rails folded: the frame is drawn over
+   everything, the folded rails' controls included — closing what asked is the way back. */
+.alone {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+}
+
 /* A field's own page. No border and no background of its own: what it draws is the
    plugin's, and a frame around it would read as cora's opinion of it. */
 .page {
