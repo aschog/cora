@@ -126,7 +126,11 @@ header .go:active{opacity:.75;background:var(--blue)}
 }
 #cam,#player{position:absolute;inset:0;display:none}
 body.view-cam #rows,body.view-clip #rows{display:none}
-body.view-cam #cam{display:block}
+/* the camera is the page: its layer is pinned to the edges, and the frame stays where
+   it is, as the band the rest, the set count and the mirror keep */
+body.view-cam #cam{display:block;position:fixed;inset:0}
+body.view-cam .stage{border-color:transparent;background:none}
+body.view-cam :is(#warn,.head,.sets,.wt){z-index:1}
 body.view-clip #player{display:block}
 #player .player{width:100%;height:100%;border-radius:0;aspect-ratio:auto}
 
