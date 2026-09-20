@@ -23,3 +23,10 @@
 ## 5. Close it
 
 - [x] 5.1 Let the outer browser test run and watch it pass.
+
+## 6. Found on review
+
+- [x] 6.1 Write a test that a second reading replaces the text the first one left in the box.
+- [x] 6.2 Write a test that a click on the ground behind a corrected reading does not throw it away, and that an untouched one still closes.
+- [x] 6.3 Write a test that a reader script which loaded and defined nothing is tried again for the next photo.
+- [x] 6.4 Write a browser test that the control says a photo is being read and takes no second one until its reading is off the screen.

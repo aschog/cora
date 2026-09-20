@@ -48,8 +48,15 @@ function fetched(): Promise<Reader> {
       script.src = READER
       script.onload = () => {
         const loaded = reader()
-        if (loaded) arrived(loaded)
-        else failed(new ReadingFailed('the reading could not be run'))
+        if (loaded) {
+          arrived(loaded)
+          return
+        }
+        /* Loaded and defined nothing. Forgotten the same way a failed fetch is, so the
+           next photo tries again rather than failing off a cached rejection. */
+        fetching = null
+        script.remove()
+        failed(new ReadingFailed('the reading could not be run'))
       }
       script.onerror = () => {
         fetching = null

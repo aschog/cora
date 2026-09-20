@@ -41,3 +41,9 @@
 ## 7. Close it
 
 - [x] 7.1 Drop the marker and watch the outer test pass.
+
+## 8. Found on review
+
+- [x] 8.1 Write a test that prose split by a dash is no list of pairs, and that a document mostly prose holds none.
+- [x] 8.2 Write a test that a side of more than three words is no word, and that a short phrase still is one.
+- [x] 8.3 Write a test that only this field's documents are drilled, where a turn runs over more than one.

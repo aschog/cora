@@ -27,6 +27,15 @@ type Props = {
  */
 export default function ReadImage({ image, read, onKeep, onDiscard }: Props) {
   const [text, setText] = useState(read)
+  /* A second photo read in the same session arrives as new props around the box the
+     first one is still in. State seeded from a prop is seeded once, so the reading it
+     came from is held beside it and the box follows a new one — otherwise Keep it
+     would upload the first reading under the second's name. */
+  const [reading, setReading] = useState(read)
+  if (reading !== read) {
+    setReading(read)
+    setText(read)
+  }
 
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
@@ -36,6 +45,11 @@ export default function ReadImage({ image, read, onKeep, onDiscard }: Props) {
     return () => document.removeEventListener('keydown', onKey)
   }, [onDiscard])
 
+  /* What the reader has changed. A stray click on the ground behind the dialog throws
+     away a reading, and by now that may be minutes of correction — so it closes what
+     nobody has touched and leaves the rest standing. Discard is the way out. */
+  const corrected = text !== read
+
   const keep = () => {
     const written = text.trim()
     if (!written) return
@@ -43,7 +57,7 @@ export default function ReadImage({ image, read, onKeep, onDiscard }: Props) {
   }
 
   return (
-    <div className={dialog.overlay} onClick={onDiscard}>
+    <div className={dialog.overlay} onClick={corrected ? undefined : onDiscard}>
       <div
         className={dialog.modal}
         role="dialog"

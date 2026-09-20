@@ -43,6 +43,35 @@ def _drill(held: str = LIST, kept: str | None = None) -> tuple[dict, FakeStore]:
     return tools, store
 
 
+def test_only_this_fields_documents_are_drilled() -> None:
+    """A turn can run over more than one field, and `documents.all()` hands over every
+    document of every field it is running in. A note in another field is not vocabulary
+    this plugin may put to the reader."""
+    store = FakeStore()
+    host = host_for(
+        MODULE,
+        documents=FakeContextSource(
+            held=[
+                Document(name="elsewhere.md", text=READ, scope="notes"),
+                Document(name="einheit-3.md", text=LIST, scope=SCOPE),
+            ]
+        ),
+        store=store,
+    )
+    extend(host)
+    tools = {
+        entry.value.name: entry.value.run
+        for entry in host.registered
+        if entry.kind == TOOL
+    }
+
+    with keeping.bound({}):
+        asked = tools["next_word"]()
+
+    assert "Hilfe" in asked
+    assert "Apple" not in asked
+
+
 def test_a_word_is_put_from_the_side_asked_and_not_the_other() -> None:
     tools, _ = _drill()
 

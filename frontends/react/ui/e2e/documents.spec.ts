@@ -160,3 +160,34 @@ test('a photo with no words in it says so rather than offering a document', asyn
   await expect(asked).toContainText('Nothing was read')
   await expect(asked.getByRole('button', { name: 'Keep it' })).toBeDisabled()
 })
+
+test('while a photo is being read the control says so and takes no second one', async ({
+  page,
+}) => {
+  /* A reading that takes its time, so the state between picking a photo and seeing
+     what it said is a state a spec can stand in. */
+  await page.addInitScript(() => {
+    ;(window as unknown as { Tesseract: unknown }).Tesseract = {
+      createWorker: async () => ({
+        recognize: () =>
+          new Promise((said) =>
+            setTimeout(() => said({ data: { text: 'Hilfe — help' } }), 1500),
+          ),
+        terminate: async () => undefined,
+      }),
+    }
+  })
+  await fresh(page)
+
+  await page.getByLabel(BESIDE).setInputFiles(SHOT)
+
+  await expect(page.getByLabel('Adding a file…')).toBeDisabled()
+
+  const asked = page.getByRole('dialog', { name: 'READ FROM THE IMAGE' })
+  await expect(asked).toBeVisible()
+  /* And still no second photo while its reading is on screen to be corrected. */
+  await expect(page.getByLabel('Adding a file…')).toBeDisabled()
+
+  await asked.getByRole('button', { name: 'Discard' }).click()
+  await expect(page.getByLabel(BESIDE)).toBeEnabled()
+})

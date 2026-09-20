@@ -62,3 +62,38 @@ test('a reading that found nothing says so and keeps nothing', () => {
   expect(screen.getByRole('button', { name: KEEP }).hasAttribute('disabled')).toBe(true)
   expect(onKeep).not.toHaveBeenCalled()
 })
+
+/* Found in review: the text is state seeded from a prop, and a second photo read in
+   the same session replaces the props around a textarea still holding the first one —
+   so Keep it would upload photo A's words under photo B's name. */
+test('a second reading replaces the text the first one left', () => {
+  const { rerender } = render(
+    <ReadImage image="a.png" read="AAA" onKeep={vi.fn()} onDiscard={vi.fn()} />,
+  )
+
+  rerender(<ReadImage image="b.png" read="BBB" onKeep={vi.fn()} onDiscard={vi.fn()} />)
+
+  expect((written() as HTMLTextAreaElement).value).toBe('BBB')
+})
+
+/* Minutes of hand-corrected recognition sit in that box, and every other destructive
+   act in this app is confirmed. A stray click on the ground behind the dialog is not
+   the way to lose it. */
+test('a click on the ground behind it does not throw away a correction', () => {
+  const { onDiscard } = put('Hilfe  heIp')
+
+  fireEvent.change(written(), { target: { value: 'Hilfe  help' } })
+  fireEvent.click(screen.getByRole('dialog', { name: 'READ FROM THE IMAGE' })
+    .parentElement as HTMLElement)
+
+  expect(onDiscard).not.toHaveBeenCalled()
+})
+
+test('a click on the ground behind an untouched reading closes it', () => {
+  const { onDiscard } = put('Hilfe  help')
+
+  fireEvent.click(screen.getByRole('dialog', { name: 'READ FROM THE IMAGE' })
+    .parentElement as HTMLElement)
+
+  expect(onDiscard).toHaveBeenCalledTimes(1)
+})

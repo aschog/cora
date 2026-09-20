@@ -30,6 +30,7 @@ class Drill:
     """The field's two tools, closed over the cora holding its lists and its store."""
 
     cora: Host
+    scope: str
 
     def next_word(self, side: str = LEFT) -> str:
         """The word to put to the reader, from the side they are being asked."""
@@ -68,9 +69,12 @@ class Drill:
         return "again in this session" if not right else f"next in {card.interval} days"
 
     def _pairs(self) -> tuple[Pair, ...]:
+        # A turn can run over more than one field, and what it is handed is every
+        # document of every field it is running in. Only this one's are vocabulary.
         return tuple(
             pair
             for document in self.cora.documents.all()
+            if document.scope == self.scope
             for pair in pairs_in(document.text, document.name)
         )
 

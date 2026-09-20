@@ -116,6 +116,10 @@ function Page() {
   /* A photo that has been read and not yet kept. It is the reading, not the image: the
      image never leaves this browser, and what is kept is what the reader corrects. */
   const [reading, setReading] = useState<{ image: string; read: string } | null>(null)
+  /* Whether a photo is being read right now. Recognition is seconds of WebAssembly
+     before anything is drawn, and the control that took the photo is the only thing
+     that can say so. */
+  const [recognising, setRecognising] = useState(false)
   /* Whether the rail is showing the list rather than the conversation it would chat.
      The chat is where a chattable conversation opens, and this is the way back. */
   const [listing, setListing] = useState(false)
@@ -314,7 +318,12 @@ function Page() {
       upload(file)
       return
     }
+    /* One photo at a time: a second one started while the first is being read, or
+       while its reading is still on screen, would throw away a correction nobody
+       asked to lose. */
+    if (recognising || reading !== null) return
     setNotice(null)
+    setRecognising(true)
     readImage(file)
       .then((said) => setReading({ image: file.name, read: said }))
       .catch(() =>
@@ -322,6 +331,7 @@ function Page() {
           'That photo could not be read: the reading is fetched the first time it is used, and it did not arrive.',
         ),
       )
+      .finally(() => setRecognising(false))
   }
 
   /* Written once and drawn in one of two places — the middle, or the rail beside a
@@ -378,7 +388,7 @@ function Page() {
       onTake={take}
       onChange={change}
       onUpload={added}
-      uploading={indexing.length > 0}
+      uploading={indexing.length > 0 || recognising || reading !== null}
     />
   )
 

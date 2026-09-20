@@ -16,3 +16,7 @@
 ## 4. Close it
 
 - [x] 4.1 Drop the marker and watch the browser test pass — it was held red by taking the wiring out rather than by a marker, since the tier has no xfail.
+
+## 5. Found on review
+
+- [x] 5.1 Write a test that the control offers what cora reads and photos, rather than everything the disk holds.

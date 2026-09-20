@@ -13,6 +13,9 @@ import styles from './Answer.module.css'
 
 const WORKING = 'Working…'
 const ADD = 'Add a file or photo'
+/* What cora reads, and what the page reads for it: a photo is recognised here and
+   uploaded as the text, so it belongs in the same list. */
+const READS = '.txt,.md,.pdf,image/*'
 const ADDING = 'Adding a file…'
 const CHANGE = 'Change'
 const DECIDING = 'cora is waiting on your answer above.'
@@ -185,6 +188,7 @@ export default function Answer({
               <span aria-hidden="true">＋</span>
               <input
                 type="file"
+                accept={READS}
                 aria-label={uploading ? ADDING : ADD}
                 disabled={uploading}
                 onChange={(e) => {

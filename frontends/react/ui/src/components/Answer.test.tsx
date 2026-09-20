@@ -54,3 +54,12 @@ test('the control says an upload is running and takes no second file', () => {
 
   expect(onUpload).not.toHaveBeenCalled()
 })
+
+/* Found in review: the rail's control filters what cora cannot read, and this one sent
+   everything to the server for a refusal it could have said itself. */
+test('it offers what cora reads, and photos', () => {
+  composer()
+
+  const picked = screen.getByLabelText(ADD) as HTMLInputElement
+  expect(picked.accept).toBe('.txt,.md,.pdf,image/*')
+})

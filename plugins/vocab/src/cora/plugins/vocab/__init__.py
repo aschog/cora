@@ -83,7 +83,7 @@ def extend(cora: Host) -> None:
     keeps: searching the lists is cora's own tool, and reading a screenshot into one is
     cora's own screen."""
     cora.register_instructions(INSTRUCTIONS, scope=SCOPE)
-    drill = Drill(cora)
+    drill = Drill(cora, SCOPE)
     cora.register_tool(
         name="next_word",
         description=(
