@@ -19,8 +19,10 @@
 
 ## 4. The words
 
-- [x] 4.1 Write a test that the pairs are read out of the field's Markdown lists, with the heading's language.
+- [x] 4.1 Write a test that the pairs are read out of a Markdown table, with what its header calls the two columns.
 - [x] 4.2 Write a test that a document that is not a list contributes no pairs.
+- [x] 4.3 Write a test that a list of lines — numbered, em-dashed, as the reading of a screenshot saves one — gives its pairs too. Found by drilling a real saved list: the drill said the field held nothing.
+- [x] 4.4 Write a test that a word holding a hyphen is not split at it, and that two spaces or a tab are a gap.
 
 ## 5. The tools
 

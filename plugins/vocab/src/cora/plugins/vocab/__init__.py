@@ -8,10 +8,13 @@ SCOPE = "vocab"
 WORD_SCHEMA = {
     "type": "object",
     "properties": {
-        "direction": {
+        "side": {
             "type": "string",
-            "enum": ["from_german", "from_learning"],
-            "description": "Which side to put to the reader. German by default.",
+            "enum": ["left", "right"],
+            "description": (
+                "Which column of the list to put to the reader. The left one by "
+                "default; the reader says which way round they want to be asked."
+            ),
         }
     },
 }
@@ -32,14 +35,18 @@ INSTRUCTIONS = """\
 Answer from the vocabulary lists this field holds: what a word means, where it is on a
 list, and which other words on it are near it.
 
-- A list is a Markdown table. Its heading names the language, the first column is
-  German, and the second is the language being learnt.
+- A list is either a Markdown table, whose header names its two columns, or a line per
+  pair as the reading of a screenshot saves one, which names neither. Which column is
+  which language is the reader's to say, and `next_word` repeats whatever the list
+  says.
 - Search the documents for any question about a word, and cite the list it came from.
 - When a word is on none of the lists, say so plainly, then answer from what you know.
 - Never translate a word into a list, or say a word is on one without having found it.
 
 Practising runs on the two tools. `next_word` says which word to put — it reads the
-schedule this field keeps and hands back the side being asked. `how_it_went` records
+schedule this field keeps and hands back one side of a pair, naming the list and, where
+the list says, what that side is called. Ask the reader which side they want to be
+asked from before the first word, and pass it as `side`. `how_it_went` records
 the reader's answer, and moves that word's schedule. Never pick a word yourself, never
 work out when one is next due, and call `how_it_went` exactly once per answer.
 
@@ -49,7 +56,7 @@ the first is answered.
 
 - Do not show the other half of a pair, or any list of words, while practising.
 - Show a whole list only when the reader has asked to see one.
-- Ask which way round and which list before the first word, not after it.
+- Ask which way round before the first word, not after it, and pass it every time.
 - A hint is a memory bridge, built the way Geisselhart's method builds one, and it is
   built for the word the reader has to produce — the answer, never the word already on
   the table, which they can see. Find a German word that sounds like that answer, tie
