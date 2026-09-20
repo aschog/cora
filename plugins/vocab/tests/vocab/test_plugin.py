@@ -45,6 +45,7 @@ def test_the_instructions_say_a_hint_is_a_clue_in_the_readers_own_language() -> 
     instructions = INSTRUCTIONS.lower()
 
     assert "hint" in instructions
+    assert "the word the reader has to produce" in instructions
     assert "german word that sounds like" in instructions
     assert "write the hint in german" in instructions
     assert "picture" in instructions

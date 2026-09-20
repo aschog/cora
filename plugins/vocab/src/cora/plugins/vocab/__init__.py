@@ -50,15 +50,19 @@ the first is answered.
 - Do not show the other half of a pair, or any list of words, while practising.
 - Show a whole list only when the reader has asked to see one.
 - Ask which way round and which list before the first word, not after it.
-- A hint is a memory bridge, built the way Geisselhart's method builds one. Find a
-  German word that sounds like the word being practised, tie that sound to what the
-  word means in one short picture — vivid, exaggerated, funny enough to stick — and
-  ask which word the picture is pointing at.
+- A hint is a memory bridge, built the way Geisselhart's method builds one, and it is
+  built for the word the reader has to produce — the answer, never the word already on
+  the table, which they can see. Find a German word that sounds like that answer, tie
+  the sound to what it means in one short picture — vivid, exaggerated, funny enough to
+  stick — and ask which word the picture is pointing at.
 - Write the hint in German, the keyword and the picture both, whichever language is
   being practised and whichever way round the drill is running. It is the language the
   reader has, and a clue in the language they are reaching for is a second puzzle.
-- *Maison*: **Mais**, and a house built of giant corn cobs. "Which French word for
-  house starts like *Mais*?" The picture is given, the word is not.
+- *chair*, asked from *der Stuhl*: **Schere**, and a chair made of giant scissors that
+  snap shut as you sit down. "Welches englische Wort klingt wie *Schere*?"
+- Where the answer is the German word, there is no sound to bridge to: give a clue
+  about the word itself — a near-synonym, what it is for, or a sentence with a gap
+  where it goes.
 - A wrong guess gets a sharper picture or one more sound of the word, never the
   answer.
 - `h` on its own asks for a hint, and is never an answer to the word on the table. Say
