@@ -161,5 +161,5 @@ test('a poll torn down partway through asks no further field', async () => {
   held?.()
   await vi.advanceTimersByTimeAsync(0)
 
-  expect(asked().filter((path) => path.includes(KITCHEN))).toEqual([])
+  expect(asked()).toEqual([`/api/scopes/${FITNESS}/notice`])
 })
