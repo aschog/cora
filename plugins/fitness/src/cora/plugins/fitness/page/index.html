@@ -641,7 +641,7 @@ function render(){
         <span class="lbl">${CLIP_LBL[i] || c.l}</span>
       </button>`;
     }).join('')}</div>
-    <h2 class="ex-name" lang="ru">${p.n}</h2>
+    <h2 class="ex-name" lang="ru">${esc(p.n)}</h2>
     <div class="nav">
       <button data-nav="-1" title="Previous exercise" ${at ? '' : 'disabled'}>‹</button>
       <button data-nav="1" title="Next exercise" ${at < PLAN.length-1 ? '' : 'disabled'}>›</button>
@@ -652,7 +652,7 @@ function render(){
     return `<button class="row${q.id === cur ? ' on' : ''}${t.done >= q.s ? ' complete' : ''}"
               data-go="${q.id}">
       <span class="ix">${String(i+1).padStart(2,'0')}</span>
-      <span class="nm" lang="ru">${q.n}</span>
+      <span class="nm" lang="ru">${esc(q.n)}</span>
       ${q.id === cur ? '<span class="rest" id="restrow">0</span>' : ''}
     </button>`;
   }).join('');

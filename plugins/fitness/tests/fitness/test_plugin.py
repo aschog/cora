@@ -353,3 +353,20 @@ def test_the_finish_reads_where_the_workout_stands() -> None:
     assert "CHECK + ' Saved'" in drawn
     assert "saved = true" in drawn
     assert "saved = false" in drawn
+
+
+def test_the_trainer_places_an_exercises_name_as_text() -> None:
+    """The plan is a published sheet read straight from the browser, so a cell is text
+    somebody else wrote. The page is served from cora's own origin and framed without a
+    sandbox, so markup in a cell that reaches `innerHTML` runs against cora's API. Every
+    interpolation of a name goes through `esc` — the file already has one."""
+    drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
+
+    named = [
+        found
+        for found in re.findall(r"\$\{([^{}]*)\}", drawn)
+        if re.search(r"\b\w+\.n\b", found)
+    ]
+
+    assert named, "the page interpolates no name at all"
+    assert [found for found in named if "esc(" not in found] == []
