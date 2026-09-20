@@ -1,3 +1,278 @@
 <!doctype html>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vocabulary</title>
+
+<!-- The vocabulary field's page: a screenshot read where it was dropped, corrected by
+     the reader, and saved into the field as one Markdown list. The reading is
+     Tesseract compiled to WebAssembly, so the image never leaves this browser. -->
+
+<style>
+  :root { color-scheme: light dark; --edge: #8883; --ink: canvastext; }
+  body { margin: 0; font: 15px/1.5 system-ui, sans-serif; }
+  main { max-width: 48rem; margin: 0 auto; padding: 1.25rem 1rem 4rem; }
+  h1 { font-size: 1.1rem; margin: 0 0 1rem; }
+  .row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
+  label { display: flex; gap: .4rem; align-items: center; }
+  select, input, button { font: inherit; padding: .35rem .5rem; }
+  input, select { border: 1px solid var(--edge); border-radius: .3rem; background: transparent; color: var(--ink); }
+  button { border: 1px solid var(--edge); border-radius: .3rem; background: transparent; color: var(--ink); cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  #drop { margin: 1rem 0; padding: 2rem 1rem; border: 2px dashed var(--edge); border-radius: .5rem; text-align: center; }
+  #drop.over { border-style: solid; }
+  table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
+  td, th { border-bottom: 1px solid var(--edge); padding: .2rem; text-align: left; }
+  td input { width: 100%; border: none; }
+  td:last-child { width: 2rem; }
+  #said { margin-top: 1rem; min-height: 1.5rem; }
+  #said.bad { color: #c33; }
+  #saved { white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: .85rem; }
+</style>
+
+<main>
+  <h1>Vocabulary</h1>
+
+  <div class="row">
+    <label>Language
+      <select id="language"></select>
+    </label>
+    <label>List
+      <input id="title" placeholder="Einheit 3" size="14">
+    </label>
+    <button id="add">Add a row</button>
+    <button id="save">Save to cora</button>
+  </div>
+
+  <div id="drop">
+    Drop a screenshot here, paste one, or
+    <input id="file" type="file" accept="image/*">
+  </div>
+
+  <table>
+    <thead><tr><th>Deutsch</th><th id="learning">Learning</th><th></th></tr></thead>
+    <tbody id="rows"></tbody>
+  </table>
+
+  <p id="said"></p>
+  <pre id="saved" hidden></pre>
+</main>
+
+<script>
+/* One host, pinned: the script, its WebAssembly core and every language's data.
+   `gh-pages` is where naptha publishes the trained data; the 4.0.0 directory under it
+   is what tesseract.js 7 reads. */
+const CDN = 'https://cdn.jsdelivr.net';
+const READER = CDN + '/npm/tesseract.js@7.0.0/dist/tesseract.min.js';
+const WORKER = CDN + '/npm/tesseract.js@7.0.0/dist/worker.min.js';
+const CORE = CDN + '/npm/tesseract.js-core@7.0.0';
+const DATA = CDN + '/gh/naptha/tessdata@gh-pages/4.0.0';
+
+/* The languages the page offers, each with the code its trained data is named by and
+   the ASCII slug its documents are named with. Learning a language that is not here is
+   a line added to this list. */
+const LANGUAGES = [
+  { name: 'Lietuvių', code: 'lit', slug: 'lietuviu' },
+  { name: 'English', code: 'eng', slug: 'english' },
+  { name: 'Español', code: 'spa', slug: 'espanol' },
+  { name: 'Français', code: 'fra', slug: 'francais' },
+  { name: 'Italiano', code: 'ita', slug: 'italiano' },
+  { name: 'Nederlands', code: 'nld', slug: 'nederlands' },
+  { name: 'Polski', code: 'pol', slug: 'polski' },
+  { name: 'Português', code: 'por', slug: 'portugues' },
+  { name: 'Svenska', code: 'swe', slug: 'svenska' },
+  { name: 'Türkçe', code: 'tur', slug: 'turkce' },
+];
+
+const GERMAN = { name: 'Deutsch', code: 'deu' };
+
+/* The field is the path this page is served under, so the page uploads into the field
+   it belongs to without the plugin writing its own name twice. */
+const FIELD = decodeURIComponent((location.pathname.match(/\/pages\/([^/]+)\//) || [])[1] || '');
+const UPLOAD = '/api/documents';
+
+/* A line of recognised text is a pair wherever it is split by something wider than a
+   word space: a column gap, a dash, a colon, a tab. One space is the fallback, because
+   a two-word line is the common screenshot and everything else the reader corrects. */
+const GAP = /\s{2,}|\t+|\s+[—–-]\s+|\s*[:;]\s+/;
+
+function rowFrom(line) {
+  const said = line.trim().replace(/\s+/g, (run) => run);
+  if (!said) return null;
+  const at = said.search(GAP);
+  if (at > 0) {
+    const gap = said.slice(at).match(GAP)[0];
+    return { German: said.slice(0, at).trim(), learning: said.slice(at + gap.length).trim() };
+  }
+  const space = said.lastIndexOf(' ');
+  if (space > 0) return { German: said.slice(0, space).trim(), learning: said.slice(space + 1).trim() };
+  return { German: said, learning: '' };
+}
+
+function rowsFrom(text) {
+  return String(text || '').split('\n').map(rowFrom).filter(Boolean);
+}
+
+const cell = (word) => String(word).replace(/\|/g, '\\|').trim();
+
+function listText(language, title, rows) {
+  const pairs = rows.filter((row) => cell(row.German) && cell(row.learning));
+  if (!pairs.length) return '';
+  const head = '# ' + language + (title ? ' — ' + title : '');
+  const table = ['| Deutsch | ' + language + ' |', '| --- | --- |']
+    .concat(pairs.map((row) => '| ' + cell(row.German) + ' | ' + cell(row.learning) + ' |'));
+  return head + '\n\n' + table.join('\n') + '\n';
+}
+
+const slug = (said) => String(said).toLowerCase().normalize('NFD')
+  .replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+
+function listName(language, title) {
+  const named = slug(title) || new Date().toISOString().slice(0, 10);
+  return slug(language.slug || language.name) + '-' + named + '.md';
+}
+
+Object.assign(window, { rowFrom, rowsFrom, listText, listName });
+
+/* The page itself. */
+const picked = () => LANGUAGES[document.getElementById('language').selectedIndex] || LANGUAGES[0];
+const rowsOf = () => Array.from(document.querySelectorAll('#rows tr')).map((tr) => ({
+  German: tr.children[0].firstElementChild.value,
+  learning: tr.children[1].firstElementChild.value,
+}));
+
+function say(words, bad) {
+  const said = document.getElementById('said');
+  said.textContent = words;
+  said.classList.toggle('bad', Boolean(bad));
+}
+
+function draw(rows) {
+  const body = document.getElementById('rows');
+  body.replaceChildren();
+  rows.forEach((row) => body.append(drawn(row)));
+}
+
+function drawn(row) {
+  const tr = document.createElement('tr');
+  [row.German, row.learning].forEach((word) => {
+    const td = document.createElement('td');
+    const input = document.createElement('input');
+    input.value = word || '';
+    td.append(input);
+    tr.append(td);
+  });
+  const td = document.createElement('td');
+  const drop = document.createElement('button');
+  drop.textContent = '×';
+  drop.title = 'Take this row out';
+  drop.addEventListener('click', () => tr.remove());
+  td.append(drop);
+  tr.append(td);
+  return tr;
+}
+
+let loading = null;
+function reader() {
+  if (window.Tesseract) return Promise.resolve(window.Tesseract);
+  if (!loading) {
+    loading = new Promise((resolve, refuse) => {
+      const script = document.createElement('script');
+      script.src = READER;
+      script.onload = () => resolve(window.Tesseract);
+      script.onerror = () => { loading = null; refuse(new Error('the reader could not be fetched')); };
+      document.head.append(script);
+    });
+  }
+  return loading;
+}
+
+async function read(image) {
+  const language = picked();
+  say('Reading the screenshot…');
+  let text;
+  try {
+    const Tesseract = await reader();
+    const worker = await Tesseract.createWorker([GERMAN.code, language.code], 1, {
+      workerPath: WORKER, corePath: CORE, langPath: DATA,
+    });
+    ({ data: { text } } = await worker.recognize(image));
+    await worker.terminate();
+  } catch (failed) {
+    draw(rowsOf());
+    say('The reading could not be run: ' + failed.message + '. Type the words instead.', true);
+    return;
+  }
+  const rows = rowsFrom(text);
+  if (!rows.length) {
+    draw([{ German: '', learning: '' }]);
+    say('Nothing was read in that image. Type the words instead.', true);
+    return;
+  }
+  draw(rows);
+  say('Read ' + rows.length + ' rows. Correct them, then save.');
+}
+
+async function save() {
+  const language = picked();
+  const title = document.getElementById('title').value.trim();
+  const text = listText(language.name, title, rowsOf());
+  if (!text) {
+    say('There is nothing to save yet.', true);
+    return;
+  }
+  const name = listName(language, title);
+  const form = new FormData();
+  form.append('file', new Blob([text], { type: 'text/markdown' }), name);
+  form.append('scope', FIELD);
+  try {
+    const answered = await fetch(UPLOAD, { method: 'POST', body: form });
+    const said = await answered.json();
+    if (!answered.ok) throw new Error(said.error || answered.status);
+    say('Saved as ' + name + ' in the ' + said.scope + ' field.');
+    document.getElementById('saved').hidden = true;
+  } catch (failed) {
+    say('cora refused the list: ' + failed.message + '. It is below to copy.', true);
+    const shown = document.getElementById('saved');
+    shown.textContent = text;
+    shown.hidden = false;
+  }
+}
+
+function start() {
+  const select = document.getElementById('language');
+  LANGUAGES.forEach((language) => {
+    const option = document.createElement('option');
+    option.textContent = language.name;
+    select.append(option);
+  });
+  const learning = () => { document.getElementById('learning').textContent = picked().name; };
+  select.addEventListener('change', learning);
+  learning();
+
+  document.getElementById('add').addEventListener('click', () => {
+    document.getElementById('rows').append(drawn({ German: '', learning: '' }));
+  });
+  document.getElementById('save').addEventListener('click', save);
+  document.getElementById('file').addEventListener('change', (event) => {
+    if (event.target.files[0]) read(event.target.files[0]);
+  });
+
+  const drop = document.getElementById('drop');
+  ['dragenter', 'dragover'].forEach((named) => drop.addEventListener(named, (event) => {
+    event.preventDefault();
+    drop.classList.add('over');
+  }));
+  ['dragleave', 'drop'].forEach((named) => drop.addEventListener(named, () => drop.classList.remove('over')));
+  drop.addEventListener('drop', (event) => {
+    event.preventDefault();
+    const [file] = event.dataTransfer.files;
+    if (file) read(file);
+  });
+  document.addEventListener('paste', (event) => {
+    const item = Array.from(event.clipboardData.items).find((each) => each.type.startsWith('image/'));
+    if (item) read(item.getAsFile());
+  });
+}
+
+start();
+</script>

@@ -71,6 +71,7 @@ e2e-store:
 	mkdir -p $(E2E_STORE)/plugins
 	cp -R tests/e2e/plugins/. $(E2E_STORE)/plugins/
 	ln -s $(CURDIR)/plugins/fitness/src/cora/plugins/fitness $(E2E_STORE)/plugins/fitness
+	ln -s $(CURDIR)/plugins/vocab/src/cora/plugins/vocab $(E2E_STORE)/plugins/vocab
 
 e2e: ui-build e2e-store
 	cd frontends/react/ui && npx playwright test

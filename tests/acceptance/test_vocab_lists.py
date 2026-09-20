@@ -1,7 +1,6 @@
 """The outer test for the story: the vocab field brings a page, a list the page saved
 lands in that field as a document, and cora answers about a word from there."""
 
-import pytest
 from starlette.testclient import TestClient
 
 from app_builder import assembled
@@ -25,7 +24,6 @@ QUESTION = "Was heißt Hilfe auf Litauisch?"
 ANSWER = "pagalba [1]."
 
 
-@pytest.mark.xfail(strict=True, reason="the vocab plugin is what this change brings")
 def test_the_vocab_page_is_served_and_what_it_saved_is_answered_from() -> None:
     app = assembled(
         plugins=(load_plugin("cora.plugins.vocab"),),
