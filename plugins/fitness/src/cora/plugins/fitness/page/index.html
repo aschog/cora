@@ -917,7 +917,8 @@ function poseTick(now){
   if (poseAt) poseFps = poseFps ? poseFps*.9 + (1000/(now-poseAt))*.1 : 1000/(now-poseAt);
   poseAt = now;
 
-  poseShow(res.landmarks && res.landmarks[0], now);
+  poseShow(res.landmarks && res.landmarks[0], now,
+           camView.videoWidth / camView.videoHeight);
 }
 
 /* What one frame's pose is for: the skeleton, the readout, and the count, so the three
@@ -926,14 +927,14 @@ function poseTick(now){
    camera is what proves the loop still calls this.
    `poseDraw` is null until the model loads, which poseTick cannot outrun; the guard is
    here so the suite can turn this by hand without MediaPipe. */
-function poseShow(lm, now){
+function poseShow(lm, now, aspect){
   poseCtx.clearRect(0, 0, poseCanvas.width, poseCanvas.height);
   if (lm && poseDraw){
     poseDraw.drawConnectors(lm, poseLib.PoseLandmarker.POSE_CONNECTIONS,
                             {color:'rgba(236,233,228,.85)', lineWidth:3});
     poseDraw.drawLandmarks(lm, {color:'#E8C11C', fillColor:'#E8C11C', radius:4});
   }
-  repSaw(lm, now);
+  repSaw(lm, now, aspect);
   if (now - poseHudAt > 250){                        // readable, and no layout thrash
     poseHudAt = now;
     poseHud.textContent = poseReadout(lm);
@@ -973,15 +974,19 @@ function repReset(){
 function repPaint(){ repNum.textContent = reps.count; }
 
 /* Both wrists in the torso's own frame: measured from the middle of the torso box and
-   divided by its length, so distance from the camera and walking about drop out. */
-function repWhere(lm){
+   divided by its length, so distance from the camera and walking about drop out.
+   The model normalises x by the frame's width and y by its height, which are not the
+   same distance, so x is put back on y's scale first -- otherwise a hand travelling
+   across the frame reads shorter than the same hand travelling down it. */
+function repWhere(lm, aspect){
+  const wide = aspect > 0 ? aspect : 1;        // before the video has a size of its own
   const mid = (a, b) => ({x: (a.x + b.x)/2, y: (a.y + b.y)/2});
   for (const i of [11, 12, 15, 16, 23, 24]) if (!lm || !lm[i]) return null;
   const sh = mid(lm[11], lm[12]), hp = mid(lm[23], lm[24]);
-  const len = Math.hypot(sh.x - hp.x, sh.y - hp.y);
+  const len = Math.hypot((sh.x - hp.x)*wide, sh.y - hp.y);
   if (len < 1e-3) return null;                 // folded flat: nothing to divide by
   const c = mid(sh, hp);
-  const at = p => [(p.x - c.x)/len, (p.y - c.y)/len];
+  const at = p => [(p.x - c.x)*wide/len, (p.y - c.y)/len];
   return at(lm[15]).concat(at(lm[16]));
 }
 
@@ -994,10 +999,10 @@ function repWhere(lm){
    frame everything is measured in. And a joint the model is guessing at counts the same
    as one it can see, since `visibility` is read out but never read. Per-exercise
    signals, or a second frame of reference, if any of it starts to matter. */
-function repSaw(lm, now){
+function repSaw(lm, now, aspect){
   // `restEnd` is the rest timer's, declared below: every path here is post-parse
   if (restEnd > Date.now()) return;            // the bell going down is not the next set
-  const where = repWhere(lm);
+  const where = repWhere(lm, aspect);
   if (!where) return;                          // nobody in frame is not a turning point
   document.body.classList.add('counting');
   reps.seen.push({now, where});

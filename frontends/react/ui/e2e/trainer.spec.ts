@@ -696,13 +696,22 @@ const snatch = (phase: number): Frame =>
 
 /* Hands the frames to the page one at a time, at the rate the camera delivers them, and
    through the door the pose loop uses rather than the counter's own. */
-async function alsoFeed(page: Page, frames: Frame[]): Promise<void> {
-  await page.evaluate((given) => {
-    const overlay = window as unknown as {
-      poseShow: (lm: unknown, now: number) => void;
-    };
-    given.forEach((lm, i) => overlay.poseShow(lm, (i * 1000) / 30));
-  }, frames);
+async function alsoFeed(
+  page: Page,
+  frames: Frame[],
+  aspect: number = 1,
+): Promise<void> {
+  await page.evaluate(
+    ([given, wide]) => {
+      const overlay = window as unknown as {
+        poseShow: (lm: unknown, now: number, aspect: number) => void;
+      };
+      (given as Frame[]).forEach((lm, i) =>
+        overlay.poseShow(lm, (i * 1000) / 30, wide as number),
+      );
+    },
+    [frames, aspect] as [Frame[], number],
+  );
 }
 
 /* The rest after a logged set, tapped away — which is what a lifter does when they are
@@ -716,11 +725,15 @@ async function done(page: Page): Promise<void> {
 }
 
 /* The same, from a counter put back to nought — which is where a set starts. */
-async function feed(page: Page, frames: Frame[]): Promise<void> {
+async function feed(
+  page: Page,
+  frames: Frame[],
+  aspect: number = 1,
+): Promise<void> {
   await page.evaluate(() =>
     (window as unknown as { repReset: () => void }).repReset(),
   );
-  await alsoFeed(page, frames);
+  await alsoFeed(page, frames, aspect);
 }
 
 test("the camera counts the reps it sees", async ({ page }) => {
@@ -1030,4 +1043,27 @@ test("a movement the arms do not make against the torso counts nothing", async (
   await feed(page, cycles(4, racked));
 
   await expect(page.locator("#repnum")).toHaveText("0");
+});
+
+/* Landmarks are normalised by the frame's own width and height, so on a 16:9 stream one
+   unit across is 1.78 times the distance of one unit down. The same travel of the hand
+   has to count the same whichever way it goes. */
+const WIDE = 16 / 9;
+
+const upDown = (phase: number): Frame =>
+  pose({ wrist: { x: 0.5, y: 0.5 + 0.08 * Math.cos(phase) } });
+
+const sideToSide = (phase: number): Frame =>
+  pose({ wrist: { x: 0.5 + (0.08 / WIDE) * Math.cos(phase), y: 0.5 } });
+
+test("the same travel counts the same across the frame as down it", async ({
+  page,
+}) => {
+  await page.goto(TRAINER);
+
+  await feed(page, cycles(4, upDown), WIDE);
+  await expect(page.locator("#repnum")).toHaveText("4");
+
+  await feed(page, cycles(4, sideToSide), WIDE);
+  await expect(page.locator("#repnum")).toHaveText("4");
 });
