@@ -4,9 +4,9 @@
 
 ## 2. The plugin
 
-- [ ] 2.1 Write a test that the vocab plugin registers instructions and a page under the vocab field, and registers no tool.
-- [ ] 2.2 Write a test that the directory it registers is the one shipped beside the module, holding an entry page.
-- [ ] 2.3 Write the guard entry that the vocab package imports nothing outside cora, and that its page ships in its wheel.
+- [x] 2.1 Write a test that the vocab plugin registers instructions and a page under the vocab field, and registers no tool.
+- [x] 2.2 Write a test that the directory it registers is the one shipped beside the module, holding an entry page.
+- [x] 2.3 Write the guard entry that the vocab package imports nothing outside cora, and that its page ships in its wheel.
 
 ## 3. What the page writes
 

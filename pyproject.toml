@@ -53,6 +53,7 @@ cora-plugin-fitness = { workspace = true }
 cora-plugin-interview = { workspace = true }
 cora-plugin-security = { workspace = true }
 cora-plugin-travel = { workspace = true }
+cora-plugin-vocab = { workspace = true }
 cora-frontend-react = { workspace = true }
 cora-frontend-telegram = { workspace = true }
 
@@ -64,6 +65,7 @@ dev = [
     "cora-plugin-interview",
     "cora-plugin-security",
     "cora-plugin-travel",
+    "cora-plugin-vocab",
     "httpx>=0.28.1",
     "mkdocs>=1.6.1",
     "mkdocs-gen-files>=0.6.1",
@@ -90,6 +92,7 @@ root = [
     "plugins/interview/src",
     "plugins/security/src",
     "plugins/travel/src",
+    "plugins/vocab/src",
     "tests/helpers",
 ]
 
@@ -103,6 +106,7 @@ src = [
     "plugins/interview/src",
     "plugins/security/src",
     "plugins/travel/src",
+    "plugins/vocab/src",
     "tests/helpers",
 ]
 

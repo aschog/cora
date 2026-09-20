@@ -52,6 +52,10 @@ def test_the_vocab_page_is_served_and_what_it_saved_is_answered_from() -> None:
         served = reader.get(where)
         assert served.status_code == 200
         assert "<!doctype html" in served.text.lower()
+        # The page is what writes a list: it reads a screenshot where it was dropped,
+        # and posts what the reader corrected to cora.
+        assert "tesseract" in served.text.lower()
+        assert "/api/documents" in served.text
 
         # What the page posts when the reader saves, and how it posts it.
         added = reader.post(
