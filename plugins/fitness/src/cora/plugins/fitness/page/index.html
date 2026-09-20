@@ -6,13 +6,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Training">
-<meta name="theme-color" content="#14161B">
+<meta name="theme-color" content="#0a0c11">
 <title>Training</title>
 <style>
 :root{
-  --iron:#14161B;
-  --surface:#1B1E25;
-  --line:#2A2F38;
+  --iron:#0a0c11;
+  --surface:#12161d;
+  --line:#232a34;
   --chalk:#ECE9E4;
   --muted:#868D99;
   --accent:#E8C11C;
@@ -20,9 +20,12 @@
   --done:#2E9E5B;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;padding:0}
+html,body{margin:0;padding:0;background:transparent;scrollbar-color:var(--line) transparent}
+/* See-through: the frame stands on cora's ground, so the shell's gradient runs under
+   the page instead of stopping at its edge. No `color-scheme` above it — a declared
+   scheme makes the browser paint the canvas, which is the very thing being let go. */
 body{
-  background:var(--iron);
+  background:transparent;
   color:var(--chalk);
   font:400 16px/1.35 'Iowan Old Style','Palatino Linotype',Palatino,
        'Book Antiqua',Georgia,'Times New Roman',serif;
@@ -36,8 +39,6 @@ button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:poin
 /* ---- header: two buttons, nothing else ---- */
 header{
   flex:none;z-index:30;
-  background:rgba(20,22,27,.94);
-  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
   padding:calc(12px + env(safe-area-inset-top)) 16px 12px;
   display:flex;align-items:center;gap:10px;
 }
