@@ -67,6 +67,12 @@ down, so a new one is a change somebody made rather than a change nobody saw.
 - **WHEN** the lifter moves in front of the camera
 - **THEN** the count stands at nought until the rest is over
 
+#### Scenario: One limb works and the other travels with it
+
+- **GIVEN** a lift one arm does while the other swings nearly as far
+- **WHEN** the working arm changes over mid-set
+- **THEN** the handover counts nothing, and every repetition still counts once
+
 #### Scenario: Stillness is not counted
 
 - **GIVEN** the pose overlay on

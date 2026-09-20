@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+import { readFileSync } from "node:fs";
+
 import { fresh } from "./helpers";
 
 /* The fitness trainer, in the only tier that can run it: it is the plugin's own
@@ -1066,4 +1068,93 @@ test("the same travel counts the same across the frame as down it", async ({
 
   await feed(page, cycles(4, sideToSide), WIDE);
   await expect(page.locator("#repnum")).toHaveText("4");
+});
+
+/* ---- a one-arm lift, where the free arm travels as far as the working one ----------
+   Both wrists swing, out of phase with each other, so "whichever coordinate swung
+   widest" has two near-equal candidates and changes its mind mid-set. */
+
+/* A pose whose wrists sit where they are put, on a torso of fixed size: centre (.5,.5),
+   one torso length 0.4, so a coordinate here is already in torso lengths. */
+function posed(w: number[]): Point[] {
+  const lm: Point[] = Array.from({ length: 33 }, () => ({ x: 0.5, y: 0.5 }));
+  lm[11] = { x: 0.4, y: 0.3 };
+  lm[12] = { x: 0.6, y: 0.3 };
+  lm[23] = { x: 0.42, y: 0.7 };
+  lm[24] = { x: 0.58, y: 0.7 };
+  lm[15] = { x: 0.5 + w[0] * 0.4, y: 0.5 + w[1] * 0.4 };
+  lm[16] = { x: 0.5 + w[2] * 0.4, y: 0.5 + w[3] * 0.4 };
+  return lm;
+}
+
+/* When each rep landed, by the clock the frames carry. */
+async function countsAt(
+  page: Page,
+  frames: [number, Point[]][],
+): Promise<number[]> {
+  return page.evaluate((given) => {
+    const overlay = window as unknown as {
+      repReset: () => void;
+      poseShow: (lm: unknown, now: number, aspect: number) => void;
+    };
+    overlay.repReset();
+    const read = () =>
+      Number(document.getElementById("repnum")?.textContent ?? "0");
+    const at: number[] = [];
+    let had = read();
+    for (const [ms, lm] of given) {
+      overlay.poseShow(lm, ms, 1);
+      const now = read();
+      if (now !== had) {
+        at.push(ms);
+        had = now;
+      }
+    }
+    return at;
+  }, frames);
+}
+
+const gaps = (at: number[]): number[] =>
+  at.slice(1).map((ms, i) => (ms - at[i]) / 1000);
+
+test("the arm that is not working does not add reps of its own", async ({
+  page,
+}) => {
+  await page.goto(TRAINER);
+  /* Six cycles at 1.75 s: three on the left arm, then the bell changes hands. The free
+     arm is given nine tenths of the working arm's travel, which is what a recording of
+     the real lift measures — 0.41 against 0.45 torso lengths. */
+  const per = 105;
+  const frames: [number, Point[]][] = Array.from(
+    { length: 6 * per },
+    (_, i) => {
+      const phase = ((i % per) / per) * 2 * Math.PI;
+      const swung = Math.cos(phase);
+      const [work, free] = i < 3 * per ? [1.1, 0.99] : [0.99, 1.1];
+      return [(i * 1000) / 60, posed([0, work * swung, 0, -free * swung])];
+    },
+  );
+
+  expect(await countsAt(page, frames)).toHaveLength(6);
+});
+
+test("a recorded set of one-arm swings counts at the pace it was lifted", async ({
+  page,
+}) => {
+  await page.goto(TRAINER);
+  const taped = JSON.parse(
+    readFileSync(
+      new URL("./fixtures/one-arm-swings.json", import.meta.url),
+      "utf8",
+    ),
+  ) as number[][];
+  const frames: [number, Point[]][] = taped.map((r) => [
+    r[0],
+    posed(r.slice(1)),
+  ]);
+
+  /* Twelve seconds of real landmarks, five swings an arm. No kettlebell swing cycles
+     in under a second, so a count that close behind another is one nobody lifted. */
+  const soonest = Math.min(...gaps(await countsAt(page, frames)));
+  expect(soonest).toBeGreaterThan(1);
 });

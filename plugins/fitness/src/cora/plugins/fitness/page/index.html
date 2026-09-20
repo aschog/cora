@@ -996,7 +996,9 @@ function repWhere(lm, aspect){
    ponytail: three ceilings. Rhythmic movement that is not a rep counts too, and the
    swing and gap below only narrow that. A movement the arms do not make against the
    torso -- a squat with the bell racked -- counts nothing, because the torso is the
-   frame everything is measured in. And a joint the model is guessing at counts the same
+   frame everything is measured in. A movement that suddenly travels less than half as
+   far, without a set being logged between, loses up to a window of reps while the
+   thresholds catch up. And a joint the model is guessing at counts the same
    as one it can see, since `visibility` is read out but never read. Per-exercise
    signals, or a second frame of reference, if any of it starts to matter. */
 function repSaw(lm, now, aspect){
@@ -1009,24 +1011,41 @@ function repSaw(lm, now, aspect){
   while (reps.seen.length && now - reps.seen[0].now > REP_WINDOW) reps.seen.shift();
   if (reps.seen.length < REP_ENOUGH) return;
 
-  let axis = -1, swing = 0, lo = 0, hi = 0;
-  for (let i = 0; i < where.length; i++){
+  const span = i => {
     let min = Infinity, max = -Infinity;
     for (const f of reps.seen){
       if (f.where[i] < min) min = f.where[i];
       if (f.where[i] > max) max = f.where[i];
     }
-    if (max - min > swing){ swing = max - min; axis = i; lo = min; hi = max; }
+    return [min, max];
+  };
+  /* The coordinate being followed keeps the set while it is still swinging. A one-arm
+     lift travels the free arm nearly as far as the working one, so "whichever swung
+     widest" changes hands mid-set and scores the handover as a repetition. Another
+     coordinate takes over only once this one has gone quiet. */
+  let axis = -1, swing = 0, lo = 0, hi = 0;
+  if (reps.axis >= 0){
+    const [min, max] = span(reps.axis);
+    if (max - min >= REP_MIN_SWING){ axis = reps.axis; swing = max - min; lo = min; hi = max; }
+  }
+  if (axis < 0){
+    for (let i = 0; i < where.length; i++){
+      const [min, max] = span(i);
+      if (max - min > swing){ swing = max - min; axis = i; lo = min; hi = max; }
+    }
   }
   if (swing < REP_MIN_SWING) return;
 
   const x = where[axis], top = hi - swing*REP_EDGE, bottom = lo + swing*REP_EDGE;
-  /* A coordinate just taken over counts nothing yet, and its latch is set from the
-     oldest frame rather than this one: the side the swing came from is what makes the
-     first full traverse a rep, whichever end of the movement the lifter started at. */
+  /* A coordinate just taken over counts nothing yet. At the very start its latch is set
+     from the oldest frame, so the side the swing came from makes the first full traverse
+     a rep whichever end the lifter began at. Mid-set it is latched shut instead: a
+     one-arm lift swings the free arm nearly as far as the working one, so the widest
+     coordinate changes hands, and a handover is not a repetition. */
   if (axis !== reps.axis){
+    const first = reps.axis === -1;
     reps.axis = axis;
-    reps.up = reps.seen[0].where[axis] > top;
+    reps.up = first ? reps.seen[0].where[axis] > top : true;
     return;
   }
   if (!reps.up && x > top){
@@ -1040,6 +1059,7 @@ function repSaw(lm, now, aspect){
   }
 }
 repReset();
+function repPeak(){ return {peak: reps.peak, count: reps.count, frames: reps.tape.length}; }
 
 /* ---------- rest timer ----------
    Starts itself when a set is logged. It shows over the camera stage, so with

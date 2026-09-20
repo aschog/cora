@@ -46,3 +46,6 @@ test is held with `test.fail()` until the list is done.
 - [x] 5.7 Write a test that a movement the arms do not make against the torso counts
       nothing, so the counter's ceiling is a specified limit and not a silence.
 - [x] 5.8 Write a test that the same travel counts the same across the frame as down it.
+- [x] 5.9 Write a test, on landmarks recorded off the camera, that a set of one-arm
+      swings counts at the pace it was lifted — found by running it, not by the suite.
+- [x] 5.10 Write a test that the arm which is not working adds no reps of its own.
