@@ -1,4 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
+import { fresh } from "./helpers";
 
 /* The one spec that needs a camera. Chromium is handed a fake one and told to answer
    its own prompt, so the trainer's camera goes live the way it does on a phone, with a
@@ -85,4 +86,49 @@ test("the opened camera fills the page, with the controls drawn over it", async 
     between(await box(page, "#restnum"), row, sets),
     "the rest counts down between the row and the sets",
   ).toBe(true);
+});
+
+/* In the shell, with both rails folded, the picture is the whole screen — the folded
+   rails under it — and closing the camera gives them their place back. */
+test("in the shell with both rails folded, the camera is the whole screen", async ({
+  page,
+}) => {
+  test.fail();
+  await fresh(page);
+  await page
+    .getByRole("group", { name: "Answer in" })
+    .getByRole("button", { name: "Plugin" })
+    .click();
+  await page.getByRole("button", { name: "fitness", exact: true }).click();
+  const frame = page.locator('iframe[title="fitness"]');
+  await expect(frame).toBeVisible();
+  await page.getByRole("button", { name: /Documents/ }).click();
+  await page.getByRole("button", { name: /Plan & memory/ }).click();
+  const framed = frame.contentFrame();
+  const before = await box(page, 'iframe[title="fitness"]');
+  const size = page.viewportSize();
+  expect(size).not.toBeNull();
+
+  await framed.locator("[data-cam]").click();
+  await expect(framed.locator("body")).toHaveClass(/cam-live/);
+  const whole = { x: 0, y: 0, width: size!.width, height: size!.height };
+  expect(before, "the folded rails leave the frame short of the screen").not.toEqual(
+    whole,
+  );
+  await expect
+    .poll(() => frame.boundingBox(), { message: "the frame is the whole screen" })
+    .toEqual(whole);
+  /* An element in a frame reports where it is on the page, so the picture is measured
+     against the same screen. */
+  expect(
+    await framed.locator("#camview").boundingBox(),
+    "the picture is the whole screen",
+  ).toEqual(whole);
+
+  await framed.locator("[data-cam]").click();
+  await expect
+    .poll(() => frame.boundingBox(), {
+      message: "closing the camera gives the rails their place back",
+    })
+    .toEqual(before);
 });
