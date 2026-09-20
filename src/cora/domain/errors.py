@@ -228,6 +228,12 @@ class MemoryStoreError(AdapterError):
     message = "What I remember about you is temporarily unavailable. Please try again."
 
 
+class PluginStoreError(AdapterError):
+    """What a plugin keeps for itself could not be read or written."""
+
+    message = "A plugin could not reach what it keeps. Please try again."
+
+
 class DocumentStoreError(AdapterError):
     """A document's kept text could not be read or written, so no span can be opened."""
 

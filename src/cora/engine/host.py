@@ -40,6 +40,7 @@ from cora.ports.memory import Memory
 from cora.ports.output import Output
 from cora.ports.plugin import Tool, ToolRefusal, ToolResult
 from cora.ports.retrieval import RetrievedChunk
+from cora.ports.store import Kept, Store
 
 DELEGATE_BRIEF = (
     "You are answering one question on behalf of an assistant, using the tools you are "
@@ -111,6 +112,7 @@ class PluginHost:
     model: ChatModel
     memory: Memory | None = None
     output: Output | None = None
+    kept: Store | None = None
     settings: Mapping[str, str] = field(default_factory=dict)
     top_k: int = 5
     registered: list[Registration] = field(default_factory=list)
@@ -125,6 +127,17 @@ class PluginHost:
         answers for material cora does not vouch for.
         """
         return _Reading(self.index)
+
+    @property
+    def store(self) -> Kept | None:
+        """This plugin's own store, or nothing where the deployment keeps none.
+
+        Namespaced under the name cora loaded it as, so two plugins choosing one name
+        keep two values.
+        """
+        if self.kept is None:
+            return None
+        return _KeepingForGood(self.kept, name_of(self.module))
 
     @property
     def state(self) -> State:
@@ -447,6 +460,26 @@ class _Keeping:
     def keep(self, name: str, value: str | None) -> None:
         """Keep this text under this name, or drop the name given nothing."""
         keeping.keep(self.plugin, name, value)
+
+
+@dataclass(frozen=True)
+class _KeepingForGood:
+    """One plugin's row of the deployment's store, with the plugin already filled in.
+
+    The same reason `_Keeping` holds the name: only the host knows which plugin is
+    asking, and a plugin naming itself could name another.
+    """
+
+    kept: Store
+    plugin: str
+
+    def read(self, name: str) -> str | None:
+        """What this plugin kept under this name, or nothing."""
+        return self.kept.read(self.plugin, name)
+
+    def keep(self, name: str, value: str | None) -> None:
+        """Keep this text under this name, or drop the name given nothing."""
+        self.kept.keep(self.plugin, name, value)
 
 
 def _checked(shape: Mapping[str, Any]) -> None:

@@ -14,6 +14,7 @@ from cora.engine.host import (
     DELEGATE_BRIEF,
     MAX_DELEGATED_ROUNDS,
     STOPPED_EARLY,
+    name_of,
 )
 from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.engine.nesting import collecting
@@ -29,6 +30,7 @@ from fakes import (
     FakeContextSource,
     FakeMemory,
     FakeOutput,
+    FakeStore,
     ScriptedChatModel,
     add_tool,
     host_for,
@@ -326,6 +328,25 @@ def test_a_plugin_keeps_and_reads_under_its_own_name() -> None:
         host.state.keep("note", "Kyoto in May")
 
         assert host.state.read("note") == "Kyoto in May"
+
+
+def test_a_plugin_is_handed_its_own_row_of_the_deployments_store() -> None:
+    """The plugin never names itself: the host fills the name in, which is what keeps
+    one plugin's names away from another's."""
+    store = FakeStore()
+
+    host = host_for(MODULE, store=store)
+    assert host.store is not None
+    host.store.keep("schedule", "help due 2026-09-26")
+
+    assert store.kept == {(name_of(MODULE), "schedule"): "help due 2026-09-26"}
+    assert host.store.read("schedule") == "help due 2026-09-26"
+
+
+def test_a_deployment_that_keeps_nothing_hands_the_plugin_no_store() -> None:
+    """Absent rather than empty: a store that forgot every write would read as a bug in
+    the plugin."""
+    assert host_for(MODULE).store is None
 
 
 def test_a_plugin_shows_what_it_did_to_the_call_it_is_in() -> None:

@@ -201,6 +201,12 @@ its return is the whole of its decision — `None` changes nothing, at every eve
   conversation, under names no other plugin shares, gone when it is deleted. A read
   answers `str | None`, and `keep(name, None)` is how a name is dropped. Bound inside a
   tool call only: elsewhere a read is empty and a write is dropped.
+- `cora.store.keep(name, text)` / `read(name)` — text kept for good, under the plugin's
+  own name: it outlives the conversation, the process and a restart, where `cora.state`
+  outlives none of them. `keep(name, None)` drops a name, and a name nothing was kept
+  under reads as `None`. Absent where the deployment keeps no file, so check it before
+  you write. What a plugin keeps here is the plugin's own: nothing searches it, cites
+  it, recalls it or puts it in a brief.
 - `cora.delegate(task, tools=(), rounds=3, shape=None)` — a bounded loop of its own with
   the model, offered what you pass plus cora's document search. Tools declaring `effect`
   or `asks` are withheld, and a tool of yours named `search_documents` fails the call.

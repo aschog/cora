@@ -12,6 +12,7 @@ from cora.ports.context_source import ContextSource
 from cora.ports.memory import Memory
 from cora.ports.output import Output
 from cora.ports.plugin import Tool
+from cora.ports.store import Kept
 
 CONTRACT = 1
 
@@ -288,6 +289,17 @@ class Host(Protocol):
     @property
     def settings(self) -> Mapping[str, str]:
         """This plugin's own settings, read from the environment under its own name."""
+        ...
+
+    @property
+    def store(self) -> Kept | None:
+        """This plugin's own store, or nothing where the deployment keeps none.
+
+        What is kept there outlives the conversation and the process, which `state`
+        does not — and it is the plugin's own, which `memory` is not. Absent rather
+        than empty where there is nowhere to keep anything, so a plugin that needs one
+        can say so instead of losing every write.
+        """
         ...
 
     @property
