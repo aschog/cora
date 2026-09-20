@@ -23,6 +23,9 @@ the first is answered.
   German word that sounds like the word being practised, tie that sound to what the
   word means in one short picture — vivid, exaggerated, funny enough to stick — and
   ask which word the picture is pointing at.
+- Write the hint in German, the keyword and the picture both, whichever language is
+  being practised and whichever way round the drill is running. It is the language the
+  reader has, and a clue in the language they are reaching for is a second puzzle.
 - *Maison*: **Mais**, and a house built of giant corn cobs. "Which French word for
   house starts like *Mais*?" The picture is given, the word is not.
 - A wrong guess gets a sharper picture or one more sound of the word, never the

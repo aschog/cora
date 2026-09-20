@@ -37,5 +37,6 @@ def test_the_instructions_say_a_hint_is_a_clue_in_the_readers_own_language() -> 
 
     assert "hint" in instructions
     assert "german word that sounds like" in instructions
+    assert "write the hint in german" in instructions
     assert "picture" in instructions
     assert "never the\n  answer" in instructions
