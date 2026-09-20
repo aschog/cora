@@ -68,8 +68,10 @@ or the only field there is — and the right rail becomes that conversation's ch
 sessions panel has two states, the conversation you are in and the list of the others,
 with a way back between them. A conversation the rail would chat is marked in that list.
 Asking there does not move the panels to the steps, which would take the chat off the
-screen. Folding the rail gives the page the whole width. A field with no page, and a
-conversation fixed to nothing, are drawn exactly as they were.
+screen. Folding the rail gives the page the whole width, and a page that asks for the
+screen — the trainer does while its camera runs — has the whole of it while both rails
+are folded. A field with no page, and a conversation fixed to nothing, are drawn exactly
+as they were.
 
 ## A field's notice
 
