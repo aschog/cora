@@ -35,6 +35,22 @@ an iPhone does not give a page and which would hide the shell on a laptop.
 - They show only while the camera is the view, which the layer's own visibility gave
   them before.
 
+**The page asks the shell for the screen, and the shell decides.**
+
+- A frame cannot draw outside itself, so the shell is what can put it over the folded
+  rails, and the page is what knows its camera has the view.
+- One message either way, on cora's own origin, and the shell answers it only while both
+  rails are folded: with a rail open, the rail is what the reader chose.
+- Rejected: the browser's fullscreen from the page, which takes the display whatever the
+  rails show, and which an iPhone does not give a page.
+- Rejected: the shell reading the rails alone, which would bury their controls under a
+  page that never asked.
+
+**Closing the camera is the way back.**
+
+- Over the whole screen the folded rails' controls are under the picture, and the camera
+  button is over it.
+
 **The clip keeps its frame.**
 
 - A clip is watched between sets and the camera is worked through them, and only the
@@ -48,8 +64,11 @@ an iPhone does not give a page and which would hide the shell on a laptop.
   the moment of the permission prompt and nothing longer.
 - The browser tier grows a spec that needs a camera → chromium is given a fake one for
   that spec alone.
+- A page that asks and never lets go keeps the screen → the shell forgets the asking
+  when the page changes, and a page closing lets go as it goes.
 
 ## Ports, guards and diagrams
 
-- Nothing of cora's changes: no port, no guard, no diagram.
+- No port, no guard, no diagram: the message is the first thing a page says to the shell,
+  and `docs/how-to/write-a-plugin.md` writes it down.
 - The plugin's own suite holds the hosts the page may reach, and none is added.
