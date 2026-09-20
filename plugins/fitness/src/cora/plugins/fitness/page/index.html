@@ -154,14 +154,15 @@ body.resting .row.on .rest{display:block}
 #hud{position:absolute;inset:0;z-index:3;pointer-events:none}
 .player{position:relative;border-radius:12px;overflow:hidden;background:#000;aspect-ratio:16/9}
 /* the controls sit on the frame: mirror bottom left, pose bottom right */
-#cam .cap{position:absolute;left:13px;right:13px;bottom:11px;z-index:2;display:flex;gap:9px;align-items:center}
+.cap{position:absolute;left:13px;right:13px;bottom:11px;z-index:2;display:flex;gap:9px;align-items:center}
 body.cam-live #camflip{color:rgba(236,233,228,.75);text-shadow:0 1px 6px rgba(0,0,0,.8)}
-#cam .ico{
+.cap .ico{
   flex:none;width:46px;height:42px;border-radius:12px;
   font-size:15px;color:var(--muted);display:grid;place-items:center;
   background:var(--iron);border:1px solid var(--line);
 }
-#cam .ico:active{background:var(--line)}
+.cap .ico:active{background:var(--line)}
+body:not(.view-cam) .cap{display:none}
 body:not(.cam-live) #posetog{display:none}
 #posetog.on{color:var(--accent);border-color:currentColor}
 #posetog:disabled{opacity:.55}
@@ -328,14 +329,16 @@ body.resting.view-cam #restview,body.resting.view-clip #restview{display:flex}
       <div id="camstage">
         <video id="camview" playsinline autoplay muted class="flip"></video>
         <canvas id="posecanvas" class="flip"></canvas>
-        <div id="posehud"></div>
-        <div class="cap">
-          <button id="camflip" aria-pressed="true">Mirror</button>
-          <button id="posetog" class="ico" title="Pose overlay">◉</button>
-        </div>
       </div>
     </aside>
     <div id="player"></div>
+    <!-- the camera's controls and readout are the frame's, so they keep its band when
+         the camera itself has the page -->
+    <div id="posehud"></div>
+    <div class="cap">
+      <button id="camflip" aria-pressed="true">Mirror</button>
+      <button id="posetog" class="ico" title="Pose overlay">◉</button>
+    </div>
     <div id="hud">
       <div id="restview"><div class="num" id="restnum">0</div></div>
       <div id="setcount"></div>

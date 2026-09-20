@@ -10,4 +10,4 @@ Chromium is given a fake camera for this spec, the only one that needs it.
 
 ## 3. Close it
 
-- [ ] 3.1 Drop the marker and watch the outer test pass.
+- [x] 3.1 Drop the marker and watch the outer test pass.

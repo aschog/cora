@@ -37,7 +37,6 @@ const between = (part: Box, above: Box, below: Box) =>
 test("the opened camera fills the page, with the controls drawn over it", async ({
   page,
 }) => {
-  test.fail();
   await page.goto(TRAINER);
   const size = page.viewportSize();
   expect(size).not.toBeNull();
