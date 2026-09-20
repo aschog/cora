@@ -31,32 +31,60 @@
    the browser paint the canvas, which is the very thing being let go. */
 html,body{margin:0;background:transparent;scrollbar-color:var(--hairline) transparent}
 body{color:var(--text);font:400 15px/1.55 var(--serif);-webkit-font-smoothing:antialiased}
-main{max-width:46rem;margin:0 auto;padding:20px 15px 60px}
-h1{margin:0 0 15px;font-size:13px;font-weight:600;letter-spacing:.14em;
-  text-transform:uppercase;color:var(--muted)}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-label{display:flex;gap:7px;align-items:center;color:var(--muted);font-size:13px}
-select,input,button{font:inherit;color:var(--text);padding:7px 10px;border-radius:var(--radius)}
-select,input{background:var(--sunken);border:1px solid var(--hairline)}
-select:focus-visible,input:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
-button{background:var(--surface);border:1px solid var(--hairline);cursor:pointer}
-button:hover{border-color:var(--accent-hover);color:var(--accent-hover)}
-#save{background:var(--accent);border-color:var(--accent);color:#0a0c11;font-weight:600}
-#save:hover{background:var(--accent-hover);border-color:var(--accent-hover);color:#0a0c11}
-#drop{margin:15px 0;padding:30px 15px;text-align:center;color:var(--muted);
-  border:1px dashed var(--hairline);border-radius:var(--panel-radius);background:var(--sunken)}
-#drop.over{border-style:solid;border-color:var(--accent);color:var(--text)}
-#file{max-width:100%}
-table{border-collapse:collapse;width:100%;margin-top:15px}
-th{padding:5px;text-align:left;font-size:12px;font-weight:600;letter-spacing:.1em;
+main{max-width:44rem;margin:0 auto;padding:20px 15px 60px}
+
+/* A label is a small caps line in this house, and a control is the ground lifted a
+   little rather than a box drawn around it. */
+.label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+h1{margin:0;font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  font-weight:400;color:var(--muted)}
+header{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding-bottom:10px;border-bottom:1px solid var(--hairline)}
+header .spacer{flex:1}
+input,select,button{font:inherit;color:var(--text)}
+input,select{padding:6px 12px;border:0;border-radius:var(--pill);background:rgba(255,255,255,.05);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+/* The native control is a grey box of the platform's own, which is the one thing on
+   the page that would not be cora's. Its arrow is drawn beside it instead. */
+select{appearance:none;-webkit-appearance:none;padding-right:30px}
+select option{background:var(--surface);color:var(--text)}
+.pick{position:relative;display:inline-flex;align-items:center}
+.pick svg{position:absolute;right:11px;width:11px;height:11px;pointer-events:none;
+  stroke:var(--muted);fill:none;stroke-width:1.3;stroke-linecap:round;stroke-linejoin:round}
+input::placeholder{color:var(--n500,#5c6672)}
+input:focus-visible,select:focus-visible{outline:none;
+  box-shadow:inset 0 0 0 1px var(--accent),0 0 18px rgba(47,129,247,.25)}
+button{padding:6px 16px;border:0;border-radius:var(--pill);cursor:pointer;
+  font-size:14px;background:rgba(255,255,255,.06);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.1)}
+button:hover{background:rgba(255,255,255,.12)}
+#save{background:var(--accent);color:var(--bg);box-shadow:none}
+#save:hover{background:var(--accent-hover)}
+
+/* The upload wears the same dashed line the document rail's does, and the file input
+   itself is never drawn: the whole strip is what opens it. */
+#drop{display:flex;align-items:center;justify-content:center;gap:8px;
+  margin:15px 0;padding:14px;border:1px dashed var(--n400,#3a4450);border-radius:var(--radius);
+  font-size:13px;color:var(--n700,#a2abb6);cursor:pointer;text-align:center}
+#drop:hover,#drop.over{border-color:var(--accent);color:var(--accent-text,#8cc0ff)}
+#drop svg{width:15px;height:15px;flex:none;stroke:currentColor;fill:none;
+  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+#file{display:none}
+
+table{border-collapse:collapse;width:100%;margin-top:5px}
+th{padding:6px 10px;text-align:left;font-size:11px;font-weight:400;letter-spacing:.1em;
   text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--hairline)}
-td{padding:2px;border-bottom:1px solid var(--hairline)}
-td input{width:100%;background:transparent;border:1px solid transparent}
-td input:hover{border-color:var(--hairline)}
-td:last-child{width:2.2rem}
-td button{border-color:transparent;background:transparent;color:var(--muted);padding:5px 8px}
-td button:hover{color:var(--magenta);border-color:transparent}
-#said{margin-top:15px;min-height:1.55em;color:var(--muted)}
+td{padding:3px 0;border-bottom:1px solid var(--hairline)}
+td input{width:100%;padding-left:11px;background:transparent;box-shadow:none;
+  border-radius:var(--radius)}
+td input:hover{background:rgba(255,255,255,.04)}
+/* A row is a line of a list, so what has the caret is underlined rather than boxed. */
+td input:focus-visible{background:rgba(255,255,255,.04);box-shadow:inset 0 -1px 0 var(--accent)}
+td:last-child{width:2.4rem;text-align:right}
+td button{padding:2px 10px;font-size:16px;background:none;box-shadow:none;color:var(--muted)}
+td button:hover{background:none;color:var(--magenta)}
+
+#said{margin-top:15px;min-height:1.55em;color:var(--muted);font-size:13px}
 #said.bad{color:var(--magenta)}
 #saved{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
   font-size:13px;color:var(--text);background:var(--magenta-tint);
@@ -64,23 +92,25 @@ td button:hover{color:var(--magenta);border-color:transparent}
 </style>
 
 <main>
-  <h1>Vocabulary</h1>
-
-  <div class="row">
-    <label>Language
-      <select id="language"></select>
-    </label>
-    <label>List
-      <input id="title" placeholder="Einheit 3" size="14">
-    </label>
+  <header>
+    <h1>Vocabulary</h1>
+    <span class="spacer"></span>
+    <span class="pick">
+      <select id="language" aria-label="Language"></select>
+      <svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5"/></svg>
+    </span>
+    <input id="title" placeholder="Einheit 3" size="12" aria-label="List">
     <button id="add">Add a row</button>
     <button id="save">Save to cora</button>
-  </div>
+  </header>
 
-  <div id="drop">
-    Drop a screenshot here, paste one, or
+  <label id="drop">
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 16V4m0 0L8 8m4-4 4 4M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
+    </svg>
+    Drop a screenshot, paste one, or choose a file
     <input id="file" type="file" accept="image/*">
-  </div>
+  </label>
 
   <table>
     <thead><tr><th>Deutsch</th><th id="learning">Learning</th><th></th></tr></thead>
@@ -179,10 +209,12 @@ function draw(rows) {
 
 function drawn(row) {
   const tr = document.createElement('tr');
-  [row.German, row.learning].forEach((word) => {
+  [[row.German, GERMAN.name], [row.learning, picked().name]].forEach(([word, asked]) => {
     const td = document.createElement('td');
     const input = document.createElement('input');
     input.value = word || '';
+    input.placeholder = asked;
+    input.setAttribute('aria-label', asked);
     td.append(input);
     tr.append(td);
   });
@@ -274,9 +306,11 @@ function start() {
   select.addEventListener('change', learning);
   learning();
 
-  document.getElementById('add').addEventListener('click', () => {
-    document.getElementById('rows').append(drawn({ German: '', learning: '' }));
-  });
+  const add = () => document.getElementById('rows').append(drawn({ German: '', learning: '' }));
+  document.getElementById('add').addEventListener('click', add);
+  /* One row to start with: an empty table under two headings reads as broken, and the
+     reader who has no screenshot can just type. */
+  add();
   document.getElementById('save').addEventListener('click', save);
   document.getElementById('file').addEventListener('change', (event) => {
     if (event.target.files[0]) read(event.target.files[0]);
