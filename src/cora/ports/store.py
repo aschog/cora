@@ -19,6 +19,9 @@ class Kept(Protocol):
     What is kept here outlives the turn, the conversation and the process. It is text:
     a plugin keeping a schedule or a count writes and reads its own, and what the text
     means is the plugin's business rather than cora's.
+
+    Raises:
+        PluginStoreError: The store could not be reached, on a read or a keep.
     """
 
     def read(self, name: str) -> str | None:
@@ -40,7 +43,7 @@ class Store(Protocol):
     Keyed by plugin and then by name, so two plugins choosing one name keep two values.
 
     Raises:
-        StoreError: The store could not be reached. A write that cannot land is a
+        PluginStoreError: The store could not be reached. A write that cannot land is a
             failure rather than a silence, because a plugin reading nothing back would
             read it as never having kept anything.
     """

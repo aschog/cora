@@ -641,7 +641,7 @@ function render(){
         <span class="lbl">${CLIP_LBL[i] || c.l}</span>
       </button>`;
     }).join('')}</div>
-    <h2 class="ex-name" lang="ru">${p.n}</h2>
+    <h2 class="ex-name" lang="ru">${esc(p.n)}</h2>
     <div class="nav">
       <button data-nav="-1" title="Previous exercise" ${at ? '' : 'disabled'}>‹</button>
       <button data-nav="1" title="Next exercise" ${at < PLAN.length-1 ? '' : 'disabled'}>›</button>
@@ -652,7 +652,7 @@ function render(){
     return `<button class="row${q.id === cur ? ' on' : ''}${t.done >= q.s ? ' complete' : ''}"
               data-go="${q.id}">
       <span class="ix">${String(i+1).padStart(2,'0')}</span>
-      <span class="nm" lang="ru">${q.n}</span>
+      <span class="nm" lang="ru">${esc(q.n)}</span>
       ${q.id === cur ? '<span class="rest" id="restrow">0</span>' : ''}
     </button>`;
   }).join('');
@@ -1044,8 +1044,10 @@ const sessionsEl = document.getElementById('sessions');
 
 /** Anything a document can carry, placed as text rather than as markup: the headings and
     the filenames here were written by whoever uploaded into the field, not by cora. */
-const esc = text => String(text).replace(/[&<>"]/g, c =>
-  ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'})[c]);
+function esc(text){
+  return String(text).replace(/[&<>"]/g, c =>
+    ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'})[c]);
+}
 
 function drawSessions(){
   sessionsEl.innerHTML = logged.length ? '' : '<div class="empty">Nothing yet. Finish your first workout.</div>';

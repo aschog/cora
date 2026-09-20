@@ -140,3 +140,26 @@ test('a notice that cannot be read leaves the page alone', async () => {
 
   expect(globalThis.location.hash).toBe('')
 })
+
+test('a poll torn down partway through asks no further field', async () => {
+  /* The reader leaves while the first field is still answering. What the poll has not
+     asked for yet it no longer needs, and a torn-down effect asking on is a request per
+     remaining field for a screen nobody is looking at. */
+  const KITCHEN = 'kitchen'
+  let held: (() => void) | undefined
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string) => {
+      if (String(path).includes(FITNESS)) await new Promise<void>((settle) => (held = settle))
+      return { ok: true, status: 200, json: async () => ({ notice: null }) } as Response
+    }),
+  )
+
+  const drawn = render(<Watches pages={[FITNESS, KITCHEN]} sessions={[NEWER]} here="elsewhere" />)
+  await vi.advanceTimersByTimeAsync(0)
+  drawn.unmount()
+  held?.()
+  await vi.advanceTimersByTimeAsync(0)
+
+  expect(asked()).toEqual([`/api/scopes/${FITNESS}/notice`])
+})

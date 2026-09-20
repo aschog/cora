@@ -148,6 +148,18 @@ agentic RAG. It is not in the write-up above, and it is what the sprint now answ
       front of both.
       → **stories 9, 10 and 11**, and it is the capstone's headline.
 
+## Found by the pre-merge review of the review fixes
+
+- [ ] **A pin can name a field the deployment no longer offers** — `useRails` guards
+      `answered` against the fields on offer but not `pin`, so a conversation pinned to a
+      field whose plugin was removed asks `/api/documents?scope=<gone>` and gets a 400.
+      In-app removal already forgets every conversation pinned to a field going away
+      (`removal.py`), so only an out-of-band removal — the symlink deleted, cora restarted —
+      reaches it. Left open rather than fixed in the rail: falling back to `home` would
+      silently send a pinned conversation's uploads to another field. If it is closed, the
+      shape is a pass in the core at startup that forgets or unpins the conversations
+      whose field is gone, opened as its own change.
+
 ## Dropped with the Streamlit frontend
 
 Story 2's criterion: what the removed app's tests proved is asserted through the React
