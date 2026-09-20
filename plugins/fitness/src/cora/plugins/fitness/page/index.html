@@ -755,6 +755,11 @@ document.getElementById('app').addEventListener('click', e => {
    the frames. Keep it that way -- localStorage holds the workout in flight only. */
 const camView = document.getElementById('camview');
 let camStream = null;
+/* The shell this page may be framed in is told when the camera has the view, so it can
+   give the picture the whole screen; a page on its own tells nobody. */
+function askScreen(wanted){
+  if (parent !== window) parent.postMessage({cora: 'screen', wanted}, location.origin);
+}
 
 async function camStart(){
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
@@ -763,6 +768,7 @@ async function camStart(){
     return;
   }
   camStop();
+  askScreen(true);
   try {
     camStream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -780,6 +786,7 @@ async function camStart(){
   document.body.classList.add('cam-live');
 }
 function camStop(){
+  askScreen(false);
   poseStop();
   document.body.classList.remove('cam-live');
   if (camStream) camStream.getTracks().forEach(t => t.stop());

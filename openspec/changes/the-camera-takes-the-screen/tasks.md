@@ -16,4 +16,4 @@ Chromium is given a fake camera for this spec, the only one that needs it.
 
 - [x] 4.1 Write a browser test that the camera opened in the shell with both rails folded is the whole screen, and closing it gives the rails their place back, marked `test.fail()` while in flight.
 - [x] 4.2 Write a test that the shell draws the frame over everything while a page asks for the screen and both rails are folded, and where it was with a rail open or once the page lets go.
-- [ ] 4.3 Drop the marker and watch the browser test pass.
+- [x] 4.3 Drop the marker and watch the browser test pass.

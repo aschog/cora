@@ -93,7 +93,6 @@ test("the opened camera fills the page, with the controls drawn over it", async 
 test("in the shell with both rails folded, the camera is the whole screen", async ({
   page,
 }) => {
-  test.fail();
   await fresh(page);
   await page
     .getByRole("group", { name: "Answer in" })
