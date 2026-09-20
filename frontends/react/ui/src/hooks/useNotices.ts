@@ -57,7 +57,8 @@ export function useNotices({ pages, sessions, here }: Props) {
     const ask = async () => {
       for (const field of fields) {
         const held = await cora.notice(field).catch(() => null)
-        if (stopped || held === null) continue
+        if (stopped) return
+        if (held === null) continue
         /* A field nobody has written to answers with no arrival at all, and that is a
            baseline like any other — otherwise the first notice a field ever takes is the
            one this would sit through. */
