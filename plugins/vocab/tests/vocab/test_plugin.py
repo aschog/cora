@@ -40,3 +40,11 @@ def test_the_instructions_say_a_hint_is_a_clue_in_the_readers_own_language() -> 
     assert "write the hint in german" in instructions
     assert "picture" in instructions
     assert "never the\n  answer" in instructions
+
+
+def test_the_instructions_say_which_key_asks_for_a_hint() -> None:
+    """One letter, and it has to be read as the ask rather than as an answer — which
+    only holds if the field was told which letter it is."""
+    instructions = INSTRUCTIONS.lower()
+
+    assert "`h` on its own asks for a hint" in instructions

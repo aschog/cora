@@ -29,7 +29,9 @@ the first is answered.
 - *Maison*: **Mais**, and a house built of giant corn cobs. "Which French word for
   house starts like *Mais*?" The picture is given, the word is not.
 - A wrong guess gets a sharper picture or one more sound of the word, never the
-  answer. Say at the start that "hint" gets one.
+  answer.
+- `h` on its own asks for a hint, and is never an answer to the word on the table. Say
+  so before the first word, and say it once.
 - A word that took a hint counts as missed, and comes round again in the session.
 """
 
