@@ -64,9 +64,9 @@ the list, and from then on the coach answers from it with the list cited. Nothin
 and nothing fetched are two different sentences, and the page says which. Refused,
 the list is printed below the table for you to copy and the rows stay where they are.
 
-The languages offered are a list in the page, each with the trained data it is read
-with — learning one that is not there is a line added to that file, as the trainer's
-plan is.
+Two languages are offered, English and Latin, each with the trained data it is read
+with. They are a list in the page, so a third is a line added to that file, as the
+trainer's plan is.
 
 ## Travel, in four parts
 

@@ -8,25 +8,59 @@
      Tesseract compiled to WebAssembly, so the image never leaves this browser. -->
 
 <style>
-  :root { color-scheme: light dark; --edge: #8883; --ink: canvastext; }
-  body { margin: 0; font: 15px/1.5 system-ui, sans-serif; }
-  main { max-width: 48rem; margin: 0 auto; padding: 1.25rem 1rem 4rem; }
-  h1 { font-size: 1.1rem; margin: 0 0 1rem; }
-  .row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; }
-  label { display: flex; gap: .4rem; align-items: center; }
-  select, input, button { font: inherit; padding: .35rem .5rem; }
-  input, select { border: 1px solid var(--edge); border-radius: .3rem; background: transparent; color: var(--ink); }
-  button { border: 1px solid var(--edge); border-radius: .3rem; background: transparent; color: var(--ink); cursor: pointer; }
-  button:disabled { opacity: .5; cursor: default; }
-  #drop { margin: 1rem 0; padding: 2rem 1rem; border: 2px dashed var(--edge); border-radius: .5rem; text-align: center; }
-  #drop.over { border-style: solid; }
-  table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
-  td, th { border-bottom: 1px solid var(--edge); padding: .2rem; text-align: left; }
-  td input { width: 100%; border: none; }
-  td:last-child { width: 2rem; }
-  #said { margin-top: 1rem; min-height: 1.5rem; }
-  #said.bad { color: #c33; }
-  #saved { white-space: pre-wrap; font-family: ui-monospace, monospace; font-size: .85rem; }
+/* cora's own palette, taken from the shell this page is framed in: the same ground,
+   the same hairline, blue for what is clicked and magenta for what went wrong. */
+:root{
+  --bg:#0a0c11;
+  --surface:#12161d;
+  --text:#e7eaee;
+  --hairline:#232a34;
+  --muted:#808a96;
+  --accent:#2f81f7;
+  --accent-hover:#58a6ff;
+  --magenta:#e05a9c;
+  --magenta-tint:#24121b;
+  --sunken:rgba(0,0,0,.28);
+  --serif:'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --radius:2px;
+  --panel-radius:18px;
+}
+*{box-sizing:border-box}
+/* See-through: the page stands on cora's ground, so the shell's gradient runs under it
+   instead of stopping at its edge. No `color-scheme` above it — a declared scheme makes
+   the browser paint the canvas, which is the very thing being let go. */
+html,body{margin:0;background:transparent;scrollbar-color:var(--hairline) transparent}
+body{color:var(--text);font:400 15px/1.55 var(--serif);-webkit-font-smoothing:antialiased}
+main{max-width:46rem;margin:0 auto;padding:20px 15px 60px}
+h1{margin:0 0 15px;font-size:13px;font-weight:600;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--muted)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+label{display:flex;gap:7px;align-items:center;color:var(--muted);font-size:13px}
+select,input,button{font:inherit;color:var(--text);padding:7px 10px;border-radius:var(--radius)}
+select,input{background:var(--sunken);border:1px solid var(--hairline)}
+select:focus-visible,input:focus-visible{outline:1px solid var(--accent);outline-offset:-1px}
+button{background:var(--surface);border:1px solid var(--hairline);cursor:pointer}
+button:hover{border-color:var(--accent-hover);color:var(--accent-hover)}
+#save{background:var(--accent);border-color:var(--accent);color:#0a0c11;font-weight:600}
+#save:hover{background:var(--accent-hover);border-color:var(--accent-hover);color:#0a0c11}
+#drop{margin:15px 0;padding:30px 15px;text-align:center;color:var(--muted);
+  border:1px dashed var(--hairline);border-radius:var(--panel-radius);background:var(--sunken)}
+#drop.over{border-style:solid;border-color:var(--accent);color:var(--text)}
+#file{max-width:100%}
+table{border-collapse:collapse;width:100%;margin-top:15px}
+th{padding:5px;text-align:left;font-size:12px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--hairline)}
+td{padding:2px;border-bottom:1px solid var(--hairline)}
+td input{width:100%;background:transparent;border:1px solid transparent}
+td input:hover{border-color:var(--hairline)}
+td:last-child{width:2.2rem}
+td button{border-color:transparent;background:transparent;color:var(--muted);padding:5px 8px}
+td button:hover{color:var(--magenta);border-color:transparent}
+#said{margin-top:15px;min-height:1.55em;color:var(--muted)}
+#said.bad{color:var(--magenta)}
+#saved{white-space:pre-wrap;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+  font-size:13px;color:var(--text);background:var(--magenta-tint);
+  border:1px solid var(--magenta);border-radius:var(--panel-radius);padding:15px}
 </style>
 
 <main>
@@ -67,20 +101,11 @@ const WORKER = CDN + '/npm/tesseract.js@7.0.0/dist/worker.min.js';
 const CORE = CDN + '/npm/tesseract.js-core@7.0.0';
 const DATA = CDN + '/gh/naptha/tessdata@gh-pages/4.0.0';
 
-/* The languages the page offers, each with the code its trained data is named by and
-   the ASCII slug its documents are named with. Learning a language that is not here is
-   a line added to this list. */
+/* The two languages the page offers, each with the code its trained data is named by
+   and the ASCII slug its documents are named with. A third is a line added here. */
 const LANGUAGES = [
-  { name: 'Lietuvių', code: 'lit', slug: 'lietuviu' },
   { name: 'English', code: 'eng', slug: 'english' },
-  { name: 'Español', code: 'spa', slug: 'espanol' },
-  { name: 'Français', code: 'fra', slug: 'francais' },
-  { name: 'Italiano', code: 'ita', slug: 'italiano' },
-  { name: 'Nederlands', code: 'nld', slug: 'nederlands' },
-  { name: 'Polski', code: 'pol', slug: 'polski' },
-  { name: 'Português', code: 'por', slug: 'portugues' },
-  { name: 'Svenska', code: 'swe', slug: 'svenska' },
-  { name: 'Türkçe', code: 'tur', slug: 'turkce' },
+  { name: 'Latina', code: 'lat', slug: 'latina' },
 ];
 
 const GERMAN = { name: 'Deutsch', code: 'deu' };

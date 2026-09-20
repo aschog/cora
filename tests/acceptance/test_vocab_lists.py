@@ -13,15 +13,14 @@ from fakes import FakeConversations, ScriptedChatModel
 from sse import frames
 
 VOCAB = "vocab"
-LIST = "lietuviu-einheit-3.md"
+LIST = "english-einheit-3.md"
 # What the page writes once the reader has corrected the reading: the heading names the
 # language, and the table is German beside the language being learnt.
 WORDS = (
-    "# Lietuvių — Einheit 3\n\n"
-    "| Deutsch | Lietuvių |\n| --- | --- |\n| Hilfe | pagalba |\n"
+    "# English — Einheit 3\n\n| Deutsch | English |\n| --- | --- |\n| Hilfe | help |\n"
 )
-QUESTION = "Was heißt Hilfe auf Litauisch?"
-ANSWER = "pagalba [1]."
+QUESTION = "Was heißt Hilfe auf Englisch?"
+ANSWER = "help [1]."
 
 
 def test_the_vocab_page_is_served_and_what_it_saved_is_answered_from() -> None:
