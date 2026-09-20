@@ -40,7 +40,7 @@ class Store(Protocol):
     Keyed by plugin and then by name, so two plugins choosing one name keep two values.
 
     Raises:
-        StoreError: The store could not be reached. A write that cannot land is a
+        PluginStoreError: The store could not be reached. A write that cannot land is a
             failure rather than a silence, because a plugin reading nothing back would
             read it as never having kept anything.
     """
