@@ -49,3 +49,16 @@ test is held with `test.fail()` until the list is done.
 - [x] 5.9 Write a test, on landmarks recorded off the camera, that a set of one-arm
       swings counts at the pace it was lifted — found by running it, not by the suite.
 - [x] 5.10 Write a test that the arm which is not working adds no reps of its own.
+
+## 6. Still open
+
+Run on a real camera after the handover fix, the count is still wrong. The suite is
+green on recorded landmarks, so whatever is left is something the tape did not catch.
+This change does not archive until it is closed.
+
+- [ ] 6.1 Characterise what the count does against what was lifted — a fresh tape with a
+      known number of reps, and the symptom named before anything is changed.
+- [ ] 6.2 Write the failing test that reproduces it off recorded landmarks.
+- [ ] 6.3 Decide whether a single raise-and-lower should count at all: reaching for the
+      screen scores a rep today, which is the requirement never being written rather than
+      the code disagreeing with it.
