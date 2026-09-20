@@ -29,10 +29,11 @@ def test_the_instructions_keep_the_answers_back_while_practising() -> None:
     assert "do not show" in instructions
 
 
-def test_the_instructions_say_what_a_hint_is() -> None:
-    """A hint the model invents is the word itself half the time, which ends the drill
-    it was asked for — so what a hint is, is written down."""
+def test_the_instructions_say_a_hint_is_a_clue_in_the_readers_own_language() -> None:
+    """A hint spelled out of the word being practised hands over the answer a letter at
+    a time. The clue is written in the language the reader already has."""
     instructions = INSTRUCTIONS.lower()
 
     assert "hint" in instructions
-    assert "vowels" in instructions
+    assert "german" in instructions
+    assert "letter" in instructions
