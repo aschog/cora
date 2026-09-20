@@ -15,7 +15,7 @@ of them still answers.
 ## Fitness brings a screen
 
 Pin a conversation to `fitness` and the middle of the page becomes a trainer: the plan
-one exercise at a time, its sets and working weight, the clip for it playing in the same frame, and the camera to film yourself against. **Finish** — which reads *no sets logged yet* until one is, *saving* while the save is
+one exercise at a time, its sets and working weight, the clip for it playing in the same frame, and the camera to film yourself against, which takes the whole page while it runs, with the controls drawn over the picture. **Finish** — which reads *no sets logged yet* until one is, *saving* while the save is
 out, and *saved* once cora has the workout — writes it into the `fitness` field as a
 Markdown document named for the moment it was saved and then for the sheet's tab the
 plan came from, opening with that same name — so the next question about it is answered
