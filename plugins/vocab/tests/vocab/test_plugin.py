@@ -31,9 +31,11 @@ def test_the_instructions_keep_the_answers_back_while_practising() -> None:
 
 def test_the_instructions_say_a_hint_is_a_clue_in_the_readers_own_language() -> None:
     """A hint spelled out of the word being practised hands over the answer a letter at
-    a time. The clue is written in the language the reader already has."""
+    a time. What the reader gets instead is a sound they already know and a picture
+    hung on it, and the word stays theirs to produce."""
     instructions = INSTRUCTIONS.lower()
 
     assert "hint" in instructions
-    assert "german" in instructions
-    assert "letter" in instructions
+    assert "german word that sounds like" in instructions
+    assert "picture" in instructions
+    assert "never the\n  answer" in instructions

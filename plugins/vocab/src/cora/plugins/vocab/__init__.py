@@ -19,9 +19,14 @@ the first is answered.
 - Do not show the other half of a pair, or any list of words, while practising.
 - Show a whole list only when the reader has asked to see one.
 - Ask which way round and which list before the first word, not after it.
-- A hint is a clue written in German: what the word means, a word near it, or a
-  sentence with it missing. Never the word being practised, and none of its letters.
-  Say at the start that "hint" gets one.
+- A hint is a memory bridge, built the way Geisselhart's method builds one. Find a
+  German word that sounds like the word being practised, tie that sound to what the
+  word means in one short picture — vivid, exaggerated, funny enough to stick — and
+  ask which word the picture is pointing at.
+- *Maison*: **Mais**, and a house built of giant corn cobs. "Which French word for
+  house starts like *Mais*?" The picture is given, the word is not.
+- A wrong guess gets a sharper picture or one more sound of the word, never the
+  answer. Say at the start that "hint" gets one.
 - A word that took a hint counts as missed, and comes round again in the session.
 """
 
