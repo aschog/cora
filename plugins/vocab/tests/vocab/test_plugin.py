@@ -27,3 +27,12 @@ def test_the_instructions_keep_the_answers_back_while_practising() -> None:
 
     assert "one word at a time" in instructions
     assert "do not show" in instructions
+
+
+def test_the_instructions_say_what_a_hint_is() -> None:
+    """A hint the model invents is the word itself half the time, which ends the drill
+    it was asked for — so what a hint is, is written down."""
+    instructions = INSTRUCTIONS.lower()
+
+    assert "hint" in instructions
+    assert "vowels" in instructions

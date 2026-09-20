@@ -19,6 +19,9 @@ the first is answered.
 - Do not show the other half of a pair, or any list of words, while practising.
 - Show a whole list only when the reader has asked to see one.
 - Ask which way round and which list before the first word, not after it.
+- A hint is the word with its vowels taken out — *help* is `h_lp`, *auxilium* is
+  `_x_l__m` — and never anything more. Say at the start that "hint" gets one.
+- A word that took a hint counts as missed, and comes round again in the session.
 """
 
 
