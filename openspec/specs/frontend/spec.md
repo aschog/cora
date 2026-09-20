@@ -649,3 +649,92 @@ and neither SHALL a notice already standing when the page was loaded.
 - **GIVEN** a notice that cannot be read
 - **WHEN** the shell asks for it
 - **THEN** the rest of the page is unaffected and no banner is raised
+
+### Requirement: A document is added from the composer
+
+The page SHALL offer, beside the question being typed, a control that adds a file or a
+photo to the field the conversation is in. It SHALL be the upload the rail already
+makes: the same field, the same list, the same news and the same refusals. While an
+upload is running the control SHALL say so and SHALL NOT start another.
+
+#### Scenario: A file is added beside the question
+
+- **GIVEN** a conversation in a field
+- **WHEN** the reader adds a file from the composer
+- **THEN** it is uploaded into that field and appears in that field's documents
+
+#### Scenario: What it says while it runs
+
+- **GIVEN** an upload started from the composer
+- **WHEN** it has not finished
+- **THEN** the control says an upload is running, and takes no second file
+
+#### Scenario: A refusal is the same refusal
+
+- **GIVEN** a file cora refuses
+- **WHEN** it is added from the composer
+- **THEN** the reader is told what the rail's control would have told them
+
+### Requirement: The rail keeps the control it had
+
+The rail's own control for adding a document SHALL remain where it is, over the list it
+changes, so a reader working in the documents does not have to reach the conversation
+to add one.
+
+#### Scenario: Both controls add to the same field
+
+- **GIVEN** a conversation fixed to a field
+- **WHEN** a document is added from the rail and another from the composer
+- **THEN** both are documents of that field
+
+### Requirement: A photo is read in the browser it was added in
+
+A photo added to a conversation SHALL be read into text by the page itself, and the
+image SHALL NOT be sent to cora or to anywhere else. The addresses the page reaches for
+the reading SHALL be named ones.
+
+#### Scenario: A photo is added
+
+- **GIVEN** a conversation in a field
+- **WHEN** the reader adds a photo
+- **THEN** its words are offered as text, and no upload of the image has been made
+
+#### Scenario: A file that is not a photo
+
+- **WHEN** the reader adds a document that is not an image
+- **THEN** it is uploaded as it always was, with nothing read and nothing to correct
+
+### Requirement: What was read is corrected before it is kept
+
+The text read from a photo SHALL be put to the reader to correct, and SHALL NOT reach
+the field until they save it. Saving SHALL keep it as a Markdown document of the
+conversation's field, named after the image. Discarding SHALL keep nothing.
+
+#### Scenario: A reading is corrected and saved
+
+- **GIVEN** the text read from a photo
+- **WHEN** the reader edits it and saves
+- **THEN** the field holds a document of that text, named after the image
+
+#### Scenario: A reading is discarded
+
+- **GIVEN** the text read from a photo
+- **WHEN** the reader discards it
+- **THEN** the field holds no new document
+
+### Requirement: A reading that gave nothing says which nothing it was
+
+A photo holding no text SHALL be reported as one, and a reading that could not be run at
+all SHALL be reported as that instead. Neither SHALL be reported as the other, and
+neither SHALL keep anything.
+
+#### Scenario: Nothing was in the image
+
+- **WHEN** a photo holding no text is added
+- **THEN** the reader is told nothing was read in it
+
+#### Scenario: The reader could not be fetched
+
+- **GIVEN** a browser that cannot reach where the reading is fetched from
+- **WHEN** a photo is added
+- **THEN** the reader is told the reading could not be run, and not that the image was empty
