@@ -154,9 +154,9 @@ def extend(cora: Host) -> None:
   says so plainly.
 - A page may ask the shell for the whole screen, and let it go again, by posting
   `{cora: 'screen', wanted: true}` — or `false` — to its parent window on cora's own
-  origin. While it wants it and the reader has folded both rails, the frame is drawn
-  over everything, so the page is what closes that state. The trainer asks while its
-  camera runs.
+  origin. While it wants it and the reader has folded both rails, what is left of the
+  rails is not drawn and the frame is the whole screen, so the page is what closes that
+  state — a page that loads again has let go. The trainer asks once its camera shows.
 
 ## Handlers
 

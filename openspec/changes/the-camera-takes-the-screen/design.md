@@ -39,17 +39,25 @@ an iPhone does not give a page and which would hide the shell on a laptop.
 
 - A frame cannot draw outside itself, so the shell is what can put it over the folded
   rails, and the page is what knows its camera has the view.
-- One message either way, on cora's own origin, and the shell answers it only while both
-  rails are folded: with a rail open, the rail is what the reader chose.
+- One message either way, checked against cora's own origin on receipt, and the shell
+  answers it only while both rails are folded: with a rail open, the rail is what the
+  reader chose.
+- The shell answers by not drawing what is left of the folded rails, so the frame has the
+  screen while the shell's own notices keep the top.
+- Rejected: lifting the frame over everything, which buries a notice the reader must see.
 - Rejected: the browser's fullscreen from the page, which takes the display whatever the
   rails show, and which an iPhone does not give a page.
 - Rejected: the shell reading the rails alone, which would bury their controls under a
   page that never asked.
 
-**Closing the camera is the way back.**
+**Closing the camera is the way back, and a page that cannot close it loses the screen.**
 
-- Over the whole screen the folded rails' controls are under the picture, and the camera
-  button is over it.
+- Over the whole screen the folded rails' controls are not drawn, and the camera button
+  is over the picture.
+- The asking is read against the page it came from and forgotten when that page loads
+  again, so a page that dies or reloads mid-camera does not keep the screen.
+- The page asks once the picture is there, not when the browser starts asking for it, so
+  the shell moves once and never for an empty frame.
 
 **The clip keeps its frame.**
 
@@ -64,8 +72,10 @@ an iPhone does not give a page and which would hide the shell on a laptop.
   the moment of the permission prompt and nothing longer.
 - The browser tier grows a spec that needs a camera → chromium is given a fake one for
   that spec alone.
-- A page that asks and never lets go keeps the screen → the shell forgets the asking
-  when the page changes, and a page closing lets go as it goes.
+- A page that asks and never lets go keeps the screen → the asking is tied to the page and
+  dropped when it loads again, and a page closing lets go as it goes.
+- The shell sat 8px in from every edge on the browser's own body margin → it is reset, so
+  the whole screen is the whole screen.
 
 ## Ports, guards and diagrams
 
