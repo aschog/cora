@@ -8,7 +8,7 @@ and the schedule is arithmetic.
 import datetime
 import random
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from cora.ports.host import Host
 from cora.ports.plugin import ToolRefusal
@@ -19,19 +19,15 @@ from .sides import LEFT as GERMAN_LEFT
 from .sides import other, sides_in
 from .sides import written as sides_written
 from .sm2 import due, reviewed
-from .sweep import Sweep
 from .words import Pair, pairs_of
 
 SCHEDULE = "schedule"
 SIDES = "sides"
-ASKED = "asked"
-SHOWN = "shown"
 CHOSEN = "chosen"
 PUT = "put"
 GERMAN = "german"
 OTHER = "other"
 SPACED = "spaced"
-SWEPT = "swept"
 ON = "1"
 # No file can be called this — a name is one plain name — so no list can ever be
 # confused with the choice to drill all of them.
@@ -74,11 +70,39 @@ CLOSING = re.compile(r"[.!?…:;,]+\Z")
 SAMPLED = 4
 
 
+@dataclass
+class Pass:
+    """One shuffled pass over one list, and the word on the table right now.
+
+    Held in memory for the life of the process, not in the conversation's state.
+    # ponytail: one drill per process; per-conversation state if two ever run.
+    A second conversation drilling at the same time would draw from this same queue,
+    and a restart drops a pass part-way. For one reader at one screen, neither bites,
+    and what it buys is a queue that is a list — popped, appended to, emptied.
+    """
+
+    of: str = ""
+    queue: list[Pair] = field(default_factory=list)
+    table: Pair | None = None
+    shown: str = ""
+    loaded: bool = False
+
+    def reload(self, pairs: tuple[Pair, ...], of: str) -> None:
+        """A fresh pass over these pairs, in a fresh order."""
+        self.of = of
+        self.queue = list(pairs)
+        random.shuffle(self.queue)
+        self.loaded = True
+        self.table = None
+        self.shown = ""
+
+
 @dataclass(frozen=True)
 class Drill:
     """The field's two tools, closed over the cora holding its lists and its store."""
 
     cora: Host
+    current: Pass = field(default_factory=Pass)
 
     def next_word(
         self,
@@ -91,11 +115,18 @@ class Drill:
         pairs = pairs_of(self.cora)
         if not pairs:
             return NO_WORDS
+        # A conversation that has chosen nothing yet is a new one, and a new one starts
+        # a fresh pass — the queue outlives the conversation, so this is what ends it.
+        fresh = self.cora.state.read(CHOSEN) is None
         pairs = self._chosen(pairs, from_list)
         self._refuse_unsided(pairs)
-        if again:
-            self.cora.state.keep(SWEPT, None)
-        asking = self._due(pairs) if self._spacing(spaced) else self._still_to_do(pairs)
+        chosen = self.cora.state.read(CHOSEN) or EVERY
+        if again or fresh or not self.current.loaded or self.current.of != chosen:
+            self.current.reload(pairs, chosen)
+        if self._spacing(spaced):
+            asking = self._due(pairs)
+        else:
+            asking = self.current.queue.pop(0) if self.current.queue else None
         if asking is None:
             return DONE if self._spacing(None) else SWEPT_UP
         word, left = self._shown(asking, put)
@@ -110,8 +141,8 @@ class Drill:
         puts next, and the one that was on the table stays unanswered and comes round
         again. Prose is left alone: a reader asking something is answered in sentences.
         """
-        shown = self.cora.state.read(SHOWN)
-        if shown is None:
+        shown = self.current.shown
+        if not shown:
             return None
         word = _bare(answer)
         if word is None or word.casefold() == shown.casefold():
@@ -124,15 +155,15 @@ class Drill:
             return ROUND_OVER
         # The word now on the table — which may be the same one, still unanswered and
         # drawn again: that is the drill being right, not the check being wrong.
-        return self.cora.state.read(SHOWN) or NOT_FROM_THE_LIST
+        return self.current.shown or NOT_FROM_THE_LIST
 
     def _shown(self, asking: Pair, put: str) -> tuple[str, bool]:
         german = self._german(asking.source)
         showing = german if self._putting(put) == GERMAN else other(german)
         left = showing == GERMAN_LEFT
         word = asking.left if left else asking.right
-        self.cora.state.keep(ASKED, _key(asking))
-        self.cora.state.keep(SHOWN, word)
+        self.current.table = asking
+        self.current.shown = word
         return word, left
 
     def how_it_went(self, word: str, right: bool) -> str:
@@ -141,29 +172,26 @@ class Drill:
         Where spacing is on that is the schedule, and where it is off it is this pass —
         so a session nobody asked to space writes nothing that outlives it.
         """
-        asked = self.cora.state.read(ASKED)
-        if asked is None or word.strip().casefold() not in _both(asked):
+        asking = self.current.table
+        if asking is None or word.strip().casefold() not in _both(_key(asking)):
             raise ToolRefusal(UNASKED)
-        self.cora.state.keep(ASKED, None)
-        self.cora.state.keep(SHOWN, None)
+        self.current.table = None
+        self.current.shown = ""
         if not self._spacing(None):
-            return self._swept(asked, right=right)
+            # A word missed goes to the back of the queue and comes round again; a word
+            # produced is simply gone from it.
+            if not right:
+                self.current.queue.append(asking)
+            left = len(self.current.queue)
+            if not left:
+                return LAST
+            return (RIGHT if right else MISSED).format(left=left)
         kept = self._kept()
         schedule = Schedule.of(kept.read(SCHEDULE))
-        card = reviewed(schedule.card(asked), right=right, today=datetime.date.today())
-        kept.keep(SCHEDULE, schedule.with_card(asked, card).written())
+        key = _key(asking)
+        card = reviewed(schedule.card(key), right=right, today=datetime.date.today())
+        kept.keep(SCHEDULE, schedule.with_card(key, card).written())
         return "again in this session" if not right else f"next in {card.interval} days"
-
-    def _swept(self, asked: str, *, right: bool) -> str:
-        sweep = Sweep.of(self.cora.state.read(SWEPT))
-        if right:
-            sweep = sweep.with_word(asked)
-            self.cora.state.keep(SWEPT, sweep.written())
-        pairs = self._chosen(pairs_of(self.cora), "")
-        left = sum(1 for pair in pairs if not sweep.holds(_key(pair)))
-        if not left:
-            return LAST
-        return (RIGHT if right else MISSED).format(left=left)
 
     def _due(self, pairs: tuple[Pair, ...]) -> Pair | None:
         schedule = Schedule.of(self._kept().read(SCHEDULE))
@@ -181,14 +209,6 @@ class Drill:
         # was learnt in, and alphabetical is nobody's order.
         _, asking = min(waiting, key=lambda each: _turn(schedule, each, today))
         return asking
-
-    def _still_to_do(self, pairs: tuple[Pair, ...]) -> Pair | None:
-        # A shuffle without a stored order: one taken at random from what the pass has
-        # not got yet is the same thing, and there is no order to keep in step with a
-        # list the reader can edit while the session runs.
-        sweep = Sweep.of(self.cora.state.read(SWEPT))
-        left = [pair for pair in pairs if not sweep.holds(_key(pair))]
-        return random.choice(left) if left else None
 
     def _spacing(self, asked: bool | None) -> bool:
         if asked is not None:

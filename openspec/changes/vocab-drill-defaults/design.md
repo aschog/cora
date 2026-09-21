@@ -25,13 +25,13 @@ reader's. Three settings, asked or assumed, before a single word is put.
 - **The left column is German, by convention of the file** — the correction box is
   where a screenshot read the other way round is swapped, which is what settling it at
   creation means. No detection, no per-list setting, nothing to keep in step.
-- **A pass is the set of words already right, not a stored order** — picking at random
-  from what is left is a shuffle, and the only thing to keep is what has been done.
-- **The pass lives in `cora.state`** beside the chosen list, so a conversation is a
-  session and the two die together.
+- **A pass is a shuffled list in memory, popped from the front** — a word missed goes
+  to the back, and an empty list is the end. One per process, marked as the shortcut
+  it is: two conversations drilling at once would share it, and per-conversation state
+  is the upgrade if that day comes.
 - **Spacing is an argument on `next_word`**, like the list and the side: one call sets
   it and the same call uses it, so there is no order to get wrong.
-- **`how_it_went` writes one of two places** — the schedule with spacing on, the pass
+- **`how_it_went` writes one of two places** — the schedule with spacing on, the queue
   with it off — so nothing accumulates in a store the reader did not ask to fill.
 - **Going again is an argument, not a new tool** — the finished-pass sentence says what
   to call, and the model passes it on when the reader says yes.

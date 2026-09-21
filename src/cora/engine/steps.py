@@ -504,19 +504,14 @@ class AnswerStep:
         settled = rounds[-1].content if rounds else ""
         scopes = scoped(state)
         trace: list[TraceStep] = []
-        # Bound as a tool call is: a plugin checking the answer against what its tools
-        # put this turn has to read what they kept, and one that corrects the answer
-        # has to keep what it put instead.
-        kept = deepcopy(state.get("kept", {}))
-        with keeping.bound(kept):
-            answer = dispatch(
-                ANSWERING,
-                settled,
-                self.registry.handlers(ANSWERING, scopes),
-                trace,
-                scopes,
-            )
-        return {"answer": answer, "trace": trace, "kept": kept}
+        answer = dispatch(
+            ANSWERING,
+            settled,
+            self.registry.handlers(ANSWERING, scopes),
+            trace,
+            scopes,
+        )
+        return {"answer": answer, "trace": trace}
 
 
 GATHERS = (

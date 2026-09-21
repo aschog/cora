@@ -140,10 +140,11 @@ start a fresh pass.
 
 ### Requirement: What a session was set to lasts the conversation
 
-The side being asked, whether spacing is on, and how far the pass has got SHALL be kept
-for the conversation and no longer. A new conversation SHALL start German-first with
-spacing off and a fresh pass. Which column is German is not one of these: it belongs to
-the list, and is kept for good.
+The side being asked and whether spacing is on SHALL be kept for the conversation and
+no longer, and a new conversation SHALL start German-first with spacing off and a fresh
+pass. The pass itself is held in memory for the process, one at a time: a second
+conversation drilling at once draws from the same pass. Which column is German is not
+one of these: it belongs to the list, and is kept for good.
 
 #### Scenario: A new conversation
 
