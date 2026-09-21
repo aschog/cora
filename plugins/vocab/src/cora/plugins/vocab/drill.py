@@ -86,6 +86,9 @@ class Pass:
     table: Pair | None = None
     shown: str = ""
     loaded: bool = False
+    # Whether the model was asked while this word stood. What it gave was a hint, and a
+    # right answer after a hint counts as missed.
+    helped: bool = False
 
     def reload(self, pairs: tuple[Pair, ...], of: str) -> None:
         """A fresh pass over these pairs, in a fresh order."""
@@ -95,6 +98,7 @@ class Pass:
         self.loaded = True
         self.table = None
         self.shown = ""
+        self.helped = False
 
 
 @dataclass(frozen=True)
@@ -143,6 +147,8 @@ class Drill:
         Letter for letter, case and a closing full stop aside: anything looser is a
         judgement, and judging is the model's. So is everything else here — a hint, a
         miss, the last word of a pass, which ends in a question, and a spaced session.
+        A question passed on while a word stands marks the word helped, and the right
+        answer that follows a hint counts as missed.
         """
         asking, shown = self.current.table, self.current.shown
         if asking is None or not shown or not self.current.queue:
@@ -150,8 +156,9 @@ class Drill:
         if self._spacing(None):
             return None
         if _plain(answer) != _other_side(asking, shown).casefold():
+            self.current.helped = True
             return None
-        self.how_it_went(word=shown, right=True)
+        self.how_it_went(word=shown, right=not self.current.helped)
         self.next_word()
         return self.current.shown
 
@@ -203,6 +210,7 @@ class Drill:
             )
         self.current.table = None
         self.current.shown = ""
+        self.current.helped = False
         if not self._spacing(None):
             # A word missed goes to the back of the queue and comes round again; a word
             # produced is simply gone from it.

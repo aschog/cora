@@ -15,8 +15,8 @@
 
 ## 3. A hint
 
-- [ ] 3.1 Write a test that a right answer given after the model was asked while the word stayed on the table is recorded as missed, and the word comes round again.
-- [ ] 3.2 Write a test that a right answer after the word moved through the model is recorded as right.
+- [x] 3.1 Write a test that a right answer given after the model was asked while the word stayed on the table is recorded as missed, and the word comes round again.
+- [x] 3.2 Write a test that a right answer after the word moved through the model is recorded as right.
 
 ## 4. The field
 

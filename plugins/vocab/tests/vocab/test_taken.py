@@ -150,3 +150,32 @@ def test_nothing_on_the_table_leaves_every_answer_to_the_model() -> None:
     field = Field()
 
     assert field.answers("dog") is None
+
+
+def test_a_right_answer_after_a_hint_counts_as_missed_and_the_word_comes_round() -> (
+    None
+):
+    field = Field()
+    shown = field.put()
+    assert field.answers("h") is None, "the model was asked, and the word stayed"
+
+    put = field.answers(_other(shown))
+
+    assert put is not None and put != shown
+    assert shown in field.queued(), "a word that took a hint comes round again"
+
+
+def test_a_right_answer_after_the_word_moved_through_the_model_is_right() -> None:
+    field = Field()
+    shown = field.put()
+    assert field.answers("banana") is None
+    # The model records the miss and puts the next word, as it does today.
+    with field.drilling():
+        field.tools["how_it_went"](word=shown, right=False)
+        field.tools["next_word"]()
+    moved = field.drill.current.shown
+
+    put = field.answers(_other(moved))
+
+    assert put is not None
+    assert moved not in field.queued(), "nothing about the word before it lingers"
