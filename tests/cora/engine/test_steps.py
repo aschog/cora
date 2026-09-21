@@ -499,7 +499,9 @@ def test_the_answering_step_settles_the_answer_the_last_round_reached() -> None:
         }
     )
 
-    assert settled == {"answer": "The sum is 3.", "trace": []}
+    # What the plugins kept rides along, as it does off the tool round: a handler that
+    # checked the answer against it may have written it.
+    assert settled == {"answer": "The sum is 3.", "trace": [], "kept": {}}
 
 
 def test_a_result_handler_cannot_redirect_the_answer_to_another_call() -> None:

@@ -207,7 +207,8 @@ its return is the whole of its decision — `None` changes nothing, at every eve
 - `cora.state.keep(name, text)` / `read(name)` — text kept between the turns of one
   conversation, under names no other plugin shares, gone when it is deleted. A read
   answers `str | None`, and `keep(name, None)` is how a name is dropped. Bound inside a
-  tool call only: elsewhere a read is empty and a write is dropped.
+  tool call and inside a handler on the answer: elsewhere a read is empty and a write
+  is dropped.
 - `cora.store.keep(name, text)` / `read(name)` — text kept for good, under the plugin's
   own name: it outlives the conversation, the process and a restart, where `cora.state`
   outlives none of them. `keep(name, None)` drops a name, and a name nothing was kept
