@@ -14,7 +14,7 @@ A plugin has nowhere to put a file, so data it owns goes into the search index i
 ## Impact
 
 - `src/cora/ports/files.py` — the new port, a field's own directory read and written by name
-- `src/cora/adapters/file_field_files.py` — a directory per field under the configured path
+- `src/cora/adapters/directory_files.py` — a directory per field under the configured path
 - `src/cora/engine/host.py`, `src/cora/ports/host.py` — `files` handed to a plugin beside `store`
 - `src/cora/app/config.py`, `src/cora/app/assembly.py` — the path setting, and the wiring
 - `frontends/react/src/cora/frontends/react/api.py` — four routes under `/api/scopes/{scope}/files`

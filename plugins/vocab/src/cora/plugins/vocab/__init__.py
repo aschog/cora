@@ -237,9 +237,9 @@ def extend(cora: Host) -> None:
     cora.register_tool(
         name="next_word",
         description=(
-            "The word to put to the reader now, from the schedule this field keeps: "
-            "what is due, then what has never been drilled. It hands back the side "
-            "being asked and never the side the reader is to produce."
+            "The word to put to the reader now: the next of one shuffled pass over "
+            "the chosen list, or what is due where the reader asked for spacing. It "
+            "hands back the side being asked and never the side they are to produce."
         ),
         parameter_schema=WORD_SCHEMA,
         run=drill.next_word,

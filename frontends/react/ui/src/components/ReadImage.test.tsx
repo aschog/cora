@@ -94,6 +94,63 @@ test('keeping while the merge is still in flight writes the merge', async () => 
   expect(onKeep.mock.calls[0][1]).toBe('Apfel  apple\nBuch  book\n')
 })
 
+/* Found in review: the merge promise was reused for every later keep, so a correction
+   made after the merged text appeared was thrown away — silently, on the one screen
+   whose whole purpose is correcting what was read. */
+test('a correction made after the merge is what is kept', async () => {
+  const onKeep = vi.fn()
+  render(
+    <ReadImage
+      image="words.png"
+      read="Buch  book"
+      held={['Grundwortschatz.md']}
+      onKeepAsFile={onKeep}
+      onRead={async () => 'Apfel  apple'}
+      onDiscard={vi.fn()}
+    />,
+  )
+
+  naming('Grundwortschatz.md')
+  fireEvent.blur(screen.getByLabelText('What to call it'))
+  await waitFor(() =>
+    expect((written() as HTMLTextAreaElement).value).toBe('Apfel  apple\nBuch  book'),
+  )
+
+  fireEvent.change(written(), { target: { value: 'Apfel  apple\nBuch  BOOK' } })
+  fireEvent.click(screen.getByRole('button', { name: KEEP }))
+
+  await waitFor(() => expect(onKeep).toHaveBeenCalled())
+  expect(onKeep.mock.calls[0][1]).toBe('Apfel  apple\nBuch  BOOK\n')
+})
+
+/* And a name changed after a merge must not drag the merged text under the new one. */
+test('a name changed after a merge keeps only what the box holds', async () => {
+  const onKeep = vi.fn()
+  render(
+    <ReadImage
+      image="words.png"
+      read="Buch  book"
+      held={['Grundwortschatz.md']}
+      onKeepAsFile={onKeep}
+      onRead={async () => 'Apfel  apple'}
+      onDiscard={vi.fn()}
+    />,
+  )
+
+  naming('Grundwortschatz.md')
+  fireEvent.blur(screen.getByLabelText('What to call it'))
+  await waitFor(() =>
+    expect((written() as HTMLTextAreaElement).value).toBe('Apfel  apple\nBuch  book'),
+  )
+
+  fireEvent.change(written(), { target: { value: 'Buch  book' } })
+  naming('Neue Liste.md')
+  fireEvent.click(screen.getByRole('button', { name: KEEP }))
+
+  await waitFor(() => expect(onKeep).toHaveBeenCalled())
+  expect(onKeep.mock.calls[0]).toEqual(['Neue Liste.md', 'Buch  book\n'])
+})
+
 test('discarding hands over nothing', () => {
   const { onKeep, onDiscard } = put('Hilfe  help')
 

@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 import pytest
@@ -140,6 +141,9 @@ def test_a_write_the_cap_allows_lands_whole(tmp_path: Path) -> None:
     assert files.read(VOCAB, NAME) == "x" * 16
 
 
+@pytest.mark.skipif(
+    os.geteuid() == 0, reason="root reads a directory whatever its mode says"
+)
 def test_a_directory_that_cannot_be_read_fails_rather_than_reading_empty(
     tmp_path: Path,
 ) -> None:

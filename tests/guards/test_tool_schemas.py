@@ -42,6 +42,19 @@ def test_a_tools_schema_is_one_its_own_function_can_be_called_with(plugin: str) 
 
 
 @pytest.mark.parametrize("plugin", SHIPPED)
+def test_every_argument_a_tool_takes_is_one_it_advertises(plugin: str) -> None:
+    for tool in _tools(f"cora.plugins.{plugin}"):
+        taken = inspect.signature(tool.run).parameters
+        if any(p.kind is p.VAR_KEYWORD for p in taken.values()):
+            continue
+        named = set(tool.parameter_schema.get("properties", {}))
+        assert set(taken) <= named, (
+            f"{plugin}.{tool.name} takes {sorted(set(taken) - named)}, which its "
+            f"schema never names — no model can reach it"
+        )
+
+
+@pytest.mark.parametrize("plugin", SHIPPED)
 def test_every_argument_a_tool_requires_is_one_it_advertises(plugin: str) -> None:
     for tool in _tools(f"cora.plugins.{plugin}"):
         named = set(tool.parameter_schema.get("properties", {}))

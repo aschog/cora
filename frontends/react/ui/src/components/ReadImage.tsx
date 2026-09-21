@@ -54,6 +54,9 @@ export default function ReadImage({
   const [text, setText] = useState(read)
   const [name, setName] = useState('')
   const [keeping, setKeeping] = useState(false)
+  /* Why the last attempt to keep it did not land. Shown here rather than over the page
+     behind: this dialog covers what it would be reported on. */
+  const [refused, setRefused] = useState('')
   /* The merge in flight, and what it will leave in the box. Clicking Keep blurs the
      name box first, so the click arrives while the file being merged in is still being
      fetched — and a write that did not wait would replace that file with the new
@@ -93,28 +96,33 @@ export default function ReadImage({
      the box above the new reading, and the reader corrects both at once. Done as the
      name is settled rather than as it is typed, so a name passed through on the way to
      another does not pull a file in. */
-  const open = (): Promise<string> => {
-    if (!name || name === opened || !held.includes(name)) {
-      return merging.current ?? Promise.resolve(text)
-    }
+  const open = () => {
+    if (!name || name === opened || !held.includes(name)) return
     setOpened(name)
-    const merged = onRead(name).then((there) => {
+    merging.current = onRead(name).then((there) => {
       const whole = there === null ? text : `${there.replace(/\n+$/, '')}\n${text}`
       setText(whole)
+      /* Done, and from here the box is where the merged text lives: what the reader
+         types over it is the truth, and this promise must not speak for it again. */
+      merging.current = null
       return whole
     })
-    merging.current = merged
-    return merged
   }
 
   const keep = async () => {
-    /* Whatever the name box started before the click, finished — so what is written is
-       the merge the reader would have seen, never the half of it they did not. */
-    const written = (await open()).trim()
+    /* A merge still in flight is waited for and its text is what lands — the click
+       that started it arrived before it finished. One that has already landed speaks
+       through the box instead, corrections and all. */
+    const landing = merging.current
+    const merged = landing ? await landing : null
+    const written = (merged ?? text).trim()
     if (!written || !name.trim()) return
     setKeeping(true)
+    setRefused('')
     try {
       await onKeepAsFile(name.trim(), `${written}\n`)
+    } catch (failed) {
+      setRefused((failed as Error).message)
     } finally {
       setKeeping(false)
     }
@@ -161,6 +169,7 @@ export default function ReadImage({
             ))}
           </datalist>
           {adding && <p className={styles.said}>{ADDING}</p>}
+          {refused && <p className="trouble">{refused}</p>}
         </div>
         <div className={styles.answers}>
           <button className="quiet" onClick={onDiscard} disabled={keeping}>

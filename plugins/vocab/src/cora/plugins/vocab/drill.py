@@ -59,10 +59,6 @@ UNCHOSEN = (
 NO_SUCH_LIST = "This field holds no list called '{name}'. It holds: {held}."
 # What the reader is told, in the field's own language, where the model wrote a word
 # that came from nowhere and the drill could not put a real one in its place.
-NOT_FROM_THE_LIST = (
-    "Das war kein Wort von der Liste. Sag „weiter“, dann kommt das nächste."
-)
-ROUND_OVER = "Die Runde ist durch. Noch eine?"
 MARKUP = re.compile(r"[*_`~]+")
 CLOSING = re.compile(r"[.!?…:;,]+\Z")
 # Enough of a list for the model to tell one language from the other, and few enough

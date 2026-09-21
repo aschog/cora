@@ -655,15 +655,11 @@ function Page() {
              the store refuses, or a file over its cap, is refused over the corrected
              text rather than over nothing. */
           onKeepAsFile={async (name, text) => {
-            try {
-              await cora.keepFieldFile(field, name, text)
-              setReading(null)
-              setHeldFiles((names) =>
-                names.includes(name) ? names : [...names, name],
-              )
-            } catch (failed) {
-              setTrouble((failed as Error).message)
-            }
+            /* A refusal is thrown on, because the dialog is what covers the page a
+               notice would be written on: it says so over the text that was refused. */
+            await cora.keepFieldFile(field, name, text)
+            setReading(null)
+            setHeldFiles((names) => (names.includes(name) ? names : [...names, name]))
           }}
           onRead={(name) => cora.fieldFile(field, name).catch(() => null)}
           onDiscard={() => setReading(null)}

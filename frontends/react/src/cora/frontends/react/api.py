@@ -643,9 +643,8 @@ def _scope(apps: Apps) -> Callable[[Request], Any]:
     return held
 
 
-FILE_CEILING = MOST_BYTES
 NOT_A_FILE = "A file is written as a JSON object with the text under 'text'."
-TOO_MUCH_FILE = f"A file is at most the {FILE_CEILING // KILOBYTE} KB a field holds."
+TOO_MUCH_FILE = f"A file is at most the {MOST_BYTES // KILOBYTE} KB a field holds."
 NO_FILES_KEPT = "This deployment keeps no files, so nothing could be written."
 NO_SUCH_FILE = "There is no file of that name in this field."
 
@@ -693,7 +692,7 @@ def _keep_field_file(apps: Apps) -> Callable[[Request], Any]:
         if scope is None:
             return _refusal(named, app.scopes)
         written = await _json_object(
-            request, NOT_A_FILE, ceiling=FILE_CEILING, too_long=TOO_MUCH_FILE
+            request, NOT_A_FILE, ceiling=MOST_BYTES, too_long=TOO_MUCH_FILE
         )
         if isinstance(written, JSONResponse):
             return written

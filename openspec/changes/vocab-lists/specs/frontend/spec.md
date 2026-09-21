@@ -65,6 +65,18 @@ pass and keeps the whole of it. What is kept SHALL be what the box holds.
 - **WHEN** the reader keeps it while that file is still being fetched
 - **THEN** what is written is the merge, never the new reading alone
 
+#### Scenario: Corrected after the merge has landed
+
+- **GIVEN** a merge on screen that the reader has since edited
+- **WHEN** they keep it
+- **THEN** what is written is what the box holds, edits and all
+
+#### Scenario: Renamed after the merge has landed
+
+- **GIVEN** a merge on screen and a new name typed over the old one
+- **WHEN** the reader keeps it
+- **THEN** what is written under the new name is what the box holds
+
 ### Requirement: A reading is not lost to a refused write
 
 The screen SHALL keep what was read up until the write has landed, so a name the store
@@ -76,7 +88,7 @@ there to name again.
 
 - **GIVEN** a reading corrected and a name the store refuses
 - **WHEN** the reader keeps it
-- **THEN** the reason is reported and the corrected text is still on screen
+- **THEN** the reason is reported on the screen holding the reading, which stays up
 
 ### Requirement: The composer says what it takes
 

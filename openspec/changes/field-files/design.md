@@ -58,7 +58,8 @@ field already owns a directory of documents; it owns no directory of its own dat
 
 ## What it touches
 
-- **Ports:** a new `Files` protocol, and `Host` gains `files` beside `store`.
+- **Ports:** a new `Files` protocol, and `Host` gains `files` beside `store`, over
+  the `DirectoryFiles` adapter.
 - **Guards:** `tests/guards/test_architecture.py` keeps `ports` free of adapters, and
   the new port under it.
 - **Diagrams:** the component map is generated from the composition, so adding an
