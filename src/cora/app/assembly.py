@@ -49,6 +49,7 @@ from cora.engine.steps import (
     Router,
     RouteStep,
     ScreenStep,
+    TakeStep,
     ToolStep,
     opening,
 )
@@ -250,7 +251,7 @@ def assemble(
             ),
         ),
         loop=Loop(
-            marker=Named(WORK),
+            marker=Named(WORK, TakeStep(registry=registry)),
             opening=opening,
             model=ModelStep(
                 chat_model=chat_model,

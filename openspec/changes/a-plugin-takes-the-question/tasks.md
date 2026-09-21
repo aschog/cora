@@ -32,4 +32,4 @@
 
 ## 6. Close it
 
-- [ ] 6.1 Drop the marker and watch the outer test pass.
+- [x] 6.1 Drop the marker and watch the outer test pass.
