@@ -1,4 +1,4 @@
-from cora.ports.host import Host
+from cora.ports.host import ANSWERING, Host
 
 from .drill import SCHEDULE as SCHEDULE
 from .drill import Drill
@@ -230,6 +230,10 @@ def extend(cora: Host) -> None:
         run=drill.next_word,
         scope=SCOPE,
     )
+    # A model in a drill will sooner or later write a word it never asked for. What the
+    # reader sees is checked against what was put, and a word from nowhere is replaced
+    # with the word the drill puts next.
+    cora.register_handler(event=ANSWERING, handle=drill.checked, scope=SCOPE)
     cora.register_tool(
         name="how_it_went",
         description=(

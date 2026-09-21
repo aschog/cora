@@ -7,6 +7,7 @@ and the schedule is arithmetic.
 
 import datetime
 import random
+import re
 from dataclasses import dataclass
 
 from cora.ports.host import Host
@@ -24,6 +25,7 @@ from .words import Pair, pairs_of
 SCHEDULE = "schedule"
 SIDES = "sides"
 ASKED = "asked"
+SHOWN = "shown"
 CHOSEN = "chosen"
 PUT = "put"
 GERMAN = "german"
@@ -59,9 +61,17 @@ UNCHOSEN = (
     "this again with `from_list` set to what they chose, or '*' for all of them."
 )
 NO_SUCH_LIST = "This field holds no list called '{name}'. It holds: {held}."
+# What the reader is told, in the field's own language, where the model wrote a word
+# that came from nowhere and the drill could not put a real one in its place.
+NOT_FROM_THE_LIST = (
+    "Das war kein Wort von der Liste. Sag „weiter“, dann kommt das nächste."
+)
+ROUND_OVER = "Die Runde ist durch. Noch eine?"
+MARKUP = re.compile(r"[*_`~]+")
+CLOSING = re.compile(r"[.!?…:;,]+\Z")
 # Enough of a list for the model to tell one language from the other, and few enough
 # that a refusal is a sentence rather than the list itself.
-SHOWN = 4
+SAMPLED = 4
 
 
 @dataclass(frozen=True)
@@ -88,12 +98,42 @@ class Drill:
         asking = self._due(pairs) if self._spacing(spaced) else self._still_to_do(pairs)
         if asking is None:
             return DONE if self._spacing(None) else SWEPT_UP
-        self.cora.state.keep(ASKED, _key(asking))
+        word, left = self._shown(asking, put)
+        return f"{word} — from {asking.source}{_sides(asking, left)}."
+
+    def checked(self, answer: str) -> str | None:
+        """The answer, unless it is a word the drill never put — then the real one.
+
+        A drill is a column of single words, and a model will go on writing the column
+        without asking for the next word: `Apfel`, then `Apfelbaum`, from nowhere. A
+        bare word that is not the one on the table is replaced with the word the drill
+        puts next, and the one that was on the table stays unanswered and comes round
+        again. Prose is left alone: a reader asking something is answered in sentences.
+        """
+        shown = self.cora.state.read(SHOWN)
+        if shown is None:
+            return None
+        word = _bare(answer)
+        if word is None or word.casefold() == shown.casefold():
+            return None
+        try:
+            said = self.next_word()
+        except ToolRefusal:
+            return NOT_FROM_THE_LIST
+        if said in (DONE, SWEPT_UP):
+            return ROUND_OVER
+        # The word now on the table — which may be the same one, still unanswered and
+        # drawn again: that is the drill being right, not the check being wrong.
+        return self.cora.state.read(SHOWN) or NOT_FROM_THE_LIST
+
+    def _shown(self, asking: Pair, put: str) -> tuple[str, bool]:
         german = self._german(asking.source)
         showing = german if self._putting(put) == GERMAN else other(german)
         left = showing == GERMAN_LEFT
         word = asking.left if left else asking.right
-        return f"{word} — from {asking.source}{_sides(asking, left)}."
+        self.cora.state.keep(ASKED, _key(asking))
+        self.cora.state.keep(SHOWN, word)
+        return word, left
 
     def how_it_went(self, word: str, right: bool) -> str:
         """Move the word just put, by whether the reader produced it.
@@ -105,6 +145,7 @@ class Drill:
         if asked is None or word.strip().casefold() not in _both(asked):
             raise ToolRefusal(UNASKED)
         self.cora.state.keep(ASKED, None)
+        self.cora.state.keep(SHOWN, None)
         if not self._spacing(None):
             return self._swept(asked, right=right)
         kept = self._kept()
@@ -161,11 +202,11 @@ class Drill:
         for named in _sources(pairs):
             if self._german(named):
                 continue
-            shown = [pair for pair in pairs if pair.source == named][:SHOWN]
+            sample = [pair for pair in pairs if pair.source == named][:SAMPLED]
             raise ToolRefusal(
                 UNSIDED.format(
                     named=named,
-                    pairs="; ".join(f"{one.left} — {one.right}" for one in shown),
+                    pairs="; ".join(f"{one.left} — {one.right}" for one in sample),
                 )
             )
 
@@ -223,6 +264,13 @@ class Drill:
 # and one side alone would collide with the same word on another list.
 def _key(pair: Pair) -> str:
     return f"{pair.left}|{pair.right}"
+
+
+def _bare(answer: str) -> str | None:
+    # One word, stripped of the markup a model wraps it in; anything with a space in it
+    # is a sentence, or a phrase from the list, and not this check's business.
+    word = CLOSING.sub("", MARKUP.sub("", answer).strip())
+    return word if word and not re.search(r"\s", word) else None
 
 
 def _sources(pairs: tuple[Pair, ...]) -> list[str]:

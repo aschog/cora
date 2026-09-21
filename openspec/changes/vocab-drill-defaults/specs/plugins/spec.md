@@ -95,6 +95,31 @@ place.
 - **WHEN** two sessions are run over it
 - **THEN** the order differs between them
 
+### Requirement: Only a word from the list is put
+
+A word the reader is shown in a drill SHALL be one the drill put. Where the answer is a
+single word and not the one on the table, the field SHALL replace it with the word it
+puts next, and the word that was on the table SHALL come round again. Prose SHALL be
+left as it is.
+
+#### Scenario: A word from nowhere
+
+- **GIVEN** `Apfel` on the table and `Apfelbaum` written as the answer
+- **WHEN** the answer reaches the reader
+- **THEN** it is a word from the list, and `Apfel` is still to be answered
+
+#### Scenario: The word on the table
+
+- **GIVEN** `Apfel` on the table and `Apfel` written as the answer
+- **WHEN** the answer reaches the reader
+- **THEN** it is `Apfel`, unchanged
+
+#### Scenario: A sentence
+
+- **GIVEN** a word on the table and a sentence written as the answer
+- **WHEN** the answer reaches the reader
+- **THEN** the sentence is unchanged
+
 ### Requirement: A finished pass says so, and can be run again
 
 When every word of the pass has been answered right, the field SHALL say the pass is
