@@ -96,13 +96,13 @@ test("in the shell with both rails folded, the camera is the whole screen", asyn
   const before = await box(page, 'iframe[title="fitness"]');
   const size = page.viewportSize();
   expect(size).not.toBeNull();
-
-  await framed.locator("[data-cam]").click();
-  await expect(framed.locator("body")).toHaveClass(/cam-live/);
   const whole = { x: 0, y: 0, width: size!.width, height: size!.height };
   expect(before, "the folded rails leave the frame short of the screen").not.toEqual(
     whole,
   );
+
+  await framed.locator("[data-cam]").click();
+  await expect(framed.locator("body")).toHaveClass(/cam-live/);
   await expect
     .poll(() => frame.boundingBox(), { message: "the frame is the whole screen" })
     .toEqual(whole);
@@ -113,6 +113,19 @@ test("in the shell with both rails folded, the camera is the whole screen", asyn
     "the picture is the whole screen",
   ).toEqual(whole);
 
+  /* The picture taken away underneath — another app, a sleeping tab — closes the camera
+     from the page's side, and the shell hears it let go. */
+  await framed
+    .locator("body")
+    .evaluate('camStream.getVideoTracks()[0].dispatchEvent(new Event("ended"))');
+  await expect(framed.locator("body")).not.toHaveClass(/cam-live/);
+  await expect
+    .poll(() => frame.boundingBox(), { message: "the shell hears it let go" })
+    .toEqual(before);
+
+  /* Opened again and closed by hand, the rails have their place back the same way. */
+  await framed.locator("[data-cam]").click();
+  await expect(framed.locator("body")).toHaveClass(/cam-live/);
   await framed.locator("[data-cam]").click();
   await expect
     .poll(() => frame.boundingBox(), {
@@ -121,9 +134,9 @@ test("in the shell with both rails folded, the camera is the whole screen", asyn
     .toEqual(before);
 });
 
-/* The prompt is the one moment the camera is open with no picture, and a second tap
-   during it is a camera closed before it ever showed. Chromium's fake camera answers at
-   once, so its answer is held back here and let go by hand. */
+/* The prompt is the one moment the camera is open with no picture, and a tap during it
+   is a camera closed, or closed and opened again, before it ever showed. Chromium's fake
+   camera answers at once, so its answers are held back here and let go by hand. */
 test("the shell moves once there is a picture, and a camera closed while the browser was asking stays closed", async ({
   page,
 }) => {
@@ -131,15 +144,24 @@ test("the shell moves once there is a picture, and a camera closed while the bro
     const devices = navigator.mediaDevices;
     if (!devices) return;
     const answer = devices.getUserMedia.bind(devices);
-    const held = window as unknown as { grant: () => void; given?: MediaStream };
-    held.grant = () => {};
+    const held = window as unknown as {
+      grant: () => Promise<void>;
+      given: MediaStream[];
+      pending: (() => Promise<void>)[];
+    };
+    held.given = [];
+    held.pending = [];
+    /* Every request asked so far is answered, in the order it came. */
+    held.grant = () =>
+      Promise.all(held.pending.splice(0).map((one) => one())).then(() => undefined);
     devices.getUserMedia = (wanted) =>
       new Promise((resolve, reject) => {
-        held.grant = () =>
+        held.pending.push(() =>
           answer(wanted).then((stream) => {
-            held.given = stream;
+            held.given.push(stream);
             resolve(stream);
-          }, reject);
+          }, reject),
+        );
       });
   });
   const frame = await fixed(page, "fitness");
@@ -150,22 +172,26 @@ test("the shell moves once there is a picture, and a camera closed while the bro
   const grant = () =>
     framed
       .locator("body")
-      .evaluate(() => (window as unknown as { grant: () => void }).grant());
-  const ended = () =>
-    framed.locator("body").evaluate(() => {
-      const held = window as unknown as { given?: MediaStream };
-      return (
-        held.given !== undefined &&
-        held.given.getTracks().every((track) => track.readyState === "ended")
-      );
-    });
+      .evaluate(() => (window as unknown as { grant: () => Promise<void> }).grant());
+  /* Which of the answers given so far still has a live track. */
+  const live = () =>
+    framed.locator("body").evaluate(() =>
+      (window as unknown as { given: MediaStream[] }).given.map((stream) =>
+        stream.getTracks().some((track) => track.readyState === "live"),
+      ),
+    );
+  const ground = () =>
+    framed.locator(".stage").evaluate((stage) => getComputedStyle(stage).borderTopColor);
 
-  /* Asked, not answered: the camera is the view, and nothing has moved. A message the
-     page should not have sent would land within a frame or two, so the check waits a
-     moment before saying nothing came. */
+  /* Asked, not answered: the camera is the view, the frame keeps its ground, and nothing
+     has moved. A message the page should not have sent would land within a frame or
+     two, so the check waits a moment before saying nothing came. */
   await framed.locator("[data-cam]").click();
   await expect(framed.locator("body")).toHaveClass(/view-cam/);
   await page.waitForTimeout(300);
+  expect(await ground(), "the frame keeps its ground while the prompt is up").not.toBe(
+    "rgba(0, 0, 0, 0)",
+  );
   expect(await frame.boundingBox(), "nothing moves while the prompt is up").toEqual(
     before,
   );
@@ -176,15 +202,22 @@ test("the shell moves once there is a picture, and a camera closed while the bro
   await expect(framed.locator("body")).not.toHaveClass(/view-cam/);
   await grant();
   await expect
-    .poll(ended, { message: "a stream answered after the camera closed is stopped" })
-    .toBe(true);
+    .poll(live, { message: "a stream answered after the camera closed is stopped" })
+    .toEqual([false]);
   await expect(framed.locator("body")).not.toHaveClass(/cam-live/);
   expect(await frame.boundingBox(), "the shell never moved").toEqual(before);
 
-  /* Opened again and answered: now there is a picture, and the shell moves for it. */
+  /* Closed and opened again while the browser was still asking: two answers arrive for
+     one camera, and only the one for the camera that is open is kept. */
   await framed.locator("[data-cam]").click();
+  await framed.locator("[data-cam]").click();
+  await framed.locator("[data-cam]").click();
+  await expect(framed.locator("body")).toHaveClass(/view-cam/);
   await grant();
   await expect(framed.locator("body")).toHaveClass(/cam-live/);
+  await expect
+    .poll(live, { message: "the answer for the camera that was closed is stopped" })
+    .toEqual([false, false, true]);
   const size = page.viewportSize();
   await expect
     .poll(() => frame.boundingBox(), { message: "the frame is the whole screen" })
