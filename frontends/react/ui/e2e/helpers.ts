@@ -34,6 +34,33 @@ export async function named(page: Page) {
   await expect(page).toHaveURL(/#\/c\//, { timeout: 20_000 })
 }
 
+/** The trainer, at the address cora serves the fitness field's page under. */
+export const TRAINER = '/pages/fitness/'
+
+/** The trainer asks its sheet for the plan on load, and no spec wants that answer: each
+ *  is about what the trainer does with whatever plan it has, so the suite never reaches
+ *  Google, on a train or otherwise. */
+export const noSheet = (page: Page) =>
+  page.route('**/docs.google.com/**', (asked) => asked.abort())
+
+/** The strip's picker taken to a field: what fixes a fresh conversation to it. */
+export async function pin(page: Page, field: string) {
+  await page
+    .getByRole('group', { name: 'Answer in' })
+    .getByRole('button', { name: 'Plugin' })
+    .click()
+  await page.getByRole('button', { name: field, exact: true }).click()
+}
+
+/** A fresh page fixed to a field with a page of its own, that page drawn in the middle. */
+export async function fixed(page: Page, field: string) {
+  await fresh(page)
+  await pin(page, field)
+  const shown = page.locator(`iframe[title="${field}"]`)
+  await expect(shown).toBeVisible()
+  return shown
+}
+
 export const rightRail = (page: Page, tab: 'STEPS' | 'SOURCE' | 'SESSIONS' | 'MEMORY') =>
   page.getByRole('tab', { name: tab }).click()
 

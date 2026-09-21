@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { fresh } from "./helpers";
+import { fixed, noSheet, TRAINER } from "./helpers";
 
 /* The one spec that needs a camera. Chromium is handed a fake one and told to answer
    its own prompt, so the trainer's camera goes live the way it does on a phone, with a
@@ -11,11 +11,7 @@ test.use({
   },
 });
 
-const TRAINER = "/pages/fitness/";
-
-test.beforeEach(async ({ page }) => {
-  await page.route("**/docs.google.com/**", (asked) => asked.abort());
-});
+test.beforeEach(({ page }) => noSheet(page));
 
 type Box = { x: number; y: number; width: number; height: number };
 
@@ -93,14 +89,7 @@ test("the opened camera fills the page, with the controls drawn over it", async 
 test("in the shell with both rails folded, the camera is the whole screen", async ({
   page,
 }) => {
-  await fresh(page);
-  await page
-    .getByRole("group", { name: "Answer in" })
-    .getByRole("button", { name: "Plugin" })
-    .click();
-  await page.getByRole("button", { name: "fitness", exact: true }).click();
-  const frame = page.locator('iframe[title="fitness"]');
-  await expect(frame).toBeVisible();
+  const frame = await fixed(page, "fitness");
   await page.getByRole("button", { name: /Documents/ }).click();
   await page.getByRole("button", { name: /Plan & memory/ }).click();
   const framed = frame.contentFrame();
@@ -153,14 +142,7 @@ test("the shell moves once there is a picture, and a camera closed while the bro
           }, reject);
       });
   });
-  await fresh(page);
-  await page
-    .getByRole("group", { name: "Answer in" })
-    .getByRole("button", { name: "Plugin" })
-    .click();
-  await page.getByRole("button", { name: "fitness", exact: true }).click();
-  const frame = page.locator('iframe[title="fitness"]');
-  await expect(frame).toBeVisible();
+  const frame = await fixed(page, "fitness");
   await page.getByRole("button", { name: /Documents/ }).click();
   await page.getByRole("button", { name: /Plan & memory/ }).click();
   const framed = frame.contentFrame();
