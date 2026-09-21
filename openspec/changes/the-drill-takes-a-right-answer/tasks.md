@@ -5,13 +5,13 @@
 ## 2. Taking a right answer
 
 - [x] 2.1 Write a test that the other side of the word on the table, answered, is taken: the next word comes back, the pass is a word shorter, and the word was recorded as produced.
-- [ ] 2.2 Write a test that case and a closing full stop do not stop an answer being right.
-- [ ] 2.3 Write a test that an answer that is not the word is left to the model and moves nothing.
-- [ ] 2.4 Write a test that `h` is left to the model.
-- [ ] 2.5 Write a test that the last word of a pass is left to the model even when answered right.
-- [ ] 2.6 Write a test that a spaced session is left to the model.
-- [ ] 2.7 Write a test that a right answer with the drill running the other way round is judged against the German side.
-- [ ] 2.8 Write a test that nothing on the table leaves every answer to the model.
+- [x] 2.2 Write a test that case and a closing full stop do not stop an answer being right.
+- [x] 2.3 Write a test that an answer that is not the word is left to the model and moves nothing.
+- [x] 2.4 Write a test that `h` is left to the model.
+- [x] 2.5 Write a test that the last word of a pass is left to the model even when answered right.
+- [x] 2.6 Write a test that a spaced session is left to the model.
+- [x] 2.7 Write a test that a right answer with the drill running the other way round is judged against the German side.
+- [x] 2.8 Write a test that nothing on the table leaves every answer to the model.
 
 ## 3. A hint
 

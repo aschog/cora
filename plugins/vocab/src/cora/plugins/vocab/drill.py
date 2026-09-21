@@ -140,11 +140,14 @@ class Drill:
     def taken(self, answer: str) -> str | None:
         """The next word, where the answer is the other side of the word on the table.
 
-        Letter for letter, case aside: anything looser is a judgement, and judging is
-        the model's — so a hint, a miss and everything else here go on to the model.
+        Letter for letter, case and a closing full stop aside: anything looser is a
+        judgement, and judging is the model's. So is everything else here — a hint, a
+        miss, the last word of a pass, which ends in a question, and a spaced session.
         """
         asking, shown = self.current.table, self.current.shown
-        if asking is None or not shown:
+        if asking is None or not shown or not self.current.queue:
+            return None
+        if self._spacing(None):
             return None
         if _plain(answer) != _other_side(asking, shown).casefold():
             return None
@@ -311,7 +314,7 @@ def _key(pair: Pair) -> str:
 
 
 def _plain(answer: str) -> str:
-    return answer.strip().casefold()
+    return CLOSING.sub("", answer.strip()).casefold()
 
 
 def _other_side(pair: Pair, shown: str) -> str:

@@ -90,3 +90,63 @@ def test_the_other_side_answered_gets_the_next_word_and_the_pass_moves_on() -> N
     assert field.drill.current.shown == put
     assert len(field.queued()) == left - 1
     assert shown not in field.queued(), "a word produced does not come back"
+
+
+def test_case_and_a_closing_full_stop_do_not_stop_an_answer_being_right() -> None:
+    field = Field()
+    shown = field.put()
+
+    assert field.answers(_other(shown).capitalize() + ".") is not None
+
+
+def test_an_answer_that_is_not_the_word_is_left_to_the_model_and_moves_nothing() -> (
+    None
+):
+    field = Field()
+    shown = field.put()
+    queued = field.queued()
+
+    assert field.answers("banana") is None
+    assert field.drill.current.shown == shown
+    assert field.queued() == queued
+
+
+def test_a_hint_asked_for_is_left_to_the_model() -> None:
+    field = Field()
+    shown = field.put()
+
+    assert field.answers("h") is None
+    assert field.drill.current.shown == shown
+
+
+def test_the_last_word_of_a_pass_is_left_to_the_model_even_answered_right() -> None:
+    field = Field(ONE)
+    shown = field.put()
+
+    assert field.answers(_other(shown)) is None
+    assert field.drill.current.shown == shown, "the word is still on the table"
+    assert field.queued() == []
+
+
+def test_a_spaced_session_is_left_to_the_model() -> None:
+    field = Field()
+    shown = field.put(spaced=True)
+
+    assert field.answers(_other(shown)) is None
+    assert field.drill.current.shown == shown
+
+
+def test_the_other_way_round_is_judged_against_the_german_side() -> None:
+    field = Field()
+    shown = field.put(put="other")
+    assert shown in ENGLISH
+
+    put = field.answers(ENGLISH[shown])
+
+    assert put is not None and put in ENGLISH
+
+
+def test_nothing_on_the_table_leaves_every_answer_to_the_model() -> None:
+    field = Field()
+
+    assert field.answers("dog") is None
