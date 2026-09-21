@@ -187,6 +187,57 @@ def test_the_side_asked_for_lasts_the_conversation_and_no_longer() -> None:
     assert fresh in GERMAN
 
 
+# Found in a real session: a model whose `how_it_went` was refused called `next_word`
+# again, and each call popped a fresh word. Three words were put in one turn and two of
+# them were never answered — gone from the pass, and never seen by the reader.
+def test_asking_twice_puts_the_same_word_and_loses_none() -> None:
+    field = Field().sided()
+
+    with field.drilling():
+        first = field.tools["next_word"]()
+        again = field.tools["next_word"]()
+        third = field.tools["next_word"]()
+        word = first.split(" — ")[0]
+        left = field.tools["how_it_went"](word=word, right=True)
+
+    assert first == again == third
+    assert f"{WORDS - 1} words still to put" in left
+
+
+def test_a_refusal_names_the_word_on_the_table(tmp_path: object = None) -> None:
+    field = Field().sided()
+
+    with field.drilling():
+        shown = field.tools["next_word"]().split(" — ")[0]
+        with raises(ToolRefusal) as refused:
+            field.tools["how_it_went"](word="Elefant", right=False)
+
+    assert shown in str(refused.value)
+    assert "Elefant" in str(refused.value)
+    assert "Do not ask for another word" in str(refused.value)
+
+
+def test_saying_how_it_went_with_nothing_on_the_table_says_so() -> None:
+    field = Field().sided()
+
+    with field.drilling(), raises(ToolRefusal) as refused:
+        field.tools["how_it_went"](word="Hund", right=True)
+
+    assert "No word is on the table" in str(refused.value)
+
+
+def test_going_again_replaces_the_word_on_the_table() -> None:
+    field = Field().sided()
+
+    with field.drilling():
+        first = field.tools["next_word"]()
+        after = field.tools["next_word"](again=True)
+        put, ended = field.pass_over()
+
+    assert first != after or len(put) + 1 == WORDS
+    assert "pass is done" in ended
+
+
 def test_a_pass_needs_no_store_where_spacing_would() -> None:
     host = host_for(MODULE, files=FakeFiles({(SCOPE, LISTED): OTHER}))
     extend(host)

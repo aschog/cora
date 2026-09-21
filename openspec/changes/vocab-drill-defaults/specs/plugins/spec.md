@@ -133,6 +133,31 @@ is reshuffled. A word that is on a list, and prose, SHALL be left as they are.
 - **WHEN** the answer reaches the reader
 - **THEN** the sentence is unchanged
 
+### Requirement: A word stands until it is answered
+
+A word put and not yet answered SHALL be the word a further request puts, rather than a
+new one — a model asks twice whenever a call of its own was refused, and a pass that
+drew a fresh word each time would lose one to every refusal. Saying how a word went
+that is not the one on the table SHALL be refused, and the refusal SHALL name the word
+that is, so the way on is answering rather than asking again.
+
+#### Scenario: Asked for twice
+
+- **GIVEN** a word put and not answered
+- **WHEN** another word is asked for
+- **THEN** it is the same word, and the pass has lost none
+
+#### Scenario: A word that is not the one on the table
+
+- **GIVEN** `Wasser` on the table
+- **WHEN** `Elefant` is reported as how it went
+- **THEN** the call is refused, and the refusal names `Wasser`
+
+#### Scenario: Nothing on the table
+
+- **WHEN** how it went is said before any word was put
+- **THEN** the call is refused, saying no word is on the table
+
 ### Requirement: A finished pass says so, and can be run again
 
 When every word of the pass has been answered right, the field SHALL say the pass is

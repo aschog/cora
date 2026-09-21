@@ -45,7 +45,11 @@ MISSED = "missed — it comes round again. {left} words still to put in this pas
 LAST = "right — that was the last word. The pass is done."
 NO_WORDS = "This field holds no word lists yet."
 NO_STORE = "This deployment keeps nothing, so a drill here could not remember anything."
-UNASKED = "That word was not the one asked. Put a word first, then say how it went."
+UNASKED = (
+    "'{said}' was not the word asked. The word on the table is '{shown}' — say how "
+    "that one went. Do not ask for another word: this one is still unanswered."
+)
+NOTHING_ASKED = "No word is on the table. Ask for one before saying how it went."
 UNSIDED = (
     "Nobody has said which column of {named} is the German one, and a drill puts the "
     "German. Its first pairs are: {pairs}. Work out which side that is and call "
@@ -121,6 +125,11 @@ class Drill:
             self.current.reload(pairs, chosen)
         if self._spacing(spaced):
             asking = self._due(pairs)
+        elif self.current.table is not None:
+            # A word already put and not yet answered is still the word being asked.
+            # Asking twice is what a model does when a call of its own was refused, and
+            # a pass that popped each time would lose a word to every refusal.
+            asking = self.current.table
         else:
             asking = self.current.queue.pop(0) if self.current.queue else None
         if asking is None:
@@ -168,8 +177,12 @@ class Drill:
         so a session nobody asked to space writes nothing that outlives it.
         """
         asking = self.current.table
-        if asking is None or word.strip().casefold() not in _both(_key(asking)):
-            raise ToolRefusal(UNASKED)
+        if asking is None:
+            raise ToolRefusal(NOTHING_ASKED)
+        if word.strip().casefold() not in _both(_key(asking)):
+            raise ToolRefusal(
+                UNASKED.format(said=word.strip(), shown=self.current.shown)
+            )
         self.current.table = None
         self.current.shown = ""
         if not self._spacing(None):
