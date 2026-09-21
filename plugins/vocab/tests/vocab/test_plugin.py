@@ -1,12 +1,13 @@
 from cora.plugins.vocab import INSTRUCTIONS, SCOPE, extend
-from cora.ports.host import HANDLER, TOOL
+from cora.ports.host import ANSWERING, HANDLER, TAKING, TOOL
 from cora.ports.host import INSTRUCTIONS as SAYS
 from fakes import host_for
 
 
-def test_the_field_is_a_voice_five_calls_and_a_check_on_the_answer() -> None:
+def test_the_field_is_a_voice_five_calls_and_two_hands_on_the_turn() -> None:
     """The screen that writes a list is cora's own, so what the plugin brings is
-    reading its lists — nothing indexes a file — and the spacing over them."""
+    reading its lists — nothing indexes a file — the spacing over them, a check on
+    what the reader is shown, and the taking of a right answer."""
     host = host_for("cora.plugins.vocab")
 
     extend(host)
@@ -15,8 +16,12 @@ def test_the_field_is_a_voice_five_calls_and_a_check_on_the_answer() -> None:
         (SAYS, SCOPE),
         *[(TOOL, SCOPE)] * 4,
         (HANDLER, SCOPE),
+        (HANDLER, SCOPE),
         (TOOL, SCOPE),
     ]
+    assert [
+        entry.value.event for entry in host.registered if entry.kind == HANDLER
+    ] == [ANSWERING, TAKING]
     assert [entry.value.name for entry in host.registered if entry.kind == TOOL] == [
         "find_word",
         "show_list",

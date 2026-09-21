@@ -6,8 +6,6 @@ asked for, arrives with the taken words in the transcript it reads."""
 
 from typing import Any
 
-import pytest
-
 from app_builder import assembled
 from cora.engine.plugin_registry import load_plugin
 from cora.ports.chat_model import ModelReply
@@ -37,7 +35,6 @@ def _calling(*calls: tuple[str, dict[str, Any]]) -> ModelReply:
     )
 
 
-@pytest.mark.xfail(strict=True)
 def test_right_answers_get_the_next_word_without_the_model_being_asked() -> None:
     model = ScriptedChatModel(
         [

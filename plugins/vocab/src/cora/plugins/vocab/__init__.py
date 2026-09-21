@@ -1,4 +1,4 @@
-from cora.ports.host import ANSWERING, Host
+from cora.ports.host import ANSWERING, TAKING, Host
 
 from .drill import SCHEDULE as SCHEDULE
 from .drill import Drill
@@ -249,6 +249,9 @@ def extend(cora: Host) -> None:
     # reader sees is checked against what was put, and a word from nowhere is replaced
     # with the word the drill puts next.
     cora.register_handler(event=ANSWERING, handle=drill.checked, scope=SCOPE)
+    # A right answer is a lookup, not a judgement: the drill takes it and puts the next
+    # word itself, and the model is asked only for what needs judging.
+    cora.register_handler(event=TAKING, handle=drill.taken, scope=SCOPE)
     cora.register_tool(
         name="how_it_went",
         description=(

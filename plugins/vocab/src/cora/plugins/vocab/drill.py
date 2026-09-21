@@ -137,6 +137,21 @@ class Drill:
         word, left = self._shown(asking, put, pairs)
         return f"{word} — from {asking.source}{_sides(asking, left)}."
 
+    def taken(self, answer: str) -> str | None:
+        """The next word, where the answer is the other side of the word on the table.
+
+        Letter for letter, case aside: anything looser is a judgement, and judging is
+        the model's — so a hint, a miss and everything else here go on to the model.
+        """
+        asking, shown = self.current.table, self.current.shown
+        if asking is None or not shown:
+            return None
+        if _plain(answer) != _other_side(asking, shown).casefold():
+            return None
+        self.how_it_went(word=shown, right=True)
+        self.next_word()
+        return self.current.shown
+
     def checked(self, answer: str) -> str | None:
         """The answer, unless it is a word off no list — then the one on the table.
 
@@ -293,6 +308,14 @@ class Drill:
 # and one side alone would collide with the same word on another list.
 def _key(pair: Pair) -> str:
     return f"{pair.left}|{pair.right}"
+
+
+def _plain(answer: str) -> str:
+    return answer.strip().casefold()
+
+
+def _other_side(pair: Pair, shown: str) -> str:
+    return pair.right if shown == pair.left else pair.left
 
 
 def _bare(answer: str) -> str | None:
