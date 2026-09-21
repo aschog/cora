@@ -13,11 +13,11 @@
 
 ## 3. The step
 
-- [ ] 3.1 Write a test that the step contributes the handler's text as this turn's assistant message, and a trace naming the plugin.
-- [ ] 3.2 Write a test that the step contributes no message where no handler took the question.
-- [ ] 3.3 Write a test that a handler is handed the question and runs in the turn's field.
-- [ ] 3.4 Write a test that what a handler kept while taking is in the state the step contributes, and what an earlier turn kept is readable there.
-- [ ] 3.5 Write a test that a handler registered under another field is not offered the question.
+- [x] 3.1 Write a test that the step contributes the handler's text as this turn's assistant message, and a trace naming the plugin.
+- [x] 3.2 Write a test that the step contributes no message where no handler took the question.
+- [x] 3.3 Write a test that a handler is handed the question and runs in the turn's field.
+- [x] 3.4 Write a test that what a handler kept while taking is in the state the step contributes, and what an earlier turn kept is readable there.
+- [x] 3.5 Write a test that a handler registered under another field is not offered the question.
 
 ## 4. The route out of the marker
 
