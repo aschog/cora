@@ -89,6 +89,11 @@ list, and which other words on it are near it.
 
 - A list is one of this field's own files, not a document: nothing searches it, and
   `search_documents` will not find a word on one. `find_word` is what reads the lists.
+- **An empty document search says nothing about the lists.** cora's own rule — that a
+  search finding nothing means nothing was uploaded — is about documents, and the lists
+  are not documents. Never tell the reader they have no list, and never ask them to
+  upload one, on the strength of a search: call `show_list`, which is the only thing
+  that knows. A tool that fails is a tool to report, not a reason to search instead.
 - A list is either a Markdown table, whose header names its two columns, or a line per
   pair as the reading of a screenshot saves one, which names neither. Which column is
   which language is the reader's to say, and `next_word` repeats whatever the list
