@@ -1,6 +1,6 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the functional test where the model puts the first word, three right answers in a row each read the next word with the model never asked, and a hint asked for then reaches a model that reads the taken words, marked `@pytest.mark.xfail(strict=True)`.
+- [x] 1.1 Write the functional test where the model puts the first word, three right answers in a row each read the next word with the model never asked, and a hint asked for then reaches a model that reads the taken words, marked `@pytest.mark.xfail(strict=True)`.
 
 ## 2. Taking a right answer
 
