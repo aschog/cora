@@ -226,15 +226,18 @@ def test_saying_how_it_went_with_nothing_on_the_table_says_so() -> None:
     assert "No word is on the table" in str(refused.value)
 
 
+# Asserted on the fresh pass rather than on the two words differing: a reshuffle draws
+# the same first word one time in eight, and a test that fails on that is a test of luck.
 def test_going_again_replaces_the_word_on_the_table() -> None:
     field = Field().sided()
 
     with field.drilling():
-        first = field.tools["next_word"]()
-        after = field.tools["next_word"](again=True)
+        field.tools["next_word"]()
+        after = field.tools["next_word"](again=True).split(" — ")[0]
         put, ended = field.pass_over()
 
-    assert first != after or len(put) + 1 == WORDS
+    assert put[0] == after
+    assert sorted(put) == sorted(f"D{n}" for n in range(WORDS))
     assert "pass is done" in ended
 
 

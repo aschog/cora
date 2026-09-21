@@ -25,6 +25,7 @@ DEFAULT_SCOPE = "cora"
 
 SCREENING = "screen"
 BRIEFING = "brief"
+TAKING = "take"
 CALLING = "tool_call"
 RETURNING = "tool_result"
 ANSWERING = "answer"
@@ -225,7 +226,8 @@ class Host(Protocol):
         """Take part in the turn at one of the points this module names.
 
         Args:
-            event: One of `SCREENING`, `BRIEFING`, `CALLING`, `RETURNING`, `ANSWERING`.
+            event: One of `SCREENING`, `BRIEFING`, `TAKING`, `CALLING`, `RETURNING`,
+                `ANSWERING`.
             handle: What runs there, as `Handler` describes one.
             scope: Where it runs. `None` runs it in every turn, and no scope can
                 switch that off — which is what screening for injection needs.

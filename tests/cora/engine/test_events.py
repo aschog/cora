@@ -12,6 +12,7 @@ from cora.ports.host import (
     HANDLER,
     RETURNING,
     SCREENING,
+    TAKING,
     Handler,
     Registration,
     Subscription,
@@ -105,4 +106,11 @@ def test_an_amendment_of_the_wrong_shape_is_dropped_like_a_raise() -> None:
 
 
 def test_every_point_a_plugin_may_subscribe_to_is_in_the_table() -> None:
-    assert set(EVENTS) == {SCREENING, BRIEFING, CALLING, RETURNING, ANSWERING}
+    assert set(EVENTS) == {
+        SCREENING,
+        BRIEFING,
+        TAKING,
+        CALLING,
+        RETURNING,
+        ANSWERING,
+    }

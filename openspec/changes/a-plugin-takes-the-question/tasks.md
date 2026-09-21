@@ -4,7 +4,7 @@
 
 ## 2. The event
 
-- [ ] 2.1 Write a test that the taking event is one a plugin may subscribe to, and the table of points has six.
+- [x] 2.1 Write a test that the taking event is one a plugin may subscribe to, and the table of points has six.
 - [ ] 2.2 Write a test that the first handler to answer with text ends the dispatch with that text, and the ones after it do not run.
 - [ ] 2.3 Write a test that a dispatch nobody took answers with nothing.
 - [ ] 2.4 Write a test that a handler answering with something that is not text is dropped, traced as broke, and the next one still runs.
