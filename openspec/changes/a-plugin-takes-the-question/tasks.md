@@ -1,6 +1,6 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the functional test where a plugin's handler answers a question in its field and the reader reads it with the model never asked, a question it leaves alone is answered by the model, and the taken turn is in the transcript the model reads next, marked `@pytest.mark.xfail(strict=True)`.
+- [x] 1.1 Write the functional test where a plugin's handler answers a question in its field and the reader reads it with the model never asked, a question it leaves alone is answered by the model, and the taken turn is in the transcript the model reads next, marked `@pytest.mark.xfail(strict=True)`.
 
 ## 2. The event
 
