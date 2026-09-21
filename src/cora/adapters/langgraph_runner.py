@@ -22,6 +22,7 @@ from cora.ports.chat_model import TextSink, unheard
 from cora.ports.graph import (
     ASK,
     DONE,
+    ROUNDS,
     TOOLS,
     GraphRunner,
     Loop,
@@ -197,7 +198,9 @@ class LangGraphRunner:
         builder.add_edge(START, opening[0].step)
         for here, there in pairwise(opening):
             builder.add_edge(here.step, there.step)
-        builder.add_edge(self.loop.marker.step, MODEL)
+        builder.add_conditional_edges(
+            self.loop.marker.step, self.loop.opening, {ROUNDS: MODEL, DONE: self._done}
+        )
         builder.add_conditional_edges(
             MODEL, self.loop.router, {DONE: self._done, TOOLS: GATE, ASK: ASK}
         )
