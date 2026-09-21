@@ -403,22 +403,37 @@ function Page() {
       const wish = said.data as { cora?: unknown; wanted?: unknown } | null
       if (wish?.cora === 'screen') setAsked(wish.wanted === true ? page : null)
     }
-    /* And the shell's own way back, because while a page has the screen every control of
-       the shell is unreachable: a page that asks and never lets go — one that throws
-       before it can, or one written to hold on — is not a page the reader is stuck in. */
-    const pressed = (key: KeyboardEvent) => {
-      if (key.key === 'Escape') setAsked(null)
-    }
     window.addEventListener('message', heard)
-    window.addEventListener('keydown', pressed)
     return () => {
       window.removeEventListener('message', heard)
-      window.removeEventListener('keydown', pressed)
       setAsked(null)
     }
   }, [page])
   const alone = asked !== null && asked === page && !leftOpen && !rightOpen
-
+  /* And the shell's own way back, because while a page has the screen every control of
+     the shell is unreachable: a page that asks and never lets go — one that throws before
+     it can, or one written to hold on — is not a page the reader is stuck in. Heard in the
+     frame's own document as well as out here, since that is where the reader is typing;
+     a frame of another origin says nothing, and keeps the window. */
+  const framed = useRef<HTMLIFrameElement>(null)
+  useEffect(() => {
+    if (!alone) return
+    let inside: Document | null = null
+    try {
+      inside = framed.current?.contentDocument ?? null
+    } catch {
+      inside = null
+    }
+    const pressed = (key: KeyboardEvent) => {
+      if (key.key === 'Escape') setAsked(null)
+    }
+    window.addEventListener('keydown', pressed)
+    inside?.addEventListener('keydown', pressed)
+    return () => {
+      window.removeEventListener('keydown', pressed)
+      inside?.removeEventListener('keydown', pressed)
+    }
+  }, [alone])
   return (
     <div className={styles.app}>
       <div className={styles.banners} role="status" aria-label="Notices">
@@ -500,6 +515,7 @@ function Page() {
             <ErrorBoundary said={UNDRAWN_TALK}>{talking}</ErrorBoundary>
           ) : (
             <iframe
+              ref={framed}
               className={styles.page}
               src={page}
               title={field}

@@ -123,9 +123,20 @@ test("in the shell with both rails folded, the camera is the whole screen", asyn
     .poll(() => frame.boundingBox(), { message: "the shell hears it let go" })
     .toEqual(before);
 
-  /* Opened again and closed by hand, the rails have their place back the same way. */
+  /* Opened again, Escape is the shell's own way back, whatever the page does — pressed
+     where the reader is, which is inside the frame. The camera keeps filming: what is
+     taken back is the screen, not the picture. */
   await framed.locator("[data-cam]").click();
   await expect(framed.locator("body")).toHaveClass(/cam-live/);
+  await framed.locator("#camflip").press("Escape");
+  await expect
+    .poll(() => frame.boundingBox(), { message: "Escape gives the rails their place back" })
+    .toEqual(before);
+  await expect(framed.locator("body"), "and the camera films on").toHaveClass(
+    /cam-live/,
+  );
+
+  /* And closing the camera by hand leaves them there. */
   await framed.locator("[data-cam]").click();
   await expect
     .poll(() => frame.boundingBox(), {
