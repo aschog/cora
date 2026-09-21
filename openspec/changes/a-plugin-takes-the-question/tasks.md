@@ -5,11 +5,11 @@
 ## 2. The event
 
 - [x] 2.1 Write a test that the taking event is one a plugin may subscribe to, and the table of points has six.
-- [ ] 2.2 Write a test that the first handler to answer with text ends the dispatch with that text, and the ones after it do not run.
-- [ ] 2.3 Write a test that a dispatch nobody took answers with nothing.
-- [ ] 2.4 Write a test that a handler answering with something that is not text is dropped, traced as broke, and the next one still runs.
-- [ ] 2.5 Write a test that a handler that raises is dropped, the dispatch goes on, and the trace holds the kind of the exception and not its message.
-- [ ] 2.6 Write a test that a handler answering with blank text has answered nothing.
+- [x] 2.2 Write a test that the first handler to answer with text ends the dispatch with that text, and the ones after it do not run.
+- [x] 2.3 Write a test that a dispatch nobody took answers with nothing.
+- [x] 2.4 Write a test that a handler answering with something that is not text is dropped, traced as broke, and the next one still runs.
+- [x] 2.5 Write a test that a handler that raises is dropped, the dispatch goes on, and the trace holds the kind of the exception and not its message.
+- [x] 2.6 Write a test that a handler answering with blank text has answered nothing.
 
 ## 3. The step
 
