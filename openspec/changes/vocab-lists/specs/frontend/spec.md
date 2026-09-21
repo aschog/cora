@@ -4,28 +4,28 @@ so that the list is drill data rather than another document to search.
 
 ## ADDED Requirements
 
-### Requirement: A photo read on the page is kept as a document or as a file
+### Requirement: A photo read on the page is kept as one of the field's own files
 
-The screen that puts up what was read from a photo SHALL let the reader choose what to
-keep it as: a document of the field, as it is today, or one of the field's own files
-under a name they give. A file SHALL be offered in every field, because every field
-keeps files. The name SHALL be asked for only where a file is what is being kept.
-
-#### Scenario: Kept as a document
-
-- **GIVEN** a photo read and corrected
-- **WHEN** the reader keeps it as a document
-- **THEN** it is uploaded as it is today, and the field lists it among its documents
+What was read from a photo SHALL be kept as a file of the field it was added in, under
+a name the reader gives, and never as a document: a photographed page is data the
+field's plugin works from rather than prose to be answered from. The name SHALL be
+required, because a file of a field's is found by its name.
 
 #### Scenario: Kept as a file
 
 - **GIVEN** a photo read and corrected, and a name typed
-- **WHEN** the reader keeps it as a file
+- **WHEN** the reader keeps it
 - **THEN** the field holds a file of that name carrying the corrected text
 
-#### Scenario: A file with no name
+#### Scenario: Never a document
 
-- **GIVEN** a photo read, with a file chosen and no name typed
+- **GIVEN** a photo read and kept
+- **WHEN** that field's documents are listed
+- **THEN** what was read is not among them, and the rail does not show it
+
+#### Scenario: A reading with no name
+
+- **GIVEN** a photo read and no name typed
 - **WHEN** the reader tries to keep it
 - **THEN** keeping is refused until a name is given
 

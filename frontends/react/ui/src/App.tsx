@@ -651,10 +651,6 @@ function Page() {
           image={reading.image}
           read={reading.read}
           held={heldFiles}
-          onKeep={(file) => {
-            setReading(null)
-            upload(file)
-          }}
           onKeepAsFile={(name, text) => {
             setReading(null)
             cora

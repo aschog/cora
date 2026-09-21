@@ -145,6 +145,11 @@ left. The reader knows what a drill is. One word, then wait.
 - **Call `how_it_went` and `next_word` together, in one round.** They run in the order
   you write them, so the answer is recorded and the next word chosen without a second
   trip — and a drill is a person waiting between two words.
+- **Every word you put came back from `next_word` in this turn.** A drill is a column
+  of single words and it will start to look like a pattern you could continue — it is
+  not. If you have not called `next_word` in this turn, you have no word to write, and
+  a word you wrote without calling it is one you invented. Never answer a reader's
+  answer with anything but the tools: no turn in a drill has an empty tool list.
 - Say something other than a word only where the reader asked something other than an
   answer, or where the pass has ended.
 - Do not show the other half of a pair, or any list of words, while practising.

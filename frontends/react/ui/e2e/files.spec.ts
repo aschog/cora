@@ -13,7 +13,6 @@ import { fresh } from './helpers'
 
 const PICKER = 'Upload from computer'
 const DIALOG = 'READ FROM THE IMAGE'
-const AS_FILE = "One of this field's own files"
 const LIST = 'Grundwortschatz.md'
 const FIRST = '| Deutsch | English |\n| --- | --- |\n| Apfel | apple |'
 const SECOND = '| Buch | book |'
@@ -53,9 +52,7 @@ test('a reading is kept as a named file, and a second one is added to it', async
   const asked = page.getByRole('dialog', { name: DIALOG })
   await expect(asked.getByRole('textbox', { name: 'What was read' })).toHaveValue(FIRST)
 
-  // A document is what it would be by default, so keeping a file is a choice made.
-  await expect(asked.getByRole('button', { name: 'Keep it' })).toBeEnabled()
-  await asked.getByRole('radio', { name: AS_FILE }).check()
+  // Nothing is kept until it is named: a file of the field's is found by its name.
   await expect(asked.getByRole('button', { name: 'Keep it' })).toBeDisabled()
 
   // A combobox rather than a textbox: the name box carries the datalist of what the
@@ -75,7 +72,6 @@ test('a reading is kept as a named file, and a second one is added to it', async
   await page.reload()
   await page.getByLabel(PICKER).setInputFiles(SHOT)
   const again = page.getByRole('dialog', { name: DIALOG })
-  await again.getByRole('radio', { name: AS_FILE }).check()
   const naming = again.getByLabel('What to call it')
   await naming.fill(LIST)
   await naming.press('Enter')

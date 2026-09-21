@@ -4,7 +4,7 @@ A vocabulary list is drill data, but the only way to save one makes it a searcha
 
 ## What Changes
 
-- A photo read on the page can be kept as one of the field's own files instead of a document
+- A photo read on the page is kept as one of the field's own files, never as a document
 - The reader names it, and the names the field already holds are offered as they type
 - Choosing a name that exists opens that file in the box, so the correction pass covers the merge
 - The composer's ＋ opens a menu naming what it takes, rather than the file picker itself

@@ -55,14 +55,14 @@ is put up in a dialog to correct, and only what the reader keeps reaches the fie
 Discarding keeps nothing. A photo with no text in it and a reading that could not be run
 are two different sentences, because they send the reader to fix two different things.
 
-The dialog keeps it as one of two things. A **document** is the upload it always was, a
-Markdown file named after the photo, indexed and citable. One of the **field's own
-files** is not: the reader names it, nothing indexes it, and it is there for the field's
-plugin to read — a word list to drill from rather than prose to answer from. The names
-the field already holds are offered as the reader types, and naming one that exists puts
-its text into the box above the new reading, so the merge is corrected in the same pass
-and the whole of it is written back. Every field offers both, because every field keeps
-files; a field whose plugin reads none simply has none.
+What it keeps is one of the **field's own files**, never a document: the reader names
+it, nothing indexes it, and it is there for the field's plugin to read — a word list to
+drill from rather than prose to answer from. A photographed page is data, and the one
+uploaded as prose was a document nobody wanted searched. The names the field already
+holds are offered as the reader types, and naming one that exists puts its text into the
+box above the new reading, so the merge is corrected in the same pass and the whole of
+it is written back. A document still arrives the way it always did — the rail, or a
+`.md` or `.pdf` through the same ＋.
 
 ## A page a plugin brought
 
