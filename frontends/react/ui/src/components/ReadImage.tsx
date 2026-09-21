@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import dialog from './dialog.module.css'
 import styles from './ReadImage.module.css'
 
@@ -9,6 +9,7 @@ const SAID =
 const NAME = 'Name'
 const NAMED = 'What to call it'
 const ADDING = 'That name is already here, so what it holds is above the new reading.'
+const KEEPING = 'Keeping…'
 
 type Props = {
   /** What the photo was called, shown so the reader can tell which one they are
@@ -21,8 +22,10 @@ type Props = {
    *  second photograph of one list adds to it instead of making a near-miss of it. */
   held: string[]
   /** Keep what is on screen as one of the field's own files, under this name. Nothing
-   *  indexes it, so it is data the field works from rather than prose to search. */
-  onKeepAsFile: (name: string, text: string) => void
+   *  indexes it, so it is data the field works from rather than prose to search. The
+   *  dialog stays up until this settles, so a refusal is refused over the text that
+   *  was refused rather than over an empty screen. */
+  onKeepAsFile: (name: string, text: string) => Promise<void>
   /** What the field holds under a name, for the box to open on when one is named that
    *  already exists. Nothing where the name is new. */
   onRead: (name: string) => Promise<string | null>
@@ -50,6 +53,12 @@ export default function ReadImage({
 }: Props) {
   const [text, setText] = useState(read)
   const [name, setName] = useState('')
+  const [keeping, setKeeping] = useState(false)
+  /* The merge in flight, and what it will leave in the box. Clicking Keep blurs the
+     name box first, so the click arrives while the file being merged in is still being
+     fetched — and a write that did not wait would replace that file with the new
+     reading alone. */
+  const merging = useRef<Promise<string> | null>(null)
   /* Which name the box was last opened on, so the text of an existing file is fetched
      once per name rather than on every keystroke that spells it. */
   const [opened, setOpened] = useState('')
@@ -84,17 +93,31 @@ export default function ReadImage({
      the box above the new reading, and the reader corrects both at once. Done as the
      name is settled rather than as it is typed, so a name passed through on the way to
      another does not pull a file in. */
-  const open = async () => {
-    if (!name || name === opened || !held.includes(name)) return
-    const there = await onRead(name)
+  const open = (): Promise<string> => {
+    if (!name || name === opened || !held.includes(name)) {
+      return merging.current ?? Promise.resolve(text)
+    }
     setOpened(name)
-    if (there !== null) setText(`${there.replace(/\n+$/, '')}\n${text}`)
+    const merged = onRead(name).then((there) => {
+      const whole = there === null ? text : `${there.replace(/\n+$/, '')}\n${text}`
+      setText(whole)
+      return whole
+    })
+    merging.current = merged
+    return merged
   }
 
-  const keep = () => {
-    const written = text.trim()
+  const keep = async () => {
+    /* Whatever the name box started before the click, finished — so what is written is
+       the merge the reader would have seen, never the half of it they did not. */
+    const written = (await open()).trim()
     if (!written || !name.trim()) return
-    onKeepAsFile(name.trim(), `${written}\n`)
+    setKeeping(true)
+    try {
+      await onKeepAsFile(name.trim(), `${written}\n`)
+    } finally {
+      setKeeping(false)
+    }
   }
 
   return (
@@ -128,6 +151,7 @@ export default function ReadImage({
             aria-label={NAMED}
             list="field-files"
             onChange={(event) => setName(event.target.value)}
+            disabled={keeping}
             onBlur={open}
             onKeyDown={(event) => event.key === 'Enter' && open()}
           />
@@ -139,15 +163,15 @@ export default function ReadImage({
           {adding && <p className={styles.said}>{ADDING}</p>}
         </div>
         <div className={styles.answers}>
-          <button className="quiet" onClick={onDiscard}>
+          <button className="quiet" onClick={onDiscard} disabled={keeping}>
             Discard
           </button>
           <button
             className={styles.keep}
             onClick={keep}
-            disabled={!text.trim() || !name.trim()}
+            disabled={keeping || !text.trim() || !name.trim()}
           >
-            Keep it
+            {keeping ? KEEPING : 'Keep it'}
           </button>
         </div>
       </div>

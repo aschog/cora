@@ -97,16 +97,29 @@ place.
 
 ### Requirement: Only a word from the list is put
 
-A word the reader is shown in a drill SHALL be one the drill put. Where the answer is a
-single word and not the one on the table, the field SHALL replace it with the word it
-puts next, and the word that was on the table SHALL come round again. Prose SHALL be
-left as it is.
+A word the reader is shown in a drill SHALL be one the drill put. Where a word is on the
+table unanswered, the answer is a single word, and that word is on no list of this
+field, the field SHALL put the word on the table again — nothing answered it, so it is
+still the word being asked. The pass SHALL NOT move: no word is taken off it and none
+is reshuffled. A word that is on a list, and prose, SHALL be left as they are.
 
 #### Scenario: A word from nowhere
 
 - **GIVEN** `Apfel` on the table and `Apfelbaum` written as the answer
 - **WHEN** the answer reaches the reader
-- **THEN** it is a word from the list, and `Apfel` is still to be answered
+- **THEN** it is `Apfel`, and `Apfel` is still to be answered
+
+#### Scenario: The reader's own answer
+
+- **GIVEN** `Apfel` on the table and `apple` written as the answer
+- **WHEN** the answer reaches the reader
+- **THEN** it is `apple`, because that word is on the list
+
+#### Scenario: The pass is untouched
+
+- **GIVEN** a word replaced because it came from nowhere
+- **WHEN** the words still to put are counted
+- **THEN** the count is what it was before
 
 #### Scenario: The word on the table
 
@@ -144,7 +157,8 @@ The side being asked and whether spacing is on SHALL be kept for the conversatio
 no longer, and a new conversation SHALL start German-first with spacing off and a fresh
 pass. The pass itself is held in memory for the process, one at a time: a second
 conversation drilling at once draws from the same pass. Which column is German is not
-one of these: it belongs to the list, and is kept for good.
+one of these: it belongs to the list, and is kept for good — to the list itself rather
+than to its filename, so two fields holding a same-named list answer for their own.
 
 #### Scenario: A new conversation
 

@@ -17,12 +17,27 @@ WORD_SCHEMA = {
                 "than one list, and remembered for the rest of it."
             ),
         },
-        "side": {
+        "put": {
             "type": "string",
-            "enum": ["left", "right"],
+            "enum": ["german", "other"],
             "description": (
-                "Which column of the list to put to the reader. The left one by "
-                "default; the reader says which way round they want to be asked."
+                "Which side to put to the reader. The German one unless they ask to "
+                "be asked the other way round, and then remembered for the rest of "
+                "the conversation."
+            ),
+        },
+        "spaced": {
+            "type": "boolean",
+            "description": (
+                "Whether to space this session with SM2. Off unless the reader asks "
+                "for it, and then remembered for the rest of the conversation."
+            ),
+        },
+        "again": {
+            "type": "boolean",
+            "description": (
+                "Start the pass over, once every word has been produced and the "
+                "reader has said they want to go again."
             ),
         },
     },

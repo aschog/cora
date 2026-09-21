@@ -129,36 +129,35 @@ class Drill:
             asking = self.current.queue.pop(0) if self.current.queue else None
         if asking is None:
             return DONE if self._spacing(None) else SWEPT_UP
-        word, left = self._shown(asking, put)
+        word, left = self._shown(asking, put, pairs)
         return f"{word} — from {asking.source}{_sides(asking, left)}."
 
     def checked(self, answer: str) -> str | None:
-        """The answer, unless it is a word the drill never put — then the real one.
+        """The answer, unless it is a word off no list — then the one on the table.
 
-        A drill is a column of single words, and a model will go on writing the column
-        without asking for the next word: `Apfel`, then `Apfelbaum`, from nowhere. A
-        bare word that is not the one on the table is replaced with the word the drill
-        puts next, and the one that was on the table stays unanswered and comes round
-        again. Prose is left alone: a reader asking something is answered in sentences.
+        A model will go on writing the column of single words without asking for the
+        next one: `Apfel`, then `Apfelbaum`, from nowhere. The word on the table is put
+        again, because nothing answered it and it is still the word being asked.
+
+        Three things hold before this changes anything: a word is on the table and
+        unanswered, the answer is one bare word, and that word is on no list here.
         """
-        shown = self.current.shown
-        if not shown:
+        # Outside a tool call, where a plugin's own state is not bound — so it reads
+        # the pass in memory and the field's lists, and keeps nothing.
+        asking, shown = self.current.table, self.current.shown
+        if asking is None or not shown:
             return None
         word = _bare(answer)
         if word is None or word.casefold() == shown.casefold():
             return None
-        try:
-            said = self.next_word()
-        except ToolRefusal:
-            return NOT_FROM_THE_LIST
-        if said in (DONE, SWEPT_UP):
-            return ROUND_OVER
-        # The word now on the table — which may be the same one, still unanswered and
-        # drawn again: that is the drill being right, not the check being wrong.
-        return self.current.shown or NOT_FROM_THE_LIST
+        if word.casefold() in _spoken(pairs_of(self.cora)):
+            return None
+        return shown
 
-    def _shown(self, asking: Pair, put: str) -> tuple[str, bool]:
-        german = self._german(asking.source)
+    def _shown(
+        self, asking: Pair, put: str, pairs: tuple[Pair, ...]
+    ) -> tuple[str, bool]:
+        german = self._german(asking.source, pairs)
         showing = german if self._putting(put) == GERMAN else other(german)
         left = showing == GERMAN_LEFT
         word = asking.left if left else asking.right
@@ -220,7 +219,7 @@ class Drill:
         # One list at a time: the model has to look at each one's words to say which
         # column they are, and a refusal carrying five lists carries none of them well.
         for named in _sources(pairs):
-            if self._german(named):
+            if self._german(named, pairs):
                 continue
             sample = [pair for pair in pairs if pair.source == named][:SAMPLED]
             raise ToolRefusal(
@@ -238,23 +237,24 @@ class Drill:
             return asked.strip()
         return self.cora.state.read(PUT) or GERMAN
 
-    def _german(self, named: str) -> str:
+    def _german(self, named: str, pairs: tuple[Pair, ...]) -> str:
         # Which column is German is the model's to say, once per list — a screenshot is
         # photographed whichever way round the page was, and nothing here can tell
         # Apfel from Apple. Where a deployment keeps nothing there is nowhere to put
         # the answer, so the left column stands in.
         if self.cora.store is None:
             return GERMAN_LEFT
-        return sides_in(self.cora.store.read(SIDES)).get(named, "")
+        return sides_in(self.cora.store.read(SIDES)).get(_sided(named, pairs), "")
 
     def german_side(self, name: str, side: str) -> str:
         """Say which column of a list holds the German, for good."""
-        held = _sources(pairs_of(self.cora))
+        pairs = pairs_of(self.cora)
+        held = _sources(pairs)
         if name not in held:
             raise ToolRefusal(NO_SUCH_LIST.format(name=name, held=", ".join(held)))
         kept = self._kept()
         sides = sides_in(kept.read(SIDES))
-        kept.keep(SIDES, sides_written({**sides, name: side}))
+        kept.keep(SIDES, sides_written({**sides, _sided(name, pairs): side}))
         return f"{side} is the German column of {name}."
 
     def _chosen(self, pairs: tuple[Pair, ...], asked: str) -> tuple[Pair, ...]:
@@ -291,6 +291,24 @@ def _bare(answer: str) -> str | None:
     # is a sentence, or a phrase from the list, and not this check's business.
     word = CLOSING.sub("", MARKUP.sub("", answer).strip())
     return word if word and not re.search(r"\s", word) else None
+
+
+# The store is one plugin's, not one field's, so a list is named there by more than its
+# filename: two fields that both hold `einheit-3.md` are two lists, and each answers for
+# its own column. The first pair is what tells them apart, and it survives a second
+# photograph being appended to either.
+def _sided(named: str, pairs: tuple[Pair, ...]) -> str:
+    for pair in pairs:
+        if pair.source == named:
+            return f"{named}#{pair.left}|{pair.right}"
+    return named
+
+
+def _spoken(pairs: tuple[Pair, ...]) -> frozenset[str]:
+    # Every word of every list, either side: what the reader may legitimately say back.
+    return frozenset(
+        side.casefold() for pair in pairs for side in (pair.left, pair.right)
+    )
 
 
 def _sources(pairs: tuple[Pair, ...]) -> list[str]:

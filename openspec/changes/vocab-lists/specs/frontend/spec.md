@@ -59,6 +59,25 @@ pass and keeps the whole of it. What is kept SHALL be what the box holds.
 - **WHEN** they keep it
 - **THEN** the file holds what the box held, not what either part held
 
+#### Scenario: Kept before the merge has landed
+
+- **GIVEN** a name typed for a file the field holds
+- **WHEN** the reader keeps it while that file is still being fetched
+- **THEN** what is written is the merge, never the new reading alone
+
+### Requirement: A reading is not lost to a refused write
+
+The screen SHALL keep what was read up until the write has landed, so a name the store
+refuses, a file over its cap, or a store that cannot be reached is reported over the
+corrected text rather than over an empty screen. What was corrected SHALL still be
+there to name again.
+
+#### Scenario: A refused write
+
+- **GIVEN** a reading corrected and a name the store refuses
+- **WHEN** the reader keeps it
+- **THEN** the reason is reported and the corrected text is still on screen
+
 ### Requirement: The composer says what it takes
 
 The ＋ beside the question SHALL open a menu naming what can be added, rather than the

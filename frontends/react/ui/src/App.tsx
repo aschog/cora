@@ -651,11 +651,19 @@ function Page() {
           image={reading.image}
           read={reading.read}
           held={heldFiles}
-          onKeepAsFile={(name, text) => {
-            setReading(null)
-            cora
-              .keepFieldFile(field, name, text)
-              .catch((failed: Error) => setTrouble(failed.message))
+          /* The dialog comes down when the write has landed, and not before: a name
+             the store refuses, or a file over its cap, is refused over the corrected
+             text rather than over nothing. */
+          onKeepAsFile={async (name, text) => {
+            try {
+              await cora.keepFieldFile(field, name, text)
+              setReading(null)
+              setHeldFiles((names) =>
+                names.includes(name) ? names : [...names, name],
+              )
+            } catch (failed) {
+              setTrouble((failed as Error).message)
+            }
           }}
           onRead={(name) => cora.fieldFile(field, name).catch(() => null)}
           onDiscard={() => setReading(null)}

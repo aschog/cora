@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import ReadImage from './ReadImage'
 
@@ -34,12 +34,13 @@ test('what was read is drawn to be corrected, with a way to keep it and a way no
   expect(screen.getByRole('button', { name: 'Discard' })).toBeTruthy()
 })
 
-test('keeping it hands over the name the reader gave', () => {
+test('keeping it hands over the name the reader gave', async () => {
   const { onKeep } = put('Hilfe  help')
 
   naming('Einheit 3.md')
   fireEvent.click(screen.getByRole('button', { name: KEEP }))
 
+  await waitFor(() => expect(onKeep).toHaveBeenCalled())
   expect(onKeep.mock.calls[0][0]).toBe('Einheit 3.md')
 })
 
@@ -56,7 +57,7 @@ test('an unnamed reading cannot be kept', () => {
 })
 
 /* The correction is the point of the step: what the reader typed is what cora keeps. */
-test('what was corrected is what is kept, not what was read', () => {
+test('what was corrected is what is kept, not what was read', async () => {
   const { onKeep } = put('Hilfe  heIp')
 
   fireEvent.change(written(), { target: { value: 'Hilfe  help' } })
@@ -64,7 +65,33 @@ test('what was corrected is what is kept, not what was read', () => {
   fireEvent.click(screen.getByRole('button', { name: KEEP }))
 
   /* Ending in a newline, as a text file does. */
+  await waitFor(() => expect(onKeep).toHaveBeenCalled())
   expect(onKeep.mock.calls[0][1]).toBe('Hilfe  help\n')
+})
+
+test('keeping while the merge is still in flight writes the merge', async () => {
+  const onKeep = vi.fn()
+  let land: (text: string) => void = () => undefined
+  render(
+    <ReadImage
+      image="words.png"
+      read="Buch  book"
+      held={['Grundwortschatz.md']}
+      onKeepAsFile={onKeep}
+      onRead={() => new Promise<string>((said) => (land = said))}
+      onDiscard={vi.fn()}
+    />,
+  )
+
+  naming('Grundwortschatz.md')
+  /* Blur starts the merge; the click arrives before it has landed, which is what a
+     mouse does — focusout first, then click. */
+  fireEvent.blur(screen.getByLabelText('What to call it'))
+  fireEvent.click(screen.getByRole('button', { name: KEEP }))
+  land('Apfel  apple')
+
+  await waitFor(() => expect(onKeep).toHaveBeenCalled())
+  expect(onKeep.mock.calls[0][1]).toBe('Apfel  apple\nBuch  book\n')
 })
 
 test('discarding hands over nothing', () => {

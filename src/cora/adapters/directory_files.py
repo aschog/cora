@@ -10,7 +10,11 @@ from cora.domain.errors import (
 )
 from cora.ports.files import MOST_BYTES
 
-PLAIN_NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9 ._-]*\Z")
+# A name a person types for a list of their own: letters of any language, digits, and
+# the three marks a filename carries. It has to begin with a letter or a digit, which
+# is what keeps a dotfile, `.` and `..` out without naming any of them.
+PLAIN_NAME = re.compile(r"[^\W_][\w .\-]*\Z")
+MOST_CHARACTERS = 100
 
 
 def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
@@ -63,7 +67,15 @@ class DirectoryFiles:
     @_translate_errors
     def read(self, scope: str, name: str) -> str | None:
         held = self._at(scope, name)
-        return held.read_text(encoding="utf-8") if held.is_file() else None
+        if not held.is_file():
+            return None
+        try:
+            return held.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            # Not text, so not a file this store wrote — a photo dropped in the
+            # directory reads as nothing rather than breaking every caller that is
+            # walking the field. Listing filters what it can see; this is the rest.
+            return None
 
     @_translate_errors
     def write(self, scope: str, name: str, text: str | None) -> None:
@@ -82,6 +94,6 @@ class DirectoryFiles:
 
 
 def _plain(name: str) -> str:
-    if not PLAIN_NAME.match(name):
+    if len(name) > MOST_CHARACTERS or not PLAIN_NAME.match(name):
         raise FileNameRejectedError(name)
     return name

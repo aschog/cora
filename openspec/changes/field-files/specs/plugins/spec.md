@@ -62,9 +62,16 @@ and what the text means SHALL be the plugin's business rather than cora's.
 
 ### Requirement: A name that would leave the directory is refused
 
-A file name SHALL be one plain name. A name carrying a separator, a parent, or an
-absolute path SHALL be refused rather than followed, and nothing outside the plugin's
-own directory SHALL be read, written or dropped however the name is spelled.
+A file name SHALL be one plain name, beginning with a letter or a digit and carrying
+letters of any language, digits, spaces, dots and hyphens. A name carrying a separator,
+a parent, an absolute path or a leading dot SHALL be refused rather than followed, and
+nothing outside the plugin's own directory SHALL be read, written or dropped however
+the name is spelled.
+
+#### Scenario: A name in the reader's own language
+
+- **WHEN** a file is written under a name carrying letters outside ASCII
+- **THEN** it is kept, and listed under that name
 
 #### Scenario: A name climbing out
 
@@ -75,6 +82,25 @@ own directory SHALL be read, written or dropped however the name is spelled.
 
 - **WHEN** a file is written under a name that is an absolute path
 - **THEN** the write is refused
+
+### Requirement: A field holds only what this store could have written
+
+A listing SHALL return only names this store would accept, and text this store could
+have written SHALL be what a read returns. A directory on a real machine also holds
+what the machine put there, and neither a file it hid nor one that is not text SHALL
+stop a plugin reading the field.
+
+#### Scenario: What the machine left in the directory
+
+- **GIVEN** a field directory also holding `.DS_Store` and a subdirectory
+- **WHEN** the field's names are listed
+- **THEN** only the files this store wrote come back
+
+#### Scenario: A file that is not text
+
+- **GIVEN** a photograph dropped into a field's directory
+- **WHEN** it is read
+- **THEN** nothing comes back, and the field's own files are still readable
 
 ### Requirement: A file over the cap is refused
 
