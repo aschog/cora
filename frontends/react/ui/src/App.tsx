@@ -403,9 +403,17 @@ function Page() {
       const wish = said.data as { cora?: unknown; wanted?: unknown } | null
       if (wish?.cora === 'screen') setAsked(wish.wanted === true ? page : null)
     }
+    /* And the shell's own way back, because while a page has the screen every control of
+       the shell is unreachable: a page that asks and never lets go — one that throws
+       before it can, or one written to hold on — is not a page the reader is stuck in. */
+    const pressed = (key: KeyboardEvent) => {
+      if (key.key === 'Escape') setAsked(null)
+    }
     window.addEventListener('message', heard)
+    window.addEventListener('keydown', pressed)
     return () => {
       window.removeEventListener('message', heard)
+      window.removeEventListener('keydown', pressed)
       setAsked(null)
     }
   }, [page])

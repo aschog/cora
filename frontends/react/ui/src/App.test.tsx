@@ -1150,6 +1150,13 @@ test('a page that asks for the screen has it while both rails are folded', async
   wants(true, 'https://www.youtube.com')
   expect(alone(), 'asked from another origin').toBe(false)
 
+  /* The shell's own way back: the rails are unreachable while the page has the screen,
+     so a page that asks and never lets go is not a page the reader is stuck in. */
+  wants(true)
+  expect(alone()).toBe(true)
+  fireEvent.keyDown(window, { key: 'Escape' })
+  expect(alone(), 'after Escape').toBe(false)
+
   /* The asking goes with the page: back to plain chat and fixed to the field again, the
      frame drawn the second time has not asked. */
   wants(true)
