@@ -30,11 +30,16 @@ LEFT = "left"
 # confused with the choice to drill all of them.
 EVERY = "*"
 DONE = "Nothing is due and nothing is new — the session is done."
-SWEPT_UP = (
-    "Every word on this list has been produced — the pass is done. Ask the reader "
-    "whether to go again, and call this with `again` where they say yes."
-)
-AGAIN = "again in this pass"
+# What a tool hands back is read by the model and half-repeated to the reader, so it
+# says what happened and never what to call next: an instruction here comes out of the
+# answer as machinery.
+SWEPT_UP = "Every word on this list has been produced — the pass is done."
+# What is said back after an answer counts the words left, because "done for this
+# pass" was read as the pass being done and ended a session nine words early. A count
+# cannot be read as anything but a count.
+RIGHT = "right — {left} words still to put in this pass."
+MISSED = "missed — it comes round again. {left} words still to put in this pass."
+LAST = "right — that was the last word. The pass is done."
 NO_WORDS = "This field holds no word lists yet."
 NO_STORE = "This deployment keeps nothing, so a drill here could not remember anything."
 UNASKED = "That word was not the one asked. Put a word first, then say how it went."
@@ -93,11 +98,15 @@ class Drill:
         return "again in this session" if not right else f"next in {card.interval} days"
 
     def _swept(self, asked: str, *, right: bool) -> str:
-        if not right:
-            return AGAIN
         sweep = Sweep.of(self.cora.state.read(SWEPT))
-        self.cora.state.keep(SWEPT, sweep.with_word(asked).written())
-        return "done for this pass"
+        if right:
+            sweep = sweep.with_word(asked)
+            self.cora.state.keep(SWEPT, sweep.written())
+        pairs = self._chosen(pairs_of(self.cora), "")
+        left = sum(1 for pair in pairs if not sweep.holds(_key(pair)))
+        if not left:
+            return LAST
+        return (RIGHT if right else MISSED).format(left=left)
 
     def _due(self, pairs: tuple[Pair, ...]) -> Pair | None:
         schedule = Schedule.of(self._kept().read(SCHEDULE))
