@@ -214,6 +214,14 @@ its return is the whole of its decision — `None` changes nothing, at every eve
   under reads as `None`. Absent where the deployment keeps no file, so check it before
   you write. What a plugin keeps here is the plugin's own: nothing searches it, cites
   it, recalls it or puts it in a brief.
+- `cora.files.write(name, text)` / `read(name)` / `names()` — the files the field this
+  turn runs in keeps, as text on disk under `.cora/fields/<field>`. They belong to the
+  field rather than to your plugin, so one plugin under two fields keeps two sets.
+  `write(name, None)` drops a name, a name nothing was written under reads as `None`,
+  and `names()` is sorted. A name is one plain name: a folder in it is refused, not
+  cleaned up. Nothing indexes, searches or cites these — write a document if the user
+  is meant to be answered from it, and a file here if your plugin works from it. Text a
+  person can open and edit, so expect to find it changed between turns.
 - `cora.delegate(task, tools=(), rounds=3, shape=None)` — a bounded loop of its own with
   the model, offered what you pass plus cora's document search. Tools declaring `effect`
   or `asks` are withheld, and a tool of yours named `search_documents` fails the call.

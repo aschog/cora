@@ -59,6 +59,7 @@ plugin you chose to run, and a plugin can call anything.
 | Where | What is in it | Setting |
 | --- | --- | --- |
 | `.cora/documents` | The cleaned text of every document you uploaded, a Markdown file per upload under a directory per field | `CORA_DOCUMENTS_PATH` |
+| `.cora/fields` | The files a field's plugin keeps of its own — a list, a schedule, a log — as text you can open and edit, indexed by nothing | `CORA_FIELDS_PATH` |
 | `.cora/cora.sqlite` | The passage spans and their vectors, the facts you asked cora to remember, every recorded turn — question, answer, citations and the whole trace, which carries each tool call's arguments and all of what it returned, retrieved passages included — and a checkpoint of every turn's state | `CORA_DB_PATH` |
 | `.cora/logs/cora.log` | Written only under `CORA_DEBUG` | `CORA_LOG_PATH` |
 | `cora-output` | What an approved effect produced | `CORA_OUTPUT_PATH` |

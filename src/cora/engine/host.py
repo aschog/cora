@@ -14,7 +14,7 @@ from jsonschema import Draft202012Validator, SchemaError
 
 from cora.domain.card import Card
 from cora.domain.citations import Citable
-from cora.domain.errors import PluginLoadError
+from cora.domain.errors import PluginLoadError, UnsettledFieldError
 from cora.domain.trace import WorkShown
 from cora.engine import keeping
 from cora.engine.events import EVENTS
@@ -25,11 +25,13 @@ from cora.engine.scoping import here
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import ChatModel, Message
 from cora.ports.context_source import ContextSource, Document
+from cora.ports.files import Files
 from cora.ports.host import (
     HANDLER,
     INSTRUCTIONS,
     PAGE,
     TOOL,
+    FieldFiles,
     Handler,
     Registration,
     State,
@@ -113,6 +115,7 @@ class PluginHost:
     memory: Memory | None = None
     output: Output | None = None
     kept: Store | None = None
+    kept_files: Files | None = None
     settings: Mapping[str, str] = field(default_factory=dict)
     top_k: int = 5
     registered: list[Registration] = field(default_factory=list)
@@ -148,6 +151,15 @@ class PluginHost:
         and outside one it reads nothing and keeps nothing.
         """
         return _Keeping(name_of(self.module))
+
+    @property
+    def files(self) -> FieldFiles:
+        """The files the field this turn runs in keeps, which are not its documents.
+
+        Bound to the field rather than to the plugin, so a plugin loaded under two
+        fields reads each field's own and neither reaches the other's.
+        """
+        return _Filing(self.kept_files)
 
     @property
     def log(self) -> logging.Logger:
@@ -460,6 +472,42 @@ class _Keeping:
     def keep(self, name: str, value: str | None) -> None:
         """Keep this text under this name, or drop the name given nothing."""
         keeping.keep(self.plugin, name, value)
+
+
+@dataclass(frozen=True)
+class _Filing:
+    """The files of whatever field the work happening now belongs to.
+
+    The field is read from the turn rather than passed in, the same way the documents
+    are: a plugin cannot see which field it is running in, so a parameter would be one
+    nobody could fill — and one a plugin could fill with somebody else's.
+
+    A deployment keeping no files answers as an empty field rather than refusing: a
+    plugin reading a list it never wrote reads nothing, which is what it would read
+    anyway.
+    """
+
+    kept: Files | None
+
+    def names(self) -> tuple[str, ...]:
+        """The names this field holds, sorted, or nothing where it holds none."""
+        return () if self.kept is None else self.kept.names(_the_field())
+
+    def read(self, name: str) -> str | None:
+        """The text kept under this name in this field, or nothing where none was."""
+        return None if self.kept is None else self.kept.read(_the_field(), name)
+
+    def write(self, name: str, text: str | None) -> None:
+        """Keep this text under this name in this field, or drop the name given none."""
+        if self.kept is not None:
+            self.kept.write(_the_field(), name, text)
+
+
+def _the_field() -> str:
+    fields = here()
+    if len(fields) != 1:
+        raise UnsettledFieldError(fields)
+    return next(iter(fields))
 
 
 @dataclass(frozen=True)

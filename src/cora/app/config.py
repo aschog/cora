@@ -22,6 +22,7 @@ DEFAULT_REASONING_EFFORT = "low"
 DEFAULT_HISTORY_TURNS = 20
 DEFAULT_DB_PATH = ".cora/cora.sqlite"
 DEFAULT_DOCUMENTS_PATH = ".cora/documents"
+DEFAULT_FIELDS_PATH = ".cora/fields"
 DEFAULT_OUTPUT_PATH = "cora-output"
 DEFAULT_LOG_PATH = LOG_FILE
 
@@ -48,6 +49,7 @@ class Config:
     scopes: tuple[str, ...] = DEFAULT_SCOPES
     plugins_path: str = DEFAULT_PLUGINS_PATH
     documents_path: str = DEFAULT_DOCUMENTS_PATH
+    fields_path: str = DEFAULT_FIELDS_PATH
     output_path: str = DEFAULT_OUTPUT_PATH
     log_path: str = DEFAULT_LOG_PATH
     debug: bool = False
@@ -96,6 +98,7 @@ class Config:
             reasoning_effort=_effort(env),
             db_path=_named(env, "CORA_DB_PATH", DEFAULT_DB_PATH),
             documents_path=_named(env, "CORA_DOCUMENTS_PATH", DEFAULT_DOCUMENTS_PATH),
+            fields_path=_named(env, "CORA_FIELDS_PATH", DEFAULT_FIELDS_PATH),
             output_path=_named(env, "CORA_OUTPUT_PATH", DEFAULT_OUTPUT_PATH),
             log_path=_named(env, "CORA_LOG_PATH", DEFAULT_LOG_PATH),
             debug=_bool(env, "CORA_DEBUG"),

@@ -37,6 +37,7 @@ from cora.engine.removal import deletable, fields_going
 from cora.engine.validation import MAX_INPUT_CHARS
 from cora.frontends.react import payloads
 from cora.ports.chat_model import Piece, TextSink, Written
+from cora.ports.files import MOST_BYTES
 from cora.ports.host import DEFAULT_SCOPE
 
 log = logging.getLogger(__name__)
@@ -99,6 +100,16 @@ def api(
         Route("/api/scopes", _scopes(apps), methods=["GET"]),
         Route("/api/scopes/{scope}/notice", _notice(apps, notices), methods=["GET"]),
         Route("/api/scopes/{scope}/notice", _noticed(apps, notices), methods=["PUT"]),
+        Route("/api/scopes/{scope}/files", _field_files(apps), methods=["GET"]),
+        Route("/api/scopes/{scope}/files/{name}", _field_file(apps), methods=["GET"]),
+        Route(
+            "/api/scopes/{scope}/files/{name}", _keep_field_file(apps), methods=["PUT"]
+        ),
+        Route(
+            "/api/scopes/{scope}/files/{name}",
+            _drop_field_file(apps),
+            methods=["DELETE"],
+        ),
         Route(f"{PAGES}/{{scope}}/{{path:path}}", _page(apps), methods=["GET", "HEAD"]),
     ]
     if ui is not None and ui.is_dir():
@@ -630,3 +641,84 @@ def _scope(apps: Apps) -> Callable[[Request], Any]:
         return JSONResponse({"pin": pin})
 
     return held
+
+
+FILE_CEILING = MOST_BYTES
+NOT_A_FILE = "A file is written as a JSON object with the text under 'text'."
+TOO_MUCH_FILE = f"A file is at most the {FILE_CEILING // KILOBYTE} KB a field holds."
+NO_FILES_KEPT = "This deployment keeps no files, so nothing could be written."
+NO_SUCH_FILE = "There is no file of that name in this field."
+
+
+def _field_files(apps: Apps) -> Callable[[Request], Any]:
+    async def listed(request: Request) -> JSONResponse:
+        app = await run_in_threadpool(apps)
+        named = request.path_params["scope"]
+        scope = _field(named, app.scopes)
+        if scope is None:
+            return _refusal(named, app.scopes)
+        if app.files is None:
+            return JSONResponse({"names": []})
+        names = await run_in_threadpool(app.files.names, scope)
+        return JSONResponse({"names": list(names)})
+
+    return listed
+
+
+def _field_file(apps: Apps) -> Callable[[Request], Any]:
+    async def held(request: Request) -> JSONResponse:
+        app = await run_in_threadpool(apps)
+        named = request.path_params["scope"]
+        scope = _field(named, app.scopes)
+        if scope is None:
+            return _refusal(named, app.scopes)
+        name = request.path_params["name"]
+        text = (
+            None
+            if app.files is None
+            else await run_in_threadpool(app.files.read, scope, name)
+        )
+        if text is None:
+            return JSONResponse({"error": NO_SUCH_FILE}, status_code=NOT_FOUND)
+        return JSONResponse({"name": name, "text": text})
+
+    return held
+
+
+def _keep_field_file(apps: Apps) -> Callable[[Request], Any]:
+    async def keep(request: Request) -> JSONResponse:
+        app = await run_in_threadpool(apps)
+        named = request.path_params["scope"]
+        scope = _field(named, app.scopes)
+        if scope is None:
+            return _refusal(named, app.scopes)
+        written = await _json_object(
+            request, NOT_A_FILE, ceiling=FILE_CEILING, too_long=TOO_MUCH_FILE
+        )
+        if isinstance(written, JSONResponse):
+            return written
+        text = written.get("text")
+        if not isinstance(text, str):
+            return JSONResponse({"error": NOT_A_FILE}, status_code=REFUSED)
+        if app.files is None:
+            return JSONResponse({"error": NO_FILES_KEPT}, status_code=UNAVAILABLE)
+        name = request.path_params["name"]
+        await run_in_threadpool(app.files.write, scope, name, text)
+        return JSONResponse({"name": name, "text": text})
+
+    return keep
+
+
+def _drop_field_file(apps: Apps) -> Callable[[Request], Any]:
+    async def drop(request: Request) -> Response:
+        app = await run_in_threadpool(apps)
+        named = request.path_params["scope"]
+        scope = _field(named, app.scopes)
+        if scope is None:
+            return _refusal(named, app.scopes)
+        if app.files is not None:
+            name = request.path_params["name"]
+            await run_in_threadpool(app.files.write, scope, name, None)
+        return Response(status_code=NO_CONTENT)
+
+    return drop
