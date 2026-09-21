@@ -51,7 +51,7 @@ A **photo** added there is read before it is kept. `frontends/react/ui/src/readi
 fetches Tesseract compiled to WebAssembly from `cdn.jsdelivr.net` the first time one is
 added — the script, its core and the German and English trained data, pinned and then
 cached — and runs it in the browser, so the image is never uploaded. What it recognised
-is put up in a dialog to correct, and only what the reader keeps reaches the field.
+is put up in a dialog to correct — without the numbering a printed list carries, which belongs to the page rather than to what is kept — and only what the reader keeps reaches the field.
 Discarding keeps nothing. A photo with no text in it and a reading that could not be run
 are two different sentences, because they send the reader to fix two different things.
 

@@ -69,11 +69,20 @@ function fetched(): Promise<Reader> {
   return fetching
 }
 
+/* What a printed list puts in front of every line and nothing needs afterwards: a
+   number, a letter, or a bullet. Dropped from the reading rather than from the file,
+   so the reader sees what is about to be kept and can put one back by typing it. */
+const LEADER = /^[ \t]*(?:\(?\d{1,3}[.,)\]]|[a-zA-Z][.)]|[-*•·–—])[ \t]+/gm
+
 /** The words in an image, as they were recognised.
  *
  *  Throws `ReadingFailed` where the reading never ran. An image holding no text is not
  *  a failure: it comes back as the empty string, which is what the caller tells the
  *  reader about.
+ *
+ *  The numbering a printed list carries is dropped: it belongs to the page it was
+ *  photographed from, not to what is kept, and a second photograph of the same list
+ *  would start counting again in the middle of it.
  */
 export async function read(image: Blob): Promise<string> {
   let engine: Reader
@@ -91,7 +100,7 @@ export async function read(image: Blob): Promise<string> {
     const {
       data: { text },
     } = await worker.recognize(image)
-    return text.trim()
+    return text.replace(LEADER, '').trim()
   } finally {
     await worker.terminate()
   }
