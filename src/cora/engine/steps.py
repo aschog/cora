@@ -37,7 +37,7 @@ from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.rounds import Read, decided, told, used
 from cora.engine.scoping import running_in
 from cora.ports.chat_model import Aside, ChatModel, Message, TextSink, unheard
-from cora.ports.graph import ASK, DONE, TOOLS, Step
+from cora.ports.graph import ASK, DONE, ROUNDS, TOOLS, Step
 from cora.ports.host import (
     ANSWERING,
     BRIEFING,
@@ -45,6 +45,7 @@ from cora.ports.host import (
     DEFAULT_SCOPE,
     RETURNING,
     SCREENING,
+    TAKING,
 )
 from cora.ports.memory import Fact, Memory
 from cora.ports.pause import Answered, declined
@@ -414,6 +415,47 @@ class FocusStep:
             return self.memory.recall(), False
         except AdapterError:
             return (), True
+
+
+@dataclass(frozen=True)
+class TakeStep:
+    """The step where a plugin may answer the question before any round is spent.
+
+    The handlers at `TAKING` are handed the question, and the first to answer with text
+    has answered the turn: what it wrote joins the transcript as the round the turn
+    ended on, and the route out of here leaves the rounds unentered. Nothing taken
+    contributes no message, and the turn goes on to the model as it always did.
+
+    The one place outside a tool call where what a plugin kept for the conversation is
+    bound: a plugin answering the reader stands where a tool call stands, and what it
+    keeps here travels back into the turn's state the same way.
+    """
+
+    registry: Registry = field(default_factory=Registry)
+
+    def __call__(self, state: AgentState) -> AgentState:
+        """Offer the question, and contribute what was taken as this turn's answer."""
+        scopes = scoped(state)
+        # Deep-copied for the reason the tool round copies it: the inner dictionaries
+        # are the channel's own, and a plugin writing into a shared one would change
+        # the state behind this step and leave what it contributes saying nothing new.
+        kept = deepcopy(state.get("kept", {}))
+        trace: list[TraceStep] = []
+        with keeping.bound(kept):
+            taken = dispatch(
+                TAKING,
+                state["question"],
+                self.registry.handlers(TAKING, scopes),
+                trace,
+                scopes,
+            )
+        if taken is None:
+            return {"trace": trace, "kept": kept}
+        return {
+            "messages": [Message(role="assistant", content=taken)],
+            "trace": trace,
+            "kept": kept,
+        }
 
 
 @dataclass(frozen=True)
@@ -950,6 +992,15 @@ class Router:
         if _rounds(state) >= self.max_tool_rounds:
             raise ToolLoopLimitError
         return ASK if asking is not None else TOOLS
+
+
+def opening(state: AgentState) -> str:
+    """`DONE` where something has answered this turn already, and `ROUNDS` otherwise.
+
+    The route out of the marker the rounds fall inside: a turn a plugin took there has
+    its answer written, and spends no round on it.
+    """
+    return DONE if _rounds(state) else ROUNDS
 
 
 def scoped(state: AgentState) -> frozenset[str]:

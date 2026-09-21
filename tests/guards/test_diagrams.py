@@ -91,3 +91,12 @@ def test_the_session_maps_show_the_walk_the_composition_root_names() -> None:
     assert [name for name, _ in walk.after] == [ANSWER]
     assert said.index(SCREEN) < said.index(WORK) < said.index("model")
     assert said.index("model") < said.index(ANSWER)
+    # The fork the runner declares at the marker: the rounds are entered only where the
+    # opening route says so, and a turn answered before them goes straight on.
+    assert said.index(WORK) < said.index("opening") < said.index("model")
+    forks = [
+        line
+        for line in sequences.round_taken().lines
+        if isinstance(line, sequences.Fragment) and line.operator == "alt"
+    ]
+    assert any("opening" in guard for fork in forks for guard, _ in fork.operands)

@@ -24,6 +24,9 @@ const composer = (onUpload = vi.fn(), uploading = false) => {
 }
 
 const ADD = 'Add a file or photo'
+/* The ＋ carries the control's name and the picker behind it carries its own: the menu
+   between them is what made two labels out of one. */
+const PICKER = 'Upload from computer'
 
 const shot = () => new File([new Uint8Array([1])], 'words.png', { type: 'image/png' })
 
@@ -36,7 +39,7 @@ test('a file is added from beside the question', () => {
 test('what is picked goes to the upload the rail uses', () => {
   const { onUpload } = composer()
 
-  const picked = screen.getByLabelText(ADD) as HTMLInputElement
+  const picked = screen.getByLabelText(PICKER) as HTMLInputElement
   fireEvent.change(picked, { target: { files: [shot()] } })
 
   expect(onUpload).toHaveBeenCalledTimes(1)
@@ -48,7 +51,8 @@ test('what is picked goes to the upload the rail uses', () => {
 test('the control says an upload is running and takes no second file', () => {
   const { onUpload } = composer(vi.fn(), true)
 
-  const running = screen.getByLabelText('Adding a file…') as HTMLInputElement
+  expect(screen.getByLabelText('Adding a file…')).toBeTruthy()
+  const running = screen.getByLabelText(PICKER) as HTMLInputElement
   expect(running.disabled).toBe(true)
   fireEvent.change(running, { target: { files: [shot()] } })
 
@@ -60,6 +64,6 @@ test('the control says an upload is running and takes no second file', () => {
 test('it offers what cora reads, and photos', () => {
   composer()
 
-  const picked = screen.getByLabelText(ADD) as HTMLInputElement
+  const picked = screen.getByLabelText(PICKER) as HTMLInputElement
   expect(picked.accept).toBe('.txt,.md,.pdf,image/*')
 })

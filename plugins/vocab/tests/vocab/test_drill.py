@@ -1,15 +1,17 @@
 import datetime
+from collections.abc import Iterator
+from contextlib import contextmanager
 
 from pytest import raises
 
 from cora.engine import keeping
+from cora.engine.scoping import running_in
 from cora.plugins.vocab import SCHEDULE, SCOPE, extend
 from cora.plugins.vocab.schedule import Schedule
 from cora.plugins.vocab.sm2 import Card
-from cora.ports.context_source import Document
 from cora.ports.host import TOOL
 from cora.ports.plugin import ToolRefusal
-from fakes import FakeContextSource, FakeStore, host_for
+from fakes import FakeFiles, FakeStore, host_for
 
 MODULE = "cora.plugins.vocab"
 LIST = """# English — Einheit 3
@@ -20,18 +22,33 @@ LIST = """# English — Einheit 3
 | Haus | house |
 """
 READ = "1. Apple — Apfel\n2. Book — Buch\n"
+# One pair, for the tests about how a word is put rather than about which: a pass with
+# spacing off shuffles, so a list of two has no first word to assert on.
+ONE = "| Deutsch | English |\n| --- | --- |\n| Hilfe | help |\n"
+ONE_READ = "1. Apple — Apfel\n"
 TODAY = datetime.date.today()
+LISTED = "einheit-3.md"
 
 
-def _drill(held: str = LIST, kept: str | None = None) -> tuple[dict, FakeStore]:
+@contextmanager
+def drilling() -> Iterator[None]:
+    """A tool call of this plugin's, in the vocab field: the two bindings every one of
+    its tools reads — what it keeps for the conversation, and whose files these are."""
+    with keeping.bound({}), running_in(frozenset({SCOPE})):
+        yield
+
+
+def _drill(
+    held: str = LIST, kept: str | None = None, german: str | None = "left"
+) -> tuple[dict, FakeStore]:
+    # `german` is which column of `held` holds it, said once as the model says it;
+    # `None` is a fixture with no pairs in it, which there is nothing to say about.
     store = FakeStore()
     if kept is not None:
         store.keep("vocab", SCHEDULE, kept)
     host = host_for(
         MODULE,
-        documents=FakeContextSource(
-            held=[Document(name="einheit-3.md", text=held, scope=SCOPE)]
-        ),
+        files=FakeFiles({(SCOPE, LISTED): held}),
         store=store,
     )
     extend(host)
@@ -40,22 +57,20 @@ def _drill(held: str = LIST, kept: str | None = None) -> tuple[dict, FakeStore]:
         for entry in host.registered
         if entry.kind == TOOL
     }
+    if german is not None:
+        with drilling():
+            tools["german_side"](name=LISTED, side=german)
     return tools, store
 
 
-def test_only_this_fields_documents_are_drilled() -> None:
-    """A turn can run over more than one field, and `documents.all()` hands over every
-    document of every field it is running in. A note in another field is not vocabulary
-    this plugin may put to the reader."""
+def test_only_this_fields_files_are_drilled() -> None:
+    """Files belong to the field rather than to the plugin, so a list kept in another
+    field is not vocabulary this one may put to the reader — even where one plugin
+    brought both."""
     store = FakeStore()
     host = host_for(
         MODULE,
-        documents=FakeContextSource(
-            held=[
-                Document(name="elsewhere.md", text=READ, scope="notes"),
-                Document(name="einheit-3.md", text=LIST, scope=SCOPE),
-            ]
-        ),
+        files=FakeFiles({("notes", "elsewhere.md"): READ, (SCOPE, LISTED): LIST}),
         store=store,
     )
     extend(host)
@@ -65,17 +80,18 @@ def test_only_this_fields_documents_are_drilled() -> None:
         if entry.kind == TOOL
     }
 
-    with keeping.bound({}):
+    with drilling():
+        tools["german_side"](name=LISTED, side="left")
         asked = tools["next_word"]()
 
-    assert "Hilfe" in asked
+    assert "Hilfe" in asked or "Haus" in asked
     assert "Apple" not in asked
 
 
 def test_a_word_is_put_from_the_side_asked_and_not_the_other() -> None:
-    tools, _ = _drill()
+    tools, _ = _drill(held=ONE)
 
-    with keeping.bound({}):
+    with drilling():
         asked = tools["next_word"]()
 
     assert "Hilfe" in asked
@@ -83,10 +99,10 @@ def test_a_word_is_put_from_the_side_asked_and_not_the_other() -> None:
 
 
 def test_the_other_way_round_puts_the_other_side() -> None:
-    tools, _ = _drill()
+    tools, _ = _drill(held=ONE)
 
-    with keeping.bound({}):
-        asked = tools["next_word"](side="right")
+    with drilling():
+        asked = tools["next_word"](put="other")
 
     assert "help" in asked
     assert "Hilfe" not in asked
@@ -95,9 +111,9 @@ def test_the_other_way_round_puts_the_other_side() -> None:
 def test_a_word_put_says_which_list_and_which_side_it_came_from() -> None:
     """The model has to tell the reader what it is asking for, and a table says what
     its two columns are called."""
-    tools, _ = _drill()
+    tools, _ = _drill(held=ONE)
 
-    with keeping.bound({}):
+    with drilling():
         asked = tools["next_word"]()
 
     assert "einheit-3.md" in asked
@@ -107,13 +123,15 @@ def test_a_word_put_says_which_list_and_which_side_it_came_from() -> None:
 def test_a_list_read_out_of_a_screenshot_is_drilled_like_any_other() -> None:
     """The regression this was found by: a list the reading saved is lines rather than
     a table, and the drill said the field held no lists at all."""
-    tools, _ = _drill(held=READ)
+    tools, _ = _drill(held=ONE_READ, german="right")
 
-    with keeping.bound({}):
+    with drilling():
         asked = tools["next_word"]()
 
-    assert "Apple" in asked
-    assert "Apfel" not in asked
+    # The German is put whichever column it landed in, which for a screenshot of an
+    # English-first page is the right one.
+    assert "Apfel" in asked
+    assert "Apple" not in asked
 
 
 def test_a_word_that_is_due_is_preferred_to_one_that_is_not() -> None:
@@ -122,8 +140,8 @@ def test_a_word_that_is_due_is_preferred_to_one_that_is_not() -> None:
     )
     tools, _ = _drill(kept=kept.written())
 
-    with keeping.bound({}):
-        asked = tools["next_word"]()
+    with drilling():
+        asked = tools["next_word"](spaced=True)
 
     assert "Haus" in asked
 
@@ -134,8 +152,8 @@ def test_a_word_already_missed_is_put_before_a_word_never_drilled() -> None:
     kept = Schedule().with_card("Haus|house", Card(due=TODAY, interval=0, right=0))
     tools, _ = _drill(kept=kept.written())
 
-    with keeping.bound({}):
-        asked = tools["next_word"]()
+    with drilling():
+        asked = tools["next_word"](spaced=True)
 
     assert "Haus" in asked
 
@@ -149,17 +167,17 @@ def test_nothing_due_and_nothing_new_says_the_session_is_done() -> None:
     )
     tools, _ = _drill(kept=kept.written())
 
-    with keeping.bound({}):
-        said = tools["next_word"]()
+    with drilling():
+        said = tools["next_word"](spaced=True)
 
     assert "done" in said.lower()
 
 
 def test_saying_how_it_went_moves_that_words_schedule_in_the_store() -> None:
-    tools, store = _drill()
+    tools, store = _drill(held=ONE)
 
-    with keeping.bound({}):
-        tools["next_word"]()
+    with drilling():
+        tools["next_word"](spaced=True)
         tools["how_it_went"](word="Hilfe", right=True)
 
     kept = Schedule.of(store.read("vocab", SCHEDULE))
@@ -168,12 +186,12 @@ def test_saying_how_it_went_moves_that_words_schedule_in_the_store() -> None:
 
 
 def test_a_missed_word_is_the_word_put_next() -> None:
-    tools, _ = _drill()
+    tools, _ = _drill(held=ONE)
 
-    with keeping.bound({}):
-        tools["next_word"]()
+    with drilling():
+        tools["next_word"](spaced=True)
         tools["how_it_went"](word="Hilfe", right=False)
-        again = tools["next_word"]()
+        again = tools["next_word"](spaced=True)
 
     assert "Hilfe" in again
 
@@ -181,10 +199,10 @@ def test_a_missed_word_is_the_word_put_next() -> None:
 def test_the_answer_is_taken_for_the_word_that_was_put_either_side() -> None:
     """The model reports the word it put, and a model reporting the answer instead is
     talking about the same card."""
-    tools, store = _drill()
+    tools, store = _drill(held=ONE)
 
-    with keeping.bound({}):
-        tools["next_word"]()
+    with drilling():
+        tools["next_word"](spaced=True)
         tools["how_it_went"](word="help", right=True)
 
     assert Schedule.of(store.read("vocab", SCHEDULE)).card("Hilfe|help").right == 1
@@ -195,25 +213,27 @@ def test_saying_how_a_word_nobody_asked_about_went_is_refused() -> None:
     that — so a word it names that nothing asked is refused rather than written."""
     tools, store = _drill()
 
-    with keeping.bound({}), raises(ToolRefusal):
+    with drilling(), raises(ToolRefusal):
         tools["how_it_went"](word="Haus", right=True)
 
     assert store.read("vocab", SCHEDULE) is None
 
 
 def test_a_field_holding_no_list_says_so() -> None:
-    tools, _ = _drill(held="Just some prose about words.")
+    tools, _ = _drill(held="Just some prose about words.", german=None)
 
-    with keeping.bound({}):
+    with drilling():
         assert "no word lists" in tools["next_word"]().lower()
 
 
-def test_a_field_with_no_store_says_so_rather_than_drilling_into_nothing() -> None:
+def test_a_spaced_drill_with_no_store_says_so_rather_than_drilling_into_nothing() -> (
+    None
+):
+    """Only spacing needs a store: a pass is the conversation's own, so a deployment
+    that keeps nothing can still drill — it just cannot remember it tomorrow."""
     host = host_for(
         MODULE,
-        documents=FakeContextSource(
-            held=[Document(name="einheit-3.md", text=LIST, scope=SCOPE)]
-        ),
+        files=FakeFiles({(SCOPE, LISTED): LIST}),
     )
     extend(host)
     tools = {
@@ -222,5 +242,8 @@ def test_a_field_with_no_store_says_so_rather_than_drilling_into_nothing() -> No
         if entry.kind == TOOL
     }
 
-    with keeping.bound({}), raises(ToolRefusal):
-        tools["next_word"]()
+    with drilling():
+        assert "einheit-3.md" in tools["next_word"]()
+
+    with drilling(), raises(ToolRefusal):
+        tools["next_word"](spaced=True)

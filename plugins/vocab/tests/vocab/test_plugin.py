@@ -1,22 +1,31 @@
 from cora.plugins.vocab import INSTRUCTIONS, SCOPE, extend
+from cora.ports.host import ANSWERING, HANDLER, TAKING, TOOL
 from cora.ports.host import INSTRUCTIONS as SAYS
-from cora.ports.host import TOOL
 from fakes import host_for
 
 
-def test_the_field_is_a_voice_and_the_two_calls_the_drill_runs_on() -> None:
-    """Searching the lists is cora's own tool and the screen that writes one is cora's
-    own, so what the plugin brings is the spacing: a word to put, and how it went."""
+def test_the_field_is_a_voice_five_calls_and_two_hands_on_the_turn() -> None:
+    """The screen that writes a list is cora's own, so what the plugin brings is
+    reading its lists — nothing indexes a file — the spacing over them, a check on
+    what the reader is shown, and the taking of a right answer."""
     host = host_for("cora.plugins.vocab")
 
     extend(host)
 
     assert [(entry.kind, entry.scope) for entry in host.registered] == [
         (SAYS, SCOPE),
-        (TOOL, SCOPE),
+        *[(TOOL, SCOPE)] * 4,
+        (HANDLER, SCOPE),
+        (HANDLER, SCOPE),
         (TOOL, SCOPE),
     ]
+    assert [
+        entry.value.event for entry in host.registered if entry.kind == HANDLER
+    ] == [ANSWERING, TAKING]
     assert [entry.value.name for entry in host.registered if entry.kind == TOOL] == [
+        "find_word",
+        "show_list",
+        "german_side",
         "next_word",
         "how_it_went",
     ]
@@ -26,7 +35,7 @@ def test_the_instructions_say_what_the_field_answers_from() -> None:
     instructions = INSTRUCTIONS.lower()
 
     assert "vocabular" in instructions
-    assert "cite" in instructions
+    assert "find_word" in instructions
 
 
 def test_the_instructions_keep_the_answers_back_while_practising() -> None:
@@ -68,3 +77,12 @@ def test_the_instructions_drill_through_the_tools() -> None:
     assert "next_word" in instructions
     assert "how_it_went" in instructions
     assert "never pick a word yourself" in instructions
+
+
+def test_the_instructions_say_a_right_answer_never_reaches_the_model() -> None:
+    """The model reads a transcript it did not write — words the drill put and answers
+    it took — and has to be told, or the last word put is not the word it drills."""
+    instructions = INSTRUCTIONS.lower()
+
+    assert "a right answer never reaches you" in instructions
+    assert "the word on the table is the last one put" in instructions

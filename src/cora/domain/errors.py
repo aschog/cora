@@ -108,6 +108,38 @@ class InputRejectedError(CoreError):
     pass
 
 
+class FileNameRejectedError(CoreError):
+    """A file a field keeps was named something that is not one plain name."""
+
+    def __init__(self, name: str) -> None:
+        """Quote the name, because a refusal about one file has to say which."""
+        super().__init__(
+            f"'{name}' is not a file name. Use one plain name, with no folders in it."
+        )
+
+
+class FileTooLargeToKeepError(CoreError):
+    """A file a field keeps is over the cap, so nothing was written."""
+
+    def __init__(self, cap: int) -> None:
+        """Name the cap, so whoever sent it knows what would fit."""
+        super().__init__(
+            f"That file is too large to keep. The most a field holds is {cap} bytes."
+        )
+
+
+class UnsettledFieldError(CoreError):
+    """A turn running in more than one field asked for the files of "the" field."""
+
+    def __init__(self, fields: Iterable[str]) -> None:
+        """Name the fields, because the way out is asking under one of them."""
+        named = ", ".join(sorted(fields))
+        super().__init__(
+            f"This turn runs in {named}, so which field a file belongs to is not "
+            f"settled. Ask under one field."
+        )
+
+
 class ScopePinnedError(CoreError):
     """A conversation pinned to one field was asked to be pinned to another.
 
@@ -232,6 +264,12 @@ class PluginStoreError(AdapterError):
     """What a plugin keeps for itself could not be read or written."""
 
     message = "A plugin could not reach what it keeps. Please try again."
+
+
+class FieldFileError(AdapterError):
+    """A file a field keeps could not be listed, read or written."""
+
+    message = "That field's files are temporarily unavailable. Please try again."
 
 
 class DocumentStoreError(AdapterError):

@@ -12,6 +12,7 @@ from cora.ports.host import (
     HANDLER,
     RETURNING,
     SCREENING,
+    TAKING,
     Handler,
     Registration,
     Subscription,
@@ -104,5 +105,101 @@ def test_an_amendment_of_the_wrong_shape_is_dropped_like_a_raise() -> None:
     assert "dict" in dropped.detail
 
 
+def _takes(text: str) -> Handler:
+    def take(question: str) -> str:
+        return text
+
+    return take
+
+
+def test_the_first_taker_answers_and_the_rest_never_run() -> None:
+    trace: list[TraceStep] = []
+    offered: list[str] = []
+
+    def second(question: str) -> str:
+        offered.append(question)
+        return "second"
+
+    taken = dispatch(
+        TAKING,
+        "q",
+        (
+            _subscribed(FIRST, TAKING, _takes("first")),
+            _subscribed(SECOND, TAKING, second),
+        ),
+        trace,
+    )
+
+    assert taken == "first"
+    assert offered == []
+    assert [step.summary for step in trace] == [f"{FIRST} took the question"]
+
+
+def test_a_question_nobody_took_comes_back_as_nothing() -> None:
+    trace: list[TraceStep] = []
+
+    taken = dispatch(
+        TAKING, "q", (_subscribed(FIRST, TAKING, lambda question: None),), trace
+    )
+
+    assert taken is None
+    assert trace == []
+
+
+def test_a_taker_answering_with_anything_but_text_is_dropped_for_the_next() -> None:
+    trace: list[TraceStep] = []
+
+    taken = dispatch(
+        TAKING,
+        "q",
+        (
+            _subscribed(FIRST, TAKING, lambda question: {"answer": question}),
+            _subscribed(SECOND, TAKING, _takes("second")),
+        ),
+        trace,
+    )
+
+    assert taken == "second"
+    broke, took = trace
+    assert broke.failed and "dict" in broke.detail
+    assert took.summary == f"{SECOND} took the question"
+
+
+def test_a_taker_that_raises_is_dropped_and_the_next_one_runs() -> None:
+    trace: list[TraceStep] = []
+
+    taken = dispatch(
+        TAKING,
+        "q",
+        (
+            _subscribed(FIRST, TAKING, _breaks),
+            _subscribed(SECOND, TAKING, _takes("second")),
+        ),
+        trace,
+    )
+
+    assert taken == "second"
+    broke, _ = trace
+    assert broke.failed
+    assert "RuntimeError" in broke.detail
+    assert "hunter2" not in broke.detail
+
+
+def test_blank_text_takes_nothing() -> None:
+    trace: list[TraceStep] = []
+
+    taken = dispatch(TAKING, "q", (_subscribed(FIRST, TAKING, _takes("  \n")),), trace)
+
+    assert taken is None
+    assert trace == []
+
+
 def test_every_point_a_plugin_may_subscribe_to_is_in_the_table() -> None:
-    assert set(EVENTS) == {SCREENING, BRIEFING, CALLING, RETURNING, ANSWERING}
+    assert set(EVENTS) == {
+        SCREENING,
+        BRIEFING,
+        TAKING,
+        CALLING,
+        RETURNING,
+        ANSWERING,
+    }

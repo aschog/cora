@@ -760,12 +760,13 @@ class Walk:
 
     `before` and `after` are the named steps either side of the rounds, each read as the
     name it is walked under and the class that takes it. `marker` is the step the rounds
-    fall inside, which takes nothing: it says where the turn is and leaves the round to
-    the loop.
+    fall inside: it says where the turn is, and `marker_kind` is what it runs there —
+    `Named` where it runs nothing and leaves the round to the loop.
     """
 
     before: tuple[tuple[str, str], ...]
     marker: str
+    marker_kind: str
     loop: dict[str, str]
     after: tuple[tuple[str, str], ...]
 
@@ -808,10 +809,11 @@ def walked() -> Walk:
     loop = handed["loop"]
     assert isinstance(loop, ast.Call)
     parts = {keyword.arg: keyword.value for keyword in loop.keywords if keyword.arg}
-    marker, _ = _named_step(parts.pop("marker"))
+    marker, marker_kind = _named_step(parts.pop("marker"))
     return Walk(
         before=_sequence(handed["before"]),
         marker=marker,
+        marker_kind=marker_kind,
         loop={
             role: kind
             for role, value in parts.items()
@@ -822,14 +824,43 @@ def walked() -> Walk:
 
 
 @dataclass(frozen=True)
+class Decision:
+    """One conditional edge: who decides, and where each of its routes leads."""
+
+    router: str
+    routes: tuple[tuple[str, str], ...]
+
+    def entering(self, nodes: dict[str, str]) -> str:
+        """The guard under which the graph goes on: the one route that leads to a node.
+
+        Raises:
+            SystemExit: The routes lead into the graph twice, or never, so there is no
+                one condition a fragment could be guarded with.
+        """
+        into = [route for route, target in self.routes if target in nodes]
+        if len(into) != 1:
+            raise SystemExit(
+                f"{self.router} leads into the graph {len(into)} ways "
+                f"({', '.join(into)}): a fragment is guarded by the one route that does"
+            )
+        return f'{self.router}(state) == "{into[0]}"'
+
+
+@dataclass(frozen=True)
 class Routing:
-    """The graph the runner declares: what each node runs, and what leads where."""
+    """The graph the runner declares: what each node runs, and what leads where.
+
+    `at`, `router` and `routes` are the loop's decision, taken at a node the runner
+    names. `opening` is the decision at the marker — the one node the runner does not
+    name, the composition root having named it — or nothing where it leads one way.
+    """
 
     nodes: dict[str, str]
     edges: tuple[tuple[str, str], ...]
     at: str
     router: str
     routes: tuple[tuple[str, str], ...]
+    opening: Decision | None = None
 
     def after(self, node: str) -> str:
         """Where one node leads, of which there is exactly one.
@@ -907,6 +938,7 @@ def routing() -> Routing:
     edges: list[tuple[str, str]] = []
     at = router = ""
     routes: tuple[tuple[str, str], ...] = ()
+    opening: Decision | None = None
 
     def named(node: ast.expr) -> str:
         return _value(tree, imported, node.id) if isinstance(node, ast.Name) else ""
@@ -925,16 +957,22 @@ def routing() -> Routing:
             if here and there:
                 edges.append((here, there))
         elif call.func.attr == "add_conditional_edges":
-            at = named(call.args[0])
-            router = _role_of(call.args[1])
             mapped = call.args[2]
             assert isinstance(mapped, ast.Dict)
-            routes = tuple(
+            decided = tuple(
                 (named(key), named(value))
                 for key, value in zip(mapped.keys, mapped.values, strict=True)
                 if key is not None
             )
-    return Routing(nodes, tuple(edges), at, router, routes)
+            if named(call.args[0]):
+                at, router, routes = (
+                    named(call.args[0]),
+                    _role_of(call.args[1]),
+                    decided,
+                )
+            else:
+                opening = Decision(_role_of(call.args[1]), decided)
+    return Routing(nodes, tuple(edges), at, router, routes, opening)
 
 
 def _role_of(node: ast.expr) -> str:
@@ -973,7 +1011,11 @@ def round_taken() -> Sequence:
     opening: list[Line] = [
         line for name, kind in walk.before for line in _step(name, kind, met, role)
     ]
-    opening.extend(_step(walk.marker, "Named", met, role, into=False))
+    opening.extend(
+        _step(
+            walk.marker, walk.marker_kind, met, role, into=walk.marker_kind != "Named"
+        )
+    )
 
     decided: list[Line] = [*_step(plan.at, walk.loop[plan.at], met, role)]
     met.met(plan.router, walk.loop[plan.router])
@@ -994,6 +1036,22 @@ def round_taken() -> Sequence:
     )
     decided.append(Fragment("alt", operands))
 
+    rounds: Line = Fragment("loop", ((plan.keeps_going, tuple(decided)),))
+    entered: list[Line] = [rounds]
+    if plan.opening is not None:
+        # The fork at the marker: the rounds are entered only where the opening route
+        # says so, and a turn answered before them goes straight on to what follows.
+        met.met(plan.opening.router, walk.loop.get(plan.opening.router, ""))
+        entered = [
+            Call(role, plan.opening.router, f"{plan.opening.router}(state)"),
+            Reply(
+                plan.opening.router,
+                role,
+                " | ".join(route for route, _ in plan.opening.routes),
+            ),
+            Fragment("alt", ((plan.opening.entering(plan.nodes), (rounds,)),)),
+        ]
+
     closing: list[Line] = [
         line for name, kind in walk.after for line in _step(name, kind, met, role)
     ]
@@ -1004,7 +1062,7 @@ def round_taken() -> Sequence:
         lines=(
             Call("agent", role, _signature(GRAPH_PORT, "GraphRunner", "run")),
             *opening,
-            Fragment("loop", ((plan.keeps_going, tuple(decided)),)),
+            *entered,
             *closing,
             Reply(role, "agent", answered),
         ),

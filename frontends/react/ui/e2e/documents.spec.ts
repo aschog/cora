@@ -11,7 +11,9 @@ const NOTE = resolve(HERE, '../../../../tests/e2e/documents/second.md')
 /* Two controls add a document now — the rail's, over the list it changes, and the
    composer's, beside the question being typed. Each spec says which one it used. */
 const RAIL = 'Add a document'
-const BESIDE = 'Add a file or photo'
+/* The ＋ beside the question carries the control's name and the picker behind the
+   menu carries its own; a file is set on the picker. */
+const BESIDE = 'Upload from computer'
 
 test('a document is uploaded, listed, and deleted only once i have said so', async ({
   page,
@@ -108,7 +110,10 @@ const stand = (page: Page, text: string) =>
     }
   }, text)
 
-test('a photo added beside the question is read, corrected and kept', async ({ page }) => {
+/* A photo is read into one of the field's own files, never into a document: what the
+   dialog does with it is `files.spec.ts`, and what belongs here is that the rail and
+   the index are left alone by it. */
+test('a photo added beside the question becomes no document', async ({ page }) => {
   await stand(page, 'Hilfe  heIp')
   await fresh(page)
 
@@ -120,18 +125,16 @@ test('a photo added beside the question is read, corrected and kept', async ({ p
   await expect(read).toHaveValue('Hilfe  heIp')
 
   await read.fill('Hilfe  help')
+  await asked.getByLabel('What to call it').fill('words.md')
   await asked.getByRole('button', { name: 'Keep it' }).click()
+  await expect(page.getByRole('dialog', { name: 'READ FROM THE IMAGE' })).toHaveCount(0)
 
-  await expect(page.getByRole('button', { name: 'words.md', exact: true })).toBeVisible()
-  const held = await page.request.get('/api/documents/cora/words.md')
-  const [upload] = await held.json()
-  expect(upload.text).toBe('Hilfe  help')
-
-  /* The store is the run's, and the spec below asks whether a discarded reading left
-     a document of this name behind. */
-  await page.getByLabel('Delete words.md').click()
-  await confirm(page, 'DELETE DOCUMENT', 'Delete document')
   await expect(page.getByRole('button', { name: 'words.md', exact: true })).toHaveCount(0)
+  const listed = await page.request.get('/api/documents?scope=cora')
+  expect(await listed.json()).not.toContain('words.md')
+
+  /* The store is the run's, and what this left behind is a file rather than a row. */
+  await page.request.delete('/api/scopes/cora/files/words.md')
 })
 
 test('a photo whose reading is discarded leaves the field as it was', async ({ page }) => {
@@ -148,7 +151,7 @@ test('a photo whose reading is discarded leaves the field as it was', async ({ p
   await expect(page.getByRole('button', { name: 'words.md', exact: true })).toHaveCount(0)
 })
 
-test('a photo with no words in it says so rather than offering a document', async ({
+test('a photo with no words in it says so rather than offering to keep it', async ({
   page,
 }) => {
   await stand(page, '')

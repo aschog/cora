@@ -25,6 +25,7 @@ DEFAULT_SCOPE = "cora"
 
 SCREENING = "screen"
 BRIEFING = "brief"
+TAKING = "take"
 CALLING = "tool_call"
 RETURNING = "tool_result"
 ANSWERING = "answer"
@@ -62,6 +63,35 @@ class State(Protocol):
 
         Args:
             value: The text to keep. `None` drops the name.
+        """
+        ...
+
+
+class FieldFiles(Protocol):
+    """The files the field this turn runs in keeps, as the plugin that owns it reads.
+
+    Text under a plain name, kept on disk where a person can open and edit it. Not the
+    field's documents, which are chunked, embedded and cited — nothing indexes these,
+    and what the text means is the plugin's own business.
+
+    The field is the turn's rather than the plugin's to name, the way `documents` is:
+    a plugin that could name a field could name somebody else's.
+    """
+
+    def names(self) -> tuple[str, ...]:
+        """The names this field holds, sorted, or nothing where it holds none."""
+        ...
+
+    def read(self, name: str) -> str | None:
+        """The text kept under this name, or nothing where nothing was."""
+        ...
+
+    def write(self, name: str, text: str | None) -> None:
+        """Keep `text` under this name, replacing what was there.
+
+        Args:
+            text: The text to keep. `None` drops the name, and dropping a name nothing
+                was kept under is not an error.
         """
         ...
 
@@ -196,7 +226,8 @@ class Host(Protocol):
         """Take part in the turn at one of the points this module names.
 
         Args:
-            event: One of `SCREENING`, `BRIEFING`, `CALLING`, `RETURNING`, `ANSWERING`.
+            event: One of `SCREENING`, `BRIEFING`, `TAKING`, `CALLING`, `RETURNING`,
+                `ANSWERING`.
             handle: What runs there, as `Handler` describes one.
             scope: Where it runs. `None` runs it in every turn, and no scope can
                 switch that off — which is what screening for injection needs.
@@ -305,6 +336,16 @@ class Host(Protocol):
     @property
     def state(self) -> State:
         """What this plugin kept for the conversation this turn is answering on."""
+        ...
+
+    @property
+    def files(self) -> FieldFiles:
+        """The files the field this turn runs in keeps, which are not its documents.
+
+        Where `store` is this plugin's own text by name and `documents` is what the
+        user uploaded, these are the field's own data on disk: nothing indexes them,
+        and a person can open them in an editor.
+        """
         ...
 
     @overload

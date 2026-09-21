@@ -26,6 +26,7 @@ from cora.domain.trace import (
     step_kinds,
 )
 from cora.engine.ask_tool import ASK_TOOL_NAME
+from cora.engine.plugin_set import Registry
 from cora.engine.steps import (
     ANSWER,
     SCREEN,
@@ -35,6 +36,7 @@ from cora.engine.steps import (
     GateStep,
     Named,
     Router,
+    opening,
 )
 from cora.ports.chat_model import (
     Message,
@@ -43,6 +45,7 @@ from cora.ports.chat_model import (
     unheard,
 )
 from cora.ports.graph import Loop, ModelFor, NamedStep, Step
+from cora.ports.host import ANSWERING, HANDLER, Registration, Subscription
 from cora.ports.plugin import Tool, ToolCall
 
 ROUNDS = 8
@@ -98,6 +101,7 @@ def _nothing(state: AgentState) -> AgentState:
 
 
 STEPS = 3
+WORKING = Named(WORK)
 
 
 def _walk(
@@ -109,11 +113,13 @@ def _walk(
     ask: Step = _nothing,
     rounds: int = ROUNDS,
     after: tuple[NamedStep, ...] = (Named(ANSWER, AnswerStep()),),
+    marker: NamedStep = WORKING,
 ) -> dict[str, Any]:
     return {
         "before": (Named(SCREEN, screen),),
         "loop": Loop(
-            marker=Named(WORK),
+            marker=marker,
+            opening=opening,
             model=model,
             gate=GateStep() if gate is None else gate,
             tools=tools,
@@ -133,9 +139,18 @@ def _runner(
     ask: Step = _nothing,
     rounds: int = ROUNDS,
     recursion_limit: int | None = None,
+    marker: NamedStep = WORKING,
 ) -> LangGraphRunner:
     return LangGraphRunner(
-        **_walk(model, screen=screen, gate=gate, tools=tools, ask=ask, rounds=rounds),
+        **_walk(
+            model,
+            screen=screen,
+            gate=gate,
+            tools=tools,
+            ask=ask,
+            rounds=rounds,
+            marker=marker,
+        ),
         recursion_limit=recursion_limit or recursion_limit_for(rounds, steps=STEPS),
     )
 
@@ -179,6 +194,60 @@ def test_run_walks_screen_then_model_then_tools_then_model() -> None:
 
     assert visited == [SCREEN, "model", "tools", "model"]
     assert final["answer"] == "done"
+
+
+def _taking(state: AgentState) -> AgentState:
+    return {"messages": _said("assistant", "taken")}
+
+
+def test_a_turn_the_marker_answered_goes_straight_to_the_answer() -> None:
+    visited: list[str] = []
+
+    def model(state: AgentState) -> AgentState:
+        visited.append("model")
+        return _replies(state)
+
+    final = _final(
+        _runner(model=_always(model), marker=Named(WORK, _taking)), {"question": "q"}
+    )
+
+    assert final["answer"] == "taken"
+    assert visited == []
+
+
+def test_a_turn_the_marker_left_alone_spends_its_rounds_as_before() -> None:
+    visited: list[str] = []
+
+    def model(state: AgentState) -> AgentState:
+        visited.append("model")
+        return _replies(state)
+
+    final = _final(_runner(model=_always(model), marker=Named(WORK)), {"question": "q"})
+
+    assert final["answer"] == "ok"
+    assert visited == ["model"]
+
+
+def test_the_answer_handlers_see_what_the_marker_wrote() -> None:
+    checking = Registry(
+        (
+            Registration(
+                module="checker",
+                kind=HANDLER,
+                value=Subscription(event=ANSWERING, handle=lambda answer: f"{answer}!"),
+            ),
+        )
+    )
+    runner = LangGraphRunner(
+        **_walk(
+            _always(_replies),
+            marker=Named(WORK, _taking),
+            after=(Named(ANSWER, AnswerStep(registry=checking)),),
+        ),
+        recursion_limit=recursion_limit_for(ROUNDS, steps=STEPS),
+    )
+
+    assert _final(runner, {"question": "q"})["answer"] == "taken!"
 
 
 def test_a_runaway_graph_surfaces_as_the_friendly_give_up() -> None:
@@ -414,6 +483,7 @@ def _gated(*names: str) -> tuple[LangGraphRunner, list[str]]:
         before=(Named(SCREEN, _screen),),
         loop=Loop(
             marker=Named(WORK),
+            opening=opening,
             model=_always(_proposes(*names)),
             gate=GateStep(tools=tools, approve=interrupting),
             tools=running,

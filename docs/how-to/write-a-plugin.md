@@ -162,25 +162,33 @@ def extend(cora: Host) -> None:
 
 ## Handlers
 
-`register_handler(event=…, handle=…, scope=…)` subscribes to one of the five points in
-`cora.ports.host` — `SCREENING`, `BRIEFING`, `CALLING`, `RETURNING` and `ANSWERING`,
-which carry the strings `screen`, `brief`, `tool_call`, `tool_result` and `answer`. An
-unknown name is refused. Your handler is called with one value and
-its return is the whole of its decision — `None` changes nothing, at every event.
+`register_handler(event=…, handle=…, scope=…)` subscribes to one of the six points in
+`cora.ports.host` — `SCREENING`, `BRIEFING`, `TAKING`, `CALLING`, `RETURNING` and
+`ANSWERING`, which carry the strings `screen`, `brief`, `take`, `tool_call`,
+`tool_result` and `answer`. An unknown name is refused. Your handler is called with one
+value and its return is the whole of its decision — `None` changes nothing, at every
+event.
 
 | event | handed | a return |
 | --- | --- | --- |
 | `SCREENING` | the question | a `str` refuses the turn, and the reader reads it |
 | `BRIEFING` | the brief | a `str` replaces it |
+| `TAKING` | the question, its field settled | a `str` answers the turn, and no round is spent |
 | `CALLING` | a `ToolCall` | a `str` refuses that call, and the model is told why |
 | `RETURNING` | a `ToolResult` | a `ToolResult` replaces what the model is told |
 | `ANSWERING` | the answer, once per turn | a `str` replaces what is recorded and handed back |
 
 - `scope` behaves as it does on a tool: left off, the handler runs in every turn and no
   field can switch it off — which is what an injection screen needs.
-- Fail closed where the event refuses, open where it amends. A wrong type or a raise is
-  dropped at `BRIEFING`, `RETURNING` and `ANSWERING`, and refuses at `SCREENING` and
-  `CALLING` — a `SCREENING` handler that breaks refuses on cora's own wording.
+- Fail closed where the event refuses, open where it amends or takes. A wrong type or a
+  raise is dropped at `BRIEFING`, `TAKING`, `RETURNING` and `ANSWERING`, and refuses at
+  `SCREENING` and `CALLING` — a `SCREENING` handler that breaks refuses on cora's own
+  wording.
+- `TAKING` runs once the field is settled and before any round. The first handler
+  answering with text has answered the turn: what it wrote joins the conversation as the
+  answer, `ANSWERING` still runs on it, and the model is never asked. Blank text takes
+  nothing. It is the one point outside a tool call where `cora.state` reads and keeps.
+  Scope it: a system-wide taker takes every question of every field.
 - `ANSWERING` amends and cannot refuse. No handler can pause a turn: stopping to ask is
   the core's.
 - `CALLING` is handed a copy, so writing into the arguments changes nothing that runs. A
@@ -207,13 +215,21 @@ its return is the whole of its decision — `None` changes nothing, at every eve
 - `cora.state.keep(name, text)` / `read(name)` — text kept between the turns of one
   conversation, under names no other plugin shares, gone when it is deleted. A read
   answers `str | None`, and `keep(name, None)` is how a name is dropped. Bound inside a
-  tool call only: elsewhere a read is empty and a write is dropped.
+  tool call and a `TAKING` handler: elsewhere a read is empty and a write is dropped.
 - `cora.store.keep(name, text)` / `read(name)` — text kept for good, under the plugin's
   own name: it outlives the conversation, the process and a restart, where `cora.state`
   outlives none of them. `keep(name, None)` drops a name, and a name nothing was kept
   under reads as `None`. Absent where the deployment keeps no file, so check it before
   you write. What a plugin keeps here is the plugin's own: nothing searches it, cites
   it, recalls it or puts it in a brief.
+- `cora.files.write(name, text)` / `read(name)` / `names()` — the files the field this
+  turn runs in keeps, as text on disk under `.cora/fields/<field>`. They belong to the
+  field rather than to your plugin, so one plugin under two fields keeps two sets.
+  `write(name, None)` drops a name, a name nothing was written under reads as `None`,
+  and `names()` is sorted. A name is one plain name: a folder in it is refused, not
+  cleaned up. Nothing indexes, searches or cites these — write a document if the user
+  is meant to be answered from it, and a file here if your plugin works from it. Text a
+  person can open and edit, so expect to find it changed between turns.
 - `cora.delegate(task, tools=(), rounds=3, shape=None)` — a bounded loop of its own with
   the model, offered what you pass plus cora's document search. Tools declaring `effect`
   or `asks` are withheld, and a tool of yours named `search_documents` fails the call.

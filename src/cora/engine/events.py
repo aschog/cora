@@ -2,9 +2,9 @@
 
 A plugin subscribes by name, and the names are `cora.ports.host`'s: they are what a
 plugin writes. What a handler's return *means* is here — an event either refuses its
-value or amends it, and that is the whole of the difference. A new point in the turn
-is an entry in `EVENTS`; a new meaning is a class beside the two below. Neither is a
-branch anyone has to find.
+value, amends it or takes it, and that is the whole of the difference. A new point in
+the turn is an entry in `EVENTS`; a new meaning is a class beside the three below.
+Neither is a branch anyone has to find.
 """
 
 import logging
@@ -21,6 +21,7 @@ from cora.ports.host import (
     CALLING,
     RETURNING,
     SCREENING,
+    TAKING,
     Registration,
     Subscription,
 )
@@ -71,7 +72,22 @@ class Amending:
     holds: type
 
 
-Kind = Refusing | Amending
+@dataclass(frozen=True)
+class Taking:
+    """An event whose handlers may answer its value outright, and the first to ends it.
+
+    Nothing chains: a handler answering with text has answered, and the ones after it
+    are not run. Nothing, blank text, something that is not text and a raise all pass
+    the value on to the next handler — failing open, because a plugin that cannot
+    answer must not cost the turn the model it would otherwise have had — and a
+    dispatch nobody took answers with nothing.
+    """
+
+    taken: str
+    broke: str
+
+
+Kind = Refusing | Amending | Taking
 
 EVENTS: Mapping[str, Kind] = {
     SCREENING: Refusing(
@@ -84,6 +100,10 @@ EVENTS: Mapping[str, Kind] = {
         amended="amended the brief",
         broke="could not amend the brief",
         holds=str,
+    ),
+    TAKING: Taking(
+        taken="took the question",
+        broke="could not take the question",
     ),
     CALLING: Refusing(
         refusal=ToolRefusal,
@@ -115,7 +135,8 @@ def dispatch(
 
     Amendments chain: each handler is handed what the one before it returned, so the
     value that comes back is what all of them made of it. On a refusing event nothing
-    chains — the value is what was handed in, or the event's exception is raised.
+    chains — the value is what was handed in, or the event's exception is raised — and
+    on a taking event the first text a handler answers with is what comes back.
 
     A plugin's own code runs here, so the turn's field is bound around it: a handler
     that reads the documents reads the field the turn is in, and material from another
@@ -177,12 +198,27 @@ def _ran(
                 raise _ending(kind, kind.reason, trace)
             _took(trace, entry, event, kind.refused, answered)
             raise _ending(kind, answered, trace)
+        if isinstance(kind, Taking):
+            if not isinstance(answered, str):
+                _took(
+                    trace,
+                    entry,
+                    event,
+                    kind.broke,
+                    type(answered).__name__,
+                    failed=True,
+                )
+                continue
+            if not answered.strip():
+                continue
+            _took(trace, entry, event, kind.taken, "")
+            return answered
         if not isinstance(answered, kind.holds):
             _took(trace, entry, event, kind.broke, type(answered).__name__, failed=True)
             continue
         _took(trace, entry, event, kind.amended, "")
         value = answered
-    return value
+    return None if isinstance(kind, Taking) else value
 
 
 def _took(

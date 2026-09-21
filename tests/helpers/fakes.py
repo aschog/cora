@@ -20,6 +20,7 @@ from cora.ports.chat_model import (
     unheard,
 )
 from cora.ports.context_source import ContextSource, Document
+from cora.ports.files import Files
 from cora.ports.loading import Loaders
 from cora.ports.memory import Fact, Memory
 from cora.ports.output import Output
@@ -358,6 +359,25 @@ class FakeStore:
         self.kept[(plugin, name)] = value
 
 
+@dataclass
+class FakeFiles:
+    """Every field's own files, in a dict keyed by field the way the real one is."""
+
+    kept: dict[tuple[str, str], str] = field(default_factory=dict)
+
+    def names(self, scope: str) -> tuple[str, ...]:
+        return tuple(sorted(name for held, name in self.kept if held == scope))
+
+    def read(self, scope: str, name: str) -> str | None:
+        return self.kept.get((scope, name))
+
+    def write(self, scope: str, name: str, text: str | None) -> None:
+        if text is None:
+            self.kept.pop((scope, name), None)
+            return
+        self.kept[(scope, name)] = text
+
+
 def host_for(
     module: str = "fixture_plugins.valid",
     *,
@@ -366,6 +386,7 @@ def host_for(
     memory: Memory | None = None,
     output: Output | None = None,
     store: Store | None = None,
+    files: Files | None = None,
     settings: dict[str, str] | None = None,
 ) -> PluginHost:
     """A host a test can hand a plugin, with fakes behind cora's own parts.
@@ -380,5 +401,6 @@ def host_for(
         memory=memory,
         output=output,
         kept=store,
+        kept_files=files,
         settings=settings or {},
     )

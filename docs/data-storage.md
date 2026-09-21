@@ -37,6 +37,20 @@ name carries the head of the upload's hash, so one filename uploaded twice is tw
 and the store is its own index. A field is a directory here, so its name is checked
 before a byte is written.
 
+## A field's own files are not its documents
+
+`.cora/fields` is a directory per field too, holding the files that field's plugin keeps
+of its own — a word list, a schedule, a log. Nothing chunks, embeds, searches or cites
+them, and they do not appear in the rail: they are the plugin's data rather than the
+user's reading. Text, so a person can open one in an editor and change it, which is the
+reason they are files and not rows. A name is one plain name, checked before it reaches
+the filesystem rather than sanitised into something near it, and a write over a
+megabyte is refused with the cap in the reason.
+
+Which of the two a plugin should write is the question of who the text is for. Something
+the user uploaded to be answered from is a document. Something the plugin keeps to work
+from is a file here.
+
 ## What an effect wrote is not cora's
 
 `cora-output` sits outside `.cora`, because everything under `.cora` is bookkeeping a

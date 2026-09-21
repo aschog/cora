@@ -154,6 +154,36 @@ export const passage = (scope: string, upload: string, signal?: AbortSignal) =>
     { signal },
   ).then((kept) => kept.text)
 
+/* The files a field keeps of its own, which are not its documents: nothing indexes,
+   searches or cites them, and what the text means is that field's plugin's business.
+   The name is one plain name, and cora refuses one that is not. */
+export const fieldFiles = (scope: string, signal?: AbortSignal) =>
+  read<{ names: string[] }>(
+    `/api/scopes/${encodeURIComponent(scope)}/files`,
+    { signal },
+  ).then((held) => held.names)
+
+export const fieldFile = (scope: string, name: string, signal?: AbortSignal) =>
+  read<{ name: string; text: string }>(
+    `/api/scopes/${encodeURIComponent(scope)}/files/${encodeURIComponent(name)}`,
+    { signal },
+  ).then((held) => held.text)
+
+/** Write one of a field's own files, replacing what was under that name. Whoever writes
+ *  sends the whole of it: merging is what the text means, which cora does not read. */
+export const keepFieldFile = (scope: string, name: string, text: string) =>
+  read<{ name: string; text: string }>(
+    `/api/scopes/${encodeURIComponent(scope)}/files/${encodeURIComponent(name)}`,
+    {
+      method: 'PUT',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text }),
+    },
+  )
+
+export const deleteFieldFile = (scope: string, name: string) =>
+  discard(`/api/scopes/${encodeURIComponent(scope)}/files/${encodeURIComponent(name)}`)
+
 /** Delete one document from one field: its passages out of the index, and the file its
  *  citations opened onto. The name is what the field lists, and one name may be several
  *  uploads — all of them go, because the one entry is what the reader deleted. */

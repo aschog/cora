@@ -49,7 +49,9 @@ from cora.engine.steps import (
     Router,
     RouteStep,
     ScreenStep,
+    TakeStep,
     ToolStep,
+    opening,
 )
 from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import CORA
@@ -59,6 +61,7 @@ from cora.ports.context_source import ContextSource
 from cora.ports.conversations import Conversations
 from cora.ports.documents import Documents
 from cora.ports.embedding import Embedder
+from cora.ports.files import Files
 from cora.ports.graph import GraphFor, Loop
 from cora.ports.host import Extension, Listed
 from cora.ports.memory import Memory
@@ -92,6 +95,7 @@ class App:
 
     agent: Agent
     knowledge_base: KnowledgeBase
+    files: Files | None = None
     plugins: tuple[Listed, ...] = ()
     pages: Mapping[str, pathlib.Path] = field(default_factory=dict)
     memory: Memory | None = None
@@ -173,6 +177,7 @@ def assemble(
     conversations: Conversations | None = None,
     output: Output | None = None,
     store: Store | None = None,
+    files: Files | None = None,
     top_k: int = DEFAULT_TOP_K,
     max_tool_rounds: int = DEFAULT_MAX_TOOL_ROUNDS,
     history_turns: int = DEFAULT_HISTORY_TURNS,
@@ -226,6 +231,7 @@ def assemble(
         memory=memory,
         output=output,
         store=store,
+        files=files,
         settings=plugin_settings or {},
         top_k=top_k,
     )
@@ -245,7 +251,8 @@ def assemble(
             ),
         ),
         loop=Loop(
-            marker=Named(WORK),
+            marker=Named(WORK, TakeStep(registry=registry)),
+            opening=opening,
             model=ModelStep(
                 chat_model=chat_model,
                 tools=tools,
@@ -268,6 +275,7 @@ def assemble(
     return App(
         agent=agent,
         knowledge_base=knowledge_base,
+        files=files,
         plugins=listing,
         pages=registry.pages(),
         memory=memory,
@@ -311,6 +319,7 @@ def _registered(
     memory: Memory | None,
     output: Output | None,
     store: Store | None,
+    files: Files | None,
     settings: dict[str, dict[str, str]],
     top_k: int,
 ) -> Registry:
@@ -323,6 +332,7 @@ def _registered(
             memory=memory,
             output=output,
             kept=store,
+            kept_files=files,
             settings=settings.get(plugin.module, {}),
             top_k=top_k,
         )
@@ -390,6 +400,7 @@ def _folder_of(config: Config) -> pathlib.Path:
 def _composer(
     config: Config, folder: pathlib.Path
 ) -> Callable[[tuple[Extension, ...]], App]:
+    from cora.adapters.directory_files import DirectoryFiles
     from cora.adapters.file_documents import FileDocuments
     from cora.adapters.file_output import FileOutput
     from cora.adapters.openrouter_chat_model import OpenRouterChatModel
@@ -415,6 +426,7 @@ def _composer(
     conversations = SqliteConversations.at(config.db_path)
     output = FileOutput.at(config.output_path)
     store = SqlitePluginStore.at(config.db_path)
+    files = DirectoryFiles.at(config.fields_path)
     # The checkpointer is an adapter like the stores above it: made once, so a folder
     # change recomposes over the same connection instead of opening another onto the
     # same store file.
@@ -439,6 +451,7 @@ def _composer(
             conversations=conversations,
             output=output,
             store=store,
+            files=files,
             graph=graph,
             top_k=config.top_k,
             max_tool_rounds=config.max_tool_rounds,
