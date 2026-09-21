@@ -28,7 +28,7 @@
 
 ## 5. The drawing
 
-- [ ] 5.1 Write a guard that the round map calls the opening route after the work step and ahead of the model, as the runner declares it.
+- [x] 5.1 Write a guard that the round map calls the opening route after the work step and ahead of the model, as the runner declares it.
 
 ## 6. Close it
 
