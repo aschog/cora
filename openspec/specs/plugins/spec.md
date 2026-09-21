@@ -36,16 +36,23 @@ and SHALL offer no separate way to screen what the user types.
 ### Requirement: A plugin subscribes to a named point in the turn
 
 The system SHALL let a plugin subscribe a handler to a named event: the question being
-screened, the brief being settled, a tool call about to run, and a tool result coming
-back. A handler SHALL be handed only frozen values and SHALL answer by returning — a
-refusal, an amendment, or nothing. The system SHALL accept no handler that writes the
-turn's state, and SHALL refuse a subscription to an event it does not have.
+screened, the brief being settled, the question about to be worked, a tool call about to
+run, and a tool result coming back. A handler SHALL be handed only frozen values and
+SHALL answer by returning — a refusal, an amendment, an answer to the question, or
+nothing. The system SHALL accept no handler that writes the turn's state, and SHALL
+refuse a subscription to an event it does not have.
 
 #### Scenario: A handler amends what the model is told
 
 - **GIVEN** a plugin subscribing to the brief being settled
 - **WHEN** a turn runs in its scope
 - **THEN** what the handler returned is in the brief the model reads
+
+#### Scenario: A handler takes the question
+
+- **GIVEN** a plugin subscribing to the question about to be worked
+- **WHEN** a turn runs in its scope and the handler answers with text
+- **THEN** the reader reads that text, and the model is never asked
 
 #### Scenario: A handler refuses a call before it runs
 
@@ -1694,8 +1701,10 @@ recalls about the user, or in any rail that lists what cora knows.
 ### Requirement: A vocabulary field is brought by a plugin
 
 A plugin SHALL bring cora a `vocab` field carrying instructions and nothing else. The
-field SHALL hold vocabulary lists as its documents, and SHALL be offered and worked in
-exactly as a field with no page is.
+field SHALL hold vocabulary lists as its own files rather than as its documents, so
+nothing indexes, searches or cites them. The field SHALL be offered and worked in
+exactly as a field with no page is, and SHALL go on holding ordinary documents beside
+its lists.
 
 #### Scenario: The field is offered
 
@@ -1709,17 +1718,29 @@ exactly as a field with no page is.
 - **WHEN** what it registered is read
 - **THEN** it is instructions under the vocab field, and no tool and no page
 
+#### Scenario: A list is not a document
+
+- **GIVEN** a list kept as a file of the vocab field
+- **WHEN** that field's documents are listed
+- **THEN** the list is not among them
+
+#### Scenario: A document is still a document
+
+- **GIVEN** a grammar note uploaded to the vocab field
+- **WHEN** the reader asks what it says
+- **THEN** it is searched and cited as any document is
+
 ### Requirement: A word is answered from the list it is on
 
 A question about a word asked in the vocab field SHALL be answered from the lists that
-field holds, citing the list the word was found on. A word on none of them SHALL be
-said to be on none of them, and SHALL NOT be written into one.
+field holds, naming the list the word was found on. A word on none of them SHALL be said
+to be on none of them, and SHALL NOT be written into one.
 
 #### Scenario: A word that is on a list
 
-- **GIVEN** a Markdown list of words uploaded to the vocab field
-- **WHEN** the reader asks what one of its words means
-- **THEN** the answer comes from that list and cites it
+- **GIVEN** a list in the vocab field holding that word
+- **WHEN** the reader asks what it means
+- **THEN** the answer comes from that list and names it
 
 #### Scenario: A word that is on no list
 
@@ -1805,3 +1826,551 @@ or among what cora knows about the user.
 - **GIVEN** words answered in the vocab field
 - **WHEN** the field's documents are listed
 - **THEN** only the reader's own lists are there
+
+### Requirement: A field keeps files of its own
+
+Cora SHALL hand a plugin a place to keep files, read and written by name, holding text.
+The files SHALL belong to the field rather than to the plugin, the way its documents do,
+so a plugin loaded under two fields keeps two sets and neither reads the other's. A
+plugin SHALL be able to list the names a field has, read one, write one, and drop one.
+Writing nothing under a name SHALL drop it. What is kept SHALL outlive the turn, the
+conversation and the process.
+
+#### Scenario: What was written is read back
+
+- **GIVEN** a plugin that wrote text under a name in a field
+- **WHEN** it reads that name in a later turn
+- **THEN** the text it wrote comes back
+
+#### Scenario: One plugin, two fields
+
+- **GIVEN** a plugin loaded under two fields, each holding different text under one name
+- **WHEN** it reads that name in each field
+- **THEN** it reads that field's own
+
+#### Scenario: The names a field has
+
+- **GIVEN** a field holding three files
+- **WHEN** its names are listed
+- **THEN** all three come back, and no other field's
+
+#### Scenario: A name nothing was written under
+
+- **WHEN** a plugin reads a name it never wrote
+- **THEN** it reads nothing, and nothing fails
+
+#### Scenario: A name dropped
+
+- **GIVEN** a plugin that wrote text under a name
+- **WHEN** it writes nothing under that name
+- **THEN** reading the name comes back with nothing, and the name is not listed
+
+### Requirement: A file a plugin keeps is not a document
+
+A file a plugin keeps SHALL NOT be indexed, embedded, searched or cited, and SHALL NOT
+appear in the document rail. It is the plugin's own data rather than the user's reading,
+and what the text means SHALL be the plugin's business rather than cora's.
+
+#### Scenario: A search does not reach it
+
+- **GIVEN** a plugin that wrote a file whose words match a question
+- **WHEN** the field is searched for those words
+- **THEN** no passage of that file comes back
+
+#### Scenario: The rail does not list it
+
+- **GIVEN** a field holding one document and one plugin file
+- **WHEN** the documents of that field are listed
+- **THEN** only the document is listed
+
+### Requirement: A name that would leave the directory is refused
+
+A file name SHALL be one plain name, beginning with a letter or a digit and carrying
+letters of any language, digits, spaces, dots and hyphens. A name carrying a separator,
+a parent, an absolute path or a leading dot SHALL be refused rather than followed, and
+nothing outside the plugin's own directory SHALL be read, written or dropped however
+the name is spelled.
+
+#### Scenario: A name in the reader's own language
+
+- **WHEN** a file is written under a name carrying letters outside ASCII
+- **THEN** it is kept, and listed under that name
+
+#### Scenario: A name climbing out
+
+- **WHEN** a file is written under a name containing `../`
+- **THEN** the write is refused and nothing outside the directory changes
+
+#### Scenario: An absolute name
+
+- **WHEN** a file is written under a name that is an absolute path
+- **THEN** the write is refused
+
+### Requirement: A field holds only what this store could have written
+
+A listing SHALL return only names this store would accept, and text this store could
+have written SHALL be what a read returns. A directory on a real machine also holds
+what the machine put there, and neither a file it hid nor one that is not text SHALL
+stop a plugin reading the field.
+
+#### Scenario: What the machine left in the directory
+
+- **GIVEN** a field directory also holding `.DS_Store` and a subdirectory
+- **WHEN** the field's names are listed
+- **THEN** only the files this store wrote come back
+
+#### Scenario: A file that is not text
+
+- **GIVEN** a photograph dropped into a field's directory
+- **WHEN** it is read
+- **THEN** nothing comes back, and the field's own files are still readable
+
+### Requirement: A file over the cap is refused
+
+A write larger than the deployment's cap SHALL be refused with a reason, rather than
+written. The refusal SHALL say the cap, so whoever sent it knows what would fit.
+
+#### Scenario: Too large to keep
+
+- **WHEN** a file larger than the cap is written
+- **THEN** the write is refused, the reason names the cap, and nothing is kept
+
+### Requirement: The screen keeps a field's files
+
+The screen SHALL be able to list the names a field's plugin keeps, read one by name,
+write one, and delete one. A write under a name that exists SHALL replace it, so what is
+merged is merged by whoever writes. Deleting a name nothing was written under SHALL NOT
+be an error. Only the named field's own files SHALL be reachable.
+
+#### Scenario: The screen writes a file
+
+- **WHEN** the screen writes text under a name in a field
+- **THEN** that field's plugin reads the same text back
+
+#### Scenario: The screen lists what is there
+
+- **GIVEN** a field whose plugin keeps two files
+- **WHEN** the screen lists that field's files
+- **THEN** both names come back
+
+#### Scenario: A write replaces
+
+- **GIVEN** a field holding a file under a name
+- **WHEN** the screen writes other text under that name
+- **THEN** reading it back gives the text just written
+
+#### Scenario: A field that keeps nothing
+
+- **WHEN** the screen lists the files of a field whose plugin kept none
+- **THEN** the listing is empty, and nothing fails
+
+#### Scenario: The screen deletes a file
+
+- **GIVEN** a field holding a file under a name
+- **WHEN** the screen deletes that name
+- **THEN** the name is no longer listed, and reading it comes back with nothing
+
+#### Scenario: Deleting what is not there
+
+- **WHEN** the screen deletes a name nothing was written under
+- **THEN** nothing fails, and no other file is touched
+
+#### Scenario: A delete stays inside the field
+
+- **GIVEN** two fields each holding a file under one name
+- **WHEN** the screen deletes that name in one field
+- **THEN** the other field still holds its own
+
+### Requirement: A pair on a list twice is drilled once
+
+Where one list holds the same pair more than once, the field SHALL drill it once. Two
+photographs of one page overlap, and a row that arrives twice is one word to learn.
+
+#### Scenario: An overlapping photograph
+
+- **GIVEN** a list where one pair appears twice
+- **WHEN** the words that list holds are counted
+- **THEN** the pair is counted once
+
+#### Scenario: One word on two lists
+
+- **GIVEN** two lists that each hold the same pair
+- **WHEN** the words the field holds are counted
+- **THEN** the pair is counted once for each list it is on
+
+### Requirement: A drill runs over the list the reader chose
+
+Where the vocab field holds more than one list, a drill SHALL NOT begin until the reader
+has chosen one of them or all of them. Asked for a word with nothing chosen, the field
+SHALL refuse and name the lists it holds, so the choice is put to the reader before a
+word is.
+
+#### Scenario: Nothing chosen yet
+
+- **GIVEN** a field holding two lists and no choice made
+- **WHEN** a word is asked for
+- **THEN** the call is refused and the refusal names both lists
+
+#### Scenario: One list chosen
+
+- **GIVEN** a field holding two lists
+- **WHEN** one of them is chosen and a word is asked for
+- **THEN** the word comes from that list and never from the other
+
+#### Scenario: All of them chosen
+
+- **GIVEN** a field holding two lists
+- **WHEN** all of them are chosen
+- **THEN** words from both are put
+
+#### Scenario: A list that is not there
+
+- **WHEN** a list the field does not hold is chosen
+- **THEN** the call is refused and the refusal names the lists it does hold
+
+### Requirement: One list is drilled without asking
+
+Where the field holds exactly one list, a drill SHALL run over it without anything being
+chosen: there is nothing to choose between, and a card offering one option is a question
+already answered.
+
+#### Scenario: The only list
+
+- **GIVEN** a field holding one list and no choice made
+- **WHEN** a word is asked for
+- **THEN** a word from that list is put
+
+### Requirement: The choice is asked once and lasts the conversation
+
+What was chosen SHALL be kept for the conversation and read on every later word, so the
+reader is asked once rather than once per word. It SHALL NOT outlive the conversation: a
+new one begins by choosing again.
+
+#### Scenario: Asked once
+
+- **GIVEN** a list chosen and a word put
+- **WHEN** the next word is asked for with nothing chosen again
+- **THEN** it comes from the same list, and nothing is refused
+
+#### Scenario: A new conversation chooses again
+
+- **GIVEN** a list chosen in one conversation
+- **WHEN** a word is asked for in another
+- **THEN** the call is refused until a list is chosen there too
+
+### Requirement: A drill puts the German side, whichever column it is in
+
+A drill SHALL put the German side of a pair unless the reader asks for the other, and
+SHALL NOT ask the reader which way round before the first word. Which column holds the
+German SHALL be said once per list and kept for good, because a page is photographed
+whichever way round it was printed and nothing in the file says. A list nobody has said
+it for SHALL be refused rather than guessed at, and the refusal SHALL carry enough of
+its pairs to be answered from.
+
+#### Scenario: The first word of a session
+
+- **GIVEN** a list whose German column has been said
+- **WHEN** the first word is put
+- **THEN** it is the German side, and nothing was asked of the reader first
+
+#### Scenario: A list read the other way round
+
+- **GIVEN** a list whose right column is the German one
+- **WHEN** a word is put
+- **THEN** it is the right column, and the left is withheld
+
+#### Scenario: A list nobody has sided
+
+- **GIVEN** a list whose German column has not been said
+- **WHEN** a word is asked for
+- **THEN** the call is refused and the refusal shows some of that list's pairs
+
+#### Scenario: Said once
+
+- **GIVEN** a list whose German column was said in an earlier conversation
+- **WHEN** a word is asked for in a new one
+- **THEN** a word is put without anything being asked again
+
+#### Scenario: The reader turns it round
+
+- **WHEN** the reader asks to be asked from the other language
+- **THEN** the other side is put from then on
+
+### Requirement: The field speaks German
+
+The vocab field SHALL speak German: what it says around a word, what it says about how
+an answer went, and the hints it builds.
+
+#### Scenario: A word is put
+
+- **WHEN** a word is put to the reader
+- **THEN** what is said around it is German
+
+### Requirement: Spacing is off unless it is asked for
+
+Spaced repetition SHALL be off unless the reader turns it on. While it is off, the
+field SHALL write nothing to the schedule it keeps, so turning it on later begins from
+a clean one rather than inheriting every pass.
+
+#### Scenario: A session with spacing off
+
+- **GIVEN** a reader who has not asked for spacing
+- **WHEN** a word is answered
+- **THEN** the schedule in the store is unchanged
+
+#### Scenario: Spacing turned on
+
+- **GIVEN** a reader who has asked for spacing
+- **WHEN** a word is answered
+- **THEN** the schedule moves as it does today
+
+### Requirement: A session is one shuffled pass
+
+With spacing off, a session SHALL be one pass over the chosen list in a shuffled order,
+each word put once. A word answered right SHALL NOT come back in that pass, and a word
+missed SHALL. Order SHALL NOT follow the list, so a word is learnt rather than its
+place.
+
+#### Scenario: Every word once
+
+- **GIVEN** a list of three words and spacing off
+- **WHEN** each is answered right in turn
+- **THEN** three words were put, all three different
+
+#### Scenario: A word missed comes back
+
+- **GIVEN** a word answered wrongly
+- **WHEN** the pass goes on
+- **THEN** that word is put again before the pass ends
+
+#### Scenario: Not the order of the list
+
+- **GIVEN** a list long enough to tell
+- **WHEN** two sessions are run over it
+- **THEN** the order differs between them
+
+### Requirement: Only a word from the list is put
+
+A word the reader is shown in a drill SHALL be one the drill put. Where a word is on the
+table unanswered, the answer is a single word, and that word is on no list of this
+field, the field SHALL put the word on the table again — nothing answered it, so it is
+still the word being asked. The pass SHALL NOT move: no word is taken off it and none
+is reshuffled. A word that is on a list, and prose, SHALL be left as they are.
+
+#### Scenario: A word from nowhere
+
+- **GIVEN** `Apfel` on the table and `Apfelbaum` written as the answer
+- **WHEN** the answer reaches the reader
+- **THEN** it is `Apfel`, and `Apfel` is still to be answered
+
+#### Scenario: The reader's own answer
+
+- **GIVEN** `Apfel` on the table and `apple` written as the answer
+- **WHEN** the answer reaches the reader
+- **THEN** it is `apple`, because that word is on the list
+
+#### Scenario: The pass is untouched
+
+- **GIVEN** a word replaced because it came from nowhere
+- **WHEN** the words still to put are counted
+- **THEN** the count is what it was before
+
+#### Scenario: The word on the table
+
+- **GIVEN** `Apfel` on the table and `Apfel` written as the answer
+- **WHEN** the answer reaches the reader
+- **THEN** it is `Apfel`, unchanged
+
+#### Scenario: A sentence
+
+- **GIVEN** a word on the table and a sentence written as the answer
+- **WHEN** the answer reaches the reader
+- **THEN** the sentence is unchanged
+
+### Requirement: A word stands until it is answered
+
+A word put and not yet answered SHALL be the word a further request puts, rather than a
+new one — a model asks twice whenever a call of its own was refused, and a pass that
+drew a fresh word each time would lose one to every refusal. Saying how a word went
+that is not the one on the table SHALL be refused, and the refusal SHALL name the word
+that is, so the way on is answering rather than asking again.
+
+#### Scenario: Asked for twice
+
+- **GIVEN** a word put and not answered
+- **WHEN** another word is asked for
+- **THEN** it is the same word, and the pass has lost none
+
+#### Scenario: A word that is not the one on the table
+
+- **GIVEN** `Wasser` on the table
+- **WHEN** `Elefant` is reported as how it went
+- **THEN** the call is refused, and the refusal names `Wasser`
+
+#### Scenario: Nothing on the table
+
+- **WHEN** how it went is said before any word was put
+- **THEN** the call is refused, saying no word is on the table
+
+### Requirement: A finished pass says so, and can be run again
+
+When every word of the pass has been answered right, the field SHALL say the pass is
+done rather than put a word. Asked to go again, it SHALL reshuffle the same list and
+start a fresh pass.
+
+#### Scenario: The pass ends
+
+- **GIVEN** every word of the list answered right
+- **WHEN** another word is asked for
+- **THEN** the field says the pass is done
+
+#### Scenario: Going again
+
+- **GIVEN** a finished pass
+- **WHEN** the reader asks to go again
+- **THEN** words are put again, over the same list
+
+### Requirement: What a session was set to lasts the conversation
+
+The side being asked and whether spacing is on SHALL be kept for the conversation and
+no longer, and a new conversation SHALL start German-first with spacing off and a fresh
+pass. The pass itself is held in memory for the process, one at a time: a second
+conversation drilling at once draws from the same pass. Which column is German is not
+one of these: it belongs to the list, and is kept for good — to the list itself rather
+than to its filename, so two fields holding a same-named list answer for their own.
+
+#### Scenario: A new conversation
+
+- **GIVEN** a conversation where the reader turned spacing on and the drill round
+- **WHEN** a new conversation begins
+- **THEN** it puts German first with spacing off
+
+### Requirement: A plugin may take the question
+
+The system SHALL offer the question to a plugin once its field is settled, before any
+round is spent. The first handler to answer with text SHALL have answered the turn, and
+no model SHALL be asked. What it wrote SHALL join the conversation as the round the turn
+ended on, and SHALL be recorded as any answer is. It SHALL be offered to the handlers at
+the answer like any other. A handler answering with nothing, with blank text, with
+anything but text, or by raising SHALL leave the turn to the model. Inside the handler
+the plugin SHALL read and keep what it kept for the conversation, as inside a tool call.
+A handler registered under a field SHALL be offered questions in that field and no other.
+
+#### Scenario: The question is taken
+
+- **GIVEN** a plugin whose handler answers one question with text
+- **WHEN** that question is asked in its field
+- **THEN** the reader reads that text, and the model was never asked
+
+#### Scenario: A question left alone
+
+- **GIVEN** the same plugin
+- **WHEN** a question its handler answers with nothing is asked
+- **THEN** the model answers it as it always did
+
+#### Scenario: A taken turn is in the conversation
+
+- **GIVEN** a turn a plugin took
+- **WHEN** the model is asked on the next turn
+- **THEN** what the plugin wrote is in the transcript it reads, as the answer it was
+
+#### Scenario: A taken turn is recorded
+
+- **GIVEN** a turn a plugin took
+- **WHEN** the conversation's turns are read back
+- **THEN** that turn is there, holding what the plugin wrote
+
+#### Scenario: The handlers at the answer still run
+
+- **GIVEN** a plugin taking the question and another amending the answer
+- **WHEN** the question is taken
+- **THEN** the reader reads the amended text
+
+#### Scenario: A handler that breaks leaves the turn to the model
+
+- **GIVEN** a plugin whose handler raises when offered the question
+- **WHEN** a question is asked in its field
+- **THEN** the model answers, and the trace says the handler broke and not what it held
+
+#### Scenario: What is kept while taking is kept
+
+- **GIVEN** a plugin whose handler keeps a value for the conversation as it takes the question
+- **WHEN** a tool of that plugin runs on a later turn of the conversation
+- **THEN** the tool reads that value
+
+#### Scenario: Another field's question is not offered
+
+- **GIVEN** a plugin whose handler is registered under one field
+- **WHEN** a question is asked in another field
+- **THEN** the model answers it, and the handler was not offered it
+
+### Requirement: A right answer is the drill's to take
+
+While a word is on the table, an answer that is its other side — case aside, and a
+closing full stop aside — SHALL be taken by the drill: the word is recorded as produced,
+the next word of the pass is put, and no model is asked. The reader SHALL read that next
+word alone. An answer that is not the word, a hint asked for, a right answer to the last
+word of a pass, and every answer in a spaced session SHALL reach the model as they do
+today. A right answer given after the model was asked while the word stayed on the table
+SHALL count as missed, because what the model gave was a hint. The field's instructions
+SHALL say that a right answer never reaches the model, and that the word on the table is
+the last one put, whoever put it.
+
+#### Scenario: A right answer
+
+- **GIVEN** `Hund` on the table, asking for the English
+- **WHEN** the reader answers `dog`
+- **THEN** they read the next word alone, the pass is one word shorter, and the model was not asked
+
+#### Scenario: Case and a full stop do not count
+
+- **GIVEN** `Hund` on the table
+- **WHEN** the reader answers `Dog.`
+- **THEN** it is taken as right
+
+#### Scenario: Not the word
+
+- **GIVEN** `Hund` on the table
+- **WHEN** the reader answers `cat`
+- **THEN** the model is asked, and the pass has not moved
+
+#### Scenario: A hint asked for
+
+- **GIVEN** a word on the table
+- **WHEN** the reader answers `h`
+- **THEN** the model is asked
+
+#### Scenario: Right after a hint
+
+- **GIVEN** the model was asked and `Hund` stayed on the table
+- **WHEN** the reader then answers `dog`
+- **THEN** they read the next word, and `Hund` comes round again in the pass
+
+#### Scenario: The last word
+
+- **GIVEN** the last word of the pass on the table
+- **WHEN** the reader answers it right
+- **THEN** the model is asked, so the pass is closed and going again is offered
+
+#### Scenario: A spaced session
+
+- **GIVEN** a session the reader asked to space
+- **WHEN** they answer right
+- **THEN** the model is asked
+
+#### Scenario: The other way round
+
+- **GIVEN** the drill putting the other side, and `dog` on the table
+- **WHEN** the reader answers `Hund`
+- **THEN** it is taken as right
+
+#### Scenario: The model reads the taken words
+
+- **GIVEN** three words taken in a row
+- **WHEN** the model is next asked
+- **THEN** the words put and the answers given are in what it reads
+
+#### Scenario: The instructions say so
+
+- **WHEN** the field's instructions are read
+- **THEN** they say a right answer never reaches the model, and the word on the table is the last one put
