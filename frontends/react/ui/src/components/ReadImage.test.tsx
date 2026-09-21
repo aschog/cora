@@ -6,7 +6,15 @@ afterEach(cleanup)
 
 const put = (read: string, onKeep = vi.fn(), onDiscard = vi.fn()) => {
   render(
-    <ReadImage image="words.png" read={read} onKeep={onKeep} onDiscard={onDiscard} />,
+    <ReadImage
+      image="words.png"
+      read={read}
+      held={[]}
+      onKeep={onKeep}
+      onKeepAsFile={vi.fn()}
+      onRead={async () => null}
+      onDiscard={onDiscard}
+    />,
   )
   return { onKeep, onDiscard }
 }
@@ -68,10 +76,28 @@ test('a reading that found nothing says so and keeps nothing', () => {
    so Keep it would upload photo A's words under photo B's name. */
 test('a second reading replaces the text the first one left', () => {
   const { rerender } = render(
-    <ReadImage image="a.png" read="AAA" onKeep={vi.fn()} onDiscard={vi.fn()} />,
+    <ReadImage
+      image="a.png"
+      read="AAA"
+      held={[]}
+      onKeep={vi.fn()}
+      onKeepAsFile={vi.fn()}
+      onRead={async () => null}
+      onDiscard={vi.fn()}
+    />,
   )
 
-  rerender(<ReadImage image="b.png" read="BBB" onKeep={vi.fn()} onDiscard={vi.fn()} />)
+  rerender(
+    <ReadImage
+      image="b.png"
+      read="BBB"
+      held={[]}
+      onKeep={vi.fn()}
+      onKeepAsFile={vi.fn()}
+      onRead={async () => null}
+      onDiscard={vi.fn()}
+    />,
+  )
 
   expect((written() as HTMLTextAreaElement).value).toBe('BBB')
 })

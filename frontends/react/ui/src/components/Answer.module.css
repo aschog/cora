@@ -262,10 +262,6 @@
   cursor: default;
 }
 
-.composer-add input {
-  display: none;
-}
-
 .composer input:focus-visible {
   outline: none;
 }
@@ -338,4 +334,63 @@
   text-align: center;
   font-size: 13px;
   color: var(--n700);
+}
+
+/* The ＋ and the menu it opens, positioned together so the menu hangs off the button
+   rather than off the composer. */
+.composer-add-wrap {
+  position: relative;
+  display: flex;
+  flex: 0 0 auto;
+}
+
+.composer-file {
+  display: none;
+}
+
+.add-menu {
+  position: absolute;
+  bottom: calc(100% + var(--s2));
+  left: 0;
+  z-index: 3;
+  min-width: 260px;
+  padding: var(--s1);
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+}
+
+.add-menu-item {
+  display: grid;
+  grid-template-areas: 'clip name' 'clip note';
+  grid-template-columns: auto 1fr;
+  gap: 0 var(--s2);
+  width: 100%;
+  padding: var(--s2);
+  border-radius: var(--radius);
+  text-align: left;
+  cursor: pointer;
+}
+
+.add-menu-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.add-menu-clip {
+  grid-area: clip;
+  align-self: center;
+  color: var(--n600);
+  font-size: 17px;
+}
+
+.add-menu-name {
+  grid-area: name;
+  color: var(--text);
+  font-size: 13.5px;
+}
+
+.add-menu-note {
+  grid-area: note;
+  color: var(--n600);
+  font-size: 12.5px;
 }

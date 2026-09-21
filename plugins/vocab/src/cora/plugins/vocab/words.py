@@ -14,6 +14,8 @@ drill says "the other side" rather than a language.
 import re
 from dataclasses import dataclass
 
+from cora.ports.host import Host
+
 _ROW = re.compile(r"^\|(?P<left>[^|\n]*)\|(?P<right>[^|\n]*)\|\s*$", re.MULTILINE)
 # A number, a bullet or a letter the recognition put in front of the pair.
 _LEADER = re.compile(r"^\s*(?:\d+\s*[.,)]|[-*•])\s*")
@@ -45,10 +47,39 @@ class Pair:
     source: str
 
 
+def pairs_of(cora: Host) -> tuple[Pair, ...]:
+    """Every pair the field holds, list by list, in the order each list holds them.
+
+    The field's own files rather than its documents: a list is what the drill reads,
+    and a document is what an answer cites.
+    """
+    return tuple(
+        pair
+        for name in cora.files.names()
+        if (held := cora.files.read(name)) is not None
+        for pair in pairs_in(held, name)
+    )
+
+
 def pairs_in(text: str, source: str) -> tuple[Pair, ...]:
-    """Every pair this list holds, in the order it holds them."""
+    """Every pair this list holds, in the order it holds them, each one once.
+
+    A pair twice is a pair once: two photographs of one page overlap, and a file
+    somebody edits by hand holds whatever they left in it.
+    """
     table = _table(text, source)
-    return table if table else _lines(text, source)
+    return _once(table if table else _lines(text, source))
+
+
+def _once(pairs: tuple[Pair, ...]) -> tuple[Pair, ...]:
+    seen: set[tuple[str, str]] = set()
+    kept = []
+    for pair in pairs:
+        both = (pair.left, pair.right)
+        if both not in seen:
+            seen.add(both)
+            kept.append(pair)
+    return tuple(kept)
 
 
 def _table(text: str, source: str) -> tuple[Pair, ...]:

@@ -48,3 +48,49 @@
   background: var(--n300);
   cursor: default;
 }
+
+/* What the reading becomes. Two radios rather than a switch: the two are not more and
+   less of one thing — a document is searched and cited, a file is neither. */
+.kind {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2) var(--s3);
+  align-items: center;
+  margin-top: var(--s3);
+  padding: 0;
+  border: 0;
+}
+
+.kind label {
+  display: flex;
+  gap: var(--s1);
+  align-items: center;
+  font-size: 13.5px;
+  color: var(--text);
+}
+
+.naming {
+  margin-top: var(--s2);
+}
+
+.nameLabel {
+  display: block;
+  margin-bottom: var(--s1);
+  font-size: 13px;
+  color: var(--n700);
+}
+
+.name {
+  width: 100%;
+  padding: 7px var(--s2);
+  background: var(--sunken);
+  color: var(--text);
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius);
+  font-size: 13.5px;
+}
+
+.name:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}

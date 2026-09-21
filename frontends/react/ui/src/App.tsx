@@ -116,6 +116,10 @@ function Page() {
   /* A photo that has been read and not yet kept. It is the reading, not the image: the
      image never leaves this browser, and what is kept is what the reader corrects. */
   const [reading, setReading] = useState<{ image: string; read: string } | null>(null)
+  /* The names the field already keeps files under, read when a photo is, so the name
+     box can complete one rather than making a near-miss of it. A field that keeps none
+     answers with an empty list, which is what most fields do. */
+  const [heldFiles, setHeldFiles] = useState<string[]>([])
   /* Whether a photo is being read right now. Recognition is seconds of WebAssembly
      before anything is drawn, and the control that took the photo is the only thing
      that can say so. */
@@ -324,6 +328,10 @@ function Page() {
     if (recognising || reading !== null) return
     setNotice(null)
     setRecognising(true)
+    cora
+      .fieldFiles(field)
+      .then(setHeldFiles)
+      .catch(() => setHeldFiles([]))
     readImage(file)
       .then((said) => setReading({ image: file.name, read: said }))
       .catch(() =>
@@ -642,10 +650,18 @@ function Page() {
         <ReadImage
           image={reading.image}
           read={reading.read}
+          held={heldFiles}
           onKeep={(file) => {
             setReading(null)
             upload(file)
           }}
+          onKeepAsFile={(name, text) => {
+            setReading(null)
+            cora
+              .keepFieldFile(field, name, text)
+              .catch((failed: Error) => setTrouble(failed.message))
+          }}
+          onRead={(name) => cora.fieldFile(field, name).catch(() => null)}
           onDiscard={() => setReading(null)}
         />
       )}

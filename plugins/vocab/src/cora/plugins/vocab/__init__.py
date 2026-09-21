@@ -2,6 +2,7 @@ from cora.ports.host import Host
 
 from .drill import SCHEDULE as SCHEDULE
 from .drill import Drill
+from .lists import Lists
 
 SCOPE = "vocab"
 
@@ -14,6 +15,33 @@ WORD_SCHEMA = {
             "description": (
                 "Which column of the list to put to the reader. The left one by "
                 "default; the reader says which way round they want to be asked."
+            ),
+        }
+    },
+}
+
+FIND_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "word": {
+            "type": "string",
+            "description": (
+                "The word to look for, on either side of a pair. Matched whole, in the "
+                "spelling the list uses."
+            ),
+        }
+    },
+    "required": ["word"],
+}
+
+SHOW_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": (
+                "Which list to show, as the field names it. Left out, the names of "
+                "every list this field holds come back instead."
             ),
         }
     },
@@ -35,13 +63,17 @@ INSTRUCTIONS = """\
 Answer from the vocabulary lists this field holds: what a word means, where it is on a
 list, and which other words on it are near it.
 
+- A list is one of this field's own files, not a document: nothing searches it, and
+  `search_documents` will not find a word on one. `find_word` is what reads the lists.
 - A list is either a Markdown table, whose header names its two columns, or a line per
   pair as the reading of a screenshot saves one, which names neither. Which column is
   which language is the reader's to say, and `next_word` repeats whatever the list
   says.
-- Search the documents for any question about a word, and cite the list it came from.
+- Call `find_word` for any question about a word, and name the list it came from.
 - When a word is on none of the lists, say so plainly, then answer from what you know.
 - Never translate a word into a list, or say a word is on one without having found it.
+- `show_list` gives the names of the lists, or one list in full. A document uploaded to
+  this field is still a document: search and cite it as you would anywhere.
 
 Practising runs on the two tools. `next_word` says which word to put — it reads the
 schedule this field keeps and hands back one side of a pair, naming the list and, where
@@ -83,7 +115,28 @@ def extend(cora: Host) -> None:
     keeps: searching the lists is cora's own tool, and reading a screenshot into one is
     cora's own screen."""
     cora.register_instructions(INSTRUCTIONS, scope=SCOPE)
-    drill = Drill(cora, SCOPE)
+    drill = Drill(cora)
+    words = Lists(cora)
+    cora.register_tool(
+        name="find_word",
+        description=(
+            "Every pair holding this word, and the list each one is on. The lists are "
+            "this field's own files, so a document search does not reach them."
+        ),
+        parameter_schema=FIND_SCHEMA,
+        run=words.find_word,
+        scope=SCOPE,
+    )
+    cora.register_tool(
+        name="show_list",
+        description=(
+            "One list in full, or the names of the lists this field holds when no name "
+            "is given. Never call it while drilling: it hands over the answers."
+        ),
+        parameter_schema=SHOW_SCHEMA,
+        run=words.show_list,
+        scope=SCOPE,
+    )
     cora.register_tool(
         name="next_word",
         description=(

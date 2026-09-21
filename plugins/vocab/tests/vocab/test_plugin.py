@@ -4,9 +4,9 @@ from cora.ports.host import TOOL
 from fakes import host_for
 
 
-def test_the_field_is_a_voice_and_the_two_calls_the_drill_runs_on() -> None:
-    """Searching the lists is cora's own tool and the screen that writes one is cora's
-    own, so what the plugin brings is the spacing: a word to put, and how it went."""
+def test_the_field_is_a_voice_and_the_four_calls_it_runs_on() -> None:
+    """The screen that writes a list is cora's own, so what the plugin brings is
+    reading its lists — nothing indexes a file — and the spacing over them."""
     host = host_for("cora.plugins.vocab")
 
     extend(host)
@@ -15,8 +15,12 @@ def test_the_field_is_a_voice_and_the_two_calls_the_drill_runs_on() -> None:
         (SAYS, SCOPE),
         (TOOL, SCOPE),
         (TOOL, SCOPE),
+        (TOOL, SCOPE),
+        (TOOL, SCOPE),
     ]
     assert [entry.value.name for entry in host.registered if entry.kind == TOOL] == [
+        "find_word",
+        "show_list",
         "next_word",
         "how_it_went",
     ]
@@ -26,7 +30,7 @@ def test_the_instructions_say_what_the_field_answers_from() -> None:
     instructions = INSTRUCTIONS.lower()
 
     assert "vocabular" in instructions
-    assert "cite" in instructions
+    assert "find_word" in instructions
 
 
 def test_the_instructions_keep_the_answers_back_while_practising() -> None:

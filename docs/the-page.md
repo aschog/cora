@@ -40,8 +40,9 @@ its own — it asks, and it draws what came back.
 ## Where a document is added
 
 Two controls, one upload. The documents rail carries **Add a document**, standing over
-the list it changes, and the composer carries a ＋ beside the question being typed. Both
-call the same hook, so a file lands in the same field, the list changes once, and a
+the list it changes, and the composer carries a ＋ beside the question being typed. The
+＋ opens a menu naming what it takes rather than the picker itself, so the control reads
+before it is used. Both call the same hook, so a file lands in the same field, the list changes once, and a
 refusal is reported in one place — the notice over the rail's list. While an upload is
 running the composer's control says so and takes no second file: an upload is seconds of
 real indexing, and a reader whose rail is folded has nothing else that would say.
@@ -50,10 +51,18 @@ A **photo** added there is read before it is kept. `frontends/react/ui/src/readi
 fetches Tesseract compiled to WebAssembly from `cdn.jsdelivr.net` the first time one is
 added — the script, its core and the German and English trained data, pinned and then
 cached — and runs it in the browser, so the image is never uploaded. What it recognised
-is put up in a dialog to correct, and only what the reader keeps is uploaded, as a
-Markdown document named after the photo. Discarding keeps nothing. A photo with no text
-in it and a reading that could not be run are two different sentences, because they send
-the reader to fix two different things.
+is put up in a dialog to correct, and only what the reader keeps reaches the field.
+Discarding keeps nothing. A photo with no text in it and a reading that could not be run
+are two different sentences, because they send the reader to fix two different things.
+
+The dialog keeps it as one of two things. A **document** is the upload it always was, a
+Markdown file named after the photo, indexed and citable. One of the **field's own
+files** is not: the reader names it, nothing indexes it, and it is there for the field's
+plugin to read — a word list to drill from rather than prose to answer from. The names
+the field already holds are offered as the reader types, and naming one that exists puts
+its text into the box above the new reading, so the merge is corrected in the same pass
+and the whole of it is written back. Every field offers both, because every field keeps
+files; a field whose plugin reads none simply has none.
 
 ## A page a plugin brought
 

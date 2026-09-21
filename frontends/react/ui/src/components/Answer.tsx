@@ -17,6 +17,8 @@ const ADD = 'Add a file or photo'
    uploaded as the text, so it belongs in the same list. */
 const READS = '.txt,.md,.pdf,image/*'
 const ADDING = 'Adding a file…'
+const TAKES = 'Add photos & files'
+const FROM = 'Upload from computer'
 const CHANGE = 'Change'
 const DECIDING = 'cora is waiting on your answer above.'
 /** How close to the end still counts as reading the newest turn. A line of slack, so the
@@ -74,11 +76,34 @@ export default function Answer({
   inRail = false,
 }: Props) {
   const [question, setQuestion] = useState('')
+  /* The ＋ says what it takes before it takes it, so it opens a menu rather than the
+     picker. The picker is still an input, reached from the menu item. */
+  const [offering, setOffering] = useState(false)
+  const adding = useRef<HTMLDivElement>(null)
+  const picker = useRef<HTMLInputElement>(null)
   const scroller = useRef<HTMLDivElement>(null)
   /* Whether the conversation is still following what happens. An answer is written over
      half a minute and the effect below runs on every piece of it, so a reader who goes
      back to re-read an earlier turn has to be able to stay there. */
   const following = useRef(true)
+
+  /* A menu is left the way every other one is: Escape, or a click anywhere but on it.
+     Bound only while it is open, so a closed menu costs the page no listeners. */
+  useEffect(() => {
+    if (!offering) return
+    const close = (event: Event) => {
+      if (!adding.current?.contains(event.target as Node)) setOffering(false)
+    }
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOffering(false)
+    }
+    document.addEventListener('pointerdown', close)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('pointerdown', close)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [offering])
 
   /* A turn asked, and a turn answered, both belong at the bottom of the scroller — the
      conversation follows what just happened rather than leaving it below the fold. All
@@ -180,16 +205,43 @@ export default function Answer({
       <div className={styles.composerDock}>
         <div className={styles.composer}>
           {onUpload && (
-            <label
-              className={styles.composerAdd}
-              title={uploading ? ADDING : ADD}
-              aria-disabled={uploading}
-            >
-              <span aria-hidden="true">＋</span>
+            <div className={styles.composerAddWrap} ref={adding}>
+              <button
+                className={styles.composerAdd}
+                title={uploading ? ADDING : ADD}
+                aria-label={uploading ? ADDING : ADD}
+                aria-haspopup="menu"
+                aria-expanded={offering}
+                aria-disabled={uploading}
+                disabled={uploading}
+                onClick={() => setOffering(!offering)}
+              >
+                <span aria-hidden="true">＋</span>
+              </button>
+              {offering && (
+                <div className={styles.addMenu} role="menu">
+                  <button
+                    className={styles.addMenuItem}
+                    role="menuitem"
+                    onClick={() => {
+                      setOffering(false)
+                      picker.current?.click()
+                    }}
+                  >
+                    <span className={styles.addMenuClip} aria-hidden="true">
+                      ⌇
+                    </span>
+                    <span className={styles.addMenuName}>{TAKES}</span>
+                    <span className={styles.addMenuNote}>{FROM}</span>
+                  </button>
+                </div>
+              )}
               <input
+                ref={picker}
+                className={styles.composerFile}
                 type="file"
                 accept={READS}
-                aria-label={uploading ? ADDING : ADD}
+                aria-label={FROM}
                 disabled={uploading}
                 onChange={(e) => {
                   const [file] = Array.from(e.target.files ?? [])
@@ -199,7 +251,7 @@ export default function Answer({
                   e.target.value = ''
                 }}
               />
-            </label>
+            </div>
           )}
           <input
             value={question}
