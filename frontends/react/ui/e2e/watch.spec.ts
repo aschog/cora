@@ -1,20 +1,16 @@
 import { expect, test } from "@playwright/test";
-import { answered, ask, fresh, named, PROSE } from "./helpers";
+import { answered, ask, fixed, fresh, named, noSheet, PROSE, TRAINER } from "./helpers";
 
 /* The watch, as the page meets it: cora keeps one notice per field, whatever is on the
    wrist writes it, and the trainer follows it. The wrist itself is not here — no tier
    runs a watch — so what is driven is the notice, exactly as the extension writes it. */
 
-const TRAINER = "/pages/fitness/";
 const NOTICE = "/api/scopes/fitness/notice";
 
 const RUNNING = { workout: "running" };
 const FINISHED = { workout: "finished" };
 
-/* The plan comes from a sheet the suite never reaches, as in the trainer's own specs. */
-test.beforeEach(async ({ page }) => {
-  await page.route("**/docs.google.com/**", (asked) => asked.abort());
-});
+test.beforeEach(({ page }) => noSheet(page));
 
 /** The notice as cora answers it, without going near cora — so a spec says what the
  *  wrist wrote and when, and leaves nothing behind for the next one. */
@@ -195,12 +191,7 @@ test("a workout the wrist ended that cora would not take is said to be lost", as
 /** A conversation pinned to the field, left where the shell will find it: the pin is
  *  written by a turn, so one is asked. */
 async function pinned(page: import("@playwright/test").Page, field: string) {
-  await fresh(page);
-  await page
-    .getByRole("group", { name: "Answer in" })
-    .getByRole("button", { name: "Plugin" })
-    .click();
-  await page.getByRole("button", { name: field, exact: true }).click();
+  await fixed(page, field);
   await ask(page, PROSE);
   await answered(page);
   await named(page);

@@ -1,19 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { fresh } from "./helpers";
+import { fresh, noSheet, pin, TRAINER } from "./helpers";
 
 /* The fitness trainer, in the only tier that can run it: it is the plugin's own
    JavaScript, served by cora at its field's path, and nothing in the Python or the
    shell tiers executes a line of it. Its pure functions are called in the page itself
    rather than lifted out of the file, so what is asserted is what the browser loaded. */
 
-const TRAINER = "/pages/fitness/";
-
-/* The page asks its sheet for the plan on load. No spec here wants that answer — one
-   asserts what happens without it, and the rest are about what the trainer does with
-   whatever plan it has — so the suite never reaches Google, on a train or otherwise. */
-test.beforeEach(async ({ page }) => {
-  await page.route("**/docs.google.com/**", (asked) => asked.abort());
-});
+test.beforeEach(({ page }) => noSheet(page));
 
 test("the trainer writes a workout in the session grammar", async ({
   page,
@@ -80,11 +73,7 @@ test("a workout finished in the trainer becomes a document of the fitness field"
   /* And it is a document of that field, which is the whole point of writing it: the
      shell lists it, and cora can be asked about it. */
   await fresh(page);
-  await page
-    .getByRole("group", { name: "Answer in" })
-    .getByRole("button", { name: "Plugin" })
-    .click();
-  await page.getByRole("button", { name: "fitness", exact: true }).click();
+  await pin(page, "fitness");
   await expect(page.getByRole("button", { name: saved })).toBeVisible();
 });
 

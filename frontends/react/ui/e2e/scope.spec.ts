@@ -1,12 +1,10 @@
 import { expect, test } from '@playwright/test'
-import { answered, ask, fresh, named, PROSE } from './helpers'
+import { answered, ask, fresh, named, pin, PROSE } from './helpers'
 
 test('a conversation is pinned to a field, and keeps it', async ({ page }) => {
   await fresh(page)
+  await pin(page, 'notes')
   const strip = page.getByRole('group', { name: 'Answer in' })
-
-  await strip.getByRole('button', { name: 'Plugin' }).click()
-  await page.getByRole('button', { name: 'notes', exact: true }).click()
 
   await expect(strip).toContainText('notes')
   /* The rail follows the pin: an upload lands in the field the conversation is in. */

@@ -148,3 +148,10 @@
   justify-content: flex-end;
   margin-bottom: 0;
 }
+
+/* Both rails folded beside a page that asked for the screen: what was left of them goes
+   unseen and the frame is the whole screen. Closing what asked is the way back, and the
+   shell's own notices still have the top. */
+.alone .shut {
+  display: none;
+}

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { answered, ask, fresh, PROSE } from './helpers'
+import { answered, ask, fixed, fresh, pin, PROSE } from './helpers'
 
 /* The one tier that proves a plugin's page is really served and really drawn: the page,
    the API and the plugins folder are all the real ones, and the frame is a document the
@@ -7,14 +7,7 @@ import { answered, ask, fresh, PROSE } from './helpers'
 test('a field with a page is worked in it, and answers beside it', async ({
   page,
 }) => {
-  await fresh(page)
-  const strip = page.getByRole('group', { name: 'Answer in' })
-
-  await strip.getByRole('button', { name: 'Plugin' }).click()
-  await page.getByRole('button', { name: 'atlas', exact: true }).click()
-
-  const shown = page.locator('iframe[title="atlas"]')
-  await expect(shown).toBeVisible()
+  const shown = await fixed(page, 'atlas')
   await expect(shown.contentFrame().locator('#here')).toHaveText(
     'The atlas is open.',
   )
@@ -39,12 +32,7 @@ test('a field with no page leaves the conversation in the middle', async ({
   page,
 }) => {
   await fresh(page)
-
-  await page
-    .getByRole('group', { name: 'Answer in' })
-    .getByRole('button', { name: 'Plugin' })
-    .click()
-  await page.getByRole('button', { name: 'kit', exact: true }).click()
+  await pin(page, 'kit')
 
   await expect(page.locator('iframe')).toHaveCount(0)
   await expect(

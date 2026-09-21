@@ -7,14 +7,11 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 /* Where an approved effect writes. Read from the suite rather than from the page: what
    the gate is for is the file, and the page can only say that it was told about one. */
 const WROTE = resolve(HERE, '../../../../.cora/e2e/out/note.md')
-import { answered, ask, fresh, settled, waiting, WRITE } from './helpers'
+import { WRITE, answered, ask, fresh, pin, settled, waiting } from './helpers'
 
 /* The tool that acts belongs to the `kit` field, so the conversation is pinned there
    before it is asked for — the gate is what this covers, not the routing. */
-async function inKit(page: import('@playwright/test').Page) {
-  await page.getByRole('button', { name: 'Plugin' }).click()
-  await page.getByRole('listitem').filter({ hasText: 'kit' }).getByRole('button', { name: 'kit', exact: true }).click()
-}
+const inKit = (page: import('@playwright/test').Page) => pin(page, 'kit')
 
 test.beforeEach(() => rmSync(WROTE, { force: true }))
 

@@ -152,6 +152,13 @@ def extend(cora: Host) -> None:
   every route the reader has, it has. That is the same trust loading the plugin already
   extended, and [privacy](../privacy-and-ethics.md#what-loading-a-plugin-costs-in-trust)
   says so plainly.
+- A page may ask the shell for the whole screen, and let it go again, by posting
+  `{cora: 'screen', wanted: true}` — or `false` — to its parent window on cora's own
+  origin. While it wants it and the reader has folded both rails, what is left of the
+  rails is not drawn and the frame is the whole screen, so the page is what closes that
+  state: let go when what wanted it ends, and as your page goes. The reader can take the
+  screen back with Escape at any time, so hold nothing on having it. The trainer asks on
+  its camera's first frame, and lets go when it closes or its picture is taken away.
 
 ## Handlers
 

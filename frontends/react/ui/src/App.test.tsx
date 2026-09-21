@@ -1122,6 +1122,54 @@ test('folding the rail and unfolding it draws the conversation with its turns', 
   expect(await within(rail()).findByText(/Sleep, not volume/)).toBeTruthy()
 })
 
+test('a page that asks for the screen has it while both rails are folded', async () => {
+  await opened()
+  const wants = (wanted: boolean, origin = window.location.origin) =>
+    fireEvent(
+      window,
+      new MessageEvent('message', { data: { cora: 'screen', wanted }, origin }),
+    )
+  const alone = () =>
+    (document.querySelector('.' + appCss.columns) as HTMLElement).classList.contains(
+      appCss.alone,
+    )
+  const fold = (named: RegExp) => fireEvent.click(screen.getByRole('button', { name: named }))
+
+  /* Asked beside an open rail the frame stays where it was; with both folded the rails
+     go unseen and it has the screen; let go, they are back. */
+  wants(true)
+  expect(alone(), 'beside an open rail').toBe(false)
+  fold(/Documents/)
+  fold(/Plan & memory/)
+  expect(alone(), 'with both rails folded').toBe(true)
+  wants(false)
+  expect(alone(), 'let go').toBe(false)
+
+  /* Only cora's own origin is heard: the trainer embeds a foreign player whose messages
+     reach this window too. */
+  wants(true, 'https://www.youtube.com')
+  expect(alone(), 'asked from another origin').toBe(false)
+
+  /* The shell's own way back: the rails are unreachable while the page has the screen,
+     so a page that asks and never lets go is not a page the reader is stuck in. */
+  wants(true)
+  expect(alone()).toBe(true)
+  fireEvent.keyDown(window, { key: 'Escape' })
+  expect(alone(), 'after Escape').toBe(false)
+
+  /* The asking goes with the page: back to plain chat and fixed to the field again, the
+     frame drawn the second time has not asked. */
+  wants(true)
+  expect(alone()).toBe(true)
+  fold(/Plan & memory/)
+  fireEvent.click(screen.getByRole('button', { name: 'Chat' }))
+  expect(alone(), 'with no page').toBe(false)
+  pickPlugin('fitness')
+  await screen.findByTitle('fitness')
+  fold(/Plan & memory/)
+  expect(alone(), 'fixed to the page again').toBe(false)
+})
+
 /** A render that throws is a sentence on the page and a line on the console. The spy
  *  keeps React's own report out of the suite's output, which is otherwise a wall. */
 const quietly = async (draw: () => Promise<void>) => {

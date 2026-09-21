@@ -392,6 +392,48 @@ function Page() {
     />
   )
 
+  /* A page may ask for the screen — the trainer does while its camera runs — and has it
+     while both rails are folded: they go unseen, and the frame is the whole screen. Heard
+     on cora's own origin and read against the page it came from; a page that changes
+     takes its asking with it, and a page that goes lets go as it goes. */
+  const [asked, setAsked] = useState<string | null>(null)
+  useEffect(() => {
+    const heard = (said: MessageEvent) => {
+      if (said.origin !== window.location.origin) return
+      const wish = said.data as { cora?: unknown; wanted?: unknown } | null
+      if (wish?.cora === 'screen') setAsked(wish.wanted === true ? page : null)
+    }
+    window.addEventListener('message', heard)
+    return () => {
+      window.removeEventListener('message', heard)
+      setAsked(null)
+    }
+  }, [page])
+  const alone = asked !== null && asked === page && !leftOpen && !rightOpen
+  /* And the shell's own way back, because while a page has the screen every control of
+     the shell is unreachable: a page that asks and never lets go — one that throws before
+     it can, or one written to hold on — is not a page the reader is stuck in. Heard in the
+     frame's own document as well as out here, since that is where the reader is typing;
+     a frame of another origin says nothing, and keeps the window. */
+  const framed = useRef<HTMLIFrameElement>(null)
+  useEffect(() => {
+    if (!alone) return
+    let inside: Document | null = null
+    try {
+      inside = framed.current?.contentDocument ?? null
+    } catch {
+      inside = null
+    }
+    const pressed = (key: KeyboardEvent) => {
+      if (key.key === 'Escape') setAsked(null)
+    }
+    window.addEventListener('keydown', pressed)
+    inside?.addEventListener('keydown', pressed)
+    return () => {
+      window.removeEventListener('keydown', pressed)
+      inside?.removeEventListener('keydown', pressed)
+    }
+  }, [alone])
   return (
     <div className={styles.app}>
       <div className={styles.banners} role="status" aria-label="Notices">
@@ -402,7 +444,7 @@ function Page() {
         ))}
       </div>
 
-      <div className={styles.columns}>
+      <div className={joined(styles.columns, alone && styles.alone)}>
         {/* The rail is always drawn, folded or not: the control that folds it lives in it,
             and a control that hides itself cannot be used to bring itself back. */}
         <aside className={joined(styles.railDocs, !leftOpen && styles.shut)}>
@@ -473,6 +515,7 @@ function Page() {
             <ErrorBoundary said={UNDRAWN_TALK}>{talking}</ErrorBoundary>
           ) : (
             <iframe
+              ref={framed}
               className={styles.page}
               src={page}
               title={field}

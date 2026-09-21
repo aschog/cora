@@ -33,6 +33,7 @@ body{
   -webkit-font-smoothing:antialiased;
   height:100vh;height:100dvh;display:flex;flex-direction:column;
   padding:0;overflow:hidden;overscroll-behavior-y:contain;
+  isolation:isolate;                        /* the camera's -1 counts from here, not from the canvas */
 }
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 
@@ -127,6 +128,17 @@ header .go:active{opacity:.75;background:var(--blue)}
 #cam,#player{position:absolute;inset:0;display:none}
 body.view-cam #rows,body.view-clip #rows{display:none}
 body.view-cam #cam{display:block}
+/* the picture is the page: once there is one, its stage is pinned to the edges and
+   painted under everything else, while the frame it left stays where it is, as the band
+   the rest, the set count and the mirror keep. Under, rather than the rest lifted over
+   it, so whatever the page draws next is above the picture without being named here */
+body.cam-live #camstage{position:fixed;inset:0;z-index:-1}
+body.cam-live .stage{border-color:transparent;background:none}
+/* over a moving picture a thin border is not a button: the rows' own ground goes under
+   each control, weightless so a logged set and a pressed button keep their colours, and
+   the text that has none gets the mirror label's shadow */
+:where(body.cam-live) :is(.set,.wt button,.nav button){background:rgba(11,12,14,.55)}
+body.cam-live :is(.ex-name,.wt .val){text-shadow:0 1px 6px rgba(0,0,0,.8)}
 body.view-clip #player{display:block}
 #player .player{width:100%;height:100%;border-radius:0;aspect-ratio:auto}
 
@@ -324,11 +336,13 @@ body.resting.view-cam #restview,body.resting.view-clip #restview{display:flex}
       <div id="camstage">
         <video id="camview" playsinline autoplay muted class="flip"></video>
         <canvas id="posecanvas" class="flip"></canvas>
-        <div id="posehud"></div>
-        <div class="cap">
-          <button id="camflip" aria-pressed="true">Mirror</button>
-          <button id="posetog" class="ico" title="Pose overlay">◉</button>
-        </div>
+      </div>
+      <!-- beside the stage, not in it: the readout and the controls keep the frame's
+           band when the stage itself has the page -->
+      <div id="posehud"></div>
+      <div class="cap">
+        <button id="camflip" aria-pressed="true">Mirror</button>
+        <button id="posetog" class="ico" title="Pose overlay">◉</button>
       </div>
     </aside>
     <div id="player"></div>
@@ -743,6 +757,14 @@ document.getElementById('app').addEventListener('click', e => {
    the frames. Keep it that way -- localStorage holds the workout in flight only. */
 const camView = document.getElementById('camview');
 let camStream = null;
+let camAsk = 0;           // which asking of the browser is the current one
+/* The shell this page may be framed in is told when the picture is there, so it can give
+   it the whole screen. Said on cora's own origin, which is the shell's; a page on its own,
+   or framed under an origin that is nobody's, tells nobody. */
+function askScreen(wanted){
+  if (parent === window || location.origin === 'null') return;
+  parent.postMessage({cora: 'screen', wanted}, location.origin);
+}
 
 async function camStart(){
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
@@ -751,27 +773,47 @@ async function camStart(){
     return;
   }
   camStop();
+  const mine = ++camAsk;
+  let stream;
   try {
-    camStream = await navigator.mediaDevices.getUserMedia({
+    stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false
     });
   } catch (e) {
-    alert('No camera access: ' + e.name);
-    show(null);
+    if (mine === camAsk){ alert('No camera access: ' + e.name); show(null); }
     return;
   }
-  camView.srcObject = camStream;
+  if (mine !== camAsk){                      // closed, or asked again, while the browser was asking
+    stream.getTracks().forEach(t => t.stop());
+    return;
+  }
+  camStream = stream;
+  // a picture taken away underneath -- another app, a sleeping tab -- is a camera closed
+  stream.getVideoTracks().forEach(t =>
+    t.addEventListener('ended', () => { if (camStream === stream) show(null); }));
   camView.classList.add('flip');            // a selfie camera starts mirrored
   poseCanvas.classList.add('flip');
   camFlip.setAttribute('aria-pressed', 'true');
-  document.body.classList.add('cam-live');
+  /* A granted camera is not a picture yet: the first frame lands a beat later, and the
+     page goes black the moment it is live. So the picture is what the page turns on. */
+  camView.addEventListener('loadeddata', () => {
+    if (mine !== camAsk) return;             // a picture for a camera already closed
+    document.body.classList.add('cam-live');
+    askScreen(true);
+  }, {once: true});
+  camView.srcObject = camStream;
 }
 function camStop(){
-  poseStop();
-  document.body.classList.remove('cam-live');
-  if (camStream) camStream.getTracks().forEach(t => t.stop());
-  camStream = null; camView.srcObject = null;
+  camAsk++;
+  try {
+    poseStop();
+    document.body.classList.remove('cam-live');
+    if (camStream) camStream.getTracks().forEach(t => t.stop());
+    camStream = null; camView.srcObject = null;
+  } finally {
+    askScreen(false);                        // whatever fails above, the screen is given back
+  }
 }
 const camFlip = document.getElementById('camflip');
 camFlip.addEventListener('click', () => {
@@ -861,6 +903,7 @@ async function poseStart(){
   poseHud.textContent = 'loading model…';
   try { await poseModel(); }
   catch (e){
+    if (poseState !== 'load') return;        // stopped while the model loaded
     poseState = 'err'; poseUi();
     poseHud.textContent = 'pose unavailable\n' + String(e.message || e).slice(0, 48);
     return;
