@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { answered, ask, fresh, named, noSheet, pin, PROSE, TRAINER } from "./helpers";
+import { answered, ask, fixed, fresh, named, noSheet, PROSE, TRAINER } from "./helpers";
 
 /* The watch, as the page meets it: cora keeps one notice per field, whatever is on the
    wrist writes it, and the trainer follows it. The wrist itself is not here — no tier
@@ -191,8 +191,7 @@ test("a workout the wrist ended that cora would not take is said to be lost", as
 /** A conversation pinned to the field, left where the shell will find it: the pin is
  *  written by a turn, so one is asked. */
 async function pinned(page: import("@playwright/test").Page, field: string) {
-  await fresh(page);
-  await pin(page, field);
+  await fixed(page, field);
   await ask(page, PROSE);
   await answered(page);
   await named(page);

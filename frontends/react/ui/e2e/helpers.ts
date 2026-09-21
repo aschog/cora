@@ -34,7 +34,6 @@ export async function named(page: Page) {
   await expect(page).toHaveURL(/#\/c\//, { timeout: 20_000 })
 }
 
-/** The trainer, at the address cora serves the fitness field's page under. */
 export const TRAINER = '/pages/fitness/'
 
 /** The trainer asks its sheet for the plan on load, and no spec wants that answer: each
@@ -50,6 +49,14 @@ export async function pin(page: Page, field: string) {
     .getByRole('button', { name: 'Plugin' })
     .click()
   await page.getByRole('button', { name: field, exact: true }).click()
+}
+
+/** A rail folded by its control, which then says so: it is all that is left of the rail. */
+export async function folded(page: Page, named: RegExp) {
+  const control = page.getByRole('button', { name: named })
+  await control.click()
+  await expect(control).toHaveAttribute('aria-pressed', 'false')
+  return control
 }
 
 /** A fresh page fixed to a field with a page of its own, that page drawn in the middle. */

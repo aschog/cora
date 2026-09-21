@@ -1,5 +1,5 @@
 import { expect, test, type Page } from "@playwright/test";
-import { fixed, noSheet, TRAINER } from "./helpers";
+import { fixed, folded, noSheet, TRAINER } from "./helpers";
 
 /* The one spec that needs a camera. Chromium is handed a fake one and told to answer
    its own prompt, so the trainer's camera goes live the way it does on a phone, with a
@@ -90,8 +90,8 @@ test("in the shell with both rails folded, the camera is the whole screen", asyn
   page,
 }) => {
   const frame = await fixed(page, "fitness");
-  await page.getByRole("button", { name: /Documents/ }).click();
-  await page.getByRole("button", { name: /Plan & memory/ }).click();
+  await folded(page, /Documents/);
+  await folded(page, /Plan & memory/);
   const framed = frame.contentFrame();
   const before = await box(page, 'iframe[title="fitness"]');
   const size = page.viewportSize();
@@ -165,8 +165,8 @@ test("the shell moves once there is a picture, and a camera closed while the bro
       });
   });
   const frame = await fixed(page, "fitness");
-  await page.getByRole("button", { name: /Documents/ }).click();
-  await page.getByRole("button", { name: /Plan & memory/ }).click();
+  await folded(page, /Documents/);
+  await folded(page, /Plan & memory/);
   const framed = frame.contentFrame();
   const before = await box(page, 'iframe[title="fitness"]');
   const grant = () =>
