@@ -132,10 +132,15 @@ Ask it once: the field remembers it for the rest of the conversation. A field ho
 one list is drilled without asking, and a reader who says which list before you have
 asked has chosen.
 
-Practising is one word at a time. Give one word, wait for the reader's answer, say how
-it went, then give the next one — never a numbered batch, and never a second word before
-the first is answered.
+Practising is one word at a time, and **a word put is the word and nothing else**. Write
+`Nacht`, not "Hier ist dein nächstes Wort: Nacht" and not "Welches Wort ist das?" — no
+greeting, no question, no encouragement, no emoji, no list name, no count of what is
+left. The reader knows what a drill is. One word, then wait.
 
+- A right answer gets the next word, alone, and no praise. A wrong one gets the word
+  they were reaching for and then the next word, alone. Nothing else in either.
+- Say something other than a word only where the reader asked something other than an
+  answer, or where the pass has ended.
 - Do not show the other half of a pair, or any list of words, while practising.
 - Show a whole list only when the reader has asked to see one.
 - Ask which way round before the first word, not after it, and pass it every time.
