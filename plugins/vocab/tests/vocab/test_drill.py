@@ -38,7 +38,11 @@ def drilling() -> Iterator[None]:
         yield
 
 
-def _drill(held: str = LIST, kept: str | None = None) -> tuple[dict, FakeStore]:
+def _drill(
+    held: str = LIST, kept: str | None = None, german: str | None = "left"
+) -> tuple[dict, FakeStore]:
+    # `german` is which column of `held` holds it, said once as the model says it;
+    # `None` is a fixture with no pairs in it, which there is nothing to say about.
     store = FakeStore()
     if kept is not None:
         store.keep("vocab", SCHEDULE, kept)
@@ -53,6 +57,9 @@ def _drill(held: str = LIST, kept: str | None = None) -> tuple[dict, FakeStore]:
         for entry in host.registered
         if entry.kind == TOOL
     }
+    if german is not None:
+        with drilling():
+            tools["german_side"](name=LISTED, side=german)
     return tools, store
 
 
@@ -74,6 +81,7 @@ def test_only_this_fields_files_are_drilled() -> None:
     }
 
     with drilling():
+        tools["german_side"](name=LISTED, side="left")
         asked = tools["next_word"]()
 
     assert "Hilfe" in asked or "Haus" in asked
@@ -94,7 +102,7 @@ def test_the_other_way_round_puts_the_other_side() -> None:
     tools, _ = _drill(held=ONE)
 
     with drilling():
-        asked = tools["next_word"](side="right")
+        asked = tools["next_word"](put="other")
 
     assert "help" in asked
     assert "Hilfe" not in asked
@@ -115,13 +123,15 @@ def test_a_word_put_says_which_list_and_which_side_it_came_from() -> None:
 def test_a_list_read_out_of_a_screenshot_is_drilled_like_any_other() -> None:
     """The regression this was found by: a list the reading saved is lines rather than
     a table, and the drill said the field held no lists at all."""
-    tools, _ = _drill(held=ONE_READ)
+    tools, _ = _drill(held=ONE_READ, german="right")
 
     with drilling():
         asked = tools["next_word"]()
 
-    assert "Apple" in asked
-    assert "Apfel" not in asked
+    # The German is put whichever column it landed in, which for a screenshot of an
+    # English-first page is the right one.
+    assert "Apfel" in asked
+    assert "Apple" not in asked
 
 
 def test_a_word_that_is_due_is_preferred_to_one_that_is_not() -> None:
@@ -210,7 +220,7 @@ def test_saying_how_a_word_nobody_asked_about_went_is_refused() -> None:
 
 
 def test_a_field_holding_no_list_says_so() -> None:
-    tools, _ = _drill(held="Just some prose about words.")
+    tools, _ = _drill(held="Just some prose about words.", german=None)
 
     with drilling():
         assert "no word lists" in tools["next_word"]().lower()

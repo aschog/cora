@@ -4,7 +4,7 @@ Every session opens with the same three questions, and answers spacing nobody as
 
 ## What Changes
 
-- The left column of a list is German, and a drill puts it unless the reader says otherwise
+- A drill puts the German side, and which column that is is said once per list and kept
 - The field speaks German, because the reader it is drilling is reading in German
 - Spaced repetition is off unless the reader turns it on, and writes nothing while it is off
 - With it off, a session is one shuffled pass over the chosen list, each word once
@@ -16,6 +16,7 @@ Every session opens with the same three questions, and answers spacing nobody as
 ## Impact
 
 - `plugins/vocab/src/cora/plugins/vocab/sweep.py` — one shuffled pass, kept for the conversation
+- `plugins/vocab/src/cora/plugins/vocab/sides.py` — which column of a list is the German one
 - `plugins/vocab/src/cora/plugins/vocab/drill.py` — the pass beside the schedule, and which is running
 - `plugins/vocab/src/cora/plugins/vocab/__init__.py` — the defaults, in the field's own instructions
 - `openspec/specs/plugins` — what the field does before it is told anything

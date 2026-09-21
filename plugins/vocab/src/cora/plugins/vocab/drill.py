@@ -14,18 +14,23 @@ from cora.ports.plugin import ToolRefusal
 from cora.ports.store import Kept
 
 from .schedule import Schedule
+from .sides import LEFT as GERMAN_LEFT
+from .sides import other, sides_in
+from .sides import written as sides_written
 from .sm2 import due, reviewed
 from .sweep import Sweep
 from .words import Pair, pairs_of
 
 SCHEDULE = "schedule"
+SIDES = "sides"
 ASKED = "asked"
 CHOSEN = "chosen"
-SIDE = "side"
+PUT = "put"
+GERMAN = "german"
+OTHER = "other"
 SPACED = "spaced"
 SWEPT = "swept"
 ON = "1"
-LEFT = "left"
 # No file can be called this — a name is one plain name — so no list can ever be
 # confused with the choice to drill all of them.
 EVERY = "*"
@@ -43,12 +48,20 @@ LAST = "right — that was the last word. The pass is done."
 NO_WORDS = "This field holds no word lists yet."
 NO_STORE = "This deployment keeps nothing, so a drill here could not remember anything."
 UNASKED = "That word was not the one asked. Put a word first, then say how it went."
+UNSIDED = (
+    "Nobody has said which column of {named} is the German one, and a drill puts the "
+    "German. Its first pairs are: {pairs}. Work out which side that is and call "
+    "german_side, then ask for a word again."
+)
 UNCHOSEN = (
     "This field holds more than one list, so ask the reader which one to drill before "
     "putting a word: {held}, or all of them. Put it on a card with ask_user, then call "
     "this again with `from_list` set to what they chose, or '*' for all of them."
 )
 NO_SUCH_LIST = "This field holds no list called '{name}'. It holds: {held}."
+# Enough of a list for the model to tell one language from the other, and few enough
+# that a refusal is a sentence rather than the list itself.
+SHOWN = 4
 
 
 @dataclass(frozen=True)
@@ -59,7 +72,7 @@ class Drill:
 
     def next_word(
         self,
-        side: str = "",
+        put: str = "",
         from_list: str = "",
         spaced: bool | None = None,
         again: bool = False,
@@ -69,15 +82,18 @@ class Drill:
         if not pairs:
             return NO_WORDS
         pairs = self._chosen(pairs, from_list)
+        self._refuse_unsided(pairs)
         if again:
             self.cora.state.keep(SWEPT, None)
         asking = self._due(pairs) if self._spacing(spaced) else self._still_to_do(pairs)
         if asking is None:
             return DONE if self._spacing(None) else SWEPT_UP
         self.cora.state.keep(ASKED, _key(asking))
-        asking_left = self._side(side) == LEFT
-        put = asking.left if asking_left else asking.right
-        return f"{put} — from {asking.source}{_sides(asking, asking_left)}."
+        german = self._german(asking.source)
+        showing = german if self._putting(put) == GERMAN else other(german)
+        left = showing == GERMAN_LEFT
+        word = asking.left if left else asking.right
+        return f"{word} — from {asking.source}{_sides(asking, left)}."
 
     def how_it_went(self, word: str, right: bool) -> str:
         """Move the word just put, by whether the reader produced it.
@@ -139,13 +155,46 @@ class Drill:
             return asked
         return self.cora.state.read(SPACED) == ON
 
-    def _side(self, asked: str) -> str:
-        # German is the left column of a list, so the left side is what a drill puts
-        # until the reader turns it round.
+    def _refuse_unsided(self, pairs: tuple[Pair, ...]) -> None:
+        # One list at a time: the model has to look at each one's words to say which
+        # column they are, and a refusal carrying five lists carries none of them well.
+        for named in _sources(pairs):
+            if self._german(named):
+                continue
+            shown = [pair for pair in pairs if pair.source == named][:SHOWN]
+            raise ToolRefusal(
+                UNSIDED.format(
+                    named=named,
+                    pairs="; ".join(f"{one.left} — {one.right}" for one in shown),
+                )
+            )
+
+    def _putting(self, asked: str) -> str:
+        # The German side unless the reader turns it round, and then for the rest of
+        # the conversation.
         if asked.strip():
-            self.cora.state.keep(SIDE, asked.strip())
+            self.cora.state.keep(PUT, asked.strip())
             return asked.strip()
-        return self.cora.state.read(SIDE) or LEFT
+        return self.cora.state.read(PUT) or GERMAN
+
+    def _german(self, named: str) -> str:
+        # Which column is German is the model's to say, once per list — a screenshot is
+        # photographed whichever way round the page was, and nothing here can tell
+        # Apfel from Apple. Where a deployment keeps nothing there is nowhere to put
+        # the answer, so the left column stands in.
+        if self.cora.store is None:
+            return GERMAN_LEFT
+        return sides_in(self.cora.store.read(SIDES)).get(named, "")
+
+    def german_side(self, name: str, side: str) -> str:
+        """Say which column of a list holds the German, for good."""
+        held = _sources(pairs_of(self.cora))
+        if name not in held:
+            raise ToolRefusal(NO_SUCH_LIST.format(name=name, held=", ".join(held)))
+        kept = self._kept()
+        sides = sides_in(kept.read(SIDES))
+        kept.keep(SIDES, sides_written({**sides, name: side}))
+        return f"{side} is the German column of {name}."
 
     def _chosen(self, pairs: tuple[Pair, ...], asked: str) -> tuple[Pair, ...]:
         # Settled three ways: named in this call, chosen earlier in the conversation,

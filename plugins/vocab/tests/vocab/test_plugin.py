@@ -4,7 +4,7 @@ from cora.ports.host import TOOL
 from fakes import host_for
 
 
-def test_the_field_is_a_voice_and_the_four_calls_it_runs_on() -> None:
+def test_the_field_is_a_voice_and_the_five_calls_it_runs_on() -> None:
     """The screen that writes a list is cora's own, so what the plugin brings is
     reading its lists — nothing indexes a file — and the spacing over them."""
     host = host_for("cora.plugins.vocab")
@@ -13,14 +13,12 @@ def test_the_field_is_a_voice_and_the_four_calls_it_runs_on() -> None:
 
     assert [(entry.kind, entry.scope) for entry in host.registered] == [
         (SAYS, SCOPE),
-        (TOOL, SCOPE),
-        (TOOL, SCOPE),
-        (TOOL, SCOPE),
-        (TOOL, SCOPE),
+        *[(TOOL, SCOPE)] * 5,
     ]
     assert [entry.value.name for entry in host.registered if entry.kind == TOOL] == [
         "find_word",
         "show_list",
+        "german_side",
         "next_word",
         "how_it_went",
     ]

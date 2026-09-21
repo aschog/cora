@@ -34,6 +34,7 @@ def test_a_word_missed_today_is_the_word_put_in_the_next_conversation(
         [
             # The second word of the list, so that only a schedule that survived can
             # explain it being the one put first tomorrow.
+            _calling("german_side", {"name": "einheit-3.md", "side": "left"}),
             _calling("next_word", {"spaced": True}),
             _calling("how_it_went", {"word": NEW, "right": True}),
             _calling("next_word", {"spaced": True}),

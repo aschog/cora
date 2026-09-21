@@ -4,17 +4,38 @@ so that sitting down to practise costs no setting-up.
 
 ## ADDED Requirements
 
-### Requirement: A list is German first
+### Requirement: A drill puts the German side, whichever column it is in
 
-The left column of a vocabulary list SHALL be the German one, and a drill SHALL put that
-side unless the reader asks for the other. The field SHALL NOT ask which way round
-before the first word.
+A drill SHALL put the German side of a pair unless the reader asks for the other, and
+SHALL NOT ask the reader which way round before the first word. Which column holds the
+German SHALL be said once per list and kept for good, because a page is photographed
+whichever way round it was printed and nothing in the file says. A list nobody has said
+it for SHALL be refused rather than guessed at, and the refusal SHALL carry enough of
+its pairs to be answered from.
 
 #### Scenario: The first word of a session
 
-- **GIVEN** a list whose left column is German
+- **GIVEN** a list whose German column has been said
 - **WHEN** the first word is put
-- **THEN** it is the German side, and nothing was asked first
+- **THEN** it is the German side, and nothing was asked of the reader first
+
+#### Scenario: A list read the other way round
+
+- **GIVEN** a list whose right column is the German one
+- **WHEN** a word is put
+- **THEN** it is the right column, and the left is withheld
+
+#### Scenario: A list nobody has sided
+
+- **GIVEN** a list whose German column has not been said
+- **WHEN** a word is asked for
+- **THEN** the call is refused and the refusal shows some of that list's pairs
+
+#### Scenario: Said once
+
+- **GIVEN** a list whose German column was said in an earlier conversation
+- **WHEN** a word is asked for in a new one
+- **THEN** a word is put without anything being asked again
 
 #### Scenario: The reader turns it round
 
@@ -96,7 +117,8 @@ start a fresh pass.
 
 The side being asked, whether spacing is on, and how far the pass has got SHALL be kept
 for the conversation and no longer. A new conversation SHALL start German-first with
-spacing off and a fresh pass.
+spacing off and a fresh pass. Which column is German is not one of these: it belongs to
+the list, and is kept for good.
 
 #### Scenario: A new conversation
 

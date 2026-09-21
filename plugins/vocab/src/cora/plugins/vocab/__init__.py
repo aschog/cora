@@ -55,6 +55,22 @@ SHOW_SCHEMA = {
     },
 }
 
+GERMAN_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "name": {
+            "type": "string",
+            "description": "The list, as the field names it.",
+        },
+        "side": {
+            "type": "string",
+            "enum": ["left", "right"],
+            "description": "Which of its two columns holds the German.",
+        },
+    },
+    "required": ["name", "side"],
+}
+
 WENT_SCHEMA = {
     "type": "object",
     "properties": {
@@ -95,10 +111,12 @@ side of a pair, naming the list and, where the list says, what that side is call
 `how_it_went` records the reader's answer. Never pick a word yourself, never work out
 which word is next, and call `how_it_went` exactly once per answer.
 
-A session starts with nothing asked. **The left column of a list is German, and that is
-the side you put** — do not ask which way round before the first word. Pass `side` only
-where the reader asks to be asked the other way round, and it holds for the rest of the
-conversation.
+A session starts with nothing asked. **A drill puts the German side**, and never asks
+the reader which way round first. Which column that is, `next_word` will not guess: the
+first time a list is drilled it refuses and shows you a few of its pairs — read them,
+work out which side is the German, and call `german_side`. That is asked once per list
+and kept for good. Pass `put` as `other` only where the reader asks to be asked the
+other way round, and it holds for the rest of the conversation.
 
 **Spacing is off.** A session is one pass over the chosen list, shuffled, every word
 once: a word produced does not come back, a word missed does. When the pass is done the
@@ -167,6 +185,17 @@ def extend(cora: Host) -> None:
         ),
         parameter_schema=SHOW_SCHEMA,
         run=words.show_list,
+        scope=SCOPE,
+    )
+    cora.register_tool(
+        name="german_side",
+        description=(
+            "Say which column of a list holds the German, having looked at its words. "
+            "Asked once per list and kept for good, because a photograph is taken "
+            "whichever way round the page was printed."
+        ),
+        parameter_schema=GERMAN_SCHEMA,
+        run=drill.german_side,
         scope=SCOPE,
     )
     cora.register_tool(
