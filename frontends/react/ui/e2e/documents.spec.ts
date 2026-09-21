@@ -11,7 +11,9 @@ const NOTE = resolve(HERE, '../../../../tests/e2e/documents/second.md')
 /* Two controls add a document now — the rail's, over the list it changes, and the
    composer's, beside the question being typed. Each spec says which one it used. */
 const RAIL = 'Add a document'
-const BESIDE = 'Add a file or photo'
+/* The ＋ beside the question carries the control's name and the picker behind the
+   menu carries its own; a file is set on the picker. */
+const BESIDE = 'Upload from computer'
 
 test('a document is uploaded, listed, and deleted only once i have said so', async ({
   page,
