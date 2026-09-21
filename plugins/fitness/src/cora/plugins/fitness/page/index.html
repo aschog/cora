@@ -755,10 +755,12 @@ document.getElementById('app').addEventListener('click', e => {
    the frames. Keep it that way -- localStorage holds the workout in flight only. */
 const camView = document.getElementById('camview');
 let camStream = null;
-/* The shell this page may be framed in is told when the camera has the view, so it can
-   give the picture the whole screen; a page on its own tells nobody. */
+/* The shell this page may be framed in is told when the picture is there, so it can give
+   it the whole screen; a page on its own tells nobody. Told whatever origin the parent
+   has, because the shell is the one checking the sender's, and a page framed under an
+   opaque origin must still stop its camera. */
 function askScreen(wanted){
-  if (parent !== window) parent.postMessage({cora: 'screen', wanted}, location.origin);
+  if (parent !== window) parent.postMessage({cora: 'screen', wanted}, '*');
 }
 
 async function camStart(){
@@ -768,29 +770,34 @@ async function camStart(){
     return;
   }
   camStop();
-  askScreen(true);
+  let stream;
   try {
-    camStream = await navigator.mediaDevices.getUserMedia({
+    stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
       audio: false
     });
   } catch (e) {
-    alert('No camera access: ' + e.name);
-    show(null);
+    if (view === 'cam'){ alert('No camera access: ' + e.name); show(null); }
     return;
   }
+  if (view !== 'cam'){                       // closed again while the browser was asking
+    stream.getTracks().forEach(t => t.stop());
+    return;
+  }
+  camStream = stream;
   camView.srcObject = camStream;
   camView.classList.add('flip');            // a selfie camera starts mirrored
   poseCanvas.classList.add('flip');
   camFlip.setAttribute('aria-pressed', 'true');
   document.body.classList.add('cam-live');
+  askScreen(true);
 }
 function camStop(){
-  askScreen(false);
   poseStop();
   document.body.classList.remove('cam-live');
   if (camStream) camStream.getTracks().forEach(t => t.stop());
   camStream = null; camView.srcObject = null;
+  askScreen(false);
 }
 const camFlip = document.getElementById('camflip');
 camFlip.addEventListener('click', () => {
