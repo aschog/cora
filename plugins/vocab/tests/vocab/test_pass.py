@@ -227,7 +227,7 @@ def test_saying_how_it_went_with_nothing_on_the_table_says_so() -> None:
 
 
 # Asserted on the fresh pass rather than on the two words differing: a reshuffle draws
-# the same first word one time in eight, and a test that fails on that is a test of luck.
+# the same first word one time in eight, and a test failing on that is a test of luck.
 def test_going_again_replaces_the_word_on_the_table() -> None:
     field = Field().sided()
 
