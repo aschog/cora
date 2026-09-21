@@ -1,5 +1,8 @@
 """The outer test for the story: a word missed in one conversation is the word the drill
-puts in the next one, because the schedule outlived the conversation that moved it."""
+puts in the next one, because the schedule outlived the conversation that moved it.
+
+Spaced, because that is what a schedule is for: a drill nobody spaced runs one pass and
+keeps nothing past the conversation it ran in."""
 
 from typing import Any
 
@@ -31,9 +34,9 @@ def test_a_word_missed_today_is_the_word_put_in_the_next_conversation(
         [
             # The second word of the list, so that only a schedule that survived can
             # explain it being the one put first tomorrow.
-            _calling("next_word", {}),
+            _calling("next_word", {"spaced": True}),
             _calling("how_it_went", {"word": NEW, "right": True}),
-            _calling("next_word", {}),
+            _calling("next_word", {"spaced": True}),
             _calling("how_it_went", {"word": MISSED, "right": False}),
             ModelReply(text="One right, one to come back to."),
         ]
@@ -42,7 +45,9 @@ def test_a_word_missed_today_is_the_word_put_in_the_next_conversation(
 
     # Another conversation, another app over the same file: what the drill puts now is
     # the word that was missed, because the schedule is the plugin's own.
-    asking = ScriptedChatModel([_calling("next_word", {}), ModelReply(text="Here.")])
+    asking = ScriptedChatModel(
+        [_calling("next_word", {"spaced": True}), ModelReply(text="Here.")]
+    )
     _drilling(asking, store, files).agent.answer(
         "Drill me again.", "tomorrow", pin=FIELD
     )
