@@ -1,27 +1,24 @@
-## 1. The outer test
+## 1. The outer tests
 
-Chromium is given a fake camera for this spec, the only one that needs it.
+Chromium is given a fake camera for the one spec that needs it.
 
-- [x] 1.1 Write a browser test that the opened camera fills the page, the header, the row, the sets and the weight drawn over it, marked `test.fail()` while in flight.
+- [x] 1.1 Write a browser test that the opened camera fills the page with the controls drawn over it, marked `test.fail()`.
+- [x] 1.2 Write a browser test that the camera in the shell with both rails folded is the whole screen, marked `test.fail()`.
 
-## 2. What stays in the frame
+## 2. The shell's part
 
-- [x] 2.1 ~~Write a browser test that the mirror control and the set count sit between the exercise row and the sets while the picture fills the page.~~ Folded into 1.1: the band is where the outer test looks for the mirror control and the rest, and a test green before the pin is not an increment.
+- [x] 2.1 Write a test that the shell hides the folded rails while a page asks, and draws them again once it lets go.
 
-## 3. Close it
+## 3. Found on review
 
-- [x] 3.1 Drop the marker and watch the outer test pass.
+- [x] 3.1 Write a test that a message from another origin does not take the screen.
+- [x] 3.2 Write a test that a page changed for another takes its asking with it.
+- [x] 3.3 Write a browser test that the shell moves only once the picture is there.
+- [x] 3.4 Write a browser test that a camera closed, or closed and reopened, while the browser asks keeps one stream.
+- [x] 3.5 Write a browser test that the frame keeps its ground while the browser asks.
+- [x] 3.6 Write a browser test that a picture taken away closes the camera and lets the screen go.
+- [x] 3.7 Hit-test each control group above the picture, and watch the test fail with the lifting rule gone.
 
-## 4. The whole screen
+## 4. Close it
 
-The shell's part is the frontend delta: a page asks, and the shell answers while both rails are folded.
-
-- [x] 4.1 Write a browser test that the camera opened in the shell with both rails folded is the whole screen, and closing it gives the rails their place back, marked `test.fail()` while in flight.
-- [x] 4.2 Write a test that the shell hides what is left of the folded rails while a page asks for the screen, and draws them again with a rail open or once the page lets go.
-- [x] 4.3 Drop the marker and watch the browser test pass.
-
-## 5. Found on review
-
-- [x] 5.1 Write a test that a message from another origin does not take the screen, and that a page loaded again has let it go.
-- [x] 5.2 Write a browser test that the shell moves only once the picture is there, and that a camera closed while the browser was asking stays closed.
-- [x] 5.3 Strengthen the browser test so each control group is hit-tested above the picture, and watch it fail with the lifting rule gone.
+- [x] 4.1 Drop both markers and watch the outer tests pass.

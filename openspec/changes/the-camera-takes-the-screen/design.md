@@ -1,7 +1,7 @@
 ## Context
 
 The camera, a clip and the plan share one frame between the exercise row and the sets,
-and that frame is all the camera fills. See proposal.md — Why.
+and that frame is all the camera fills — see proposal.md, Why.
 
 ## Goals / Non-Goals
 
@@ -13,10 +13,10 @@ an iPhone does not give a page and which would hide the shell on a laptop.
 
 ## Decisions
 
-**The camera layer is pinned to the page's edges, and the frame stays in the flow.**
+**The picture's stage is pinned to the page's edges, and the frame stays in the flow.**
 
-- The picture is drawn behind everything, and the frame keeps its band between the row
-  and the sets.
+- Once there is a picture its stage is painted under everything, and the frame keeps its
+  band between the row and the sets, its ground kept until the picture arrives.
 - Whatever sits on the frame — the rest number, the set count, the mirror and pose
   controls — keeps its place with it.
 - Rejected: pinning the frame itself, which puts every control on it under the rows
@@ -28,12 +28,10 @@ an iPhone does not give a page and which would hide the shell on a laptop.
   translucent ground the plan's rows already use.
 - The exercise name gets the shadow the mirror label already wears over the picture.
 
-**Two controls and the readout leave the camera layer for the frame.**
+**The controls and the readout stay beside the stage, not in it.**
 
-- The mirror switch, the pose button and the pose readout are the frame's, so pinning
-  the camera does not carry them to the page's corners.
-- They show only while the camera is the view, which the layer's own visibility gave
-  them before.
+- The mirror switch, the pose button and the pose readout keep the frame's band, and the
+  camera layer's own visibility still hides them with it.
 
 **The page asks the shell for the screen, and the shell decides.**
 
@@ -50,14 +48,18 @@ an iPhone does not give a page and which would hide the shell on a laptop.
 - Rejected: the shell reading the rails alone, which would bury their controls under a
   page that never asked.
 
-**Closing the camera is the way back, and a page that cannot close it loses the screen.**
+**Closing the camera is the way back, and the camera closes itself when the picture goes.**
 
 - Over the whole screen the folded rails' controls are not drawn, and the camera button
   is over the picture.
-- The asking is read against the page it came from and forgotten when that page loads
-  again, so a page that dies or reloads mid-camera does not keep the screen.
+- A picture taken away underneath — another app, a sleeping tab — closes the camera, so the
+  page lets go without a hand on it.
+- The asking is read against the page it came from, and a page that changes takes it
+  with it.
 - The page asks once the picture is there, not when the browser starts asking for it, so
   the shell moves once and never for an empty frame.
+- One asking of the browser at a time: a late answer to an earlier one is stopped, not
+  shown.
 
 **The clip keeps its frame.**
 
@@ -72,8 +74,8 @@ an iPhone does not give a page and which would hide the shell on a laptop.
   the moment of the permission prompt and nothing longer.
 - The browser tier grows a spec that needs a camera → chromium is given a fake one for
   that spec alone.
-- A page that asks and never lets go keeps the screen → the asking is tied to the page and
-  dropped when it loads again, and a page closing lets go as it goes.
+- A page that asks and never lets go keeps the screen → the asking is tied to the page, a
+  page closing lets go as it goes, and a picture ending closes the camera.
 - The shell sat 8px in from every edge on the browser's own body margin → it is reset, so
   the whole screen is the whole screen.
 

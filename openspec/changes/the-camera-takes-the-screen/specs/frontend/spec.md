@@ -7,10 +7,10 @@ so that I film myself full size and still log the set.
 ### Requirement: A page that asks for the screen has it while the rails are folded
 
 A page SHALL be able to tell the shell it wants the screen, and to let it go. While it
-wants it and both rails are folded, what is left of the folded rails SHALL NOT be drawn,
-and the frame SHALL be the whole screen. With a rail open, once the page lets go, or once
-the page loads again, the frame SHALL be drawn where it was. Only a page on cora's own
-origin SHALL be heard.
+wants it and both rails are folded, what is left of the folded rails SHALL NOT be drawn.
+The frame SHALL then be the whole screen. With a rail open, or once the page lets go or
+changes, the frame SHALL be drawn where it was. Only a page on cora's own origin SHALL be
+heard.
 
 #### Scenario: Asked with both rails folded
 
@@ -30,11 +30,11 @@ origin SHALL be heard.
 - **WHEN** the page lets the screen go
 - **THEN** the frame is drawn where it was, and the folded rails' controls are back
 
-#### Scenario: The page loads again
+#### Scenario: The page changes
 
 - **GIVEN** a frame that is the whole screen
-- **WHEN** the page in it loads again without letting go
-- **THEN** the frame is drawn where it was
+- **WHEN** the conversation goes back to plain chat and is fixed to that field again
+- **THEN** the frame drawn again is where it was
 
 #### Scenario: Asked from another origin
 

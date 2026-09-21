@@ -10,11 +10,11 @@ The fitness plugin SHALL bring its field a page: a plan of exercises worked one 
 time, each with its sets, its weight and whatever clips it has, and a camera to film
 against. An exercise's row SHALL carry its number and its name, and no count of sets or
 weight. The weight SHALL move one kilogram a tap, and never below one. While the camera
-shows, its picture SHALL fill the page, and the history, the finish, the exercise row,
-the sets and the weight SHALL be drawn over it. The mirror and pose controls, the set
-count and the rest SHALL keep their place between the row and the sets. With both rails of
-the screen folded, the picture SHALL be the whole screen until the camera closes. The plan
-SHALL be read from the sheet the page names, and the page SHALL hand what it produces to cora and
+shows, its picture SHALL fill the page. The history, the finish, the exercise row, the
+sets and the weight SHALL be drawn over it. The mirror and pose controls, the set count
+and the rest SHALL keep their place between the row and the sets. With both rails of the
+screen folded, the picture SHALL be the whole screen until the camera closes. A picture
+taken away SHALL close the camera. The plan SHALL be read from the sheet the page names, and the page SHALL hand what it produces to cora and
 to nothing else. Every other address it reaches SHALL be one written down, so a new one
 is a change somebody made rather than a change nobody saw.
 
@@ -61,6 +61,12 @@ is a change somebody made rather than a change nobody saw.
 - **WHEN** the reader opens the camera
 - **THEN** its picture is the whole screen, and closing the camera gives the rails their
   place back
+
+#### Scenario: The picture is taken away
+
+- **GIVEN** the camera filling the screen
+- **WHEN** the device takes the picture away
+- **THEN** the camera closes, and the rails have their place back
 
 #### Scenario: Where it reaches
 
