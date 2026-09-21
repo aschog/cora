@@ -792,20 +792,28 @@ async function camStart(){
   // a picture taken away underneath -- another app, a sleeping tab -- is a camera closed
   stream.getVideoTracks().forEach(t =>
     t.addEventListener('ended', () => { if (camStream === stream) show(null); }));
-  camView.srcObject = camStream;
   camView.classList.add('flip');            // a selfie camera starts mirrored
   poseCanvas.classList.add('flip');
   camFlip.setAttribute('aria-pressed', 'true');
-  document.body.classList.add('cam-live');
-  askScreen(true);
+  /* A granted camera is not a picture yet: the first frame lands a beat later, and the
+     page goes black the moment it is live. So the picture is what the page turns on. */
+  camView.addEventListener('loadeddata', () => {
+    if (mine !== camAsk) return;             // a picture for a camera already closed
+    document.body.classList.add('cam-live');
+    askScreen(true);
+  }, {once: true});
+  camView.srcObject = camStream;
 }
 function camStop(){
   camAsk++;
-  poseStop();
-  document.body.classList.remove('cam-live');
-  if (camStream) camStream.getTracks().forEach(t => t.stop());
-  camStream = null; camView.srcObject = null;
-  askScreen(false);
+  try {
+    poseStop();
+    document.body.classList.remove('cam-live');
+    if (camStream) camStream.getTracks().forEach(t => t.stop());
+    camStream = null; camView.srcObject = null;
+  } finally {
+    askScreen(false);                        // whatever fails above, the screen is given back
+  }
 }
 const camFlip = document.getElementById('camflip');
 camFlip.addEventListener('click', () => {

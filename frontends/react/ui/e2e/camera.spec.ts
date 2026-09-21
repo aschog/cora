@@ -223,3 +223,49 @@ test("the shell moves once there is a picture, and a camera closed while the bro
     .poll(() => frame.boundingBox(), { message: "the frame is the whole screen" })
     .toEqual({ x: 0, y: 0, width: size!.width, height: size!.height });
 });
+
+/* A granted camera is not yet a picture: on a real device the first frame lands a beat
+   after the permission is given, and pinning on the grant shows a black page for that
+   beat. The fake camera has no warm-up, so the picture is held back by hand here. */
+test("the screen is taken for the picture, not for the permission", async ({ page }) => {
+  const frame = await fixed(page, "fitness");
+  await folded(page, /Documents/);
+  await folded(page, /Plan & memory/);
+  const framed = frame.contentFrame();
+  const before = await box(page, 'iframe[title="fitness"]');
+  const body = framed.locator("body");
+
+  /* The picture waits on a hand rather than on the camera. */
+  await body.evaluate(() => {
+    const view = document.getElementById("camview") as HTMLVideoElement;
+    const real = Object.getOwnPropertyDescriptor(
+      HTMLMediaElement.prototype,
+      "srcObject",
+    )!;
+    Object.defineProperty(view, "srcObject", {
+      get: () => real.get!.call(view),
+      set: (given: MediaStream | null) => {
+        (window as unknown as { show: () => void }).show = () =>
+          real.set!.call(view, given);
+      },
+    });
+  });
+
+  await framed.locator("[data-cam]").click();
+  await expect(body).toHaveClass(/view-cam/);
+  await page.waitForTimeout(300);
+  expect(await frame.boundingBox(), "nothing moves for a permission alone").toEqual(
+    before,
+  );
+  await expect(body, "and the page is not live on one either").not.toHaveClass(
+    /cam-live/,
+  );
+
+  /* The first frame is what the screen is taken for. */
+  await body.evaluate(() => (window as unknown as { show: () => void }).show());
+  await expect(body).toHaveClass(/cam-live/);
+  const size = page.viewportSize();
+  await expect
+    .poll(() => frame.boundingBox(), { message: "the picture takes the screen" })
+    .toEqual({ x: 0, y: 0, width: size!.width, height: size!.height });
+});
