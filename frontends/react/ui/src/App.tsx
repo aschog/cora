@@ -394,8 +394,8 @@ function Page() {
 
   /* A page may ask for the screen — the trainer does while its camera runs — and has it
      while both rails are folded: they go unseen, and the frame is the whole screen. Heard
-     on cora's own origin, read against the page it came from, and forgotten when that
-     page loads again, so a page that cannot let go does not keep the screen. */
+     on cora's own origin and read against the page it came from; a page that changes
+     takes its asking with it, and a page that goes lets go as it goes. */
   const [asked, setAsked] = useState<string | null>(null)
   useEffect(() => {
     const heard = (said: MessageEvent) => {
@@ -404,7 +404,10 @@ function Page() {
       if (wish?.cora === 'screen') setAsked(wish.wanted === true ? page : null)
     }
     window.addEventListener('message', heard)
-    return () => window.removeEventListener('message', heard)
+    return () => {
+      window.removeEventListener('message', heard)
+      setAsked(null)
+    }
   }, [page])
   const alone = asked !== null && asked === page && !leftOpen && !rightOpen
 
@@ -493,7 +496,6 @@ function Page() {
               src={page}
               title={field}
               allow="camera; microphone; fullscreen"
-              onLoad={() => setAsked(null)}
             />
           )}
         </main>
