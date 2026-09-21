@@ -1,8 +1,9 @@
 """Putting a word and taking the answer: the two calls the drill runs on.
 
-The model does the talking — which way round, the hint, whether what the reader typed
-counts. What it does not do is decide when a word comes back: that is the schedule's,
-and the schedule is arithmetic.
+The model does the talking — which way round, the hint, whether an answer that is not
+the word letter for letter still counts. What it does not do is decide when a word comes
+back, which is the schedule's and arithmetic, or take a right answer, which is a lookup
+and the drill's own.
 """
 
 import datetime

@@ -21,7 +21,7 @@
 ## 4. The field
 
 - [x] 4.1 Write a test that the plugin registers the handler at the taking point, under its field.
-- [ ] 4.2 Write a test that the instructions say a right answer never reaches the model, and that the word on the table is the last one put.
+- [x] 4.2 Write a test that the instructions say a right answer never reaches the model, and that the word on the table is the last one put.
 
 ## 5. Close it
 

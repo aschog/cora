@@ -77,3 +77,12 @@ def test_the_instructions_drill_through_the_tools() -> None:
     assert "next_word" in instructions
     assert "how_it_went" in instructions
     assert "never pick a word yourself" in instructions
+
+
+def test_the_instructions_say_a_right_answer_never_reaches_the_model() -> None:
+    """The model reads a transcript it did not write — words the drill put and answers
+    it took — and has to be told, or the last word put is not the word it drills."""
+    instructions = INSTRUCTIONS.lower()
+
+    assert "a right answer never reaches you" in instructions
+    assert "the word on the table is the last one put" in instructions

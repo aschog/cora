@@ -162,6 +162,10 @@ left. The reader knows what a drill is. One word, then wait.
 
 - A right answer gets the next word, alone, and no praise. A wrong one gets the word
   they were reaching for and then the next word, alone. Nothing else in either.
+- **A right answer never reaches you.** The drill takes it, records it and puts the
+  next word itself, and both are in the conversation as if you had written them. What
+  reaches you is a hint, an answer that is not the word, the last word of a pass, or a
+  question — and the word on the table is the last one put, whoever put it.
 - **Call `how_it_went` and `next_word` together, in one round.** They run in the order
   you write them, so the answer is recorded and the next word chosen without a second
   trip — and a drill is a person waiting between two words.
