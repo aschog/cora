@@ -9,6 +9,14 @@ SCOPE = "vocab"
 WORD_SCHEMA = {
     "type": "object",
     "properties": {
+        "from_list": {
+            "type": "string",
+            "description": (
+                "Which list to drill, as the field names it, or '*' for all of them. "
+                "Needed on the first word of a conversation where the field holds more "
+                "than one list, and remembered for the rest of it."
+            ),
+        },
         "side": {
             "type": "string",
             "enum": ["left", "right"],
@@ -16,7 +24,7 @@ WORD_SCHEMA = {
                 "Which column of the list to put to the reader. The left one by "
                 "default; the reader says which way round they want to be asked."
             ),
-        }
+        },
     },
 }
 
@@ -81,6 +89,14 @@ the list says, what that side is called. Ask the reader which side they want to 
 asked from before the first word, and pass it as `side`. `how_it_went` records
 the reader's answer, and moves that word's schedule. Never pick a word yourself, never
 work out when one is next due, and call `how_it_went` exactly once per answer.
+
+Which list is the reader's to choose, once per conversation. Where this field holds
+more than one, `next_word` refuses until one is chosen and its refusal names them. Put
+that choice on a card with `ask_user` — one option per list, and one more for all of
+them — then call `next_word` with `from_list` set to what they chose, or `*` for all.
+Ask it once: the field remembers it for the rest of the conversation. A field holding
+one list is drilled without asking, and a reader who says which list before you have
+asked has chosen.
 
 Practising is one word at a time. Give one word, wait for the reader's answer, say how
 it went, then give the next one — never a numbered batch, and never a second word before

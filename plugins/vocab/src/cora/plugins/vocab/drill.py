@@ -18,11 +18,21 @@ from .words import Pair, pairs_of
 
 SCHEDULE = "schedule"
 ASKED = "asked"
+CHOSEN = "chosen"
 LEFT = "left"
+# No file can be called this — a name is one plain name — so no list can ever be
+# confused with the choice to drill all of them.
+EVERY = "*"
 DONE = "Nothing is due and nothing is new — the session is done."
 NO_WORDS = "This field holds no word lists yet."
 NO_STORE = "This deployment keeps nothing, so a drill here could not remember anything."
 UNASKED = "That word was not the one asked. Put a word first, then say how it went."
+UNCHOSEN = (
+    "This field holds more than one list, so ask the reader which one to drill before "
+    "putting a word: {held}, or all of them. Put it on a card with ask_user, then call "
+    "this again with `from_list` set to what they chose, or '*' for all of them."
+)
+NO_SUCH_LIST = "This field holds no list called '{name}'. It holds: {held}."
 
 
 @dataclass(frozen=True)
@@ -31,11 +41,12 @@ class Drill:
 
     cora: Host
 
-    def next_word(self, side: str = LEFT) -> str:
+    def next_word(self, side: str = LEFT, from_list: str = "") -> str:
         """The word to put to the reader, from the side they are being asked."""
         pairs = pairs_of(self.cora)
         if not pairs:
             return NO_WORDS
+        pairs = self._chosen(pairs, from_list)
         schedule = Schedule.of(self._kept().read(SCHEDULE))
         today = datetime.date.today()
         waiting = [
@@ -67,6 +78,23 @@ class Drill:
         self.cora.state.keep(ASKED, None)
         return "again in this session" if not right else f"next in {card.interval} days"
 
+    def _chosen(self, pairs: tuple[Pair, ...], asked: str) -> tuple[Pair, ...]:
+        # Settled three ways: named in this call, chosen earlier in the conversation,
+        # or the only list there is. A refusal names the lists, because the reader is
+        # about to be offered them.
+        held = _sources(pairs)
+        chosen = asked.strip() or self.cora.state.read(CHOSEN) or ""
+        if not chosen:
+            if len(held) > 1:
+                raise ToolRefusal(UNCHOSEN.format(held=", ".join(held)))
+            chosen = EVERY
+        if chosen != EVERY and chosen not in held:
+            raise ToolRefusal(NO_SUCH_LIST.format(name=chosen, held=", ".join(held)))
+        self.cora.state.keep(CHOSEN, chosen)
+        if chosen == EVERY:
+            return pairs
+        return tuple(pair for pair in pairs if pair.source == chosen)
+
     def _kept(self) -> Kept:
         if self.cora.store is None:
             raise ToolRefusal(NO_STORE)
@@ -77,6 +105,10 @@ class Drill:
 # and one side alone would collide with the same word on another list.
 def _key(pair: Pair) -> str:
     return f"{pair.left}|{pair.right}"
+
+
+def _sources(pairs: tuple[Pair, ...]) -> list[str]:
+    return list(dict.fromkeys(pair.source for pair in pairs))
 
 
 def _both(key: str) -> tuple[str, ...]:
