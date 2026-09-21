@@ -13,8 +13,9 @@ weight. The weight SHALL move one kilogram a tap, and never below one. While the
 shows, its picture SHALL fill the page. The history, the finish, the exercise row, the
 sets and the weight SHALL be drawn over it. The mirror and pose controls, the set count
 and the rest SHALL keep their place between the row and the sets. With both rails of the
-screen folded, the picture SHALL be the whole screen until the camera closes. A picture
-taken away SHALL close the camera. The plan SHALL be read from the sheet the page names, and the page SHALL hand what it produces to cora and
+screen folded, the picture SHALL be the whole screen until the camera closes. The screen
+SHALL be taken for the picture rather than for the permission. A picture taken away SHALL
+close the camera. The plan SHALL be read from the sheet the page names, and the page SHALL hand what it produces to cora and
 to nothing else. Every other address it reaches SHALL be one written down, so a new one
 is a change somebody made rather than a change nobody saw.
 

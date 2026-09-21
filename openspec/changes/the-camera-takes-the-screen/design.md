@@ -56,8 +56,12 @@ an iPhone does not give a page and which would hide the shell on a laptop.
   page lets go without a hand on it.
 - The asking is read against the page it came from, and a page that changes takes it
   with it.
-- The page asks once the picture is there, not when the browser starts asking for it, so
-  the shell moves once and never for an empty frame.
+- The page asks on the first frame, not on the permission, so the shell never moves for a
+  black rectangle while a real camera warms up.
+- The reader has Escape whatever the page does, because a page that holds the screen holds
+  every control of the shell with it.
+- Heard in the frame's own document as well as the shell's, since a key pressed in a frame
+  is not heard outside it, and inside is where the reader is typing.
 - One asking of the browser at a time: a late answer to an earlier one is stopped, not
   shown.
 
@@ -74,8 +78,8 @@ an iPhone does not give a page and which would hide the shell on a laptop.
   the moment of the permission prompt and nothing longer.
 - The browser tier grows a spec that needs a camera → chromium is given a fake one for
   that spec alone.
-- A page that asks and never lets go keeps the screen → the asking is tied to the page, a
-  page closing lets go as it goes, and a picture ending closes the camera.
+- A page that asks and never lets go keeps the screen → Escape takes it back, the asking is
+  tied to the page, and a picture ending closes the camera.
 - The shell sat 8px in from every edge on the browser's own body margin → it is reset, so
   the whole screen is the whole screen.
 

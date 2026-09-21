@@ -9,8 +9,9 @@ so that I film myself full size and still log the set.
 A page SHALL be able to tell the shell it wants the screen, and to let it go. While it
 wants it and both rails are folded, what is left of the folded rails SHALL NOT be drawn.
 The frame SHALL then be the whole screen. With a rail open, or once the page lets go or
-changes, the frame SHALL be drawn where it was. Only a page on cora's own origin SHALL be
-heard.
+changes, the frame SHALL be drawn where it was. The reader SHALL be able to take the
+screen back without the page, since no control of the shell's is reachable while it is
+given. Only a page on cora's own origin SHALL be heard.
 
 #### Scenario: Asked with both rails folded
 
@@ -29,6 +30,12 @@ heard.
 - **GIVEN** a frame that is the whole screen
 - **WHEN** the page lets the screen go
 - **THEN** the frame is drawn where it was, and the folded rails' controls are back
+
+#### Scenario: Taken back
+
+- **GIVEN** a frame that is the whole screen
+- **WHEN** the reader presses Escape, wherever they are typing
+- **THEN** the frame is drawn where it was, whatever the page does
 
 #### Scenario: The page changes
 

@@ -19,6 +19,9 @@ Chromium is given a fake camera for the one spec that needs it.
 - [x] 3.6 Write a browser test that a picture taken away closes the camera and lets the screen go.
 - [x] 3.7 Hit-test each control group above the picture, and watch the test fail with the lifting rule gone.
 
+- [x] 3.8 Write a test that Escape gives the shell its screen back whatever the page does.
+- [x] 3.9 Write a browser test that a permission alone moves nothing, and the first frame is what takes the screen.
+
 ## 4. Close it
 
 - [x] 4.1 Drop both markers and watch the outer tests pass.
