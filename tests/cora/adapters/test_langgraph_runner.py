@@ -35,6 +35,7 @@ from cora.engine.steps import (
     GateStep,
     Named,
     Router,
+    opening,
 )
 from cora.ports.chat_model import (
     Message,
@@ -114,6 +115,7 @@ def _walk(
         "before": (Named(SCREEN, screen),),
         "loop": Loop(
             marker=Named(WORK),
+            opening=opening,
             model=model,
             gate=GateStep() if gate is None else gate,
             tools=tools,
@@ -414,6 +416,7 @@ def _gated(*names: str) -> tuple[LangGraphRunner, list[str]]:
         before=(Named(SCREEN, _screen),),
         loop=Loop(
             marker=Named(WORK),
+            opening=opening,
             model=_always(_proposes(*names)),
             gate=GateStep(tools=tools, approve=interrupting),
             tools=running,

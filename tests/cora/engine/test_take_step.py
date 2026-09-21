@@ -5,8 +5,9 @@ from cora.domain.trace import HandlerRan
 from cora.engine import keeping
 from cora.engine.plugin_set import Registry
 from cora.engine.scoping import here
-from cora.engine.steps import TakeStep
+from cora.engine.steps import TakeStep, opening
 from cora.ports.chat_model import Message
+from cora.ports.graph import DONE, ROUNDS
 from cora.ports.host import HANDLER, TAKING, Handler, Registration, Subscription
 
 MODULE = "fixture_plugins.quiz"
@@ -97,3 +98,13 @@ def test_a_handler_under_another_field_is_not_offered_the_question() -> None:
 
     assert offered == []
     assert "messages" not in contributed
+
+
+def test_the_opening_route_leaves_the_rounds_once_this_turn_holds_an_answer() -> None:
+    question = Message(role="user", content="q")
+    taken = Message(role="assistant", content="42")
+
+    assert opening({"messages": [question, taken], "turn_start": 0}) == DONE
+    assert opening({"messages": [question], "turn_start": 0}) == ROUNDS
+    # An earlier turn's answer is not this turn's.
+    assert opening({"messages": [question, taken, question], "turn_start": 2}) == ROUNDS

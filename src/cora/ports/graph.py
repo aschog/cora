@@ -12,6 +12,7 @@ from cora.ports.chat_model import TextSink, unheard
 DONE = "done"
 TOOLS = "tools"
 ASK = "ask"
+ROUNDS = "rounds"
 
 
 class Step(Protocol):
@@ -130,14 +131,16 @@ class Loop:
 
     Named apart from the steps around it because it alone has a router and it alone may
     stop. `marker` is the step the rounds fall inside: it runs once, contributes the
-    name of the place the turn is in, and leaves the round to the model. `gate` stands
-    between the model and the tools, on every round, so no call reaches a tool without
-    passing it — a round proposing nothing that changes anything outside cora passes
-    straight through. `ask` is handed over like the rest: an app that offers no decision
-    says so with a step that puts none, rather than with a slot left empty.
+    name of the place the turn is in, and may answer the turn there. `opening` is the
+    route out of it — into the rounds, or on to the answer where the marker answered.
+    `gate` stands between the model and the tools, on every round, so no call reaches a
+    tool without passing it — a round proposing nothing that changes anything outside
+    cora passes straight through. `ask` is handed over like the rest: an app that offers
+    no decision says so with a step that puts none, rather than with a slot left empty.
     """
 
     marker: NamedStep
+    opening: Route
     model: ModelFor
     gate: Step
     tools: Step

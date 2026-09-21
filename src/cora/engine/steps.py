@@ -37,7 +37,7 @@ from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.engine.rounds import Read, decided, told, used
 from cora.engine.scoping import running_in
 from cora.ports.chat_model import Aside, ChatModel, Message, TextSink, unheard
-from cora.ports.graph import ASK, DONE, TOOLS, Step
+from cora.ports.graph import ASK, DONE, ROUNDS, TOOLS, Step
 from cora.ports.host import (
     ANSWERING,
     BRIEFING,
@@ -992,6 +992,15 @@ class Router:
         if _rounds(state) >= self.max_tool_rounds:
             raise ToolLoopLimitError
         return ASK if asking is not None else TOOLS
+
+
+def opening(state: AgentState) -> str:
+    """`DONE` where something has answered this turn already, and `ROUNDS` otherwise.
+
+    The route out of the marker the rounds fall inside: a turn a plugin took there has
+    its answer written, and spends no round on it.
+    """
+    return DONE if _rounds(state) else ROUNDS
 
 
 def scoped(state: AgentState) -> frozenset[str]:

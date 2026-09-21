@@ -21,7 +21,7 @@
 
 ## 4. The route out of the marker
 
-- [ ] 4.1 Write a test that the opening route answers done once this turn holds an assistant message and rounds where it holds none.
+- [x] 4.1 Write a test that the opening route answers done once this turn holds an assistant message and rounds where it holds none.
 - [ ] 4.2 Write a test that the runner walks a turn whose marker answered straight to the answer step, and the model never runs.
 - [ ] 4.3 Write a test that a turn whose marker answered nothing walks the model and its rounds as before.
 - [ ] 4.4 Write a test that the answer step settles what the marker wrote, offered to the answer handlers first.

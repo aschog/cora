@@ -50,6 +50,7 @@ from cora.engine.steps import (
     RouteStep,
     ScreenStep,
     ToolStep,
+    opening,
 )
 from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import CORA
@@ -250,6 +251,7 @@ def assemble(
         ),
         loop=Loop(
             marker=Named(WORK),
+            opening=opening,
             model=ModelStep(
                 chat_model=chat_model,
                 tools=tools,
