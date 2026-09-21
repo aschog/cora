@@ -1123,26 +1123,38 @@ test('folding the rail and unfolding it draws the conversation with its turns', 
 })
 
 test('a page that asks for the screen has it while both rails are folded', async () => {
-  await opened()
-  const asks = (wanted: boolean) =>
+  const frame = await opened()
+  const asks = (wanted: boolean, origin = window.location.origin) =>
     fireEvent(
       window,
-      new MessageEvent('message', {
-        data: { cora: 'screen', wanted },
-        origin: window.location.origin,
-      }),
+      new MessageEvent('message', { data: { cora: 'screen', wanted }, origin }),
     )
-  const alone = () => centre().classList.contains(appCss.alone)
+  const alone = () =>
+    (document.querySelector('.' + appCss.columns) as HTMLElement).classList.contains(
+      appCss.alone,
+    )
 
-  /* Asked beside an open rail the frame stays where it was; with both folded it has the
-     screen; let go, it is back where it was. */
+  /* Asked beside an open rail the frame stays where it was; with both folded the rails
+     go unseen and it has the screen; let go, they are back. */
   asks(true)
-  expect(alone()).toBe(false)
+  expect(alone(), 'beside an open rail').toBe(false)
   fireEvent.click(screen.getByRole('button', { name: /Documents/ }))
   fireEvent.click(screen.getByRole('button', { name: /Plan & memory/ }))
-  expect(alone()).toBe(true)
+  expect(alone(), 'with both rails folded').toBe(true)
   asks(false)
-  expect(alone()).toBe(false)
+  expect(alone(), 'let go').toBe(false)
+
+  /* Only cora's own origin is heard: the trainer embeds a foreign player whose messages
+     reach this window too. */
+  asks(true, 'https://www.youtube.com')
+  expect(alone(), 'asked from another origin').toBe(false)
+
+  /* A page that loads again has not asked, so a frame whose page cannot let go does not
+     keep the screen. */
+  asks(true)
+  expect(alone()).toBe(true)
+  fireEvent.load(frame)
+  expect(alone(), 'after the page loaded again').toBe(false)
 })
 
 /** A render that throws is a sentence on the page and a line on the console. The spy

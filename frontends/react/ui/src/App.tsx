@@ -393,20 +393,20 @@ function Page() {
   )
 
   /* A page may ask for the screen — the trainer does while its camera runs — and has it
-     while both rails are folded: the frame is then drawn over everything, folded rails
-     included. Said in a message on cora's own origin, and forgotten with the page. */
-  const [wanted, setWanted] = useState(false)
+     while both rails are folded: they go unseen, and the frame is the whole screen. Heard
+     on cora's own origin, read against the page it came from, and forgotten when that
+     page loads again, so a page that cannot let go does not keep the screen. */
+  const [asked, setAsked] = useState<string | null>(null)
   useEffect(() => {
     const heard = (said: MessageEvent) => {
       if (said.origin !== window.location.origin) return
-      const asked = said.data as { cora?: unknown; wanted?: unknown } | null
-      if (asked?.cora === 'screen') setWanted(asked.wanted === true)
+      const wish = said.data as { cora?: unknown; wanted?: unknown } | null
+      if (wish?.cora === 'screen') setAsked(wish.wanted === true ? page : null)
     }
     window.addEventListener('message', heard)
     return () => window.removeEventListener('message', heard)
-  }, [])
-  useEffect(() => setWanted(false), [page])
-  const alone = wanted && page !== null && !leftOpen && !rightOpen
+  }, [page])
+  const alone = asked !== null && asked === page && !leftOpen && !rightOpen
 
   return (
     <div className={styles.app}>
@@ -418,7 +418,7 @@ function Page() {
         ))}
       </div>
 
-      <div className={styles.columns}>
+      <div className={joined(styles.columns, alone && styles.alone)}>
         {/* The rail is always drawn, folded or not: the control that folds it lives in it,
             and a control that hides itself cannot be used to bring itself back. */}
         <aside className={joined(styles.railDocs, !leftOpen && styles.shut)}>
@@ -484,7 +484,7 @@ function Page() {
             reading. A frame is not under one: a page that fails to load throws nothing,
             so a boundary over it could only ever say nothing, and what the reader gets
             is the plugin's own blank. */}
-        <main className={joined(styles.centre, alone && styles.alone)}>
+        <main className={styles.centre}>
           {page === null ? (
             <ErrorBoundary said={UNDRAWN_TALK}>{talking}</ErrorBoundary>
           ) : (
@@ -493,6 +493,7 @@ function Page() {
               src={page}
               title={field}
               allow="camera; microphone; fullscreen"
+              onLoad={() => setAsked(null)}
             />
           )}
         </main>
