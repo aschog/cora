@@ -49,7 +49,16 @@ class DirectoryFiles:
         folder = self._root / _plain(scope)
         if not folder.is_dir():
             return ()
-        return tuple(sorted(each.name for each in folder.iterdir() if each.is_file()))
+        # Only names this store could have written. A directory on a real machine also
+        # holds what the machine put there — `.DS_Store`, an editor's swap file — and a
+        # listing that returned one would hand back a name its own reader refuses.
+        return tuple(
+            sorted(
+                each.name
+                for each in folder.iterdir()
+                if each.is_file() and PLAIN_NAME.match(each.name)
+            )
+        )
 
     @_translate_errors
     def read(self, scope: str, name: str) -> str | None:
