@@ -33,6 +33,7 @@ body{
   -webkit-font-smoothing:antialiased;
   height:100vh;height:100dvh;display:flex;flex-direction:column;
   padding:0;overflow:hidden;overscroll-behavior-y:contain;
+  isolation:isolate;                        /* the camera's -1 counts from here, not from the canvas */
 }
 button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
 
@@ -126,11 +127,12 @@ header .go:active{opacity:.75;background:var(--blue)}
 }
 #cam,#player{position:absolute;inset:0;display:none}
 body.view-cam #rows,body.view-clip #rows{display:none}
-/* the camera is the page: its layer is pinned to the edges, and the frame stays where
-   it is, as the band the rest, the set count and the mirror keep */
-body.view-cam #cam{display:block;position:fixed;inset:0}
+/* the camera is the page: its layer is pinned to the edges and painted under everything
+   else, and the frame stays where it is, as the band the rest, the set count and the
+   mirror keep. Under, rather than the rest lifted over it, so whatever the page draws
+   next is above the picture without being named here */
+body.view-cam #cam{display:block;position:fixed;inset:0;z-index:-1}
 body.view-cam .stage{border-color:transparent;background:none}
-body.view-cam :is(#warn,.head,.sets,.wt){z-index:1}
 /* over a moving picture a thin border is not a button: the rows' own ground goes under
    each control, weightless so a logged set and a pressed button keep their colours, and
    the text that has none gets the mirror label's shadow */

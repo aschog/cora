@@ -25,13 +25,6 @@ async function box(page: Page, selector: string): Promise<Box> {
   return found as Box;
 }
 
-/* Within, to the pixel a browser rounds to. */
-const inside = (part: Box, whole: Box) =>
-  part.x >= whole.x - 1 &&
-  part.y >= whole.y - 1 &&
-  part.x + part.width <= whole.x + whole.width + 1 &&
-  part.y + part.height <= whole.y + whole.height + 1;
-
 const between = (part: Box, above: Box, below: Box) =>
   part.y >= above.y + above.height && part.y + part.height <= below.y;
 
@@ -54,19 +47,26 @@ test("the opened camera fills the page, with the controls drawn over it", async 
     height: size!.height,
   });
 
-  /* And the controls are on it, not beside it: each lies within the picture, and the
-     set control takes the tap rather than the picture under it. */
-  for (const part of ["header", ".head", ".sets", ".wt"]) {
-    expect(inside(await box(page, part), picture), `${part} is on the picture`).toBe(
-      true,
-    );
+  /* And the controls are on it, not under it: a tap in the middle of one from each
+     group lands on that group rather than on the picture. */
+  const groups: [string, string][] = [
+    ["header", "header button"],
+    [".head", ".nav button"],
+    [".sets", ".set .log"],
+    [".wt", ".wt button"],
+  ];
+  const tapped = await page.evaluate(
+    (asked) =>
+      asked.map(([group, control]) => {
+        const at = document.querySelector(control)!.getBoundingClientRect();
+        const hit = document.elementFromPoint(at.x + at.width / 2, at.y + at.height / 2);
+        return hit !== null && hit.closest(group) !== null;
+      }),
+    groups,
+  );
+  for (const [i, [group]] of groups.entries()) {
+    expect(tapped[i], `${group} is above the picture`).toBe(true);
   }
-  const tapped = await page.evaluate(() => {
-    const at = document.querySelector(".set .log")!.getBoundingClientRect();
-    const hit = document.elementFromPoint(at.x + at.width / 2, at.y + at.height / 2);
-    return hit?.closest(".set") !== null;
-  });
-  expect(tapped, "a set control is above the picture").toBe(true);
 
   /* What sat on the frame keeps its band between the row and the sets. */
   const row = await box(page, ".head");
