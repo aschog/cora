@@ -70,7 +70,7 @@ with a way back between them. A conversation the rail would chat is marked in th
 Asking there does not move the panels to the steps, which would take the chat off the
 screen. Folding the rail gives the page the whole width, and a page that asks for the
 screen — the trainer does while its camera runs — has the whole of it while both rails
-are folded. A field with no page, and a conversation fixed to nothing, are drawn exactly
+are folded, and Escape takes it back. A field with no page, and a conversation fixed to nothing, are drawn exactly
 as they were.
 
 ## A field's notice

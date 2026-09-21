@@ -156,8 +156,9 @@ def extend(cora: Host) -> None:
   `{cora: 'screen', wanted: true}` — or `false` — to its parent window on cora's own
   origin. While it wants it and the reader has folded both rails, what is left of the
   rails is not drawn and the frame is the whole screen, so the page is what closes that
-  state: let go when what wanted it ends, and as your page goes. The trainer asks once
-  its camera shows, and lets go when it closes or its picture is taken away.
+  state: let go when what wanted it ends, and as your page goes. The reader can take the
+  screen back with Escape at any time, so hold nothing on having it. The trainer asks on
+  its camera's first frame, and lets go when it closes or its picture is taken away.
 
 ## Handlers
 
