@@ -9,6 +9,7 @@ from cora.domain.errors import PluginStoreError
 
 KEPT = "kept"
 TEXT = "text"
+PAGE = 100
 
 
 def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
@@ -51,6 +52,15 @@ class SqlitePluginStore:
             self._store.delete((KEPT, plugin), name)
             return
         self._store.put((KEPT, plugin), name, {TEXT: value})
+
+    @_translate_errors
+    def forget(self, plugin: str) -> None:
+        # Searched a page at a time rather than counted first: the store offers no
+        # count, and a plugin's names are few enough that one page is usually all of
+        # them.
+        while found := self._store.search((KEPT, plugin), limit=PAGE):
+            for item in found:
+                self._store.delete((KEPT, plugin), item.key)
 
     def close(self) -> None:
         self._store.conn.close()

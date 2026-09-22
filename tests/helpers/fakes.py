@@ -358,6 +358,11 @@ class FakeStore:
             return
         self.kept[(plugin, name)] = value
 
+    def forget(self, plugin: str) -> None:
+        for held, name in list(self.kept):
+            if held == plugin:
+                del self.kept[(held, name)]
+
 
 @dataclass
 class FakeFiles:

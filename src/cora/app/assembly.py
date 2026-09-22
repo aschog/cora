@@ -290,6 +290,8 @@ def assemble(
             configured=scopes,
             knowledge_base=knowledge_base,
             agent=agent,
+            files=files,
+            store=store,
         ),
     )
 

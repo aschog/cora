@@ -13,7 +13,14 @@ from cora.engine.agent import Agent
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.removal import remove_plugin
 from cora.ports.host import INSTRUCTIONS, Contributed, Listed
-from fakes import FakeConversations, FakeDocuments, FakeEmbedder, FakeRetriever
+from fakes import (
+    FakeConversations,
+    FakeDocuments,
+    FakeEmbedder,
+    FakeFiles,
+    FakeRetriever,
+    FakeStore,
+)
 
 DROPPED = """\
 from cora.ports.host import Host
@@ -85,6 +92,8 @@ def _removing(
     knowledge_base: KnowledgeBase | None = None,
     threads: _Threads | None = None,
     conversations: FakeConversations | None = None,
+    files: FakeFiles | None = None,
+    store: FakeStore | None = None,
 ) -> None:
     remove_plugin(
         name,
@@ -93,6 +102,8 @@ def _removing(
         configured=configured,
         knowledge_base=knowledge_base or _knowledge_base(),
         agent=Agent(threads or _Threads(), conversations or _conversations()),
+        files=files,
+        store=store,
     )
 
 
@@ -168,6 +179,66 @@ def test_another_plugins_field_is_left_alone(tmp_path: pathlib.Path) -> None:
 
     assert knowledge_base.list_sources("travel") == ["kyoto.md"]
     assert other.exists()
+
+
+def test_the_files_of_its_field_go(tmp_path: pathlib.Path) -> None:
+    dropped = tmp_path / "field_notes.py"
+    dropped.write_text(DROPPED)
+    files = FakeFiles()
+    files.write("birds", "waders.md", "Twelve at dawn.")
+
+    _removing(
+        "field_notes",
+        folder=tmp_path,
+        listing=(_listed("field_notes", str(dropped), "birds"),),
+        files=files,
+    )
+
+    assert files.names("birds") == ()
+
+
+def test_what_it_kept_for_good_goes(tmp_path: pathlib.Path) -> None:
+    dropped = tmp_path / "field_notes.py"
+    dropped.write_text(DROPPED)
+    store = FakeStore()
+    store.keep("field_notes", "schedule", "{}")
+
+    _removing(
+        "field_notes",
+        folder=tmp_path,
+        listing=(_listed("field_notes", str(dropped), "birds"),),
+        store=store,
+    )
+
+    assert store.read("field_notes", "schedule") is None
+
+
+def test_another_plugins_files_and_rows_are_left_alone(
+    tmp_path: pathlib.Path,
+) -> None:
+    dropped = tmp_path / "field_notes.py"
+    dropped.write_text(DROPPED)
+    other = tmp_path / "trips.py"
+    other.write_text(DROPPED)
+    files, store = FakeFiles(), FakeStore()
+    files.write("birds", "waders.md", "Twelve at dawn.")
+    files.write("travel", "kyoto.md", "Three days.")
+    store.keep("field_notes", "schedule", "{}")
+    store.keep("trips", "schedule", "{}")
+
+    _removing(
+        "field_notes",
+        folder=tmp_path,
+        listing=(
+            _listed("field_notes", str(dropped), "birds"),
+            _listed("trips", str(other), "travel"),
+        ),
+        files=files,
+        store=store,
+    )
+
+    assert files.names("travel") == ("kyoto.md",)
+    assert store.read("trips", "schedule") == "{}"
 
 
 def test_a_conversation_pinned_to_the_field_goes(tmp_path: pathlib.Path) -> None:

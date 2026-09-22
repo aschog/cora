@@ -55,3 +55,12 @@ class Store(Protocol):
     def keep(self, plugin: str, name: str, value: str | None) -> None:
         """Keep `value` for that plugin under that name, or drop the name given none."""
         ...
+
+    def forget(self, plugin: str) -> None:
+        """Drop everything that plugin kept, leaving every other plugin's untouched.
+
+        The deployment's half of a plugin being deleted: a plugin has no call for this,
+        which is why it is here and not on `Kept`. A plugin that kept nothing is not an
+        error.
+        """
+        ...

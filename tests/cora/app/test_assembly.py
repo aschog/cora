@@ -28,6 +28,7 @@ from cora.engine.steps import (
 from cora.ports.chat_model import ModelReply, unheard
 from cora.ports.host import TOOL, Extension, Host
 from fakes import (
+    FakeFiles,
     FakeMemory,
     FakeRetriever,
     FakeStore,
@@ -385,3 +386,32 @@ def test_a_deployment_with_no_store_hands_every_plugin_none() -> None:
     assembled(plugins=(Extension(module="fixture_plugins.bare", extend=extend),))
 
     assert handed == [None]
+
+
+def _birds(cora: Host) -> None:
+    cora.register_instructions("Answer about birds.", scope="birds")
+
+
+def test_deleting_a_plugin_empties_the_files_and_the_rows_of_its_field(
+    tmp_path: Path,
+) -> None:
+    """Three stores hold a field's data, and a reader deleting a plugin is deleting
+    what it held rather than only what it could be searched for."""
+    folder = tmp_path / "plugins"
+    folder.mkdir()
+    entry = folder / "birds.py"
+    entry.write_text("")
+    files, store = FakeFiles(), FakeStore()
+    files.write("birds", "waders.md", "Twelve at dawn.")
+    store.keep("birds", "schedule", "{}")
+    app = _assemble(
+        Extension(module="birds", extend=_birds, source=str(entry)),
+        plugins_folder=folder,
+        files=files,
+        store=store,
+    )
+
+    app.remove("birds")
+
+    assert files.names("birds") == ()
+    assert store.read("birds", "schedule") is None
