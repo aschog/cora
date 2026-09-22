@@ -194,7 +194,11 @@ def _risen(sessions: list[Day]) -> list[Day]:
             rose = before is not None and (
                 measure[0] > before[0] or measure[1] > before[1]
             )
-            last[movement.name.casefold()] = measure
+            # A heading nobody logged a set under is not a session of that exercise, so
+            # it is not what the next one is judged against: weighing it would reset the
+            # baseline to nothing and mark the session after it risen whatever it did.
+            if movement.sets:
+                last[movement.name.casefold()] = measure
             marked.append(replace(movement, rose=rose))
         risen.append(replace(session, movements=tuple(marked)))
     return risen

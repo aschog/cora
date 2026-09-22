@@ -273,6 +273,21 @@ def test_a_movement_is_marked_where_it_rose_on_the_previous_session_of_it() -> N
     assert lately.splitlines()[1].endswith(" ↑")
 
 
+def test_a_session_with_no_sets_is_not_what_the_next_one_is_judged_against() -> None:
+    """A heading nobody logged a set under weighs nothing, and a baseline it reset to
+    nothing makes the session after it rise whatever the weight did."""
+    days = (
+        ("2026-09-16.md", "# Deadlift 140 kg\n3 sets of 5"),
+        ("2026-09-18.md", "# Deadlift 100 kg\nfelt heavy, stopped"),
+        ("2026-09-20.md", "# Deadlift 100 kg\n3 sets of 5"),
+    )
+
+    listed = _listing(*days, detail=True)
+
+    lines = [line for line in listed.splitlines() if line.startswith("- ")]
+    assert [line.endswith(" \u2191") for line in lines] == [False, False, False]
+
+
 def test_an_exercise_and_a_day_narrow_both_views() -> None:
     days = (
         ("2026-09-16.md", SWING),

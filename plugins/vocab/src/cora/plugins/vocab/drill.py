@@ -151,6 +151,12 @@ class Drill:
         A question passed on while a word stands marks the word helped, and the right
         answer that follows a hint counts as missed.
         """
+        # The pass is the process's and the conversation is not, so a conversation that
+        # has chosen nothing yet is not the one this word was put to. Without this its
+        # first message is read as an answer, and the drill that is running moves on by
+        # a word nobody produced. `next_word` reads the same key for the same reason.
+        if self.cora.state.read(CHOSEN) is None:
+            return None
         asking, shown = self.current.table, self.current.shown
         if asking is None or not shown or not self.current.queue:
             return None

@@ -179,3 +179,18 @@ def test_a_right_answer_after_the_word_moved_through_the_model_is_right() -> Non
 
     assert put is not None
     assert moved not in field.queued(), "nothing about the word before it lingers"
+
+
+def test_a_fresh_conversation_is_not_answered_from_another_ones_pass() -> None:
+    """The pass outlives the conversation it was started in, so without this a first
+    message in a new one is read as the answer to a word the reader never saw there —
+    and the drill that was running moves on by a word nobody produced."""
+    field = Field()
+    shown = field.put()
+    left = len(field.queued())
+
+    field.kept = {}
+    put = field.answers(_other(shown))
+
+    assert put is None
+    assert len(field.queued()) == left
