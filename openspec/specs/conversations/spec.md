@@ -1,4 +1,4 @@
-# sessions Specification
+# conversations Specification
 
 ## Purpose
 
