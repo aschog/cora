@@ -15,6 +15,7 @@ HEADING = re.compile(
 REPEATED = re.compile(r"^(\d+)\s+sets\s+of\s+(\d+)$")
 LISTED = re.compile(r"^sets\s+of\s+(\d+(?:\s*/\s*\d+)+)$")
 TIMED = re.compile(rf"^{NUMBER}\s*min\s*·\s*(\d+)\s*/\s*(\d+)$")
+MOST_DETAILED = 30
 
 
 class LogError(Exception):
@@ -143,7 +144,11 @@ def list_workouts(
         )
         return f"No workout logged{narrowed}."
     if detail:
-        return "\n\n".join(_detailed(session) for session in sessions)
+        shown = sessions[-MOST_DETAILED:]
+        blocks = [_detailed(session) for session in shown]
+        if len(sessions) > len(shown):
+            blocks.append(_earlier(len(sessions) - len(shown)))
+        return "\n\n".join(blocks)
     return "\n".join([*(_named(session) for session in sessions), _closing(sessions)])
 
 
@@ -245,6 +250,15 @@ def _named(session: Day) -> str:
         *(f"untitled save: {' · '.join(lifts)}" for lifts in untitled),
     ]
     return f"{session.day.isoformat()}: " + " · ".join(parts)
+
+
+def _earlier(days: int) -> str:
+    # The detailed view is every set of every session, and a year of them is a message
+    # the model pays for whole. The recent ones answer the usual question, and the rest
+    # are a `since` away — said here, so nothing has to be guessed at.
+    counted = f"{days} earlier day{'s' if days != 1 else ''}"
+    stands = "are" if days != 1 else "is"
+    return f"Ask with `since` for what is not here. {counted} {stands} on file."
 
 
 def _closing(sessions: list[Day]) -> str:

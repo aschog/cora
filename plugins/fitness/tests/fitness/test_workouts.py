@@ -7,6 +7,7 @@ import pytest
 
 from cora.engine.nesting import collecting
 from cora.plugins.fitness.workouts import (
+    MOST_DETAILED,
     Load,
     LogError,
     Session,
@@ -335,3 +336,19 @@ def test_a_days_saves_list_in_the_order_of_their_names_whatever_the_upload() -> 
     assert listed.splitlines()[0] == (
         "2026-09-18: untitled save: Deadlift · untitled save: Snatch"
     )
+
+
+def test_the_detailed_view_is_capped_and_says_what_it_left_out() -> None:
+    """Every session ever logged, rendered whole into one tool result, is a year of
+    training in a single message to the model. The recent ones are what a question is
+    usually about, and the rest are a `since` away."""
+    days = tuple(
+        (f"2026-{month:02d}-{day:02d}.md", "# Deadlift 100 kg\n3 sets of 5")
+        for month in (1, 2)
+        for day in range(1, 21)
+    )
+
+    listed = _listing(*days, detail=True)
+
+    assert listed.count("- Deadlift") == MOST_DETAILED
+    assert listed.endswith(f"{len(days) - MOST_DETAILED} earlier days are on file.")
