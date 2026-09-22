@@ -34,9 +34,6 @@ def test_the_rendering_names_every_plugin_and_marks_what_is_system_wide() -> Non
 def test_a_deployment_that_cannot_be_assembled_says_so_in_one_sentence(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    """The refusal was written to be read by whoever ran the command, and the traceback
-    it arrives under buries the one line they can act on — the same reading the shell's
-    own entry point takes."""
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
 
     with pytest.raises(SystemExit) as stopped:
@@ -48,8 +45,6 @@ def test_a_deployment_that_cannot_be_assembled_says_so_in_one_sentence(
 
 
 def test_a_page_prints_under_its_field_on_a_line_of_its_own() -> None:
-    """A fourth kind renders without the renderer having heard of it: the shape is one
-    line whatever the kind, which is what a page is the first test of."""
     printed = rendered(
         (
             Listed(

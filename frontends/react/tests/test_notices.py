@@ -1,6 +1,3 @@
-"""A field's notice: the one live value cora holds for a field, written by whatever is
-beside the reader and read by that field's page."""
-
 import json
 import pathlib
 import time
@@ -42,9 +39,6 @@ def _reader(*named: str) -> TestClient:
 
 
 def test_a_notice_written_to_a_field_is_read_back_by_whoever_asks_next() -> None:
-    """The whole of it: something beside the reader says what it is doing, cora holds
-    the last such word per field, and the field's page reads it stamped with the time
-    cora heard it rather than a time the writer claimed."""
     reader = _reader()
     before = int(time.time() * 1000)
 
@@ -58,10 +52,14 @@ def test_a_notice_written_to_a_field_is_read_back_by_whoever_asks_next() -> None
 
 
 def test_a_field_nobody_wrote_to_answers_that_it_has_no_notice() -> None:
+    before = int(time.time() * 1000)
     held = _reader().get(WHERE)
 
     assert held.status_code == 200
-    assert held.json() == {"notice": None}
+    assert held.json()["notice"] is None
+    # Cora's clock comes with every read, so a page on a second machine judges an
+    # arrival against cora's terms rather than across the two.
+    assert before <= held.json()["now"] <= int(time.time() * 1000)
 
 
 def test_a_second_notice_replaces_the_first_rather_than_joining_it() -> None:
@@ -106,8 +104,6 @@ def test_the_arrival_a_notice_carries_is_the_one_cora_wrote() -> None:
 
 
 def test_a_writer_stating_its_own_time_is_stamped_with_coras() -> None:
-    """A watch, a sensor or a phone has a clock of its own and no reason to share
-    cora's, so the one time anything can reason about is the one cora wrote."""
     reader = _reader()
 
     reader.put(WHERE, json={"at": 5, "doing": "a workout"})
@@ -201,12 +197,10 @@ def test_a_body_that_is_not_a_json_object_is_refused() -> None:
 
 
 def test_a_freshly_composed_cora_holds_no_notice() -> None:
-    """A notice lasts as long as the process does. Nothing is written down, so a cora
-    started again is a cora that heard nothing yet."""
     app = _fields(FIELD)
     TestClient(api(app)).put(WHERE, json={"doing": "a workout"})
 
-    assert TestClient(api(app)).get(WHERE).json() == {"notice": None}
+    assert TestClient(api(app)).get(WHERE).json()["notice"] is None
 
 
 def test_the_notice_answers_the_two_methods_it_names_and_no_others() -> None:

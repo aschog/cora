@@ -1,8 +1,7 @@
 import re
-from collections.abc import Callable
-from functools import wraps
 from pathlib import Path
 
+from cora.adapters.translating import translating
 from cora.domain.errors import DocumentStoreError
 
 HASH_LENGTH = 12
@@ -11,15 +10,7 @@ UNSAFE = re.compile(r"[^A-Za-z0-9._-]+")
 UPLOAD = re.compile(r"[0-9a-f]{64}\Z")
 
 
-def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
-    @wraps(method)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        try:
-            return method(*args, **kwargs)
-        except OSError as error:
-            raise DocumentStoreError() from error
-
-    return wrapper
+_translate_errors = translating(OSError, DocumentStoreError)
 
 
 class FileDocuments:

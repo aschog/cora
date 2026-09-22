@@ -37,16 +37,11 @@ def test_a_call_becomes_the_decision_it_describes() -> None:
 
 
 def test_a_fork_with_one_way_out_of_it_is_refused() -> None:
-    """A card with a single button is a question with no question in it, and the page
-    disables the composer while one is open — so the reader would be left with one thing
-    to click and nothing to decide."""
     with pytest.raises(ToolRefusal):
         decision_from({"question": ASKED, "options": [{"label": "75 kg"}]})
 
 
 def test_a_call_with_no_options_is_refused_in_words_the_model_can_read() -> None:
-    """A refusal, not an exception: the round is told what was wrong with the ask and
-    carries on, the way it would for a malformed call to any other tool."""
     with pytest.raises(ToolRefusal) as refused:
         decision_from({"question": ASKED})
 
@@ -98,8 +93,6 @@ def test_a_field_of_a_type_cora_cannot_read_is_refused() -> None:
 
 
 def test_two_fields_of_the_same_name_are_refused() -> None:
-    """Silently keeping one of them would ask for less than the model asked for, and
-    the answer would rest on a value nobody was shown a box for."""
     with pytest.raises(ToolRefusal) as refused:
         card_from(
             _asking(
@@ -112,8 +105,6 @@ def test_two_fields_of_the_same_name_are_refused() -> None:
 
 
 def test_a_form_of_one_value_is_refused_by_the_tool_the_model_reads() -> None:
-    """The rule the core holds, said where the model reads: a schema inviting a call
-    the core always refuses spends the round that made it."""
     with pytest.raises(ToolRefusal) as refused:
         card_from(_asking({"name": "height", "description": "Your height"}))
 
@@ -121,8 +112,6 @@ def test_a_form_of_one_value_is_refused_by_the_tool_the_model_reads() -> None:
 
 
 def test_a_form_of_one_field_that_is_not_even_a_field_is_still_refused() -> None:
-    """Refused rather than raised: the arguments are the model's, so a list of one
-    string is a call that costs a round — not a turn that ends in a traceback."""
     with pytest.raises(ToolRefusal):
         card_from({"prompt": WANTED, "fields": ["height"]})
 
@@ -137,8 +126,6 @@ def test_the_form_tool_declares_that_it_takes_two_values_or_more() -> None:
 
 
 def test_a_form_longer_than_anyone_fills_is_refused() -> None:
-    """A wall of controls is a card the reader abandons, and abandoning it tells the
-    model nothing. Refused, the model asks for what the answer turns on instead."""
     with pytest.raises(ToolRefusal):
         card_from(
             _asking(

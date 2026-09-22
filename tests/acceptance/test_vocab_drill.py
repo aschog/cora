@@ -1,9 +1,3 @@
-"""The outer test for the story: a word missed in one conversation is the word the drill
-puts in the next one, because the schedule outlived the conversation that moved it.
-
-Spaced, because that is what a schedule is for: a drill nobody spaced runs one pass and
-keeps nothing past the conversation it ran in."""
-
 from typing import Any
 
 from app_builder import assembled

@@ -1,6 +1,3 @@
-"""The outer test for the story: a plugin dropped into the folder brings a page, cora
-serves it under the path its field reports, and it goes when the plugin does."""
-
 import pathlib
 
 from starlette.testclient import TestClient

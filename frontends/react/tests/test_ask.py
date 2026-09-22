@@ -36,9 +36,6 @@ def searching(answer: str = "Sleep, not volume [1].") -> ScriptedChatModel:
 
 
 class BreaksAfterSearching:
-    """A model that reaches the store and then cannot be reached itself: the shape of a
-    turn that fails with steps already on the page."""
-
     def __init__(self) -> None:
         self.completions = 0
 
@@ -57,7 +54,6 @@ class BreaksAfterSearching:
 def asking(
     app: App, question: str = "Why?", thread: str = "t1"
 ) -> list[tuple[str, dict]]:
-    """The stream, read as the (event, data) pairs it carried."""
     with TestClient(api(app)) as reader:
         streamed = reader.post(
             "/api/ask", json={"question": question, "thread_id": thread}
@@ -117,9 +113,6 @@ def test_a_turn_that_fails_reports_after_the_steps_it_already_took() -> None:
 
 
 class BreaksInAWayNobodyModelled:
-    """A tool or an adapter raising something that is not a `CoreError` — a plugin
-    handed a payload it did not expect, say."""
-
     def complete(
         self,
         messages: tuple[Message, ...],
@@ -132,9 +125,6 @@ class BreaksInAWayNobodyModelled:
 def test_what_the_reader_is_spared_is_written_to_the_log(
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """The screen gets a sentence and the operator gets the stack. Keeping the
-    exception off the page is only defensible while the log still has it — otherwise
-    the failure exists nowhere."""
     with caplog.at_level(logging.ERROR, logger="cora.frontends.react.api"):
         asking(assembled(chat_model=BreaksInAWayNobodyModelled()))
 
@@ -147,8 +137,6 @@ def test_what_the_reader_is_spared_is_written_to_the_log(
 def test_a_body_that_is_not_a_question_is_refused_rather_than_a_crash(
     body: str,
 ) -> None:
-    """The error contract holds at the door too: `_ingest` already answers a missing
-    file with a message and a 400, and asking is no different."""
     with TestClient(api(assembled())) as reader:
         refused = reader.post(
             "/api/ask", content=body, headers={"Content-Type": "application/json"}
@@ -167,9 +155,6 @@ backstop so a test that never releases cannot hang the suite."""
 
 
 def test_a_question_past_what_cora_reads_is_refused() -> None:
-    """`request.json()` buffers whatever arrives, next door to the endpoint that just
-    grew a ceiling. What a question may run to is the engine's rule; this is how much
-    cora reads to find out."""
     body = json.dumps({"question": "x" * MAX_ASK_BYTES, "thread_id": "t1"})
 
     with TestClient(api(assembled())) as reader:
@@ -182,8 +167,6 @@ def test_a_question_past_what_cora_reads_is_refused() -> None:
 
 
 def test_each_piece_the_turn_writes_arrives_as_its_own_event() -> None:
-    """What the reader is waiting for is the answer, and until now it arrived only with
-    the turn that ended — after every step, and after the model had finished writing."""
     app = indexed(
         assembled(
             chat_model=ScriptedChatModel(
@@ -203,9 +186,6 @@ def test_each_piece_the_turn_writes_arrives_as_its_own_event() -> None:
 
 
 def preambling(answer: str = "Sleep, not volume [1].") -> ScriptedChatModel:
-    """A model that says what it is about to do before it does it — the shape every
-    claim about the wire has to survive, and the one a script with an empty first round
-    quietly avoids."""
     return ScriptedChatModel(
         [
             ModelReply(text="Let me check your notes. ", tool_calls=(SEARCH,)),
@@ -216,8 +196,6 @@ def preambling(answer: str = "Sleep, not volume [1].") -> ScriptedChatModel:
 
 
 def test_an_aside_marks_the_pieces_a_round_wrote_before_calling_a_tool() -> None:
-    """Without it the contract is a lie a client has to know about: pieces arrive for a
-    sentence that is not the answer, and only the shape of the step stream says so."""
     app = indexed(assembled(chat_model=preambling()), ("notes.md", NOTES))
 
     streamed = asking(app)
@@ -359,8 +337,6 @@ def _acting_app() -> App:
 
 
 def test_a_proposed_effect_is_streamed_as_the_paused_event_the_page_reads() -> None:
-    """One event for both kinds of stop, carrying whichever it was: the page reads which
-    card to draw off the payload rather than off a second event name."""
     with TestClient(api(_acting_app())) as reader:
         streamed = reader.post(
             "/api/ask", json={"question": "book it", "thread_id": "t1"}
@@ -404,9 +380,6 @@ def test_approving_a_proposal_streams_the_rest_of_the_turn() -> None:
 
 
 def test_an_action_the_card_never_offered_is_refused_not_read_as_a_decline() -> None:
-    """The step waiting would read it as a decline — safe, and silent. A page holding a
-    card the conversation has moved past is told, rather than having the reader's turn
-    settled the other way on its behalf."""
     with TestClient(api(assembled(chat_model=_stopping()))) as reader:
         reader.post("/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"})
 
@@ -429,13 +402,6 @@ def test_an_action_the_card_never_offered_is_refused_not_read_as_a_decline() -> 
     ],
 )
 def test_an_answer_that_does_not_bind_to_a_card_is_refused(body: dict) -> None:
-    """An answer has to say which conversation it is in and which action was taken, and
-    what it fills in has to be fields: a missing half must not read as a decline, and a
-    `values` that is not an object must not reach the run.
-
-    This is the route an effect is approved on, so what it accepts is the width of what
-    can authorise one.
-    """
     with TestClient(api(_acting_app())) as reader:
         reader.post("/api/ask", json={"question": "book it", "thread_id": "t1"})
         refused = reader.post("/api/resume", json=body)

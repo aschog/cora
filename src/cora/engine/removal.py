@@ -6,7 +6,9 @@ import shutil
 from cora.domain.errors import PluginRemovalError
 from cora.engine.agent import Agent
 from cora.engine.knowledge_base import KnowledgeBase
+from cora.ports.files import Files
 from cora.ports.host import DEFAULT_SCOPE, Listed
+from cora.ports.store import Store
 
 NOT_LOADED = "no plugin of that name is loaded"
 FIXED_AT_START = "it is named in the environment, and is fixed at start"
@@ -22,12 +24,16 @@ def remove_plugin(
     configured: tuple[str, ...] = (),
     knowledge_base: KnowledgeBase,
     agent: Agent,
+    files: Files | None = None,
+    store: Store | None = None,
 ) -> None:
     """Delete one plugin from the plugins folder, with the data its fields hold.
 
-    The documents go first and the entry last: the listing is what names the fields to
+    The data goes first and the entry last: the listing is what names the fields to
     empty, so a delete that failed part way leaves a plugin still listed and still
-    deletable rather than one nobody can name.
+    deletable rather than one nobody can name. All three places a field's data sits are
+    emptied — its documents, its own files, and what the plugin kept for good — because
+    deleting a plugin deletes what it held and not only what it could be searched for.
 
     Args:
         name: What the plugin is called, as the listing calls it. It is resolved
@@ -39,6 +45,8 @@ def remove_plugin(
             empties.
         knowledge_base: Where the documents of the fields going with it are kept.
         agent: The conversations, read for their pins and forgotten by both halves.
+        files: The files its fields keep. Without it the deployment keeps none.
+        store: What it kept for good. Without it the deployment keeps none.
 
     Raises:
         PluginRemovalError: Nothing of that name is loaded, it is a module named in the
@@ -51,6 +59,13 @@ def remove_plugin(
     for scope in fields:
         for source in knowledge_base.list_sources(scope):
             knowledge_base.forget(scope, source)
+        if files is not None:
+            for held in files.names(scope):
+                files.write(scope, held, None)
+    if store is not None:
+        # Keyed by the module the plugin was loaded under, and a plugin that reaches
+        # here was dropped in the folder — where that module is the entry's own name.
+        store.forget(listed.name)
     for thread_id in _pinned_to(fields, agent):
         agent.forget(thread_id)
     _delete(listed.name, entry)

@@ -46,8 +46,6 @@ class Answer:
 
 
 class Refusing:
-    """The service with the flights engine failing, and the stays engine fine."""
-
     def __init__(self) -> None:
         self.queries: list[dict[str, Any]] = []
 
@@ -59,13 +57,6 @@ class Refusing:
 
 
 class Service:
-    """The search service written out, pricing a fare by its departure so a window has
-    a cheapest week in it.
-
-    It holds the engines to what they take, as the real ones do: Google Flights reads
-    IATA codes and Google Hotels reads a place in words. A fake looser than the service
-    prices a trip the service would refuse."""
-
     def __init__(
         self,
         fares: dict[str, float] | None = None,
@@ -103,9 +94,6 @@ class Service:
 
 
 class Cora:
-    """The host the planner is closed over, written out: it answers the delegated call
-    with whatever shape the test scripts, and keeps what the planner keeps."""
-
     def __init__(self, *shapes: Any) -> None:
         self._shapes = list(shapes) or [SHAPE]
         self.tasks: list[str] = []
@@ -202,8 +190,6 @@ def test_the_planning_is_shown_on_the_trace() -> None:
 
 
 def test_the_flight_is_searched_by_code_and_the_stay_by_the_place_in_words() -> None:
-    """One trip, two engines, two spellings of where it goes — and the days the model is
-    asked to shape read the place in words, not an airport."""
     cora = Cora()
     service = Service()
 
@@ -217,9 +203,6 @@ def test_the_flight_is_searched_by_code_and_the_stay_by_the_place_in_words() -> 
 
 
 def test_a_revision_prices_the_flights_the_kept_plan_was_priced_by() -> None:
-    """The code goes through the checkpoint with the plan: recovered from the place in
-    words it would be a name the engine refuses, and a revision would come back
-    unpriced."""
     cora = Cora()
     planner = _planner(cora, Service())
     planner.plan(**TRIP)
@@ -230,7 +213,6 @@ def test_a_revision_prices_the_flights_the_kept_plan_was_priced_by() -> None:
 
 
 def test_prices_that_could_not_be_had_are_not_reported_as_none_configured() -> None:
-    """Two different facts for the reader: nobody set a key, and the searches failed."""
     cora = Cora()
 
     failed = _planner(cora, Refusing()).plan(**TRIP)
@@ -241,9 +223,6 @@ def test_prices_that_could_not_be_had_are_not_reported_as_none_configured() -> N
 
 
 def test_the_days_are_asked_for_as_a_shape_and_read_as_a_value() -> None:
-    """No JSON found in prose: the loop is given the shape its answer must satisfy, and
-    what comes back is the value — so a model that stops answering in it fails the call
-    instead of yielding a plan with no days."""
     cora = Cora()
 
     read = _planner(cora, Service()).plan(**TRIP)
@@ -254,9 +233,6 @@ def test_the_days_are_asked_for_as_a_shape_and_read_as_a_value() -> None:
 
 
 def test_days_that_came_back_empty_are_shown_and_revised() -> None:
-    """An answer satisfying the shape can still hold nothing to plan, and that leaves
-    the loop revising exactly as a plan failing its checks does — so without a line on
-    the trace it reads as a trip that cannot be made to hold."""
     cora = Cora({"days": []})
 
     _planner(cora, Service()).plan(**TRIP)
@@ -266,8 +242,6 @@ def test_days_that_came_back_empty_are_shown_and_revised() -> None:
 
 
 def test_a_day_whose_date_cannot_be_read_is_dropped() -> None:
-    """A shape saying `date` is not a date read: `format` is not what a JSON Schema
-    validator checks, so the planner still reads the days itself."""
     cora = Cora(
         {
             "days": [
@@ -285,8 +259,6 @@ def test_a_day_whose_date_cannot_be_read_is_dropped() -> None:
 
 
 def test_a_loop_that_will_not_answer_in_the_shape_fails_the_call() -> None:
-    """The refusal is the point: a plan with no days used to read as a trip that could
-    not be made to hold, and every pass was spent proving it again."""
     cora = Cora(ToolRefusal("the sub-agent wrote prose"))
 
     with pytest.raises(ToolRefusal):
@@ -296,7 +268,6 @@ def test_a_loop_that_will_not_answer_in_the_shape_fails_the_call() -> None:
 
 
 def test_a_datetime_free_planner_needs_no_clock() -> None:
-    """Every date in a plan comes from the window or the service, never from today."""
     cora = Cora()
 
     read = _planner(cora, Service()).plan(**TRIP)

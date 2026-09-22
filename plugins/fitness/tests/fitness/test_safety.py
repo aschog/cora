@@ -45,8 +45,6 @@ def test_asking_for_a_diagnosis_is_redirected(text: str) -> None:
     ],
 )
 def test_asking_to_be_treated_is_redirected(text: str) -> None:
-    """Higher-stakes than a diagnosis request and easier to miss: the question names no
-    medication and asks for no name for the condition, just for what to do about it."""
     assert refuse_medical(text) is not None
 
 
@@ -63,10 +61,6 @@ def test_asking_to_be_treated_is_redirected(text: str) -> None:
     ],
 )
 def test_naming_what_you_live_with_is_not_asking_about_it(text: str) -> None:
-    """A condition or a medication is context for a training question, not a request for
-    medical judgement. Refusing the whole message turns the guard rail into the reason
-    the app is useless to the people most in need of a careful answer; the caveat that
-    answer needs is the plugin's instructions to write."""
     assert refuse_medical(text) is None
 
 

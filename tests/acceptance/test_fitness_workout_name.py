@@ -1,6 +1,3 @@
-"""The outer test for the story: a save carries the name of the workout it was, and the
-coach names a day by its workouts rather than by their lifts."""
-
 from starlette.testclient import TestClient
 
 from app_builder import assembled

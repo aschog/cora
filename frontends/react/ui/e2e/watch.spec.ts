@@ -24,7 +24,11 @@ const wrist = (
       status: 200,
       contentType: "application/json",
       body: JSON.stringify(
-        said === null ? { notice: null } : { notice: said, at },
+        /* `now` is cora's own clock, which every read carries: the page judges an
+           arrival against it rather than against its own. */
+        said === null
+          ? { notice: null, now: Date.now() }
+          : { notice: said, at, now: Date.now() },
       ),
     }),
   );

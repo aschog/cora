@@ -1,11 +1,10 @@
 import json
 import sqlite3
-from collections.abc import Callable
 from dataclasses import asdict
-from functools import wraps
 from typing import Any
 
 from cora.adapters.sqlite_store import connect
+from cora.adapters.translating import translating
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Session, Turn
@@ -20,16 +19,8 @@ SCHEMA = (
 )
 
 
-def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
-    @wraps(method)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        try:
-            return method(*args, **kwargs)
-        except (sqlite3.Error, OSError) as error:
-            # `OSError` is the directory the store could not be made in.
-            raise ConversationStoreError() from error
-
-    return wrapper
+# `OSError` is the directory the store could not be made in.
+_translate_errors = translating((sqlite3.Error, OSError), ConversationStoreError)
 
 
 class SqliteConversations:

@@ -1,5 +1,3 @@
-"""What a plugin may read as its own settings, and what it may never read."""
-
 from cora.app.config import PLUGIN_PREFIX, plugin_settings
 
 FITNESS = "cora.plugins.fitness"
@@ -25,9 +23,6 @@ def test_a_plugin_reads_no_variable_named_for_another() -> None:
 
 
 def test_a_plugin_reads_none_of_coras_own_configuration() -> None:
-    """The one that would have bitten: a plugin whose module ends in `log` reading
-    `CORA_LOG_PATH` would be handed the path to the user's log file. Cora's own
-    variables and a plugin's live in separate namespaces."""
     settings = plugin_settings(
         ("acme.plugins.log",),
         {

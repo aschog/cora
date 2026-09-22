@@ -1,12 +1,3 @@
-"""What `CORA_DEBUG` wraps, held to adding nothing.
-
-Two properties, because the module makes two claims: that what is logged is bounded —
-a page of prompt per turn is how a debug log stops being read — and that nothing about
-a turn changes because someone is watching. The second is the one worth a test: a
-wrapper that quietly dropped a hit would be a deployment answering differently with
-debug on than with it off, and every other test in the suite runs with it off.
-"""
-
 from cora.domain.chunk import Chunk
 from cora.engine.port_logging import (
     MAX_LOGGED_CHARS,
@@ -66,8 +57,6 @@ def test_a_watched_embedder_hands_back_the_vectors_it_was_given() -> None:
 
 
 def test_watching_a_tool_round_leaves_the_round_as_it_was() -> None:
-    """The wrapper is a dataclass over the port, so the tools it is handed reach the
-    model it wraps — a round that lost them would answer without ever calling one."""
     inner = ScriptedChatModel([ModelReply(text="done")])
 
     LoggingChatModel(inner).complete(QUESTION, (add_tool(),))

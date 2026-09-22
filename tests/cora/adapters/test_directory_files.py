@@ -156,3 +156,10 @@ def test_a_directory_that_cannot_be_read_fails_rather_than_reading_empty(
             files.names(VOCAB)
     finally:
         (tmp_path / VOCAB).chmod(0o700)
+
+
+def test_a_name_too_long_to_read_is_not_listed(tmp_path: Path) -> None:
+    (tmp_path / VOCAB).mkdir()
+    (tmp_path / VOCAB / f"{'a' * 120}.md").write_text(LIST)
+
+    assert _files(tmp_path).names(VOCAB) == ()

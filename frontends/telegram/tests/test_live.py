@@ -17,9 +17,6 @@ BROKEN = "raise RuntimeError('this plugin does not import')\n"
 
 
 class ChatWithADropInIt(FakeTelegram):
-    """Two messages with a plugin landing in the folder between them, which is the one
-    thing a fixed script cannot say."""
-
     def __init__(self, folder: pathlib.Path, source: str, *incoming: Message) -> None:
         super().__init__(*incoming)
         self._folder = folder
@@ -42,8 +39,6 @@ def _live(folder: pathlib.Path) -> LiveApp:
 def test_a_plugin_dropped_between_two_messages_is_in_the_second_turn(
     tmp_path: pathlib.Path,
 ) -> None:
-    """What `serve` really hands the loop is a `LiveApp`, so the composition is read
-    per message — a plugin dropped in the folder answers the next question."""
     telegram = ChatWithADropInIt(
         tmp_path, REFUSES, Message(ALLOWED, "Why?"), Message(ALLOWED, "And now?")
     )
@@ -56,9 +51,6 @@ def test_a_plugin_dropped_between_two_messages_is_in_the_second_turn(
 def test_a_plugin_that_will_not_load_costs_one_message_not_the_bot(
     tmp_path: pathlib.Path,
 ) -> None:
-    """A folder that cannot be composed is a refusal like any other. Reading it above
-    the loop's own `try` would end the bot for every chat, and the folder is written
-    to by whoever is using cora rather than by the run."""
     telegram = ChatWithADropInIt(
         tmp_path, BROKEN, Message(ALLOWED, "Why?"), Message(ALLOWED, "And now?")
     )

@@ -1,10 +1,3 @@
-"""Generate valid PDF bytes in-memory for tests, no checked-in binaries.
-
-Uses only pypdf's public writer API. Each page draws its text with a
-Helvetica font so the loader's text extraction has something to read; a
-page given an empty string stays blank (an image-only/scanned page).
-"""
-
 from io import BytesIO
 
 from pypdf import PdfWriter

@@ -1,9 +1,3 @@
-"""What ingestion decides, against loaders of the test's own making. Which formats a
-deployment reads is the adapters' business, so the real registry is exercised where it
-lives — `tests/cora/adapters/test_loaders.py`, and the PDF path end to end
-beside it.
-"""
-
 import pytest
 
 from cora.domain.errors import (
@@ -58,8 +52,6 @@ def test_ingest_yields_ordered_chunks_named_by_filename() -> None:
 
 
 def test_ingest_hands_back_the_cleaned_text_the_chunks_came_from() -> None:
-    """The text is what a citation's offsets point into, so it has to be the cleaned
-    text — the bytes that arrived are not what was chunked."""
     ingested = ingest(b"  Spaced   out\n\n\n\nparagraph.  ", "notes.txt", LOADERS)
 
     assert ingested.text == clean_text(

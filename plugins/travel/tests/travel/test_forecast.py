@@ -20,10 +20,6 @@ THREE_DAYS = {
 
 
 class Answered:
-    """One written-out answer per call, in the order the tool makes them. Hand-written
-    rather than a library's double: the network is the boundary, and what the tool needs
-    of it is that an answer can fail and can be read."""
-
     def __init__(
         self,
         *answers: object,
@@ -43,9 +39,6 @@ class Answered:
         return self
 
     def raise_for_status(self) -> None:
-        """The other door a failure comes through: the call connected and the service
-        answered with a status. Both end in the same sentence, and only by going through
-        this one is the `raise_for_status` in the tool exercised at all."""
         if self._status is not None:
             raise self._status
 
@@ -56,9 +49,6 @@ class Answered:
 
 
 def test_a_forecast_is_fetched_for_a_named_place_and_written_as_one_line() -> None:
-    """The place is resolved first, then its coordinates forecast, and what comes back
-    is one line — the trace shows a plain payload under the same text the model reads,
-    so a block here would be a paragraph where the reader wanted a line."""
     service = Answered(LISBON, THREE_DAYS)
 
     said = Forecast(service)("Lisbon", "2026-09-05", "2026-09-07")
@@ -77,8 +67,6 @@ def test_a_forecast_is_fetched_for_a_named_place_and_written_as_one_line() -> No
 
 
 def test_a_place_the_service_does_not_know_is_refused_rather_than_invented() -> None:
-    """The refusal names the place, because the reader's next move is to try the town
-    they actually meant."""
     service = Answered({"results": []})
 
     with pytest.raises(ToolRefusal) as refused:
@@ -107,8 +95,6 @@ def _erroring() -> httpx.HTTPStatusError:
 def test_a_service_that_does_not_answer_is_refused_in_one_friendly_line(
     failing: Exception | None, status: Exception | None
 ) -> None:
-    """One sentence, and the same one however it failed: the reader is owed "no
-    forecast, conversation intact", not the name of an exception class."""
     service = Answered(failing=failing, status=status)
 
     with pytest.raises(ToolRefusal) as refused:
@@ -119,9 +105,6 @@ def test_a_service_that_does_not_answer_is_refused_in_one_friendly_line(
 
 @pytest.mark.integration
 def test_the_real_service_answers_a_forecast_for_a_place_it_knows() -> None:
-    """The shape the fakes above stand in for, pinned against the service itself: no
-    credential, two addresses, and a daily block with the three measures in it. That
-    the tool is declared as returning outside material is the plugin's own test."""
     said = Forecast()("Lisbon")
 
     assert "Lisbon" in said

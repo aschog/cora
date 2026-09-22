@@ -15,6 +15,7 @@ HEADING = re.compile(
 REPEATED = re.compile(r"^(\d+)\s+sets\s+of\s+(\d+)$")
 LISTED = re.compile(r"^sets\s+of\s+(\d+(?:\s*/\s*\d+)+)$")
 TIMED = re.compile(rf"^{NUMBER}\s*min\s*·\s*(\d+)\s*/\s*(\d+)$")
+MOST_DETAILED = 30
 
 
 class LogError(Exception):
@@ -39,7 +40,6 @@ class Movement:
     name: str
     load: Load
     sets: tuple[int, ...] = ()
-    notes: tuple[str, ...] = ()
     rose: bool = False
 
     @property
@@ -104,8 +104,11 @@ def parse_session(text: str, day: date, name: str = "<session>") -> Session:
             continue
         sets = _sets(line)
         if sets is None:
-            movements[-1] = replace(movements[-1], notes=(*movements[-1].notes, raw))
-        elif movements[-1].sets:
+            # A line under a movement that is not its sets — the watch's heart rate, a
+            # word about how it felt. It stays in the document, which is where a reader
+            # opens it; nothing here prints one, so nothing here holds one.
+            continue
+        if movements[-1].sets:
             raise LogError(name, number, "a movement has one set line")
         else:
             movements[-1] = replace(movements[-1], sets=sets)
@@ -143,7 +146,11 @@ def list_workouts(
         )
         return f"No workout logged{narrowed}."
     if detail:
-        return "\n\n".join(_detailed(session) for session in sessions)
+        shown = sessions[-MOST_DETAILED:]
+        blocks = [_detailed(session) for session in shown]
+        if len(sessions) > len(shown):
+            blocks.append(_earlier(len(sessions) - len(shown)))
+        return "\n\n".join(blocks)
     return "\n".join([*(_named(session) for session in sessions), _closing(sessions)])
 
 
@@ -194,7 +201,11 @@ def _risen(sessions: list[Day]) -> list[Day]:
             rose = before is not None and (
                 measure[0] > before[0] or measure[1] > before[1]
             )
-            last[movement.name.casefold()] = measure
+            # A heading nobody logged a set under is not a session of that exercise, so
+            # it is not what the next one is judged against: weighing it would reset the
+            # baseline to nothing and mark the session after it risen whatever it did.
+            if movement.sets:
+                last[movement.name.casefold()] = measure
             marked.append(replace(movement, rose=rose))
         risen.append(replace(session, movements=tuple(marked)))
     return risen
@@ -241,6 +252,15 @@ def _named(session: Day) -> str:
         *(f"untitled save: {' · '.join(lifts)}" for lifts in untitled),
     ]
     return f"{session.day.isoformat()}: " + " · ".join(parts)
+
+
+def _earlier(days: int) -> str:
+    # The detailed view is every set of every session, and a year of them is a message
+    # the model pays for whole. The recent ones answer the usual question, and the rest
+    # are a `since` away — said here, so nothing has to be guessed at.
+    counted = f"{days} earlier day{'s' if days != 1 else ''}"
+    stands = "are" if days != 1 else "is"
+    return f"Ask with `since` for what is not here. {counted} {stands} on file."
 
 
 def _closing(sessions: list[Day]) -> str:

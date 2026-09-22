@@ -1,6 +1,3 @@
-"""The scope, as the page reaches it: what the deployment offers, what a thread is
-pinned to, and the pin travelling in beside a question."""
-
 from pathlib import Path
 from typing import Any
 
@@ -38,9 +35,6 @@ def _asked(reader: TestClient, **body: Any) -> list[tuple[str, dict]]:
 
 
 def test_the_page_is_told_which_fields_the_deployment_offers() -> None:
-    """The picker is drawn from this: a deployment with one field has nothing to pick,
-    and the default is what a question belonging to no field is answered in. Neither
-    plugin brought a page, so none is claimed for either field."""
     with TestClient(api(_served())) as reader:
         offered = reader.get("/api/scopes").json()
 
@@ -50,8 +44,6 @@ def test_the_page_is_told_which_fields_the_deployment_offers() -> None:
 def test_a_field_with_a_page_is_offered_with_the_path_it_is_served_under(
     tmp_path: Path,
 ) -> None:
-    """What the shell looks a page up by: it knows its fields before a conversation has
-    one, and a page it could only see after a turn is one nobody could start from."""
 
     def extend(cora: Host) -> None:
         cora.register_instructions("Coach.", scope="fitness")
@@ -76,9 +68,6 @@ def test_a_field_with_a_page_is_offered_with_the_path_it_is_served_under(
 
 
 def test_a_second_field_on_a_pinned_thread_is_refused_as_a_sentence() -> None:
-    """The rule is the engine's, so it arrives the way a screening refusal does: on the
-    stream, as the error that ends it. The reader is told which field the conversation
-    is in, which is what tells them to start another."""
     app = _served(ModelReply(text="Protein, then."), ModelReply(text="never said"))
 
     with TestClient(api(app)) as reader:
@@ -91,8 +80,6 @@ def test_a_second_field_on_a_pinned_thread_is_refused_as_a_sentence() -> None:
 
 
 def test_a_field_the_deployment_does_not_run_is_refused_before_the_turn() -> None:
-    """A pin cannot be undone, so a pin to a field no registration is under would leave
-    the thread answering plainly for ever. Refused where what is offered is known."""
     with TestClient(api(_served())) as reader:
         refused = reader.post(
             "/api/ask",
@@ -104,9 +91,6 @@ def test_a_field_the_deployment_does_not_run_is_refused_before_the_turn() -> Non
 
 
 def test_a_listed_conversation_says_which_field_it_is_fixed_to() -> None:
-    """The list is where one conversation is told from another, and a pin is what a
-    conversation is *for* — read per row, a pin living in the conversation's own state
-    and nothing else recording it."""
     app = _served(
         ModelReply(text="Protein, then."),
         # The second conversation is pinned to nothing, so it is routed before it is

@@ -51,8 +51,6 @@ def test_a_batch_numbers_every_passage_in_the_order_it_came_back() -> None:
 
 
 def test_a_passage_already_registered_keeps_its_number() -> None:
-    """The same span found again is the same citation: a number the user has already
-    been shown may never move to another passage."""
     known = (Citation(1, "a.txt", 0, 5), Citation(2, "b.txt", 10, 14))
 
     context = build_context_block([_hit("b.txt", "beta", offset=10)], known)
@@ -98,8 +96,6 @@ def test_only_the_cited_passages_come_back_in_ascending_order() -> None:
 
 
 def test_a_citation_carries_the_upload_its_passage_was_cut_from() -> None:
-    """What makes `[n]` openable: the span is measured in one upload's text, so the
-    citation has to name that upload and not merely the file it was called."""
     hit = _hit("a.txt", "alpha", offset=12)
     hit = RetrievedChunk(chunk=replace(hit.chunk, upload="sha-1"), score=1.0)
 
@@ -109,8 +105,6 @@ def test_a_citation_carries_the_upload_its_passage_was_cut_from() -> None:
 
 
 def test_a_payload_renders_itself_for_a_reader_that_cannot_cite() -> None:
-    """A delegated loop hands out no numbers, so it is shown the material with its
-    source named and no `[n]` of cora's in front of it."""
     hits = CitableHits([_hit("plan.md", "Steps:\nwarm up\nsquat")])
 
     assert hits.unnumbered() == "plan.md: Steps:\nwarm up\nsquat"

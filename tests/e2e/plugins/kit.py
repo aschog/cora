@@ -1,11 +1,3 @@
-"""The plugin the browser suite runs against: one field, and one tool that acts.
-
-Dropped in rather than installed, so the run covers the folder as well — and it gives
-the suite the two things a bare cora has not got: a second field to pin a conversation
-to, and a tool declaring it changes something outside cora, which is what the approval
-gate stops on.
-"""
-
 from cora.ports.host import Host
 from cora.ports.plugin import ToolRefusal
 

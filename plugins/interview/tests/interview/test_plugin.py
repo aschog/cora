@@ -10,8 +10,6 @@ from fakes import FakeOutput, host_for
 
 
 def test_everything_is_scoped_and_only_the_save_has_an_effect() -> None:
-    """Nothing here is system-wide — the misuse screen included, because cora's
-    security plugin holds that line — and the one effect is the file the user keeps."""
     host = host_for("cora.plugins.interview", output=FakeOutput())
 
     extend(host)
@@ -32,8 +30,6 @@ def test_everything_is_scoped_and_only_the_save_has_an_effect() -> None:
 
 
 def test_without_somewhere_to_write_the_save_is_never_offered() -> None:
-    """A tool the model can call and that can only fail is worse than one it was
-    never offered."""
     host = host_for("cora.plugins.interview")
 
     extend(host)
@@ -53,8 +49,6 @@ def test_the_style_setting_picks_which_instructions_register() -> None:
 
 
 def test_a_style_nobody_wrote_is_refused_at_load_by_name() -> None:
-    """The refusal names the setting and the stray value, so the deployment is told
-    what to fix rather than a typo quietly becoming the default."""
     host = host_for("cora.plugins.interview", settings={STYLE: "vibes"})
 
     with pytest.raises(PluginLoadError) as refused:
@@ -65,8 +59,6 @@ def test_a_style_nobody_wrote_is_refused_at_load_by_name() -> None:
 
 
 def test_every_style_opens_with_the_same_line_for_the_router() -> None:
-    """The first line is what routes an unpinned turn here, so routing must not
-    depend on which style the deployment picked."""
     first_lines = {text.split("\n", 1)[0] for text in STYLES.values()}
 
     assert len(first_lines) == 1

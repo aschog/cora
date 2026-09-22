@@ -1,7 +1,3 @@
-"""A field's page, as the shell reaches it: served from the directory a plugin
-registered, refused everywhere that directory does not reach, and live with the plugin.
-"""
-
 import pathlib
 from typing import Any
 
@@ -80,8 +76,6 @@ def test_a_file_beside_the_entry_page_is_answered_as_what_it_is(
 def test_a_request_spelling_its_way_above_the_directory_reaches_no_file(
     tmp_path: pathlib.Path,
 ) -> None:
-    """The climb-out loop `/api/plugins/{name}` is already held to: a path a client
-    wrote is never a path cora opens."""
     _page(tmp_path)
 
     with TestClient(api(_serving(tmp_path / "page"))) as reader:
@@ -113,8 +107,6 @@ def test_the_path_of_a_field_nothing_loaded_is_refused(
 def test_a_page_whose_directory_went_away_is_refused_rather_than_raising(
     tmp_path: pathlib.Path,
 ) -> None:
-    """Registering is not held against the disk, so this is the case that check would
-    have bought — and it costs one path a refusal rather than every request."""
     page = _page(tmp_path)
     app = _serving(page)
     (page / "index.html").unlink()
@@ -128,8 +120,6 @@ def test_a_page_whose_directory_went_away_is_refused_rather_than_raising(
 def test_a_page_reached_through_a_symlink_is_served(
     tmp_path: pathlib.Path,
 ) -> None:
-    """How this repository's own plugins are deployed: the folder holds a link, and
-    what it points at is somewhere else entirely."""
     elsewhere = tmp_path / "elsewhere"
     _page(elsewhere)
     linked = tmp_path / "linked"
@@ -142,8 +132,6 @@ def test_a_page_reached_through_a_symlink_is_served(
 def test_a_symlink_inside_the_directory_is_not_followed_out_of_it(
     tmp_path: pathlib.Path,
 ) -> None:
-    """What the contract promises a plugin author, so the promise is held here rather
-    than by the static server's own default staying what it is."""
     page = _page(tmp_path)
     (page / "leak.txt").symlink_to(tmp_path / "secret.txt")
 
@@ -155,8 +143,6 @@ def test_a_symlink_inside_the_directory_is_not_followed_out_of_it(
 
 
 def test_coras_own_page_still_answers_at_the_root(tmp_path: pathlib.Path) -> None:
-    """The shell is mounted at the root and matches everything, so a page route stands
-    before it — and has to leave what it was standing before alone."""
     shell = tmp_path / "dist"
     shell.mkdir()
     (shell / "index.html").write_text("<!doctype html><title>cora</title>")
@@ -181,8 +167,6 @@ def test_an_edited_page_file_is_answered_as_it_now_stands(
 def test_a_served_file_asks_to_be_revalidated_before_it_is_reused(
     tmp_path: pathlib.Path,
 ) -> None:
-    """Without this the live folder is a lie one cache deep: a response carrying only a
-    modification time may be reused without asking."""
     with TestClient(api(_serving(_page(tmp_path)))) as reader:
         assert reader.get(WHERE).headers["cache-control"] == "no-cache"
         assert reader.get(f"{WHERE}app.js").headers["cache-control"] == "no-cache"
@@ -220,8 +204,6 @@ def test_the_page_of_a_plugin_taken_out_of_the_folder_is_refused(
 def test_a_field_whose_name_a_url_would_read_as_syntax_is_still_reachable(
     tmp_path: pathlib.Path,
 ) -> None:
-    """Nothing holds a field name to what a URL finds unremarkable, and the address
-    reported for a page is the one that has to answer."""
     odd = "strength & conditioning#2"
 
     def extend(cora: Host) -> None:

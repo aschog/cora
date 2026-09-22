@@ -55,6 +55,11 @@ export function useNotices({ pages, sessions, here }: Props) {
     let stopped = false
 
     const ask = async () => {
+      /* A tab nobody is looking at has no screen for a field to take, and the one thing
+         this does with an arrival is put a conversation on that screen. The poll picks
+         up where it left off when the reader comes back, and the baseline each field
+         already has is what keeps the catch-up from dragging them somewhere. */
+      if (document.visibilityState === 'hidden') return
       for (const field of fields) {
         const held = await cora.notice(field).catch(() => null)
         if (stopped) return

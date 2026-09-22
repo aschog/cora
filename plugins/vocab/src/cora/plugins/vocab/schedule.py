@@ -7,10 +7,10 @@ it had written itself would need a file the reader cannot see to be deleted by h
 """
 
 import datetime
-import json
 from dataclasses import dataclass, field
 from typing import Any
 
+from cora.plugins.vocab.kept import as_text, read_object
 from cora.plugins.vocab.sm2 import Card
 
 DUE = "due"
@@ -28,18 +28,12 @@ class Schedule:
     @classmethod
     def of(cls, written: str | None) -> "Schedule":
         """The schedule this text holds, or an empty one where it holds none."""
-        try:
-            read = json.loads(written or "{}")
-            return cls({word: _card(each) for word, each in read.items()})
-        except (ValueError, AttributeError, TypeError):
-            return cls()
+        read = read_object(written)
+        return cls({word: _card(each) for word, each in read.items()})
 
     def written(self) -> str:
         """This schedule as the text to keep."""
-        return json.dumps(
-            {word: _written(card) for word, card in self.cards.items()},
-            sort_keys=True,
-        )
+        return as_text({word: _written(card) for word, card in self.cards.items()})
 
     def card(self, word: str) -> Card:
         """Where this word stands, or a fresh card for one never drilled."""

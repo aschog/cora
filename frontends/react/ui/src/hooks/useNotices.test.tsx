@@ -163,3 +163,17 @@ test('a poll torn down partway through asks no further field', async () => {
 
   expect(asked()).toEqual([`/api/scopes/${FITNESS}/notice`])
 })
+
+/* A tab nobody is looking at has no screen to take, and a phone in a pocket polling
+   every five seconds forever is a cost with nothing on the other side of it. */
+test('a hidden tab is not polled', async () => {
+  const hidden = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
+  render(<Watches pages={[FITNESS]} sessions={[NEWER]} here="" />)
+  const before = asked().length
+
+  await polled()
+  await polled()
+
+  expect(asked().length).toBe(before)
+  hidden.mockRestore()
+})

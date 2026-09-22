@@ -90,8 +90,6 @@ def test_a_part_is_cut_at_a_word_where_the_answer_has_no_lines() -> None:
 
 
 def test_an_answer_with_nowhere_to_cut_is_still_cut() -> None:
-    """A base64 blob or a very long URL: without the last fallback the loop never
-    shortens the text and the bot stops answering anybody."""
     written = "x" * 9000
     telegram = FakeTelegram(Message(ALLOWED, "Tell me everything"))
 
@@ -102,8 +100,6 @@ def test_an_answer_with_nowhere_to_cut_is_still_cut() -> None:
 
 
 def test_the_ceiling_counts_what_telegram_counts() -> None:
-    """An emoji is one character and two of the units the API measures, so a message
-    of 3000 of them is over a ceiling that `len` would call comfortable."""
     written = "\U0001f600" * 3000
     telegram = FakeTelegram(Message(ALLOWED, "Tell me everything"))
 
@@ -115,8 +111,6 @@ def test_the_ceiling_counts_what_telegram_counts() -> None:
 
 
 def test_an_answer_that_opens_with_a_line_break_sends_no_blank_part() -> None:
-    """The cut would otherwise fall at the very front, and a message of nothing but a
-    newline is one the API refuses."""
     written = "\n" + "word " * 2000
     telegram = FakeTelegram(Message(ALLOWED, "Tell me everything"))
 

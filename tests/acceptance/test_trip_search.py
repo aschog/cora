@@ -1,10 +1,3 @@
-"""The outer test for the priced trip search.
-
-The whole path the plugin really ships: a window nobody fixed, one call per candidate
-departure, and a stay priced for the week that won. The network is the one thing
-stubbed, which is the boundary a stub is for.
-"""
-
 from typing import Any
 
 import pytest
@@ -79,9 +72,6 @@ def _properties() -> dict[str, Any]:
 
 
 class Answer:
-    """One reply, its own object — several departures are in flight at once, and a
-    shared body would have them reading each other's."""
-
     def __init__(self, body: dict[str, Any]) -> None:
         self._body = body
 
@@ -93,9 +83,6 @@ class Answer:
 
 
 class Service:
-    """The search service, written out. It answers by engine, and keeps every query it
-    was sent so the test can say what was actually asked of it."""
-
     def __init__(self) -> None:
         self.queries: list[dict[str, Any]] = []
 
@@ -108,8 +95,6 @@ class Service:
 
 @pytest.fixture
 def service(monkeypatch: pytest.MonkeyPatch) -> Service:
-    """Stubbed where the client is built, which is the one place the network is
-    reached. The plugin, its registration and the whole turn are the real ones."""
     written = Service()
     monkeypatch.setattr(
         "cora.plugins.travel.trips._client", lambda: written, raising=True
@@ -120,9 +105,6 @@ def service(monkeypatch: pytest.MonkeyPatch) -> Service:
 def test_a_week_nobody_fixed_comes_back_priced_and_within_the_budget(
     service: Service,
 ) -> None:
-    """The criterion: a month range and a length rather than two dates, three flights
-    and three stays priced against it, and the budget carried into the search itself
-    rather than applied to what came back."""
     from cora.plugins.travel.trips import FLIGHTS_TOOL_NAME, HOTELS_TOOL_NAME
 
     model = ScriptedChatModel(
@@ -179,8 +161,6 @@ def test_a_week_nobody_fixed_comes_back_priced_and_within_the_budget(
 
 
 def test_the_key_reaches_the_service_and_nothing_else(service: Service) -> None:
-    """A credential is the deployment's, not the conversation's: it goes out on the
-    query and appears in neither what the model is given nor what the trace records."""
     from cora.plugins.travel.trips import FLIGHTS_TOOL_NAME
 
     model = ScriptedChatModel(

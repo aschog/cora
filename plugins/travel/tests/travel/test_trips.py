@@ -28,9 +28,6 @@ STAY = {"destination": "Lisbon", "check_in": "2026-09-08", "check_out": "2026-09
 
 
 class Answer:
-    """One reply, its own object — so several departures in flight at once do not read
-    each other's body."""
-
     def __init__(self, body: Any, status: int = 200) -> None:
         self._body = body
         self._status = status
@@ -52,9 +49,6 @@ class Answer:
 
 
 class Service:
-    """The search service, written out: it keeps every query and answers by a rule the
-    test hands it."""
-
     def __init__(self, reply: Any) -> None:
         self._reply = reply
         self.queries: list[dict[str, Any]] = []
@@ -109,8 +103,6 @@ def test_a_route_and_two_fixed_dates_come_back_as_the_service_priced_them() -> N
 
 
 def test_only_the_cheapest_three_fares_come_back_and_in_that_order() -> None:
-    """Three is what a person compares; the order is what makes the first one mean
-    something."""
     search, _ = searching(flights(510, 240, 800, 310, 190))
 
     found = search.flights(**ROUTE, **WEEK)
@@ -141,8 +133,6 @@ def test_a_window_is_tried_one_departure_at_a_time() -> None:
 
 
 def test_a_sampling_too_close_to_afford_is_widened_rather_than_cut_short() -> None:
-    """The range keeps its ends; what gives is how finely it is sampled, and the answer
-    says how many departures were actually tried."""
     search, service = searching(flights(400))
 
     found = search.flights(
@@ -164,8 +154,6 @@ def test_a_sampling_too_close_to_afford_is_widened_rather_than_cut_short() -> No
 def test_every_searchable_field_reaches_the_schema_and_the_query_from_one_table(
     fields: tuple, given: dict[str, Any]
 ) -> None:
-    """Said once and read twice, so a field somebody wants later is a row rather than
-    an edit in two places that drift."""
     schema = _schema(fields)
     # Three letters because a route's ends are codes and the rest take any string.
     asked = {field.name: 3 if field.type == "integer" else "XXX" for field in fields}
@@ -191,9 +179,6 @@ def test_a_service_that_cannot_be_reached_is_one_sentence() -> None:
 
 
 def test_a_search_the_service_would_not_run_says_so_rather_than_unreachable() -> None:
-    """The engine says no by status *and* by message — a 400 quoting the parameter it
-    could not read. Read as unreachable it sends the reader looking at their network for
-    a search that arrived and was refused."""
     search, service = searching(
         ({"error": "`arrival_id` should be an uppercase 3-letter code"}, 400)
     )
@@ -206,8 +191,6 @@ def test_a_search_the_service_would_not_run_says_so_rather_than_unreachable() ->
 
 
 def test_a_city_name_where_the_engine_wants_a_code_is_refused_first() -> None:
-    """The engine takes IATA and nothing else, so a name is a refusal the model can act
-    on rather than a 400 the reader has to interpret."""
     search, service = searching(flights(300.0))
 
     with pytest.raises(ToolRefusal) as refused:
@@ -227,8 +210,6 @@ def test_a_lowercase_code_is_sent_as_the_engine_spells_it() -> None:
 
 
 def test_the_key_is_kept_out_of_the_clients_own_request_log() -> None:
-    """httpx logs the whole URL at INFO, and the key rides in the query string — so it
-    would reach the operator's console the moment a deployment turns logging up."""
     logged = logging.LogRecord(
         "httpx",
         logging.INFO,
@@ -257,8 +238,6 @@ def _asks(arguments: dict[str, Any]) -> Any:
 
 
 def test_a_search_told_no_route_asks_for_the_trip_on_its_own_schema() -> None:
-    """The fields the reader fills are the fields the service is sent, so the card and
-    the search cannot drift."""
     card = _asks({})
 
     assert card is not None

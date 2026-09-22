@@ -1,16 +1,3 @@
-"""Every committed drawing, against the source it was drawn from.
-
-By what it contains, never by its bytes. A generated SVG is graphviz's layout, and two
-graphviz builds put the same graph at different coordinates and write different
-attributes — a byte comparison passes on the machine that drew it and fails on every
-other, which is a guard about the developer rather than about the drawing.
-
-So: a class the domain declares is a class the map draws, an interface the composition
-root binds is one the map labels, and the steps the walk names are the ones the
-sequences show, in that order. What a redraw moves — where a box sits — is exactly what
-these do not read.
-"""
-
 import ast
 import pathlib
 import xml.etree.ElementTree as ET
@@ -44,20 +31,12 @@ def _titles_of(path: pathlib.Path, kind: str) -> set[str]:
 
 
 def test_the_component_map_labels_every_interface_the_root_binds() -> None:
-    """An interface is a ball and socket rather than a box, so what names it is the text
-    beside the connector — and a slot the wiring gained and the drawing did not is the
-    map claiming cora has one fewer way to be swapped than it has.
-    """
     bound = {binding.port for binding in components.bindings()}
 
     assert _text_of(components.MAP, "port") == bound
 
 
 def test_the_component_map_draws_every_frontend_the_workspace_ships() -> None:
-    """The map is the answer to "what is cora made of", and a frontend that ships and
-    is not on it makes the drawing say there is one fewer way in than there is. Read
-    off the manifests rather than a list here, so the next frontend is covered by
-    shipping."""
     shipped = {module.rsplit(".", 1)[-1] for _, module in workspace.frontends()}
 
     assert shipped <= _text_of(components.MAP, "name")
@@ -76,9 +55,6 @@ def test_the_domain_map_draws_every_class_the_domain_declares() -> None:
 
 
 def test_the_session_maps_show_the_walk_the_composition_root_names() -> None:
-    """The drawing is read for the steps it says a turn takes, and their order:
-    screened, then the rounds inside the working step, then answered.
-    """
     walk = sequences.walked()
     said = [
         line.receiver

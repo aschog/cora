@@ -36,10 +36,6 @@ def test_the_index_round_trips_with_our_own_embeddings(
 def test_a_score_reads_nearest_first(
     index: SqliteVecRetriever, make_chunk: Callable[..., Chunk]
 ) -> None:
-    """One subtraction from a cosine distance is the cosine similarity itself, which is
-    the score the port describes: higher is closer, and the merge across two fields
-    sorts on it. The range is minus one to one, so nothing may read an absolute value
-    as a threshold."""
     embedder = FakeEmbedder()
     chunks = [make_chunk("alpha", index=0), make_chunk("something else", index=1)]
     index.add(
@@ -69,8 +65,6 @@ def test_a_retrieved_passage_carries_its_span_and_no_text(
 def test_a_field_is_a_partition_of_its_own(
     index: SqliteVecRetriever, make_chunk: Callable[..., Chunk]
 ) -> None:
-    """A field is unreachable from another rather than filtered out of it, so a leak is
-    not one missing clause away."""
     embedder = FakeEmbedder()
     index.add(
         "travel",
@@ -109,8 +103,6 @@ def test_a_forgotten_upload_comes_back_from_no_query(
 def test_forgetting_one_upload_leaves_the_other_uploads_of_its_name(
     index: SqliteVecRetriever, make_chunk: Callable[..., Chunk]
 ) -> None:
-    """The bytes name an upload, so one filename twice is two of them: forgetting the
-    first must not take the second, whose passages are measured in its own text."""
     embedder = FakeEmbedder()
     index.add(
         DEFAULT_SCOPE, [make_chunk("a", source="one.txt")], embedder.embed(["a"]), "h1"
@@ -141,8 +133,6 @@ def test_what_was_added_is_read_back_by_a_fresh_adapter_on_the_same_file(
 def test_re_adding_one_upload_leaves_one_copy_of_each_passage(
     index: SqliteVecRetriever, make_chunk: Callable[..., Chunk]
 ) -> None:
-    """Ingesting the same bytes twice is the repair path, so the second write replaces
-    what the first left rather than doubling it."""
     embedder = FakeEmbedder()
     chunks = [make_chunk("a", index=0), make_chunk("b", index=1)]
     vectors = embedder.embed([c.text for c in chunks])
@@ -169,9 +159,6 @@ def test_a_store_error_surfaces_as_retrieval_error(
 def test_an_upload_that_fails_half_way_leaves_nothing_behind(
     index: SqliteVecRetriever, make_chunk: Callable[..., Chunk]
 ) -> None:
-    """The engine gates a re-upload on `contains`, so a passage written without its
-    vector is a document the rail lists, the model cannot find, and re-uploading will
-    not repair. One write, or none."""
     embedder = FakeEmbedder()
     chunks = [make_chunk("a", index=0), make_chunk("b", index=1)]
     wrong_width = [embedder.embed(["a"])[0], [0.1, 0.2, 0.3]]
@@ -187,8 +174,6 @@ def test_an_upload_that_fails_half_way_leaves_nothing_behind(
 def test_the_store_holds_its_journal_in_write_ahead_mode(
     index: SqliteVecRetriever,
 ) -> None:
-    """Four writers share this file, and the default journal takes an exclusive lock
-    that blocks readers for the length of a write."""
     [(mode,)] = index._connection.execute("pragma journal_mode")
 
     assert mode == "wal"

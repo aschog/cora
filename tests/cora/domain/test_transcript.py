@@ -35,8 +35,6 @@ def test_the_brief_leads_and_the_current_question_ends_the_prompt() -> None:
 
 
 def test_a_previous_turns_tool_traffic_stays_in_the_thread() -> None:
-    """Old tool calls and their results are the thread's record, not the next turn's
-    prompt — which is what `Turn(role, text)` meant before the thread held anything."""
     call = ToolCall(name="search_documents", arguments={"query": "x"}, call_id="c1")
     transcript = [
         Message(role="user", content="What do my notes say?"),

@@ -1,6 +1,3 @@
-"""The outer test for the story: the coach lists every workout the trainer logged by
-day and by name, gives the numbers only when asked, and shows the plan as neither."""
-
 from starlette.testclient import TestClient
 
 from app_builder import assembled

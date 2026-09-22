@@ -58,9 +58,6 @@ def test_a_passage_reads_back_from_the_upload_its_span_was_measured_in() -> None
 
 
 def test_a_citation_into_a_deleted_document_says_the_document_is_gone() -> None:
-    """An answer already given keeps its citation, and opening it says so. The same
-    sentence as an upload nothing was ever kept for: the store cannot tell the two
-    apart, because both read as nothing."""
     app = assembled()
     client = _scoped(app)
     client.post(
@@ -127,8 +124,6 @@ def test_a_conversation_store_that_cannot_be_read_reports_its_own_message() -> N
 
 
 def test_the_plugins_endpoint_carries_what_each_plugin_registered() -> None:
-    """The listing `make plugins` prints, as the menu reads it — one projection of the
-    registrations, so a terminal and the page cannot disagree."""
     app = assembled(plugin=make_plugin("birds", tools=(make_tool("count"),), scope="b"))
 
     listed = client(app).get("/api/plugins").json()
@@ -149,11 +144,6 @@ def test_the_plugins_endpoint_carries_what_each_plugin_registered() -> None:
 
 
 def test_an_upload_over_the_ceiling_is_refused_before_the_body_is_parsed() -> None:
-    """The multipart parser spools a file part to a temporary file with no ceiling of
-    its own, and `ingest` measures the document only once the whole part has been read
-    into memory — so a 2 GB part fills the temp dir and then RAM before anything says
-    no. The body here is not multipart at all: only a guard that fires before the parse
-    can answer it."""
     app = assembled()
 
     refused = client(app).post(
@@ -208,8 +198,6 @@ def test_a_document_is_deleted_by_its_name_and_leaves_the_listing() -> None:
 
 
 def test_a_document_is_read_back_by_its_name_every_upload_oldest_first() -> None:
-    """Two uploads of one name are two documents, and the name reads both — the first
-    upload first, as the rail counts them and the delete takes them."""
     app = assembled()
     client = _scoped(app)
     for data in (b"# Deadlift 14 kg\n3 sets of 10", b"# Swing 14 kg\n2 sets of 10"):
@@ -249,8 +237,6 @@ def test_reading_a_document_of_a_field_nobody_loaded_is_refused() -> None:
 
 
 def test_a_refusal_quotes_back_only_so_much_of_the_name_it_was_given() -> None:
-    """The name is the client's, so what is echoed into a refusal is capped rather than
-    reasoned about."""
     refused = _scoped(assembled()).get(f"/api/documents?scope={'z' * 5000}")
 
     assert refused.status_code == 400
@@ -258,8 +244,6 @@ def test_a_refusal_quotes_back_only_so_much_of_the_name_it_was_given() -> None:
 
 
 def test_an_upload_that_does_not_say_how_large_it_is_is_refused() -> None:
-    """A body of undeclared length cannot be bounded before it is read, and a ceiling
-    any client can step around by chunking its upload is not a ceiling."""
     app = assembled()
 
     def chunked() -> Iterator[bytes]:
@@ -279,8 +263,6 @@ def test_an_upload_that_does_not_say_how_large_it_is_is_refused() -> None:
 def test_the_plugins_endpoint_carries_a_page_among_the_contributions(
     tmp_path: pathlib.Path,
 ) -> None:
-    """A fourth kind reaches the menu on the shape the other three already use, and
-    carries no directory: what a reader needs is which field it is the page of."""
 
     def extend(cora: Host) -> None:
         cora.register_page(tmp_path, scope="b")
@@ -292,3 +274,30 @@ def test_the_plugins_endpoint_carries_a_page_among_the_contributions(
     assert listed["contributions"] == [
         {"kind": "page", "name": "", "scope": "b", "note": ""}
     ]
+
+
+def test_a_pin_that_cannot_be_read_costs_its_row_and_not_the_listing() -> None:
+    # The pin is which field a conversation belongs to, read off its checkpoint. The
+    # listing is how a reader reaches any conversation at all, so one checkpoint that
+    # will not open must not take the rail down with it.
+    conversations = FakeConversations()
+    conversations.record("t1", Turn(question="First?", result=ChatResult(answer="a")))
+    app = assembled(conversations=conversations)
+    broken = replace(app, agent=_NoPin(app.agent))
+
+    listed = client(broken).get("/api/sessions")
+
+    assert listed.status_code == 200
+    assert [session["thread_id"] for session in listed.json()] == ["t1"]
+    assert listed.json()[0]["pin"] is None
+
+
+class _NoPin:
+    def __init__(self, agent: object) -> None:
+        self._agent = agent
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._agent, name)
+
+    def pinned(self, thread_id: str) -> str | None:
+        raise RuntimeError("that checkpoint will not open")

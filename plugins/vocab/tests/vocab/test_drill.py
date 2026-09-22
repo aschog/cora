@@ -32,8 +32,6 @@ LISTED = "einheit-3.md"
 
 @contextmanager
 def drilling() -> Iterator[None]:
-    """A tool call of this plugin's, in the vocab field: the two bindings every one of
-    its tools reads — what it keeps for the conversation, and whose files these are."""
     with keeping.bound({}), running_in(frozenset({SCOPE})):
         yield
 
@@ -64,9 +62,6 @@ def _drill(
 
 
 def test_only_this_fields_files_are_drilled() -> None:
-    """Files belong to the field rather than to the plugin, so a list kept in another
-    field is not vocabulary this one may put to the reader — even where one plugin
-    brought both."""
     store = FakeStore()
     host = host_for(
         MODULE,
@@ -109,8 +104,6 @@ def test_the_other_way_round_puts_the_other_side() -> None:
 
 
 def test_a_word_put_says_which_list_and_which_side_it_came_from() -> None:
-    """The model has to tell the reader what it is asking for, and a table says what
-    its two columns are called."""
     tools, _ = _drill(held=ONE)
 
     with drilling():
@@ -121,8 +114,6 @@ def test_a_word_put_says_which_list_and_which_side_it_came_from() -> None:
 
 
 def test_a_list_read_out_of_a_screenshot_is_drilled_like_any_other() -> None:
-    """The regression this was found by: a list the reading saved is lines rather than
-    a table, and the drill said the field held no lists at all."""
     tools, _ = _drill(held=ONE_READ, german="right")
 
     with drilling():
@@ -147,8 +138,6 @@ def test_a_word_that_is_due_is_preferred_to_one_that_is_not() -> None:
 
 
 def test_a_word_already_missed_is_put_before_a_word_never_drilled() -> None:
-    """What a session is for is the words that did not stick. New ones fill it up
-    afterwards."""
     kept = Schedule().with_card("Haus|house", Card(due=TODAY, interval=0, right=0))
     tools, _ = _drill(kept=kept.written())
 
@@ -197,8 +186,6 @@ def test_a_missed_word_is_the_word_put_next() -> None:
 
 
 def test_the_answer_is_taken_for_the_word_that_was_put_either_side() -> None:
-    """The model reports the word it put, and a model reporting the answer instead is
-    talking about the same card."""
     tools, store = _drill(held=ONE)
 
     with drilling():
@@ -209,8 +196,6 @@ def test_the_answer_is_taken_for_the_word_that_was_put_either_side() -> None:
 
 
 def test_saying_how_a_word_nobody_asked_about_went_is_refused() -> None:
-    """The schedule moves on what the reader answered, and the model is what reports
-    that — so a word it names that nothing asked is refused rather than written."""
     tools, store = _drill()
 
     with drilling(), raises(ToolRefusal):
@@ -229,8 +214,6 @@ def test_a_field_holding_no_list_says_so() -> None:
 def test_a_spaced_drill_with_no_store_says_so_rather_than_drilling_into_nothing() -> (
     None
 ):
-    """Only spacing needs a store: a pass is the conversation's own, so a deployment
-    that keeps nothing can still drill — it just cannot remember it tomorrow."""
     host = host_for(
         MODULE,
         files=FakeFiles({(SCOPE, LISTED): LIST}),

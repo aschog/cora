@@ -20,7 +20,7 @@ from .sides import LEFT as GERMAN_LEFT
 from .sides import other, sides_in
 from .sides import written as sides_written
 from .sm2 import due, reviewed
-from .words import Pair, pairs_of
+from .words import Pair, pairs_of, sources_of
 
 SCHEDULE = "schedule"
 SIDES = "sides"
@@ -86,7 +86,6 @@ class Pass:
     queue: list[Pair] = field(default_factory=list)
     table: Pair | None = None
     shown: str = ""
-    loaded: bool = False
     # Whether the model was asked while this word stood. What it gave was a hint, and a
     # right answer after a hint counts as missed.
     helped: bool = False
@@ -96,7 +95,6 @@ class Pass:
         self.of = of
         self.queue = list(pairs)
         random.shuffle(self.queue)
-        self.loaded = True
         self.table = None
         self.shown = ""
         self.helped = False
@@ -126,7 +124,7 @@ class Drill:
         pairs = self._chosen(pairs, from_list)
         self._refuse_unsided(pairs)
         chosen = self.cora.state.read(CHOSEN) or EVERY
-        if again or fresh or not self.current.loaded or self.current.of != chosen:
+        if again or fresh or self.current.of != chosen:
             self.current.reload(pairs, chosen)
         if self._spacing(spaced):
             asking = self._due(pairs)
@@ -151,6 +149,12 @@ class Drill:
         A question passed on while a word stands marks the word helped, and the right
         answer that follows a hint counts as missed.
         """
+        # The pass is the process's and the conversation is not, so a conversation that
+        # has chosen nothing yet is not the one this word was put to. Without this its
+        # first message is read as an answer, and the drill that is running moves on by
+        # a word nobody produced. `next_word` reads the same key for the same reason.
+        if self.cora.state.read(CHOSEN) is None:
+            return None
         asking, shown = self.current.table, self.current.shown
         if asking is None or not shown or not self.current.queue:
             return None
@@ -254,7 +258,7 @@ class Drill:
     def _refuse_unsided(self, pairs: tuple[Pair, ...]) -> None:
         # One list at a time: the model has to look at each one's words to say which
         # column they are, and a refusal carrying five lists carries none of them well.
-        for named in _sources(pairs):
+        for named in sources_of(pairs):
             if self._german(named, pairs):
                 continue
             sample = [pair for pair in pairs if pair.source == named][:SAMPLED]
@@ -285,7 +289,7 @@ class Drill:
     def german_side(self, name: str, side: str) -> str:
         """Say which column of a list holds the German, for good."""
         pairs = pairs_of(self.cora)
-        held = _sources(pairs)
+        held = sources_of(pairs)
         if name not in held:
             raise ToolRefusal(NO_SUCH_LIST.format(name=name, held=", ".join(held)))
         kept = self._kept()
@@ -297,7 +301,7 @@ class Drill:
         # Settled three ways: named in this call, chosen earlier in the conversation,
         # or the only list there is. A refusal names the lists, because the reader is
         # about to be offered them.
-        held = _sources(pairs)
+        held = sources_of(pairs)
         chosen = asked.strip() or self.cora.state.read(CHOSEN) or ""
         if not chosen:
             if len(held) > 1:
@@ -353,10 +357,6 @@ def _spoken(pairs: tuple[Pair, ...]) -> frozenset[str]:
     return frozenset(
         side.casefold() for pair in pairs for side in (pair.left, pair.right)
     )
-
-
-def _sources(pairs: tuple[Pair, ...]) -> list[str]:
-    return list(dict.fromkeys(pair.source for pair in pairs))
 
 
 def _both(key: str) -> tuple[str, ...]:

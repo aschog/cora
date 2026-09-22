@@ -1,5 +1,3 @@
-"""A plugin that registers all three kinds of contribution, for the outer test."""
-
 from cora.ports.host import SCREENING, Host
 
 INSTRUCTIONS = "You are the registering test plugin. Echo what the user asks you to."

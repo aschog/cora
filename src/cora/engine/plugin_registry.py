@@ -122,17 +122,13 @@ def load_file(path: pathlib.Path) -> Extension:
     return _extension(module, name=name, source=source)
 
 
+# CPython validates a `.pyc` by whole-second mtime and size, so a plugin edited in the
+# same second as its last load — same length, different code — would run the stale
+# bytecode the cache kept. Statting is refused, which makes the loader skip the cache
+# both ways: nothing is read from one, nothing is written into one. A package's
+# *members* still import through Python's own finder and keep its caching, so a
+# same-second same-size edit to one of those waits for the next second.
 class _FreshSource(importlib.machinery.SourceFileLoader):
-    """A loader that always compiles the source it was pointed at.
-
-    CPython validates a `.pyc` by whole-second mtime and size, so a plugin edited in
-    the same second as its last load — same length, different code — would run the
-    stale bytecode the cache kept. Statting is refused, which makes the loader skip
-    the cache both ways: nothing is read from one, nothing is written into one. A
-    package's *members* still import through Python's own finder and keep its caching,
-    so a same-second same-size edit to one of those waits for the next second.
-    """
-
     def path_stats(self, path: str) -> dict[str, float]:
         raise OSError("a dropped plugin is not bytecode-cached")
 

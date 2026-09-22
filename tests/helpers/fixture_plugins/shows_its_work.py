@@ -1,5 +1,3 @@
-"""A plugin whose tool does work of its own and says what it did."""
-
 from cora.ports.host import Host
 
 TOOL = "count_wrens"

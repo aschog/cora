@@ -40,8 +40,6 @@ def _app() -> App:
 
 
 def test_an_allowed_chat_asks_about_a_document_and_the_answer_arrives_there() -> None:
-    """The story: someone away from the machine asks their documents a question, and
-    the answer comes back in the chat they asked it in, saying what it rests on."""
     telegram = FakeTelegram(Message(chat=CHAT, text=QUESTION))
 
     answering(_app(), telegram, allowed=(CHAT,))

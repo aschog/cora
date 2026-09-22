@@ -18,10 +18,6 @@ def test_the_tool_stores_the_fact_the_model_passed() -> None:
 
 
 def test_a_store_that_cannot_be_written_refuses_rather_than_ending_the_turn() -> None:
-    """`ToolRuntime` lets an `AdapterError` past on purpose — infrastructure failure is
-    not tool output. But failing to file a note is not worth the user's answer: the tool
-    refuses, which the runtime quotes back, and the model can say the note did not
-    stick and answer anyway."""
     runtime = ToolRuntime(tools=(remember_tool(FailingMemory(MemoryStoreError())),))
 
     result = runtime.execute(
@@ -33,9 +29,6 @@ def test_a_store_that_cannot_be_written_refuses_rather_than_ending_the_turn() ->
 
 
 def test_a_fact_longer_than_the_bound_is_refused() -> None:
-    """Memory is the one prompt-visible thing with no cap of its own: history is
-    trimmed by turns and a turn by rounds, so without this a single fact could grow
-    the opening of every future prompt without limit."""
     memory = FakeMemory()
     runtime = ToolRuntime(tools=(remember_tool(memory),))
 
@@ -52,8 +45,6 @@ def test_a_fact_longer_than_the_bound_is_refused() -> None:
 
 
 def test_a_fact_already_known_is_not_kept_twice() -> None:
-    """Told the same thing in three sessions, the brief would open with it three
-    times."""
     memory = FakeMemory(("trains on Tuesdays",))
     tool = remember_tool(memory)
 
@@ -63,8 +54,6 @@ def test_a_fact_already_known_is_not_kept_twice() -> None:
 
 
 def test_an_empty_fact_is_refused() -> None:
-    """The schema bounds a fact's length but not its emptiness, so this rule is the
-    only thing standing between a blank note and a blank row in the sidebar."""
     memory = FakeMemory()
     tool = remember_tool(memory)
 

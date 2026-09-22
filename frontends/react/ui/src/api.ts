@@ -181,9 +181,6 @@ export const keepFieldFile = (scope: string, name: string, text: string) =>
     },
   )
 
-export const deleteFieldFile = (scope: string, name: string) =>
-  discard(`/api/scopes/${encodeURIComponent(scope)}/files/${encodeURIComponent(name)}`)
-
 /** Delete one document from one field: its passages out of the index, and the file its
  *  citations opened onto. The name is what the field lists, and one name may be several
  *  uploads — all of them go, because the one entry is what the reader deleted. */

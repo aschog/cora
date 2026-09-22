@@ -1,5 +1,3 @@
-"""The outer test for deleting a conversation, over the surface the page reads."""
-
 import pathlib
 from functools import partial
 
@@ -60,8 +58,6 @@ def test_a_conversation_i_delete_is_gone_from_both_stores(
 def test_a_thread_is_picked_up_out_of_the_file_by_a_second_composition(
     tmp_path: pathlib.Path,
 ) -> None:
-    """A checkpoint is state the file holds, not the process: the pin a turn was
-    answered under is read back by an app that never saw that turn."""
     store = tmp_path / "cora.sqlite"
     with TestClient(api(_app(store))) as page:
         asked = {"question": FIRST, "thread_id": KEPT, "pin": FITNESS}

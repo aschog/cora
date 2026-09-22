@@ -1,6 +1,3 @@
-"""The outer test for the story: the coach's summary says what it is — workouts first,
-an untitled save marked, and a last line saying what else is on file."""
-
 from starlette.testclient import TestClient
 
 from app_builder import assembled

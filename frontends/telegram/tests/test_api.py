@@ -189,8 +189,6 @@ def test_only_the_updates_the_bot_answers_are_asked_for() -> None:
 
 
 def test_a_reply_whose_connection_drops_does_not_end_the_bot() -> None:
-    """The poll has a net for a dropped connection and the reply had none — one Wi-Fi
-    hop between the poll and the answer took the whole bot down."""
 
     def dropped(request: httpx.Request) -> httpx.Response:
         raise httpx.RemoteProtocolError("Server disconnected without a response.")
@@ -222,8 +220,6 @@ def test_a_rate_that_outlasts_one_wait_is_waited_out_again(
 def test_a_rate_that_outlasts_every_wait_still_does_not_end_the_bot(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The poll is the one call no rate may end: every wait spent and still refused, it
-    is waited out once more and asked again, not raised at the loop."""
     waited: list[float] = []
     monkeypatch.setattr("cora.frontends.telegram.api.time.sleep", waited.append)
     polls = itertools.count(1)
@@ -244,7 +240,6 @@ def test_a_rate_that_outlasts_every_wait_still_does_not_end_the_bot(
 def test_a_wait_longer_than_the_ceiling_is_capped(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A flood wait of an hour would park the bot for an hour without a word."""
     waited: list[float] = []
     monkeypatch.setattr("cora.frontends.telegram.api.time.sleep", waited.append)
     calls: list[httpx.Request] = []
@@ -265,8 +260,6 @@ def test_a_wait_longer_than_the_ceiling_is_capped(
 def test_a_wait_asked_for_in_something_other_than_json_is_still_waited(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """A 429 from something between here and Telegram is a page, not a body with a
-    number in it, and reading it as one crashed before the wait."""
     waited: list[float] = []
     monkeypatch.setattr("cora.frontends.telegram.api.time.sleep", waited.append)
     calls: list[httpx.Request] = []

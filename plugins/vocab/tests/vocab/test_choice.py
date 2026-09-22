@@ -1,9 +1,3 @@
-"""Which list a drill runs over, and how the reader comes to have chosen it.
-
-The refusal is the mechanism: a model cannot skip a card it is told about in prose,
-but it cannot get a word out of a tool that will not give one.
-"""
-
 from collections.abc import Iterator
 from contextlib import contextmanager
 

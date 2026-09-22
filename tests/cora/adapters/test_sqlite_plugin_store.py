@@ -13,7 +13,6 @@ def path(tmp_path: pathlib.Path) -> str:
 
 
 def test_what_was_kept_survives_a_new_adapter_over_the_same_file(path: str) -> None:
-    """The restart in miniature: what "outlives the process" means."""
     SqlitePluginStore.at(path).keep("vocab", "schedule", "help due 2026-09-26")
 
     assert SqlitePluginStore.at(path).read("vocab", "schedule") == "help due 2026-09-26"
@@ -48,8 +47,6 @@ def test_dropping_a_name_nothing_was_kept_under_is_no_failure(path: str) -> None
 def test_a_store_that_cannot_be_reached_fails_rather_than_losing_the_write(
     path: str,
 ) -> None:
-    """A write that silently went nowhere reads back as never having been made, which
-    is the one answer a plugin cannot tell from an empty store."""
     store = SqlitePluginStore.at(path)
     store.close()
 

@@ -1,11 +1,3 @@
-"""`make watch` as a build, not a recipe.
-
-The one thing the watch app cannot read at runtime is where its cora is: a watch has no
-settings screen to type an address into, so the build writes it. What it produces is
-checked here against a `zeus` of the test's own — the real one wants a network, a Zepp
-account and a phone, none of which a suite has.
-"""
-
 import pathlib
 import subprocess
 from collections.abc import Iterator
@@ -44,8 +36,6 @@ def _make(
 
 @pytest.fixture
 def config() -> Iterator[pathlib.Path]:
-    """The build writes over whatever is there, and the file is the developer's own —
-    gitignored, machine-specific — so what was there is put back."""
     held = CONFIG.read_text() if CONFIG.is_file() else None
     yield CONFIG
     if held is None:
@@ -86,9 +76,6 @@ def test_the_address_and_the_field_are_overridable(
 def test_a_build_without_the_zepp_tooling_stops_and_names_what_installs_it(
     tmp_path: pathlib.Path, config: pathlib.Path
 ) -> None:
-    """Nothing else on this machine wants `zeus`, so a developer meeting this target for
-    the first time meets it without one — and a build that only says "not found" leaves
-    them searching for a package name."""
     built = _make(tmp_path, zeus=False)
 
     assert built.returncode != 0

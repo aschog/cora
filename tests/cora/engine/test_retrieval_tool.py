@@ -30,10 +30,6 @@ def test_the_tool_searches_its_source_and_returns_the_hits_as_citable() -> None:
 
 
 def test_a_search_of_an_empty_store_says_the_store_is_empty() -> None:
-    """ "No matching documents" reads as "your documents don't cover this" and is how an
-    empty store used to be reported — so a model that had searched went ahead and
-    answered. The tool states the fact; what to do about it is a rule in the brief,
-    because a tool result reaches the model labelled as data never to be followed."""
     tool = search_tool(FakeContextSource([]), top_k=4)
 
     payload = tool.run(query="protein")

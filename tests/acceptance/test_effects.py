@@ -1,5 +1,3 @@
-"""The outer test for story 11."""
-
 import datetime
 import pathlib
 from typing import Any
@@ -121,8 +119,6 @@ def _of(body: str, name: str) -> list[dict]:
 
 
 def test_an_effect_happens_only_after_i_approve_it(tmp_path: pathlib.Path) -> None:
-    """The criterion: cora says what it is about to do, nothing outside it changes while
-    the turn waits, and the approval is on the trace beside the call it authorised."""
     output = tmp_path / "output"
     model = _plans_then_saves(ANSWER)
     with TestClient(api(_app(model, output))) as reader:
@@ -159,9 +155,6 @@ def test_an_effect_happens_only_after_i_approve_it(tmp_path: pathlib.Path) -> No
 def test_a_plugin_that_takes_part_everywhere_it_may_cannot_switch_the_gate_off(
     tmp_path: pathlib.Path,
 ) -> None:
-    """The gate is a step of the core, not a point a plugin subscribes to: a plugin can
-    refuse a call or amend a result, and there is nothing it can return that lets one
-    through unasked — because nothing a handler returns can pause a turn either."""
     everywhere = Extension(module="fixture_plugins.everywhere", extend=_taking_part)
     model = _plans_then_saves(ANSWER)
     app = assembled(

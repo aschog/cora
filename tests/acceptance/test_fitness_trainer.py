@@ -1,6 +1,3 @@
-"""The outer test for the story: the fitness field brings a trainer, what it finishes
-lands in that field as a document, and cora answers about it from there."""
-
 import datetime
 
 from starlette.testclient import TestClient

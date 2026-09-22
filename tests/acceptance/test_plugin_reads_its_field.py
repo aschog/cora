@@ -1,6 +1,3 @@
-"""The outer test for the story: a plugin's tool is handed every document its field
-holds, by name and by text, and nothing of another field's."""
-
 from typing import Any
 
 from app_builder import assembled, indexed

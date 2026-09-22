@@ -8,7 +8,7 @@ Kept in the plugin's own store rather than for the conversation, because a list 
 photographed once and drilled for months: asked once, and never again for that list.
 """
 
-import json
+from cora.plugins.vocab.kept import as_text, read_object
 
 LEFT = "left"
 RIGHT = "right"
@@ -17,21 +17,18 @@ RIGHT = "right"
 def sides_in(written: str | None) -> dict[str, str]:
     """Which side is German, per list, or nothing where nobody has said.
 
-    Unreadable text reads as nothing said: what is lost is an answer the model can give
-    again, and refusing would strand every list behind a file nobody can see.
+    A side that is neither is left out: what is kept here answers a question with two
+    answers, and a third is not one of them.
     """
-    try:
-        read = json.loads(written or "{}")
-        return {
-            str(name): str(side) for name, side in read.items() if side in (LEFT, RIGHT)
-        }
-    except (ValueError, AttributeError, TypeError):
-        return {}
+    read = read_object(written)
+    return {
+        str(name): str(side) for name, side in read.items() if side in (LEFT, RIGHT)
+    }
 
 
 def written(sides: dict[str, str]) -> str:
     """These, as the text to keep."""
-    return json.dumps(sides, sort_keys=True)
+    return as_text(dict(sides))
 
 
 def other(side: str) -> str:

@@ -1,5 +1,3 @@
-"""The grammar the trainer writes, read back as movements with their numbers."""
-
 from datetime import date
 from typing import Any
 
@@ -7,6 +5,7 @@ import pytest
 
 from cora.engine.nesting import collecting
 from cora.plugins.fitness.workouts import (
+    MOST_DETAILED,
     Load,
     LogError,
     Session,
@@ -59,11 +58,14 @@ def test_a_timed_line_reads_as_one_set_of_left_plus_right_reps() -> None:
     assert snatch.sets == (160,)
 
 
-def test_a_line_that_is_neither_heading_nor_sets_is_a_note_on_the_movement() -> None:
+def test_a_line_that_is_neither_heading_nor_sets_is_passed_over() -> None:
+    # The watch writes a heart rate under a movement and a lifter writes how it felt.
+    # Neither is sets, and reading one as sets would put numbers in the log that nobody
+    # lifted. It stays in the document, which is where a reader opens it.
     [swing] = _parsed("# Swing 32 kg\n10x10\n♥ 142 avg · 171 max · 41 min\n").movements
 
     assert swing.sets == ()
-    assert swing.notes == ("10x10", "♥ 142 avg · 171 max · 41 min")
+    assert swing.reps == 0
 
 
 @pytest.mark.parametrize(
@@ -162,16 +164,12 @@ def test_unasked_for_detail_a_save_names_each_exercise_worked_once() -> None:
 
 
 def test_a_save_named_for_its_moment_and_its_workout_is_that_days_session() -> None:
-    """The name carries the day, the time and then the workout, so a day's saves still
-    sort by their moment and the rail says which workout each was."""
     listed = _listing((f"2026-09-18-16-20-05-{SNATCH_WORKOUT}.md", TITLED))
 
     assert listed.splitlines()[0].startswith("2026-09-18: ")
 
 
 def test_a_name_carrying_more_than_a_moment_is_not_a_day_on_its_own() -> None:
-    """The free part follows a whole time and nothing less: a document whose name merely
-    starts with a date is a document, not a session of that day."""
     listed = _listing(
         ("2026-09-18-notes.md", DEADLIFT), ("2026-09-18-12-27-00.md", SWING)
     )
@@ -273,6 +271,19 @@ def test_a_movement_is_marked_where_it_rose_on_the_previous_session_of_it() -> N
     assert lately.splitlines()[1].endswith(" ↑")
 
 
+def test_a_session_with_no_sets_is_not_what_the_next_one_is_judged_against() -> None:
+    days = (
+        ("2026-09-16.md", "# Deadlift 140 kg\n3 sets of 5"),
+        ("2026-09-18.md", "# Deadlift 100 kg\nfelt heavy, stopped"),
+        ("2026-09-20.md", "# Deadlift 100 kg\n3 sets of 5"),
+    )
+
+    listed = _listing(*days, detail=True)
+
+    lines = [line for line in listed.splitlines() if line.startswith("- ")]
+    assert [line.endswith(" \u2191") for line in lines] == [False, False, False]
+
+
 def test_an_exercise_and_a_day_narrow_both_views() -> None:
     days = (
         ("2026-09-16.md", SWING),
@@ -320,3 +331,16 @@ def test_a_days_saves_list_in_the_order_of_their_names_whatever_the_upload() -> 
     assert listed.splitlines()[0] == (
         "2026-09-18: untitled save: Deadlift · untitled save: Snatch"
     )
+
+
+def test_the_detailed_view_is_capped_and_says_what_it_left_out() -> None:
+    days = tuple(
+        (f"2026-{month:02d}-{day:02d}.md", "# Deadlift 100 kg\n3 sets of 5")
+        for month in (1, 2)
+        for day in range(1, 21)
+    )
+
+    listed = _listing(*days, detail=True)
+
+    assert listed.count("- Deadlift") == MOST_DETAILED
+    assert listed.endswith(f"{len(days) - MOST_DETAILED} earlier days are on file.")

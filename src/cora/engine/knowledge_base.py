@@ -148,6 +148,10 @@ class KnowledgeBase:
         empty. The names come in the order first uploaded, the uploads of one name
         together and oldest first, which is the order the index lists them in.
         """
+        # ponytail: one directory scan per document, so a field costs the square of what
+        # it holds — 75 ms at a year of daily logs, under the model round-trip it rides
+        # on. A bulk read on `Documents`, one scan for a whole field, if one ever grows
+        # past a few hundred.
         return [
             document
             for scope in sorted(here())

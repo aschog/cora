@@ -11,8 +11,6 @@ from fakes import host_for
 
 
 def test_the_instructions_state_the_domains_own_business() -> None:
-    """The persona cora carries is cora's; what this section adds is the domain, the
-    tools that must do its arithmetic, and where it stops."""
     instructions = INSTRUCTIONS.lower()
 
     assert "coach" in instructions
@@ -22,9 +20,6 @@ def test_the_instructions_state_the_domains_own_business() -> None:
 
 
 def test_the_instructions_carry_the_caution_the_screen_stopped_refusing_for() -> None:
-    """`refuse_medical` lets a named condition through to be answered, so the caution
-    that answer needs has to come from somewhere: only the model writes it, and only if
-    the domain says so."""
     instructions = INSTRUCTIONS.lower()
 
     assert "condition" in instructions
@@ -32,8 +27,6 @@ def test_the_instructions_carry_the_caution_the_screen_stopped_refusing_for() ->
 
 
 def test_the_coaching_is_scoped_and_the_medical_screen_is_not() -> None:
-    """One plugin under two lifetimes: the persona and the calculators belong to a turn
-    asking as a coach, and the medical filter holds wherever the question was asked."""
     host = host_for("cora.plugins.fitness")
 
     extend(host)
@@ -47,8 +40,6 @@ def test_the_coaching_is_scoped_and_the_medical_screen_is_not() -> None:
 
 
 def test_the_field_offers_the_log_read_back_and_it_changes_nothing() -> None:
-    """The fourth tool is the one that closes over the host: it reads the field the
-    turn runs in, so it is registered in `extend` rather than kept in `TOOLS`."""
     host = host_for("cora.plugins.fitness")
 
     extend(host)
@@ -68,8 +59,6 @@ def test_the_field_offers_the_log_read_back_and_it_changes_nothing() -> None:
 
 
 def test_the_brief_routes_the_log_to_the_listing_and_the_rest_to_search() -> None:
-    """Search ranks by wording and cuts at k, so a question about what was trained
-    goes to the tool that lists every session — and the brief is what sends it there."""
     instructions = INSTRUCTIONS.lower()
 
     assert "list_workouts" in instructions
@@ -83,7 +72,6 @@ def test_the_brief_routes_the_log_to_the_listing_and_the_rest_to_search() -> Non
 
 
 def test_the_field_is_brought_a_trainer_shipped_beside_the_module() -> None:
-    """The page is files, so where it is registered from is where the wheel puts it."""
     host = host_for("cora.plugins.fitness")
 
     extend(host)
@@ -112,10 +100,6 @@ REACHES = frozenset(
 
 
 def test_the_trainer_reaches_only_the_hosts_it_is_said_to() -> None:
-    """The page is the plugin's own code in the reader's browser, so what it may ask for
-    is a list somebody wrote down rather than a handful of names a test happens to
-    check. Every address in the file, by host, against that list — so a fifth one fails
-    here and is either named or taken out."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     reached = {
@@ -127,11 +111,6 @@ def test_the_trainer_reaches_only_the_hosts_it_is_said_to() -> None:
 
 
 def test_the_trainer_asks_for_its_plan_its_field_and_hands_the_workout_over() -> None:
-    """Five things it fetches and no sixth: the plan it trains from, the field's notice,
-    which says what the wrist is doing, the field's own log, which is the only history
-    it has, and the workout it finished — which is the one thing it sends anywhere, and
-    goes to cora. A log server of its own, a watch listener, a second place to write:
-    each would answer a problem cora answers."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     asked = re.findall(r"fetch\(\s*([A-Za-z_$][\w$]*)", drawn)
@@ -144,8 +123,6 @@ def test_the_trainer_asks_for_its_plan_its_field_and_hands_the_workout_over() ->
 
 
 def test_the_trainer_carries_nothing_between_browsers() -> None:
-    """With the log in the field there is nothing on the page to carry: the export, the
-    import and the box they were copied through go, and so does the clipboard."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     assert 'id="exp"' not in drawn
@@ -155,8 +132,6 @@ def test_the_trainer_carries_nothing_between_browsers() -> None:
 
 
 def test_the_trainer_asks_for_no_pulse_and_writes_no_heart_line() -> None:
-    """The lifter asked for a clock and not a heartbeat. Nothing writes a pulse once the
-    sensor is gone, and a heart line reading a dash is worse than no heart line."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     assert "♥" not in drawn
@@ -164,9 +139,6 @@ def test_the_trainer_asks_for_no_pulse_and_writes_no_heart_line() -> None:
 
 
 def test_the_shipped_plan_is_written_in_the_language_the_coach_answers_in() -> None:
-    """The workout becomes a document this field is searched over, and the persona
-    above answers in English — a plan named in another language is a log the coach
-    retrieves against poorly, in the one field where the reader asks about it."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     named = re.findall(r'n:"([^"]*)"', drawn)
@@ -185,9 +157,6 @@ def _widget() -> str:
 
 
 def test_the_watch_app_ships_outside_the_module_a_wheel_carries() -> None:
-    """The extension is JavaScript for a watch, built by the Zepp tooling and installed
-    by hand. Under `src` it would ride in the wheel as the page rightly does, and cora
-    would serve a build input at an address."""
     packaged = pathlib.Path(fitness.__file__).parent
 
     assert (WATCH / "app.json").is_file()
@@ -196,8 +165,6 @@ def test_the_watch_app_ships_outside_the_module_a_wheel_carries() -> None:
 
 
 def test_the_watch_writes_the_field_notice_when_its_screen_opens() -> None:
-    """onInit and nothing later: the workout app creates this page when the workout
-    starts, and that is the moment the trainer's workout has to start from."""
     drawn = _widget()
 
     opened = re.search(r"onInit\(\)\s*\{(.*?)\n  \}", drawn, re.S)
@@ -207,9 +174,6 @@ def test_the_watch_writes_the_field_notice_when_its_screen_opens() -> None:
 
 
 def test_a_second_workout_can_be_finished_from_the_wrist_too() -> None:
-    """`state` is one object for the life of the app, not one per page — so a flag left
-    true by the first workout's tap is a second workout whose control does nothing. It
-    is reset where a workout begins, which is where its screen is created."""
     drawn = _widget()
 
     opened = re.search(r"onInit\(\)\s*\{(.*?)\n  \}", drawn, re.S)
@@ -218,9 +182,6 @@ def test_a_second_workout_can_be_finished_from_the_wrist_too() -> None:
 
 
 def test_a_tap_cora_never_took_can_be_tapped_again() -> None:
-    """The one failure the lifter is standing there for: the phone could not reach cora,
-    and a control spent on a write that never landed is a workout they cannot save
-    without starting the whole thing again."""
     drawn = _widget()
 
     assert re.search(r"this\.write\(FINISHED\)\s*\.then\(", drawn)
@@ -228,9 +189,6 @@ def test_a_tap_cora_never_took_can_be_tapped_again() -> None:
 
 
 def test_the_watch_finishes_the_workout_from_a_tap_and_from_nothing_else() -> None:
-    """The end of a system workout reaches nothing, so the finish is a click. One
-    handler, on the one control — a second way in would be a second way to save a
-    workout by accident."""
     drawn = _widget()
 
     assert drawn.count("click_func") == 1
@@ -243,8 +201,6 @@ def test_the_watch_finishes_the_workout_from_a_tap_and_from_nothing_else() -> No
 
 
 def test_the_watch_writes_the_notice_and_reaches_nothing_else() -> None:
-    """One address, and it is the one the build wrote. A host spelled into the source
-    is a watch that keeps writing wherever it was built for."""
     drawn = _widget()
 
     assert re.findall(r"httpRequest\(\{[^}]*url: (\w+)", drawn) == ["NOTICE"]
@@ -253,8 +209,6 @@ def test_the_watch_writes_the_notice_and_reaches_nothing_else() -> None:
 
 
 def test_the_watch_asks_for_no_permission() -> None:
-    """The lifter wanted a clock, not a heartbeat — and a workout extension that reads
-    the pulse is one the wearer is asked to allow."""
     manifest = json.loads((WATCH / "app.json").read_text())
 
     assert manifest["permissions"] == []
@@ -262,8 +216,6 @@ def test_the_watch_asks_for_no_permission() -> None:
 
 
 def test_the_trainer_keeps_no_history_and_reads_the_fields_own() -> None:
-    """One log, the field's: the page holds the workout in flight and nothing else, and
-    what it shows of earlier ones it reads back from cora."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     assert "save('kb.hist'" not in drawn
@@ -276,9 +228,6 @@ def test_the_trainer_keeps_no_history_and_reads_the_fields_own() -> None:
 
 
 def test_the_trainer_names_a_save_for_its_moment_and_then_its_workout() -> None:
-    """One entry in the rail per save, and a day's saves in the order they happened:
-    the name carries the time behind the day, in the lifter's own clock, and the
-    workout behind the time so the rail says which one it was."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     naming = re.search(r"function moment\(\)\{(.*?)\n\}", drawn, re.S)
@@ -296,9 +245,6 @@ def test_the_trainer_names_a_save_for_its_moment_and_then_its_workout() -> None:
 def test_the_trainer_takes_the_workouts_name_off_the_sheet_and_writes_it_first() -> (
     None
 ):
-    """The tab's name is not in the CSV's cells but in the export's filename header,
-    which Google lets any origin read: the page reads it there, keeps it beside the
-    plan for a save made offline, and a save opens with it."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     assert "function workoutName(" in drawn
@@ -309,8 +255,6 @@ def test_the_trainer_takes_the_workouts_name_off_the_sheet_and_writes_it_first()
 
 
 def test_a_row_carries_its_number_and_its_name_and_no_readout() -> None:
-    """The count and the weight live in the sets panel, where they are worked; a row is
-    the exercise, and nothing beside its name."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     assert 'class="st"' not in drawn
@@ -336,8 +280,6 @@ def test_the_finish_is_named_so_and_offered_only_once_a_set_is_logged() -> None:
 
 
 def test_a_save_cora_took_says_nothing_on_the_strip() -> None:
-    """A refused save still says so, and the watch's line stays: what goes is the line
-    for a save that worked, which the History and the rail already say."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     assert "'Saved to '" not in drawn
@@ -345,8 +287,6 @@ def test_a_save_cora_took_says_nothing_on_the_strip() -> None:
 
 
 def test_the_finish_reads_where_the_workout_stands() -> None:
-    """Three faces on one control: nothing logged yet, finish, and saved — the last
-    held until a set is logged again."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     assert "No sets logged yet" in drawn
@@ -356,10 +296,6 @@ def test_the_finish_reads_where_the_workout_stands() -> None:
 
 
 def test_the_trainer_places_an_exercises_name_as_text() -> None:
-    """The plan is a published sheet read straight from the browser, so a cell is text
-    somebody else wrote. The page is served from cora's own origin and framed without a
-    sandbox, so markup in a cell that reaches `innerHTML` runs against cora's API. Every
-    interpolation of a name goes through `esc` — the file already has one."""
     drawn = (pathlib.Path(fitness.__file__).parent / "page" / "index.html").read_text()
 
     named = [

@@ -1,5 +1,3 @@
-"""In-memory fakes of the ports and stubs of the plugin contract, for the unit tier."""
-
 import hashlib
 import math
 from dataclasses import dataclass, field, replace
@@ -9,6 +7,8 @@ from cora.domain.chunk import Chunk
 from cora.domain.conversation import Session, Turn
 from cora.domain.errors import (
     ConversationStoreError,
+    FileNameRejectedError,
+    FileTooLargeToKeepError,
 )
 from cora.engine.host import PluginHost
 from cora.ports.chat_model import (
@@ -20,7 +20,7 @@ from cora.ports.chat_model import (
     unheard,
 )
 from cora.ports.context_source import ContextSource, Document
-from cora.ports.files import Files
+from cora.ports.files import MOST_BYTES, Files, plain_name
 from cora.ports.loading import Loaders
 from cora.ports.memory import Fact, Memory
 from cora.ports.output import Output
@@ -66,9 +66,6 @@ class _Record(NamedTuple):
 
 
 class FakeRetriever:
-    """One list, read a field at a time, as the real index is a collection per field.
-    The stored chunk carries no text, because the index keeps the span alone."""
-
     def __init__(self) -> None:
         self._records: list[_Record] = []
 
@@ -79,9 +76,6 @@ class FakeRetriever:
         vectors: list[list[float]],
         file_hash: str,
     ) -> None:
-        """Stamped with the upload and the field on the way in, as the real index does:
-        a hit carries the upload its offsets were measured in, and the field whose
-        directory that text is kept under."""
         self._records.extend(
             _Record(
                 vector,
@@ -138,10 +132,6 @@ def _cosine(a: list[float], b: list[float]) -> float:
 
 
 class ScriptedChatModel:
-    """`pieces` is how each reply is written, one list per reply. Left out, a reply is
-    written in one piece — a real model writes whatever it returns, so a fake that
-    returned text and wrote none of it would let a sink go untested by accident."""
-
     def __init__(
         self, replies: list[ModelReply], pieces: list[list[str]] | None = None
     ) -> None:
@@ -169,8 +159,6 @@ class ScriptedChatModel:
 
 
 class CountingRetriever(FakeRetriever):
-    """Counts searches, so a test can show that a turn never reached the store."""
-
     def __init__(self) -> None:
         super().__init__()
         self.queries = 0
@@ -183,9 +171,6 @@ class CountingRetriever(FakeRetriever):
 
 
 class FakeDocuments:
-    """The kept text, in a dict, keyed by field and upload as the real store is.
-    `writes` is what lets a test say a document was kept once, or not at all."""
-
     def __init__(self) -> None:
         self._kept: dict[tuple[str, str], str] = {}
         self.writes = 0
@@ -201,8 +186,6 @@ class FakeDocuments:
         self._kept.pop((scope, upload), None)
 
     def emptied(self, scope: str) -> None:
-        """Every file of one field gone, as a directory emptied behind cora's back.
-        Named apart from `forget`, which is the port's own verb for one upload."""
         self._kept = {key: text for key, text in self._kept.items() if key[0] != scope}
 
 
@@ -279,9 +262,6 @@ TEXT_LOADERS: Loaders = {".txt": _decode, ".md": _decode}
 
 
 class FakeConversations:
-    """Turns per thread, in the order they were recorded. `sessions` is newest first by
-    the thread that last spoke, which is the order the real store promises."""
-
     def __init__(self) -> None:
         self._recorded: dict[str, list[Turn]] = {}
         self._spoke: list[str] = []
@@ -309,8 +289,6 @@ class FakeConversations:
 
 @dataclass
 class FailingConversations:
-    """A store that went away mid-session: every write refuses."""
-
     error: Exception = field(default_factory=ConversationStoreError)
 
     def record(self, thread_id: str, turn: Turn) -> None:
@@ -328,13 +306,6 @@ class FailingConversations:
 
 @dataclass
 class FakeOutput:
-    """Where an effect wrote, without a filesystem behind it.
-
-    The name it was asked for and the text it was given, and a path answered back —
-    which is what a tool has to be able to tell the user. Confinement is the real
-    adapter's subject, so nothing here refuses anything.
-    """
-
     root: str = "/kept"
     written: dict[str, str] = field(default_factory=dict)
 
@@ -345,8 +316,6 @@ class FakeOutput:
 
 @dataclass
 class FakeStore:
-    """Every plugin's own store, in a dict keyed the way the real one is namespaced."""
-
     kept: dict[tuple[str, str], str] = field(default_factory=dict)
 
     def read(self, plugin: str, name: str) -> str | None:
@@ -358,24 +327,37 @@ class FakeStore:
             return
         self.kept[(plugin, name)] = value
 
+    def forget(self, plugin: str) -> None:
+        for held, name in list(self.kept):
+            if held == plugin:
+                del self.kept[(held, name)]
+
 
 @dataclass
 class FakeFiles:
-    """Every field's own files, in a dict keyed by field the way the real one is."""
-
     kept: dict[tuple[str, str], str] = field(default_factory=dict)
+    cap: int = MOST_BYTES
 
     def names(self, scope: str) -> tuple[str, ...]:
         return tuple(sorted(name for held, name in self.kept if held == scope))
 
     def read(self, scope: str, name: str) -> str | None:
-        return self.kept.get((scope, name))
+        return self.kept.get((_plain(scope), _plain(name)))
 
     def write(self, scope: str, name: str, text: str | None) -> None:
+        held = (_plain(scope), _plain(name))
         if text is None:
-            self.kept.pop((scope, name), None)
+            self.kept.pop(held, None)
             return
-        self.kept[(scope, name)] = text
+        if len(text.encode("utf-8")) > self.cap:
+            raise FileTooLargeToKeepError(self.cap)
+        self.kept[held] = text
+
+
+def _plain(name: str) -> str:
+    if not plain_name(name):
+        raise FileNameRejectedError(name)
+    return name
 
 
 def host_for(
@@ -389,11 +371,6 @@ def host_for(
     files: Files | None = None,
     settings: dict[str, str] | None = None,
 ) -> PluginHost:
-    """A host a test can hand a plugin, with fakes behind cora's own parts.
-
-    The real host rather than a stand-in for it: what a plugin registers, and what it
-    is refused for registering, are the host's own rules.
-    """
     return PluginHost(
         module=module,
         index=documents or FakeContextSource(),

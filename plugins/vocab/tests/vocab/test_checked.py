@@ -1,11 +1,3 @@
-"""The check on the answer: a word the drill never put never reaches the reader.
-
-Driven through the real answering step, because the bug this guards against is one of
-where the check runs — a model that stops calling the tools and writes the next word
-out of its own head. The step runs handlers outside any tool call, so the check has no
-plugin state to read, and these tests would pass over a version that relied on it.
-"""
-
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -27,8 +19,6 @@ LISTED = "unit.md"
 
 
 class Field:
-    """One vocab field, its tools, and the step that settles what the reader is told."""
-
     def __init__(self, held: str = UNIT) -> None:
         host = host_for(
             MODULE, files=FakeFiles({(SCOPE, LISTED): held}), store=FakeStore()

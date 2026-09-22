@@ -73,7 +73,7 @@ jobs:
       # A bare -m replaces the addopts selector rather than narrowing it, which is
       # what selects the tier the default run excludes.
       - name: Integration tests
-        run: uv run pytest -m integration -q
+        run: uv run pytest -m "integration and not llm" -q
 
   ui-tier:
     runs-on: ubuntu-latest

@@ -37,10 +37,9 @@ FOLLOWED = frozenset({"a"})
 NOT_FETCHED = frozenset({"xmlns"})
 
 
+# A parser, not a pattern: a hand-written one stopped reading a tag at its first
+# boolean attribute, so `<script defer src=…>` and any single-quoted value went by.
 class _Loaded(HTMLParser):
-    """A parser, not a pattern: a hand-written one stopped reading a tag at its first
-    boolean attribute, so `<script defer src=…>` and any single-quoted value went by."""
-
     def __init__(self) -> None:
         super().__init__()
         self.remote: list[str] = []
@@ -79,9 +78,6 @@ def _shown(page: str) -> set[str]:
 
 @pytest.mark.integration
 def test_every_drawing_a_page_shows_is_built_beside_it(built: pathlib.Path) -> None:
-    """The pictures are committed SVGs, so what a build can get wrong is leaving one
-    behind: a page whose drawing is a broken image reads as a page with no drawing.
-    """
     shown = {name: _shown(name) for name in NARRATIVE}
     assert all(shown.values()), "a narrative page with no drawing on it"
 

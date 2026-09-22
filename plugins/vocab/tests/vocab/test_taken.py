@@ -1,10 +1,3 @@
-"""A right answer is the drill's to take: the next word, and no model asked.
-
-Driven through the real taking step, because that is where the field's state is bound
-and where the question arrives — a test calling the handler by hand would pass over a
-version that only worked inside a tool call.
-"""
-
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -32,8 +25,6 @@ def _other(shown: str) -> str:
 
 
 class Field:
-    """One vocab field, its tools, the taking step, and what the conversation kept."""
-
     def __init__(self, held: str = UNIT) -> None:
         host = host_for(
             MODULE, files=FakeFiles({(SCOPE, LISTED): held}), store=FakeStore()
@@ -60,8 +51,6 @@ class Field:
         return self.drill.current.shown
 
     def answers(self, written: str) -> str | None:
-        """What the reader reads back from the drill itself, or nothing where the turn
-        went on to the model."""
         contributed = self.step(
             {
                 "question": written,
@@ -179,3 +168,15 @@ def test_a_right_answer_after_the_word_moved_through_the_model_is_right() -> Non
 
     assert put is not None
     assert moved not in field.queued(), "nothing about the word before it lingers"
+
+
+def test_a_fresh_conversation_is_not_answered_from_another_ones_pass() -> None:
+    field = Field()
+    shown = field.put()
+    left = len(field.queued())
+
+    field.kept = {}
+    put = field.answers(_other(shown))
+
+    assert put is None
+    assert len(field.queued()) == left

@@ -1,6 +1,3 @@
-"""The outer test for the story: the vocab field holds word lists as documents, and
-cora answers a question about one of its words from the list it is on."""
-
 from starlette.testclient import TestClient
 
 from app_builder import assembled

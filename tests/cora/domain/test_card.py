@@ -32,15 +32,11 @@ def test_a_card_carries_a_prompt_its_fields_and_its_actions() -> None:
 
 
 def test_a_card_nobody_can_leave_is_refused() -> None:
-    """The page has nothing else to offer while a card is open."""
     with pytest.raises(ValueError):
         Card(prompt="Give me the trip.")
 
 
 def test_a_card_whose_every_action_waits_for_it_is_refused() -> None:
-    """The page disables the composer while a card is open, so a card the reader cannot
-    get off is a conversation they cannot leave — and an action that waits for the
-    required fields is no way out of a card they cannot fill."""
     with pytest.raises(ValueError):
         Card(
             prompt="Give me the trip.",
@@ -52,8 +48,6 @@ def test_a_card_whose_every_action_waits_for_it_is_refused() -> None:
 def test_a_field_carries_its_schema_what_is_known_and_whether_it_is_the_readers() -> (
     None
 ):
-    """The schema a tool declares is the one the card asks on, so the two cannot
-    drift."""
     origin, nights = fields_of(SCHEMA, {"origin": "BER"})
 
     assert (origin.value, origin.required, origin.editable) == ("BER", True, True)
@@ -86,9 +80,6 @@ def test_a_parked_turn_carries_the_card_whatever_stopped_it() -> None:
 def test_a_schema_asked_over_yields_a_field_per_property_however_many_are_known() -> (
     None
 ):
-    """What a card built from a schema asks for is every property, filled or not — so a
-    call missing one of two arguments still puts two boxes, one of them already
-    written in. The plugin how-to's example turns on this."""
     schema = {
         "type": "object",
         "properties": {

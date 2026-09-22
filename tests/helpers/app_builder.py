@@ -1,6 +1,3 @@
-"""Assembled apps for tests. Apart from `fakes`, which the engine and adapter suites
-import and which therefore may not depend on the composition root."""
-
 from typing import Any
 
 from cora.app.assembly import App, assemble
@@ -25,8 +22,6 @@ def assembled(
     plugins: tuple[Extension, ...] | None = None,
     **overrides: Any,
 ) -> App:
-    """`plugin` is the one-plugin shorthand most tests want. `plugins` takes the whole
-    list, and an empty one asks for bare cora."""
     if plugins is None:
         plugins = (plugin or make_plugin(),)
     return assemble(
@@ -40,8 +35,6 @@ def assembled(
 
 
 def indexed(app: App, *docs: tuple[str, bytes], scope: str = DEFAULT_SCOPE) -> App:
-    """The app with these documents in one of its fields, the default one unless a test
-    names another."""
     for filename, data in docs:
         app.knowledge_base.add_file(data, filename, scope)
     return app

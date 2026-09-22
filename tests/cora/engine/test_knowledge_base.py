@@ -77,10 +77,6 @@ V2 = b"PREFACE ADDED LATER. Version two says: aim for 2.0 g of protein per kg."
 
 
 def test_a_passage_reads_back_the_text_it_was_cut_from(kb: KnowledgeBase) -> None:
-    """The promise a citation makes. A file edited and uploaded again under the same
-    name is different content: the passage found in the first upload still slices the
-    first upload's text, because a span is only meaningful against the text it was
-    measured in."""
     kb.add_file(V1, "report.md")
     [first] = kb.search("protein", k=1)
 
@@ -125,8 +121,6 @@ def test_a_field_is_read_whole_by_name_and_text_in_upload_order(
 
 
 def test_two_uploads_of_one_name_are_two_documents(kb: KnowledgeBase) -> None:
-    """The bytes name an upload, so a day saved twice is two documents under one name —
-    the store keeps them apart, and so does the reading."""
     kb.add_file(b"# Deadlift 14 kg\n3 sets of 10", "2026-09-18.md", scope=FITNESS)
     kb.add_file(b"# Swing 14 kg\n2 sets of 10", "2026-09-18.md", scope=FITNESS)
 
@@ -211,9 +205,8 @@ def test_a_turn_in_two_fields_is_handed_both_each_saying_which(
     ]
 
 
+# What the index was handed, as the port promises it: the span, and no words.
 class _RecordingRetriever(FakeRetriever):
-    """What the index was handed, as the port promises it: the span, and no words."""
-
     def __init__(self) -> None:
         super().__init__()
         self.given: list[Chunk] = []
@@ -232,8 +225,6 @@ class _RecordingRetriever(FakeRetriever):
 def test_the_index_is_handed_the_span_and_none_of_the_words(
     documents: FakeDocuments, embedder: FakeEmbedder
 ) -> None:
-    """The file is where the text is kept, so handing it to the index as well would be
-    the second copy the story exists to remove."""
     retriever = _RecordingRetriever()
     kb = KnowledgeBase(
         embedder=embedder,
@@ -252,8 +243,6 @@ def test_the_index_is_handed_the_span_and_none_of_the_words(
 def test_forgetting_a_document_drops_its_passages_and_its_file(
     kb: KnowledgeBase, documents: FakeDocuments, retriever: FakeRetriever
 ) -> None:
-    """One call over both halves: a document gone from one of them is still half there
-    — listed and unopenable, or a file nothing can reach."""
     kb.add_file(PLAN, "plan.md", scope=FITNESS)
     kb.add_file(KYOTO, "kyoto.md", scope=FITNESS)
 

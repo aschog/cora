@@ -132,7 +132,9 @@ test('a name changed after a merge keeps only what the box holds', async () => {
       read="Buch  book"
       held={['Grundwortschatz.md']}
       onKeepAsFile={onKeep}
-      onRead={async () => 'Apfel  apple'}
+      /* Answering for the one name the field holds and for no other, the way the
+         field does: a stub that holds every name makes a new list read as an old one. */
+      onRead={async (name) => (name === 'Grundwortschatz.md' ? 'Apfel  apple' : null)}
       onDiscard={vi.fn()}
     />,
   )
@@ -219,4 +221,89 @@ test('a click on the ground behind an untouched reading closes it', () => {
     .parentElement as HTMLElement)
 
   expect(onDiscard).toHaveBeenCalledTimes(1)
+})
+
+/* A mobile keyboard puts a space after a word, and the name box is a word. The merge
+   looked at what was typed and the write trimmed it, so the two disagreed about which
+   file this was — and the write won, over a list built up over weeks. */
+test('a name typed with a space around it merges rather than replaces', async () => {
+  const onKeep = vi.fn()
+  render(
+    <ReadImage
+      image="words.png"
+      read="Buch  book"
+      held={['Grundwortschatz.md']}
+      onKeepAsFile={onKeep}
+      onRead={async () => 'Apfel  apple'}
+      onDiscard={vi.fn()}
+    />,
+  )
+
+  naming('Grundwortschatz.md ')
+  fireEvent.blur(screen.getByLabelText('What to call it'))
+  await waitFor(() =>
+    expect((written() as HTMLTextAreaElement).value).toBe('Apfel  apple\nBuch  book'),
+  )
+  fireEvent.click(screen.getByRole('button', { name: KEEP }))
+
+  await waitFor(() => expect(onKeep).toHaveBeenCalled())
+  expect(onKeep.mock.calls[0][0]).toBe('Grundwortschatz.md')
+  expect(onKeep.mock.calls[0][1]).toBe('Apfel  apple\nBuch  book\n')
+})
+
+/* Naming one file and then another merged the second on top of the first, so the
+   second file came to hold the first one's words for good. */
+test('a second name does not carry the first file into it', async () => {
+  const onKeep = vi.fn()
+  render(
+    <ReadImage
+      image="words.png"
+      read="Baum  tree"
+      held={['einheit-3.md', 'einheit-4.md']}
+      onKeepAsFile={onKeep}
+      onRead={async (name) => (name === 'einheit-3.md' ? 'Apfel  apple' : 'Haus  house')}
+      onDiscard={vi.fn()}
+    />,
+  )
+
+  naming('einheit-3.md')
+  fireEvent.blur(screen.getByLabelText('What to call it'))
+  await waitFor(() =>
+    expect((written() as HTMLTextAreaElement).value).toBe('Apfel  apple\nBaum  tree'),
+  )
+  naming('einheit-4.md')
+  fireEvent.blur(screen.getByLabelText('What to call it'))
+  await waitFor(() =>
+    expect((written() as HTMLTextAreaElement).value).toBe('Haus  house\nBaum  tree'),
+  )
+
+  fireEvent.click(screen.getByRole('button', { name: KEEP }))
+
+  await waitFor(() => expect(onKeep).toHaveBeenCalled())
+  expect(onKeep.mock.calls[0][1]).toBe('Haus  house\nBaum  tree\n')
+})
+
+/* The listing is what the merge is offered from, and it does not always arrive. A
+   write is a whole-file replace, so the file is read before it is replaced whatever
+   the listing said, and what nobody has seen is shown rather than written. */
+test('a name the listing never mentioned is read before it is replaced', async () => {
+  const onKeep = vi.fn()
+  render(
+    <ReadImage
+      image="words.png"
+      read="Buch  book"
+      held={[]}
+      onKeepAsFile={onKeep}
+      onRead={async () => 'Apfel  apple'}
+      onDiscard={vi.fn()}
+    />,
+  )
+
+  naming('Grundwortschatz.md')
+  fireEvent.click(screen.getByRole('button', { name: KEEP }))
+
+  await waitFor(() =>
+    expect((written() as HTMLTextAreaElement).value).toBe('Apfel  apple\nBuch  book'),
+  )
+  expect(onKeep).not.toHaveBeenCalled()
 })

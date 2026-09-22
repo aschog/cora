@@ -1,5 +1,3 @@
-"""What a plugin kept for the conversation the work happening now belongs to."""
-
 from cora.engine import keeping
 
 KEEPER = "keeper"

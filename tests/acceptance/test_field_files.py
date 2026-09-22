@@ -1,15 +1,11 @@
-"""The four routes a field's own files are kept over, driven as the page drives them.
-
-The real HTTP surface over a real adapter: what the screen writes is what the field's
-plugin reads back, and none of it reaches the documents.
-"""
-
 from pathlib import Path
 
+import pytest
 from starlette.testclient import TestClient
 
 from app_builder import assembled
 from cora.adapters.directory_files import DirectoryFiles
+from cora.domain.errors import UnsettledFieldError
 from cora.engine import keeping
 from cora.engine.scoping import running_in
 from cora.frontends.react.api import api
@@ -145,3 +141,22 @@ def test_a_file_is_not_a_document(tmp_path: Path) -> None:
     page.put(f"{FILES}/{NAME}", json={"text": LIST})
 
     assert page.get(f"/api/documents?scope={VOCAB}").json() == []
+
+
+def test_a_turn_in_two_fields_is_refused_in_a_sentence_naming_them(
+    tmp_path: Path,
+) -> None:
+    # The files are keyed by field and the turn is in two, so which one a name belongs
+    # to is not settled. The way out is asking under one, which the sentence says.
+    _, cora = _served(tmp_path)
+
+    with (
+        keeping.bound({}),
+        running_in(frozenset({VOCAB, "notes"})),
+        pytest.raises(UnsettledFieldError) as refused,
+    ):
+        cora.files.read(NAME)
+
+    said = refused.value.user_message
+    assert "notes" in said and VOCAB in said
+    assert said.endswith("Ask under one field.")

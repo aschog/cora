@@ -1,9 +1,3 @@
-"""The shipped configuration pointed at a directory of a test's own.
-
-Here rather than in a suite because more than one needs it, and a test module is not
-importable from another under importlib mode.
-"""
-
 from pathlib import Path
 
 from cora.app.config import Config

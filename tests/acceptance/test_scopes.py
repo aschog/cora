@@ -1,6 +1,3 @@
-"""What a scope does to a turn: the pin that fixes a conversation to one field, and the
-reading of the question that stands in for a pin when there is none."""
-
 import pytest
 
 from app_builder import assembled
@@ -71,10 +68,6 @@ def _answer(text: str) -> ModelReply:
 
 @pytest.mark.integration
 def test_a_pinned_conversation_stays_in_its_field_and_reaches_nothing_else() -> None:
-    """The story's own scenario, end to end: a conversation that turned out to be about
-    one field is pinned to it, and every turn after that is a coach's — the travel tool
-    is not refused, it is never offered, and the question is never read for a field
-    again."""
     app, model = _two_scopes(
         _answer("routing"), _answer("ok"), _answer("ok"), _answer("ok")
     )
@@ -96,10 +89,6 @@ def test_a_pinned_conversation_stays_in_its_field_and_reaches_nothing_else() -> 
 
 @pytest.mark.integration
 def test_a_question_that_fits_two_fields_is_put_to_the_user() -> None:
-    """Guessing between two fields answers half the readers wrongly, and the fork is one
-    the reader settles in a sentence. The stop comes before the brief is written, so the
-    turn resumes as a turn of the field they chose — and the question is read once,
-    because the reading is a step behind the stop rather than in front of it."""
     app, model = _two_scopes(_answer("fitness, travel"), _answer("Walk it in a day."))
 
     with pytest.raises(TurnPaused) as stopped:

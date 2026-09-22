@@ -178,9 +178,13 @@ functional test goes green  →  feature done
 > `Args:` block documents the parameter whose meaning the type cannot carry and leaves
 > the rest to the signature. A flow is not a docstring: `docs/big-picture.md` and
 > `docs/happy-path.md` say how a turn runs, and a name says what *it* promises.
-> Everywhere else — the adapters, the plugins, the frontends, the tests — a docstring
+> Everywhere else — the adapters, the plugins, the frontends — a docstring
 > appears **only if needed**, and a comment always does: write none unless they state
 > a contract the code can't express, and let names + tests be the source of truth.
+> The **test tree** carries none at all, module docstrings included: a test's reader is
+> always looking at its body, its name says what it holds, and prose above it is a
+> second telling that drifts from the first. What the code can't express goes in a
+> `#` comment, as it does everywhere else.
 > A **private** name never carries one, anywhere: a docstring is written for a reader
 > who cannot see the body, and no page renders a `_helper` and nothing outside its
 > module may call it. What it is for goes in the name, what it does is the body.

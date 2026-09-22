@@ -19,9 +19,6 @@ def _answering() -> ScriptedChatModel:
 
 
 def test_the_researcher_offers_its_loop_the_forecast_beside_the_documents() -> None:
-    """A trip question turns on what is written down and on what the weather will do,
-    so the loop is handed both. Without the forecast passed in it could only ever
-    answer from documents, which is the thing one pass already does."""
     model = _answering()
     host = host_for("cora.plugins.travel", model=model)
 
@@ -37,8 +34,6 @@ def test_the_researcher_offers_its_loop_the_forecast_beside_the_documents() -> N
 def test_a_rounds_setting_that_is_not_a_whole_number_above_zero_is_refused(
     named: str,
 ) -> None:
-    """A typo that silently became three rounds would be found by nobody. What the
-    operator reads is the plugin's own test — this one is only the reading."""
     with pytest.raises(ValueError) as refused:
         rounds_from({"rounds": named})
 
@@ -46,14 +41,6 @@ def test_a_rounds_setting_that_is_not_a_whole_number_above_zero_is_refused(
 
 
 def test_the_rounds_it_asks_for_are_the_rounds_the_loop_spends() -> None:
-    """The setting reaches the loop rather than sitting in a variable.
-
-    Read off *how* the loop ended rather than how many calls it made: given the same
-    script, a loop allowed one round runs out and is written up, while one allowed the
-    default answers within its rounds and is not. The call count is identical either
-    way, so counting alone would pass for a researcher that ignored the setting
-    entirely.
-    """
     digging = ModelReply(
         tool_calls=(
             ToolCall(name=SEARCH_TOOL_NAME, arguments={"query": "x"}, call_id="s1"),
