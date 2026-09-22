@@ -860,7 +860,7 @@ const deleteControl = () =>
   screen.getByRole('button', { name: `Delete ${GONE.opened_with}` })
 
 const confirm = () =>
-  fireEvent.click(screen.getByRole('button', { name: 'Delete session' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete conversation' }))
 
 test('a conversation deleted from the list leaves the list', async () => {
   const asked = deletable()
@@ -870,8 +870,8 @@ test('a conversation deleted from the list leaves the list', async () => {
 
   fireEvent.click(deleteControl())
 
-  // The control asks; nothing has been asked of cora yet.
-  expect(screen.getByRole('dialog')).toBeTruthy()
+  // The control asks, naming what it would delete; nothing has been asked of cora yet.
+  expect(screen.getByRole('dialog', { name: 'DELETE CONVERSATION' })).toBeTruthy()
   expect(asked.deleted).toEqual([])
 
   confirm()

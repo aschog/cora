@@ -45,7 +45,7 @@ const DOCUMENT_GOES =
   'Its passages leave the index and its file leaves the field, so no answer can be ' +
   'drawn from it again. Answers already given keep their citations, and say the ' +
   "document is gone when you open one. This can't be undone."
-const SESSION_GOES =
+const CONVERSATION_GOES =
   'The thread and its plan are removed. Your documents and saved memory are ' +
   "untouched — this can't be undone."
 const FACT_GOES =
@@ -597,10 +597,10 @@ function Page() {
                       }}
                       onDelete={(session) =>
                         setConfirming({
-                          head: 'DELETE SESSION',
+                          head: 'DELETE CONVERSATION',
                           subject: session.opened_with,
-                          said: SESSION_GOES,
-                          confirm: 'Delete session',
+                          said: CONVERSATION_GOES,
+                          confirm: 'Delete conversation',
                           send: () => discard(session),
                           from: rail.sessions,
                           without: (listed: Session[]) =>
