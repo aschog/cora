@@ -12,6 +12,7 @@ One conversation carries two names: the store is `Conversations`, what it lists 
 - Capability `conversation` becomes `turn`, which is what it describes, so the two do not sit a letter apart
 - Capability `conversations` — the two scenarios that name SESSIONS, and one requirement for the words the page uses
 - Capability `frontend` — the three requirements that name the sessions panel
+- The four flow diagrams are called turn maps wherever they were session maps
 
 ## Impact
 
@@ -22,6 +23,7 @@ One conversation carries two names: the store is `Conversations`, what it lists 
 - `tests/` — the fakes, the adapter tests, the acceptance tests, and one new guard
 - `docs/assets/domain-map.svg` — regenerated, as the class it draws is renamed
 - `openspec/specs/sessions/`, `openspec/specs/conversation/` — moved to `conversations/` and `turn/`
+- `scripts/gen_session_maps.py`, `Makefile`, `tests/guards/test_diagrams.py`, `docs/workflow.md`, `openspec/config.yaml` — the session maps become turn maps
+- `docs/assets/round-map.svg`, `turn-map.svg`, `search-map.svg`, `upload-map.svg` — regenerated, naming the generator that drew them
 - Left alone: `thread_id`, the model's half of a conversation, named as LangGraph names it
 - Left alone: the fitness plugin's `Session` and the vocab drill's session, which are sittings
-- Left alone: the "session maps" the Makefile, the guards and the process docs call the turn diagrams

@@ -54,7 +54,7 @@ def test_the_domain_map_draws_every_class_the_domain_declares() -> None:
     assert _titles_of(domain.MAP, "node") == declared
 
 
-def test_the_session_maps_show_the_walk_the_composition_root_names() -> None:
+def test_the_turn_maps_show_the_walk_the_composition_root_names() -> None:
     walk = sequences.walked()
     said = [
         line.receiver

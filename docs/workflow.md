@@ -176,7 +176,7 @@ functional test goes green  →  feature done
 > Google's sections, carrying only what the annotation cannot — a unit, a constraint,
 > an ownership rule, and `Raises:`, which no type expresses. `D417` is off, so an
 > `Args:` block documents the parameter whose meaning the type cannot carry and leaves
-> the rest to the signature. A flow is not a docstring: the session maps under
+> the rest to the signature. A flow is not a docstring: the turn maps under
 > `docs/assets/` and the tests say how a turn runs, and a name says what *it* promises.
 > Everywhere else — the adapters, the plugins, the frontends — a docstring
 > appears **only if needed**, and a comment always does: write none unless they state

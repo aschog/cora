@@ -2,7 +2,7 @@ schema: spec-driven
 
 context: |
   What cora is and how to run it, `README.md` says. What it is made of, the tree under
-  `src/cora/` says — `domain`, `ports`, `engine`, `adapters`, `app` — with the session
+  `src/cora/` says — `domain`, `ports`, `engine`, `adapters`, `app` — with the turn
   maps under `docs/assets/` for how a turn moves through it. The house rules — uv for every command, secrets in the
   environment, plain Conventional Commits — are `CLAUDE.md`, and the process is
   `docs/workflow.md`, which is authoritative. Open them; this file repeats none of it.
