@@ -1,11 +1,3 @@
-"""The outer tests for a field's own documents: what it answers from, and what it
-stops answering from once a document is deleted.
-
-Uploads go through the API because that is where an upload names its field. The turn
-is asked of the agent directly, so the assertion is about what a pinned turn could
-retrieve and cite rather than about the stream that carries it.
-"""
-
 from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -85,8 +77,6 @@ def test_a_document_i_delete_is_searched_and_cited_no_more(
     tmp_path: Path,
     make_index: "Callable[[], SqliteVecRetriever]",
 ) -> None:
-    """Over the real index and the real files, because both halves are the subject: a
-    document gone from one of them is a document that is still half there."""
     files = tmp_path / "documents"
     app = assembled(
         chat_model=ScriptedChatModel([SEARCH, NOTES]),

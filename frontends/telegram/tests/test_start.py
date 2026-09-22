@@ -56,8 +56,6 @@ def test_a_blank_token_is_no_token() -> None:
 def test_the_client_that_carries_the_token_in_its_urls_does_not_log_them(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """httpx writes one INFO line per request, and the URL it writes holds the token.
-    Nothing raises that logger today, which is a defence one `basicConfig` deep."""
     monkeypatch.setattr(
         logging.getLogger(HTTP_LOGGER), "level", logging.NOTSET, raising=False
     )

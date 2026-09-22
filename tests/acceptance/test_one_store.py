@@ -14,8 +14,6 @@ pytestmark = pytest.mark.integration
 def test_everything_cora_keeps_for_itself_is_in_the_one_file_the_setting_names(
     tmp_path: Path,
 ) -> None:
-    """What the change is for, stated once: the facts, the turns, the checkpoints and
-    the passages in one database, and no second one beside it."""
     app = build(store_config(tmp_path))
     assert app.memory is not None and app.conversations is not None
 
@@ -44,8 +42,6 @@ def test_everything_cora_keeps_for_itself_is_in_the_one_file_the_setting_names(
 
 
 def test_forgetting_a_fact_leaves_the_turns_and_the_passages(tmp_path: Path) -> None:
-    """The other direction of one file: what a rail forgets is its own rows, and the
-    two stores sharing the database are untouched by it."""
     app = build(store_config(tmp_path))
     assert app.memory is not None and app.conversations is not None
     app.memory.remember("lifts on tuesdays")

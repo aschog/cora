@@ -1,5 +1,3 @@
-"""The step where a plugin may answer the question before any round is spent."""
-
 from cora.domain.agent_state import AgentState
 from cora.domain.trace import HandlerRan
 from cora.engine import keeping

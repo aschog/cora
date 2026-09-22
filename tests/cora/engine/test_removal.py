@@ -31,9 +31,8 @@ def extend(cora: Host) -> None:
 """
 
 
+# A runner as removing reads one: the pin of each thread, and what it forgot.
 class _Threads:
-    """A runner as removing reads one: the pin of each thread, and what it forgot."""
-
     def __init__(self, pins: dict[str, str] | None = None) -> None:
         self.pins = pins or {}
         self.forgotten: list[str] = []
@@ -121,8 +120,6 @@ def test_a_dropped_file_is_deleted(tmp_path: pathlib.Path) -> None:
 
 
 def test_a_symlink_is_unlinked_and_its_target_is_left(tmp_path: pathlib.Path) -> None:
-    """A symlink to a directory answers `is_dir()`, so following it would delete the
-    repository a deployment linked its plugins out of."""
     elsewhere = tmp_path / "repository" / "travel"
     elsewhere.mkdir(parents=True)
     (elsewhere / "__init__.py").write_text(DROPPED)
@@ -260,8 +257,6 @@ def test_a_conversation_pinned_to_the_field_goes(tmp_path: pathlib.Path) -> None
 
 
 def test_a_plugin_named_in_the_environment_is_refused(tmp_path: pathlib.Path) -> None:
-    """A module is imported by name and returns at the next start, so there is no
-    entry deleting it could take."""
     knowledge_base = _knowledge_base()
     knowledge_base.add_file(b"Twelve waders at dawn.", "sightings.md", "birds")
 

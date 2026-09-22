@@ -1,14 +1,3 @@
-"""The architecture rules ruff cannot state.
-
-The layer boundaries — who may import whom — are a deny-list, and a `.ruff.toml` per
-layer holds them, enforced on every file by having been put in that directory. What is
-left here are the other three shapes: an allow-list, which no lint rule expresses, a
-rule about the words a file uses rather than the modules it imports, and the half of
-the docstring policy `pydocstyle` has no rule for — a private name carries no docstring,
-neither does a constant, a variable or a type alias, and no docstring runs past twelve
-lines of prose.
-"""
-
 import ast
 import dataclasses
 import inspect
@@ -176,13 +165,6 @@ DOMAIN_WORDS = ("fitness", *_shipped_scopes())
 
 @pytest.mark.parametrize("word", DOMAIN_WORDS)
 def test_nothing_shipped_names_a_plugin_or_the_field_it_registers(word: str) -> None:
-    """A field is a plugin's word, not cora's: naming one under `src/cora/` would be the
-    core knowing what it is for, which is the claim the whole contract rests on.
-
-    A name rather than a word, so a docstring explaining the settings namespace with
-    `fitness` in it is the core knowing a plugin, and "passages travel in a message" is
-    not the travel field.
-    """
     listed = subprocess.run(
         ["git", "ls-files", "-z", "--", "src/cora/*.py"],
         capture_output=True,
@@ -234,10 +216,6 @@ def _states_a_shape(kind: type) -> bool:
     "kind", _domain_classes(), ids=lambda kind: f"{kind.__module__}.{kind.__name__}"
 )
 def test_a_value_in_the_domain_is_a_frozen_dataclass(kind: type) -> None:
-    """One shape for a value, so it is read by name and cannot be mistaken for what it
-    is made of. A `NamedTuple` also unpacks, indexes and compares equal to a plain tuple
-    of the same fields — three readings of a value the domain never means.
-    """
     params = getattr(kind, "__dataclass_params__", None)
     frozen = dataclasses.is_dataclass(kind) and bool(params and params.frozen)
 
@@ -249,15 +227,6 @@ def test_a_value_in_the_domain_is_a_frozen_dataclass(kind: type) -> None:
 
 
 def test_no_path_reaches_the_tools_without_passing_the_gate() -> None:
-    """The gate is unbypassable by construction rather than by discipline, and this is
-    what reads that off the wiring: the round's route arrives at it, the ask's leads
-    into it, and nothing else leads to the tools at all.
-
-    Read as a shape rather than as behaviour, because behaviour catches the wrong break.
-    A gate swapped out for something else fails every test that watches a turn; a
-    *second* edge into the tools beside the gated one fails none of them, and that is
-    the change that would get an effect through without asking anyone.
-    """
     plan = sequences.routing()
 
     assert [here for here, there in plan.edges if there == TOOLS] == [GATE]
@@ -268,11 +237,6 @@ def test_no_path_reaches_the_tools_without_passing_the_gate() -> None:
 
 
 def test_the_gate_and_the_runtime_are_offered_the_same_tools() -> None:
-    """The guard above proves no call reaches a tool without passing the gate. That
-    only means something while the gate and the runtime are looking at the same
-    tools: one offered a tool the other had never heard of would run it ungated, and
-    every other test in the suite would still pass.
-    """
     app = assembled(plugin=make_plugin(scope="somewhere"))
     gate, runtime = _gate_and_runtime(app)
 
@@ -335,7 +299,7 @@ def _documented_privates(path: pathlib.Path) -> list[str]:
     return sorted(
         node.name
         for node in ast.walk(ast.parse(path.read_text()))
-        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef)
+        if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef)
         and node.name.startswith("_")
         and not (node.name.startswith("__") and node.name.endswith("__"))
         and ast.get_docstring(node)
@@ -343,10 +307,6 @@ def _documented_privates(path: pathlib.Path) -> list[str]:
 
 
 def test_no_private_name_carries_a_docstring() -> None:
-    """A docstring is written for a reader who cannot see the body, and a private name
-    has no such reader: no page renders one and nothing outside the module may call it.
-    What a helper is for belongs in its name, and what its body does is the body's.
-    """
     documented = sorted(
         f"{path.relative_to(workspace.ROOT)}: {private}"
         for path in _tracked_python()
@@ -356,6 +316,35 @@ def test_no_private_name_carries_a_docstring() -> None:
     assert documented == [], "\n".join(
         ["these are private and documented:", *documented]
     )
+
+
+def _in_the_test_tree(path: pathlib.Path) -> bool:
+    return "tests" in path.parts or path.name == "conftest.py"
+
+
+def _documented(path: pathlib.Path) -> list[str]:
+    tree = ast.parse(path.read_text())
+    holders = [
+        node
+        for node in (tree, *ast.walk(tree))
+        if isinstance(
+            node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef
+        )
+    ]
+    return [
+        getattr(node, "name", "<module>") for node in holders if ast.get_docstring(node)
+    ]
+
+
+def test_nothing_in_the_test_tree_carries_a_docstring() -> None:
+    documented = sorted(
+        f"{path.relative_to(workspace.ROOT)}: {name}"
+        for path in _tracked_python()
+        if _in_the_test_tree(path)
+        for name in _documented(path)
+    )
+
+    assert documented == [], "\n".join(["these are tests and documented:", *documented])
 
 
 MAX_PROSE_LINES = 12
@@ -382,14 +371,6 @@ def _long_docstrings(path: pathlib.Path) -> list[tuple[str, int]]:
 
 
 def test_no_docstring_runs_past_twelve_lines_of_prose() -> None:
-    """A docstring is read beside the signature, not instead of it, and one that fills
-    a screen is a page written in the wrong file: past this much there is a flow being
-    retold, and `docs/big-picture.md` and `docs/happy-path.md` are where a flow lives.
-
-    The prose, not the whole: a Google section is a table keyed to the signature, and
-    `assemble` takes eighteen arguments. A module is not counted either — it has no
-    signature to be read beside, and a file's opening is the one place a page belongs.
-    """
     long = sorted(
         f"{path.relative_to(workspace.ROOT)}: {name} ({lines} lines)"
         for path in _tracked_python()
@@ -425,12 +406,6 @@ def _documented_assignments(path: pathlib.Path) -> list[str]:
 
 
 def test_no_assignment_carries_a_docstring() -> None:
-    """A constant, a variable and a type alias say what they are by being named: the
-    string a reader wants is the value on the line above, and a paragraph under it is
-    prose that drifts out of sync with a value nobody has to reread it to change.
-    A page belongs in `docs/`, a reason belongs in the commit, and neither is an
-    attribute docstring.
-    """
     documented = sorted(
         f"{path.relative_to(workspace.ROOT)}: {name}"
         for path in _tracked_python()

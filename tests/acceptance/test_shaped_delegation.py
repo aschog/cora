@@ -1,5 +1,3 @@
-"""The outer test for the shape a plugin may ask a delegated loop for."""
-
 import json
 from typing import Any
 
@@ -28,8 +26,6 @@ VALUE: dict[str, Any] = {"found": ["one", "two"], "note": "both from the documen
 
 
 def test_a_plugin_asks_a_delegated_loop_for_a_shape_and_is_handed_the_value() -> None:
-    """The story: a tool that needs a value declares its shape, and what comes back is
-    that value — no string to find JSON in, and nothing to fall back to."""
     handed: list[Any] = []
     model = ScriptedChatModel(
         [

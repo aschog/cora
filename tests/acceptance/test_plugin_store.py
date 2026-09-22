@@ -1,6 +1,3 @@
-"""The outer test for the story: what a plugin keeps in its own store is still there in
-another conversation, after the app that kept it is gone."""
-
 from typing import Any
 
 from app_builder import assembled
@@ -36,9 +33,6 @@ def test_what_a_plugin_kept_outlives_the_conversation_that_kept_it(
 def test_what_a_plugin_keeps_is_not_what_cora_knows_about_the_user(
     tmp_path: Any,
 ) -> None:
-    """Three lifetimes, and only one of them is the user's: what a plugin keeps for
-    itself is not in the brief the model reads, and not in the rail that lists what
-    cora knows."""
     from cora.adapters.sqlite_plugin_store import SqlitePluginStore
 
     memory = FakeMemory()

@@ -14,9 +14,6 @@ REFUSAL = "Not that one, please."
 
 
 class BreaksInAWayNobodyModelled:
-    """A tool or an adapter raising something that is not a `CoreError` — a plugin
-    handed a payload it did not expect, say."""
-
     def complete(
         self,
         messages: tuple[Said, ...],
@@ -27,8 +24,6 @@ class BreaksInAWayNobodyModelled:
 
 
 class BreaksOnce:
-    """The model that fails the first turn and answers the second."""
-
     def __init__(self) -> None:
         self.completions = 0
 

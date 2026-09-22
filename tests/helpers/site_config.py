@@ -1,7 +1,3 @@
-"""`mkdocs.yml` as data. Two suites read the nav for different reasons, so the loader
-and the walk live here rather than once per suite.
-"""
-
 import yaml
 
 import workspace
@@ -10,8 +6,7 @@ CONFIG = workspace.ROOT / "mkdocs.yml"
 
 
 class Tolerant(yaml.SafeLoader):
-    """mkdocs writes `!!python/name:` tags that a safe loader refuses; the guards read
-    the config as data and never call what those tags name."""
+    pass
 
 
 Tolerant.add_multi_constructor(
@@ -24,7 +19,6 @@ def config() -> dict[str, object]:
 
 
 def nav_pages(entry: object) -> list[str]:
-    """Every page the nav names, however deeply a section nests it."""
     if isinstance(entry, str):
         return [entry]
     if isinstance(entry, dict):

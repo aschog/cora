@@ -80,8 +80,6 @@ def test_from_env_reads_every_field() -> None:
 
 
 def test_from_env_applies_defaults_for_optional_fields() -> None:
-    """Bare cora is the default, not a thing you have to ask for, so `CORA_PLUGINS`
-    unset and set-empty agree: there is no default set left for them to differ about."""
     config = default()
 
     assert DEFAULT_PLUGINS == () and config.plugin_modules == ()
@@ -96,10 +94,6 @@ def test_from_env_applies_defaults_for_optional_fields() -> None:
 def test_a_blank_is_no_value_and_the_spaces_around_one_are_not_part_of_it(
     variable: str, field: str
 ) -> None:
-    """A variable left blank in a `.env` reads as unset to the person who blanked it —
-    `sqlite3.connect("")` opens a database deleted with the connection — and pasting
-    from a `.env` line brings the trailing space with it.
-    """
     blanked = Config.from_env({**KEY, variable: "   "})
     spaced = Config.from_env({**KEY, variable: " /tmp/somewhere "})
 
@@ -111,14 +105,10 @@ def test_a_blank_is_no_value_and_the_spaces_around_one_are_not_part_of_it(
 def test_a_count_of_only_blanks_reads_as_unset_rather_than_as_a_number(
     variable: str,
 ) -> None:
-    """Loud where the paths were silent, but the same mistake: a variable blanked in a
-    `.env` refused to start the app at all."""
     assert Config.from_env({**KEY, variable: "   "}) == default()
 
 
 def test_the_key_is_the_one_setting_with_nothing_to_fall_back_on() -> None:
-    """Sent as-is a blank comes back a 401, and the user is told the assistant is
-    temporarily unavailable instead of that their key is missing."""
     with pytest.raises(ConfigurationError) as excinfo:
         Config.from_env({"OPENROUTER_API_KEY": "   "})
     assert "OPENROUTER_API_KEY" in excinfo.value.user_message
@@ -129,9 +119,6 @@ def test_the_key_is_the_one_setting_with_nothing_to_fall_back_on() -> None:
 
 
 def test_the_model_may_be_named_with_the_prefix_the_key_and_url_already_use() -> None:
-    """`OPENROUTER_API_KEY` and `OPENROUTER_BASE_URL` set the prefix a reader expects
-    the model to share, and a model named that way used to be ignored in silence. Cora's
-    own name wins where both are set, and a blank one does not outrank the alias."""
     alias = {"OPENROUTER_MODEL": "openai/gpt-5-mini"}
 
     assert Config.from_env({**KEY, **alias}).model == "openai/gpt-5-mini"
@@ -160,8 +147,6 @@ def test_several_plugins_are_read_in_the_order_they_were_named() -> None:
     ],
 )
 def test_a_retired_variable_is_read_by_nothing(stale: str) -> None:
-    """Set by a deployment that has not caught up, and it changes nothing rather than
-    quietly sending half the stores somewhere else."""
     assert Config.from_env({**KEY, stale: "elsewhere"}) == default()
     assert not hasattr(default(), "memory_path")
 
@@ -175,8 +160,6 @@ def test_a_count_that_is_not_one_is_refused_at_startup(variable: str, raw: str) 
 
 @pytest.mark.parametrize("variable", [v for v in COUNTS if v != "CORA_HISTORY_TURNS"])
 def test_zero_is_refused_where_one_is_the_lowest_useful_value(variable: str) -> None:
-    """History alone takes it: zero turns is memory switched off, not a broken
-    setting."""
     with pytest.raises(ConfigurationError):
         Config.from_env({**KEY, variable: "0"})
 
@@ -196,8 +179,6 @@ def test_from_env_keeps_debug_off_for_falsy_flags(raw: str) -> None:
 
 @pytest.mark.parametrize("raw", ["lots", "LOW", "none", "0"])
 def test_an_effort_no_provider_defines_is_refused_at_startup(raw: str) -> None:
-    """Sent instead of refused it comes back as a provider error mid-question, by which
-    time the user is the one reading it."""
     with pytest.raises(ConfigurationError):
         Config.from_env({**KEY, "CORA_REASONING_EFFORT": raw})
 
@@ -210,15 +191,6 @@ def test_every_effort_the_provider_defines_is_accepted(raw: str) -> None:
 
 
 def test_the_defaults_a_deployment_gets_for_naming_nothing() -> None:
-    """Measured against `openai/gpt-5-mini`: a training-plan answer spent about 1200
-    tokens reasoning before its first word and some 3200 in all, and took 37-56 seconds
-    to arrive — a budget that fits only the thinking returns `finish_reason="length"`
-    every time, and a deadline inside that range trades the truncated answer for a
-    timed-out one. `low` effort spent 22-25s a turn against `medium`'s 32-61s and cited
-    just as well. `high` spent a whole 8192-token budget thinking and answered nothing.
-    The model name is pinned because a change to it is every deployment that named none
-    answering at another cost and another latency.
-    """
     config = default()
 
     assert DEFAULT_MODEL == "openai/gpt-4o-mini"
@@ -228,9 +200,6 @@ def test_the_defaults_a_deployment_gets_for_naming_nothing() -> None:
 
 
 def test_everything_cora_keeps_for_itself_is_one_file_and_the_output_is_not() -> None:
-    """The passages, the facts, the turns and the checkpoints are in it, so the default
-    names a file and not a directory — and what an effect produces is the user's to
-    keep, so it does not land among the stores cora would delete to start clean."""
     config = default()
 
     assert Path(config.db_path) == Path(DEFAULT_DB_PATH) == Path(".cora/cora.sqlite")

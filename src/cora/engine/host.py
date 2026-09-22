@@ -433,14 +433,10 @@ class PluginHost:
 
 
 @dataclass(frozen=True)
+# A plugin need not delegate to reach a passage — the host hands it the index — so the
+# label cannot hang off `delegate` alone. It hangs off the search, which is the one door
+# every path to a passage goes through.
 class _Reading:
-    """The documents, searched so that the call doing the searching says it read them.
-
-    A plugin need not delegate to reach a passage — the host hands it the index — so
-    the label cannot hang off `delegate` alone. It hangs off the search, which is the
-    one door every path to a passage goes through.
-    """
-
     index: ContextSource
 
     def search(self, query: str, k: int) -> list[RetrievedChunk]:
@@ -455,14 +451,9 @@ class _Reading:
 
 
 @dataclass(frozen=True)
+# The name is held here rather than passed in by the plugin, because only the host knows
+# which plugin is asking — the same reason a log line and a setting are named here.
 class _Keeping:
-    """One plugin's own keys, in whatever conversation the work now belongs to.
-
-    The name is held here rather than passed in by the plugin, because only the host
-    knows which plugin is asking — the same reason a log line and a setting are named
-    here.
-    """
-
     plugin: str
 
     def read(self, name: str) -> str | None:
@@ -475,18 +466,12 @@ class _Keeping:
 
 
 @dataclass(frozen=True)
+# The field is read from the turn rather than passed in, the same way the documents are:
+# a plugin cannot see which field it is running in, so a parameter would be one nobody
+# could fill — and one a plugin could fill with somebody else's. A deployment keeping no
+# files answers as an empty field rather than refusing: a plugin reading a list it never
+# wrote reads nothing, which is what it would read anyway.
 class _Filing:
-    """The files of whatever field the work happening now belongs to.
-
-    The field is read from the turn rather than passed in, the same way the documents
-    are: a plugin cannot see which field it is running in, so a parameter would be one
-    nobody could fill — and one a plugin could fill with somebody else's.
-
-    A deployment keeping no files answers as an empty field rather than refusing: a
-    plugin reading a list it never wrote reads nothing, which is what it would read
-    anyway.
-    """
-
     kept: Files | None
 
     def names(self) -> tuple[str, ...]:
@@ -511,13 +496,9 @@ def _the_field() -> str:
 
 
 @dataclass(frozen=True)
+# The same reason `_Keeping` holds the name: only the host knows which plugin is asking,
+# and a plugin naming itself could name another.
 class _KeepingForGood:
-    """One plugin's row of the deployment's store, with the plugin already filled in.
-
-    The same reason `_Keeping` holds the name: only the host knows which plugin is
-    asking, and a plugin naming itself could name another.
-    """
-
     kept: Store
     plugin: str
 

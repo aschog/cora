@@ -156,9 +156,6 @@ def _runner(
 
 
 def test_the_graph_is_built_from_the_walk_of_a_turn_alone() -> None:
-    """`langgraph_for` is the `GraphFor` slot, so what it accepts is the port itself: a
-    turn is handed over as its walk, and nothing else is something a composition root
-    can hand it."""
     walk = _walk(_always(_replies))
 
     assert isinstance(langgraph_for(**walk, max_tool_rounds=8), LangGraphRunner)
@@ -274,18 +271,6 @@ def test_two_threads_share_nothing() -> None:
 
 
 def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
-    """The state that crosses the checkpoint is core dataclasses — messages, tool calls,
-    trace steps, sources. LangGraph allows unregistered types today with a logged
-    warning it says will become a block, and a logger warning is invisible to a test
-    suite, so the runner names what it checkpoints. Every trace kind the engine can
-    produce is in this state on purpose: one missing from the allowlist breaks a second
-    turn.
-
-    Asserted by kind and by what the step says rather than by equality: msgpack has no
-    tuple, so a replayed `tools=("add",)` comes back `["add"]`. Nothing reads those
-    fields for anything but iteration and truthiness, which is why the flattening costs
-    nothing — and why a replayed step is not `==` to the one that was written.
-    """
 
     every_kind: list[TraceStep] = [
         ModelDecision(detail="thinking", tools=("add",)),
@@ -320,9 +305,6 @@ def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
 
 
 def test_the_allowlist_covers_every_kind_of_step_a_trace_can_hold() -> None:
-    """The guard the round-trip test cannot be: a `TraceStep` added next sprint would
-    checkpoint fine on today's permissive default and break the first turn after
-    LangGraph makes good on blocking unregistered types."""
     listed = set(checkpointed_types())
 
     for kind in step_kinds():
@@ -377,8 +359,6 @@ def _answers(state: AgentState) -> tuple[str, ...]:
 
 
 def test_a_run_that_stops_to_ask_parks_what_it_stopped_on() -> None:
-    """The pause is not something the caller can see go past: the stream simply ends,
-    so what the thread is waiting on has to be read back off the checkpoint."""
     runner = _stopping()
 
     list(runner.run({"question": WANTED}, THREAD))
@@ -408,8 +388,6 @@ def test_resuming_hands_the_answer_back_into_the_step_that_asked() -> None:
 def test_a_thread_is_forgotten_out_of_the_file_a_deployment_keeps_it_in(
     tmp_path: Path,
 ) -> None:
-    """The checkpointer a deployment runs is the file-backed one, and it is the one a
-    delete has to reach: in memory a thread dies with the process anyway."""
     path = str(tmp_path / "conversations.sqlite")
     first = langgraph_for(
         **_walk(_always(_replies)), max_tool_rounds=ROUNDS, checkpoints_at=path
@@ -459,9 +437,6 @@ def _gated(*names: str) -> tuple[LangGraphRunner, list[str]]:
     tools = tuple(_effecting(name) for name in names)
 
     def running(state: AgentState) -> AgentState:
-        """The round's outstanding calls, read the way `ToolStep` reads them: what the
-        last assistant message asked for, minus whatever a `tool` message has settled —
-        so a call the gate answered is one this never sees."""
         asked: tuple[ToolCall, ...] = ()
         answered: set[str] = set()
         for message in state.get("messages", ()):

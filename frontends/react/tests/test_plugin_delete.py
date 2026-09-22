@@ -59,8 +59,6 @@ def test_a_delete_that_is_refused_says_why(tmp_path: pathlib.Path) -> None:
 
 
 def test_a_name_that_is_a_path_reaches_no_file(tmp_path: pathlib.Path) -> None:
-    """The route takes one path segment, and the name it takes is matched against what
-    loaded — so a traversal is a 404 or a refusal, never a file."""
     (tmp_path / "field_notes.py").write_text(DROPPED)
     reader = _reader(tmp_path)
 
@@ -73,8 +71,6 @@ def test_a_name_that_is_a_path_reaches_no_file(tmp_path: pathlib.Path) -> None:
 def test_the_listing_says_which_fields_would_go_with_each_plugin(
     tmp_path: pathlib.Path,
 ) -> None:
-    """The page draws the question out of this rather than out of what the plugin
-    registered: a field something else still brings is not one that goes."""
     (tmp_path / "field_notes.py").write_text(DROPPED)
     (tmp_path / "ringing.py").write_text(DROPPED.replace("birds", "birds"))
     (tmp_path / "trips.py").write_text(DROPPED.replace("birds", "travel"))

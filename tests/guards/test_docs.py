@@ -1,16 +1,3 @@
-"""Every location the docs claim, checked against the tree.
-
-Only the pages that describe the project as it is now. `docs/sprints/**` is build
-history: its paths were true the day they were written and policing them would make
-the record of how the code was built follow the code, which is the opposite of what a
-record is for.
-
-A location is written relative to the repository, or relative to a package's `cora/`
-when it names a module, and carries a trailing slash when it is a directory. A
-backticked token holding a slash but no source suffix — a model id like
-`openai/gpt-4o-mini` — claims nothing about the tree.
-"""
-
 import pathlib
 import re
 
@@ -81,15 +68,6 @@ def _resolves(reference: str) -> bool:
 
 
 def stores() -> dict[str, str]:
-    """Every location a deployment can configure, and the variable that moves it.
-
-    Discovered rather than listed: a store added to `cora.app.config` has to reach the
-    privacy page, and a list here would be one more place to forget. The variable is
-    derived from the constant, which is the naming convention every one of them follows
-    — a path setting that broke the convention would fail here, which is the right
-    place to notice it. That a setting is really read under the name derived here is
-    `tests/cora/app/test_config.py`'s to hold, and it does.
-    """
     return {
         name.replace("DEFAULT_", "CORA_"): value
         for name, value in vars(config).items()
@@ -98,9 +76,6 @@ def stores() -> dict[str, str]:
 
 
 def test_the_stores_cora_writes_are_one_database_and_one_directory() -> None:
-    """What the retired variables would still move, stated so it stays retired: the
-    facts, the turns and the passages are one file, and only the documents are kept
-    beside it as something a person can read."""
     found = stores()
 
     assert "CORA_MEMORY_PATH" not in found
@@ -108,13 +83,6 @@ def test_the_stores_cora_writes_are_one_database_and_one_directory() -> None:
 
 
 def test_the_privacy_page_names_every_store_and_the_setting_that_moves_it() -> None:
-    """The privacy page's list of what is kept, held against the settings themselves.
-
-    The locations guard below cannot hold it: every store is made at runtime, so a page
-    naming one as a directory would claim a path a clean checkout does not have. Read
-    off the settings instead, so a store that moves, a store that is added, or a
-    variable that is renamed is red until the page says so.
-    """
     page = pathlib.Path(PRIVACY).read_text()
 
     missing = [
@@ -172,9 +140,6 @@ def _unread_plugin_setting(name: str) -> str | None:
 
 
 def test_every_setting_the_docs_name_is_one_cora_reads() -> None:
-    """A page naming a variable nothing reads documents a knob that does nothing —
-    which is how `CORA_PLUGIN_FITNESS_UNITS` stood in the docs for a sprint. A plugin's
-    settings are checked against the plugin, because the variable names it."""
     read = _settings()
     invented = []
     for page in PAGES:
@@ -210,9 +175,6 @@ def _recipes() -> dict[str, str]:
 
 
 def test_every_frontend_ships_a_documented_command_that_starts_it() -> None:
-    """A frontend nobody can start is a frontend nobody runs, which is the thing the
-    one-frontend rule was really about. Read off the workspace rather than listed, so
-    the next one is covered by being added."""
     recipes = _recipes()
     documented = {target for page in PAGES for target in _named_in(page, TARGET)}
     unstarted = []
@@ -257,9 +219,6 @@ def _marked(text: str, name: str) -> str:
 
 
 def test_the_tutorial_runs_the_same_commands_the_how_to_gives() -> None:
-    """Written twice on purpose: a MkDocs snippet renders as its own directive on
-    GitHub, and a tutorial whose first step is a line of markup is a tutorial nobody can
-    follow. So the two copies are held equal here instead."""
     started = pathlib.Path(STARTED).read_text()
     walked = pathlib.Path(TUTORIAL).read_text()
 

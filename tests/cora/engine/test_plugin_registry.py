@@ -8,8 +8,6 @@ from cora.ports.host import CONTRACT
 
 
 def test_loading_a_plugin_hands_back_the_module_and_its_extend() -> None:
-    """Loading imports and checks the module. What the plugin contributes is registered
-    later, against a host, because a host is made of an assembled app's own parts."""
     loaded = load_plugin("fixture_plugins.valid")
 
     assert loaded.module == "fixture_plugins.valid"
@@ -53,8 +51,6 @@ def _drop(folder: pathlib.Path, name: str, source: str = DROPPED) -> pathlib.Pat
 def test_a_file_dropped_in_the_folder_is_loaded_under_its_stem(
     tmp_path: pathlib.Path,
 ) -> None:
-    """No packaging at all: a `.py` file in the folder is a plugin, named for the file
-    and sourced from where it lies."""
     dropped = _drop(tmp_path, "field_notes.py")
 
     loaded = load_plugins([], folder=tmp_path)
@@ -67,8 +63,6 @@ def test_a_file_dropped_in_the_folder_is_loaded_under_its_stem(
 def test_the_folder_is_read_in_name_order_after_the_modules_named(
     tmp_path: pathlib.Path,
 ) -> None:
-    """Load order is the only precedence there is, so it is one a deployment can
-    predict rather than one the filesystem decides."""
     _drop(tmp_path, "zebra.py")
     _drop(tmp_path, "aardvark.py")
 
@@ -94,7 +88,6 @@ def test_a_dropped_file_named_like_a_named_module_is_refused_naming_both(
 
 
 def test_a_contract_version_cora_does_not_offer_is_refused_naming_both() -> None:
-    """Read before `extend` is called, so a plugin cora will not have never runs."""
     with pytest.raises(PluginLoadError) as refused:
         load_plugin("fixture_plugins.wrong_contract")
 
@@ -128,8 +121,6 @@ def extend(cora: Host) -> None:
 def test_a_package_dropped_in_the_folder_is_loaded_under_its_folder_name(
     tmp_path: pathlib.Path,
 ) -> None:
-    """A directory holding `__init__.py` is one plugin, exactly as a file is: named
-    for the folder, sourced from where it lies, no packaging at all."""
     package = _drop_package(tmp_path, "field_notes")
 
     loaded = load_plugins([], folder=tmp_path)
@@ -140,8 +131,6 @@ def test_a_package_dropped_in_the_folder_is_loaded_under_its_folder_name(
 
 
 def test_a_dropped_packages_relative_imports_resolve(tmp_path: pathlib.Path) -> None:
-    """The folder is the package, so `from . import` inside it works as the author
-    wrote it — flattening is not the price of dropping in."""
     _drop_package(
         tmp_path, "field_notes", init=RELATIVE_IMPORT, notes='FIELD = "birds"\n'
     )
@@ -154,9 +143,6 @@ def test_a_dropped_packages_relative_imports_resolve(tmp_path: pathlib.Path) -> 
 def test_a_symlinked_package_is_a_plugin_like_any_other(
     tmp_path: pathlib.Path,
 ) -> None:
-    """A repo's own plugin deploys by `ln -s`: the link is discovered, loaded and
-    stat-ed as the directory it points at, so an edit where it lives moves the
-    signature the folder is watched by."""
     target = _drop_package(tmp_path / "elsewhere", "field_notes")
     folder = tmp_path / "plugins"
     folder.mkdir()

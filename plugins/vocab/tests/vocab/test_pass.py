@@ -1,10 +1,3 @@
-"""A session with nothing turned on: one shuffled pass over the list the reader chose.
-
-The default path, which every other drill test turns off by passing `spaced=True`.
-What it has to get right is that a pass ends, that a word missed does not, and that a
-store nobody asked to fill stays empty.
-"""
-
 from collections.abc import Iterator
 from contextlib import contextmanager
 
@@ -53,7 +46,6 @@ class Field:
         return self
 
     def pass_over(self, missing: str = "", **asked: object) -> tuple[list[str], str]:
-        """Answer every word right — bar one, missed the first time it is put."""
         put: list[str] = []
         for _ in range(WORDS * 3):
             said = self.tools["next_word"](**asked)

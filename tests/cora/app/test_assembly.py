@@ -133,9 +133,6 @@ def extend(cora: Host) -> None:
 def test_build_loads_the_plugins_folder_and_names_a_dropped_plugin_its_settings(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The one seam the folder crosses: a plugin nobody named in `CORA_PLUGINS` is
-    still a plugin, so it reads the variables named for it as any other does — a
-    settings map built from what the deployment typed would hand it nothing."""
     folder = tmp_path / "dropped"
     folder.mkdir()
     (folder / "field_notes.py").write_text(DROPPED)
@@ -185,8 +182,6 @@ def _live(
 def test_the_holder_recomposes_on_a_changed_folder_and_not_otherwise(
     tmp_path: Path,
 ) -> None:
-    """The check is a stat scan and the swap is one composition: an unchanged folder
-    costs no rebuild, and a changed one costs exactly one."""
     folder = _folder(tmp_path)
     holder = _live(folder)
     first = holder.current()
@@ -199,9 +194,6 @@ def test_the_holder_recomposes_on_a_changed_folder_and_not_otherwise(
 
 
 def test_the_app_offers_the_fields_configuration_and_plugins_bring() -> None:
-    """One rule: a field is offered because something brings it — a registration of
-    any loaded plugin, or the configuration. Named once however many bring it, the
-    configured ones first in their own order."""
     app = assembled(
         plugins=(make_plugin(name="interview", scope="interview"),),
         scopes=("fitness",),
@@ -303,9 +295,6 @@ REFUSED_AT_STARTUP = [
 def test_a_plugin_registering_what_it_may_not_is_refused_by_name(
     fixture: str, reason: str
 ) -> None:
-    """Walked from the module path a deployment types, through loading and registering:
-    the refusal a host raises reaches the operator as the host worded it, rather than
-    wrapped in a second sentence about registering."""
     module = f"fixture_plugins.{fixture}"
 
     with pytest.raises(PluginLoadError) as refused:
@@ -319,8 +308,6 @@ def test_a_plugin_registering_what_it_may_not_is_refused_by_name(
 def test_the_app_maps_each_field_with_a_page_to_the_directory_registered_for_it(
     tmp_path: Path,
 ) -> None:
-    """The one thing about a page that crosses into a frontend, derived the way the
-    fields on offer are — a projection of the registrations, not a second record."""
     coach = tmp_path / "coach"
 
     def extend(cora: Host) -> None:
@@ -338,9 +325,6 @@ def test_an_app_whose_plugins_brought_no_page_maps_nothing() -> None:
 def test_a_field_a_plugin_brought_only_a_page_for_is_still_offered(
     tmp_path: Path,
 ) -> None:
-    """A field arrives with whatever registered under it, and a page is now one of the
-    things that can. Offered nowhere, it would be a page advertised for a field the
-    picker never shows and no turn can run in."""
 
     def extend(cora: Host) -> None:
         cora.register_page(tmp_path, scope="training")
@@ -352,8 +336,6 @@ def test_a_field_a_plugin_brought_only_a_page_for_is_still_offered(
 
 
 def test_a_store_the_deployment_has_reaches_every_plugin() -> None:
-    """One store, handed to each plugin under its own name — so what two plugins keep
-    is kept apart by the assembly rather than by the plugins agreeing not to collide."""
     store = FakeStore()
     handed: dict[str, object] = {}
 
@@ -395,8 +377,6 @@ def _birds(cora: Host) -> None:
 def test_deleting_a_plugin_empties_the_files_and_the_rows_of_its_field(
     tmp_path: Path,
 ) -> None:
-    """Three stores hold a field's data, and a reader deleting a plugin is deleting
-    what it held rather than only what it could be searched for."""
     folder = tmp_path / "plugins"
     folder.mkdir()
     entry = folder / "birds.py"

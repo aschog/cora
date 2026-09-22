@@ -1,6 +1,3 @@
-"""A field's notice: the one live value cora holds for a field, written by whatever is
-beside the reader and read by that field's page."""
-
 import json
 import pathlib
 import time
@@ -42,9 +39,6 @@ def _reader(*named: str) -> TestClient:
 
 
 def test_a_notice_written_to_a_field_is_read_back_by_whoever_asks_next() -> None:
-    """The whole of it: something beside the reader says what it is doing, cora holds
-    the last such word per field, and the field's page reads it stamped with the time
-    cora heard it rather than a time the writer claimed."""
     reader = _reader()
     before = int(time.time() * 1000)
 
@@ -110,8 +104,6 @@ def test_the_arrival_a_notice_carries_is_the_one_cora_wrote() -> None:
 
 
 def test_a_writer_stating_its_own_time_is_stamped_with_coras() -> None:
-    """A watch, a sensor or a phone has a clock of its own and no reason to share
-    cora's, so the one time anything can reason about is the one cora wrote."""
     reader = _reader()
 
     reader.put(WHERE, json={"at": 5, "doing": "a workout"})
@@ -205,8 +197,6 @@ def test_a_body_that_is_not_a_json_object_is_refused() -> None:
 
 
 def test_a_freshly_composed_cora_holds_no_notice() -> None:
-    """A notice lasts as long as the process does. Nothing is written down, so a cora
-    started again is a cora that heard nothing yet."""
     app = _fields(FIELD)
     TestClient(api(app)).put(WHERE, json={"doing": "a workout"})
 

@@ -23,8 +23,6 @@ def test_a_word_answered_right_again_comes_back_in_six_days_then_by_its_ease() -
 
 
 def test_a_word_missed_comes_back_in_this_session_whatever_it_had_earned() -> None:
-    """Not tomorrow and not in six days: the reader is sitting there, and the word they
-    just failed is the word to ask again."""
     known = reviewed(reviewed(Card(), right=True, today=TODAY), right=True, today=TODAY)
 
     missed = reviewed(known, right=False, today=TODAY)

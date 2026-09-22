@@ -1,10 +1,3 @@
-"""Story 10: cora sends a researcher and reads the report.
-
-A broad question answered over several lookups by a tool that runs a loop of its own.
-The plugin, its registration and the whole turn are the real ones; the network behind
-the forecast is stubbed, which is the boundary a stub is for.
-"""
-
 from typing import Any
 
 import pytest
@@ -68,9 +61,6 @@ def service(monkeypatch: pytest.MonkeyPatch) -> Service:
 def test_a_broad_question_is_researched_not_answered_in_one_pass(
     service: Service,
 ) -> None:
-    """The turn calls one tool and reads one report. Inside that call the loop searched
-    the documents and fetched a forecast — work the trace holds and the conversation
-    does not, which is what keeps the searching out of what the model has to read."""
     model = ScriptedChatModel(
         [
             # The turn asks its researcher, and answers from the one report it gets.

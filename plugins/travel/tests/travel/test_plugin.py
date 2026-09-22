@@ -13,9 +13,6 @@ from fakes import FakeOutput, host_for
 
 
 def test_everything_travel_registers_belongs_to_its_own_scope() -> None:
-    """A travel persona has no business in a turn about training, and neither has a
-    forecast: this plugin holds nothing it would want outside its field, so a turn
-    about training is offered no way of reaching a weather service."""
     host = host_for("cora.plugins.travel", output=FakeOutput())
 
     extend(host)
@@ -41,8 +38,6 @@ def test_everything_travel_registers_belongs_to_its_own_scope() -> None:
 
 
 def test_travel_offers_no_way_of_saving_where_a_deployment_configured_nowhere() -> None:
-    """A tool the model can call and that always fails is worse than a tool it is never
-    offered — the same reason cora offers no `remember` without a memory."""
     host = host_for("cora.plugins.travel")
 
     extend(host)
@@ -52,8 +47,6 @@ def test_travel_offers_no_way_of_saving_where_a_deployment_configured_nowhere() 
 
 
 def test_the_corpus_ships_as_documents_a_reader_can_upload() -> None:
-    """Routing needs a field with something in it. Files rather than a registration:
-    a plugin that seeded the index at load would re-embed its notes on every start."""
     shipped = sorted(path.name for path in CORPUS.glob("*.md"))
 
     assert shipped
@@ -61,8 +54,6 @@ def test_the_corpus_ships_as_documents_a_reader_can_upload() -> None:
 
 
 def test_travel_offers_no_prices_where_a_deployment_set_no_key() -> None:
-    """The same rule saving follows: a tool the model can call and that can only fail
-    is worse than one it is never offered."""
     host = host_for("cora.plugins.travel", output=FakeOutput())
 
     extend(host)

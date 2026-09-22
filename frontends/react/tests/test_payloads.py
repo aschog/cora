@@ -8,8 +8,6 @@ from cora.ports.memory import Fact
 
 
 def test_a_citation_carries_the_field_and_upload_its_span_was_measured_in() -> None:
-    """The page reads a passage back by field and upload, not by filename: together they
-    are the one name that still points at the text the offsets were taken from."""
     citation = Citation(
         number=2, document="notes.md", start=10, end=24, upload="a1b2c3", scope="travel"
     )
@@ -25,14 +23,6 @@ def test_a_citation_carries_the_field_and_upload_its_span_was_measured_in() -> N
 
 
 def test_every_kind_of_step_renders_the_same_keys() -> None:
-    """The page draws one kind of step, so a kind added to the engine arrives in the
-    shape the panel already knows.
-
-    `origin` is the one field the shape does not settle: it says whose tool the step
-    reached for, which is the whole claim the plugin architecture makes, and it is read
-    off the engine's own list rather than off a second copy here. A step that called no
-    tool claims none.
-    """
     decision = payloads.step(ModelDecision(detail="thinking", tools=("search",)))
     ours = payloads.step(ToolUse(name=SEARCH_TOOL_NAME, outcome="1 passage"))
     theirs = payloads.step(ToolUse(name="book_a_flight", outcome="booked"))
@@ -49,8 +39,6 @@ def test_every_kind_of_step_renders_the_same_keys() -> None:
 
 
 def test_what_a_tool_did_inside_its_call_travels_as_the_call_s_own_steps() -> None:
-    """A plugin's tool may run a turn of its own, and the wire carries that work under
-    the call rather than losing it on the way to the page."""
     call = payloads.step(
         ToolUse(
             name="research",
@@ -102,7 +90,6 @@ def test_a_result_is_the_answer_its_citations_and_its_trace() -> None:
 
 
 def test_a_fact_and_a_session_carry_what_it_takes_to_act_on_them() -> None:
-    """A key forgets a fact; a thread id reopens a conversation."""
     assert payloads.fact(Fact(key="k1", text="No burpees.")) == {
         "key": "k1",
         "text": "No burpees.",

@@ -1,6 +1,3 @@
-"""The outer test for the story: a save is named for its moment, and a day's saves
-list in the order they happened whatever order they reached cora in."""
-
 from starlette.testclient import TestClient
 
 from app_builder import assembled

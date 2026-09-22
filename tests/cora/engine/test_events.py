@@ -1,5 +1,3 @@
-"""What a handler's return means at each point in a turn."""
-
 import pytest
 
 from cora.domain.errors import InputRejectedError
@@ -88,8 +86,6 @@ def test_an_amender_that_raises_is_dropped_and_the_next_one_still_runs() -> None
 
 
 def test_an_amendment_of_the_wrong_shape_is_dropped_like_a_raise() -> None:
-    """Failing open means a plugin cannot cost the turn: a brief handed back as a
-    dictionary would end it as surely as an exception would."""
     trace: list[TraceStep] = []
 
     amended = dispatch(

@@ -92,8 +92,6 @@ def test_a_plugin_taking_a_name_of_coras_own_is_a_config_error(reserved: str) ->
 
 
 def test_two_plugins_are_two_sections_headed_by_their_modules() -> None:
-    """A section says which plugin wrote it, and cora heads it rather than the plugin:
-    no plugin can put another's name on its own instructions."""
     registry = Registry(
         (
             _registered(FITNESS, INSTRUCTIONS, "Be a coach."),
@@ -135,9 +133,6 @@ user's own documents.
 def test_a_scopes_outline_is_the_paragraph_its_instructions_open_with(
     written: str, outlined: str
 ) -> None:
-    """What the router chooses between and what the card says under a field's name. A
-    line break is where the author's editor wrapped, so the paragraph is what is read,
-    and a full stop is no boundary either — `e.g.` would cut the phrase it explains."""
     registry = Registry((_registered(FITNESS, INSTRUCTIONS, written, "fitness"),))
 
     assert registry.outline("fitness") == outlined
@@ -148,8 +143,6 @@ def _extension(module: str, source: str = "") -> Extension:
 
 
 def test_the_listing_names_what_each_plugin_registered_and_where() -> None:
-    """One entry per plugin loaded, holding what a turn would take from it: a listing
-    read off the registrations cannot drift from the app it describes."""
     registry = Registry(
         (
             _registered(
@@ -175,9 +168,6 @@ def test_the_listing_names_what_each_plugin_registered_and_where() -> None:
 
 
 def test_a_tool_that_changes_something_outside_cora_is_listed_as_doing_so() -> None:
-    """What a plugin may do is what the listing is for, and an effect is the loudest
-    thing it can say. Carried as a note rather than a field of its own, so the two
-    renderings and a fifth kind of contribution each read one shape."""
     registry = Registry(
         (
             _registered(FITNESS, TOOL, make_tool("bmr"), "fitness"),
@@ -194,8 +184,6 @@ def test_a_tool_that_changes_something_outside_cora_is_listed_as_doing_so() -> N
 
 
 def test_two_plugins_bringing_one_fields_page_are_refused_by_name() -> None:
-    """A field has one page, so which of two it is cannot be a question the shell
-    answers by picking. Refused where every other combination refusal is raised."""
     with pytest.raises(ConfigurationError) as refused:
         Registry(
             (
@@ -224,8 +212,6 @@ def test_two_plugins_bringing_a_page_each_for_their_own_field_compose() -> None:
 
 
 def test_a_page_is_listed_under_its_field_and_names_no_directory() -> None:
-    """A tool has a name of its own and a page has not, and the directory is a path on
-    this machine that the screen showing the listing has no business carrying."""
     registry = Registry((_registered(FITNESS, PAGE, pathlib.Path("/a"), "fitness"),))
 
     [coaching] = registry.listing((_extension(FITNESS),))

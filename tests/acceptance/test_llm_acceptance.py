@@ -1,12 +1,3 @@
-"""The tests that run the whole shipped stack against a real model: the real
-composition root, the real store and embedder, OpenRouter over the network, and
-the shell's HTTP surface driven the way the page drives it. They are the only cover for
-behaviour a stub cannot show — a scripted model answers however the script says, so it
-can never reveal the model ignoring an instruction. Since story 15 removed the grounding
-gate, these are the only tests that can catch a model answering a document question from
-what it happens to know.
-"""
-
 import re
 from pathlib import Path
 
@@ -85,10 +76,6 @@ FAILED = "⚠️"
 
 
 def test_a_whole_session_uploads_asks_calculates_and_remembers(tmp_path: Path) -> None:
-    """The demo as one conversation on one thread: the document goes in through the
-    upload the page posts, the answer comes back cited from it, the calculation goes to
-    the plugin's tool instead of the model's arithmetic, and a fact the user asks it to
-    keep reaches the store the memory panel reads."""
     app = _live_app(tmp_path)
     with _page(app) as page:
         # The embedder loads here. The field is named, as the rail names it: an upload
@@ -133,10 +120,6 @@ testing a rule nobody wrote."""
 
 
 def test_a_real_model_cites_a_passage_the_reader_can_open(tmp_path: Path) -> None:
-    """Story 16 against the shipped stack: a live answer's citations have to be
-    openable, and the number has to lead back to the passage it was drawn from. The
-    click is the page's own event — what this pins is that the citation reaches the
-    page with the span it was measured in, and that the span holds what was cited."""
     with _page(_holding_the_protein_doc(tmp_path)) as page:
         turn = _turn(page, IN_THE_SUBJECT)
 
@@ -166,10 +149,6 @@ DECIDING = "llm-decision"
 def test_a_real_model_asks_which_value_to_use_instead_of_picking_one(
     tmp_path: Path,
 ) -> None:
-    """The honest proof that the pause is the model's decision: nothing in the question
-    mentions bodyweight or asks to be asked, and no script offers the options. Three
-    values for one fact are in memory, and the question depends on it — a model that
-    guesses answers straight through, and one that reads them stops."""
     app = _live_app(tmp_path)
     assert app.memory is not None
     for fact in CONFLICTING:
@@ -202,14 +181,6 @@ HEIGHT_ASKED = re.compile(r"\bheight\b|\btall\b|\bcm\b", re.IGNORECASE)
 
 
 def test_a_real_model_asks_for_one_missing_value_in_prose(tmp_path: Path) -> None:
-    """The rule holds against a real model, which is the half a stub cannot show: a
-    scripted model asks however the script says, so only this can say whether a model
-    takes the refusal and asks in its answer.
-
-    Which way it gets there is not asserted. A model may raise the form and be refused,
-    or ask in prose without trying — both are the behaviour the story asked for, and
-    pinning one would be a test of the model's habits rather than of cora.
-    """
     app = _live_app(tmp_path)
 
     answered = app.agent.answer(MISSING_ONE, ASKING_FOR_ONE)

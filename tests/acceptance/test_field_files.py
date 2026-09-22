@@ -1,9 +1,3 @@
-"""The four routes a field's own files are kept over, driven as the page drives them.
-
-The real HTTP surface over a real adapter: what the screen writes is what the field's
-plugin reads back, and none of it reaches the documents.
-"""
-
 from pathlib import Path
 
 from starlette.testclient import TestClient

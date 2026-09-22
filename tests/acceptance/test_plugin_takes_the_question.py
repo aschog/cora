@@ -1,7 +1,3 @@
-"""The outer test for the story: a plugin answers a question in its field before any
-round is spent, and the model is never asked. A question it leaves alone is the model's
-as it always was, and the taken turn is in the transcript the model then reads."""
-
 from app_builder import assembled
 from cora.ports.chat_model import ModelReply
 from cora.ports.host import TAKING, Extension, Host

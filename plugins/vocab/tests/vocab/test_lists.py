@@ -1,5 +1,3 @@
-"""Reading the lists out loud, now that nothing indexes them."""
-
 from collections.abc import Iterator
 from contextlib import contextmanager
 

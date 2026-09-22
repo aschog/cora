@@ -32,10 +32,6 @@ def test_a_failed_tool_use_is_marked_and_carries_the_error() -> None:
 
 
 def test_a_step_read_back_from_data_holds_the_tuples_it_declares() -> None:
-    """JSON has one sequence, and both doors a step travels through — the checkpoint and
-    the conversation store — hand its fields back as keyword arguments. A step that came
-    back holding lists would stop being equal to the step that was recorded, and the
-    trace a resumed turn compares against would never match."""
     restored = ToolUse(
         name="research",
         arguments={"q": 1},
@@ -73,8 +69,6 @@ def test_a_card_the_reader_filled_in_says_so_and_one_they_left_says_that() -> No
 
 
 def test_a_card_that_asked_for_nothing_says_the_reader_let_it_run() -> None:
-    """A card of read-only fields asks for nothing, so "you gave it nothing" would
-    charge the reader with withholding what nobody wanted: they confirmed it."""
     confirmed = CardFilled(tool="price_it", asked=False)
 
     assert confirmed.summary == "You confirmed price_it"

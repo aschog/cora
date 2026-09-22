@@ -35,8 +35,5 @@ def test_corrupt_pdf_bytes_raise_unreadable_file_error() -> None:
 
 
 def test_image_only_pdf_raises_empty_document_error() -> None:
-    """Ingestion's own rules are covered in core against loaders of its making; these
-    two ride the real registry, because a PDF that parses to nothing is a fact about
-    pypdf rather than about the policy."""
     with pytest.raises(EmptyDocumentError):
         ingest(make_pdf_bytes("", ""), "scanned.pdf", LOADERS)

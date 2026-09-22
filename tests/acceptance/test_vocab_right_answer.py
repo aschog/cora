@@ -1,9 +1,3 @@
-"""The outer test for the story: a right answer gets the next word from the drill.
-
-The model puts the first word and is then never asked while the answers keep coming
-right — the drill records each one and puts the next. What does reach the model, a hint
-asked for, arrives with the taken words in the transcript it reads."""
-
 from typing import Any
 
 from app_builder import assembled

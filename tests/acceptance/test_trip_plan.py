@@ -1,9 +1,3 @@
-"""One instruction plans a whole trip, and the plan is checked before it is offered.
-
-The plugin, its planning loop and the whole turn are the real ones; the model and the
-search service are stubbed, which is the boundary a stub is for.
-"""
-
 from typing import Any
 
 import pytest
@@ -59,9 +53,6 @@ class Answer:
 
 
 class Service:
-    """The search service written out, pricing a fare by the week it departs so the
-    window really has a cheapest one in it."""
-
     def __init__(self) -> None:
         self.queries: list[dict[str, Any]] = []
 
@@ -127,8 +118,6 @@ def _planned(answered: Any) -> ToolUse:
 def test_one_instruction_comes_back_with_a_dated_priced_plan_that_holds(
     service: Service,
 ) -> None:
-    """The criterion: a place, a month and a budget in — and out comes a day-by-day
-    plan on a week that was really priced, inside the budget, with nothing failing."""
     model = ScriptedChatModel([_planning(), SHAPE_REPLY, ModelReply(text=ANSWER)])
 
     answered = _app(model).agent.answer(QUESTION, THREAD)

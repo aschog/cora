@@ -28,8 +28,6 @@ def test_a_kept_document_is_one_markdown_file_under_its_field(tmp_path: Path) ->
 
 
 def test_one_filename_uploaded_twice_is_two_files(tmp_path: Path) -> None:
-    """The bytes name the upload, so a citation into the first still opens onto the
-    text it was measured in after the second arrives."""
     store = _store(tmp_path)
 
     store.keep(FITNESS, UPLOAD, "notes.md", TEXT)
@@ -63,12 +61,6 @@ def test_a_forgotten_upload_leaves_no_file_and_reads_as_nothing(
 
 
 def test_a_scope_that_walks_out_of_the_root_forgets_nothing(tmp_path: Path) -> None:
-    """The same guard `read` holds, on the way out: a field name reaches here from a
-    request, and one that resolves outside the root must delete nothing.
-
-    The root and the field are written first, or the walk fails on a path component
-    that does not exist and the guard is never the thing that held.
-    """
     root = tmp_path / "documents"
     store = FileDocuments.at(str(root))
     store.keep(FITNESS, ANOTHER, "notes.md", TEXT)
@@ -85,8 +77,6 @@ def test_a_scope_that_walks_out_of_the_root_forgets_nothing(tmp_path: Path) -> N
 
 
 def test_a_scope_that_is_not_a_bare_name_is_refused(tmp_path: Path) -> None:
-    """The name reaches here from an upload, so a field that walks out of the root is
-    refused before anything is written."""
     store = _store(tmp_path)
 
     with pytest.raises(DocumentStoreError):

@@ -53,8 +53,6 @@ def test_wrong_argument_type_yields_error_result_naming_the_problem() -> None:
 
 
 def test_a_tools_own_exception_text_is_never_passed_on() -> None:
-    """An exception that merely escaped can carry anything the tool was holding —
-    a URL with a key in it — so only its kind travels on."""
 
     def leak() -> None:
         raise RuntimeError("401 for https://api.example.com/v1?key=sk-live-secret")
@@ -123,8 +121,6 @@ def _reading(host: PluginHost) -> Tool:
 
 
 def test_a_plugins_own_search_reads_the_field_the_turn_is_running_in() -> None:
-    """A plugin cannot see the turn it is running in, so the field reaches its search
-    through the call rather than through an argument it would have to fill."""
     host = host_for(documents=_two_fields())
     runtime = ToolRuntime(tools=(_reading(host),))
 

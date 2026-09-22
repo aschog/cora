@@ -1,5 +1,3 @@
-"""The outer test for story 3, over the surface the page reads."""
-
 import pathlib
 
 import pytest
@@ -50,8 +48,6 @@ def _remembered(page: TestClient) -> list[str]:
 def test_a_fact_shared_last_session_briefs_the_model_the_next(
     tmp_path: pathlib.Path,
 ) -> None:
-    """The criterion end to end: one session tells it something, a fresh session over
-    the same memory file answers with it in hand and lists what it is holding."""
     path = tmp_path / "cora.sqlite"
     told = ScriptedChatModel([_remembering(), ModelReply(text=ACKNOWLEDGED)])
     _asked(_app(path, told), SHARED)

@@ -35,8 +35,6 @@ def test_a_table_gives_its_rows_and_its_column_names() -> None:
 
 
 def test_a_list_read_out_of_a_screenshot_gives_its_pairs() -> None:
-    """Numbered, em-dashed, and typed by nobody: this is what the reading saves, and it
-    is a list as much as a table is."""
     read = pairs_in(READ, "IMG_8664.md")
 
     assert [(pair.left, pair.right) for pair in read] == [
@@ -64,8 +62,6 @@ def test_a_word_holding_a_hyphen_is_not_split_at_it() -> None:
 
 
 def test_a_line_with_one_word_is_no_pair() -> None:
-    """The reading drops a side now and then. The line goes, the list stays — as long
-    as the rest of the document still reads as a list."""
     read = pairs_in("Apple\nBook — Buch\nCat — Katze\nDog — Hund\n", "shot.md")
 
     assert [(pair.left, pair.right) for pair in read] == [
@@ -92,9 +88,6 @@ Wir treffen uns um acht — bitte nicht zu spät kommen.
 
 
 def test_prose_split_by_a_dash_is_not_a_list_of_pairs() -> None:
-    """A note left in the field is a note: a sentence either side of a dash is not a
-    word and its translation, and a drill that took it for one would put paragraphs to
-    the reader to translate."""
     assert pairs_in(PROSE, "notes.md") == ()
 
 
@@ -111,15 +104,12 @@ def test_a_line_whose_sides_are_phrases_is_no_pair() -> None:
 
 
 def test_a_document_that_is_mostly_prose_holds_no_pairs() -> None:
-    """One line that looks like a pair does not make a page of prose a list."""
     mostly = PROSE + "Apple — Apfel\n"
 
     assert pairs_in(mostly, "notes.md") == ()
 
 
 def test_a_short_phrase_is_still_a_word() -> None:
-    """Vocabulary is not always one word: "to look after" is what a list of verbs
-    holds, and the cap is on prose rather than on phrases."""
     read = pairs_in("to look after — sich kümmern um\nhouse — Haus\n", "verbs.md")
 
     assert [(pair.left, pair.right) for pair in read] == [

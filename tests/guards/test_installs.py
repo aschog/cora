@@ -1,15 +1,3 @@
-"""The manifests as an install, not a declaration.
-
-`test_packaging.py` reads what a manifest names and `test_architecture.py` walks what
-the source imports; both run inside the development environment, where every framework
-is importable, nothing is ever missing and no wheel is ever built.
-
-The cheap half asks the resolver, which is transitive where a manifest sees one edge.
-The expensive half builds the wheels and reads what is inside them, and is marked
-integration for it: `module-name` is the one thing no other gate can be wrong about,
-because the editable install the workspace runs on never reads it.
-"""
-
 import pathlib
 import re
 import subprocess
@@ -48,11 +36,6 @@ server's worth of transitive dependencies behind one adapter."""
 
 
 def test_a_plugin_resolves_the_app_and_stops() -> None:
-    """Asked of fitness, which is the plugin that takes nothing of its own: equality,
-    not a superset, and it pulls the whole app either way — that last part is what the
-    layer split used to buy and no longer does. Travel is not asked, because it reaches
-    a live service and declares an HTTP client for it; that a plugin may declare only
-    what its own allowance names is the packaging guard's rule, not this one's."""
     assert _resolved("cora-plugin-fitness") == {
         "cora-plugin-fitness",
         *_resolved("cora"),
@@ -79,9 +62,6 @@ def _wheel(wheelhouse: pathlib.Path, member: pathlib.Path) -> pathlib.Path:
 def test_every_wheel_carries_every_module_its_package_holds(
     wheelhouse: pathlib.Path,
 ) -> None:
-    """A module the manifest forgot to name is not an error anywhere else in the
-    toolchain — it just is not in here. Now that the app's `module-name` is a list of
-    five, this is the gate a sixth layer would fail."""
     missing = []
     for member in workspace.members():
         src = member / "src"
@@ -99,10 +79,6 @@ def test_every_wheel_carries_every_module_its_package_holds(
 def test_every_wheel_carries_the_files_its_package_ships_that_are_not_python(
     wheelhouse: pathlib.Path,
 ) -> None:
-    """A plugin's page is a directory of HTML, and a wheel that carried only the modules
-    would install a plugin registering a page that is not there. Everything under `src`
-    that is not bookkeeping ships, because a plugin puts nothing there it does not mean
-    to hand over."""
     aside = (".ruff.toml", ".ruff_cache", "__pycache__", ".DS_Store")
     missing = []
     for member in workspace.members():

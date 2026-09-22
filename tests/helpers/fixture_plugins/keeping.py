@@ -1,5 +1,3 @@
-"""A plugin that keeps something on one turn and reads it back on a later one."""
-
 from cora.ports.host import Host
 
 KEEP_TOOL = "keep_note"

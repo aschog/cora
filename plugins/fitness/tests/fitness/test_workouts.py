@@ -1,5 +1,3 @@
-"""The grammar the trainer writes, read back as movements with their numbers."""
-
 from datetime import date
 from typing import Any
 
@@ -163,16 +161,12 @@ def test_unasked_for_detail_a_save_names_each_exercise_worked_once() -> None:
 
 
 def test_a_save_named_for_its_moment_and_its_workout_is_that_days_session() -> None:
-    """The name carries the day, the time and then the workout, so a day's saves still
-    sort by their moment and the rail says which workout each was."""
     listed = _listing((f"2026-09-18-16-20-05-{SNATCH_WORKOUT}.md", TITLED))
 
     assert listed.splitlines()[0].startswith("2026-09-18: ")
 
 
 def test_a_name_carrying_more_than_a_moment_is_not_a_day_on_its_own() -> None:
-    """The free part follows a whole time and nothing less: a document whose name merely
-    starts with a date is a document, not a session of that day."""
     listed = _listing(
         ("2026-09-18-notes.md", DEADLIFT), ("2026-09-18-12-27-00.md", SWING)
     )
@@ -275,8 +269,6 @@ def test_a_movement_is_marked_where_it_rose_on_the_previous_session_of_it() -> N
 
 
 def test_a_session_with_no_sets_is_not_what_the_next_one_is_judged_against() -> None:
-    """A heading nobody logged a set under weighs nothing, and a baseline it reset to
-    nothing makes the session after it rise whatever the weight did."""
     days = (
         ("2026-09-16.md", "# Deadlift 140 kg\n3 sets of 5"),
         ("2026-09-18.md", "# Deadlift 100 kg\nfelt heavy, stopped"),
@@ -339,9 +331,6 @@ def test_a_days_saves_list_in_the_order_of_their_names_whatever_the_upload() -> 
 
 
 def test_the_detailed_view_is_capped_and_says_what_it_left_out() -> None:
-    """Every session ever logged, rendered whole into one tool result, is a year of
-    training in a single message to the model. The recent ones are what a question is
-    usually about, and the rest are a `since` away."""
     days = tuple(
         (f"2026-{month:02d}-{day:02d}.md", "# Deadlift 100 kg\n3 sets of 5")
         for month in (1, 2)

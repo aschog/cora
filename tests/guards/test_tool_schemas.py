@@ -1,12 +1,3 @@
-"""Every tool a shipped plugin registers is one the model can actually call.
-
-A tool reaches the model as its `parameter_schema`, and reaches Python as
-`run(**arguments)`. Nothing in between checks that the two agree, so a schema naming an
-argument the function dropped is a `TypeError` the first time a model believes it — and
-a function taking one the schema never names is a feature no model can ever reach.
-Both have shipped here, which is why this is a guard and not a comment.
-"""
-
 import inspect
 from pathlib import Path
 

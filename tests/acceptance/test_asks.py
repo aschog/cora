@@ -1,5 +1,3 @@
-"""The outer test for the one-value rule."""
-
 from starlette.testclient import TestClient
 
 from app_builder import assembled
@@ -82,9 +80,6 @@ def _of(body: str, name: str) -> list[dict]:
 
 
 def test_one_value_is_asked_for_in_prose_and_a_confirm_card_still_stands() -> None:
-    """The criterion, both ways round: a single value cora is missing is asked for in
-    the answer and stops nothing, while a card of one field nobody writes in is not an
-    ask and stops the turn as it always did."""
     with TestClient(api(_app(_asking_for_one(), ModelReply(text=ASKED_IN_PROSE)))) as (
         reader
     ):
@@ -113,8 +108,6 @@ def test_one_value_is_asked_for_in_prose_and_a_confirm_card_still_stands() -> No
 
 
 def test_a_form_asked_for_one_value_twice_still_ends_in_an_answer() -> None:
-    """A model that takes the refusal and asks again spends a round, not the turn: each
-    refusal is a tool message the round carries on from, so the answer still arrives."""
     replies = (_asking_for_one(), _asking_for_one(), ModelReply(text=ASKED_IN_PROSE))
     with TestClient(api(_app(*replies))) as reader:
         asked = reader.post(

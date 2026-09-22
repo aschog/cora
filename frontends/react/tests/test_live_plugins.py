@@ -22,8 +22,6 @@ def extend(cora: Host) -> None:
 def test_a_dropped_field_is_offered_and_the_rails_follow_it(
     tmp_path: pathlib.Path,
 ) -> None:
-    """The field arrives with the plugin: the picker's list, the documents rail and
-    the pin all read the composition the folder describes, not a startup setting."""
     holder = LiveApp(
         named=(),
         folder=tmp_path,
@@ -53,9 +51,6 @@ SLOW_IMPORT = f"import time\ntime.sleep(0.8)\n{INSTRUCTIONS_ONLY}"
 
 @pytest.mark.integration
 def test_a_slow_drop_does_not_stall_the_event_loop(tmp_path: pathlib.Path) -> None:
-    """Recomposing runs plugin imports, and an async handler that pays for that on the
-    event loop stalls every stream and request on the page. The 404 below touches no
-    composition, so it answers immediately — unless the loop itself is held."""
     holder = LiveApp(
         named=(),
         folder=tmp_path,

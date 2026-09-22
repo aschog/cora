@@ -25,10 +25,9 @@ def _at(document: str, number: int) -> Citation:
     return Citation(number=number, document=document, start=0, end=10)
 
 
+# Yields the way a graph on a thread does: the thread as the turn found it, then each
+# state a step leaves behind, accumulated.
 class _StubRunner:
-    """Yields the way a graph on a thread does: the thread as the turn found it, then
-    each state a step leaves behind, accumulated."""
-
     def __init__(
         self,
         *states: AgentState,
@@ -95,9 +94,6 @@ def _traced(*steps: TraceStep) -> AgentState:
 
 
 def test_answer_seeds_the_run_with_the_question_and_names_the_thread() -> None:
-    """The conversation is the thread's, so the question and what the turn runs under
-    are all there is to seed: history left the signature with the turn that stopped
-    replaying it."""
     runner = _StubRunner({"answer": "80 kg."})
 
     result = Agent(runner).answer("What was my weight?", "t1", scopes=("fitness",))
@@ -133,8 +129,6 @@ def test_every_step_is_reported_as_it_arrives() -> None:
 
 
 def test_the_turn_it_took_is_recorded() -> None:
-    """A conversation the reader can come back to is written where the agent is, not
-    where it is drawn: every frontend gets history without keeping its own."""
     conversations = FakeConversations()
     agent = Agent(
         runner=_StubRunner({"answer": "1.6 g per kg"}), conversations=conversations
@@ -148,8 +142,6 @@ def test_the_turn_it_took_is_recorded() -> None:
 
 
 def test_a_turn_that_failed_records_nothing() -> None:
-    """A conversation is reopened to read what was answered; a turn that raised has no
-    answer to come back to, and a list of sessions naming one is a dead end."""
     conversations = FakeConversations()
     agent = Agent(runner=_StubRunner(then=LlmError()), conversations=conversations)
 
@@ -197,9 +189,6 @@ def test_resuming_finishes_the_turn_the_pause_belonged_to() -> None:
 
 
 def test_a_failure_from_inside_a_step_is_named_by_the_step_the_turn_was_in() -> None:
-    """A step names its own failures, but the rounds inside *work* are the loop's own
-    steps and name none. Where the turn had got to is what the trace says, so that is
-    what a failure out of the loop is reported under."""
     runner = _StubRunner(
         {"trace": [StepEntered("screen")]},
         {"trace": [StepEntered("screen"), StepEntered("work")]},
@@ -213,8 +202,6 @@ def test_a_failure_from_inside_a_step_is_named_by_the_step_the_turn_was_in() -> 
 
 
 def test_forgetting_a_conversation_drops_its_turns_and_its_thread() -> None:
-    """One call over both halves: a conversation whose record is gone and whose thread
-    is not has a pin, a transcript and possibly a parked turn nobody can see."""
     conversations = FakeConversations()
     conversations.record(
         THREAD,

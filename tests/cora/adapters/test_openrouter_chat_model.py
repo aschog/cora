@@ -59,13 +59,6 @@ def test_provider_reply_with_tool_calls_becomes_model_reply_tool_calls() -> None
 
 
 def test_the_client_is_built_with_the_budgets_it_was_handed() -> None:
-    """The real client, not a fake taking kwargs: a name this library stopped reading
-    would be swallowed into `model_kwargs` and the deadline would quietly not exist.
-    Building one needs no network — nothing is sent until the stream opens.
-
-    The numbers come from the caller because they belong to the model the deployment
-    named: what a reasoning model needs to think and answer within is not what the
-    adapter can know."""
     model = OpenRouterChatModel(
         model="m",
         api_key="k",
@@ -115,10 +108,6 @@ def test_the_client_is_built_with_the_budgets_it_was_handed() -> None:
 def test_a_provider_failure_keeps_the_category_the_user_can_act_on(
     monkeypatch: pytest.MonkeyPatch, raised: Exception, expected: type[LlmError]
 ) -> None:
-    """Waiting out a rate limit and retrying a timeout are different advice, and one
-    generic message can only give one of them. Two of these no retry ever fixes: a
-    rejected key, and a conversation the model can no longer read — the thread is
-    persisted, so "please try again" overflows identically until a new one starts."""
 
     class _FailingChatOpenAI:
         def __init__(self, **kwargs: object) -> None: ...
@@ -154,9 +143,6 @@ def test_an_answer_cut_off_at_the_token_limit_is_not_an_answer() -> None:
 
 
 def test_a_tool_call_the_model_malformed_is_not_an_answer() -> None:
-    """The call the model wrote is gone before cora sees it — `tool_calls` is empty and
-    the prose beside it reads as a final. It is a turn that failed, and the search it
-    asked for is what the answer would have rested on."""
     malformed = AIMessage(
         content="Let me check your notes.",
         invalid_tool_calls=[
@@ -202,8 +188,6 @@ def _model_over(monkeypatch: pytest.MonkeyPatch, client: type) -> OpenRouterChat
 def test_a_streamed_reply_is_the_reply_a_whole_response_would_have_given(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Streaming is how the text arrives, not what the turn is made of: the state, the
-    transcript and the recorded turn all come off this reply."""
     model = _model_over(
         monkeypatch,
         _streaming(
@@ -220,8 +204,6 @@ def test_a_streamed_reply_is_the_reply_a_whole_response_would_have_given(
 
 
 def test_a_streamed_tool_call_arrives_whole(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A provider sends the arguments in fragments of JSON, which is unparseable until
-    the last of them has arrived."""
     written: list[Written] = []
     model = _model_over(
         monkeypatch,
@@ -264,7 +246,6 @@ def test_a_streamed_tool_call_arrives_whole(monkeypatch: pytest.MonkeyPatch) -> 
 def test_what_the_model_thinks_reaches_no_sink(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Reasoning is not the answer, and a reader shown it would read it as one."""
     written: list[Written] = []
     model = _model_over(
         monkeypatch,
@@ -284,8 +265,6 @@ def test_what_the_model_thinks_reaches_no_sink(
 def test_a_stream_that_fails_part_way_keeps_the_category_and_what_was_written(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The failure travels as its category, and the pieces already sent are not taken
-    back — the caller replaces them with the sentence the failure carries."""
     written: list[Written] = []
 
     class _BreaksMidStream:

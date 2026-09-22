@@ -5,9 +5,6 @@ REFUSAL = "The test plugin refused that."
 
 
 def refuses_containing(trigger: str, message: str = REFUSAL) -> Handler:
-    """A plugin's screen, in the shape every real one has: it reads the question, and it
-    refuses or it does not. Written here so a suite can prove the engine runs a plugin's
-    screen without installing a plugin to borrow one from."""
 
     def screen(question: str) -> str | None:
         return message if trigger.lower() in question.lower() else None
@@ -40,10 +37,6 @@ def make_plugin(
     screens: tuple[Handler, ...] = (),
     scope: str | None = None,
 ) -> Extension:
-    """One plugin as a test wants it: `tools=None` asks for the three default tools,
-    and `tools=()` for none. `name` is the module's last segment, which is what heads
-    its section of the brief and what its settings are named for. `scope` is where
-    everything it registers applies, and `None` is everywhere."""
     offered = (
         (make_tool("one"), make_tool("two"), make_tool("three"))
         if tools is None

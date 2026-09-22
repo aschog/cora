@@ -159,8 +159,6 @@ def test_a_directory_that_cannot_be_read_fails_rather_than_reading_empty(
 
 
 def test_a_name_too_long_to_read_is_not_listed(tmp_path: Path) -> None:
-    """The listing and the reader hold one rule between them: a name the listing hands
-    back and the reader refuses breaks every caller that walks the field."""
     (tmp_path / VOCAB).mkdir()
     (tmp_path / VOCAB / f"{'a' * 120}.md").write_text(LIST)
 

@@ -148,8 +148,6 @@ def test_a_bot_started_while_a_chat_is_parked_reads_the_card_off_the_agent() -> 
 
 
 def test_an_effect_is_approved_from_the_chat() -> None:
-    """The card a plugin really puts up: an effect, its arguments laid out, and a yes
-    that is the one thing between the model's call and the world."""
     ran: list[int] = []
 
     def notify(x: int) -> int:

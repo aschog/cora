@@ -293,8 +293,6 @@ def test_an_invalid_question_is_rejected() -> None:
 
 
 def test_the_first_handler_to_refuse_in_order_is_what_the_user_reads() -> None:
-    """Every loaded plugin's screen runs in the order the plugins were named, so which
-    refusal a user sees is decided by the set, not by the handlers racing."""
     step = replace(
         _screen(), registry=_registry(screens=(_refuses("first"), _refuses("second")))
     )
@@ -318,9 +316,6 @@ def test_what_a_brief_handler_returned_is_what_the_model_reads() -> None:
 
 
 def test_the_brief_runs_cora_then_the_domains_then_the_users_own_notes() -> None:
-    """Rules ahead of the domains, because a domain section is what a plugin author
-    wrote and the rules are what cora will not have overridden; the user's notes come
-    last, being neither."""
     memory = FakeMemory(("trains on Tuesdays",))
     brief = _focus(instructions="## Coaching\nBe a coach.", memory=memory)(
         {"question": "q"}
@@ -377,10 +372,9 @@ def _ask_call(call_id: str = "a1", **arguments: object) -> ToolCall:
     )
 
 
+# A pause that answers with whatever it was handed, and keeps what it was shown so a
+# test can read what the reader would have been asked.
 class _Chosen:
-    """A pause that answers with whatever it was handed, and keeps what it was shown so
-    a test can read what the reader would have been asked."""
-
     def __init__(self, answer: str | None, **values: object) -> None:
         self.answer = answer
         self.values = values
@@ -445,9 +439,6 @@ def test_the_step_puts_the_card_the_ask_describes() -> None:
 
 
 def test_an_ask_for_one_value_is_refused_and_never_reaches_the_reader() -> None:
-    """A form is worth the stop when it settles several things at once. For one value it
-    is a box and a button where a sentence would have done, so the model is told to ask
-    in its answer — which the reader replies to in the composer."""
     pause = _Chosen(SEND, height="1.75")
     one = _form_call(
         fields=[{"name": "height", "description": "Your height in metres"}]
@@ -503,9 +494,6 @@ def test_the_answering_step_settles_the_answer_the_last_round_reached() -> None:
 
 
 def test_a_result_handler_cannot_redirect_the_answer_to_another_call() -> None:
-    """The call id is the provider's and answers one call. A handler that changed it
-    would leave the round's call unanswered and the transcript claiming to answer a call
-    nobody made — so what it returns is read for the payload and not for the id."""
     step = ToolStep(
         tool_runtime=ToolRuntime(tools=(add_tool(),)),
         registry=Registry(
@@ -538,15 +526,6 @@ def test_a_result_handler_cannot_redirect_the_answer_to_another_call() -> None:
 def test_a_result_handler_cannot_strip_the_label_off_material_cora_did_not_write(
     tool: Tool, call: ToolCall
 ) -> None:
-    """A handler replacing the payload with prose of its own has replaced the material,
-    not where it came from: what went into this call went in before any handler saw it,
-    so what the model is told still arrives behind the notice that says not to take
-    orders from it.
-
-    Asked of both sources the label has. They share one line today, which is exactly
-    why the second case is here: a reader who splits them again would otherwise take
-    the injection defence off a tool that reaches outside and see nothing go red.
-    """
     step = ToolStep(
         tool_runtime=ToolRuntime(tools=(tool,)),
         registry=Registry(
@@ -569,10 +548,6 @@ def test_a_result_handler_cannot_strip_the_label_off_material_cora_did_not_write
 
 
 def test_a_call_handler_cannot_rewrite_the_arguments_the_model_asked_for() -> None:
-    """A refusing event may refuse its value and may not change it. The arguments are a
-    dict inside a frozen call, so a handler is handed a copy of them — one that mutated
-    them in place and refused nothing would change what ran, and leave no step saying
-    so."""
     ran: list[int] = []
     counting = Tool(
         name="add",
@@ -640,8 +615,6 @@ def _yes(*call_ids: str) -> Answered:
 
 
 def test_the_gate_puts_an_effecting_call_to_the_user_as_the_tool_describes_it() -> None:
-    """What is approved is this call and not the idea of it, so the proposal carries the
-    tool's own words and the arguments the model wrote."""
     seen: list[Asks] = []
 
     def approve(asks: Asks) -> Answer:
@@ -656,8 +629,6 @@ def test_the_gate_puts_an_effecting_call_to_the_user_as_the_tool_describes_it() 
 
 
 def test_an_approved_call_is_left_for_the_tools_and_the_approval_is_traced() -> None:
-    """The gate runs no tool: what it contributes for a yes is the record of the yes,
-    and the call goes on to the tools still outstanding."""
     contributed = GateStep(registry=_offering(_acting()), approve=_yes("c1"))(
         _proposing(BOOKED)
     )
@@ -669,8 +640,6 @@ def test_an_approved_call_is_left_for_the_tools_and_the_approval_is_traced() -> 
 
 
 def test_a_declined_call_is_answered_where_it_was_proposed() -> None:
-    """Settled here, so the tools never see it and need no notion of approval at all —
-    and the model is told, in a `tool` message like any other, so the turn answers."""
     contributed = GateStep(registry=_offering(_acting()), approve=_yes())(
         _proposing(BOOKED)
     )
@@ -762,8 +731,6 @@ def _filled(origin: str | None) -> Answered:
 
 
 def test_a_tool_that_asks_puts_its_card_before_the_call_is_made() -> None:
-    """A card built by the tool out of its own schema, put by the gate — which runs no
-    tool, so nothing has happened while the reader fills it in."""
     seen: list[Asks] = []
 
     def answer(asks: Asks) -> Answer:
@@ -776,8 +743,6 @@ def test_a_tool_that_asks_puts_its_card_before_the_call_is_made() -> None:
 
 
 def test_the_values_the_reader_wrote_are_what_the_tools_are_handed() -> None:
-    """What runs is what a person stated. Contributed as state rather than written into
-    the transcript: a call the model made is what the model said."""
     state = _proposing(ASKING)
     contributed = GateStep(registry=_offering(_gathering()), approve=_filled("BER"))(
         state
@@ -847,8 +812,6 @@ def _raising(_: dict[str, Any]) -> Card:
 
 
 def test_a_card_the_reader_gave_nothing_to_leaves_the_call_unrun() -> None:
-    """A tool that asked and was told nothing is not run on the arguments it asked
-    about: the round is told so, and still has an answer to give."""
     contributed = GateStep(registry=_offering(_gathering()), approve=_filled(None))(
         _proposing(ASKING)
     )
@@ -859,8 +822,6 @@ def test_a_card_the_reader_gave_nothing_to_leaves_the_call_unrun() -> None:
 
 
 def test_a_card_asking_for_one_value_is_refused_and_never_put() -> None:
-    """One value is a sentence, not a form. The call is refused the way a broken `asks`
-    is — the round is told what to do instead, and nothing stops the reader."""
     seen: list[Asks] = []
 
     def answer(asks: Asks) -> Answer:
@@ -882,8 +843,6 @@ def test_a_card_asking_for_one_value_is_refused_and_never_put() -> None:
 
 
 def test_a_card_of_one_field_nobody_writes_in_is_put_and_the_call_runs() -> None:
-    """A card of one read-only field asks for nothing: it puts what the tool worked out
-    and waits for a yes, which is a stop the sentence could not have made."""
     seen: list[Asks] = []
 
     def answer(asks: Asks) -> Answer:
@@ -903,8 +862,6 @@ def test_a_card_of_one_field_nobody_writes_in_is_put_and_the_call_runs() -> None
 
 
 def test_a_card_of_one_writable_field_is_refused_whatever_it_shows() -> None:
-    """The count is of the fields the reader may write, not of the rows on the card: a
-    card showing four things and asking for one is still asking for one."""
     seen: list[Asks] = []
 
     def answer(asks: Asks) -> Answer:
@@ -925,8 +882,6 @@ def test_a_card_of_one_writable_field_is_refused_whatever_it_shows() -> None:
 
 
 def test_a_card_of_one_writable_field_already_filled_is_refused_too() -> None:
-    """What makes it an ask is that the reader may write in it, not that it is empty:
-    a box holding the model's guess is still a box asking for one value."""
     seen: list[Asks] = []
 
     def answer(asks: Asks) -> Answer:
@@ -947,8 +902,6 @@ def test_a_card_of_one_writable_field_already_filled_is_refused_too() -> None:
 
 
 def test_a_refused_card_is_on_the_trace_as_the_call_it_cost() -> None:
-    """The reader is asked in prose instead, and the trace is where that turn is read
-    back: a card refused and no step for it reads as a model that simply asked."""
     contributed = GateStep(
         registry=_offering(replace(_gathering(), asks=lambda _: ONE_VALUE_CARD)),
         approve=_filled("BER"),
@@ -961,9 +914,6 @@ def test_a_refused_card_is_on_the_trace_as_the_call_it_cost() -> None:
 
 
 def test_a_card_that_asked_for_nothing_does_not_say_the_reader_gave_nothing() -> None:
-    """A card of read-only fields asks for nothing, so there is nothing to write over
-    and nothing to tell the model was written: it ran on what the model wrote, with a
-    yes behind it."""
     confirming = replace(_gathering(), asks=lambda _: CONFIRM)
     state = _calling(ASKING, origin="BER")
 
@@ -980,8 +930,6 @@ def test_a_card_that_asked_for_nothing_does_not_say_the_reader_gave_nothing() ->
 
 
 def test_a_card_that_asked_for_nothing_is_confirmed_on_the_trace() -> None:
-    """The reader is owed the same account the model gets: they confirmed the call, and
-    "you gave it nothing" is a charge of withholding what nobody asked for."""
     confirming = replace(_gathering(), asks=lambda _: CONFIRM)
 
     contributed = GateStep(registry=_offering(confirming), approve=_confirmed())(
@@ -993,8 +941,6 @@ def test_a_card_that_asked_for_nothing_is_confirmed_on_the_trace() -> None:
 
 
 def test_a_value_sent_for_a_field_put_up_to_be_read_is_dropped() -> None:
-    """The answer reaches the run from outside it, so a value for a read-only field is
-    dropped rather than written over the argument the reader was shown beside it."""
     confirming = replace(_gathering(), asks=lambda _: CONFIRM)
 
     def meddling(asks: Asks) -> Answer:
@@ -1010,8 +956,6 @@ def test_a_value_sent_for_a_field_put_up_to_be_read_is_dropped() -> None:
 
 
 def test_a_refused_ask_traces_its_prompt_and_not_the_fields_it_named() -> None:
-    """An ask carries its fields as a nested list, and a panel full of JSON for a call
-    that never reached the reader is a panel nobody reads."""
     partial = AskStep(pause=_Chosen(SEND))(
         _asked(_form_call(fields=[{"name": "height", "description": "Your height"}]))
     )
@@ -1022,8 +966,6 @@ def test_a_refused_ask_traces_its_prompt_and_not_the_fields_it_named() -> None:
 
 
 def test_a_card_that_asked_for_nothing_and_was_declined_says_so() -> None:
-    """Declining a confirmation is not leaving a form empty, and the model is owed the
-    difference: nothing was asked for, so nothing was withheld."""
     confirming = replace(_gathering(), asks=lambda _: CONFIRM)
 
     contributed = GateStep(registry=_offering(confirming), approve=_filled(None))(
@@ -1035,8 +977,6 @@ def test_a_card_that_asked_for_nothing_and_was_declined_says_so() -> None:
 
 
 def test_a_plugin_whose_asks_breaks_costs_the_call_and_not_the_turn() -> None:
-    """The gate is a step of the core, so a plugin that broke inside it is contained the
-    way a refusing handler is: the round is told, and the turn still answers."""
     broken = replace(_gathering(), asks=_raising)
 
     contributed = GateStep(registry=_offering(broken), approve=_filled("BER"))(
@@ -1060,13 +1000,6 @@ def _brief_over(facts: tuple[str, ...]) -> str:
 
 
 def test_a_fact_the_notes_hold_at_several_values_is_named_as_one() -> None:
-    """Cora reads its own notes rather than leaving the model to notice: three weights
-    under one subject is a shape it can see, and the model was told to spot it and did
-    not — reliably enough to matter, across three of them.
-
-    What it cannot see is whether the answer turns on it, which is why this states the
-    conflict and leaves the asking to the rule above.
-    """
     brief = _brief_over(HELD_THREE_WAYS)
 
     assert HELD_AT_SEVERAL.format(subject="bodyweight", count=3) in brief
@@ -1074,8 +1007,6 @@ def test_a_fact_the_notes_hold_at_several_values_is_named_as_one() -> None:
 
 
 def test_notes_that_agree_are_not_reported_as_a_conflict() -> None:
-    """The line costs the model attention, so it is absent where there is nothing to
-    settle — including where two notes share a subject and say the same thing."""
     settled = (
         "bodyweight 75 kg, from the coach notes",
         "bodyweight 75 kg, from the intake form",

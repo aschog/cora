@@ -1,6 +1,3 @@
-"""The outer test for story 7: a plugin named as a module and a plugin dropped as a
-file, both loaded, and cora saying what each of them registered."""
-
 import pathlib
 
 from app_builder import assembled

@@ -51,6 +51,4 @@ def test_sitting_a_live_interview_for_the_user_is_refused(attempt: str) -> None:
     ],
 )
 def test_preparation_questions_pass(question: str) -> None:
-    """Practice mentioning interviews, answers or the present moment is the field
-    itself — the screen refuses the misuse phrasings, not the vocabulary."""
     assert refuse_misuse(question) is None

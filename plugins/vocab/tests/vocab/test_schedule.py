@@ -21,8 +21,6 @@ def test_a_store_that_held_nothing_reads_as_an_empty_schedule() -> None:
 
 
 def test_text_that_is_not_a_schedule_reads_as_an_empty_one() -> None:
-    """A plugin that failed on what it found could not start again without the reader
-    deleting a file they cannot see."""
     assert Schedule.of("not a schedule at all").card("help") == Card()
 
 

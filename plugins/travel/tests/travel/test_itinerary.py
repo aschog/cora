@@ -42,8 +42,6 @@ def _plan(**over: Any) -> Plan:
 
 
 class Cora:
-    """The host the tool reads the verified plan from."""
-
     def __init__(self, plan: Plan | None = None) -> None:
         self.kept = {} if plan is None else {KEPT: json.dumps(written(plan))}
 
@@ -63,9 +61,6 @@ def _tool(output: FakeOutput, plan: Plan | None = None) -> Any:
 
 
 def test_the_tool_writes_the_verified_plan_and_says_where_it_went() -> None:
-    """What the user keeps is a file they can open, and the turn has to be able to say
-    where it went — an effect nobody can find is an effect that may as well not have
-    happened."""
     output = FakeOutput()
     plan = _plan()
 
@@ -79,8 +74,6 @@ def test_the_tool_writes_the_verified_plan_and_says_where_it_went() -> None:
 
 
 def test_a_plan_that_is_not_the_one_checked_is_refused_and_nothing_is_written() -> None:
-    """The model writes these arguments, so they are compared rather than trusted: the
-    traveller approved the plan cora checked, not whatever arrived."""
     output = FakeOutput()
     arrived = flat(_plan()) | {"total": "EUR 100"}
 
@@ -91,8 +84,6 @@ def test_a_plan_that_is_not_the_one_checked_is_refused_and_nothing_is_written() 
 
 
 def test_the_tool_declares_that_it_changes_something_outside_cora() -> None:
-    """The declaration is the whole reason the gate stops for it, and it is the tool's
-    own to make: only the tool knows a call of it writes."""
     tool = _tool(FakeOutput())
 
     assert tool.name == ITINERARY_TOOL_NAME
@@ -101,8 +92,6 @@ def test_the_tool_declares_that_it_changes_something_outside_cora() -> None:
 
 
 def test_a_title_that_leaves_no_filename_is_refused_not_renamed() -> None:
-    """The title is the model's prose, so turning it into a name is the plugin's job.
-    Nothing left of it is a refusal rather than an invented name."""
     output = FakeOutput()
     plan = _plan()
 
@@ -113,8 +102,6 @@ def test_a_title_that_leaves_no_filename_is_refused_not_renamed() -> None:
 
 
 def test_two_plans_under_one_title_are_two_files() -> None:
-    """A revised plan saved under the same title must not take the earlier one with it:
-    this is a file the user approved and keeps."""
     output = FakeOutput()
     first, second = _plan(), _plan(back=BACK + datetime.timedelta(days=1))
 

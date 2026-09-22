@@ -1,5 +1,3 @@
-"""What a plugin is handed, what it may register, and what it is refused for."""
-
 import pathlib
 
 import pytest
@@ -69,7 +67,6 @@ def test_a_registered_tool_is_kept_as_the_tool_the_model_is_offered() -> None:
 
 
 def test_a_registration_keeps_the_scope_it_was_made_under() -> None:
-    """One plugin under two lifetimes: what a scope switches off, and what it cannot."""
     host = host_for(MODULE)
 
     host.register_instructions("Be a coach.", scope="fitness")
@@ -114,10 +111,6 @@ def test_a_parameter_schema_that_is_not_json_schema_is_refused() -> None:
 
 
 def test_the_host_hands_over_coras_own_ports_rather_than_copies() -> None:
-    """A plugin searching the documents searches the index the uploads went into, and
-    what it remembers is what the next turn's brief reads. The search reaches that index
-    rather than being it, because a read has to say it happened — what it must not be is
-    a second index with the same name."""
     documents, memory = FakeContextSource(), FakeMemory()
 
     host = host_for(MODULE, documents=documents, memory=memory)
@@ -128,8 +121,6 @@ def test_the_host_hands_over_coras_own_ports_rather_than_copies() -> None:
 
 
 def test_the_host_hands_a_plugin_its_field_whole_and_says_it_read_it() -> None:
-    """A plugin listing its field reads what a search would, so the call that listed
-    answers for material cora does not vouch for — the one door stays one door."""
     held = [Document(name="2026-09-18.md", text="# Deadlift 14 kg", scope="fitness")]
     host = host_for(MODULE, documents=FakeContextSource(held=held))
 
@@ -175,9 +166,6 @@ def test_a_delegated_loop_runs_the_tools_it_asked_for() -> None:
 
 
 def test_a_delegated_loops_answer_cites_no_number_of_its_own() -> None:
-    """The numbers belong to the turn. A loop that handed itself `[1]` would collide
-    with the `[1]` the turn already gave the reader, and the page would draw a button
-    onto the wrong document."""
     model = _answering(ModelReply(text="Sleep, not volume [1]."))
 
     answered = host_for(MODULE, model=model).delegate("Why do squats stall?")
@@ -196,11 +184,6 @@ def _spending_everything(*after: ModelReply) -> ScriptedChatModel:
 
 
 def test_a_loop_stopped_at_the_hosts_ceiling_reports_what_it_found() -> None:
-    """The budget is the host's: a plugin asking for ten thousand rounds gets the
-    ceiling, so one tool call cannot spend a deployment's model bill. What it spent the
-    rounds learning is not thrown away with them — the loop is asked to write up what
-    it has, and the report says it stopped early so the turn cannot sign for it as
-    complete."""
     model = _spending_everything(ModelReply(text="the sum is 2"))
 
     reported = host_for(MODULE, model=model).delegate(
@@ -215,9 +198,6 @@ def test_a_loop_stopped_at_the_hosts_ceiling_reports_what_it_found() -> None:
 
 
 def test_a_delegated_loop_reads_its_passages_behind_the_untrusted_label() -> None:
-    """A loop reads the same documents the turn does, so it is owed the same warning.
-    Dropping the label because the passages carry no number would make delegation the
-    way around the screen cora put in front of every other reader."""
     documents = FakeContextSource(
         results=[
             RetrievedChunk(
@@ -250,8 +230,6 @@ def test_a_delegated_loop_reads_its_passages_behind_the_untrusted_label() -> Non
 
 
 def test_a_fenced_block_is_left_as_the_loop_wrote_it() -> None:
-    """What the docstring promises: inside a fence nothing is prose, so nothing in it is
-    a citation and none of it is tidied."""
     written = "See below.\n\n```python\ny = [1]\nz  =  2\n```\n\nThat is all [1]."
     model = _answering(ModelReply(text=written))
 
@@ -293,14 +271,6 @@ def _gathering(name: str = "price_it") -> Tool:
 
 
 def test_a_delegated_loop_is_offered_nothing_that_writes_stops_or_acts() -> None:
-    """The rule that keeps a nested turn from needing a nested approval, asserted over
-    the set the loop is actually handed rather than described in prose.
-
-    An effect and a stop-to-ask belong in the outer turn, where the gate is. So a tool
-    declaring an effect is withheld even though the plugin passed it in, cora's own
-    writing and stopping tools were never put in, and what is left is the reading tool
-    and cora's search.
-    """
     model = ScriptedChatModel([ModelReply(text="looked it up")])
     host = host_for(model=model)
 
@@ -313,8 +283,6 @@ def test_a_delegated_loop_is_offered_nothing_that_writes_stops_or_acts() -> None
 
 
 def test_a_plugin_is_handed_the_output_location_rather_than_a_path_of_its_own() -> None:
-    """The port cora holds, not a copy of it and not a directory name: confinement lives
-    in the adapter, so a plugin cannot be the thing that decides where a file may go."""
     output = FakeOutput()
 
     assert host_for(output=output).output is output
@@ -331,8 +299,6 @@ def test_a_plugin_keeps_and_reads_under_its_own_name() -> None:
 
 
 def test_a_plugin_is_handed_its_own_row_of_the_deployments_store() -> None:
-    """The plugin never names itself: the host fills the name in, which is what keeps
-    one plugin's names away from another's."""
     store = FakeStore()
 
     host = host_for(MODULE, store=store)
@@ -344,8 +310,6 @@ def test_a_plugin_is_handed_its_own_row_of_the_deployments_store() -> None:
 
 
 def test_a_deployment_that_keeps_nothing_hands_the_plugin_no_store() -> None:
-    """Absent rather than empty: a store that forgot every write would read as a bug in
-    the plugin."""
     assert host_for(MODULE).store is None
 
 
@@ -381,9 +345,6 @@ def _answered(**arguments: object) -> ModelReply:
 
 
 def test_a_shaped_loop_is_offered_the_shape_as_a_tool_beside_the_search() -> None:
-    """The shape is put to the model the one way a model is held to a schema: as the
-    parameters of something it may call. Described in the brief it would be a request,
-    and a request is what this change exists to stop relying on."""
     model = _shaped(_answered(found=["one"]))
 
     host_for(MODULE, model=model).delegate("Find one.", shape=FOUND)
@@ -405,8 +366,6 @@ def test_an_unshaped_loop_is_offered_no_way_to_answer_but_prose() -> None:
 
 
 def test_a_tool_named_for_the_shape_is_refused_rather_than_shadowed() -> None:
-    """As one named for cora's search is: a call would reach cora's, and the plugin
-    would watch its own tool never run."""
     model = _shaped(_answered(found=["one"]))
 
     with pytest.raises(ToolRefusal) as refused:
@@ -428,9 +387,6 @@ def test_a_shape_that_is_not_a_schema_is_refused_before_a_round_is_spent() -> No
 
 
 def test_a_shape_requiring_nothing_is_refused_before_a_round_is_spent() -> None:
-    """An empty answer satisfies a shape that requires nothing, so a loop could answer
-    with `{}` and the caller would read a default it never asked for — the silent
-    fallback this change removes, arriving by the front door."""
     model = _shaped(ModelReply(text="one"))
 
     with pytest.raises(ToolRefusal) as refused:
@@ -451,8 +407,6 @@ def test_a_clean_answer_ends_the_loop_and_comes_back_as_the_value() -> None:
 
 
 def test_a_shaped_answer_costs_no_round_prose_would_not_have() -> None:
-    """The answer arrives as a call, on the round the loop was going to end on — so a
-    shape narrows nothing about what the loop may spend on looking things up."""
     shaped = _shaped(_answered(found=["one"]))
     prose = _shaped(ModelReply(text="one"))
 
@@ -465,8 +419,6 @@ def test_a_shaped_answer_costs_no_round_prose_would_not_have() -> None:
 def test_an_answer_that_fails_the_shape_is_told_to_the_loop_and_answered_again() -> (
     None
 ):
-    """The correction is the loop's own mechanism: a call whose arguments the schema
-    refuses comes back as a result the model reads, in a round it already had."""
     model = _shaped(_answered(found="not a list"), _answered(found=["one"]))
 
     answered = host_for(MODULE, model=model).delegate("Find one.", shape=FOUND)
@@ -490,8 +442,6 @@ def test_a_loop_that_writes_prose_where_a_shape_was_asked_for_refuses() -> None:
 def test_a_shaped_loop_that_spends_its_allowance_refuses_rather_than_writing_up() -> (
     None
 ):
-    """A write-up is prose headed by a warning, and a caller holding a shape has
-    nowhere to put either. So the rounds are reported as spent, not as an answer."""
     model = _spending_everything(ModelReply(text="the sum is 2"))
 
     with pytest.raises(ToolRefusal):
@@ -503,8 +453,6 @@ def test_a_shaped_loop_that_spends_its_allowance_refuses_rather_than_writing_up(
 
 
 def test_a_citation_number_inside_the_value_is_stripped_as_it_is_from_prose() -> None:
-    """The numbers belong to the turn wherever the loop puts them: a `[1]` riding back
-    in a field would reach the transcript and draw a button onto the wrong document."""
     model = _shaped(_answered(found=["sleep, not volume [1]"]))
 
     answered = host_for(MODULE, model=model).delegate("Why?", shape=FOUND)
@@ -536,8 +484,6 @@ def test_a_registered_page_is_kept_as_a_directory_under_its_field(
 
 
 def test_a_page_under_no_field_is_refused_by_module(tmp_path: pathlib.Path) -> None:
-    """Every other registration may be system-wide. A page may not: it is drawn where
-    one field is, and a page belonging to every turn belongs to no screen."""
     host = host_for(MODULE)
 
     with pytest.raises(PluginLoadError) as refused:
@@ -550,8 +496,6 @@ def test_a_page_under_no_field_is_refused_by_module(tmp_path: pathlib.Path) -> N
 def test_a_page_directory_that_is_not_there_still_loads(
     tmp_path: pathlib.Path,
 ) -> None:
-    """The disk is not held against a registration: it is free to change after any
-    check, and a composition that raises refuses every request until it is mended."""
     host = host_for(MODULE)
 
     host.register_page(tmp_path / "never-made", scope="fitness")

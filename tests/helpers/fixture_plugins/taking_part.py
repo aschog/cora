@@ -1,6 +1,3 @@
-"""A plugin that takes part in a turn: it amends the brief, refuses one call and wraps
-what another returned."""
-
 from dataclasses import replace
 
 from cora.ports.host import BRIEFING, CALLING, RETURNING, Host
