@@ -58,10 +58,14 @@ def test_a_notice_written_to_a_field_is_read_back_by_whoever_asks_next() -> None
 
 
 def test_a_field_nobody_wrote_to_answers_that_it_has_no_notice() -> None:
+    before = int(time.time() * 1000)
     held = _reader().get(WHERE)
 
     assert held.status_code == 200
-    assert held.json() == {"notice": None}
+    assert held.json()["notice"] is None
+    # Cora's clock comes with every read, so a page on a second machine judges an
+    # arrival against cora's terms rather than across the two.
+    assert before <= held.json()["now"] <= int(time.time() * 1000)
 
 
 def test_a_second_notice_replaces_the_first_rather_than_joining_it() -> None:
@@ -206,7 +210,7 @@ def test_a_freshly_composed_cora_holds_no_notice() -> None:
     app = _fields(FIELD)
     TestClient(api(app)).put(WHERE, json={"doing": "a workout"})
 
-    assert TestClient(api(app)).get(WHERE).json() == {"notice": None}
+    assert TestClient(api(app)).get(WHERE).json()["notice"] is None
 
 
 def test_the_notice_answers_the_two_methods_it_names_and_no_others() -> None:

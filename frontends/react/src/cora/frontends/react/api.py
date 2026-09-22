@@ -588,7 +588,13 @@ def _notice(apps: Apps, notices: dict[str, Notice]) -> Callable[[Request], Any]:
         scope = _field(named, app.scopes)
         if scope is None:
             return _refusal(named, app.scopes)
-        return JSONResponse(notices.get(scope) or {"notice": None})
+        # Cora's clock travels with the notice it stamped. A page reading one runs on a
+        # second machine with a clock of its own, and judging an arrival against its own
+        # `now` is comparing two clocks — which drops a watch's workout for as long as
+        # they are out of step. Read here rather than off the notice, so the page has a
+        # reference the notice it is judging did not set.
+        standing = notices.get(scope) or {"notice": None}
+        return JSONResponse({**standing, "now": int(time.time() * 1000)})
 
     return held
 

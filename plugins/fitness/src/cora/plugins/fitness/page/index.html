@@ -995,15 +995,27 @@ const ASK_WATCH_EVERY = 5000;
     not save the same workout twice off a notice still standing. */
 let acted = load('kb.acted', 0);
 
+/** How far cora's clock is from this page's, read off every answer. A notice is
+    stamped where cora runs and judged here, and the two machines are not in step: a
+    phone a couple of minutes out would drop the watch's start and, worse, its finish,
+    which the watch has already been told landed. Read from cora's own `now` and not
+    from the notice's stamp, because a stamp judged against itself always reads as now. */
+let skew = 0;
+/** One of cora's stamps, in this page's terms. */
+const here = stamp => stamp - skew;
+
 function followWatch(held){
+  if (held && typeof held.now === 'number') skew = held.now - Date.now();
   const said = held && held.notice;
   if (!said || !said.workout) return;
+  const at = here(held.at);
   if (said.workout === 'running'){
     // A start older than this workout is last workout's, still standing in the field.
-    if (held.at > ses.start){ ses.start = ses.watch = held.at; render(); }
+    if (at > ses.start){ ses.start = ses.watch = at; render(); }
     return;
   }
-  if (said.workout !== 'finished' || held.at <= acted || held.at < ses.start) return;
+  // `acted` stays in cora's terms: it outlives the reload that the skew does not.
+  if (said.workout !== 'finished' || held.at <= acted || at < ses.start) return;
   acted = held.at; save('kb.acted', acted);
   finish(true);
 }
