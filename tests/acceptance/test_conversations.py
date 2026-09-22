@@ -66,3 +66,21 @@ def test_a_thread_is_picked_up_out_of_the_file_by_a_second_composition(
     with TestClient(api(_app(store))) as reopened:
         assert reopened.get(f"/api/sessions/{KEPT}/scope").json() == {"pin": FITNESS}
         assert _listed(reopened) == [KEPT]
+
+
+@pytest.mark.integration
+@pytest.mark.xfail(strict=True, reason="a-session-is-a-conversation is in flight")
+def test_a_conversation_is_listed_and_read_back_under_its_own_name(
+    tmp_path: pathlib.Path,
+) -> None:
+    with TestClient(api(_app(tmp_path / "cora.sqlite"))) as page:
+        asked = {"question": FIRST, "thread_id": KEPT, "pin": FITNESS}
+        assert page.post("/api/ask", json=asked).status_code == 200
+
+        listed = page.get("/api/conversations")
+        assert listed.status_code == 200
+        [conversation] = listed.json()
+        assert conversation["opened_with"] == FIRST
+        [turn] = page.get(f"/api/conversations/{KEPT}").json()
+        assert turn["question"] == FIRST
+        assert page.get("/api/sessions").status_code == 404

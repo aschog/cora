@@ -2,26 +2,28 @@
 
 - [ ] 1.1 Write the outer test: a conversation answered once is listed at `/api/conversations` and read back from there, and `/api/sessions` answers nothing, marked `xfail(strict=True)`.
 
-## 2. The word held out
+## 2. The record
 
-- [ ] 2.1 Write a guard that no name under `src/cora` or `frontends/react` carries session, and watch it fail on `Session`.
+- [ ] 2.1 Write a test that the store lists what it holds through `opened()`, newest first, named by the question that opened each.
 
-## 3. The record
+## 3. The API
 
-- [ ] 3.1 Write a test that the store lists what it holds through `opened()`, newest first, named by the question that opened each.
+- [ ] 3.1 Write a test that a conversation's listing, turns, pin, parked card and deletion answer under `/api/conversations`.
 
-## 4. The API
+## 4. The page
 
-- [ ] 4.1 Write a test that a conversation's listing, turns, pin, parked card and deletion answer under `/api/conversations`.
+- [ ] 4.1 Write a test that the rail's tab over the list reads CONVERSATIONS.
+- [ ] 4.2 Write a test that the start control reads "New conversation" and, refused, says the reader is already in one.
+- [ ] 4.3 Write a test that the delete asks with "Delete conversation".
+- [ ] 4.4 Write a test that the way back from a chat reads "Back to other conversations".
+- [ ] 4.5 Write a test that the notice for a turn landing elsewhere says CONVERSATIONS.
+- [ ] 4.6 Write the browser test that the CONVERSATIONS tab lists, starts and deletes a conversation under those words.
 
-## 5. The page
+## 5. The word held out
 
-- [ ] 5.1 Write a test that the rail's tab over the list reads CONVERSATIONS.
-- [ ] 5.2 Write a test that the start control reads "New conversation" and, refused, says the reader is already in one.
-- [ ] 5.3 Write a test that the delete asks with "Delete conversation".
-- [ ] 5.4 Write a test that the way back from a chat reads "Back to other conversations".
-- [ ] 5.5 Write a test that the notice for a turn landing elsewhere says CONVERSATIONS.
-- [ ] 5.6 Write the browser test that the CONVERSATIONS tab lists, starts and deletes a conversation under those words.
+The guard comes last: as the second item it would force the whole rename in one green step, and every test after it would pass on arrival.
+
+- [ ] 5.1 Write a guard that no name under `src/cora` or `frontends/react` carries session, and watch it fail on `Session`.
 
 ## 6. The outer test again
 
