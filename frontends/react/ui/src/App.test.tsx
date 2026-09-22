@@ -490,7 +490,6 @@ test('a file uploaded twice is added quietly, and then said to be there already'
   ).toBeTruthy()
 })
 
-/** The page with a rail whose uploads are answered in turn: a chunk count, or a refusal. */
 /** Every sentence story 22 deleted. Kept as one list so a paragraph reintroduced anywhere
  *  in the rail fails here, whichever panel it lands in. */
 const EXPLANATIONS = [
@@ -500,13 +499,25 @@ const EXPLANATIONS = [
   /Nothing indexed yet/,
   /passage an answer cites/,
   /will be listed here/,
-  /carries between sessions/,
+  /carries between/,
   /tell cora something about yourself/,
   /the agent stays the same/,
   /CORA_PLUGINS/,
 ]
 
-  EXPLANATIONS.forEach((said) => expect(screen.queryByText(said)).toBeNull())
+test('no panel explains itself in the sentences story 22 deleted', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+  const unexplained = () =>
+    EXPLANATIONS.forEach((said) => expect(screen.queryByText(said)).toBeNull())
+
+  for (const tab of ['STEPS', 'SOURCE', 'CONVERSATIONS', 'MEMORY']) {
+    fireEvent.click(screen.getByRole('tab', { name: tab }))
+    unexplained()
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  unexplained()
+})
 
 // ── a question waiting on the reader ──
 
