@@ -71,6 +71,11 @@ def pairs_in(text: str, source: str) -> tuple[Pair, ...]:
     return _once(table if table else _lines(text, source))
 
 
+def sources_of(pairs: tuple[Pair, ...]) -> list[str]:
+    """The lists these pairs came off, in the order they were read, each once."""
+    return list(dict.fromkeys(pair.source for pair in pairs))
+
+
 def _once(pairs: tuple[Pair, ...]) -> tuple[Pair, ...]:
     seen: set[tuple[str, str]] = set()
     kept = []

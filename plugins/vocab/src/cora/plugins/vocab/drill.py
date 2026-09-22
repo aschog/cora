@@ -20,7 +20,7 @@ from .sides import LEFT as GERMAN_LEFT
 from .sides import other, sides_in
 from .sides import written as sides_written
 from .sm2 import due, reviewed
-from .words import Pair, pairs_of
+from .words import Pair, pairs_of, sources_of
 
 SCHEDULE = "schedule"
 SIDES = "sides"
@@ -258,7 +258,7 @@ class Drill:
     def _refuse_unsided(self, pairs: tuple[Pair, ...]) -> None:
         # One list at a time: the model has to look at each one's words to say which
         # column they are, and a refusal carrying five lists carries none of them well.
-        for named in _sources(pairs):
+        for named in sources_of(pairs):
             if self._german(named, pairs):
                 continue
             sample = [pair for pair in pairs if pair.source == named][:SAMPLED]
@@ -289,7 +289,7 @@ class Drill:
     def german_side(self, name: str, side: str) -> str:
         """Say which column of a list holds the German, for good."""
         pairs = pairs_of(self.cora)
-        held = _sources(pairs)
+        held = sources_of(pairs)
         if name not in held:
             raise ToolRefusal(NO_SUCH_LIST.format(name=name, held=", ".join(held)))
         kept = self._kept()
@@ -301,7 +301,7 @@ class Drill:
         # Settled three ways: named in this call, chosen earlier in the conversation,
         # or the only list there is. A refusal names the lists, because the reader is
         # about to be offered them.
-        held = _sources(pairs)
+        held = sources_of(pairs)
         chosen = asked.strip() or self.cora.state.read(CHOSEN) or ""
         if not chosen:
             if len(held) > 1:
@@ -357,10 +357,6 @@ def _spoken(pairs: tuple[Pair, ...]) -> frozenset[str]:
     return frozenset(
         side.casefold() for pair in pairs for side in (pair.left, pair.right)
     )
-
-
-def _sources(pairs: tuple[Pair, ...]) -> list[str]:
-    return list(dict.fromkeys(pair.source for pair in pairs))
 
 
 def _both(key: str) -> tuple[str, ...]:

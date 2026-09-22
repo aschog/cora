@@ -14,7 +14,7 @@ from dataclasses import dataclass
 
 from cora.ports.host import Host
 
-from .words import Pair, pairs_of
+from .words import Pair, pairs_of, sources_of
 
 NO_LISTS = "This field holds no word lists yet."
 NOWHERE = "'{word}' is on none of the lists this field holds."
@@ -44,7 +44,7 @@ class Lists:
         pairs = pairs_of(self.cora)
         if not pairs:
             return NO_LISTS
-        held = _names(pairs)
+        held = sources_of(pairs)
         if not name.strip():
             return "\n".join(held)
         on_it = [pair for pair in pairs if pair.source == name.strip()]
@@ -63,11 +63,3 @@ def _both(pair: Pair) -> tuple[str, str]:
 
 def _said(pair: Pair) -> str:
     return f"{pair.left} — {pair.right} (on {pair.source})"
-
-
-def _names(pairs: tuple[Pair, ...]) -> list[str]:
-    seen: list[str] = []
-    for pair in pairs:
-        if pair.source not in seen:
-            seen.append(pair.source)
-    return seen
