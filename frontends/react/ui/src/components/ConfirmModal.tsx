@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEscape } from '../hooks/useEscape'
 import styles from './ConfirmModal.module.css'
 import dialog from './dialog.module.css'
 
@@ -26,13 +26,7 @@ export default function ConfirmModal({
   onConfirm,
   onCancel,
 }: Props) {
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onCancel()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onCancel])
+  useEscape(onCancel)
 
   return (
     <div className={dialog.overlay} onClick={onCancel}>

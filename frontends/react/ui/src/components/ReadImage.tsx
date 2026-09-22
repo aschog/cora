@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
+import { useEscape } from '../hooks/useEscape'
 import dialog from './dialog.module.css'
 import styles from './ReadImage.module.css'
 
@@ -65,13 +66,13 @@ export default function ReadImage({
   /* Which name the box was last opened on, so the text of an existing file is fetched
      once per name rather than on every keystroke that spells it. */
   const [opened, setOpened] = useState('')
+  /* What a merge put above the reading, so naming a second file swaps that head out
+     instead of stacking the first file on top of the second. */
+  const [merged, setMerged] = useState('')
   /* A second photo read in the same session arrives as new props around the box the
      first one is still in. State seeded from a prop is seeded once, so the reading it
      came from is held beside it and the box follows a new one — otherwise Keep it
      would write the first reading under the second's name. */
-  /* What a merge put above the reading, so naming a second file swaps that head out
-     instead of stacking the first file on top of the second. */
-  const [merged, setMerged] = useState('')
   const [reading, setReading] = useState(read)
   if (reading !== read) {
     setReading(read)
@@ -81,13 +82,7 @@ export default function ReadImage({
     setMerged('')
   }
 
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onDiscard()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onDiscard])
+  useEscape(onDiscard)
 
   /* What the reader has changed. A stray click on the ground behind the dialog throws
      away a reading, and by now that may be minutes of correction — so it closes what

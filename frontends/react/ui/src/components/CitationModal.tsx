@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEscape } from '../hooks/useEscape'
 import type { Citation } from '../api'
 import DocumentBody from './DocumentBody'
 import { usePassage } from '../hooks/usePassage'
@@ -17,13 +17,7 @@ export default function CitationModal({ citation, onClose }: Props) {
       : null,
   )
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [onClose])
+  useEscape(onClose)
 
   return (
     <div className={dialog.overlay} onClick={onClose}>
