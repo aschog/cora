@@ -27,4 +27,6 @@ The guard comes last: as the second item it would force the whole rename in one 
 
 ## 6. The outer test again
 
-- [ ] 6.1 Drop the marker and watch the outer test pass.
+Dropped after 3.1, not last: the outer test reaches the API and no further, and the new path finished it — strict xfail then failed on the pass.
+
+- [x] 6.1 Drop the marker and watch the outer test pass.

@@ -33,7 +33,7 @@ import styles from './App.module.css'
 import { joined } from './joined'
 import { read as readImage } from './reading'
 
-const TABS = ['STEPS', 'SOURCE', 'SESSIONS', 'MEMORY'] as const
+const TABS = ['STEPS', 'SOURCE', 'CONVERSATIONS', 'MEMORY'] as const
 type Tab = (typeof TABS)[number]
 
 const UNDRAWABLE = 'That conversation could not be read.'
@@ -172,7 +172,7 @@ function Page() {
      behind a tab nobody told them about. */
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (page !== null) setTab('SESSIONS')
+    if (page !== null) setTab('CONVERSATIONS')
   }, [page])
 
   /** Everything the rails hold, read again — and what the page itself could not do let
@@ -580,7 +580,7 @@ function Page() {
                       citations={read ? passagesIn(read) : []}
                     />
                   )}
-                  {tab === 'SESSIONS' && (
+                  {tab === 'CONVERSATIONS' && (
                     <SessionsPanel
                       sessions={sessions}
                       here={thread}
