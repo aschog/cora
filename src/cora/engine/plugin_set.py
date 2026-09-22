@@ -1,6 +1,7 @@
 """What the plugins registered, as one list — and what of it a turn takes."""
 
 import pathlib
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from cora.domain.errors import ConfigurationError
@@ -43,6 +44,40 @@ def applies(entry: Registration, scopes: frozenset[str]) -> bool:
 
 
 @dataclass(frozen=True)
+class Unique:
+    """One thing a registry may hold only one of per key, and what to say of a second.
+
+    A rule as a value rather than a method: the next kind that must be unique — an
+    instructions block per field, a handler per event — is an entry below rather than a
+    fourth loop that says the same thing a fourth way.
+    """
+
+    kind: str
+    key: Callable[[Registration], str]
+    said: str
+
+
+ONE_EACH = (
+    Unique(
+        kind=TOOL,
+        key=lambda entry: str(entry.value.name),
+        said=(
+            "'{first}' and '{second}' both register a tool named '{named}'. "
+            "Load one of them, or rename the tool."
+        ),
+    ),
+    Unique(
+        kind=PAGE,
+        key=lambda entry: str(entry.scope),
+        said=(
+            "'{first}' and '{second}' both bring the page of '{named}'. "
+            "Load one of them."
+        ),
+    ),
+)
+
+
+@dataclass(frozen=True)
 class Registry:
     """Everything registered, in the order it was registered — cora's own included.
 
@@ -65,8 +100,8 @@ class Registry:
                 two plugins registered the same one, or two brought one field's page.
         """
         self._reject_a_name_of_coras_own()
-        self._reject_one_name_registered_twice()
-        self._reject_one_field_given_two_pages()
+        for unique in ONE_EACH:
+            self._reject_two_of_one(unique)
 
     def tools(self, scopes: frozenset[str] = frozenset()) -> tuple[Tool, ...]:
         """Every tool that applies to a turn under these scopes, as registered."""
@@ -163,27 +198,16 @@ class Registry:
                     f"and that name belongs to {RESERVED_TOOL_NAMES[entry.value.name]}."
                 )
 
-    def _reject_one_name_registered_twice(self) -> None:
-        registered_by: dict[str, str] = {}
-        for entry in self._of(TOOL):
-            first = registered_by.get(entry.value.name)
+    def _reject_two_of_one(self, unique: "Unique") -> None:
+        first_by: dict[str, str] = {}
+        for entry in self._of(unique.kind):
+            named = unique.key(entry)
+            first = first_by.get(named)
             if first is not None:
                 raise ConfigurationError(
-                    f"'{first}' and '{entry.module}' both register a tool named "
-                    f"'{entry.value.name}'. Load one of them, or rename the tool."
+                    unique.said.format(first=first, second=entry.module, named=named)
                 )
-            registered_by[entry.value.name] = entry.module
-
-    def _reject_one_field_given_two_pages(self) -> None:
-        brought_by: dict[str, str] = {}
-        for entry in self._of(PAGE):
-            first = brought_by.get(str(entry.scope))
-            if first is not None:
-                raise ConfigurationError(
-                    f"'{first}' and '{entry.module}' both bring the page of "
-                    f"'{entry.scope}'. Load one of them."
-                )
-            brought_by[str(entry.scope)] = entry.module
+            first_by[named] = entry.module
 
 
 def _contributed(entry: Registration) -> Contributed:
