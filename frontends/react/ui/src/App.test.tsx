@@ -371,6 +371,26 @@ test('the start control names a conversation, and refuses while there is nothing
   expect(screen.queryByText('You are already in a new conversation.')).toBeNull()
 })
 
+test('a turn still landing elsewhere is said to be listed under CONVERSATIONS', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText('Why am I stalling?')
+
+  fireEvent.click(screen.getByRole('button', { name: 'New conversation' }))
+
+  expect(screen.getByText(/listed under CONVERSATIONS when it lands/)).toBeTruthy()
+
+  /* And once it has landed, there is nothing elsewhere to speak of. */
+  turn.release()
+  await waitFor(() =>
+    expect(screen.queryByText(/listed under CONVERSATIONS when it lands/)).toBeNull(),
+  )
+})
+
 /** A 200 whose body is not a list of turns: the read went through, what came back cannot
  *  be drawn. A proxy or a version skew is enough. */
 /**
