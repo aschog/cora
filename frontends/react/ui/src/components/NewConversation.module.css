@@ -1,5 +1,5 @@
 /* ── starting over ── */
-.new-session {
+.new-conversation {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -14,22 +14,22 @@
   color: var(--text);
 }
 
-.new-session:hover:not([aria-disabled='true']) {
+.new-conversation:hover:not([aria-disabled='true']) {
   background: rgba(255, 255, 255, 0.1);
 }
 
-.new-session[aria-disabled='true'] {
+.new-conversation[aria-disabled='true'] {
   color: var(--n500);
   cursor: default;
 }
 
-.new-session-plus {
+.new-conversation-plus {
   font-size: 19px;
   font-weight: 400;
   line-height: 1;
   color: var(--accent);
 }
 
-.new-session[aria-disabled='true'] .new-session-plus {
+.new-conversation[aria-disabled='true'] .new-conversation-plus {
   color: var(--n500);
 }

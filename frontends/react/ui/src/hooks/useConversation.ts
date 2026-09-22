@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import * as cora from '../api'
-import type { Session, Turn } from '../api'
+import type { Conversation, Turn } from '../api'
 import type { Entry } from '../entry'
 import { carded, parkedOn, recorded, unanswered } from '../entry'
 import { aborted, message } from '../fail'
@@ -30,7 +30,7 @@ export function useConversation(setTrouble: (said: string | null) => void) {
      read that ran in between belongs to.
      The stow outranks the address, though the address is the more deliberate of the two,
      because of what each costs when it loses. A conversation named in the address is
-     listed under SESSIONS and is one click away. A thread parked on its first question
+     listed under CONVERSATIONS and is one click away. A thread parked on its first question
      has answered nothing, is listed nowhere, and is reachable by this and by nothing
      else — so passing it over is not choosing between two routes, it is closing the only
      one. Whichever wins, opening it writes the address, so the two agree afterwards. */
@@ -99,7 +99,7 @@ export function useConversation(setTrouble: (said: string | null) => void) {
 
   /** Starting over is a conversation the store is not asked for: it enters the same race
    *  as every load, so a reopen already in flight loses it rather than landing on top of
-   *  the new session and taking the reader back.
+   *  the new conversation and taking the reader back.
    *
    *  @param canLeave Whether there is a conversation to leave at all.
    *  @param leaving What else the conversation being left takes with it.
@@ -128,10 +128,10 @@ export function useConversation(setTrouble: (said: string | null) => void) {
    *  @param entering What else the conversation being opened brings with it, applied in
    *    the same step as its turns.
    */
-  const reopen = (session: Session, entering: (kept: Turn[]) => void) =>
-    loaded(session.thread_id, (kept) => {
+  const reopen = (conversation: Conversation, entering: (kept: Turn[]) => void) =>
+    loaded(conversation.thread_id, (kept) => {
       const turns = recorded(kept)
-      enter(session.thread_id)
+      enter(conversation.thread_id)
       setEntries(turns)
       entering(kept)
     })
@@ -175,8 +175,8 @@ export function useConversation(setTrouble: (said: string | null) => void) {
    *  go: the stow is what a reload comes back through, and a conversation that is gone is
    *  nowhere to come back to. The list is redrawn by the refresh every write here goes
    *  through. */
-  const discard = (session: Session) =>
-    cora.deleteSession(session.thread_id).then(() => forgetIf(session.thread_id))
+  const discard = (conversation: Conversation) =>
+    cora.deleteConversation(conversation.thread_id).then(() => forgetIf(conversation.thread_id))
 
   return {
     thread,

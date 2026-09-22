@@ -126,7 +126,7 @@ def test_an_effect_happens_only_after_i_approve_it(tmp_path: pathlib.Path) -> No
             "/api/ask", json={"question": QUESTION, "thread_id": THREAD}
         )
         [proposed] = _of(asked.text, "paused")
-        waiting = reader.get(f"/api/sessions/{THREAD}/pending").json()
+        waiting = reader.get(f"/api/conversations/{THREAD}/pending").json()
         before = sorted(path.name for path in output.rglob("*") if path.is_file())
         approved = reader.post(
             "/api/resume", json={"thread_id": THREAD, "answer": "s1"}

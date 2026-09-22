@@ -11,7 +11,7 @@ export type Removal = {
   /* `never` as the argument so that every listing's own updater is assignable — a
      function is assignable to one taking a narrower argument, and nothing is narrower
      than this. It buys the four call sites their real types and costs this one: nothing
-     ties `without` to what `from` actually holds, so pairing a sessions key with a
+     ties `without` to what `from` actually holds, so pairing a conversations key with a
      `string[]` updater type-checks and throws when it runs. The four are written side by
      side in `App.tsx`, which is the only thing keeping them honest. */
   without: (held: never) => unknown

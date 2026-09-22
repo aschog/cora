@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from cora.domain.conversation import Session, Turn
+from cora.domain.conversation import Conversation, Turn
 
 
 class Conversations(Protocol):
@@ -38,7 +38,7 @@ class Conversations(Protocol):
         """
         ...
 
-    def sessions(self) -> tuple[Session, ...]:
+    def opened(self) -> tuple[Conversation, ...]:
         """Every thread that has recorded a turn, newest first.
 
         A list of conversations is read from the top. A thread that has answered

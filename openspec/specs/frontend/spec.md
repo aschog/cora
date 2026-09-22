@@ -37,7 +37,7 @@ place. The sentence SHALL name what could not be drawn, and SHALL replace nothin
 
 #### Scenario: A panel that throws says so
 
-- **GIVEN** a store answering with a shape the sessions panel cannot read
+- **GIVEN** a store answering with a shape the conversations panel cannot read
 - **WHEN** the reader opens that panel
 - **THEN** they are told that panel could not be drawn
 
@@ -350,7 +350,7 @@ is fixed to a field with no page, or fixed to nothing, the screen SHALL be as it
 
 ### Requirement: The conversation is reachable whatever the rail is showing
 
-Where a conversation fixed to a field with a page is open, the sessions panel SHALL be
+Where a conversation fixed to a field with a page is open, the conversations panel SHALL be
 that conversation's chat, filling the rail. It SHALL offer a way back to the list of
 conversations, and opening one from that list SHALL make the rail its chat. A turn asked
 there SHALL NOT move the panels to the steps, which would take the chat off the screen.
@@ -536,7 +536,7 @@ for the field, that strip SHALL be drawn as it always was.
 ### Requirement: A conversation fixed to no page is drawn where it always was
 
 A conversation fixed to a field with no page, or fixed to nothing, SHALL be drawn in the
-middle of the screen, and the sessions panel SHALL be the list alone.
+middle of the screen, and the conversations panel SHALL be the list alone.
 
 #### Scenario: Opening one that has no page
 

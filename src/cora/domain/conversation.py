@@ -18,7 +18,7 @@ class Turn:
 
 
 @dataclass(frozen=True)
-class Session:
+class Conversation:
     """A conversation, named by the question that opened it.
 
     A thread id is what the agent needs and nothing a reader could pick from a list.

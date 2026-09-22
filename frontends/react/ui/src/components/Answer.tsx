@@ -26,7 +26,7 @@ const DECIDING = 'cora is waiting on your answer above.'
  *  away. */
 const NEAR_BOTTOM = 24
 const ELSEWHERE =
-  'cora is still answering a question in the conversation you left. It will be listed under SESSIONS when it lands.'
+  'cora is still answering a question in the conversation you left. It will be listed under CONVERSATIONS when it lands.'
 
 type Props = {
   /** What the conversation is answered in, drawn above it: the choice governs every turn

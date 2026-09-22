@@ -84,7 +84,7 @@ e2e-live: ui-build e2e-store
 # Every drawing in the docs. The component map reads `cora.app.assembly` for what the
 # boxes and the connectors are and places them itself — that map has one fixed shape, so
 # there is no layout to search for. The domain map is read out of the classes by pyreverse
-# and laid out by graphviz, which this target needs installed. The session maps read one
+# and laid out by graphviz, which this target needs installed. The turn maps read one
 # method each, and the graph off the nodes the runner declares, and space themselves to
 # what is said on them. Every SVG is committed, and `tests/guards/test_diagrams.py` reads
 # each one for what it contains — never for its bytes, which are the layout of whichever
@@ -92,7 +92,7 @@ e2e-live: ui-build e2e-store
 diagram:
 	uv run python scripts/gen_component_map.py
 	uv run python scripts/gen_domain_map.py
-	uv run python scripts/gen_session_maps.py
+	uv run python scripts/gen_turn_maps.py
 
 # The fitness field's screen for the wrist: one data page added to a sport in the watch's
 # own workout app, which writes that field's notice when it opens and when its control is

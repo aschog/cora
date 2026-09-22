@@ -68,7 +68,7 @@ export async function fixed(page: Page, field: string) {
   return shown
 }
 
-export const rightRail = (page: Page, tab: 'STEPS' | 'SOURCE' | 'SESSIONS' | 'MEMORY') =>
+export const rightRail = (page: Page, tab: 'STEPS' | 'SOURCE' | 'CONVERSATIONS' | 'MEMORY') =>
   page.getByRole('tab', { name: tab }).click()
 
 export const waiting = (page: Page) =>

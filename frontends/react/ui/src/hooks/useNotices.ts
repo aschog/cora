@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as cora from '../api'
-import type { Session } from '../api'
+import type { Conversation } from '../api'
 import { showThread } from '../route'
 
 /** How often a field is asked what it is doing. A notice says what is true now, so the
@@ -13,7 +13,7 @@ type Props = {
   pages: string[]
   /** Every conversation, newest first — which is what makes the first one pinned to a
    *  field the one that field opens. */
-  sessions: Session[]
+  conversations: Conversation[]
   /** The conversation on the screen, so the one already open is not opened again. */
   here: string
 }
@@ -34,17 +34,17 @@ type Props = {
  * normal one, and a poll that raised a banner would be the page complaining about a
  * feature the reader may not have.
  */
-export function useNotices({ pages, sessions, here }: Props) {
+export function useNotices({ pages, conversations, here }: Props) {
   /* The last arrival seen per field. A ref and not state: nothing is drawn from it, and
      a render per poll would be a render every five seconds on every open page. */
   const seen = useRef<Record<string, number>>({})
   /* What the poll reads when it next runs, rather than what was true when the effect was
      set up — the alternative is tearing the interval down and building it again every
      time a conversation joins the list. */
-  const now = useRef({ sessions, here })
+  const now = useRef({ conversations, here })
   useEffect(() => {
-    now.current = { sessions, here }
-  }, [sessions, here])
+    now.current = { conversations, here }
+  }, [conversations, here])
 
   /* The fields as one value, so an array built fresh on every render does not restart
      the poll. */
@@ -71,7 +71,7 @@ export function useNotices({ pages, sessions, here }: Props) {
         const before = seen.current[field]
         seen.current[field] = arrived
         if (before === undefined || arrived <= before) continue
-        const opening = now.current.sessions.find((each) => each.pin === field)
+        const opening = now.current.conversations.find((each) => each.pin === field)
         if (opening && opening.thread_id !== now.current.here)
           showThread(opening.thread_id)
       }

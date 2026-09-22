@@ -340,7 +340,7 @@ GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
     (
         "Records & pausing",
         (
-            "Session",
+            "Conversation",
             "Chunk",
             "TurnPaused",
             "Pending",

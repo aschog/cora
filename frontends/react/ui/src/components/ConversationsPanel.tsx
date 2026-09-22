@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
-import type { Session } from '../api'
+import type { Conversation } from '../api'
 import DeleteControl from './DeleteControl'
-import styles from './SessionsPanel.module.css'
+import styles from './ConversationsPanel.module.css'
 import { joined } from '../joined'
 
 const LEGEND =
@@ -11,18 +11,18 @@ const LEGEND =
 const NEW = 'New conversation'
 
 type Props = {
-  sessions: Session[]
+  conversations: Conversation[]
   here: string
   /** The conversation cora is answering a question in, if any. A turn that landed after
    *  its conversation was deleted would record it straight back into the list, so the
    *  one being answered in is left alone until it is done. */
   working: string | null
-  onOpen: (session: Session) => void
-  onDelete: (session: Session) => void
+  onOpen: (conversation: Conversation) => void
+  onDelete: (conversation: Conversation) => void
   /** Whether a conversation is one this rail would chat: fixed to a field that brings a
    *  page. The page and not the pin — a field pinned without one is drawn where every
    *  other conversation is. */
-  chats: (session: Session) => boolean
+  chats: (conversation: Conversation) => boolean
   /** The conversation to be this panel, where the one the reader is in is chattable and
    *  they have not gone back to the list. The panel draws its head; what is passed is
    *  the conversation itself. */
@@ -32,8 +32,8 @@ type Props = {
   onBack?: () => void
 }
 
-export default function SessionsPanel({
-  sessions,
+export default function ConversationsPanel({
+  conversations,
   here,
   working,
   onOpen,
@@ -50,8 +50,8 @@ export default function SessionsPanel({
           <button
             type="button"
             className={styles.back}
-            aria-label="Back to other sessions"
-            title="Back to other sessions"
+            aria-label="Back to other conversations"
+            title="Back to other conversations"
             onClick={onBack}
           >
             ←
@@ -67,40 +67,40 @@ export default function SessionsPanel({
     )
   }
 
-  const marked = sessions.some(chats)
+  const marked = conversations.some(chats)
   return (
-    <div className={styles.sessionList}>
-      {sessions.map((session) => {
+    <div className={styles.conversationList}>
+      {conversations.map((conversation) => {
         /* A row in use offers no delete: the conversation on the page cannot be
            deleted, and neither can one still being answered in. */
-        const inUse = session.thread_id === here || session.thread_id === working
+        const inUse = conversation.thread_id === here || conversation.thread_id === working
         return (
           <div
-            key={session.thread_id}
-            className={joined(styles.sessionRow, session.thread_id === here && styles.here)}
+            key={conversation.thread_id}
+            className={joined(styles.conversationRow, conversation.thread_id === here && styles.here)}
           >
             {/* The mark is read out rather than drawn only, so what tells the rows apart
                 is not a shape somebody has to have been told about. */}
             <span
-              className={joined(styles.mark, chats(session) && styles.chatted)}
-              aria-hidden={!chats(session)}
-              aria-label={chats(session) ? `${session.opened_with} opens as a chat here` : undefined}
-              role={chats(session) ? 'img' : undefined}
+              className={joined(styles.mark, chats(conversation) && styles.chatted)}
+              aria-hidden={!chats(conversation)}
+              aria-label={chats(conversation) ? `${conversation.opened_with} opens as a chat here` : undefined}
+              role={chats(conversation) ? 'img' : undefined}
             />
             <button
-              className={styles.session}
+              className={styles.conversation}
               /* The line is clamped so every row is one line high, and the whole
                  question is a hover away rather than lost. */
-              title={session.opened_with}
-              disabled={session.thread_id === here}
-              onClick={() => onOpen(session)}
+              title={conversation.opened_with}
+              disabled={conversation.thread_id === here}
+              onClick={() => onOpen(conversation)}
             >
-              {session.opened_with}
+              {conversation.opened_with}
             </button>
             {!inUse && (
               <DeleteControl
-                what={session.opened_with}
-                onDelete={() => onDelete(session)}
+                what={conversation.opened_with}
+                onDelete={() => onDelete(conversation)}
               />
             )}
           </div>

@@ -10,14 +10,12 @@ is the documentation.
 
 ### Requirement: The front door opens with what cora is for
 
-The system SHALL open `README.md` with what problem cora solves and who it is for, and
-SHALL link the showcase entry near the top.
+The system SHALL open `README.md` with what problem cora solves and who it is for.
 
 #### Scenario: A stranger reads the first screen
 
 - **WHEN** someone who has never seen cora reads the first screen of `README.md`
 - **THEN** they can say what problem it solves and who it is for
-- **AND** the showcase entry is linked near the top
 
 ### Requirement: The front door carries the commands
 

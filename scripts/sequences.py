@@ -2,7 +2,7 @@
 
 A message is a call a method makes, in the order it makes them; a branch is an `alt` and
 a loop a `loop`, so what comes out says what the code can do rather than what one run of
-it did. Nothing here draws: `gen_session_maps.py` is what turns a `Sequence` into UML.
+it did. Nothing here draws: `gen_turn_maps.py` is what turns a `Sequence` into UML.
 """
 
 import ast
@@ -362,7 +362,7 @@ def _refuse(node: ast.stmt, drawn: Callable[[ast.Call], object]) -> None:
             continue
         where = getattr(found, "lineno", node.lineno)
         raise SystemExit(
-            f"gen_session_maps cannot draw {named} on line {where}: it is a fork, and "
+            f"gen_turn_maps cannot draw {named} on line {where}: it is a fork, and "
             "drawn flat every arm of it would read as unconditional. Give the reader a "
             "fragment for it, or take the calls out of it."
         )

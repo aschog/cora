@@ -2,8 +2,6 @@
 
 ![CoRa: one core, endless plugin power](docs/assets/cora.png)
 
-On the showcase: [cora](https://showcase.turingcollege.com/project/d74b5ac2-789f-485c-ad57-d118f8d4602b).
-
 ## Why
 
 An agent that is good at your subject usually means somebody built an app for that

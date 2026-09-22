@@ -160,25 +160,74 @@ def _loaded(name: str) -> ModuleType:
     return importlib.import_module(f"cora.plugins.{name}")
 
 
-DOMAIN_WORDS = ("fitness", *_shipped_scopes())
-
-
-@pytest.mark.parametrize("word", DOMAIN_WORDS)
-def test_nothing_shipped_names_a_plugin_or_the_field_it_registers(word: str) -> None:
+def _tracked(*pathspecs: str) -> list[pathlib.Path]:
     listed = subprocess.run(
-        ["git", "ls-files", "-z", "--", "src/cora/*.py"],
+        ["git", "ls-files", "-z", "--", *pathspecs],
         capture_output=True,
         check=True,
         cwd=workspace.ROOT,
         text=True,
     )
+    return [workspace.ROOT / name for name in listed.stdout.split("\0") if name]
+
+
+def _shipped_name(path: pathlib.Path) -> str:
+    return str(path.relative_to(workspace.ROOT))
+
+
+DOMAIN_WORDS = tuple(dict.fromkeys(("fitness", *_shipped_scopes())))
+
+
+@pytest.mark.parametrize("word", DOMAIN_WORDS)
+def test_nothing_shipped_names_a_plugin_or_the_field_it_registers(word: str) -> None:
     named = sorted(
-        name
-        for name in listed.stdout.split("\0")
-        if name and word in _names((workspace.ROOT / name).read_text())
+        _shipped_name(path)
+        for path in _tracked("src/cora/*.py")
+        if word in _names(path.read_text())
     )
 
     assert named == [], "\n".join([f"these name '{word}':", *named])
+
+
+# The word the plugins mean — a training day, a drill pass — is not the core's word for
+# the record a reader comes back to, so it names nothing in cora or its page. A script
+# is read whole, comments and labels included: a label is what the reader meets.
+BORROWED_WORD = "session"
+SCRIPT_WORD = re.compile(r"[A-Za-z_$][\w$]*")
+# The browser's own store is named by the browser.
+PLATFORM_NAMES = frozenset({"sessionStorage"})
+NAMED_IN = (
+    "src/cora/*.py",
+    "frontends/react/src/*.py",
+    "frontends/react/ui/src/*.ts",
+    "frontends/react/ui/src/*.tsx",
+    ":(exclude)*.test.ts",
+    ":(exclude)*.test.tsx",
+    ":(exclude)frontends/react/ui/src/test/*",
+)
+
+
+def _script_words(source: str) -> set[str]:
+    return {
+        word.lower()
+        for word in SCRIPT_WORD.findall(source)
+        if word not in PLATFORM_NAMES
+    }
+
+
+def _words_in(path: pathlib.Path) -> set[str]:
+    source = path.read_text()
+    return _names(source) if path.suffix == ".py" else _script_words(source)
+
+
+def test_nothing_of_cora_or_its_page_calls_a_conversation_a_session() -> None:
+    named = sorted(
+        _shipped_name(path)
+        for path in _tracked(*NAMED_IN)
+        if any(BORROWED_WORD in word for word in _words_in(path))
+    )
+
+    assert named == [], "\n".join([f"these name a '{BORROWED_WORD}':", *named])
 
 
 def _domain_classes() -> list[type]:
@@ -284,17 +333,6 @@ def test_every_layer_says_in_its_own_directory_what_it_may_not_reach_for(
     )
 
 
-def _tracked_python() -> list[pathlib.Path]:
-    listed = subprocess.run(
-        ["git", "ls-files", "-z", "--", "*.py"],
-        capture_output=True,
-        check=True,
-        cwd=workspace.ROOT,
-        text=True,
-    )
-    return [workspace.ROOT / name for name in listed.stdout.split("\0") if name]
-
-
 def _documented_privates(path: pathlib.Path) -> list[str]:
     return sorted(
         node.name
@@ -309,7 +347,7 @@ def _documented_privates(path: pathlib.Path) -> list[str]:
 def test_no_private_name_carries_a_docstring() -> None:
     documented = sorted(
         f"{path.relative_to(workspace.ROOT)}: {private}"
-        for path in _tracked_python()
+        for path in _tracked("*.py")
         for private in _documented_privates(path)
     )
 
@@ -339,7 +377,7 @@ def _documented(path: pathlib.Path) -> list[str]:
 def test_nothing_in_the_test_tree_carries_a_docstring() -> None:
     documented = sorted(
         f"{path.relative_to(workspace.ROOT)}: {name}"
-        for path in _tracked_python()
+        for path in _tracked("*.py")
         if _in_the_test_tree(path)
         for name in _documented(path)
     )
@@ -373,7 +411,7 @@ def _long_docstrings(path: pathlib.Path) -> list[tuple[str, int]]:
 def test_no_docstring_runs_past_twelve_lines_of_prose() -> None:
     long = sorted(
         f"{path.relative_to(workspace.ROOT)}: {name} ({lines} lines)"
-        for path in _tracked_python()
+        for path in _tracked("*.py")
         for name, lines in _long_docstrings(path)
     )
 
@@ -408,7 +446,7 @@ def _documented_assignments(path: pathlib.Path) -> list[str]:
 def test_no_assignment_carries_a_docstring() -> None:
     documented = sorted(
         f"{path.relative_to(workspace.ROOT)}: {name}"
-        for path in _tracked_python()
+        for path in _tracked("*.py")
         for name in _documented_assignments(path)
     )
 

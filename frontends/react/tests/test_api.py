@@ -105,19 +105,19 @@ def test_a_conversation_is_deleted_by_its_thread_and_leaves_the_listing() -> Non
     conversations.record("t1", Turn(question="First?", result=ChatResult(answer="a")))
     conversations.record("t2", Turn(question="Second?", result=ChatResult(answer="b")))
     with client(assembled(conversations=conversations)) as reader:
-        deleted = reader.delete("/api/sessions/t2")
+        deleted = reader.delete("/api/conversations/t2")
 
         assert deleted.status_code == 204
         assert [
-            session["thread_id"] for session in reader.get("/api/sessions").json()
+            each["thread_id"] for each in reader.get("/api/conversations").json()
         ] == ["t1"]
-        assert reader.get("/api/sessions/t2").json() == []
+        assert reader.get("/api/conversations/t2").json() == []
 
 
 def test_a_conversation_store_that_cannot_be_read_reports_its_own_message() -> None:
     app = assembled(conversations=FailingConversations())
 
-    failed = client(app).get("/api/sessions")
+    failed = client(app).get("/api/conversations")
 
     assert failed.status_code == 503
     assert failed.json()["error"] == ConversationStoreError().user_message
@@ -285,10 +285,10 @@ def test_a_pin_that_cannot_be_read_costs_its_row_and_not_the_listing() -> None:
     app = assembled(conversations=conversations)
     broken = replace(app, agent=_NoPin(app.agent))
 
-    listed = client(broken).get("/api/sessions")
+    listed = client(broken).get("/api/conversations")
 
     assert listed.status_code == 200
-    assert [session["thread_id"] for session in listed.json()] == ["t1"]
+    assert [each["thread_id"] for each in listed.json()] == ["t1"]
     assert listed.json()[0]["pin"] is None
 
 

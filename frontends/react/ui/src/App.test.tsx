@@ -82,8 +82,8 @@ const served: Record<string, unknown> = {
   '/api/documents': ['notes.md'],
   '/api/scopes': { available: ['fitness', 'travel'], default: 'cora', pages: {} },
   '/api/memory': [{ key: 'f1', text: 'No burpees.' }],
-  '/api/sessions': [{ thread_id: 'old', opened_with: OLDER.question, pin: null }],
-  '/api/sessions/old': [OLDER],
+  '/api/conversations': [{ thread_id: 'old', opened_with: OLDER.question, pin: null }],
+  '/api/conversations/old': [OLDER],
 }
 
 const BARE = { available: ['fitness', 'travel'], default: 'cora', pages: {} }
@@ -96,7 +96,7 @@ const bringsAPage = () => {
 afterEach(() => {
   /* A fixture one spec rewrote is a fixture every later one inherits. */
   served['/api/scopes'] = BARE
-  served['/api/sessions'] = [{ thread_id: 'old', opened_with: OLDER.question, pin: null }]
+  served['/api/conversations'] = [{ thread_id: 'old', opened_with: OLDER.question, pin: null }]
   turn.release()
   step.release()
   cleanup()
@@ -127,7 +127,7 @@ beforeEach(() => {
            conversation on the page, whose pin is whatever was last asked with. */
         const thread = path.split('/')[3]
         /* One spec serves a listing the panel cannot read, so this cannot assume one. */
-        const listed = served['/api/sessions']
+        const listed = served['/api/conversations']
         const known = Array.isArray(listed)
           ? listed.find((each) => each.thread_id === thread)
           : undefined
@@ -229,7 +229,7 @@ test('an answer never lands on a conversation that was replaced while it ran', a
   fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
   await screen.findByText(/Working/)
 
-  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'CONVERSATIONS' }))
   fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   /* Released in the same tick as the reopen, because two responses landing in one task
      batch is ordinary — and a guard that reads a thread React has not committed yet
@@ -313,9 +313,9 @@ test('a turn that fails says so where the answer would have been, and is scrolle
 
 /** A stream carrying one finished turn and nothing held back. */
 /** A turn whose second step is held back, so a reopen can happen between the two. */
-test('the conversation left behind is listed under SESSIONS', async () => {
+test('the conversation left behind is listed under CONVERSATIONS', async () => {
   /* Starting over is not throwing away: what was asked is checkpointed under its own
-     thread, and the only way back to it is the sessions list. */
+     thread, and the only way back to it is the conversations list. */
   let minted = 0
   vi.stubGlobal('crypto', { randomUUID: () => `t${++minted}` })
   let recorded = false
@@ -326,7 +326,7 @@ test('the conversation left behind is listed under SESSIONS', async () => {
     vi.fn(async (path: string) => {
       if (path === '/api/ask') return answering()
       // The store has the conversation once its first turn is over, and not before.
-      if (path === '/api/sessions')
+      if (path === '/api/conversations')
         return body(recorded ? [{ thread_id: 't1', opened_with: 'Why am I stalling?' }] : [])
       if (path.startsWith('/api/uploads/'))
         return body({ text: KEPT })
@@ -344,12 +344,51 @@ test('the conversation left behind is listed under SESSIONS', async () => {
   turn.release()
   await screen.findByText(/Sleep, not volume/)
 
-  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
-  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('button', { name: 'New conversation' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'CONVERSATIONS' }))
 
   const listed = await screen.findByRole('button', { name: 'Why am I stalling?' })
   // Reopenable: the conversation is no longer the one the reader is in.
   expect(listed.hasAttribute('disabled')).toBe(false)
+})
+
+test('the start control names a conversation, and refuses while there is nothing to leave', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const start = screen.getByRole('button', { name: 'New conversation' })
+  expect(start.getAttribute('aria-disabled')).toBe('true')
+  expect(screen.getByText('You are already in a new conversation.')).toBeTruthy()
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  expect(start.getAttribute('aria-disabled')).toBe('false')
+  expect(screen.queryByText('You are already in a new conversation.')).toBeNull()
+})
+
+test('a turn still landing elsewhere is said to be listed under CONVERSATIONS', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  await screen.findByText('Why am I stalling?')
+
+  fireEvent.click(screen.getByRole('button', { name: 'New conversation' }))
+
+  expect(screen.getByText(/listed under CONVERSATIONS when it lands/)).toBeTruthy()
+
+  /* And once it has landed, there is nothing elsewhere to speak of. */
+  turn.release()
+  await waitFor(() =>
+    expect(screen.queryByText(/listed under CONVERSATIONS when it lands/)).toBeNull(),
+  )
 })
 
 /** A 200 whose body is not a list of turns: the read went through, what came back cannot
@@ -451,7 +490,6 @@ test('a file uploaded twice is added quietly, and then said to be there already'
   ).toBeTruthy()
 })
 
-/** The page with a rail whose uploads are answered in turn: a chunk count, or a refusal. */
 /** Every sentence story 22 deleted. Kept as one list so a paragraph reintroduced anywhere
  *  in the rail fails here, whichever panel it lands in. */
 const EXPLANATIONS = [
@@ -461,13 +499,25 @@ const EXPLANATIONS = [
   /Nothing indexed yet/,
   /passage an answer cites/,
   /will be listed here/,
-  /carries between sessions/,
+  /carries between/,
   /tell cora something about yourself/,
   /the agent stays the same/,
   /CORA_PLUGINS/,
 ]
 
-  EXPLANATIONS.forEach((said) => expect(screen.queryByText(said)).toBeNull())
+test('no panel explains itself in the sentences story 22 deleted', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+  const unexplained = () =>
+    EXPLANATIONS.forEach((said) => expect(screen.queryByText(said)).toBeNull())
+
+  for (const tab of ['STEPS', 'SOURCE', 'CONVERSATIONS', 'MEMORY']) {
+    fireEvent.click(screen.getByRole('tab', { name: tab }))
+    unexplained()
+  }
+  fireEvent.click(screen.getByRole('button', { name: 'Plugin' }))
+  unexplained()
+})
 
 // ── a question waiting on the reader ──
 
@@ -808,10 +858,10 @@ const GONE = { thread_id: 'gone', opened_with: 'A question asked twice' }
 /** Two conversations, and what is served about them once one of them is deleted. */
 const listing = (deleted: string[]): Record<string, unknown> => ({
   ...served,
-  '/api/sessions': [
+  '/api/conversations': [
     { thread_id: 'old', opened_with: OLDER.question },
     GONE,
-  ].filter((session) => !deleted.includes(session.thread_id)),
+  ].filter((each) => !deleted.includes(each.thread_id)),
 })
 
 const deletable = (
@@ -841,18 +891,18 @@ const deleteControl = () =>
   screen.getByRole('button', { name: `Delete ${GONE.opened_with}` })
 
 const confirm = () =>
-  fireEvent.click(screen.getByRole('button', { name: 'Delete session' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Delete conversation' }))
 
 test('a conversation deleted from the list leaves the list', async () => {
   const asked = deletable()
   render(<App />)
-  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'CONVERSATIONS' }))
   await screen.findByRole('button', { name: GONE.opened_with })
 
   fireEvent.click(deleteControl())
 
-  // The control asks; nothing has been asked of cora yet.
-  expect(screen.getByRole('dialog')).toBeTruthy()
+  // The control asks, naming what it would delete; nothing has been asked of cora yet.
+  expect(screen.getByRole('dialog', { name: 'DELETE CONVERSATION' })).toBeTruthy()
   expect(asked.deleted).toEqual([])
 
   confirm()
@@ -860,7 +910,7 @@ test('a conversation deleted from the list leaves the list', async () => {
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: GONE.opened_with })).toBeNull(),
   )
-  expect(asked.deleted).toEqual(['/api/sessions/gone'])
+  expect(asked.deleted).toEqual(['/api/conversations/gone'])
   expect(screen.getByRole('button', { name: OLDER.question })).toBeTruthy()
   expect(screen.queryByRole('dialog')).toBeNull()
 })
@@ -923,7 +973,7 @@ test('the conversation being read is named in the address', async () => {
      address. */
   render(<App />)
 
-  fireEvent.click(screen.getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(screen.getByRole('tab', { name: 'CONVERSATIONS' }))
   fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
   await screen.findByText(OLDER.result.answer)
 
@@ -1008,7 +1058,7 @@ test('a plugin confirmed away takes its field out of the picker', async () => {
         '/api/scopes',
         '/api/plugins',
         '/api/documents',
-        '/api/sessions',
+        '/api/conversations',
         '/api/memory',
       ]),
     ),
@@ -1046,8 +1096,8 @@ const opened = async () => {
   await screen.findByText('notes.md')
   pickPlugin('fitness')
   const frame = (await screen.findByTitle('fitness')) as HTMLIFrameElement
-  /* The conversation is the sessions panel's other state, so that is where it is. */
-  fireEvent.click(within(rail()).getByRole('tab', { name: 'SESSIONS' }))
+  /* The conversation is the conversations panel's other state, so that is where it is. */
+  fireEvent.click(within(rail()).getByRole('tab', { name: 'CONVERSATIONS' }))
   return frame
 }
 
@@ -1186,7 +1236,7 @@ test('a panel that cannot be drawn is a sentence, and the page still stands', as
     /* A listing the panel cannot read, which is the shape the frontend spec names. Set
        before the page reads it: the read is held, and a fixture changed afterwards is
        one nothing asks for again. */
-    served['/api/sessions'] = {} as unknown as []
+    served['/api/conversations'] = {} as unknown as []
     await opened()
 
     back()
@@ -1266,7 +1316,7 @@ test('deleting the plugin of the fixed field returns the conversation to the mid
    possible. */
 test('a fixed field\u2019s conversation is chatted in the rail, the others one click behind', async () => {
   bringsAPage()
-  served['/api/sessions'] = [
+  served['/api/conversations'] = [
     { thread_id: 'old', opened_with: OLDER.question, pin: 'fitness' },
   ]
   render(<App />)
@@ -1278,7 +1328,7 @@ test('a fixed field\u2019s conversation is chatted in the rail, the others one c
   expect(within(rail()).getByRole('heading', { name: /New conversation/ })).toBeTruthy()
   expect(within(rail()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
 
-  fireEvent.click(within(rail()).getByRole('button', { name: /Back to other sessions/i }))
+  fireEvent.click(within(rail()).getByRole('button', { name: /Back to other conversations/i }))
 
   /* And the others are behind it, each marked for the field it belongs to. */
   const listed = within(rail()).getByRole('button', { name: OLDER.question })
@@ -1286,23 +1336,23 @@ test('a fixed field\u2019s conversation is chatted in the rail, the others one c
   expect(within(rail()).queryByPlaceholderText(/Ask a question/)).toBeNull()
 })
 
-/** The sessions panel, with a conversation of a page-bringing field open in it. */
+/** The conversations panel, with a conversation of a page-bringing field open in it. */
 const chatting = async (
-  sessions: { thread_id: string; opened_with: string; pin: string | null }[] = [
+  conversations: { thread_id: string; opened_with: string; pin: string | null }[] = [
     { thread_id: 'old', opened_with: OLDER.question, pin: 'fitness' },
   ],
 ) => {
   bringsAPage()
-  served['/api/sessions'] = sessions
+  served['/api/conversations'] = conversations
   render(<App />)
   await screen.findByText('notes.md')
   pickPlugin('fitness')
   await screen.findByTitle('fitness')
-  fireEvent.click(within(rail()).getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(within(rail()).getByRole('tab', { name: 'CONVERSATIONS' }))
 }
 
 const back = () =>
-  fireEvent.click(within(rail()).getByRole('button', { name: /Back to other sessions/i }))
+  fireEvent.click(within(rail()).getByRole('button', { name: /Back to other conversations/i }))
 
 test('a conversation of a field with a page is marked in the list, and others are not', async () => {
   await chatting([
@@ -1349,13 +1399,13 @@ test('the way back shows the list, and opening a marked one chats it', async () 
   expect(screen.getByTitle('fitness')).toBeTruthy()
 })
 
-test('a turn asked in the rail leaves the panels on the sessions tab', async () => {
+test('a turn asked in the rail leaves the panels on the conversations tab', async () => {
   await chatting()
 
   ask(rail(), 'How many sets?')
   await within(rail()).findByText(/Sleep, not volume/)
 
-  expect(within(rail()).getByRole('tab', { name: 'SESSIONS' }).getAttribute('aria-selected')).toBe(
+  expect(within(rail()).getByRole('tab', { name: 'CONVERSATIONS' }).getAttribute('aria-selected')).toBe(
     'true',
   )
 })
@@ -1394,7 +1444,7 @@ test('a conversation fixed to nothing draws no chat in the rail at all', async (
   render(<App />)
   await screen.findByText('notes.md')
 
-  fireEvent.click(within(rail()).getByRole('tab', { name: 'SESSIONS' }))
+  fireEvent.click(within(rail()).getByRole('tab', { name: 'CONVERSATIONS' }))
 
   expect(within(centre()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
   expect(within(rail()).queryByPlaceholderText(/Ask a question/)).toBeNull()

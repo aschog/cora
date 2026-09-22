@@ -88,11 +88,13 @@ def api(
         Route("/api/ask", _ask(apps), methods=["POST"]),
         Route("/api/resume", _resume(apps), methods=["POST"]),
         Route("/api/uploads/{scope}/{upload}", _upload(apps), methods=["GET"]),
-        Route("/api/sessions", _sessions(apps), methods=["GET"]),
-        Route("/api/sessions/{thread_id}", _turns(apps), methods=["GET"]),
-        Route("/api/sessions/{thread_id}", _delete(apps), methods=["DELETE"]),
-        Route("/api/sessions/{thread_id}/pending", _pending(apps), methods=["GET"]),
-        Route("/api/sessions/{thread_id}/scope", _scope(apps), methods=["GET"]),
+        Route("/api/conversations", _conversations(apps), methods=["GET"]),
+        Route("/api/conversations/{thread_id}", _turns(apps), methods=["GET"]),
+        Route("/api/conversations/{thread_id}", _delete(apps), methods=["DELETE"]),
+        Route(
+            "/api/conversations/{thread_id}/pending", _pending(apps), methods=["GET"]
+        ),
+        Route("/api/conversations/{thread_id}/scope", _scope(apps), methods=["GET"]),
         Route("/api/memory", _memory(apps), methods=["GET"]),
         Route("/api/memory", _clear(apps), methods=["DELETE"]),
         Route("/api/memory/{key}", _forget(apps), methods=["DELETE"]),
@@ -462,7 +464,7 @@ def _upload(apps: Apps) -> Callable[[Request], Any]:
 UNKEPT = "cora cannot open that passage's document."
 
 
-def _sessions(apps: Apps) -> Callable[[Request], Any]:
+def _conversations(apps: Apps) -> Callable[[Request], Any]:
     def listed(request: Request) -> JSONResponse:
         app = apps()
         if app.conversations is None:
@@ -472,8 +474,8 @@ def _sessions(apps: Apps) -> Callable[[Request], Any]:
         # the day that stops being true, the store is where it belongs.
         return JSONResponse(
             [
-                payloads.session(each, _pin(app.agent, each.thread_id))
-                for each in app.conversations.sessions()
+                payloads.conversation(each, _pin(app.agent, each.thread_id))
+                for each in app.conversations.opened()
             ]
         )
 

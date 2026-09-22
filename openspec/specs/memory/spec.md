@@ -2,7 +2,7 @@
 
 ## Purpose
 
-What cora keeps about a reader between sessions, and what taking any of it back asks of
+What cora keeps about a reader between conversations, and what taking any of it back asks of
 them first: the control on a fact's row, and the question it raises before anything is
 forgotten.
 
