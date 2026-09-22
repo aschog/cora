@@ -62,6 +62,33 @@ uv run ruff format . && uv run ruff check . && uv run ty check
 npm --prefix frontends/react/ui run lint && npm --prefix frontends/react/ui test
 ```
 
+## Write a plugin
+
+Drop a `.py` file, or a folder with an `__init__.py`, into `.cora/plugins/`. It is named
+for the file or folder, needs no packaging, and the folder is live — dropped, edited or
+deleted, the next request has it. Nothing is installed for a drop-in, so it may import
+only cora and the standard library.
+
+All it must export is `extend`:
+
+```python
+import pathlib
+
+from cora.ports.host import SCREENING, Host
+
+SCOPE = "recipes"          # the field it owns; omit to register system-wide
+
+def extend(cora: Host) -> None:
+    cora.register_instructions("Answer as a cook, from the user's own notes.", scope=SCOPE)
+    cora.register_tool(name=..., description=..., parameter_schema=..., run=..., scope=SCOPE)
+    cora.register_handler(event=SCREENING, handle=...)
+    cora.register_page(pathlib.Path(__file__).parent / "page", scope=SCOPE)
+```
+
+Register what you need and nothing else — `plugins/security` is a handler alone,
+`plugins/fitness` is all four. Settings arrive by name: `CORA_PLUGIN_RECIPES_API_KEY`
+reaches it as `api_key`. `make plugins` prints what loaded and what each one registered.
+
 ## Stack
 
 Python 3.12 · [uv](https://docs.astral.sh/uv/) · LangGraph · LangChain over
