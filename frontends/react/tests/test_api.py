@@ -109,7 +109,7 @@ def test_a_conversation_is_deleted_by_its_thread_and_leaves_the_listing() -> Non
 
         assert deleted.status_code == 204
         assert [
-            session["thread_id"] for session in reader.get("/api/conversations").json()
+            each["thread_id"] for each in reader.get("/api/conversations").json()
         ] == ["t1"]
         assert reader.get("/api/conversations/t2").json() == []
 
@@ -288,7 +288,7 @@ def test_a_pin_that_cannot_be_read_costs_its_row_and_not_the_listing() -> None:
     listed = client(broken).get("/api/conversations")
 
     assert listed.status_code == 200
-    assert [session["thread_id"] for session in listed.json()] == ["t1"]
+    assert [each["thread_id"] for each in listed.json()] == ["t1"]
     assert listed.json()[0]["pin"] is None
 
 

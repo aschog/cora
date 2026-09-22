@@ -861,7 +861,7 @@ const listing = (deleted: string[]): Record<string, unknown> => ({
   '/api/conversations': [
     { thread_id: 'old', opened_with: OLDER.question },
     GONE,
-  ].filter((session) => !deleted.includes(session.thread_id)),
+  ].filter((each) => !deleted.includes(each.thread_id)),
 })
 
 const deletable = (
@@ -1338,12 +1338,12 @@ test('a fixed field\u2019s conversation is chatted in the rail, the others one c
 
 /** The conversations panel, with a conversation of a page-bringing field open in it. */
 const chatting = async (
-  sessions: { thread_id: string; opened_with: string; pin: string | null }[] = [
+  conversations: { thread_id: string; opened_with: string; pin: string | null }[] = [
     { thread_id: 'old', opened_with: OLDER.question, pin: 'fitness' },
   ],
 ) => {
   bringsAPage()
-  served['/api/conversations'] = sessions
+  served['/api/conversations'] = conversations
   render(<App />)
   await screen.findByText('notes.md')
   pickPlugin('fitness')

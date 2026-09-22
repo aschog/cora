@@ -33,7 +33,7 @@ def _app(path: pathlib.Path) -> App:
 
 
 def _listed(page: TestClient) -> list[str]:
-    return [session["thread_id"] for session in page.get("/api/conversations").json()]
+    return [each["thread_id"] for each in page.get("/api/conversations").json()]
 
 
 @pytest.mark.integration
