@@ -1,10 +1,9 @@
 import sqlite3
-from collections.abc import Callable
-from functools import wraps
 
 import sqlite_vec
 
 from cora.adapters.sqlite_store import connect
+from cora.adapters.translating import translating
 from cora.domain.chunk import Chunk
 from cora.domain.errors import RetrievalError
 from cora.ports.retrieval import RetrievedChunk
@@ -25,18 +24,12 @@ VECTORS = (
 )
 
 
-def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
-    @wraps(method)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        try:
-            return method(*args, **kwargs)
-        except (sqlite3.Error, OSError, AttributeError) as error:
-            # `OSError` is the directory the store could not be made in, and
-            # `AttributeError` the build without extension loading: CPython compiled
-            # with `SQLITE_OMIT_LOAD_EXTENSION` has no `enable_load_extension` at all.
-            raise RetrievalError() from error
-
-    return wrapper
+# `OSError` is the directory the store could not be made in, and
+# `AttributeError` the build without extension loading: CPython compiled
+# with `SQLITE_OMIT_LOAD_EXTENSION` has no `enable_load_extension` at all.
+_translate_errors = translating(
+    (sqlite3.Error, OSError, AttributeError), RetrievalError
+)
 
 
 class SqliteVecRetriever:

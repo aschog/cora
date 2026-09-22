@@ -1,7 +1,6 @@
-from collections.abc import Callable
-from functools import wraps
 from pathlib import Path
 
+from cora.adapters.translating import translating
 from cora.domain.errors import (
     FieldFileError,
     FileNameRejectedError,
@@ -9,16 +8,7 @@ from cora.domain.errors import (
 )
 from cora.ports.files import MOST_BYTES, plain_name
 
-
-def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
-    @wraps(method)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        try:
-            return method(*args, **kwargs)
-        except OSError as error:
-            raise FieldFileError() from error
-
-    return wrapper
+_translate_errors = translating(OSError, FieldFileError)
 
 
 class DirectoryFiles:

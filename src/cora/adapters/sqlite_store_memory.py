@@ -1,12 +1,11 @@
 import sqlite3
 import time
 import uuid
-from collections.abc import Callable
-from functools import wraps
 
 from langgraph.store.sqlite import SqliteStore
 
 from cora.adapters.sqlite_store import connect
+from cora.adapters.translating import translating
 from cora.domain.errors import MemoryStoreError
 from cora.ports.memory import Fact
 
@@ -17,16 +16,8 @@ PAGE = 100
 RECALL_LIMIT = 100
 
 
-def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
-    @wraps(method)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        try:
-            return method(*args, **kwargs)
-        except (sqlite3.Error, OSError) as error:
-            # `OSError` is the directory the store could not be made in.
-            raise MemoryStoreError() from error
-
-    return wrapper
+# `OSError` is the directory the store could not be made in.
+_translate_errors = translating((sqlite3.Error, OSError), MemoryStoreError)
 
 
 def _ordinal() -> str:

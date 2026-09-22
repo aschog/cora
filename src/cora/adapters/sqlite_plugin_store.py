@@ -1,10 +1,9 @@
 import sqlite3
-from collections.abc import Callable
-from functools import wraps
 
 from langgraph.store.sqlite import SqliteStore
 
 from cora.adapters.sqlite_store import connect
+from cora.adapters.translating import translating
 from cora.domain.errors import PluginStoreError
 
 KEPT = "kept"
@@ -12,15 +11,7 @@ TEXT = "text"
 PAGE = 100
 
 
-def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
-    @wraps(method)
-    def wrapper(*args: P.args, **kwargs: P.kwargs) -> R:
-        try:
-            return method(*args, **kwargs)
-        except (sqlite3.Error, OSError) as error:
-            raise PluginStoreError() from error
-
-    return wrapper
+_translate_errors = translating((sqlite3.Error, OSError), PluginStoreError)
 
 
 class SqlitePluginStore:
