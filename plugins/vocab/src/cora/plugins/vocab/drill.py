@@ -86,7 +86,6 @@ class Pass:
     queue: list[Pair] = field(default_factory=list)
     table: Pair | None = None
     shown: str = ""
-    loaded: bool = False
     # Whether the model was asked while this word stood. What it gave was a hint, and a
     # right answer after a hint counts as missed.
     helped: bool = False
@@ -96,7 +95,6 @@ class Pass:
         self.of = of
         self.queue = list(pairs)
         random.shuffle(self.queue)
-        self.loaded = True
         self.table = None
         self.shown = ""
         self.helped = False
@@ -126,7 +124,7 @@ class Drill:
         pairs = self._chosen(pairs, from_list)
         self._refuse_unsided(pairs)
         chosen = self.cora.state.read(CHOSEN) or EVERY
-        if again or fresh or not self.current.loaded or self.current.of != chosen:
+        if again or fresh or self.current.of != chosen:
             self.current.reload(pairs, chosen)
         if self._spacing(spaced):
             asking = self._due(pairs)

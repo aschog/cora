@@ -40,7 +40,6 @@ class Movement:
     name: str
     load: Load
     sets: tuple[int, ...] = ()
-    notes: tuple[str, ...] = ()
     rose: bool = False
 
     @property
@@ -105,8 +104,11 @@ def parse_session(text: str, day: date, name: str = "<session>") -> Session:
             continue
         sets = _sets(line)
         if sets is None:
-            movements[-1] = replace(movements[-1], notes=(*movements[-1].notes, raw))
-        elif movements[-1].sets:
+            # A line under a movement that is not its sets — the watch's heart rate, a
+            # word about how it felt. It stays in the document, which is where a reader
+            # opens it; nothing here prints one, so nothing here holds one.
+            continue
+        if movements[-1].sets:
             raise LogError(name, number, "a movement has one set line")
         else:
             movements[-1] = replace(movements[-1], sets=sets)

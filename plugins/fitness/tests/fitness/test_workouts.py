@@ -58,11 +58,14 @@ def test_a_timed_line_reads_as_one_set_of_left_plus_right_reps() -> None:
     assert snatch.sets == (160,)
 
 
-def test_a_line_that_is_neither_heading_nor_sets_is_a_note_on_the_movement() -> None:
+def test_a_line_that_is_neither_heading_nor_sets_is_passed_over() -> None:
+    # The watch writes a heart rate under a movement and a lifter writes how it felt.
+    # Neither is sets, and reading one as sets would put numbers in the log that nobody
+    # lifted. It stays in the document, which is where a reader opens it.
     [swing] = _parsed("# Swing 32 kg\n10x10\n♥ 142 avg · 171 max · 41 min\n").movements
 
     assert swing.sets == ()
-    assert swing.notes == ("10x10", "♥ 142 avg · 171 max · 41 min")
+    assert swing.reps == 0
 
 
 @pytest.mark.parametrize(
