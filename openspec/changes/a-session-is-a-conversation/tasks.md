@@ -23,7 +23,7 @@
 
 The guard comes last: as the second item it would force the whole rename in one green step, and every test after it would pass on arrival.
 
-- [ ] 5.1 Write a guard that no name under `src/cora` or `frontends/react` carries session, and watch it fail on `Session`.
+- [x] 5.1 Write a guard that no name under `src/cora` or `frontends/react` carries session, and watch it fail on `Session`.
 
 ## 6. The outer test again
 
