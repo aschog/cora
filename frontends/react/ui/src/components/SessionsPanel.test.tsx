@@ -90,7 +90,7 @@ test('the panel is the conversation when it is given one, with a way back', () =
   /* The list is behind it, not beside it. */
   expect(screen.queryByRole('button', { name: OTHER.opened_with })).toBeNull()
 
-  screen.getByRole('button', { name: 'Back to other sessions' }).click()
+  screen.getByRole('button', { name: 'Back to other conversations' }).click()
 
   expect(back).toHaveBeenCalled()
 })

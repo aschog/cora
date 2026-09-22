@@ -1297,7 +1297,7 @@ test('a fixed field\u2019s conversation is chatted in the rail, the others one c
   expect(within(rail()).getByRole('heading', { name: /New conversation/ })).toBeTruthy()
   expect(within(rail()).getByPlaceholderText(/Ask a question/)).toBeTruthy()
 
-  fireEvent.click(within(rail()).getByRole('button', { name: /Back to other sessions/i }))
+  fireEvent.click(within(rail()).getByRole('button', { name: /Back to other conversations/i }))
 
   /* And the others are behind it, each marked for the field it belongs to. */
   const listed = within(rail()).getByRole('button', { name: OLDER.question })
@@ -1321,7 +1321,7 @@ const chatting = async (
 }
 
 const back = () =>
-  fireEvent.click(within(rail()).getByRole('button', { name: /Back to other sessions/i }))
+  fireEvent.click(within(rail()).getByRole('button', { name: /Back to other conversations/i }))
 
 test('a conversation of a field with a page is marked in the list, and others are not', async () => {
   await chatting([

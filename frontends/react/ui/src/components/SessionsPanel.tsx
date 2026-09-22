@@ -50,8 +50,8 @@ export default function SessionsPanel({
           <button
             type="button"
             className={styles.back}
-            aria-label="Back to other sessions"
-            title="Back to other sessions"
+            aria-label="Back to other conversations"
+            title="Back to other conversations"
             onClick={onBack}
           >
             ←
