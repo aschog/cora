@@ -2,7 +2,7 @@ import styles from './NewSession.module.css'
 
 type Props = { canStart: boolean; onNew: () => void }
 
-const NOTHING_TO_START = 'You are already in a new session.'
+const NOTHING_TO_START = 'You are already in a new conversation.'
 
 /**
  * Reachable while it is unavailable, and carrying the reason: `disabled` would take the
@@ -15,16 +15,16 @@ export default function NewSession({ canStart, onNew }: Props) {
       <button
         className={styles.newSession}
         aria-disabled={!canStart}
-        aria-describedby={canStart ? undefined : 'new-session-why'}
+        aria-describedby={canStart ? undefined : 'new-conversation-why'}
         onClick={onNew}
       >
         <span className={styles.newSessionPlus} aria-hidden="true">
           +
         </span>
-        New session
+        New conversation
       </button>
       {!canStart && (
-        <span id="new-session-why" className="told-not-shown">
+        <span id="new-conversation-why" className="told-not-shown">
           {NOTHING_TO_START}
         </span>
       )}

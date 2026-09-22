@@ -344,12 +344,31 @@ test('the conversation left behind is listed under CONVERSATIONS', async () => {
   turn.release()
   await screen.findByText(/Sleep, not volume/)
 
-  fireEvent.click(screen.getByRole('button', { name: 'New session' }))
+  fireEvent.click(screen.getByRole('button', { name: 'New conversation' }))
   fireEvent.click(screen.getByRole('tab', { name: 'CONVERSATIONS' }))
 
   const listed = await screen.findByRole('button', { name: 'Why am I stalling?' })
   // Reopenable: the conversation is no longer the one the reader is in.
   expect(listed.hasAttribute('disabled')).toBe(false)
+})
+
+test('the start control names a conversation, and refuses while there is nothing to leave', async () => {
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  const start = screen.getByRole('button', { name: 'New conversation' })
+  expect(start.getAttribute('aria-disabled')).toBe('true')
+  expect(screen.getByText('You are already in a new conversation.')).toBeTruthy()
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+  turn.release()
+  await screen.findByText(/Sleep, not volume/)
+
+  expect(start.getAttribute('aria-disabled')).toBe('false')
+  expect(screen.queryByText('You are already in a new conversation.')).toBeNull()
 })
 
 /** A 200 whose body is not a list of turns: the read went through, what came back cannot

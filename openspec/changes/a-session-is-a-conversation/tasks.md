@@ -12,7 +12,7 @@
 
 ## 4. The page
 
-- [ ] 4.1 Write a test that the rail's tab over the list reads CONVERSATIONS.
+- [x] 4.1 Write a test that the rail's tab over the list reads CONVERSATIONS.
 - [ ] 4.2 Write a test that the start control reads "New conversation" and, refused, says the reader is already in one.
 - [ ] 4.3 Write a test that the delete asks with "Delete conversation".
 - [ ] 4.4 Write a test that the way back from a chat reads "Back to other conversations".
