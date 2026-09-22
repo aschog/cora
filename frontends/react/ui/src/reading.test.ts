@@ -66,7 +66,7 @@ test('a second reading uses the reader already there', async () => {
   expect(await read(shot())).toBe('Haus  house')
   expect(await read(shot())).toBe('Haus  house')
 
-  expect(made).toHaveBeenCalledTimes(2)
+  expect(made).toHaveBeenCalledTimes(1)
   expect(document.querySelectorAll('script[src*="tesseract"]')).toHaveLength(0)
 })
 
@@ -95,4 +95,17 @@ test('a load that defined nothing is tried again for the next photo', async () =
 
   expect(second).toHaveLength(1)
   expect(document.querySelectorAll('script[src*="tesseract"]')).toHaveLength(0)
+})
+
+/* The engine is the expensive half: the WebAssembly core and a trained model per
+   language. Building one per photo made the reader wait through a cold start for every
+   page of a list they photographed, which is not what this module says it does. */
+test('the engine is built once and read from again', async () => {
+  const { read } = await load()
+  const made = stand('Hilfe  help')
+
+  await read(shot())
+  await read(shot())
+
+  expect(made).toHaveBeenCalledTimes(1)
 })

@@ -69,6 +69,36 @@ function fetched(): Promise<Reader> {
   return fetching
 }
 
+let building: Promise<Worker> | null = null
+
+/** The engine, built once. The script is the small half of the cost: what takes the
+ *  seconds is instantiating the WebAssembly core and initialising a trained model per
+ *  language, and one built per photo made a reader photographing a list of pages wait
+ *  through that for each of them. Kept for the life of the page, as the module says.
+ *
+ *  A build that failed is forgotten rather than cached, so the next photo tries again
+ *  instead of failing off a rejection nobody can clear.
+ */
+function built(): Promise<Worker> {
+  if (!building) {
+    building = fetched()
+      .then((engine) =>
+        engine.createWorker(LANGUAGES, 1, {
+          workerPath: WORKER,
+          corePath: CORE,
+          langPath: DATA,
+        }),
+      )
+      .catch((failed: unknown) => {
+        building = null
+        throw failed instanceof ReadingFailed
+          ? failed
+          : new ReadingFailed('the reading could not be run')
+      })
+  }
+  return building
+}
+
 /* What a printed list puts in front of every line and nothing needs afterwards: a
    number, a letter, or a bullet. Dropped from the reading rather than from the file,
    so the reader sees what is about to be kept and can put one back by typing it. */
@@ -85,23 +115,9 @@ const LEADER = /^[ \t]*(?:\(?\d{1,3}[.,)\]]|[a-zA-Z][.)]|[-*•·–—])[ \t]+/
  *  would start counting again in the middle of it.
  */
 export async function read(image: Blob): Promise<string> {
-  let engine: Reader
-  try {
-    engine = await fetched()
-  } catch {
-    throw new ReadingFailed('the reading could not be run')
-  }
-  const worker = await engine.createWorker(LANGUAGES, 1, {
-    workerPath: WORKER,
-    corePath: CORE,
-    langPath: DATA,
-  })
-  try {
-    const {
-      data: { text },
-    } = await worker.recognize(image)
-    return text.replace(LEADER, '').trim()
-  } finally {
-    await worker.terminate()
-  }
+  const worker = await built()
+  const {
+    data: { text },
+  } = await worker.recognize(image)
+  return text.replace(LEADER, '').trim()
 }
