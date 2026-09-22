@@ -69,12 +69,16 @@ export default function ReadImage({
      first one is still in. State seeded from a prop is seeded once, so the reading it
      came from is held beside it and the box follows a new one — otherwise Keep it
      would write the first reading under the second's name. */
+  /* What a merge put above the reading, so naming a second file swaps that head out
+     instead of stacking the first file on top of the second. */
+  const [merged, setMerged] = useState('')
   const [reading, setReading] = useState(read)
   if (reading !== read) {
     setReading(read)
     setText(read)
     setName('')
     setOpened('')
+    setMerged('')
   }
 
   useEffect(() => {
@@ -90,37 +94,62 @@ export default function ReadImage({
      nobody has touched and leaves the rest standing. Discard is the way out. */
   const corrected = text !== read
 
-  const adding = held.includes(name)
+  /* The name settled, which is the one the file is written under. Compared and written
+     as one value: a name trimmed on the way out and not on the way in is two names, and
+     the merge then looked at one file while the write replaced another. */
+  const named = name.trim()
+
+  const adding = held.includes(named)
 
   /* The merge, made by showing rather than by computing: what the field holds goes into
-     the box above the new reading, and the reader corrects both at once. Done as the
-     name is settled rather than as it is typed, so a name passed through on the way to
-     another does not pull a file in. */
-  const open = () => {
-    if (!name || name === opened || !held.includes(name)) return
-    setOpened(name)
-    merging.current = onRead(name).then((there) => {
-      const whole = there === null ? text : `${there.replace(/\n+$/, '')}\n${text}`
+     the box above the new reading, and the reader corrects both at once. The reading
+     and the corrections made to it are what a second name merges onto, so the head
+     swaps rather than stacks. Hands back what now stands in the box. */
+  const openOn = (onto: string): Promise<string> => {
+    const base = merged && text.startsWith(merged) ? text.slice(merged.length) : text
+    setOpened(onto)
+    const pulled = onRead(onto).then((there) => {
+      const ahead = there === null ? '' : `${there.replace(/\n+$/, '')}\n`
+      const whole = ahead + base
+      setMerged(ahead)
       setText(whole)
       /* Done, and from here the box is where the merged text lives: what the reader
          types over it is the truth, and this promise must not speak for it again. */
       merging.current = null
       return whole
     })
+    merging.current = pulled
+    return pulled
+  }
+
+  /* Done as the name is settled rather than as it is typed, so a name passed through on
+     the way to another does not pull a file in. */
+  const open = () => {
+    if (!named || named === opened || !held.includes(named)) return
+    void openOn(named)
   }
 
   const keep = async () => {
+    if (!named) return
     /* A merge still in flight is waited for and its text is what lands — the click
        that started it arrived before it finished. One that has already landed speaks
        through the box instead, corrections and all. */
     const landing = merging.current
-    const merged = landing ? await landing : null
-    const written = (merged ?? text).trim()
-    if (!written || !name.trim()) return
+    const standing = landing ? await landing : text
+    /* A write is a whole-file replace, so the file is read before it is replaced even
+       where the listing never offered it — a listing that did not arrive, or a name
+       typed past the end of it, must not cost the reader what the field holds. What
+       comes back is put up to be corrected rather than written unseen. */
+    if (named !== opened) {
+      const shown = await openOn(named)
+      if (shown !== standing) return
+    }
+    const written = standing.trim()
+    if (!written) return
     setKeeping(true)
     setRefused('')
     try {
-      await onKeepAsFile(name.trim(), `${written}\n`)
+      await onKeepAsFile(named, `${written}\n`)
     } catch (failed) {
       setRefused((failed as Error).message)
     } finally {
