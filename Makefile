@@ -4,7 +4,7 @@
 REACT := cora.frontends.react.server
 TELEGRAM := cora.frontends.telegram.server
 
-.PHONY: run run-env run-watch bot bot-env plugins plugins-env ui ui-build ui-test e2e e2e-store e2e-live docs docs-serve diagram watch
+.PHONY: run run-env run-watch bot bot-env plugins plugins-env ui ui-build ui-test e2e e2e-store e2e-live diagram watch
 
 # cora, as one process serving the page and the API on 127.0.0.1:8000. It builds first
 # because the server only ever reads `ui/dist` — without that a source change is
@@ -80,23 +80,6 @@ e2e: ui-build e2e-store
 # submission rather than on a schedule.
 e2e-live: ui-build e2e-store
 	set -a; . ./.env; set +a; cd frontends/react/ui && CORA_E2E_LIVE=1 npx playwright test
-
-# MkDocs has forked: its owner is publishing a v2 that drops the plugin system, and
-# `properdocs` is a continuation of 1.x that arrives here transitively. Both sides warn on
-# every build, in opposite directions, and each reads its own variable. We stay on
-# mkdocs 1.6.1, pinned by uv.lock, and say so once here instead of in every log.
-QUIET_FORK := NO_MKDOCS_2_WARNING=true DISABLE_MKDOCS_2_WARNING=true
-
-# The docs site — the written pages and a reference generated from the source.
-# `mkdocs.yml` configures it; --strict is what the integration tier runs, so a build that
-# passes here is the one CI checks.
-docs:
-	$(QUIET_FORK) uv run mkdocs build --strict
-
-# 8001, because the React shell already wants 8000: reading the docs beside the running
-# app must not need one of them stopped. `tests/guards/test_docs_site.py` holds that.
-docs-serve:
-	$(QUIET_FORK) uv run mkdocs serve --dev-addr 127.0.0.1:8001
 
 # Every drawing in the docs. The component map reads `cora.app.assembly` for what the
 # boxes and the connectors are and places them itself — that map has one fixed shape, so

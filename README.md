@@ -29,14 +29,38 @@ A plugin's things live in a field of its own. One SQLite file holds cora's own
 bookkeeping and partitions a field's vectors apart from every other field's,
 `.cora/documents` is a directory per field holding one Markdown file per upload, and
 `.cora/fields` is a directory per field holding the files that field's plugin keeps. A
-second subject is a second directory, not a second store — [where your data
-lives](docs/data-storage.md) is the whole layout.
+second subject is a second directory, not a second store. That is the whole layout.
 
 ## Start here
 
-- [Get started](docs/how-to/get-started.md) — install, run, gates
-- [Write a plugin](docs/how-to/write-a-plugin.md)
-- [The docs](docs/index.md) — `make docs` builds them, `make docs-serve` serves them
+```sh
+uv sync                                    # install the environment
+npm ci --prefix frontends/react/ui         # and the page's
+git config core.hooksPath .githooks        # enable pre-commit + commit-msg hooks
+```
+
+Symlink the plugins you want into `.cora/plugins`, then run it:
+
+```sh
+mkdir -p .cora/plugins
+for each in security fitness interview travel vocab; do
+  ln -s "$(pwd)"/plugins/$each/src/cora/plugins/$each .cora/plugins/$each
+done
+
+export OPENROUTER_API_KEY=sk-or-...
+make run                                   # or: make run-env, to read the key from .env
+```
+
+`make run` builds the page and serves it with the API from one process on
+127.0.0.1:8000. `make bot` runs the Telegram bot instead.
+
+The gates, which the pre-commit hook and CI both run:
+
+```sh
+uv run pytest
+uv run ruff format . && uv run ruff check . && uv run ty check
+npm --prefix frontends/react/ui run lint && npm --prefix frontends/react/ui test
+```
 
 ## Stack
 

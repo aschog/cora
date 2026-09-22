@@ -171,13 +171,13 @@ functional test goes green  →  feature done
 > production code is what moves. Watching the intermediate steps is how you catch it.
 
 > **Settled, not per file.** A public name in `cora.domain`, `cora.ports`,
-> `cora.engine` or `cora.app` carries a docstring: those four are what the reference
-> renders, so an absent one is a blank space on a page someone opened on purpose.
+> `cora.engine` or `cora.app` carries a docstring: those four are the layers another
+> author writes against, so an absent one is a contract nobody stated.
 > Google's sections, carrying only what the annotation cannot — a unit, a constraint,
 > an ownership rule, and `Raises:`, which no type expresses. `D417` is off, so an
 > `Args:` block documents the parameter whose meaning the type cannot carry and leaves
-> the rest to the signature. A flow is not a docstring: `docs/big-picture.md` and
-> `docs/happy-path.md` say how a turn runs, and a name says what *it* promises.
+> the rest to the signature. A flow is not a docstring: the session maps under
+> `docs/assets/` and the tests say how a turn runs, and a name says what *it* promises.
 > Everywhere else — the adapters, the plugins, the frontends — a docstring
 > appears **only if needed**, and a comment always does: write none unless they state
 > a contract the code can't express, and let names + tests be the source of truth.
