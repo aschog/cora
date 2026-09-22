@@ -39,6 +39,6 @@ test('a field with no page leaves the conversation in the middle', async ({
     page.getByRole('main').getByRole('region', { name: 'Conversation' }),
   ).toBeVisible()
   /* And the rail is the list alone, as it is for every conversation without a page. */
-  await page.getByRole('tab', { name: 'SESSIONS' }).click()
-  await expect(page.getByRole('button', { name: 'Back to other sessions' })).toHaveCount(0)
+  await page.getByRole('tab', { name: 'CONVERSATIONS' }).click()
+  await expect(page.getByRole('button', { name: 'Back to other conversations' })).toHaveCount(0)
 })

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { answered, ask, confirm, fresh, named, REMEMBER, rightRail } from './helpers'
 
-/* Named for this spec alone: the sessions rail lists every conversation the run has
+/* Named for this spec alone: the conversations rail lists every conversation the run has
    had, and two rows under one name are two rows the delete control cannot tell apart. */
 const LEFT = 'a conversation to leave behind'
 
@@ -15,13 +15,13 @@ test('a conversation is deleted from the list only once i have said so', async (
 
   /* The conversation being read offers no delete, so the one to delete is the one left
      behind by starting another. */
-  await page.getByRole('button', { name: /new session/i }).click()
-  await rightRail(page, 'SESSIONS')
+  await page.getByRole('button', { name: /new conversation/i }).click()
+  await rightRail(page, 'CONVERSATIONS')
   const row = page.getByLabel(`Delete ${LEFT}`)
   await expect(row).toBeVisible()
 
   await row.click()
-  await confirm(page, 'DELETE SESSION', 'Delete session')
+  await confirm(page, 'DELETE CONVERSATION', 'Delete conversation')
 
   await expect(page.getByLabel(`Delete ${LEFT}`)).toHaveCount(0)
 })
