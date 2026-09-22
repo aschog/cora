@@ -130,7 +130,7 @@ export const documents = (scope: string, signal?: AbortSignal) =>
 export const scopes = (signal?: AbortSignal) => read<Scopes>('/api/scopes', { signal })
 export const memory = (signal?: AbortSignal) => read<Fact[]>('/api/memory', { signal })
 export const sessions = (signal?: AbortSignal) =>
-  read<Session[]>('/api/sessions', { signal })
+  read<Session[]>('/api/conversations', { signal })
 export const plugins = (signal?: AbortSignal) =>
   read<Plugin[]>('/api/plugins', { signal })
 /* The one live value cora holds for a field, written by whatever is beside the reader
@@ -146,7 +146,7 @@ export const notice = (scope: string, signal?: AbortSignal) =>
    and this is the same guard at the other end: one place every caller routes through,
    rather than a rule each new one has to know. */
 export const turns = (thread: string, signal?: AbortSignal) =>
-  read<Turn[]>(`/api/sessions/${encodeURIComponent(thread)}`, { signal })
+  read<Turn[]>(`/api/conversations/${encodeURIComponent(thread)}`, { signal })
 
 export const passage = (scope: string, upload: string, signal?: AbortSignal) =>
   read<{ text: string }>(
@@ -191,7 +191,7 @@ export const deleteDocument = (scope: string, name: string) =>
  *  answered on. One request, because a conversation whose record is gone and whose
  *  thread is not still holds a pin, a transcript and possibly a turn nobody can see. */
 export const deleteSession = (thread: string) =>
-  discard(`/api/sessions/${encodeURIComponent(thread)}`)
+  discard(`/api/conversations/${encodeURIComponent(thread)}`)
 
 /** Delete one plugin: its entry in the plugins folder, the documents and passages of
  *  every field only it brought, and every conversation pinned to one of them. The name
@@ -290,7 +290,7 @@ export async function resume(
 /** Which field a conversation is pinned to, or nothing. The pin is a key of the thread's
  *  own state, so this is what a reloaded page reads it back from. */
 export const pinned = (thread: string, signal?: AbortSignal) =>
-  read<{ pin: string | null }>(`/api/sessions/${encodeURIComponent(thread)}/scope`, {
+  read<{ pin: string | null }>(`/api/conversations/${encodeURIComponent(thread)}/scope`, {
     signal,
   }).then(
     (held) => held.pin,
@@ -299,7 +299,7 @@ export const pinned = (thread: string, signal?: AbortSignal) =>
 /** What a conversation is waiting on, or nothing. A page that arrived after the pause
  *  has nowhere else to look: the turn is recorded only once it has an answer. */
 export const pending = (thread: string, signal?: AbortSignal) =>
-  read<Pending | null>(`/api/sessions/${encodeURIComponent(thread)}/pending`, { signal })
+  read<Pending | null>(`/api/conversations/${encodeURIComponent(thread)}/pending`, { signal })
 
 const post = (path: string, body: unknown) =>
   fetch(path, {

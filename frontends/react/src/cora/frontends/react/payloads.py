@@ -105,7 +105,7 @@ def fact(fact: Fact) -> dict[str, Any]:
     return {"key": fact.key, "text": fact.text}
 
 
-def session(conversation: Conversation, pin: str | None) -> dict[str, Any]:
+def conversation(conversation: Conversation, pin: str | None) -> dict[str, Any]:
     """One conversation as the list draws it, and the field it is fixed to.
 
     The pin rather than the fields its turns were answered in: the first is a decision

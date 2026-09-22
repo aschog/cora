@@ -82,8 +82,8 @@ const served: Record<string, unknown> = {
   '/api/documents': ['notes.md'],
   '/api/scopes': { available: ['fitness', 'travel'], default: 'cora', pages: {} },
   '/api/memory': [{ key: 'f1', text: 'No burpees.' }],
-  '/api/sessions': [{ thread_id: 'old', opened_with: OLDER.question, pin: null }],
-  '/api/sessions/old': [OLDER],
+  '/api/conversations': [{ thread_id: 'old', opened_with: OLDER.question, pin: null }],
+  '/api/conversations/old': [OLDER],
 }
 
 const BARE = { available: ['fitness', 'travel'], default: 'cora', pages: {} }
@@ -96,7 +96,7 @@ const bringsAPage = () => {
 afterEach(() => {
   /* A fixture one spec rewrote is a fixture every later one inherits. */
   served['/api/scopes'] = BARE
-  served['/api/sessions'] = [{ thread_id: 'old', opened_with: OLDER.question, pin: null }]
+  served['/api/conversations'] = [{ thread_id: 'old', opened_with: OLDER.question, pin: null }]
   turn.release()
   step.release()
   cleanup()
@@ -127,7 +127,7 @@ beforeEach(() => {
            conversation on the page, whose pin is whatever was last asked with. */
         const thread = path.split('/')[3]
         /* One spec serves a listing the panel cannot read, so this cannot assume one. */
-        const listed = served['/api/sessions']
+        const listed = served['/api/conversations']
         const known = Array.isArray(listed)
           ? listed.find((each) => each.thread_id === thread)
           : undefined
@@ -326,7 +326,7 @@ test('the conversation left behind is listed under SESSIONS', async () => {
     vi.fn(async (path: string) => {
       if (path === '/api/ask') return answering()
       // The store has the conversation once its first turn is over, and not before.
-      if (path === '/api/sessions')
+      if (path === '/api/conversations')
         return body(recorded ? [{ thread_id: 't1', opened_with: 'Why am I stalling?' }] : [])
       if (path.startsWith('/api/uploads/'))
         return body({ text: KEPT })
@@ -808,7 +808,7 @@ const GONE = { thread_id: 'gone', opened_with: 'A question asked twice' }
 /** Two conversations, and what is served about them once one of them is deleted. */
 const listing = (deleted: string[]): Record<string, unknown> => ({
   ...served,
-  '/api/sessions': [
+  '/api/conversations': [
     { thread_id: 'old', opened_with: OLDER.question },
     GONE,
   ].filter((session) => !deleted.includes(session.thread_id)),
@@ -860,7 +860,7 @@ test('a conversation deleted from the list leaves the list', async () => {
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: GONE.opened_with })).toBeNull(),
   )
-  expect(asked.deleted).toEqual(['/api/sessions/gone'])
+  expect(asked.deleted).toEqual(['/api/conversations/gone'])
   expect(screen.getByRole('button', { name: OLDER.question })).toBeTruthy()
   expect(screen.queryByRole('dialog')).toBeNull()
 })
@@ -1008,7 +1008,7 @@ test('a plugin confirmed away takes its field out of the picker', async () => {
         '/api/scopes',
         '/api/plugins',
         '/api/documents',
-        '/api/sessions',
+        '/api/conversations',
         '/api/memory',
       ]),
     ),
@@ -1186,7 +1186,7 @@ test('a panel that cannot be drawn is a sentence, and the page still stands', as
     /* A listing the panel cannot read, which is the shape the frontend spec names. Set
        before the page reads it: the read is held, and a fixture changed afterwards is
        one nothing asks for again. */
-    served['/api/sessions'] = {} as unknown as []
+    served['/api/conversations'] = {} as unknown as []
     await opened()
 
     back()
@@ -1266,7 +1266,7 @@ test('deleting the plugin of the fixed field returns the conversation to the mid
    possible. */
 test('a fixed field\u2019s conversation is chatted in the rail, the others one click behind', async () => {
   bringsAPage()
-  served['/api/sessions'] = [
+  served['/api/conversations'] = [
     { thread_id: 'old', opened_with: OLDER.question, pin: 'fitness' },
   ]
   render(<App />)
@@ -1293,7 +1293,7 @@ const chatting = async (
   ],
 ) => {
   bringsAPage()
-  served['/api/sessions'] = sessions
+  served['/api/conversations'] = sessions
   render(<App />)
   await screen.findByText('notes.md')
   pickPlugin('fitness')

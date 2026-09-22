@@ -89,12 +89,12 @@ def test_a_result_is_the_answer_its_citations_and_its_trace() -> None:
     }
 
 
-def test_a_fact_and_a_session_carry_what_it_takes_to_act_on_them() -> None:
+def test_a_fact_and_a_conversation_carry_what_it_takes_to_act_on_them() -> None:
     assert payloads.fact(Fact(key="k1", text="No burpees.")) == {
         "key": "k1",
         "text": "No burpees.",
     }
-    assert payloads.session(
+    assert payloads.conversation(
         Conversation(thread_id="t1", opened_with="Why?"), "fitness"
     ) == {
         "thread_id": "t1",
@@ -102,7 +102,9 @@ def test_a_fact_and_a_session_carry_what_it_takes_to_act_on_them() -> None:
         "pin": "fitness",
     }
     # Fixed to nothing is a field named as none, rather than a key the page has to miss.
-    assert payloads.session(Conversation(thread_id="t2", opened_with="Why?"), None) == {
+    assert payloads.conversation(
+        Conversation(thread_id="t2", opened_with="Why?"), None
+    ) == {
         "thread_id": "t2",
         "opened_with": "Why?",
         "pin": None,

@@ -33,7 +33,7 @@ def _app(path: pathlib.Path) -> App:
 
 
 def _listed(page: TestClient) -> list[str]:
-    return [session["thread_id"] for session in page.get("/api/sessions").json()]
+    return [session["thread_id"] for session in page.get("/api/conversations").json()]
 
 
 @pytest.mark.integration
@@ -47,11 +47,11 @@ def test_a_conversation_i_delete_is_gone_from_both_stores(
             assert page.post("/api/ask", json=asked).status_code == 200
         assert _listed(page) == [DELETED, KEPT]
 
-        assert page.delete(f"/api/sessions/{DELETED}").status_code == 204
+        assert page.delete(f"/api/conversations/{DELETED}").status_code == 204
 
         assert _listed(page) == [KEPT]
-        assert page.get(f"/api/sessions/{DELETED}").json() == []
-        assert page.get(f"/api/sessions/{DELETED}/scope").json() == {"pin": None}
+        assert page.get(f"/api/conversations/{DELETED}").json() == []
+        assert page.get(f"/api/conversations/{DELETED}/scope").json() == {"pin": None}
 
 
 @pytest.mark.integration
@@ -64,7 +64,9 @@ def test_a_thread_is_picked_up_out_of_the_file_by_a_second_composition(
         assert page.post("/api/ask", json=asked).status_code == 200
 
     with TestClient(api(_app(store))) as reopened:
-        assert reopened.get(f"/api/sessions/{KEPT}/scope").json() == {"pin": FITNESS}
+        assert reopened.get(f"/api/conversations/{KEPT}/scope").json() == {
+            "pin": FITNESS
+        }
         assert _listed(reopened) == [KEPT]
 
 

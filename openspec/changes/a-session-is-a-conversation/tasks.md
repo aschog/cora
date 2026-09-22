@@ -4,7 +4,7 @@
 
 ## 2. The record
 
-- [ ] 2.1 Write a test that the store lists what it holds through `opened()`, newest first, named by the question that opened each.
+- [x] 2.1 Write a test that the store lists what it holds through `opened()`, newest first, named by the question that opened each.
 
 ## 3. The API
 

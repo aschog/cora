@@ -387,7 +387,7 @@ def test_an_action_the_card_never_offered_is_refused_not_read_as_a_decline() -> 
 
     assert refused.status_code == REFUSED
     assert refused.json() == {"error": NOT_THAT_CARD}
-    assert reader.get("/api/sessions/t1/pending").json() is not None, (
+    assert reader.get("/api/conversations/t1/pending").json() is not None, (
         "the thread is still waiting, so the card is still answerable"
     )
 

@@ -102,7 +102,7 @@ def test_a_listed_conversation_says_which_field_it_is_fixed_to() -> None:
     with TestClient(api(app)) as reader:
         _asked(reader, question="How much protein?", pin="fitness")
         _asked(reader, question="Anything else?", thread_id="t2")
-        listed = reader.get("/api/sessions").json()
+        listed = reader.get("/api/conversations").json()
 
     fixed = {each["opened_with"]: each["pin"] for each in listed}
     assert fixed == {"How much protein?": "fitness", "Anything else?": None}

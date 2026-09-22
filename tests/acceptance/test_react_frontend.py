@@ -78,8 +78,8 @@ def test_the_page_uploads_asks_reads_the_passage_and_comes_back_to_it() -> None:
         kept = page.get(opened).json()["text"]
         assert PASSAGE in kept[citation["start"] : citation["end"]]
 
-        [session] = page.get("/api/sessions").json()
+        [session] = page.get("/api/conversations").json()
         assert session["opened_with"] == QUESTION
-        [reopened] = page.get(f"/api/sessions/{session['thread_id']}").json()
+        [reopened] = page.get(f"/api/conversations/{session['thread_id']}").json()
         assert reopened["question"] == QUESTION
         assert reopened["result"]["answer"] == ANSWER
