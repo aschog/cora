@@ -1,6 +1,6 @@
 # cora
 
-![CoRa: one core, endless plugin power](docs/assets/hero.png)
+![CoRa: one core, endless plugin power](docs/assets/cora.png)
 
 On the showcase: [cora](https://showcase.turingcollege.com/project/d74b5ac2-789f-485c-ad57-d118f8d4602b).
 
