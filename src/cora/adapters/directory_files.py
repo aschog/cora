@@ -1,4 +1,3 @@
-import re
 from collections.abc import Callable
 from functools import wraps
 from pathlib import Path
@@ -8,13 +7,7 @@ from cora.domain.errors import (
     FileNameRejectedError,
     FileTooLargeToKeepError,
 )
-from cora.ports.files import MOST_BYTES
-
-# A name a person types for a list of their own: letters of any language, digits, and
-# the three marks a filename carries. It has to begin with a letter or a digit, which
-# is what keeps a dotfile, `.` and `..` out without naming any of them.
-PLAIN_NAME = re.compile(r"[^\W_][\w .\-]*\Z")
-MOST_CHARACTERS = 100
+from cora.ports.files import MOST_BYTES, plain_name
 
 
 def _translate_errors[**P, R](method: Callable[P, R]) -> Callable[P, R]:
@@ -60,7 +53,7 @@ class DirectoryFiles:
             sorted(
                 each.name
                 for each in folder.iterdir()
-                if each.is_file() and PLAIN_NAME.match(each.name)
+                if each.is_file() and plain_name(each.name)
             )
         )
 
@@ -94,6 +87,6 @@ class DirectoryFiles:
 
 
 def _plain(name: str) -> str:
-    if len(name) > MOST_CHARACTERS or not PLAIN_NAME.match(name):
+    if not plain_name(name):
         raise FileNameRejectedError(name)
     return name

@@ -9,6 +9,8 @@ from cora.domain.chunk import Chunk
 from cora.domain.conversation import Session, Turn
 from cora.domain.errors import (
     ConversationStoreError,
+    FileNameRejectedError,
+    FileTooLargeToKeepError,
 )
 from cora.engine.host import PluginHost
 from cora.ports.chat_model import (
@@ -20,7 +22,7 @@ from cora.ports.chat_model import (
     unheard,
 )
 from cora.ports.context_source import ContextSource, Document
-from cora.ports.files import Files
+from cora.ports.files import MOST_BYTES, Files, plain_name
 from cora.ports.loading import Loaders
 from cora.ports.memory import Fact, Memory
 from cora.ports.output import Output
@@ -366,21 +368,36 @@ class FakeStore:
 
 @dataclass
 class FakeFiles:
-    """Every field's own files, in a dict keyed by field the way the real one is."""
+    """Every field's own files, in a dict keyed by field the way the real one is.
+
+    It refuses what `DirectoryFiles` refuses, off the same rule and the same cap: a
+    fake that accepts a name or a size the real one rejects passes every test over the
+    behaviour production does not have.
+    """
 
     kept: dict[tuple[str, str], str] = field(default_factory=dict)
+    cap: int = MOST_BYTES
 
     def names(self, scope: str) -> tuple[str, ...]:
         return tuple(sorted(name for held, name in self.kept if held == scope))
 
     def read(self, scope: str, name: str) -> str | None:
-        return self.kept.get((scope, name))
+        return self.kept.get((_plain(scope), _plain(name)))
 
     def write(self, scope: str, name: str, text: str | None) -> None:
+        held = (_plain(scope), _plain(name))
         if text is None:
-            self.kept.pop((scope, name), None)
+            self.kept.pop(held, None)
             return
-        self.kept[(scope, name)] = text
+        if len(text.encode("utf-8")) > self.cap:
+            raise FileTooLargeToKeepError(self.cap)
+        self.kept[held] = text
+
+
+def _plain(name: str) -> str:
+    if not plain_name(name):
+        raise FileNameRejectedError(name)
+    return name
 
 
 def host_for(

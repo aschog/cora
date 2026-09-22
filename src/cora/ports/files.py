@@ -9,9 +9,25 @@ addresses and what a person recognises, and a plugin loaded under two fields kee
 sets.
 """
 
+import re
 from typing import Protocol
 
 MOST_BYTES = 1_000_000
+
+# A name a person types for a list of their own: letters of any language, digits, and
+# the three marks a filename carries. It has to begin with a letter or a digit, which
+# is what keeps a dotfile, `.` and `..` out without naming any of them.
+_PLAIN_NAME = re.compile(r"[^\W_][\w .\-]*\Z")
+MOST_CHARACTERS = 100
+
+
+def plain_name(name: str) -> bool:
+    """Whether this is one plain name, which is the only kind a field keeps.
+
+    The rule itself rather than each implementation's own, because a listing and a
+    reader that disagree hand back a name the reader then refuses.
+    """
+    return len(name) <= MOST_CHARACTERS and _PLAIN_NAME.match(name) is not None
 
 
 class Files(Protocol):
