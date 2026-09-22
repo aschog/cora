@@ -110,3 +110,14 @@ it. An address the page itself just wrote SHALL NOT be read back as a request.
 - **WHEN** the address the page wrote for it is read back
 - **THEN** its turns are read once
 
+### Requirement: A card left open outranks the address
+
+Where a card was left open in one conversation, the page SHALL open there. It SHALL do
+so though the address names another conversation.
+
+#### Scenario: The card is what the page comes back to
+
+- **GIVEN** a card left open in a conversation the list does not yet hold
+- **AND** an address naming a different, recorded conversation
+- **WHEN** the page is drawn
+- **THEN** the card is what the reader is shown
