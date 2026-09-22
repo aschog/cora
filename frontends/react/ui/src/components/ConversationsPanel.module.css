@@ -1,11 +1,11 @@
 /* ── the conversations before this one ── */
-.session-list {
+.conversation-list {
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
 
-.session-row {
+.conversation-row {
   display: flex;
   align-items: center;
   gap: var(--s2);
@@ -14,18 +14,18 @@
   border-radius: var(--radius);
 }
 
-.session-row:hover {
+.conversation-row:hover {
   background: var(--n300);
 }
 
 /* The conversation on the page, marked where the reader's eye lands: they are reading it
    already, so this is only where they are in the list. */
-.session-row.here {
+.conversation-row.here {
   background: var(--accent-tint);
   box-shadow: -3px 0 0 var(--accent);
 }
 
-.session {
+.conversation {
   flex: 1;
   min-width: 0;
   /* One line each, so the list is a column of rows rather than blocks of prose in
@@ -39,7 +39,7 @@
   color: var(--text);
 }
 
-.session:disabled {
+.conversation:disabled {
   color: var(--text);
   cursor: default;
 }

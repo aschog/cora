@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import * as cora from './api'
-import type { Citation, Fact, Scopes, Session } from './api'
+import type { Citation, Conversation, Fact, Scopes } from './api'
 import { answeredIn, lastTrace } from './entry'
 import { stowed } from './parked'
 import { showThread, threadInUrl } from './route'
@@ -22,12 +22,12 @@ import ReadImage from './components/ReadImage'
 import type { Asked } from './components/ConfirmModal'
 import DocumentRail from './components/DocumentRail'
 import ErrorBoundary from './components/ErrorBoundary'
-import NewSession from './components/NewSession'
+import NewConversation from './components/NewConversation'
 import RailToggle from './components/RailToggle'
 import ScopePicker from './components/ScopePicker'
 import MemoryPanel from './components/MemoryPanel'
 import PlanPanel from './components/PlanPanel'
-import SessionsPanel from './components/SessionsPanel'
+import ConversationsPanel from './components/ConversationsPanel'
 import SourcePanel from './components/SourcePanel'
 import styles from './App.module.css'
 import { joined } from './joined'
@@ -149,7 +149,7 @@ function Page() {
   const {
     documents,
     facts,
-    sessions,
+    conversations,
     plugins,
     fields,
     field,
@@ -164,10 +164,10 @@ function Page() {
      one of them opens its own conversation, which is how starting a workout on a watch
      puts the trainer on the screen. It writes the address and nothing else — the effect
      below that follows the address is what then opens the conversation. */
-  useNotices({ pages, sessions, here: thread })
+  useNotices({ pages, conversations, here: thread })
 
   /* A field with a page is worked in the page, and the conversation about it is the
-     sessions panel — so that is the panel the rail opens on. Without this the reader
+     conversations panel — so that is the panel the rail opens on. Without this the reader
      picks a field, the middle becomes a trainer, and the conversation they were in is
      behind a tab nobody told them about. */
   useEffect(() => {
@@ -222,8 +222,8 @@ function Page() {
   /** What the page shows around the conversation, and what else a conversation opened
    *  brings with it: the panel starts clean and the picker follows the turns that were
    *  actually answered. */
-  const enterConversation = async (session: Session) => {
-    const outcome = await reopen(session, (kept) => {
+  const enterConversation = async (row: Conversation) => {
+    const outcome = await reopen(row, (kept) => {
       setRead(null)
       setNotice(null)
       /* A conversation nothing pinned is still in a field: routing settled one per turn
@@ -236,9 +236,9 @@ function Page() {
       /* The address names the conversation that is drawn, and only once it is: a link to
          one that could not be read would otherwise sit in the bar describing a page the
          reader is not on. */
-      showThread(session.thread_id)
-      void parked(session.thread_id)
-      void held(session.thread_id)
+      showThread(row.thread_id)
+      void parked(row.thread_id)
+      void held(row.thread_id)
     }
   }
 
@@ -467,7 +467,7 @@ function Page() {
           </div>
           {leftOpen && (
             <ErrorBoundary said="The documents rail could not be drawn.">
-              <NewSession
+              <NewConversation
                 canStart={somethingToLeave}
                 onNew={() =>
                   start({
@@ -581,30 +581,30 @@ function Page() {
                     />
                   )}
                   {tab === 'CONVERSATIONS' && (
-                    <SessionsPanel
-                      sessions={sessions}
+                    <ConversationsPanel
+                      conversations={conversations}
                       here={thread}
                       working={working}
-                      chats={(session) => session.pin !== null && pages.includes(session.pin)}
+                      chats={(row) => row.pin !== null && pages.includes(row.pin)}
                       chat={page === null || listing ? undefined : talking}
                       about={{ opened: entries[0]?.question ?? '' }}
                       onBack={() => setListing(true)}
-                      onOpen={(session) => {
+                      onOpen={(row) => {
                         /* Opening one is asking for that conversation, which is what the
                            rail then shows — the list is where you went to find it. */
                         setListing(false)
-                        return enterConversation(session)
+                        return enterConversation(row)
                       }}
-                      onDelete={(session) =>
+                      onDelete={(row) =>
                         setConfirming({
                           head: 'DELETE CONVERSATION',
-                          subject: session.opened_with,
+                          subject: row.opened_with,
                           said: CONVERSATION_GOES,
                           confirm: 'Delete conversation',
-                          send: () => discard(session),
-                          from: rail.sessions,
-                          without: (listed: Session[]) =>
-                            listed.filter((each) => each.thread_id !== session.thread_id),
+                          send: () => discard(row),
+                          from: rail.conversations,
+                          without: (listed: Conversation[]) =>
+                            listed.filter((each) => each.thread_id !== row.thread_id),
                         })
                       }
                     />

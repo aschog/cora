@@ -75,7 +75,7 @@ export type Fact = { key: string; text: string }
 /** One conversation in the list, and the field it is fixed to — `null` where it is
  *  fixed to nothing. The pin rather than the fields its turns were answered in: the
  *  first is a decision about the conversation, the second a reading of one question. */
-export type Session = {
+export type Conversation = {
   thread_id: string
   opened_with: string
   pin: string | null
@@ -129,8 +129,8 @@ export const documents = (scope: string, signal?: AbortSignal) =>
   read<string[]>(`/api/documents?scope=${encodeURIComponent(scope)}`, { signal })
 export const scopes = (signal?: AbortSignal) => read<Scopes>('/api/scopes', { signal })
 export const memory = (signal?: AbortSignal) => read<Fact[]>('/api/memory', { signal })
-export const sessions = (signal?: AbortSignal) =>
-  read<Session[]>('/api/conversations', { signal })
+export const conversations = (signal?: AbortSignal) =>
+  read<Conversation[]>('/api/conversations', { signal })
 export const plugins = (signal?: AbortSignal) =>
   read<Plugin[]>('/api/plugins', { signal })
 /* The one live value cora holds for a field, written by whatever is beside the reader
@@ -190,7 +190,7 @@ export const deleteDocument = (scope: string, name: string) =>
 /** Delete one conversation: the turns recorded under it, and the thread they were
  *  answered on. One request, because a conversation whose record is gone and whose
  *  thread is not still holds a pin, a transcript and possibly a turn nobody can see. */
-export const deleteSession = (thread: string) =>
+export const deleteConversation = (thread: string) =>
   discard(`/api/conversations/${encodeURIComponent(thread)}`)
 
 /** Delete one plugin: its entry in the plugins folder, the documents and passages of

@@ -69,7 +69,7 @@ export default function ReadImage({
   /* What a merge put above the reading, so naming a second file swaps that head out
      instead of stacking the first file on top of the second. */
   const [merged, setMerged] = useState('')
-  /* A second photo read in the same session arrives as new props around the box the
+  /* A second photo read in the same visit arrives as new props around the box the
      first one is still in. State seeded from a prop is seeded once, so the reading it
      came from is held beside it and the box follows a new one — otherwise Keep it
      would write the first reading under the second's name. */

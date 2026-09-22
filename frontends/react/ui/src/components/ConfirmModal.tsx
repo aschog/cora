@@ -4,7 +4,7 @@ import dialog from './dialog.module.css'
 
 /** One question the page stops to have answered, in the words of whoever raised it. */
 export type Asked = {
-  /** What kind of question it is, over the subject: DELETE SESSION, FORGET THIS. */
+  /** What kind of question it is, over the subject: DELETE CONVERSATION, FORGET THIS. */
   head: string
   /** What is about to go, in the words the reader knows it by. */
   subject: string

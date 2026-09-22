@@ -1,4 +1,4 @@
-"""What the agent keeps about a user between sessions."""
+"""What the agent keeps about a user between conversations."""
 
 from dataclasses import dataclass
 from typing import Protocol
@@ -17,7 +17,7 @@ class Fact:
 
 
 class Memory(Protocol):
-    """What the agent keeps about one user between sessions.
+    """What the agent keeps about one user between conversations.
 
     Four verbs of intent rather than a key-value store: which user, and where the facts
     live, are the adapter's to know, so a slot bound to another technology — or to

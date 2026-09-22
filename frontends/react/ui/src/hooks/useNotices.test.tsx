@@ -1,23 +1,23 @@
 import { cleanup, render } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { useNotices } from './useNotices'
-import type { Session } from '../api'
+import type { Conversation } from '../api'
 
 /* The rule, without a browser: a field that was written to opens its own conversation.
    The poll is driven by the fake clock rather than waited on — five seconds a case would
    be the whole tier's runtime spent sitting still. */
 
 const FITNESS = 'fitness'
-const OLDER: Session = { thread_id: 'older', opened_with: 'squats', pin: FITNESS }
-const NEWER: Session = { thread_id: 'newer', opened_with: 'presses', pin: FITNESS }
-const ELSEWHERE: Session = { thread_id: 'elsewhere', opened_with: 'kyoto', pin: null }
+const OLDER: Conversation = { thread_id: 'older', opened_with: 'squats', pin: FITNESS }
+const NEWER: Conversation = { thread_id: 'newer', opened_with: 'presses', pin: FITNESS }
+const ELSEWHERE: Conversation = { thread_id: 'elsewhere', opened_with: 'kyoto', pin: null }
 
 /** What each field's notice answers, in the order it is asked. The last answer stands,
  *  so a case says "nothing, then this" and the poll does the rest. */
 let answers: Record<string, unknown>[] = []
 
-function Watches({ pages, sessions, here }: { pages: string[]; sessions: Session[]; here: string }) {
-  useNotices({ pages, sessions, here })
+function Watches({ pages, conversations, here }: { pages: string[]; conversations: Conversation[]; here: string }) {
+  useNotices({ pages, conversations, here })
   return null
 }
 
@@ -50,7 +50,7 @@ afterEach(() => {
 test('a notice written to a field opens that field\'s conversation', async () => {
   answers = [{ notice: null }, { notice: { workout: 'running' }, at: 1000 }]
 
-  render(<Watches pages={[FITNESS]} sessions={[NEWER]} here="elsewhere" />)
+  render(<Watches pages={[FITNESS]} conversations={[NEWER]} here="elsewhere" />)
   await polled()
 
   expect(globalThis.location.hash).toBe('#/c/newer')
@@ -61,7 +61,7 @@ test('the newest conversation pinned to the field is the one opened', async () =
      asserted here because a sort added anywhere above this would break it silently. */
   answers = [{ notice: null }, { notice: {}, at: 1000 }]
 
-  render(<Watches pages={[FITNESS]} sessions={[NEWER, OLDER]} here="elsewhere" />)
+  render(<Watches pages={[FITNESS]} conversations={[NEWER, OLDER]} here="elsewhere" />)
   await polled()
 
   expect(globalThis.location.hash).toBe('#/c/newer')
@@ -70,7 +70,7 @@ test('the newest conversation pinned to the field is the one opened', async () =
 test('a field nothing is pinned to opens nothing', async () => {
   answers = [{ notice: null }, { notice: {}, at: 1000 }]
 
-  render(<Watches pages={[FITNESS]} sessions={[ELSEWHERE]} here="elsewhere" />)
+  render(<Watches pages={[FITNESS]} conversations={[ELSEWHERE]} here="elsewhere" />)
   await polled()
 
   expect(globalThis.location.hash).toBe('')
@@ -79,7 +79,7 @@ test('a field nothing is pinned to opens nothing', async () => {
 test('a notice naming the conversation already open moves nothing', async () => {
   answers = [{ notice: null }, { notice: {}, at: 1000 }]
 
-  render(<Watches pages={[FITNESS]} sessions={[NEWER]} here="newer" />)
+  render(<Watches pages={[FITNESS]} conversations={[NEWER]} here="newer" />)
   await polled()
 
   expect(globalThis.location.hash).toBe('')
@@ -90,7 +90,7 @@ test('the notice standing when the page loads opens nothing', async () => {
      drag the reader into a conversation on every reload. */
   answers = [{ notice: { workout: 'running' }, at: 1000 }]
 
-  render(<Watches pages={[FITNESS]} sessions={[NEWER]} here="elsewhere" />)
+  render(<Watches pages={[FITNESS]} conversations={[NEWER]} here="elsewhere" />)
   await polled()
   await polled()
 
@@ -104,20 +104,20 @@ test('a second notice opens the conversation again once the reader has left it',
     { notice: {}, at: 2000 },
   ]
 
-  const drawn = render(<Watches pages={[FITNESS]} sessions={[NEWER]} here="elsewhere" />)
+  const drawn = render(<Watches pages={[FITNESS]} conversations={[NEWER]} here="elsewhere" />)
   await polled()
   expect(globalThis.location.hash).toBe('#/c/newer')
 
   /* The reader walked away again, and the wrist spoke a second time. */
   globalThis.location.hash = ''
-  drawn.rerender(<Watches pages={[FITNESS]} sessions={[NEWER]} here="elsewhere" />)
+  drawn.rerender(<Watches pages={[FITNESS]} conversations={[NEWER]} here="elsewhere" />)
   await polled()
 
   expect(globalThis.location.hash).toBe('#/c/newer')
 })
 
 test('only fields with a page are asked', async () => {
-  render(<Watches pages={[FITNESS]} sessions={[NEWER]} here="elsewhere" />)
+  render(<Watches pages={[FITNESS]} conversations={[NEWER]} here="elsewhere" />)
   await polled()
 
   expect(asked().every((path) => path.includes(FITNESS))).toBe(true)
@@ -125,7 +125,7 @@ test('only fields with a page are asked', async () => {
 })
 
 test('a deployment where no field has a page asks for nothing', async () => {
-  render(<Watches pages={[]} sessions={[NEWER]} here="elsewhere" />)
+  render(<Watches pages={[]} conversations={[NEWER]} here="elsewhere" />)
   await polled()
 
   expect(asked()).toEqual([])
@@ -134,7 +134,7 @@ test('a deployment where no field has a page asks for nothing', async () => {
 test('a notice that cannot be read leaves the page alone', async () => {
   vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('cora could not be reached.') }))
 
-  render(<Watches pages={[FITNESS]} sessions={[NEWER]} here="elsewhere" />)
+  render(<Watches pages={[FITNESS]} conversations={[NEWER]} here="elsewhere" />)
   await polled()
   await polled()
 
@@ -155,7 +155,7 @@ test('a poll torn down partway through asks no further field', async () => {
     }),
   )
 
-  const drawn = render(<Watches pages={[FITNESS, KITCHEN]} sessions={[NEWER]} here="elsewhere" />)
+  const drawn = render(<Watches pages={[FITNESS, KITCHEN]} conversations={[NEWER]} here="elsewhere" />)
   await vi.advanceTimersByTimeAsync(0)
   drawn.unmount()
   held?.()
@@ -168,7 +168,7 @@ test('a poll torn down partway through asks no further field', async () => {
    every five seconds forever is a cost with nothing on the other side of it. */
 test('a hidden tab is not polled', async () => {
   const hidden = vi.spyOn(document, 'visibilityState', 'get').mockReturnValue('hidden')
-  render(<Watches pages={[FITNESS]} sessions={[NEWER]} here="" />)
+  render(<Watches pages={[FITNESS]} conversations={[NEWER]} here="" />)
   const before = asked().length
 
   await polled()

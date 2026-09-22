@@ -1,7 +1,7 @@
 /** Reading the words out of an image, in the browser the image was added in.
  *
  *  Tesseract compiled to WebAssembly, fetched the first time a photo is added and kept
- *  for the rest of the session. The image is never uploaded: what can leave this
+ *  for the rest of the visit. The image is never uploaded: what can leave this
  *  browser is the text, and only once the reader has saved it.
  */
 
@@ -38,7 +38,7 @@ const reader = () => (window as unknown as { Tesseract?: Reader }).Tesseract
 
 let fetching: Promise<Reader> | null = null
 
-/** The script, fetched once. A second photo in the same session waits for nothing. */
+/** The script, fetched once. A second photo in the same visit waits for nothing. */
 function fetched(): Promise<Reader> {
   const already = reader()
   if (already) return Promise.resolve(already)

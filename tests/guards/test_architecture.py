@@ -181,6 +181,61 @@ def test_nothing_shipped_names_a_plugin_or_the_field_it_registers(word: str) -> 
     assert named == [], "\n".join([f"these name '{word}':", *named])
 
 
+# The word the plugins mean — a training day, a drill pass — is not the core's word for
+# the record a reader comes back to, so it names nothing in cora or its page.
+BORROWED_WORD = "session"
+SCRIPT_NOISE = re.compile(
+    r'"(?:\\.|[^"\\\n])*"'
+    r"|'(?:\\.|[^'\\\n])*'"
+    r"|`(?:\\.|[^`\\])*`"
+    r"|//[^\n]*"
+    r"|/\*[\s\S]*?\*/"
+)
+SCRIPT_NAME = re.compile(r"[A-Za-z_$][\w$]*")
+# The browser's own store is named by the browser.
+PLATFORM_NAMES = frozenset({"sessionStorage"})
+NAMED_IN = (
+    "src/cora/*.py",
+    "frontends/react/src/*.py",
+    "frontends/react/ui/src/*.ts",
+    "frontends/react/ui/src/*.tsx",
+    ":(exclude)*.test.ts",
+    ":(exclude)*.test.tsx",
+    ":(exclude)frontends/react/ui/src/test/*",
+)
+
+
+def _script_names(source: str) -> set[str]:
+    return {
+        name.lower()
+        for name in SCRIPT_NAME.findall(SCRIPT_NOISE.sub(" ", source))
+        if name not in PLATFORM_NAMES
+    }
+
+
+def _named_in(path: pathlib.Path) -> set[str]:
+    source = path.read_text()
+    return _names(source) if path.suffix == ".py" else _script_names(source)
+
+
+def test_nothing_of_cora_or_its_page_calls_a_conversation_a_session() -> None:
+    listed = subprocess.run(
+        ["git", "ls-files", "-z", "--", *NAMED_IN],
+        capture_output=True,
+        check=True,
+        cwd=workspace.ROOT,
+        text=True,
+    )
+    named = sorted(
+        name
+        for name in listed.stdout.split("\0")
+        if name
+        and any(BORROWED_WORD in found for found in _named_in(workspace.ROOT / name))
+    )
+
+    assert named == [], "\n".join([f"these name a '{BORROWED_WORD}':", *named])
+
+
 def _domain_classes() -> list[type]:
     return sorted(
         {

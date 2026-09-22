@@ -25,7 +25,7 @@ export const rail = {
      again. */
   everyPassage: ['passage'] as const,
   memory: ['memory'] as const,
-  sessions: ['sessions'] as const,
+  conversations: ['conversations'] as const,
   scopes: ['scopes'] as const,
   /* What loaded, which is what says whether a field has a plugin behind it and whether
      that plugin is one this deployment can delete. */
@@ -52,9 +52,9 @@ export function useRails({
     queryKey: rail.memory,
     queryFn: ({ signal }) => cora.memory(signal),
   })
-  const sessions = useQuery({
-    queryKey: rail.sessions,
-    queryFn: ({ signal }) => cora.sessions(signal),
+  const conversations = useQuery({
+    queryKey: rail.conversations,
+    queryFn: ({ signal }) => cora.conversations(signal),
   })
   const plugins = useQuery({
     queryKey: rail.plugins,
@@ -108,7 +108,7 @@ export function useRails({
 
   /** The first thing that could not be read, in one sentence for all four. A reader is
    *  told the page is incomplete once; which listing it was is the console's. */
-  const failed = [documents, memory, sessions, scopes, plugins].find(
+  const failed = [documents, memory, conversations, scopes, plugins].find(
     (read) => read.error,
   )
   const trouble = failed?.error ? message(failed.error) : null
@@ -122,7 +122,7 @@ export function useRails({
         rail.everyDocument,
         rail.everyPassage,
         rail.memory,
-        rail.sessions,
+        rail.conversations,
         rail.scopes,
         rail.plugins,
       ].map((queryKey) =>
@@ -134,7 +134,7 @@ export function useRails({
   return {
     documents: documents.data ?? [],
     facts: memory.data ?? [],
-    sessions: sessions.data ?? [],
+    conversations: conversations.data ?? [],
     plugins: plugins.data ?? [],
     fields,
     field,

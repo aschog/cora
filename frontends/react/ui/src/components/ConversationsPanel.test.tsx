@@ -1,22 +1,22 @@
 import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
-import SessionsPanel from './SessionsPanel'
-import type { Session } from '../api'
+import ConversationsPanel from './ConversationsPanel'
+import type { Conversation } from '../api'
 
-const HERE: Session = { thread_id: 'here', opened_with: 'The one being read', pin: null }
-const OTHER: Session = { thread_id: 'other', opened_with: 'An older question', pin: 'fitness' }
-const BUSY: Session = { thread_id: 'busy', opened_with: 'Still being answered', pin: null }
+const HERE: Conversation = { thread_id: 'here', opened_with: 'The one being read', pin: null }
+const OTHER: Conversation = { thread_id: 'other', opened_with: 'An older question', pin: 'fitness' }
+const BUSY: Conversation = { thread_id: 'busy', opened_with: 'Still being answered', pin: null }
 
 afterEach(cleanup)
 
 const panel = (working: string | null = null) => {
   const deleted = vi.fn()
   render(
-    <SessionsPanel
-      sessions={[HERE, OTHER, BUSY]}
+    <ConversationsPanel
+      conversations={[HERE, OTHER, BUSY]}
       here={HERE.thread_id}
       working={working}
-      chats={(session) => session.pin === 'fitness'}
+      chats={(conversation) => conversation.pin === 'fitness'}
       onOpen={() => {}}
       onDelete={deleted}
     />,
@@ -24,8 +24,8 @@ const panel = (working: string | null = null) => {
   return deleted
 }
 
-const deleting = (session: Session) =>
-  screen.queryByRole('button', { name: `Delete ${session.opened_with}` })
+const deleting = (conversation: Conversation) =>
+  screen.queryByRole('button', { name: `Delete ${conversation.opened_with}` })
 
 test('the conversation being read offers no delete', () => {
   /* It is the page: deleting it would leave the reader in a conversation that is gone.
@@ -56,8 +56,8 @@ test('a conversation the rail would chat is marked, and the mark is explained', 
 
 test('a list with nothing to chat explains no mark', () => {
   render(
-    <SessionsPanel
-      sessions={[HERE, BUSY]}
+    <ConversationsPanel
+      conversations={[HERE, BUSY]}
       here={HERE.thread_id}
       working={null}
       chats={() => false}
@@ -72,8 +72,8 @@ test('a list with nothing to chat explains no mark', () => {
 test('the panel is the conversation when it is given one, with a way back', () => {
   const back = vi.fn()
   render(
-    <SessionsPanel
-      sessions={[HERE, OTHER]}
+    <ConversationsPanel
+      conversations={[HERE, OTHER]}
       here={HERE.thread_id}
       working={null}
       chats={() => true}
