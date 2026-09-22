@@ -274,3 +274,30 @@ def test_the_plugins_endpoint_carries_a_page_among_the_contributions(
     assert listed["contributions"] == [
         {"kind": "page", "name": "", "scope": "b", "note": ""}
     ]
+
+
+def test_a_pin_that_cannot_be_read_costs_its_row_and_not_the_listing() -> None:
+    # The pin is which field a conversation belongs to, read off its checkpoint. The
+    # listing is how a reader reaches any conversation at all, so one checkpoint that
+    # will not open must not take the rail down with it.
+    conversations = FakeConversations()
+    conversations.record("t1", Turn(question="First?", result=ChatResult(answer="a")))
+    app = assembled(conversations=conversations)
+    broken = replace(app, agent=_NoPin(app.agent))
+
+    listed = client(broken).get("/api/sessions")
+
+    assert listed.status_code == 200
+    assert [session["thread_id"] for session in listed.json()] == ["t1"]
+    assert listed.json()[0]["pin"] is None
+
+
+class _NoPin:
+    def __init__(self, agent: object) -> None:
+        self._agent = agent
+
+    def __getattr__(self, name: str) -> object:
+        return getattr(self._agent, name)
+
+    def pinned(self, thread_id: str) -> str | None:
+        raise RuntimeError("that checkpoint will not open")

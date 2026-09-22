@@ -26,9 +26,10 @@ with the conversation beside it.
 ## One cora, many subjects
 
 A plugin's things live in a field of its own. One SQLite file holds cora's own
-bookkeeping and partitions a field's vectors apart from every other field's, and
-`.cora/documents` is a directory per field holding one Markdown file per upload. A second
-subject is a second directory, not a second store — [where your data
+bookkeeping and partitions a field's vectors apart from every other field's,
+`.cora/documents` is a directory per field holding one Markdown file per upload, and
+`.cora/fields` is a directory per field holding the files that field's plugin keeps. A
+second subject is a second directory, not a second store — [where your data
 lives](docs/data-storage.md) is the whole layout.
 
 ## Start here

@@ -32,6 +32,7 @@ from cora.domain.chat_result import ChatResult
 from cora.domain.decision import TurnPaused
 from cora.domain.errors import AdapterError, CoreError, NothingToResumeError
 from cora.domain.trace import TraceStep
+from cora.engine.agent import Agent
 from cora.engine.ingestion import DEFAULT_MAX_BYTES
 from cora.engine.removal import deletable, fields_going
 from cora.engine.validation import MAX_INPUT_CHARS
@@ -471,12 +472,24 @@ def _sessions(apps: Apps) -> Callable[[Request], Any]:
         # the day that stops being true, the store is where it belongs.
         return JSONResponse(
             [
-                payloads.session(each, app.agent.pinned(each.thread_id))
+                payloads.session(each, _pin(app.agent, each.thread_id))
                 for each in app.conversations.sessions()
             ]
         )
 
     return listed
+
+
+def _pin(agent: Agent, thread_id: str) -> str | None:
+    # Read off the conversation's own checkpoint, which is a second store and can fail
+    # on its own. The listing is how a reader reaches any conversation at all, and the
+    # pin only says which field one belongs to — so a checkpoint that will not open
+    # costs that row its field rather than costing every row the rail.
+    try:
+        return agent.pinned(thread_id)
+    except Exception:
+        log.warning("the pin of %s could not be read", thread_id, exc_info=True)
+        return None
 
 
 def _turns(apps: Apps) -> Callable[[Request], Any]:

@@ -57,7 +57,7 @@ class Files(Protocol):
                 was kept under is not an error.
 
         Raises:
-            FileTooLargeError: The text is over the deployment's cap, so nothing was
-                kept and what was there is untouched.
+            FileTooLargeToKeepError: The text is over the deployment's cap, so nothing
+                was kept and what was there is untouched.
         """
         ...
