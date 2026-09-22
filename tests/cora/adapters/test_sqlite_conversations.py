@@ -6,7 +6,7 @@ import pytest
 from cora.adapters.sqlite_conversations import SqliteConversations
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
-from cora.domain.conversation import Session, Turn
+from cora.domain.conversation import Conversation, Turn
 from cora.domain.errors import ConversationStoreError
 from cora.domain.trace import (
     MemoryUnread,
@@ -40,7 +40,7 @@ def test_a_conversation_survives_the_database_being_reopened(tmp_path: Path) -> 
     assert _store(tmp_path).turns(THREAD) == (TURN,)
 
 
-def test_sessions_are_listed_newest_first_named_by_what_opened_them(
+def test_conversations_are_listed_newest_first_named_by_what_opened_them(
     tmp_path: Path,
 ) -> None:
     store = _store(tmp_path)
@@ -49,9 +49,9 @@ def test_sessions_are_listed_newest_first_named_by_what_opened_them(
         "newer", Turn(question="And creatine?", result=ChatResult(answer="5 g"))
     )
 
-    assert store.sessions() == (
-        Session(thread_id="newer", opened_with="And creatine?"),
-        Session(thread_id="older", opened_with=ASKED),
+    assert store.opened() == (
+        Conversation(thread_id="newer", opened_with="And creatine?"),
+        Conversation(thread_id="older", opened_with=ASKED),
     )
 
 

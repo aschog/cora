@@ -10,7 +10,7 @@ from typing import Any
 from cora.domain.card import ActionOffered, Card, FieldAsked
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
-from cora.domain.conversation import Session, Turn
+from cora.domain.conversation import Conversation, Turn
 from cora.domain.decision import Pending
 from cora.domain.trace import ToolUse, TraceStep
 from cora.engine.plugin_set import RESERVED_TOOL_NAMES
@@ -105,7 +105,7 @@ def fact(fact: Fact) -> dict[str, Any]:
     return {"key": fact.key, "text": fact.text}
 
 
-def session(session: Session, pin: str | None) -> dict[str, Any]:
+def session(conversation: Conversation, pin: str | None) -> dict[str, Any]:
     """One conversation as the list draws it, and the field it is fixed to.
 
     The pin rather than the fields its turns were answered in: the first is a decision
@@ -113,8 +113,8 @@ def session(session: Session, pin: str | None) -> dict[str, Any]:
     listing is where they are told apart, so it is the decision that is sent.
     """
     return {
-        "thread_id": session.thread_id,
-        "opened_with": session.opened_with,
+        "thread_id": conversation.thread_id,
+        "opened_with": conversation.opened_with,
         "pin": pin,
     }
 

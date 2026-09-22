@@ -4,7 +4,7 @@ from dataclasses import dataclass, field, replace
 from typing import NamedTuple
 
 from cora.domain.chunk import Chunk
-from cora.domain.conversation import Session, Turn
+from cora.domain.conversation import Conversation, Turn
 from cora.domain.errors import (
     ConversationStoreError,
     FileNameRejectedError,
@@ -280,9 +280,11 @@ class FakeConversations:
         if thread_id in self._spoke:
             self._spoke.remove(thread_id)
 
-    def sessions(self) -> tuple[Session, ...]:
+    def opened(self) -> tuple[Conversation, ...]:
         return tuple(
-            Session(thread_id=thread, opened_with=self._recorded[thread][0].question)
+            Conversation(
+                thread_id=thread, opened_with=self._recorded[thread][0].question
+            )
             for thread in reversed(self._spoke)
         )
 
@@ -300,7 +302,7 @@ class FailingConversations:
     def forget(self, thread_id: str) -> None:
         raise self.error
 
-    def sessions(self) -> tuple[Session, ...]:
+    def opened(self) -> tuple[Conversation, ...]:
         raise self.error
 
 

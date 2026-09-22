@@ -451,12 +451,12 @@
 <text xml:space="preserve" text-anchor="middle" x="788.75" y="-173.28" font-family="Helvetica,sans-Serif" font-size="10.50">steps</text>
 <text xml:space="preserve" text-anchor="middle" x="846.44" y="-209.81" font-family="Helvetica,sans-Serif" font-size="10.50">*</text>
 </g>
-<!-- Session -->
+<!-- Conversation -->
 <g id="node19" class="node uml&#45;class">
-<title>Session</title>
+<title>Conversation</title>
 <polygon  points="1691.62,-747.62 1691.62,-784.12 1808.38,-784.12 1808.38,-747.62 1691.62,-747.62" class="head"/>
 <text xml:space="preserve" text-anchor="start" x="1723.75" y="-768.62" font-family="Helvetica,sans-Serif" font-size="10.00" class="stereotype">«dataclass»</text>
-<text xml:space="preserve" text-anchor="start" x="1726.38" y="-756.25" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.50" class="name">Session</text>
+<text xml:space="preserve" text-anchor="start" x="1710.62" y="-756.25" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="12.50" class="name">Conversation</text>
 <polygon  points="1691.62,-708.12 1691.62,-747.62 1808.38,-747.62 1808.38,-708.12 1691.62,-708.12" class="body"/>
 <text xml:space="preserve" text-anchor="start" x="1698.62" y="-730.88" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ opened_with: str</text>
 <text xml:space="preserve" text-anchor="start" x="1698.62" y="-718.12" font-family="Helvetica,sans-Serif" font-size="12.50" class="member">+ thread_id: str</text>
@@ -670,5 +670,5 @@
 <text xml:space="preserve" text-anchor="middle" x="2053.87" y="-318.09" font-family="Helvetica,sans-Serif" font-size="10.50">1</text>
 </g>
 </g>
-<!-- drawn by scripts/gen_domain_map.py from 08e0b5d216d71d48 -->
+<!-- drawn by scripts/gen_domain_map.py from be2cd778394615e1 -->
 </svg>

@@ -473,7 +473,7 @@ def _sessions(apps: Apps) -> Callable[[Request], Any]:
         return JSONResponse(
             [
                 payloads.session(each, _pin(app.agent, each.thread_id))
-                for each in app.conversations.sessions()
+                for each in app.conversations.opened()
             ]
         )
 

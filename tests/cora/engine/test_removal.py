@@ -253,7 +253,7 @@ def test_a_conversation_pinned_to_the_field_goes(tmp_path: pathlib.Path) -> None
     )
 
     assert threads.forgotten == ["watching"]
-    assert [each.thread_id for each in conversations.sessions()] == ["planning"]
+    assert [each.thread_id for each in conversations.opened()] == ["planning"]
 
 
 def test_a_plugin_named_in_the_environment_is_refused(tmp_path: pathlib.Path) -> None:

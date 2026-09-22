@@ -7,7 +7,7 @@ from cora.adapters.sqlite_store import connect
 from cora.adapters.translating import translating
 from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
-from cora.domain.conversation import Session, Turn
+from cora.domain.conversation import Conversation, Turn
 from cora.domain.errors import ConversationStoreError
 from cora.domain.trace import TraceStep, step_kinds
 
@@ -53,7 +53,7 @@ class SqliteConversations:
         return tuple(_from_data(json.loads(row[0])) for row in rows)
 
     @_translate_errors
-    def sessions(self) -> tuple[Session, ...]:
+    def opened(self) -> tuple[Conversation, ...]:
         rows = self._connection.execute(
             "select thread, turn from cora_turns where id in "
             "(select min(id) from cora_turns group by thread) "
@@ -61,7 +61,7 @@ class SqliteConversations:
             "cora_turns.thread) desc"
         ).fetchall()
         return tuple(
-            Session(thread_id=row[0], opened_with=json.loads(row[1])["question"])
+            Conversation(thread_id=row[0], opened_with=json.loads(row[1])["question"])
             for row in rows
         )
 

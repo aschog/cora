@@ -130,9 +130,9 @@ def _pinned_to(fields: tuple[str, ...], agent: Agent) -> tuple[str, ...]:
     if not fields or agent.conversations is None:
         return ()
     return tuple(
-        session.thread_id
-        for session in agent.conversations.sessions()
-        if agent.pinned(session.thread_id) in fields
+        conversation.thread_id
+        for conversation in agent.conversations.opened()
+        if agent.pinned(conversation.thread_id) in fields
     )
 
 

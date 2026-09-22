@@ -1,6 +1,6 @@
 ## 1. The outer test
 
-- [ ] 1.1 Write the outer test: a conversation answered once is listed at `/api/conversations` and read back from there, and `/api/sessions` answers nothing, marked `xfail(strict=True)`.
+- [x] 1.1 Write the outer test: a conversation answered once is listed at `/api/conversations` and read back from there, and `/api/sessions` answers nothing, marked `xfail(strict=True)`.
 
 ## 2. The record
 
