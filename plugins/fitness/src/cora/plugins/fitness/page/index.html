@@ -1021,12 +1021,22 @@ function followWatch(held){
 }
 
 function askWatch(){
+  /* A screen nobody is looking at has no workout being done in front of it, and the
+     shell polls this same notice for this same field beside us — so a page in the
+     background is two requests every five seconds for a reader who is elsewhere. What
+     the watch wrote stands until it is read, so the catch-up on returning loses none of
+     it. */
+  if (document.visibilityState === 'hidden') return;
   fetch(NOTICE, {cache: 'no-store'})
     .then(r => r.ok ? r.json() : null)
     .then(followWatch)
     .catch(() => {});                    // no cora, no watch: the trainer works as ever
 }
-if (NOTICE){ askWatch(); setInterval(askWatch, ASK_WATCH_EVERY); }
+if (NOTICE){
+  askWatch();
+  setInterval(askWatch, ASK_WATCH_EVERY);
+  document.addEventListener('visibilitychange', askWatch);
+}
 
 const watchEl = document.getElementById('watch');
 /** How long the workout the watch started has run. Blank until it starts one: with no
