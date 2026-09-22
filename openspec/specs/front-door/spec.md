@@ -2,17 +2,16 @@
 
 ## Purpose
 
-How cora introduces itself: one screen that says what it is for and links everything
-else, a site that states its own description, and a test over the names the pages claim.
+How cora introduces itself: one screen that says what it is for and carries the commands
+that install it, run it and extend it. There is no documentation site — the front door
+is the documentation.
 
 ## Requirements
 
-### Requirement: The front door says what cora is for
+### Requirement: The front door opens with what cora is for
 
-The system SHALL open `README.md` with what problem cora solves and who it is for, SHALL
-link the showcase entry near the top, and SHALL carry no instruction a page of its own
-holds — installing it, running it, loading a plugin, or writing one. Every such subject
-SHALL be a link.
+The system SHALL open `README.md` with what problem cora solves and who it is for, and
+SHALL link the showcase entry near the top.
 
 #### Scenario: A stranger reads the first screen
 
@@ -20,47 +19,30 @@ SHALL be a link.
 - **THEN** they can say what problem it solves and who it is for
 - **AND** the showcase entry is linked near the top
 
-#### Scenario: What writing a plugin involves is linked, not repeated
+### Requirement: The front door carries the commands
 
-- **WHEN** the front door reaches the subject of writing a plugin
-- **THEN** it links `docs/how-to/write-a-plugin.md` rather than restating it
+The system SHALL state in `README.md` the commands that install cora, load its plugins,
+run it, and run its gates, rather than linking a page that holds them. `README.md` SHALL
+link no page under `docs/` that the repository does not carry.
 
-#### Scenario: Running it is linked, not repeated
+#### Scenario: A reader installs and runs cora
 
-- **WHEN** the front door reaches installing or running cora
-- **THEN** it links the page that holds the commands, and states none itself
+- **WHEN** a reader reaches installing or running cora
+- **THEN** `README.md` gives the commands themselves, and links no page for them
 
-### Requirement: The site describes itself
+#### Scenario: Every link the front door makes resolves
 
-The docs site SHALL state the description every page carries, and no build step SHALL
-read `README.md`. Where two pages would state the same fact about what cora does, one
-SHALL state it and the other SHALL link that one.
+- **WHEN** a reader follows a `docs/` link from `README.md`
+- **THEN** the file it names is one the repository holds
 
-#### Scenario: The docs site describes itself
+### Requirement: The front door says what a plugin must export
 
-- **WHEN** the site is built
-- **THEN** every page carries a description the site states, and no build step reads
-  `README.md`
+The system SHALL state in `README.md` what a plugin must export, where it is dropped to
+be loaded, and how its settings are named, and SHALL name the plugins under `plugins/`
+as the worked examples rather than restating them.
 
-#### Scenario: A fact has one home
+#### Scenario: A reader writes their first plugin
 
-- **WHEN** two pages would state the same fact about what cora does
-- **THEN** one of them states it and the other links that one
-
-### Requirement: What the docs name, cora has
-
-A test SHALL fail when a documentation page names a `CORA_*` variable no configuration
-reads, or a `make` target the `Makefile` does not define.
-
-#### Scenario: A page names a variable nothing reads
-
-- **GIVEN** a documentation page naming `CORA_PLUGIN_FITNESS_UNITS`
-- **WHEN** the guards run
-- **THEN** the test fails, naming the page and the variable
-
-#### Scenario: A page names a target that exists
-
-- **GIVEN** the pages as they stand
-- **WHEN** the guards run
-- **THEN** every `make` target and every `CORA_*` name they carry is one the repository
-  has
+- **WHEN** a reader reaches the subject of writing a plugin
+- **THEN** `README.md` names `extend` as what it must export, `.cora/plugins/` as where
+  it is dropped, and the `CORA_PLUGIN_<NAME>_<SETTING>` form its settings take
