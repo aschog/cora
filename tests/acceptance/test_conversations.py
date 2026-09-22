@@ -71,7 +71,6 @@ def test_a_thread_is_picked_up_out_of_the_file_by_a_second_composition(
 
 
 @pytest.mark.integration
-@pytest.mark.xfail(strict=True, reason="a-session-is-a-conversation is in flight")
 def test_a_conversation_is_listed_and_read_back_under_its_own_name(
     tmp_path: pathlib.Path,
 ) -> None:

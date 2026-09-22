@@ -8,7 +8,7 @@
 
 ## 3. The API
 
-- [ ] 3.1 Write a test that a conversation's listing, turns, pin, parked card and deletion answer under `/api/conversations`.
+- [x] 3.1 Write a test that a conversation's listing, turns, pin, parked card and deletion answer under `/api/conversations`.
 
 ## 4. The page
 
