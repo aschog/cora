@@ -8,8 +8,8 @@ from starlette.testclient import TestClient
 from app_builder import assembled
 from cora.adapters.file_documents import FileDocuments
 from cora.domain.chat_result import ChatResult
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.react.api import api
+from cora.plugins.documents.search import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ModelReply
 from cora.ports.plugin import ToolCall
 from fakes import FakeConversations, FakeEmbedder, ScriptedChatModel

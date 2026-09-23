@@ -11,7 +11,6 @@ from cora.ports.chat_model import TextSink, unheard
 
 DONE = "done"
 TOOLS = "tools"
-ASK = "ask"
 ROUNDS = "rounds"
 
 
@@ -135,8 +134,8 @@ class Loop:
     route out of it — into the rounds, or on to the answer where the marker answered.
     `gate` stands between the model and the tools, on every round, so no call reaches a
     tool without passing it — a round proposing nothing that changes anything outside
-    cora passes straight through. `ask` is handed over like the rest: an app that offers
-    no decision says so with a step that puts none, rather than with a slot left empty.
+    cora passes straight through — and it is the one step that may stop the turn, for
+    an approval or for a card a tool put ahead of itself.
     """
 
     marker: NamedStep
@@ -145,7 +144,6 @@ class Loop:
     gate: Step
     tools: Step
     router: Route
-    ask: Step
 
 
 class GraphFor(Protocol):

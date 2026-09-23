@@ -3,9 +3,9 @@ from collections.abc import Iterator
 
 import pytest
 
-from cora.adapters.loaders import LOADERS
 from cora.domain.agent_state import AgentState
 from cora.domain.chat_result import ChatResult
+from cora.domain.chunk import Chunk
 from cora.domain.conversation import Turn
 from cora.domain.decision import Pending
 from cora.domain.errors import PluginRemovalError
@@ -67,7 +67,6 @@ def _knowledge_base(
     return KnowledgeBase(
         embedder=FakeEmbedder(),
         retriever=retriever or FakeRetriever(),
-        loaders=LOADERS,
         documents=documents or FakeDocuments(),
     )
 
@@ -141,7 +140,7 @@ def test_the_documents_and_passages_of_its_field_go(tmp_path: pathlib.Path) -> N
     dropped.write_text(DROPPED)
     retriever, documents = FakeRetriever(), FakeDocuments()
     knowledge_base = _knowledge_base(documents, retriever)
-    knowledge_base.add_file(b"Twelve waders at dawn.", "sightings.md", "birds")
+    _indexed(knowledge_base, b"Twelve waders at dawn.", "sightings.md", "birds")
 
     _removing(
         "field_notes",
@@ -161,8 +160,8 @@ def test_another_plugins_field_is_left_alone(tmp_path: pathlib.Path) -> None:
     other = tmp_path / "trips.py"
     other.write_text(DROPPED)
     knowledge_base = _knowledge_base()
-    knowledge_base.add_file(b"Twelve waders at dawn.", "sightings.md", "birds")
-    knowledge_base.add_file(b"Three days in Kyoto.", "kyoto.md", "travel")
+    _indexed(knowledge_base, b"Twelve waders at dawn.", "sightings.md", "birds")
+    _indexed(knowledge_base, b"Three days in Kyoto.", "kyoto.md", "travel")
 
     _removing(
         "field_notes",
@@ -258,7 +257,7 @@ def test_a_conversation_pinned_to_the_field_goes(tmp_path: pathlib.Path) -> None
 
 def test_a_plugin_named_in_the_environment_is_refused(tmp_path: pathlib.Path) -> None:
     knowledge_base = _knowledge_base()
-    knowledge_base.add_file(b"Twelve waders at dawn.", "sightings.md", "birds")
+    _indexed(knowledge_base, b"Twelve waders at dawn.", "sightings.md", "birds")
 
     with pytest.raises(PluginRemovalError, match="fixed at start"):
         _removing(
@@ -269,3 +268,10 @@ def test_a_plugin_named_in_the_environment_is_refused(tmp_path: pathlib.Path) ->
         )
 
     assert knowledge_base.list_sources("birds") == ["sightings.md"]
+
+
+def _indexed(knowledge_base: KnowledgeBase, data: bytes, name: str, scope: str) -> None:
+    text = data.decode()
+    knowledge_base.add(
+        scope, name, name, text, [Chunk(text=text, source=name, index=0, offset=0)]
+    )

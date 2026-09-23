@@ -24,9 +24,9 @@ class Tool:
     `name` is what the model calls, unique across every plugin loaded, and
     `parameter_schema` is validated against a call's arguments before `run` sees them.
 
-    `untrusted` says what this tool returns is material cora did not write, because a
-    fetched string and a calculated one are the same shape. `effect` says calling it
-    changes something outside cora, so it is never offered to a delegated loop.
+    `untrusted` says what this returns is material cora did not write, a fetched string
+    and a calculated one being the same shape. `effect` says calling it changes
+    something outside cora and `writes` something inside; a loop is offered neither.
 
     `asks` returns the card to put to the user, or nothing to run as called. It must be
     a pure function of its arguments, because the step putting the card is replayed on
@@ -39,6 +39,7 @@ class Tool:
     run: Callable[..., Any]
     untrusted: bool = False
     effect: bool = False
+    writes: bool = False
     asks: Callable[[dict[str, Any]], "Card | None"] | None = None
 
 

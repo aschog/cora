@@ -1,5 +1,4 @@
-import dataclasses
-from dataclasses import replace
+from dataclasses import fields, replace
 from typing import Any
 
 import pytest
@@ -8,13 +7,14 @@ from cora.domain.agent_state import AgentState
 from cora.domain.approval import Proposed
 from cora.domain.card import ActionOffered, Answer, Asks, Card, FieldAsked
 from cora.domain.chunk import Chunk
-from cora.domain.citations import Citation
+from cora.domain.citations import CitableHits, Citation, Nothing
 from cora.domain.errors import (
     InputRejectedError,
     LlmError,
     ToolLoopLimitError,
 )
 from cora.domain.trace import (
+    CardFilled,
     EffectSettled,
     ModelDecision,
     ScopeSettled,
@@ -22,27 +22,19 @@ from cora.domain.trace import (
     ToolUse,
 )
 from cora.engine import keeping
-from cora.engine.ask_tool import (
-    ASK_FOR_TOOL_NAME,
-    ASK_TOOL_NAME,
-    ONE_VALUE,
-    SEND,
-)
 from cora.engine.plugin_set import Registry
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.engine.rounds import UNTRUSTED_NOTICE
 from cora.engine.steps import (
-    AGENT_RULES,
     BROKEN_ASKS,
     CORA_PREAMBLE,
     DECLINED_CALL,
-    HELD_AT_SEVERAL,
+    FIELD_RULE,
+    ONE_VALUE,
     REFUSED_CALL,
     ROUTED,
     UNCONFIRMED_CALL,
     UNFILLED_CALL,
     AnswerStep,
-    AskStep,
     FocusStep,
     GateStep,
     ModelStep,
@@ -56,7 +48,7 @@ from cora.engine.steps import (
 from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import CORA, refuse_nothing_to_answer
 from cora.ports.chat_model import Message, ModelReply
-from cora.ports.graph import ASK, DONE, Step
+from cora.ports.graph import DONE, TOOLS, Loop, Step
 from cora.ports.host import (
     ANSWERING,
     BRIEFING,
@@ -70,14 +62,12 @@ from cora.ports.host import (
     Registration,
     Subscription,
 )
-from cora.ports.memory import Memory
 from cora.ports.pause import Answered
-from cora.ports.plugin import Tool, ToolCall, ToolResult
+from cora.ports.plugin import Tool, ToolCall, ToolRefusal, ToolResult
 from cora.ports.retrieval import RetrievedChunk
 from fakes import (
     FailingChatModel,
     FakeContextSource,
-    FakeMemory,
     ScriptedChatModel,
     add_tool,
 )
@@ -96,13 +86,26 @@ def _asked(*calls: ToolCall, known: tuple[Citation, ...] = ()) -> AgentState:
     return {"messages": [reply], "citations": list(known)}
 
 
+SEARCH_TOOL_NAME = "search_documents"
+EMPTY = Nothing(told="Nothing uploaded.", shown="Nothing uploaded.")
+
+
 def _search_call(call_id: str, name: str = SEARCH_TOOL_NAME) -> ToolCall:
     return ToolCall(name=name, arguments={"query": "protein"}, call_id=call_id)
 
 
-def _searcher(*hits: RetrievedChunk, name: str = SEARCH_TOOL_NAME):
-    tool = search_tool(FakeContextSource(list(hits)), top_k=3)
-    return dataclasses.replace(tool, name=name)
+def _searcher(*hits: RetrievedChunk, name: str = SEARCH_TOOL_NAME) -> Tool:
+    source = FakeContextSource(list(hits))
+    return Tool(
+        name=name,
+        description="Search the documents.",
+        parameter_schema={
+            "type": "object",
+            "properties": {"query": {"type": "string"}},
+            "required": ["query"],
+        },
+        run=lambda query: CitableHits(source.search(query, 3), nothing=EMPTY),
+    )
 
 
 def _fetching(name: str = "forecast") -> Tool:
@@ -242,8 +245,8 @@ def _screen(instructions: str = "SYS") -> ScreenStep:
     return ScreenStep(registry=_registry(instructions))
 
 
-def _focus(instructions: str = "SYS", memory: Memory | None = None) -> FocusStep:
-    return FocusStep(registry=_registry(instructions), memory=memory or FakeMemory())
+def _focus(instructions: str = "SYS") -> FocusStep:
+    return FocusStep(registry=_registry(instructions))
 
 
 def _routing(*offered: str) -> tuple[RouteStep, ScriptedChatModel]:
@@ -315,18 +318,22 @@ def test_what_a_brief_handler_returned_is_what_the_model_reads() -> None:
     assert "SYS" in partial["brief"], "the amendment was handed the brief as it stood"
 
 
-def test_the_brief_runs_cora_then_the_domains_then_the_users_own_notes() -> None:
-    memory = FakeMemory(("trains on Tuesdays",))
-    brief = _focus(instructions="## Coaching\nBe a coach.", memory=memory)(
-        {"question": "q"}
-    )["brief"]
+def test_the_brief_runs_cora_then_the_domains() -> None:
+    brief = _focus(instructions="## Coaching\nBe a coach.")({"question": "q"})["brief"]
 
     assert (
         brief.index(CORA_PREAMBLE)
-        < brief.index(AGENT_RULES)
+        < brief.index(FIELD_RULE)
         < brief.index("Be a coach.")
-        < brief.index("trains on Tuesdays")
     )
+
+
+def test_the_brief_carries_no_memory_of_its_own_whatever_the_app_holds() -> None:
+    brief = _focus()({"question": "q"})["brief"]
+
+    assert "remember" not in brief.lower()
+    assert "already know about this user" not in brief
+    assert "search_documents" not in brief and "cite" not in brief
 
 
 def _replied(
@@ -356,109 +363,6 @@ def test_a_tool_calling_reply_at_the_round_budget_gives_up_kindly() -> None:
         Router(max_tool_rounds=2)(_replied(_add_call("c1"), rounds=2))
 
     assert exc_info.value.user_message == ToolLoopLimitError().user_message
-
-
-# ── stopping to ask ──
-
-ASKED = "Which bodyweight should I treat as current?"
-OFFERED = [{"label": "77 kg"}, {"label": "75 kg", "note": "February"}]
-
-
-def _ask_call(call_id: str = "a1", **arguments: object) -> ToolCall:
-    return ToolCall(
-        name=ASK_TOOL_NAME,
-        arguments={"question": ASKED, "options": OFFERED, **arguments},
-        call_id=call_id,
-    )
-
-
-# A pause that answers with whatever it was handed, and keeps what it was shown so a
-# test can read what the reader would have been asked.
-class _Chosen:
-    def __init__(self, answer: str | None, **values: object) -> None:
-        self.answer = answer
-        self.values = values
-        self.shown: Asks | None = None
-
-    def __call__(self, asks: Asks) -> Answer:
-        self.shown = asks
-        return Answer(action=self.answer, values=self.values)
-
-
-def test_a_reply_calling_ask_user_routes_to_the_ask() -> None:
-    assert Router(max_tool_rounds=8)(_replied(_ask_call())) == ASK
-
-
-def test_the_label_chosen_comes_back_as_the_answer_to_the_call() -> None:
-    partial = AskStep(pause=_Chosen("75 kg"))(_asked(_ask_call("a7")))
-
-    [message] = partial["messages"]
-    assert (message.role, message.content, message.tool_call_id) == (
-        "tool",
-        "75 kg",
-        "a7",
-    )
-
-
-def test_a_malformed_ask_is_refused_and_never_reaches_the_reader() -> None:
-    pause = _Chosen("75 kg")
-    unusable = ToolCall(name=ASK_TOOL_NAME, arguments={"question": ASKED}, call_id="a1")
-
-    partial = AskStep(pause=pause)(_asked(unusable))
-
-    [message] = partial["messages"]
-    assert "options" in message.content
-    assert pause.shown is None, "a broken card is never put in front of the reader"
-
-
-# ── asking for what cora does not hold ──
-
-WANTED = "Give me the trip and I'll price it."
-FIELDS = [
-    {"name": "origin", "description": "Where from", "required": True},
-    {"name": "depart", "description": "The day you leave", "format": "date"},
-]
-
-
-def _form_call(call_id: str = "f1", **arguments: object) -> ToolCall:
-    return ToolCall(
-        name=ASK_FOR_TOOL_NAME,
-        arguments={"prompt": WANTED, "fields": FIELDS, **arguments},
-        call_id=call_id,
-    )
-
-
-def test_the_step_puts_the_card_the_ask_describes() -> None:
-    pause = _Chosen(SEND, origin="BER")
-
-    AskStep(pause=pause)(_asked(_form_call()))
-
-    assert pause.shown is not None
-    assert pause.shown.card.prompt == WANTED
-    assert [field.name for field in pause.shown.card.fields] == ["origin", "depart"]
-
-
-def test_an_ask_for_one_value_is_refused_and_never_reaches_the_reader() -> None:
-    pause = _Chosen(SEND, height="1.75")
-    one = _form_call(
-        fields=[{"name": "height", "description": "Your height in metres"}]
-    )
-
-    partial = AskStep(pause=pause)(_asked(one))
-
-    [message] = partial["messages"]
-    assert ONE_VALUE.format(name="height") in message.content
-    assert pause.shown is None, "one value is asked for in prose, not on a card"
-
-
-def test_what_the_reader_wrote_comes_back_as_the_answer_to_the_call() -> None:
-    partial = AskStep(pause=_Chosen(SEND, origin="BER", depart="2026-10-01"))(
-        _asked(_form_call("f7"))
-    )
-
-    [message] = partial["messages"]
-    assert message.tool_call_id == "f7"
-    assert "'BER'" in message.content and "'2026-10-01'" in message.content
 
 
 def _contributing(contributed: AgentState) -> Step:
@@ -955,16 +859,6 @@ def test_a_value_sent_for_a_field_put_up_to_be_read_is_dropped() -> None:
     assert call.arguments == {"origin": "BER"}, "it runs on what the model wrote"
 
 
-def test_a_refused_ask_traces_its_prompt_and_not_the_fields_it_named() -> None:
-    partial = AskStep(pause=_Chosen(SEND))(
-        _asked(_form_call(fields=[{"name": "height", "description": "Your height"}]))
-    )
-
-    [step] = partial["trace"]
-    assert isinstance(step, ToolUse)
-    assert step.arguments == {"question": WANTED}
-
-
 def test_a_card_that_asked_for_nothing_and_was_declined_says_so() -> None:
     confirming = replace(_gathering(), asks=lambda _: CONFIRM)
 
@@ -988,30 +882,109 @@ def test_a_plugin_whose_asks_breaks_costs_the_call_and_not_the_turn() -> None:
     assert contributed["filled"] == {}
 
 
-HELD_THREE_WAYS = (
-    "bodyweight 77 kg, from the intake form on 17 August",
-    "bodyweight 75 kg, from the coach notes in February",
-    "bodyweight 85 kg, from the physio letter",
+# ── a card that says where the action lands ──
+
+FORK = Card(
+    prompt="Which weight?",
+    actions=(
+        ActionOffered(label="77 kg", answer="77 kg", note="intake"),
+        ActionOffered(label="75 kg", answer="75 kg", note="coach"),
+        ActionOffered(label="Neither", answer="none of them"),
+    ),
+    lands="chosen",
 )
+FORKING = "settle"
 
 
-def _brief_over(facts: tuple[str, ...]) -> str:
-    return _focus(memory=FakeMemory(facts))({"question": "q"})["brief"]
-
-
-def test_a_fact_the_notes_hold_at_several_values_is_named_as_one() -> None:
-    brief = _brief_over(HELD_THREE_WAYS)
-
-    assert HELD_AT_SEVERAL.format(subject="bodyweight", count=3) in brief
-    assert ASK_TOOL_NAME in brief
-
-
-def test_notes_that_agree_are_not_reported_as_a_conflict() -> None:
-    settled = (
-        "bodyweight 75 kg, from the coach notes",
-        "bodyweight 75 kg, from the intake form",
-        "trains four times a week",
+def _forking() -> Tool:
+    return Tool(
+        name=FORKING,
+        description="Settle a fact between values.",
+        parameter_schema={
+            "type": "object",
+            "properties": {
+                "question": {"type": "string"},
+                "chosen": {"type": "string"},
+            },
+            "required": ["question"],
+        },
+        run=lambda question, chosen="": f"the user chose {chosen}",
+        asks=lambda _: FORK,
     )
 
-    assert "held at" not in _brief_over(settled).lower()
-    assert "held at" not in _brief_over(HELD_THREE_WAYS[:1]).lower()
+
+def _taking(action: str | None) -> Answered:
+    return lambda asks: Answer(action=action)
+
+
+def test_the_action_taken_lands_in_the_argument_the_card_names() -> None:
+    state = _calling(FORKING, question="Which weight?")
+
+    contributed = GateStep(registry=_offering(_forking()), approve=_taking("75 kg"))(
+        state
+    )
+
+    assert contributed["filled"] == {"c1": {"chosen": "75 kg"}}
+    [call] = _requested_calls({**state, "filled": contributed["filled"]})
+    assert call.arguments == {"question": "Which weight?", "chosen": "75 kg"}
+    [step] = contributed["trace"]
+    assert isinstance(step, CardFilled)
+    assert (step.fields, step.asked) == (("chosen",), True)
+
+
+def test_the_way_out_lands_too_and_the_tool_words_it() -> None:
+    state = _calling(FORKING, question="Which weight?")
+    forking = _forking()
+
+    contributed = GateStep(
+        registry=_offering(forking), approve=_taking("none of them")
+    )(state)
+    ran = ToolStep(ToolRuntime(tools=(forking,)))(
+        {**state, "filled": contributed["filled"]}
+    )
+
+    assert contributed["messages"] == []
+    [message] = ran["messages"]
+    assert message.content.endswith("the user chose none of them")
+
+
+def test_a_card_that_lands_nowhere_settles_on_the_action_alone() -> None:
+    state = _calling(FORKING, question="Which weight?")
+    landing_nowhere = replace(_forking(), asks=lambda _: replace(FORK, lands=""))
+
+    contributed = GateStep(
+        registry=_offering(landing_nowhere), approve=_taking("75 kg")
+    )(state)
+
+    assert contributed["filled"] == {}
+    [call] = _requested_calls({**state, "filled": contributed["filled"]})
+    assert call.arguments == {"question": "Which weight?"}
+
+
+def test_the_gate_binds_what_the_conversation_kept_for_a_card_hook_to_read() -> None:
+    def asks(_: dict[str, Any]) -> Card:
+        if keeping.read("forker", "seen"):
+            raise ToolRefusal("already asked")
+        return FORK
+
+    forking = replace(_forking(), asks=asks)
+    state: AgentState = {
+        **_calling(FORKING, question="Which weight?"),
+        "kept": {"forker": {"seen": "yes"}},
+    }
+
+    contributed = GateStep(registry=_offering(forking), approve=_taking("75 kg"))(state)
+
+    [told] = contributed["messages"]
+    assert "already asked" in told.content
+    assert contributed["filled"] == {}
+
+
+# ── the rounds go model, gate, tools ──
+
+
+def test_a_reply_asking_the_reader_routes_to_the_tools_like_any_call() -> None:
+    asking = ToolCall(name="ask_user", arguments={"question": "Which?"}, call_id="a1")
+
+    assert Router(max_tool_rounds=8)(_replied(asking)) == TOOLS
+    assert "ask" not in {f.name for f in fields(Loop)}

@@ -5,7 +5,7 @@ from .guard import refuse_misuse
 from .prompts import DEFAULT_STYLE, STYLES
 from .tools import interview_tools, report_tool
 
-CONTRACT = 1
+CONTRACT = 2
 
 SCOPE = "interview"
 

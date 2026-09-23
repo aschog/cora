@@ -5,7 +5,7 @@ import pytest
 from app_builder import assembled, indexed
 from cora.domain.trace import ToolUse
 from cora.engine.plugin_registry import load_plugin
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.plugins.documents.search import SEARCH_TOOL_NAME
 from cora.plugins.travel import SCOPE
 from cora.plugins.travel.forecast import FORECAST_TOOL_NAME
 from cora.plugins.travel.researcher import RESEARCH_TOOL_NAME

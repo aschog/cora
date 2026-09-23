@@ -1,14 +1,16 @@
 import pytest
 
 from cora.engine.host import STOPPED_EARLY
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.plugins.documents import extend as documents_extend
+from cora.plugins.documents.search import SEARCH_TOOL_NAME
 from cora.plugins.travel.forecast import FORECAST_TOOL_NAME, forecast_tool
 from cora.plugins.travel.researcher import (
     researching,
     rounds_from,
 )
 from cora.ports.chat_model import ModelReply
-from cora.ports.plugin import ToolCall
+from cora.ports.host import TOOL
+from cora.ports.plugin import Tool, ToolCall
 from fakes import ScriptedChatModel, host_for
 
 FOUND = "Tram 28 runs from Martim Moniz, and the week is dry."
@@ -18,9 +20,16 @@ def _answering() -> ScriptedChatModel:
     return ScriptedChatModel([ModelReply(text=FOUND)])
 
 
+def _searching() -> Tool:
+    documents = host_for("cora.plugins.documents")
+    documents_extend(documents)
+    [search] = [e.value for e in documents.registered if e.kind == TOOL]
+    return search
+
+
 def test_the_researcher_offers_its_loop_the_forecast_beside_the_documents() -> None:
     model = _answering()
-    host = host_for("cora.plugins.travel", model=model)
+    host = host_for("cora.plugins.travel", model=model, offered=(_searching(),))
 
     reported = researching(host, forecast_tool())("three days in Lisbon")
 

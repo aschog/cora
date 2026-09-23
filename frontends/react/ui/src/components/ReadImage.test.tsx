@@ -10,7 +10,7 @@ const put = (read: string, onKeep = vi.fn(), onDiscard = vi.fn()) => {
       image="words.png"
       read={read}
       held={[]}
-      onKeepAsFile={onKeep}
+      onKeep={onKeep}
       onRead={async () => null}
       onDiscard={onDiscard}
     />,
@@ -77,7 +77,7 @@ test('keeping while the merge is still in flight writes the merge', async () => 
       image="words.png"
       read="Buch  book"
       held={['Grundwortschatz.md']}
-      onKeepAsFile={onKeep}
+      onKeep={onKeep}
       onRead={() => new Promise<string>((said) => (land = said))}
       onDiscard={vi.fn()}
     />,
@@ -104,7 +104,7 @@ test('a correction made after the merge is what is kept', async () => {
       image="words.png"
       read="Buch  book"
       held={['Grundwortschatz.md']}
-      onKeepAsFile={onKeep}
+      onKeep={onKeep}
       onRead={async () => 'Apfel  apple'}
       onDiscard={vi.fn()}
     />,
@@ -131,7 +131,7 @@ test('a name changed after a merge keeps only what the box holds', async () => {
       image="words.png"
       read="Buch  book"
       held={['Grundwortschatz.md']}
-      onKeepAsFile={onKeep}
+      onKeep={onKeep}
       /* Answering for the one name the field holds and for no other, the way the
          field does: a stub that holds every name makes a new list read as an old one. */
       onRead={async (name) => (name === 'Grundwortschatz.md' ? 'Apfel  apple' : null)}
@@ -150,7 +150,7 @@ test('a name changed after a merge keeps only what the box holds', async () => {
   fireEvent.click(screen.getByRole('button', { name: KEEP }))
 
   await waitFor(() => expect(onKeep).toHaveBeenCalled())
-  expect(onKeep.mock.calls[0]).toEqual(['Neue Liste.md', 'Buch  book\n'])
+  expect(onKeep.mock.calls[0]).toEqual(['Neue Liste.md', 'Buch  book\n', false])
 })
 
 test('discarding hands over nothing', () => {
@@ -181,7 +181,7 @@ test('a second reading replaces the text the first one left', () => {
       image="a.png"
       read="AAA"
       held={[]}
-      onKeepAsFile={vi.fn()}
+      onKeep={vi.fn()}
       onRead={async () => null}
       onDiscard={vi.fn()}
     />,
@@ -192,7 +192,7 @@ test('a second reading replaces the text the first one left', () => {
       image="b.png"
       read="BBB"
       held={[]}
-      onKeepAsFile={vi.fn()}
+      onKeep={vi.fn()}
       onRead={async () => null}
       onDiscard={vi.fn()}
     />,
@@ -233,7 +233,7 @@ test('a name typed with a space around it merges rather than replaces', async ()
       image="words.png"
       read="Buch  book"
       held={['Grundwortschatz.md']}
-      onKeepAsFile={onKeep}
+      onKeep={onKeep}
       onRead={async () => 'Apfel  apple'}
       onDiscard={vi.fn()}
     />,
@@ -260,7 +260,7 @@ test('a second name does not carry the first file into it', async () => {
       image="words.png"
       read="Baum  tree"
       held={['einheit-3.md', 'einheit-4.md']}
-      onKeepAsFile={onKeep}
+      onKeep={onKeep}
       onRead={async (name) => (name === 'einheit-3.md' ? 'Apfel  apple' : 'Haus  house')}
       onDiscard={vi.fn()}
     />,
@@ -293,7 +293,7 @@ test('a name the listing never mentioned is read before it is replaced', async (
       image="words.png"
       read="Buch  book"
       held={[]}
-      onKeepAsFile={onKeep}
+      onKeep={onKeep}
       onRead={async () => 'Apfel  apple'}
       onDiscard={vi.fn()}
     />,
@@ -306,4 +306,38 @@ test('a name the listing never mentioned is read before it is replaced', async (
     expect((written() as HTMLTextAreaElement).value).toBe('Apfel  apple\nBuch  book'),
   )
   expect(onKeep).not.toHaveBeenCalled()
+})
+
+test('a reading is a file alone unless the box asks for a document too', async () => {
+  const { onKeep } = put('Hilfe  help')
+
+  naming('words.md')
+  fireEvent.click(screen.getByRole('button', { name: KEEP }))
+
+  await waitFor(() => expect(onKeep).toHaveBeenCalled())
+  expect(onKeep.mock.calls[0][2]).toBe(false)
+})
+
+test('ticking the box keeps the reading as a document as well', async () => {
+  const { onKeep } = put('Hilfe  help')
+
+  naming('words.md')
+  fireEvent.click(screen.getByRole('checkbox', { name: /make it a document/ }))
+  fireEvent.click(screen.getByRole('button', { name: KEEP }))
+
+  await waitFor(() => expect(onKeep).toHaveBeenCalled())
+  expect(onKeep.mock.calls[0][2]).toBe(true)
+})
+
+test('a refused keep leaves the dialog up with the reading in it', async () => {
+  const onKeep = vi.fn().mockRejectedValue(new Error('cora will not take that'))
+  const onDiscard = vi.fn()
+  put('Hilfe  help', onKeep, onDiscard)
+
+  naming('words.md')
+  fireEvent.click(screen.getByRole('button', { name: KEEP }))
+
+  expect(await screen.findByText('cora will not take that')).toBeTruthy()
+  expect((written() as HTMLTextAreaElement).value).toBe('Hilfe  help')
+  expect(onDiscard).not.toHaveBeenCalled()
 })

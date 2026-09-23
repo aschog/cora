@@ -20,7 +20,6 @@ from cora.domain.errors import NothingToResumeError, ToolLoopLimitError
 from cora.domain.trace import step_kinds
 from cora.ports.chat_model import TextSink, unheard
 from cora.ports.graph import (
-    ASK,
     DONE,
     ROUNDS,
     TOOLS,
@@ -193,7 +192,6 @@ class LangGraphRunner:
         builder.add_node(MODEL, self.loop.model(on_text))
         builder.add_node(GATE, self.loop.gate)
         builder.add_node(TOOLS, self.loop.tools)
-        builder.add_node(ASK, self.loop.ask)
         opening = (*self.before, self.loop.marker)
         builder.add_edge(START, opening[0].step)
         for here, there in pairwise(opening):
@@ -202,9 +200,8 @@ class LangGraphRunner:
             self.loop.marker.step, self.loop.opening, {ROUNDS: MODEL, DONE: self._done}
         )
         builder.add_conditional_edges(
-            MODEL, self.loop.router, {DONE: self._done, TOOLS: GATE, ASK: ASK}
+            MODEL, self.loop.router, {DONE: self._done, TOOLS: GATE}
         )
-        builder.add_edge(ASK, GATE)
         builder.add_edge(GATE, TOOLS)
         builder.add_edge(TOOLS, MODEL)
         for here, there in pairwise(self.after):

@@ -3,9 +3,11 @@ import pathlib
 import pytest
 
 from cora.domain.errors import ConfigurationError
+from cora.engine.field_tools import BASH_TOOL_NAME, READ_TOOL_NAME, WRITE_TOOL_NAME
 from cora.engine.plugin_set import RESERVED_TOOL_NAMES, Registry
 from cora.engine.validation import CORA
 from cora.ports.host import (
+    FILES,
     HANDLER,
     HAS_AN_EFFECT,
     INSTRUCTIONS,
@@ -16,6 +18,7 @@ from cora.ports.host import (
     Registration,
     Subscription,
 )
+from cora.ports.plugin import Tool
 from fixture_plugins import make_tool, refuses_containing
 
 FITNESS = "cora.plugins.fitness"
@@ -218,3 +221,65 @@ def test_a_page_is_listed_under_its_field_and_names_no_directory() -> None:
 
     [page] = coaching.of(PAGE)
     assert (page.name, page.scope, page.note) == ("", "fitness", "")
+
+
+def test_the_names_cora_keeps_are_its_three_tools_and_no_other() -> None:
+    assert set(RESERVED_TOOL_NAMES) == {READ_TOOL_NAME, WRITE_TOOL_NAME, BASH_TOOL_NAME}
+    assert not {"remember", "ask_user", "ask_user_for", "search_documents"} & set(
+        RESERVED_TOOL_NAMES
+    )
+
+
+def _claiming(scope: str) -> Registry:
+    return Registry(
+        (Registration(module="vocab", kind=FILES, value=None, scope=scope),)
+    )
+
+
+def _own() -> tuple[Tool, ...]:
+    return (
+        make_tool(READ_TOOL_NAME),
+        make_tool(WRITE_TOOL_NAME),
+        make_tool(BASH_TOOL_NAME),
+    )
+
+
+def test_a_field_whose_files_are_its_plugins_is_offered_none_of_coras_three() -> None:
+    offered = _claiming("vocab").offering(_own(), frozenset({"vocab"}))
+
+    assert [tool.name for tool in offered] == []
+
+
+def test_every_other_field_is_offered_all_three() -> None:
+    registry = _claiming("vocab")
+
+    offered = registry.offering(_own(), frozenset({"travel"}))
+
+    assert [tool.name for tool in offered] == [
+        READ_TOOL_NAME,
+        WRITE_TOOL_NAME,
+        BASH_TOOL_NAME,
+    ]
+
+
+def test_a_turn_reaching_a_claimed_field_at_all_is_offered_none_of_them() -> None:
+    # Read and write refuse a turn running in two fields anyway, and a command has to
+    # pick one directory: the claim is the safer answer wherever it is in reach.
+    offered = _claiming("vocab").offering(_own(), frozenset({"vocab", "travel"}))
+
+    assert offered == ()
+
+
+def test_what_the_plugins_registered_still_follows_coras_own() -> None:
+    registry = Registry(
+        (
+            Registration(
+                module="travel", kind=TOOL, value=make_tool("price"), scope=None
+            ),
+            Registration(module="vocab", kind=FILES, value=None, scope="vocab"),
+        )
+    )
+
+    offered = registry.offering(_own(), frozenset({"travel"}))
+
+    assert [tool.name for tool in offered][-1] == "price"

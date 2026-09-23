@@ -38,8 +38,11 @@ PURE_MAY_USE = frozenset({"jsonschema"})
 TOOLKITS: dict[str, frozenset[str]] = {
     "react": frozenset({"starlette", "uvicorn", "python_multipart"}),
     "telegram": frozenset({"httpx"}),
+    "ask": frozenset({"jsonschema"}),
+    "documents": frozenset({"pypdf"}),
     "fitness": frozenset(),
     "interview": frozenset(),
+    "memory": frozenset(),
     "security": frozenset(),
     "travel": frozenset({"httpx"}),
     "vocab": frozenset(),
@@ -194,8 +197,9 @@ def test_nothing_shipped_names_a_plugin_or_the_field_it_registers(word: str) -> 
 # is read whole, comments and labels included: a label is what the reader meets.
 BORROWED_WORD = "session"
 SCRIPT_WORD = re.compile(r"[A-Za-z_$][\w$]*")
-# The browser's own store is named by the browser.
-PLATFORM_NAMES = frozenset({"sessionStorage"})
+# A platform names its own things: the browser its store, POSIX the thing a process
+# leader leads. Neither is cora's word for a conversation, which is what this holds.
+PLATFORM_NAMES = frozenset({"sessionStorage", "start_new_session"})
 NAMED_IN = (
     "src/cora/*.py",
     "frontends/react/src/*.py",
@@ -217,7 +221,8 @@ def _script_words(source: str) -> set[str]:
 
 def _words_in(path: pathlib.Path) -> set[str]:
     source = path.read_text()
-    return _names(source) if path.suffix == ".py" else _script_words(source)
+    named = _names(source) if path.suffix == ".py" else _script_words(source)
+    return named - {name.lower() for name in PLATFORM_NAMES}
 
 
 def test_nothing_of_cora_or_its_page_calls_a_conversation_a_session() -> None:

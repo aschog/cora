@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from cora.domain.errors import CoreError, InputRejectedError
+from cora.domain.errors import CoreError, InputRejectedError, UploadRefusedError
 from cora.domain.trace import HandlerRan, TraceStep
 from cora.engine.scoping import here, running_in
 from cora.ports.host import (
@@ -22,6 +22,7 @@ from cora.ports.host import (
     RETURNING,
     SCREENING,
     TAKING,
+    UPLOADING,
     Registration,
     Subscription,
 )
@@ -31,6 +32,7 @@ log = logging.getLogger(__name__)
 
 UNSCREENED = "Your question could not be checked, so it was not answered."
 UNCHECKED = "a plugin could not check this call"
+UNCHECKED_UPLOAD = "A plugin could not take that upload, so it was not kept."
 
 
 @dataclass(frozen=True)
@@ -121,6 +123,12 @@ EVENTS: Mapping[str, Kind] = {
         broke="could not change the answer",
         holds=str,
     ),
+    UPLOADING: Refusing(
+        refusal=UploadRefusedError,
+        reason=UNCHECKED_UPLOAD,
+        refused="refused the upload",
+        broke="could not take the upload",
+    ),
 }
 
 
@@ -156,6 +164,7 @@ def dispatch(
         InputRejectedError: A handler refused the question, or broke while screening it.
         ToolRefusal: A handler refused the call, or broke while checking it. The turn
             answers anyway: the model is told, and no round is spent.
+        UploadRefusedError: A handler refused the upload, or broke while taking it.
     """
     with running_in(scopes or here()):
         return _ran(event, value, handlers, trace)

@@ -187,7 +187,7 @@ function Page() {
      moment they say so — and comes back, with a sentence, if the store refuses. */
   const removing = useRemoving({ reread, setTrouble })
   const { read, setRead, cited, sourceOf, passagesIn } = useSource(entries, field)
-  const { notice, setNotice, upload, erase, indexing, indexed } = useDocuments({
+  const { notice, setNotice, add, upload, erase, indexing, indexed } = useDocuments({
     field,
     here,
     refresh,
@@ -654,10 +654,16 @@ function Page() {
           /* The dialog comes down when the write has landed, and not before: a name
              the store refuses, or a file over its cap, is refused over the corrected
              text rather than over nothing. */
-          onKeepAsFile={async (name, text) => {
+          onKeep={async (name, text, asDocument) => {
             /* A refusal is thrown on, because the dialog is what covers the page a
-               notice would be written on: it says so over the text that was refused. */
-            await cora.keepFieldFile(field, name, text)
+               notice would be written on: it says so over the text that was refused.
+               Ticked, the reading goes through the upload, which lands the same file
+               and tells the documents plugin to index it; unticked, it is a file alone. */
+            if (asDocument) {
+              await add(new File([text], name, { type: 'text/markdown' }))
+            } else {
+              await cora.keepFieldFile(field, name, text)
+            }
             setReading(null)
             setHeldFiles((names) => (names.includes(name) ? names : [...names, name]))
           }}

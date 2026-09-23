@@ -35,7 +35,7 @@ def client(app: App, *, ui: pathlib.Path | None = None) -> TestClient:
     return TestClient(api(app, ui=ui))
 
 
-def test_an_upload_is_ingested_and_reports_the_chunks_it_cut() -> None:
+def test_an_upload_lands_as_a_file_and_is_indexed_by_the_documents_plugin() -> None:
     app = assembled()
 
     added = client(app).post(
@@ -43,8 +43,10 @@ def test_an_upload_is_ingested_and_reports_the_chunks_it_cut() -> None:
     )
 
     assert added.status_code == 200
-    assert added.json() == {"document": "notes.md", "chunks": 1, "scope": DEFAULT_SCOPE}
+    assert added.json() == {"document": "notes.md", "scope": DEFAULT_SCOPE}
     assert app.knowledge_base.list_sources() == ["notes.md"]
+    assert app.files is not None
+    assert app.files.read_bytes(DEFAULT_SCOPE, "notes.md") == NOTES
 
 
 def test_a_passage_reads_back_from_the_upload_its_span_was_measured_in() -> None:
@@ -124,7 +126,10 @@ def test_a_conversation_store_that_cannot_be_read_reports_its_own_message() -> N
 
 
 def test_the_plugins_endpoint_carries_what_each_plugin_registered() -> None:
-    app = assembled(plugin=make_plugin("birds", tools=(make_tool("count"),), scope="b"))
+    app = assembled(
+        plugin=make_plugin("birds", tools=(make_tool("count"),), scope="b"),
+        searching=False,
+    )
 
     listed = client(app).get("/api/plugins").json()
 
@@ -267,7 +272,10 @@ def test_the_plugins_endpoint_carries_a_page_among_the_contributions(
     def extend(cora: Host) -> None:
         cora.register_page(tmp_path, scope="b")
 
-    app = assembled(plugin=Extension(module="fixture_plugins.birds", extend=extend))
+    app = assembled(
+        plugin=Extension(module="fixture_plugins.birds", extend=extend),
+        searching=False,
+    )
 
     [listed] = client(app).get("/api/plugins").json()
 

@@ -35,13 +35,16 @@ with the setting that moves each. It SHALL say which work happens locally.
 ### Requirement: The page says what the model is told
 
 The page SHALL say what reaches the model on a turn: cora's own brief, the plugin
-instructions loaded for that field, the remembered facts, the conversation within its
-history window, and the results of the tools the turn called.
+instructions loaded for that field, the remembered facts where the memory plugin is
+loaded, the conversation within its history window, and the results of the tools the
+turn called. It SHALL say that retrieved passages reach it where the documents plugin is
+loaded, and that neither arrives otherwise.
 
 #### Scenario: A reader asks what the model sees
 
 - **WHEN** they read the page
-- **THEN** it says that retrieved passages and remembered facts reach the model
+- **THEN** it says that retrieved passages and remembered facts reach the model, each
+  through the plugin that brings it
 - **AND** it says that a question refused on the way in never reaches it
 
 ### Requirement: The page says what the safeguards do not catch
@@ -83,9 +86,10 @@ It SHALL separate what cora enforces whatever a plugin does from what it does no
 - **WHEN** they read the page
 - **THEN** it says a plugin runs with their own permissions, and names the five things it
   may contribute
-- **AND** it names what the contract hands a plugin — the documents, what cora remembers
-  including deleting it, and the model — and that none of that waits for approval, because
-  the gate covers what changes outside cora
+- **AND** it names what the contract hands a plugin — the documents and an index to put
+  them into, what cora remembers including deleting it, the field's files, and the
+  model — and that none of that waits for approval, because the gate covers what changes
+  outside cora
 
 #### Scenario: A reader asks what a plugin's page may reach
 
@@ -97,8 +101,8 @@ It SHALL separate what cora enforces whatever a plugin does from what it does no
 
 - **WHEN** they read the page
 - **THEN** it names the approval gate before an effect, the untrusted label on retrieved
-  and fetched text, the output confined to the configured directory, and the tool names a
-  plugin may not take
+  and fetched text, the output confined to the configured directory, and the three tool
+  names a plugin may not take
 - **AND** it names what cora does not enforce: no sandbox, no network restriction, and no
   review of what a plugin's instructions tell the model
 

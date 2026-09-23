@@ -3,8 +3,8 @@ from starlette.testclient import TestClient
 
 from app_builder import assembled
 from cora.app.assembly import App
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.react.api import api
+from cora.plugins.documents.search import SEARCH_TOOL_NAME
 from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.plugin import ToolCall
 from fakes import FakeConversations, FakeMemory, ScriptedChatModel
@@ -48,10 +48,10 @@ def test_the_page_uploads_asks_reads_the_passage_and_comes_back_to_it() -> None:
         added = page.post(
             "/api/documents", files={"file": (DOCUMENT, SEED, "text/markdown")}
         )
-        assert added.json()["chunks"] >= 1
+        assert added.status_code == 200
         assert page.get("/api/documents").json() == [DOCUMENT]
         listed = page.get("/api/plugins").json()
-        assert [each["name"] for each in listed] == ["valid"]
+        assert [each["name"] for each in listed] == ["documents", "valid"]
 
         streamed = frames(
             page.post("/api/ask", json={"question": QUESTION, "thread_id": THREAD}).text

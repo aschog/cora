@@ -62,8 +62,11 @@ def test_the_app_carries_no_plugin_and_names_none() -> None:
 # distribution's name is not its module's. The frontends' rule below is keyed the same
 # way for the same reason.
 PLUGIN_REACHES: dict[str, set[str]] = {
+    "cora.plugins.ask": set(),
+    "cora.plugins.documents": {"pypdf"},
     "cora.plugins.fitness": set(),
     "cora.plugins.interview": set(),
+    "cora.plugins.memory": set(),
     "cora.plugins.security": set(),
     "cora.plugins.travel": {"httpx"},
     "cora.plugins.vocab": set(),
@@ -72,6 +75,11 @@ PLUGIN_REACHES: dict[str, set[str]] = {
 
 def test_every_plugin_says_what_it_reaches_outside_with() -> None:
     assert {module for _, module in workspace.plugins()} == PLUGIN_REACHES.keys()
+
+
+def test_reading_a_pdf_is_the_documents_plugins_dependency_and_not_the_apps() -> None:
+    assert "pypdf" not in workspace.requirements(workspace.ROOT)
+    assert "pypdf" in workspace.requirements(workspace.ROOT / "plugins" / "documents")
 
 
 EXCLUDED = ["**/.ruff.toml", "**/.ruff_cache"]

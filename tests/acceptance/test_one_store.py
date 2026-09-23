@@ -1,4 +1,5 @@
 import sqlite3
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,7 @@ from app_config import store_config
 from cora.app.assembly import build
 from cora.domain.chat_result import ChatResult
 from cora.domain.conversation import Turn
+from cora.ports.host import DEFAULT_SCOPE
 
 pytestmark = pytest.mark.integration
 
@@ -14,14 +16,19 @@ pytestmark = pytest.mark.integration
 def test_everything_cora_keeps_for_itself_is_in_the_one_file_the_setting_names(
     tmp_path: Path,
 ) -> None:
-    app = build(store_config(tmp_path))
+    app = build(
+        replace(store_config(tmp_path), plugin_modules=("cora.plugins.documents",))
+    )
     assert app.memory is not None and app.conversations is not None
 
     app.memory.remember("lifts on tuesdays")
     app.conversations.record(
         "t1", Turn(question="How much protein?", result=ChatResult(answer="1.6 g"))
     )
-    app.knowledge_base.add_file(b"Deadlifts train the posterior chain. " * 40, "l.txt")
+    assert app.intake is not None
+    app.intake.take(
+        DEFAULT_SCOPE, "l.txt", b"Deadlifts train the posterior chain. " * 40
+    )
 
     store = tmp_path / "cora.sqlite"
     with sqlite3.connect(str(store)) as connection:
@@ -42,11 +49,16 @@ def test_everything_cora_keeps_for_itself_is_in_the_one_file_the_setting_names(
 
 
 def test_forgetting_a_fact_leaves_the_turns_and_the_passages(tmp_path: Path) -> None:
-    app = build(store_config(tmp_path))
+    app = build(
+        replace(store_config(tmp_path), plugin_modules=("cora.plugins.documents",))
+    )
     assert app.memory is not None and app.conversations is not None
     app.memory.remember("lifts on tuesdays")
     app.conversations.record("t1", Turn(question="q", result=ChatResult(answer="a")))
-    app.knowledge_base.add_file(b"Deadlifts train the posterior chain. " * 40, "l.txt")
+    assert app.intake is not None
+    app.intake.take(
+        DEFAULT_SCOPE, "l.txt", b"Deadlifts train the posterior chain. " * 40
+    )
 
     app.memory.clear()
 

@@ -61,12 +61,17 @@ class DirectoryFiles:
             return None
 
     @_translate_errors
-    def write(self, scope: str, name: str, text: str | None) -> None:
+    def read_bytes(self, scope: str, name: str) -> bytes | None:
+        held = self._at(scope, name)
+        return held.read_bytes() if held.is_file() else None
+
+    @_translate_errors
+    def write(self, scope: str, name: str, text: str | bytes | None) -> None:
         held = self._at(scope, name)
         if text is None:
             held.unlink(missing_ok=True)
             return
-        written = text.encode("utf-8")
+        written = text.encode("utf-8") if isinstance(text, str) else text
         if len(written) > self._cap:
             raise FileTooLargeToKeepError(self._cap)
         held.parent.mkdir(parents=True, exist_ok=True)

@@ -5,21 +5,6 @@ import { message } from '../fail'
 import type { Notice } from '../components/UploadNotice'
 import type { Read } from './useSource'
 
-/** What an upload did, where the list it changed does not already say it. A document
- *  added appears under the name it was uploaded as, so a sentence saying so is the same
- *  news twice. A store that already had those bytes indexes nothing and changes no list —
- *  the count is how the two outcomes differ, and it is the only one that needs words. */
-const ingested = ({
-  document,
-  chunks,
-}: {
-  document: string
-  chunks: number
-}): Notice | null =>
-  chunks
-    ? null
-    : { said: `“${document}” is already in your documents.`, wrong: true }
-
 /** What the reader can do to the documents rail. The listing itself comes from
  *  `useRails`, which loads it with the other three; this is what changes it. */
 export function useDocuments({
@@ -35,11 +20,10 @@ export function useDocuments({
   setTrouble: (said: string | null) => void
   setRead: Dispatch<SetStateAction<Read | null>>
 }) {
-  /* What the last upload did. Its own state, because it is not trouble and a refresh
-     going through does not take it away: a duplicate upload is answered with `0` chunks,
-     and saying nothing about it reads the same as success and the same as nothing
-     happening. Moving to another conversation does end it — it is news about the desk the
-     reader was at. */
+  /* What the last upload did, where the list does not already say it. Cleared by every
+     upload: the answer names the document and the field, and the list saying the same
+     is the news. Moving to another conversation ends it — it is news about the desk
+     the reader was at. */
   const [notice, setNotice] = useState<Notice | null>(null)
 
   /* Every upload still running, by the name it was uploaded as and the field it is
@@ -63,7 +47,7 @@ export function useDocuments({
    *  is stamped for the same reason: a refusal from a conversation they have left must not
    *  clear news about an upload that worked in this one. The refresh and the refusal's own
    *  sentence are not stamped — a document is added, or refused, wherever they are. */
-  const upload = (file: File) => {
+  const add = (file: File) => {
     const from = here.current
     /* Held by identity rather than by name, so the same file uploaded twice at once
        takes its own row away and not the other's. */
@@ -77,22 +61,30 @@ export function useDocuments({
       .upload(file, field)
       .then((added) => {
         if (here.current === from) {
-          setNotice(ingested(added))
-          setIndexed(added.chunks ? { name: added.document, scope: started.scope } : null)
+          setNotice(null)
+          setIndexed({ name: added.document, scope: started.scope })
         }
         return refresh()
       })
-      .catch((failed) => {
+      .catch((failed: unknown) => {
         if (here.current === from) {
           setNotice(null)
           setIndexed(null)
         }
-        setTrouble(message(failed))
+        /* Thrown on as well as written to the line: a caller with a screen of its own
+           to refuse over — the reading, whose corrections a closed dialog loses — has
+           to hear about it, and the picker has nowhere but the line. */
+        throw failed
       })
       .finally(() =>
         setRunning((uploads) => uploads.filter((each) => each !== started)),
       )
   }
+
+  /** An upload started from the picker, where the line is the only place a refusal can
+   *  be written: nothing else is on screen to refuse over. */
+  const upload = (file: File) =>
+    add(file).catch((failed: unknown) => setTrouble(message(failed)))
 
   /** A document deleted, and the panel reading it let go of: it would otherwise draw a
    *  file the field no longer holds, under a name nothing can open. The field is passed
@@ -113,6 +105,7 @@ export function useDocuments({
   return {
     notice,
     setNotice,
+    add,
     upload,
     erase,
     indexed: indexed?.scope === field ? indexed.name : null,

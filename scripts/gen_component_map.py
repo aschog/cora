@@ -30,10 +30,9 @@ TREES = {
 # `assemble` takes the factory; the engine holds the runner it returns, and that is the
 # interface a reader of the map is looking for.
 AS_DRAWN = {"GraphFor": "GraphRunner"}
-# Two slots the engine talks through that are not arguments to `assemble`: the loader
-# registry is fixed at the composition root, and a plugin arrives as a module that
-# registers what it has.
-BESIDE_THE_SIGNATURE = ("Loader", "Extension")
+# One slot the engine talks through that is not an argument to `assemble`: a plugin
+# arrives as a module that registers what it has.
+BESIDE_THE_SIGNATURE = ("Extension",)
 
 
 @dataclass(frozen=True)
@@ -53,7 +52,7 @@ def _modules(name: str) -> list[Path]:
     return [
         module
         for module in sorted(_tree(name).rglob("*.py"))
-        if "node_modules" not in module.parts
+        if "node_modules" not in module.parts and "tests" not in module.parts
     ]
 
 
@@ -138,10 +137,6 @@ def _assembled(tree: ast.Module) -> dict[str, str]:
     return filled
 
 
-def _registry_module(tree: ast.Module) -> str:
-    return reading.imported(tree)["LOADERS"].rsplit(".", 1)[-1]
-
-
 def _packages(name: str) -> tuple[str, ...]:
     return tuple(sorted(path.name for path in _tree(name).iterdir() if path.is_dir()))
 
@@ -155,7 +150,6 @@ def bindings() -> tuple[Binding, ...]:
         if slot in filled
     ]
     beside = {
-        "Loader": Binding("Loader", (_registry_module(tree),), ADAPTERS),
         "Extension": Binding("Extension", _packages(PLUGINS), PLUGINS),
     }
     return tuple(bound) + tuple(beside[port] for port in BESIDE_THE_SIGNATURE)

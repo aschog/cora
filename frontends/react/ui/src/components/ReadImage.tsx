@@ -11,6 +11,7 @@ const NAME = 'Name'
 const NAMED = 'What to call it'
 const ADDING = 'That name is already here, so what it holds is above the new reading.'
 const KEEPING = 'Keeping…'
+const AS_DOCUMENT = 'Also make it a document cora searches and cites'
 
 type Props = {
   /** What the photo was called, shown so the reader can tell which one they are
@@ -22,11 +23,12 @@ type Props = {
   /** The names this field already keeps files under, offered as the reader types so a
    *  second photograph of one list adds to it instead of making a near-miss of it. */
   held: string[]
-  /** Keep what is on screen as one of the field's own files, under this name. Nothing
-   *  indexes it, so it is data the field works from rather than prose to search. The
-   *  dialog stays up until this settles, so a refusal is refused over the text that
-   *  was refused rather than over an empty screen. */
-  onKeepAsFile: (name: string, text: string) => Promise<void>
+  /** Keep what is on screen as one of the field's own files, under this name — and,
+   *  where the reader ticked the box, as a document of the field too, uploaded so the
+   *  documents plugin indexes it. Unticked, nothing indexes it: it is data the field
+   *  works from rather than prose to search. The dialog stays up until this settles,
+   *  so a refusal is refused over the text that was refused rather than over nothing. */
+  onKeep: (name: string, text: string, asDocument: boolean) => Promise<void>
   /** What the field holds under a name, for the box to open on when one is named that
    *  already exists. Nothing where the name is new. */
   onRead: (name: string) => Promise<string | null>
@@ -40,7 +42,8 @@ type Props = {
  *  reader says so.
  *
  *  What it keeps is one of the field's own files: a photograph of a page is data the
- *  field works from rather than prose to be answered from, so nothing indexes it.
+ *  field works from rather than prose to be answered from, so nothing indexes it —
+ *  unless the reader ticks the box, and it is uploaded as a document of the field too.
  *  Naming a file the field already holds opens what is there above the new reading, so
  *  one correction pass covers the merge as well.
  */
@@ -48,12 +51,15 @@ export default function ReadImage({
   image,
   read,
   held,
-  onKeepAsFile,
+  onKeep,
   onRead,
   onDiscard,
 }: Props) {
   const [text, setText] = useState(read)
   const [name, setName] = useState('')
+  /* Whether the reading is a document too. Off unless asked: a photographed page is
+     the field's data, and making it prose to be answered from is the reader's call. */
+  const [asDocument, setAsDocument] = useState(false)
   const [keeping, setKeeping] = useState(false)
   /* Why the last attempt to keep it did not land. Shown here rather than over the page
      behind: this dialog covers what it would be reported on. */
@@ -144,7 +150,7 @@ export default function ReadImage({
     setKeeping(true)
     setRefused('')
     try {
-      await onKeepAsFile(named, `${written}\n`)
+      await onKeep(named, `${written}\n`, asDocument)
     } catch (failed) {
       setRefused((failed as Error).message)
     } finally {
@@ -193,6 +199,15 @@ export default function ReadImage({
             ))}
           </datalist>
           {adding && <p className={styles.said}>{ADDING}</p>}
+          <label className={styles.said}>
+            <input
+              type="checkbox"
+              checked={asDocument}
+              disabled={keeping}
+              onChange={(event) => setAsDocument(event.target.checked)}
+            />{' '}
+            {AS_DOCUMENT}
+          </label>
           {refused && <p className="trouble">{refused}</p>}
         </div>
         <div className={styles.answers}>

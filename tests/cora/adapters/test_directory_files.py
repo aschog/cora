@@ -163,3 +163,27 @@ def test_a_name_too_long_to_read_is_not_listed(tmp_path: Path) -> None:
     (tmp_path / VOCAB / f"{'a' * 120}.md").write_text(LIST)
 
     assert _files(tmp_path).names(VOCAB) == ()
+
+
+PHOTO = b"\x89PNG\r\n\x1a\n\x00\x00binary\xff"
+
+
+def test_bytes_are_kept_as_they_were_and_read_as_text_as_nothing(
+    tmp_path: Path,
+) -> None:
+    files = _files(tmp_path)
+
+    files.write(VOCAB, "page.png", PHOTO)
+
+    assert files.read_bytes(VOCAB, "page.png") == PHOTO
+    assert files.read(VOCAB, "page.png") is None, "not text, so not read as text"
+    assert files.names(VOCAB) == ("page.png",)
+
+
+def test_text_reads_back_as_bytes_too(tmp_path: Path) -> None:
+    files = _files(tmp_path)
+
+    files.write(VOCAB, NAME, LIST)
+
+    assert files.read_bytes(VOCAB, NAME) == LIST.encode("utf-8")
+    assert files.read_bytes(VOCAB, "nothing.md") is None

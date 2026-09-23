@@ -11,6 +11,7 @@ from cora.ports.host import (
     RETURNING,
     SCREENING,
     TAKING,
+    UPLOADING,
     Handler,
     Registration,
     Subscription,
@@ -198,4 +199,5 @@ def test_every_point_a_plugin_may_subscribe_to_is_in_the_table() -> None:
         CALLING,
         RETURNING,
         ANSWERING,
+        UPLOADING,
     }

@@ -3,11 +3,11 @@ import pathlib
 import pytest
 from starlette.testclient import TestClient
 
-from app_builder import assembled
+from app_builder import assembled, shipped
 from cora.adapters.sqlite_store_memory import SqliteStoreMemory
 from cora.app.assembly import App
-from cora.engine.memory_tool import REMEMBER_TOOL_NAME
 from cora.frontends.react.api import api
+from cora.plugins.memory.remember import REMEMBER_TOOL_NAME
 from cora.ports.chat_model import ChatModel, ModelReply
 from cora.ports.plugin import ToolCall
 from fakes import FakeConversations, ScriptedChatModel
@@ -32,6 +32,7 @@ def _app(path: pathlib.Path, chat_model: ChatModel) -> App:
         chat_model=chat_model,
         memory=SqliteStoreMemory.at(str(path)),
         conversations=FakeConversations(),
+        plugins=shipped("memory"),
     )
 
 

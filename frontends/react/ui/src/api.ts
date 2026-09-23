@@ -218,7 +218,7 @@ async function discard(path: string): Promise<void> {
 export async function upload(
   file: File,
   scope: string,
-): Promise<{ document: string; chunks: number; scope: string }> {
+): Promise<{ document: string; scope: string }> {
   const carried = new FormData()
   carried.append('file', file)
   carried.append('scope', scope)

@@ -11,6 +11,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from contextvars import ContextVar
 
+from cora.domain.errors import UnsettledFieldError
 from cora.ports.host import DEFAULT_SCOPE
 
 _running_in: ContextVar[frozenset[str]] = ContextVar("_running_in", default=frozenset())
@@ -37,3 +38,19 @@ def here() -> frozenset[str]:
     field that is what a bare cora is.
     """
     return _running_in.get() or frozenset({DEFAULT_SCOPE})
+
+
+def the_field() -> str:
+    """The one field the work happening now belongs to.
+
+    What a file is read from or written into: a plugin's files and cora's own three
+    tools both go through here, so both refuse the same way when the turn runs in more
+    than one field and no single directory is meant.
+
+    Raises:
+        UnsettledFieldError: The work is running in several fields at once.
+    """
+    fields = here()
+    if len(fields) != 1:
+        raise UnsettledFieldError(fields)
+    return next(iter(fields))

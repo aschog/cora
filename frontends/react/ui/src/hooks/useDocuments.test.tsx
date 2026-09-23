@@ -88,17 +88,17 @@ function Uploading({ field = 'cora' }: { field?: string }) {
 }
 
 const held = () => {
-  let done = (added: { document: string; chunks: number }) => {
+  let done = (added: { document: string; scope: string }) => {
     void added
   }
-  const answer = new Promise<{ document: string; chunks: number }>((settle) => {
+  const answer = new Promise<{ document: string; scope: string }>((settle) => {
     done = settle
   })
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => ({ ok: true, json: () => answer }) as unknown as Response),
   )
-  return { done: (added: { document: string; chunks: number }) => done(added) }
+  return { done: (added: { document: string; scope: string }) => done(added) }
 }
 
 /** The click through `fireEvent`, so React has flushed by the time an assertion runs.
@@ -114,7 +114,7 @@ test('a file is listed as indexing while its upload runs, and not after', async 
   start()
   await waitFor(() => expect(screen.getByText('deadlift.pdf')).toBeTruthy())
 
-  upload.done({ document: 'deadlift.pdf', chunks: 12 })
+  upload.done({ document: 'deadlift.pdf', scope: 'cora' })
 
   await waitFor(() => expect(screen.getByText('nothing indexing')).toBeTruthy())
 })
@@ -125,26 +125,12 @@ test('an upload that indexed something says nothing: the list says it', async ()
 
   start()
   await waitFor(() => expect(screen.getByText('deadlift.pdf')).toBeTruthy())
-  upload.done({ document: 'deadlift.pdf', chunks: 12 })
+  upload.done({ document: 'deadlift.pdf', scope: 'cora' })
 
   await waitFor(() => expect(screen.getByText('nothing indexing')).toBeTruthy())
   expect(screen.getByText('nothing said')).toBeTruthy()
 })
 
-test('bytes the field already had are said, because the list will not change', async () => {
-  const upload = held()
-  render(<Uploading />)
-
-  start()
-  await waitFor(() => expect(screen.getByText('deadlift.pdf')).toBeTruthy())
-  upload.done({ document: 'deadlift.pdf', chunks: 0 })
-
-  await waitFor(() =>
-    expect(
-      screen.getByText('“deadlift.pdf” is already in your documents.'),
-    ).toBeTruthy(),
-  )
-})
 
 test('an upload that failed leaves nothing indexing', async () => {
   /* Held open first, so the row is on screen before the request answers: a row that
@@ -181,7 +167,7 @@ test('a row is drawn in the field it was uploaded into, and in no other', async 
   rerender(<Uploading field="fitness" />)
   expect(screen.getByText('deadlift.pdf')).toBeTruthy()
 
-  upload.done({ document: 'deadlift.pdf', chunks: 3 })
+  upload.done({ document: 'deadlift.pdf', scope: 'cora' })
   await waitFor(() => expect(screen.getByText('nothing indexing')).toBeTruthy())
 })
 
@@ -190,7 +176,7 @@ test('an upload that indexed something is named for the region that reads it out
   render(<Uploading />)
 
   start()
-  upload.done({ document: 'deadlift.pdf', chunks: 12 })
+  upload.done({ document: 'deadlift.pdf', scope: 'cora' })
 
   await waitFor(() =>
     expect(screen.getByText('indexed deadlift.pdf')).toBeTruthy(),
@@ -205,30 +191,15 @@ test('the same file indexed twice is named again, not held from the first time',
   render(<Uploading />)
 
   start()
-  first.done({ document: 'deadlift.pdf', chunks: 12 })
+  first.done({ document: 'deadlift.pdf', scope: 'cora' })
   await waitFor(() => expect(screen.getByText('indexed deadlift.pdf')).toBeTruthy())
 
   const again = held()
   start()
   await waitFor(() => expect(screen.getByText('nothing indexed')).toBeTruthy())
 
-  again.done({ document: 'deadlift.pdf', chunks: 12 })
+  again.done({ document: 'deadlift.pdf', scope: 'cora' })
   await waitFor(() => expect(screen.getByText('indexed deadlift.pdf')).toBeTruthy())
-})
-
-test('bytes the field already had are not announced as indexed', async () => {
-  const upload = held()
-  render(<Uploading />)
-
-  start()
-  upload.done({ document: 'deadlift.pdf', chunks: 0 })
-
-  await waitFor(() =>
-    expect(
-      screen.getByText('“deadlift.pdf” is already in your documents.'),
-    ).toBeTruthy(),
-  )
-  expect(screen.getByText('nothing indexed')).toBeTruthy()
 })
 
 test('an upload that failed announces nothing', async () => {
@@ -254,10 +225,51 @@ test('what was indexed in another field is not announced over this one', async (
   const { rerender } = render(<Uploading field="fitness" />)
 
   start()
-  upload.done({ document: 'deadlift.pdf', chunks: 12 })
+  upload.done({ document: 'deadlift.pdf', scope: 'cora' })
   await waitFor(() => expect(screen.getByText('indexed deadlift.pdf')).toBeTruthy())
 
   rerender(<Uploading field="travel" />)
 
   expect(screen.getByText('nothing indexed')).toBeTruthy()
+})
+
+/** A caller with a screen of its own — the reading, holding corrections a closed dialog
+ *  would lose — has to hear a refusal rather than read it on the line behind. */
+test('an upload that failed is thrown on to whoever asked for it', async () => {
+  let refuse = () => {}
+  const answer = new Promise((_, broken) => {
+    refuse = () => broken(new Error('cora will not take that'))
+  })
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({ ok: true, json: () => answer }) as unknown as Response),
+  )
+  const caught: string[] = []
+  function Adding() {
+    const here = useRef('thread')
+    const { add } = useDocuments({
+      field: 'cora',
+      here,
+      refresh: async () => {},
+      setTrouble: () => {},
+      setRead: () => {},
+    })
+    return (
+      <button
+        onClick={() =>
+          void add(new File(['x'], 'deadlift.pdf')).catch((failed: unknown) =>
+            caught.push((failed as Error).message),
+          )
+        }
+      >
+        add
+      </button>
+    )
+  }
+  render(<Adding />)
+
+  fireEvent.click(screen.getByText('add'))
+  refuse()
+
+  await waitFor(() => expect(caught).toEqual(['cora will not take that']))
 })

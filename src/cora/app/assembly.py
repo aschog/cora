@@ -8,11 +8,9 @@ from dataclasses import dataclass, field
 from functools import partial
 
 from cora.adapters.langgraph_runner import interrupting, langgraph_for, saver_at
-from cora.adapters.loaders import LOADERS
 from cora.app.config import (
     DEFAULT_HISTORY_TURNS,
     DEFAULT_MAX_TOOL_ROUNDS,
-    DEFAULT_TOP_K,
     Config,
 )
 from cora.app.config import (
@@ -21,10 +19,10 @@ from cora.app.config import (
 from cora.app.log_config import enable_debug_logs
 from cora.domain.errors import PluginLoadError, PluginRemovalError
 from cora.engine.agent import Agent
-from cora.engine.ask_tool import ask_for_tool, ask_tool
+from cora.engine.field_tools import bash_tool, read_tool, write_tool
 from cora.engine.host import PluginHost
+from cora.engine.intake import Intake
 from cora.engine.knowledge_base import KnowledgeBase
-from cora.engine.memory_tool import remember_tool
 from cora.engine.plugin_registry import folder_signature, load_plugins
 from cora.engine.plugin_set import Registry
 from cora.engine.port_logging import (
@@ -33,7 +31,6 @@ from cora.engine.port_logging import (
     LoggingRetriever,
 )
 from cora.engine.removal import NO_FOLDER, remove_plugin
-from cora.engine.retrieval_tool import search_tool
 from cora.engine.steps import (
     ANSWER,
     FOCUS,
@@ -41,7 +38,6 @@ from cora.engine.steps import (
     SCREEN,
     WORK,
     AnswerStep,
-    AskStep,
     FocusStep,
     GateStep,
     ModelStep,
@@ -57,7 +53,6 @@ from cora.engine.tool_runtime import ToolRuntime
 from cora.engine.validation import CORA
 from cora.engine.validation import extend as coras_own_screen
 from cora.ports.chat_model import ChatModel
-from cora.ports.context_source import ContextSource
 from cora.ports.conversations import Conversations
 from cora.ports.documents import Documents
 from cora.ports.embedding import Embedder
@@ -68,6 +63,7 @@ from cora.ports.memory import Memory
 from cora.ports.output import Output
 from cora.ports.plugin import Tool
 from cora.ports.retrieval import Retriever
+from cora.ports.shell import Shell
 from cora.ports.store import Store
 
 log = logging.getLogger(__name__)
@@ -85,9 +81,8 @@ class App:
     what is missing is then missing from the page too, rather than faked.
 
     `scopes` is the fields this composition offers — what was configured, plus every
-    field a loaded plugin registered, which a live plugins folder makes its fact.
-
-    `pages` is the directory to serve for each field a plugin brought a page for.
+    field a loaded plugin registered. `pages` is the directory to serve for each field
+    a plugin brought a page for, and `intake` where a frontend lands an upload.
 
     `remove` deletes one dropped plugin and the data of the fields it brought, bound to
     this composition because what a plugin brought is what this composition loaded.
@@ -96,6 +91,7 @@ class App:
     agent: Agent
     knowledge_base: KnowledgeBase
     files: Files | None = None
+    intake: Intake | None = None
     plugins: tuple[Listed, ...] = ()
     pages: Mapping[str, pathlib.Path] = field(default_factory=dict)
     memory: Memory | None = None
@@ -178,7 +174,7 @@ def assemble(
     output: Output | None = None,
     store: Store | None = None,
     files: Files | None = None,
-    top_k: int = DEFAULT_TOP_K,
+    shell: Shell | None = None,
     max_tool_rounds: int = DEFAULT_MAX_TOOL_ROUNDS,
     history_turns: int = DEFAULT_HISTORY_TURNS,
     graph: GraphFor = langgraph_for,
@@ -204,13 +200,16 @@ def assemble(
             deleted from. The same path the plugins were loaded from: a plugin is
             matched against it as it was found, so any other path leaves every plugin
             undeletable. Without it a deployment has no plugin it can delete.
-        memory: What cora keeps about the user. Without it, no `remember` tool is
-            offered at all.
+        memory: What cora keeps about the user, handed to the plugins. Without it, a
+            plugin that needs one registers nothing.
         conversations: Where turns are recorded. Without it, a turn is answered and
             not kept.
         output: Where an approved effect writes what it produced. Without it, a plugin
             whose tool needs one registers no such tool.
-        top_k: How many passages a document search returns.
+        files: The fields' own files, which cora's read and write tools work on.
+            Without it, neither is offered.
+        shell: Where cora's command tool runs, in the field's directory. Without it, no
+            command is offered.
         max_tool_rounds: How many rounds of tools one turn may spend.
         history_turns: How many earlier turns of the thread reach the prompt.
         graph: Which engine walks the steps; LangGraph unless a test says otherwise.
@@ -221,7 +220,7 @@ def assemble(
         embedder = LoggingEmbedder(embedder)
         retriever = LoggingRetriever(retriever)
     knowledge_base = KnowledgeBase(
-        embedder=embedder, retriever=retriever, loaders=LOADERS, documents=documents
+        embedder=embedder, retriever=retriever, documents=documents
     )
     _announce(plugins)
     registry = _registered(
@@ -233,11 +232,10 @@ def assemble(
         store=store,
         files=files,
         settings=plugin_settings or {},
-        top_k=top_k,
     )
     _warn_unscreened(registry)
     offered = _offered(scopes, registry)
-    tools = _coras_own_tools(knowledge_base, top_k, memory)
+    tools = _coras_own_tools(files, shell)
     runner = graph(
         before=(
             Named(SCREEN, ScreenStep(registry=registry)),
@@ -247,7 +245,7 @@ def assemble(
             ),
             Named(
                 FOCUS,
-                FocusStep(registry=registry, memory=memory, pause=interrupting),
+                FocusStep(registry=registry, pause=interrupting),
             ),
         ),
         loop=Loop(
@@ -264,7 +262,6 @@ def assemble(
                 tool_runtime=ToolRuntime(tools=tools, registry=registry),
                 registry=registry,
             ),
-            ask=AskStep(pause=interrupting),
             router=Router(max_tool_rounds=max_tool_rounds),
         ),
         after=(Named(ANSWER, AnswerStep(registry=registry)),),
@@ -276,6 +273,7 @@ def assemble(
         agent=agent,
         knowledge_base=knowledge_base,
         files=files,
+        intake=Intake(files=files, registry=registry) if files is not None else None,
         plugins=listing,
         pages=registry.pages(),
         memory=memory,
@@ -316,27 +314,27 @@ def _warn_unscreened(registry: Registry) -> None:
 def _registered(
     plugins: tuple[Extension, ...],
     *,
-    documents: ContextSource,
+    documents: KnowledgeBase,
     model: ChatModel,
     memory: Memory | None,
     output: Output | None,
     store: Store | None,
     files: Files | None,
     settings: dict[str, dict[str, str]],
-    top_k: int,
 ) -> Registry:
     entries = []
+    hosts = []
     for plugin in (Extension(module=CORA, extend=coras_own_screen), *plugins):
         host = PluginHost(
             module=plugin.module,
-            index=documents,
+            searched=documents,
             model=model,
             memory=memory,
             output=output,
             kept=store,
             kept_files=files,
+            indexing=documents,
             settings=settings.get(plugin.module, {}),
-            top_k=top_k,
         )
         try:
             plugin.extend(host)
@@ -348,21 +346,17 @@ def _registered(
                 f"the plugin raised {type(failed).__name__} while registering",
             ) from failed
         entries.extend(host.registered)
-    return Registry(tuple(entries))
+        hosts.append(host)
+    registry = Registry(tuple(entries))
+    for host in hosts:
+        host.offered = registry.tools
+    return registry
 
 
-def _coras_own_tools(
-    context_source: ContextSource,
-    top_k: int,
-    memory: Memory | None,
-) -> tuple[Tool, ...]:
-    remembering = (remember_tool(memory),) if memory is not None else ()
-    return (
-        search_tool(context_source, top_k),
-        *remembering,
-        ask_tool(),
-        ask_for_tool(),
-    )
+def _coras_own_tools(files: Files | None, shell: Shell | None) -> tuple[Tool, ...]:
+    filing = (read_tool(files), write_tool(files)) if files is not None else ()
+    running = (bash_tool(shell),) if shell is not None else ()
+    return (*filing, *running)
 
 
 def build(config: Config) -> App:
@@ -411,6 +405,7 @@ def _composer(
     from cora.adapters.sqlite_plugin_store import SqlitePluginStore
     from cora.adapters.sqlite_store_memory import SqliteStoreMemory
     from cora.adapters.sqlite_vec_retriever import SqliteVecRetriever
+    from cora.adapters.subprocess_shell import SubprocessShell
 
     enable_debug_logs(config.debug, config.log_path)
     chat_model = OpenRouterChatModel(
@@ -429,6 +424,11 @@ def _composer(
     output = FileOutput.at(config.output_path)
     store = SqlitePluginStore.at(config.db_path)
     files = DirectoryFiles.at(config.fields_path)
+    shell = SubprocessShell.at(
+        config.fields_path,
+        cap=config.command_output_chars,
+        seconds=config.command_seconds,
+    )
     # The checkpointer is an adapter like the stores above it: made once, so a folder
     # change recomposes over the same connection instead of opening another onto the
     # same store file.
@@ -454,8 +454,8 @@ def _composer(
             output=output,
             store=store,
             files=files,
+            shell=shell,
             graph=graph,
-            top_k=config.top_k,
             max_tool_rounds=config.max_tool_rounds,
             history_turns=config.history_turns,
             debug=config.debug,

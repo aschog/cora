@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol, overload
 
 from cora.domain.card import Card
+from cora.domain.chunk import Chunk
 from cora.ports.chat_model import ChatModel
 from cora.ports.context_source import ContextSource
 from cora.ports.memory import Memory
@@ -14,12 +15,13 @@ from cora.ports.output import Output
 from cora.ports.plugin import Tool
 from cora.ports.store import Kept
 
-CONTRACT = 1
+CONTRACT = 2
 
 TOOL = "tool"
 HANDLER = "handler"
 INSTRUCTIONS = "instructions"
 PAGE = "page"
+FILES = "files"
 
 DEFAULT_SCOPE = "cora"
 
@@ -29,6 +31,7 @@ TAKING = "take"
 CALLING = "tool_call"
 RETURNING = "tool_result"
 ANSWERING = "answer"
+UPLOADING = "upload"
 
 Handler = Callable[[Any], Any]
 
@@ -70,9 +73,10 @@ class State(Protocol):
 class FieldFiles(Protocol):
     """The files the field this turn runs in keeps, as the plugin that owns it reads.
 
-    Text under a plain name, kept on disk where a person can open and edit it. Not the
-    field's documents, which are chunked, embedded and cited — nothing indexes these,
-    and what the text means is the plugin's own business.
+    Text or bytes under a plain name, kept on disk where a person can open them. Not
+    the field's documents, which are chunked, embedded and cited — nothing indexes
+    these, and what a file means is the plugin's own business. A reader's upload lands
+    here too, as the bytes it arrived as.
 
     The field is the turn's rather than the plugin's to name, the way `documents` is:
     a plugin that could name a field could name somebody else's.
@@ -83,16 +87,47 @@ class FieldFiles(Protocol):
         ...
 
     def read(self, name: str) -> str | None:
-        """The text kept under this name, or nothing where nothing was."""
+        """The text kept under this name, or nothing where none was, or none is text."""
         ...
 
-    def write(self, name: str, text: str | None) -> None:
+    def read_bytes(self, name: str) -> bytes | None:
+        """The bytes kept under this name, or nothing where nothing was."""
+        ...
+
+    def write(self, name: str, text: str | bytes | None) -> None:
         """Keep `text` under this name, replacing what was there.
 
         Args:
-            text: The text to keep. `None` drops the name, and dropping a name nothing
-                was kept under is not an error.
+            text: The text or bytes to keep. `None` drops the name, and dropping a name
+                nothing was kept under is not an error.
         """
+        ...
+
+
+class Index(Protocol):
+    """The index of the field this turn runs in, as the plugin that indexes reads it.
+
+    Where `documents` searches what is there, this puts a document in: the text kept,
+    the passages embedded and indexed, in the order that keeps a passage citable. The
+    field is the turn's rather than the plugin's to name, as `files` is.
+    """
+
+    def add(self, upload: str, filename: str, text: str, chunks: list[Chunk]) -> bool:
+        """Put one upload into this field, and say whether it was new there.
+
+        Args:
+            upload: What names the upload — the hash of its bytes.
+            filename: What it was uploaded as, which the field lists it by.
+            text: The cleaned text every chunk's span was measured in.
+            chunks: The passages, each carrying its text and its span in `text`.
+
+        Returns:
+            False where the field already held the upload, and nothing was added.
+        """
+        ...
+
+    def holds(self, upload: str) -> bool:
+        """Whether this field already indexed this upload."""
         ...
 
 
@@ -198,6 +233,7 @@ class Host(Protocol):
         scope: str | None = None,
         untrusted: bool = False,
         effect: bool = False,
+        writes: bool = False,
         asks: Callable[[dict[str, Any]], Card | None] | None = None,
     ) -> None:
         """Offer the model one more thing it can do, as `Tool` describes one.
@@ -211,6 +247,10 @@ class Host(Protocol):
             effect: Whether calling it changes something outside cora. Such a tool is
                 never offered to a delegated loop, so an effect stays in the turn the
                 user is watching, and the listing says the plugin has one.
+            writes: Whether calling it changes something cora keeps — what it remembers,
+                what a field holds. Such a tool is withheld from a delegated loop too:
+                a loop reads material cora does not vouch for, and what it read must
+                not be able to ask for the writing.
             asks: What to put to the user before this call is made, given the arguments
                 the model wrote — or nothing, to run as called. What they fill in is
                 written over those arguments, so the tool is called once and with values
@@ -227,7 +267,10 @@ class Host(Protocol):
 
         Args:
             event: One of `SCREENING`, `BRIEFING`, `TAKING`, `CALLING`, `RETURNING`,
-                `ANSWERING`.
+                `ANSWERING` — or `UPLOADING`, which is not a point in a turn: it runs
+                when the reader uploads a file into a field, handed the file's name,
+                with that field bound so `files` reads it. A sentence refuses the
+                upload, and the file is dropped.
             handle: What runs there, as `Handler` describes one.
             scope: Where it runs. `None` runs it in every turn, and no scope can
                 switch that off — which is what screening for injection needs.
@@ -262,6 +305,28 @@ class Host(Protocol):
         Raises:
             PluginLoadError: No field was named, or this plugin already brought that
                 field a page.
+        """
+        ...
+
+    def register_files(self, *, scope: str) -> None:
+        """Say this field's files are this plugin's own, and not a place to work in.
+
+        Cora's own read, write and command tools are a workspace: a field of notes the
+        model may open, change and run something over. A field like this one is not
+        that — its files are the plugin's data, meaningful only through the tools the
+        plugin registered. Claiming it withholds the three from every turn reaching the
+        field, so the model cannot go around the plugin to the data.
+
+        It claims the field, not the plugin: a plugin under two fields claims each it
+        means to. The plugin still reads and writes through `files`, and so does the
+        screen.
+
+        Args:
+            scope: The field whose files are claimed. Required, as a page's is: a
+                workspace is what a field is unless a field says otherwise.
+
+        Raises:
+            PluginLoadError: No field was named.
         """
         ...
 
@@ -339,6 +404,15 @@ class Host(Protocol):
         ...
 
     @property
+    def index(self) -> Index:
+        """Where a plugin puts a document of the field this turn runs in.
+
+        The index the search reads, not a copy of it: what a plugin puts in here is
+        what `documents` finds and what a citation opens onto.
+        """
+        ...
+
+    @property
     def files(self) -> FieldFiles:
         """The files the field this turn runs in keeps, which are not its documents.
 
@@ -373,19 +447,19 @@ class Host(Protocol):
     ) -> str | dict[str, Any]:
         """Run a bounded loop of the model's own, and answer with what it wrote.
 
-        The loop is offered the tools given plus cora's document search, and never a
-        tool that writes, stops the turn, or declares an effect — one passed in that
-        declares one is withheld, and the plugin's logger says which. Its steps are
-        reported under the call that ran it, and what it answers reaches the turn
-        labelled untrusted and citing nothing of its own. One that spends its rounds
-        without an answer is asked once more, with no tools, to write up what it found.
+        The loop is offered the tools given, cora's read of the field's files, and every
+        system-wide tool that neither acts nor asks; one passed in that does is
+        withheld, and the log says. Its steps are reported under the call that ran it,
+        and its answer reaches the turn labelled untrusted, citing nothing. One that
+        spends its rounds without answering is asked once more, with no tools, to write
+        up what it found.
 
         Given a shape, the loop answers by calling a tool that takes it: the value
         comes back checked, and a failed check is told to the loop to correct.
 
         Args:
             task: What the loop is being asked to do, as its first message.
-            tools: What it may call, on top of searching the documents.
+            tools: What it may call, on top of what every loop is offered.
             rounds: How many rounds it may spend, capped by the host and ignored in a
                 loop delegated from another. One more than this reaches the model, the
                 last with the tools still on the table so a loop can answer in it.

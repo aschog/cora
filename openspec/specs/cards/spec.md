@@ -175,10 +175,11 @@ it.
 
 ### Requirement: Cora asks for values it does not hold
 
-Cora SHALL be able to stop a turn and ask the reader for named values it does not hold
-and cannot look up. The ask SHALL name two values or more, SHALL reach the reader as one
-card of them, and SHALL be cora's own — available to a deployment that has loaded no
-plugin. An ask of a single value SHALL be refused, and cora SHALL ask for it in prose.
+The `ask` plugin SHALL let a turn stop and ask the reader for named values it does not
+hold and cannot look up. The ask SHALL name two values or more, and SHALL reach the
+reader as one card of them. An ask of a single value SHALL be refused, and the model
+SHALL be told to ask for it in prose. A cora that has not loaded the plugin SHALL offer
+no tool that asks.
 
 #### Scenario: Four values are asked as one card
 
@@ -194,9 +195,15 @@ plugin. An ask of a single value SHALL be refused, and cora SHALL ask for it in 
 
 #### Scenario: A bare cora can ask
 
-- **GIVEN** a cora with no plugin loaded
+- **GIVEN** a cora with the ask plugin loaded and nothing else
 - **WHEN** the tools it offers are listed
 - **THEN** one of them asks the reader for values, beside the one that settles a fact
+
+#### Scenario: Without the plugin nothing asks
+
+- **GIVEN** a cora with no plugin loaded
+- **WHEN** the tools it offers are listed
+- **THEN** nothing among them stops the turn to ask
 
 #### Scenario: A field says what kind of value it is
 
@@ -281,17 +288,17 @@ be told what happened rather than that values were withheld.
 
 ### Requirement: A form may be raised again where a fork may not
 
-A turn SHALL put its fork between remembered values once, and a second SHALL be refused.
-A form SHALL be raised as often as the round budget allows, where two values or more are
-still missing: a reader who skipped those boxes left a gap cora cannot fill from anywhere
-else. Where one box is all that is still missing, cora SHALL ask for it in prose. A form
-raised with the rounds spent SHALL end the turn the way any other tool asked for at the
-budget does.
+A conversation SHALL put one fork between remembered values once, and the same fork
+asked again SHALL be refused. A form SHALL be raised as often as the round budget
+allows, where two values or more are still missing: a reader who skipped those boxes
+left a gap cora cannot fill from anywhere else. Where one box is all that is still
+missing, cora SHALL ask for it in prose. Every ask SHALL cost the round it was made in,
+and a round asking twice SHALL put each card on its own.
 
 #### Scenario: A second fork is refused
 
-- **GIVEN** a turn that has already put a fork between two remembered values
-- **WHEN** it asks a second time
+- **GIVEN** a conversation that has already put a fork between two remembered values
+- **WHEN** it asks the same fork a second time
 - **THEN** the ask is refused, the reader is not stopped again, and the turn answers
 
 #### Scenario: A form after a filled form still reaches the reader
@@ -308,9 +315,9 @@ budget does.
 
 #### Scenario: A round that asks both ways puts the one still open
 
-- **GIVEN** a turn that has settled its fork already
-- **WHEN** a round asks both for that fork again and for values
-- **THEN** the reader is put the form, and never the same fork twice
+- **GIVEN** a round asking for a fork already settled this conversation, and for values
+- **WHEN** the turn reaches the gate
+- **THEN** the fork is refused, the reader is put the form alone, and the round runs on
 
 ### Requirement: A card that is not filled in cannot be sent
 
@@ -355,3 +362,29 @@ turn SHALL carry on.
 - **GIVEN** a turn that asks the reader for no fields at all
 - **WHEN** the ask is read
 - **THEN** it is refused, no card is put up, and the turn answers
+
+### Requirement: A card says where the reader's action lands
+
+A card put ahead of a tool call MAY name one argument of the call, and the action the
+reader takes SHALL then be written into that argument before the tool runs. A card
+naming none SHALL settle on the action alone, as it does today. The way out of such a
+card SHALL be an action like the others, so the tool runs and says in its own words
+that nothing was chosen.
+
+#### Scenario: The option taken reaches the tool
+
+- **GIVEN** a tool whose card offers three options and names the argument they land in
+- **WHEN** the reader takes the second
+- **THEN** the tool runs with the second option's value in that argument
+
+#### Scenario: The way out reaches the tool too
+
+- **GIVEN** that card
+- **WHEN** the reader takes the way out
+- **THEN** the tool runs, and the model is told nothing was chosen in the tool's words
+
+#### Scenario: A card naming no argument is unchanged
+
+- **GIVEN** a tool whose card names no argument
+- **WHEN** the reader confirms it
+- **THEN** the tool runs on the arguments the model wrote

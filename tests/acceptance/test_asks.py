@@ -3,8 +3,8 @@ from starlette.testclient import TestClient
 from app_builder import assembled
 from cora.app.assembly import App
 from cora.domain.card import ActionOffered, Card, FieldAsked
-from cora.engine.ask_tool import ASK_FOR_TOOL_NAME
 from cora.frontends.react.api import api
+from cora.plugins.ask.form import ASK_FOR_TOOL_NAME
 from cora.ports.chat_model import ModelReply
 from cora.ports.host import Extension, Host
 from cora.ports.plugin import ToolCall
@@ -49,6 +49,7 @@ def _app(*replies: ModelReply) -> App:
     return assembled(
         chat_model=ScriptedChatModel(list(replies)),
         plugins=(Extension(module="confirming", extend=_confirming),),
+        asking=True,
     )
 
 

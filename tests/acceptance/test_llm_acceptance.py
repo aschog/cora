@@ -7,11 +7,11 @@ from starlette.testclient import TestClient
 from cora.app.assembly import App, build
 from cora.domain.card import Answer
 from cora.domain.decision import TurnPaused
-from cora.engine.memory_tool import REMEMBER_TOOL_NAME
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.react.api import api
 from cora.plugins import fitness
+from cora.plugins.documents.search import SEARCH_TOOL_NAME
 from cora.plugins.fitness.tools import DAILY_ENERGY_TOOL
+from cora.plugins.memory.remember import REMEMBER_TOOL_NAME
 from live import live_config
 from sse import frames
 
@@ -23,7 +23,13 @@ For strength training, aim for 1.6 to 2.2 g of protein per kg of bodyweight per 
 Spread it over three or four meals.
 """
 IN_THE_SUBJECT = "How much protein should I eat per kg of bodyweight?"
-LIVE_PLUGINS = ("cora.plugins.security", "cora.plugins.fitness")
+LIVE_PLUGINS = (
+    "cora.plugins.security",
+    "cora.plugins.ask",
+    "cora.plugins.memory",
+    "cora.plugins.documents",
+    "cora.plugins.fitness",
+)
 COACHING = fitness.SCOPE
 
 
@@ -33,7 +39,8 @@ def _live_app(store: Path) -> App:
 
 def _holding_the_protein_doc(store: Path) -> App:
     app = _live_app(store)
-    app.knowledge_base.add_file(PROTEIN_DOC, "protein.md", scope=COACHING)
+    assert app.intake is not None
+    app.intake.take(COACHING, "protein.md", PROTEIN_DOC)
     return app
 
 
@@ -85,7 +92,6 @@ def test_a_whole_session_uploads_asks_calculates_and_remembers(tmp_path: Path) -
         assert added.status_code == 200, added.text
         assert added.json() == {
             "document": "protein.md",
-            "chunks": 1,
             "scope": COACHING,
         }
         assert _documents(page) == ["protein.md"]

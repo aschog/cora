@@ -457,15 +457,14 @@ const upload = (name: string) => {
   fireEvent.change(picker, { target: { files: [new File(['notes'], name)] } })
 }
 
-test('a file uploaded twice is added quietly, and then said to be there already', async () => {
-  const counts = [12, 0]
+test('a file uploaded is added quietly, and read out as indexed', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (path: string, init?: RequestInit) => {
       if (route(path) === '/api/documents' && init?.method === 'POST')
         return {
           ok: true,
-          json: async () => ({ document: 'notes.md', chunks: counts.shift() }),
+          json: async () => ({ document: 'notes.md', scope: 'cora' }),
         } as unknown as Response
       return { ok: true, json: async () => served[route(path)] ?? [] } as unknown as Response
     }),
@@ -483,11 +482,7 @@ test('a file uploaded twice is added quietly, and then said to be there already'
   expect(screen.queryByText(/passages\./)).toBeNull()
   const said = screen.getByRole('status', { name: 'Last upload' })
   await waitFor(() => expect(said.textContent).toContain('is indexed'))
-
-  upload('notes.md')
-  expect(
-    await screen.findByText('“notes.md” is already in your documents.'),
-  ).toBeTruthy()
+  expect(screen.queryByText(/already in your documents/)).toBeNull()
 })
 
 /** Every sentence story 22 deleted. Kept as one list so a paragraph reintroduced anywhere
@@ -717,7 +712,7 @@ test('the rail lists and uploads into the field it is set to', async () => {
     vi.fn(async (path: string, init?: RequestInit) => {
       if (route(path) === '/api/documents' && init?.method === 'POST') {
         into = (init.body as FormData).get('scope') as string
-        const added = { document: 'kyoto.md', chunks: 3 }
+        const added = { document: 'kyoto.md', scope: into }
         return { ok: true, json: async () => added } as unknown as Response
       }
       if (route(path) === '/api/documents') {

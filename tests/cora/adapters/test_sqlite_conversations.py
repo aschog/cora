@@ -9,7 +9,7 @@ from cora.domain.citations import Citation
 from cora.domain.conversation import Conversation, Turn
 from cora.domain.errors import ConversationStoreError
 from cora.domain.trace import (
-    MemoryUnread,
+    HandlerRan,
     ModelDecision,
     StepEntered,
     ToolUse,
@@ -110,7 +110,10 @@ def test_a_kind_of_step_the_store_never_heard_of_still_round_trips(
     store = _store(tmp_path)
     turn = Turn(
         question=ASKED,
-        result=ChatResult(answer="none", trace=(MemoryUnread(),)),
+        result=ChatResult(
+            answer="none",
+            trace=(HandlerRan(plugin="p", event="brief", outcome="amended the brief"),),
+        ),
     )
 
     store.record(THREAD, turn)

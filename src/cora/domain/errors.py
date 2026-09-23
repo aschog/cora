@@ -27,57 +27,6 @@ class CoreError(Exception):
         self.trace: tuple[TraceStep, ...] = ()
 
 
-class IngestionError(CoreError):
-    """A document could not be ingested; the message names the file.
-
-    Subclasses set `reason` to describe the specific failure, and the name reaches the
-    user because a refusal about one upload has to say which.
-    """
-
-    reason: str
-
-    def __init__(self, filename: str) -> None:
-        """Name the file in the message."""
-        super().__init__(f"Could not process '{filename}': {self.reason}")
-
-
-class UnsupportedFileTypeError(IngestionError):
-    """The file's extension is not one the deployment has a loader for."""
-
-    reason = "unsupported file type."
-
-    def __init__(self, filename: str, supported: Iterable[str] = ()) -> None:
-        """Say which formats would have worked, when the caller knows them.
-
-        Args:
-            filename: The upload that was refused.
-            supported: The extensions the deployment reads. Omitted, the message says
-                only that the type is unsupported.
-        """
-        formats = ", ".join(sorted(supported))
-        if formats:
-            self.reason = f"unsupported file type (supported: {formats})."
-        super().__init__(filename)
-
-
-class FileTooLargeError(IngestionError):
-    """The upload is over the size the deployment accepts. Nothing was read."""
-
-    reason = "the file is too large."
-
-
-class EmptyDocumentError(IngestionError):
-    """The file was read and held no text — a scan, or a document of images."""
-
-    reason = "the document has no readable text."
-
-
-class UnreadableFileError(IngestionError):
-    """The bytes are not the format the extension claims, or are damaged."""
-
-    reason = "the file is corrupted or unreadable."
-
-
 class PluginLoadError(CoreError):
     """A plugin named in the configuration could not be loaded or was refused.
 
@@ -104,6 +53,12 @@ class PluginRemovalError(CoreError):
 
 class InputRejectedError(CoreError):
     """A handler refused what the user sent. The message says what to do about it."""
+
+    pass
+
+
+class UploadRefusedError(CoreError):
+    """A handler refused what the reader uploaded, and the file was not kept."""
 
     pass
 

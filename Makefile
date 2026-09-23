@@ -59,9 +59,11 @@ ui-test:
 # laid out fresh each run — a suite that deletes a document and a conversation has to
 # start from the same place every time. The fixture plugins are copied rather than
 # linked, because one of the things a deployment can do to a dropped plugin is delete
-# it; the shipped fitness plugin is linked instead, so the browser tier runs the page
-# that ships rather than a copy of it — a delete unlinks what it finds, so the tree is
-# safe from the suite either way.
+# it; the shipped plugins are linked instead, so the browser tier runs the pages that
+# ship rather than copies of them — a delete unlinks what it finds, so the tree is safe
+# from the suite either way. The four are what the specs need: the fitness screen, and
+# the three a bare cora has none of, since a page that cannot search, remember or ask
+# is a page most of those specs have nothing to drive.
 # Playwright starts the servers itself and stops them again; `playwright.config.ts` says
 # which. Local only: it needs a browser, and CI has enough to say about a push already.
 E2E_STORE := .cora/e2e
@@ -70,7 +72,9 @@ e2e-store:
 	rm -rf $(E2E_STORE)
 	mkdir -p $(E2E_STORE)/plugins
 	cp -R tests/e2e/plugins/. $(E2E_STORE)/plugins/
-	ln -s $(CURDIR)/plugins/fitness/src/cora/plugins/fitness $(E2E_STORE)/plugins/fitness
+	for each in documents memory ask fitness; do \
+	  ln -s $(CURDIR)/plugins/$$each/src/cora/plugins/$$each $(E2E_STORE)/plugins/$$each; \
+	done
 
 e2e: ui-build e2e-store
 	cd frontends/react/ui && npx playwright test

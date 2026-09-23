@@ -25,6 +25,7 @@ def _reader(folder: pathlib.Path) -> TestClient:
                 folder=folder,
                 compose=lambda loaded: assembled(
                     plugins=loaded,
+                    searching=False,
                     retriever=retriever,
                     documents=documents,
                     plugins_folder=folder,

@@ -4,6 +4,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from cora.adapters.subprocess_shell import MOST_OUTPUT, MOST_SECONDS
 from cora.app.log_config import LOG_FILE
 from cora.domain.errors import ConfigurationError
 from cora.ports.host import name_of
@@ -13,10 +14,11 @@ DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 DEFAULT_PLUGINS: tuple[str, ...] = ()
 DEFAULT_SCOPES: tuple[str, ...] = ()
 DEFAULT_PLUGINS_PATH = ".cora/plugins"
-DEFAULT_TOP_K = 5
 DEFAULT_MAX_TOOL_ROUNDS = 8
 DEFAULT_MAX_OUTPUT_TOKENS = 8192
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 90
+DEFAULT_COMMAND_SECONDS = int(MOST_SECONDS)
+DEFAULT_COMMAND_OUTPUT_CHARS = MOST_OUTPUT
 REASONING_EFFORTS = ("low", "medium", "high")
 DEFAULT_REASONING_EFFORT = "low"
 DEFAULT_HISTORY_TURNS = 20
@@ -39,11 +41,12 @@ class Config:
     model: str
     base_url: str
     plugin_modules: tuple[str, ...]
-    top_k: int
     max_tool_rounds: int
     history_turns: int
     max_output_tokens: int
     request_timeout_seconds: int
+    command_seconds: int
+    command_output_chars: int
     reasoning_effort: str
     db_path: str
     scopes: tuple[str, ...] = DEFAULT_SCOPES
@@ -79,7 +82,6 @@ class Config:
             plugin_modules=_plugin_modules(env),
             plugins_path=_named(env, "CORA_PLUGINS_PATH", DEFAULT_PLUGINS_PATH),
             scopes=_named_list(env, "CORA_SCOPES", DEFAULT_SCOPES),
-            top_k=int_setting(env, "CORA_TOP_K", DEFAULT_TOP_K, minimum=1),
             max_tool_rounds=int_setting(
                 env, "CORA_MAX_TOOL_ROUNDS", DEFAULT_MAX_TOOL_ROUNDS, minimum=1
             ),
@@ -93,6 +95,15 @@ class Config:
                 env,
                 "CORA_REQUEST_TIMEOUT",
                 DEFAULT_REQUEST_TIMEOUT_SECONDS,
+                minimum=1,
+            ),
+            command_seconds=int_setting(
+                env, "CORA_COMMAND_SECONDS", DEFAULT_COMMAND_SECONDS, minimum=1
+            ),
+            command_output_chars=int_setting(
+                env,
+                "CORA_COMMAND_OUTPUT_CHARS",
+                DEFAULT_COMMAND_OUTPUT_CHARS,
                 minimum=1,
             ),
             reasoning_effort=_effort(env),

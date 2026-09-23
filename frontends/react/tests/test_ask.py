@@ -8,8 +8,6 @@ from app_builder import assembled, indexed
 from cora.app.assembly import App
 from cora.domain.approval import TOOL
 from cora.domain.errors import LlmError
-from cora.engine.ask_tool import ASK_TOOL_NAME
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
 from cora.frontends.react.api import (
     MAX_ASK_BYTES,
     NOT_A_DECISION,
@@ -19,6 +17,8 @@ from cora.frontends.react.api import (
     TOO_LONG_TO_ASK,
     api,
 )
+from cora.plugins.ask.fork import ASK_TOOL_NAME, NONE_TAKEN
+from cora.plugins.documents.search import SEARCH_TOOL_NAME
 from cora.ports.chat_model import Message, ModelReply, TextSink, unheard
 from cora.ports.host import Extension, Host
 from cora.ports.plugin import Tool, ToolCall
@@ -248,7 +248,7 @@ def _carried(streamed: str, event: str) -> list[dict]:
 
 
 def test_the_paused_frame_carries_the_question_and_every_way_out() -> None:
-    with TestClient(api(assembled(chat_model=_stopping()))) as reader:
+    with TestClient(api(assembled(asking=True, chat_model=_stopping()))) as reader:
         streamed = reader.post(
             "/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"}
         )
@@ -262,21 +262,21 @@ def test_the_paused_frame_carries_the_question_and_every_way_out() -> None:
             "actions": [
                 {
                     "label": "77 kg",
-                    "answer": "77 kg",
+                    "answer": "0",
                     "note": "intake form, 17 Aug",
                     "needs_valid": False,
                     "settled": "",
                 },
                 {
                     "label": "75 kg",
-                    "answer": "75 kg",
+                    "answer": "1",
                     "note": "coach notes, February",
                     "needs_valid": False,
                     "settled": "",
                 },
                 {
                     "label": "Neither of them",
-                    "answer": None,
+                    "answer": NONE_TAKEN,
                     "note": "",
                     "needs_valid": False,
                     "settled": "You chose none of them.",
@@ -287,12 +287,10 @@ def test_the_paused_frame_carries_the_question_and_every_way_out() -> None:
 
 
 def test_picking_an_option_streams_the_rest_of_the_turn() -> None:
-    app = assembled(chat_model=_stopping())
+    app = assembled(asking=True, chat_model=_stopping())
     with TestClient(api(app)) as reader:
         reader.post("/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"})
-        resumed = reader.post(
-            "/api/resume", json={"thread_id": "t1", "answer": "75 kg"}
-        )
+        resumed = reader.post("/api/resume", json={"thread_id": "t1", "answer": "1"})
 
     assert resumed.status_code == 200
     assert resumed.headers["content-type"].startswith("text/event-stream")
@@ -333,7 +331,7 @@ def _proposing() -> ScriptedChatModel:
 
 
 def _acting_app() -> App:
-    return assembled(chat_model=_proposing(), plugin=_effecting())
+    return assembled(asking=True, chat_model=_proposing(), plugin=_effecting())
 
 
 def test_a_proposed_effect_is_streamed_as_the_paused_event_the_page_reads() -> None:
@@ -380,7 +378,7 @@ def test_approving_a_proposal_streams_the_rest_of_the_turn() -> None:
 
 
 def test_an_action_the_card_never_offered_is_refused_not_read_as_a_decline() -> None:
-    with TestClient(api(assembled(chat_model=_stopping()))) as reader:
+    with TestClient(api(assembled(asking=True, chat_model=_stopping()))) as reader:
         reader.post("/api/ask", json={"question": "What is my BMR?", "thread_id": "t1"})
 
         refused = reader.post("/api/resume", json={"thread_id": "t1", "answer": "c1"})

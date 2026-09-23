@@ -1,33 +1,36 @@
 import pathlib
+from dataclasses import replace
 
 import pytest
 
 from cora.domain.card import ActionOffered, Card
 from cora.domain.chunk import Chunk
-from cora.domain.errors import PluginLoadError
+from cora.domain.errors import PluginLoadError, RetrievalError
 from cora.engine import keeping
-from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.host import (
     ANSWER_TOOL_NAME,
     DELEGATE_BRIEF,
     MAX_DELEGATED_ROUNDS,
     STOPPED_EARLY,
+    PluginHost,
     name_of,
 )
-from cora.engine.memory_tool import REMEMBER_TOOL_NAME
+from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.nesting import collecting
-from cora.engine.retrieval_tool import (
-    SEARCH_TOOL_NAME,
-)
+from cora.engine.scoping import running_in
 from cora.ports.chat_model import ModelReply
 from cora.ports.context_source import Document
-from cora.ports.host import PAGE, SCREENING, TOOL
+from cora.ports.host import FILES, PAGE, SCREENING, TOOL
 from cora.ports.plugin import Tool, ToolCall, ToolRefusal
 from cora.ports.retrieval import RetrievedChunk
 from fakes import (
     FakeContextSource,
+    FakeDocuments,
+    FakeEmbedder,
+    FakeFiles,
     FakeMemory,
     FakeOutput,
+    FakeRetriever,
     FakeStore,
     ScriptedChatModel,
     add_tool,
@@ -212,15 +215,21 @@ def test_a_delegated_loop_reads_its_passages_behind_the_untrusted_label() -> Non
         ]
     )
     model = _answering(
-        ModelReply(
-            tool_calls=(
-                ToolCall(name=SEARCH_TOOL_NAME, arguments={"query": "x"}, call_id="s1"),
-            )
-        ),
+        ModelReply(tool_calls=(ToolCall(name="search", arguments={}, call_id="s1"),)),
         ModelReply(text="I will not."),
     )
+    host = host_for(MODULE, documents=documents, model=model)
+    searching = Tool(
+        name="search",
+        description="Search the field.",
+        parameter_schema={"type": "object", "properties": {}},
+        run=lambda: " ".join(
+            f"{hit.chunk.source}: {hit.chunk.text}"
+            for hit in host.documents.search("x", 3)
+        ),
+    )
 
-    host_for(MODULE, documents=documents, model=model).delegate("Why?")
+    host.delegate("Why?", tools=(searching,))
 
     assert model.last_messages is not None
     read = model.last_messages[-1].content
@@ -277,9 +286,28 @@ def test_a_delegated_loop_is_offered_nothing_that_writes_stops_or_acts() -> None
     host.delegate("look it up", tools=(_reading(), _acting(), _gathering()))
 
     offered = {tool.name for tool in model.last_tools or ()}
-    assert offered == {SEARCH_TOOL_NAME, "look_up"}
-    assert REMEMBER_TOOL_NAME not in offered, "a sub-agent does not write"
-    assert ASK_TOOL_NAME not in offered, "a sub-agent does not stop the turn"
+    assert offered == {"look_up"}
+
+
+def test_a_delegated_loop_is_offered_the_system_wide_tools_and_coras_read() -> None:
+    model = ScriptedChatModel([ModelReply(text="looked it up")])
+    wide = (_reading("search_documents"), _acting("book_wide"), _gathering("ask_wide"))
+    host = host_for(model=model, files=FakeFiles(), offered=wide)
+
+    host.delegate("look it up", tools=(_reading(),))
+
+    offered = {tool.name for tool in model.last_tools or ()}
+    assert offered == {"look_up", "search_documents", "read"}
+    assert not {"book_wide", "ask_wide", "write", "bash"} & offered
+
+
+def test_a_loop_reserves_the_answer_tools_name_and_no_other() -> None:
+    model = ScriptedChatModel([ModelReply(text="looked")])
+    host = host_for(model=model)
+
+    host.delegate("look", tools=(_reading("search_documents"), _reading("remember")))
+
+    assert {t.name for t in model.last_tools or ()} == {"search_documents", "remember"}
 
 
 def test_a_plugin_is_handed_the_output_location_rather_than_a_path_of_its_own() -> None:
@@ -344,13 +372,13 @@ def _answered(**arguments: object) -> ModelReply:
     )
 
 
-def test_a_shaped_loop_is_offered_the_shape_as_a_tool_beside_the_search() -> None:
+def test_a_shaped_loop_is_offered_the_shape_as_a_tool() -> None:
     model = _shaped(_answered(found=["one"]))
 
     host_for(MODULE, model=model).delegate("Find one.", shape=FOUND)
 
     offered = {tool.name for tool in model.last_tools or ()}
-    assert offered == {SEARCH_TOOL_NAME, ANSWER_TOOL_NAME}
+    assert offered == {ANSWER_TOOL_NAME}
     [answering] = [
         tool for tool in model.last_tools or () if tool.name == ANSWER_TOOL_NAME
     ]
@@ -525,3 +553,139 @@ def test_one_plugin_may_bring_a_page_for_each_of_two_fields(
     host.register_page(tmp_path / "atlas", scope="travel")
 
     assert [entry.scope for entry in host.registered] == ["fitness", "travel"]
+
+
+def test_a_plugin_reads_its_fields_bytes_as_well_as_its_text() -> None:
+    files = FakeFiles()
+    host = host_for(MODULE, files=files)
+    photo = b"\x89PNG\x00\xff"
+
+    with running_in(frozenset({"vocab"})):
+        host.files.write("page.png", photo)
+        host.files.write("list.md", "Apfel")
+
+        assert host.files.read_bytes("page.png") == photo
+        assert host.files.read("page.png") is None
+        assert host.files.read_bytes("list.md") == b"Apfel"
+        assert host.files.names() == ("list.md", "page.png")
+    assert files.read_bytes("vocab", "page.png") == photo
+
+
+# ── the host hands an index ──
+
+MAPLES = "The maples turn in the second week of November."
+KYOTO = [Chunk(text=MAPLES, source="kyoto.md", index=0, offset=0)]
+
+
+def _library(retriever: FakeRetriever | None = None) -> KnowledgeBase:
+    return KnowledgeBase(
+        embedder=FakeEmbedder(),
+        retriever=retriever or FakeRetriever(),
+        documents=FakeDocuments(),
+    )
+
+
+def _indexing(library: KnowledgeBase) -> PluginHost:
+    return host_for(MODULE, documents=library, indexing=library)
+
+
+def test_a_document_put_in_through_the_host_is_found_and_its_citation_opens() -> None:
+    library = _library()
+    host = _indexing(library)
+
+    with running_in(frozenset({"travel"})):
+        added = host.index.add("h1", "kyoto.md", MAPLES, KYOTO)
+        [hit] = library.search("maples", 1)
+    with running_in(frozenset({"fitness"})):
+        elsewhere = library.search("maples", 1)
+
+    assert added is True
+    assert (hit.chunk.text, hit.chunk.upload, hit.chunk.scope) == (
+        MAPLES,
+        "h1",
+        "travel",
+    )
+    assert library.text("travel", "h1") == MAPLES
+    assert elsewhere == []
+
+
+class _RefusingRetriever(FakeRetriever):
+    def add(
+        self,
+        scope: str,
+        chunks: list[Chunk],
+        vectors: list[list[float]],
+        file_hash: str,
+    ) -> None:
+        raise RetrievalError()
+
+
+def test_an_index_that_fails_to_take_the_passages_leaves_none_searchable() -> None:
+    library = _library(_RefusingRetriever())
+    host = _indexing(library)
+
+    with running_in(frozenset({"travel"})):
+        with pytest.raises(RetrievalError):
+            host.index.add("h1", "kyoto.md", MAPLES, KYOTO)
+        assert library.search("maples", 1) == []
+
+
+def test_the_host_says_whether_this_field_holds_an_upload() -> None:
+    library = _library()
+    host = _indexing(library)
+
+    with running_in(frozenset({"travel"})):
+        host.index.add("h1", "kyoto.md", MAPLES, KYOTO)
+        held_here = host.index.holds("h1")
+    with running_in(frozenset({"fitness"})):
+        held_elsewhere = host.index.holds("h1")
+
+    assert (held_here, held_elsewhere) == (True, False)
+
+
+def test_the_second_add_of_one_upload_adds_nothing_and_says_so() -> None:
+    library = _library()
+    host = _indexing(library)
+
+    with running_in(frozenset({"travel"})):
+        first = host.index.add("h1", "kyoto.md", MAPLES, KYOTO)
+        second = host.index.add("h1", "kyoto.md", MAPLES, KYOTO)
+
+    assert (first, second) == (True, False)
+    assert library.list_sources("travel") == ["kyoto.md"]
+    assert library.documents.writes == 1  # ty: ignore[unresolved-attribute]
+
+
+def test_the_host_carries_no_search_depth_of_its_own() -> None:
+    assert not hasattr(host_for(), "top_k"), "how deep a search goes is a plugin's"
+
+
+def test_a_system_wide_tool_that_writes_is_withheld_from_a_delegated_loop() -> None:
+    model = ScriptedChatModel([ModelReply(text="looked it up")])
+    keeping = replace(_reading("remember"), writes=True)
+    host = host_for(model=model, offered=(_reading("search_documents"), keeping))
+
+    host.delegate("look it up")
+
+    offered = {tool.name for tool in model.last_tools or ()}
+    assert offered == {"search_documents"}
+    assert "remember" not in offered, "a sub-agent reads and does not write"
+
+
+# ── a field whose files are its plugin's own ──
+
+
+def test_a_plugin_says_the_files_of_its_field_are_its_own() -> None:
+    host = host_for(MODULE)
+
+    host.register_files(scope="vocab")
+
+    [entry] = [each for each in host.registered if each.kind == FILES]
+    assert (entry.scope, entry.module) == ("vocab", MODULE)
+
+
+def test_files_claimed_under_no_field_are_refused() -> None:
+    host = host_for(MODULE)
+
+    with pytest.raises(PluginLoadError, match="field"):
+        host.register_files(scope="")

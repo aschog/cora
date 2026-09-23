@@ -1,37 +1,10 @@
-import pytest
-
-from cora.domain.errors import (
-    CoreError,
-    EmptyDocumentError,
-    FileTooLargeError,
-    IngestionError,
-    PluginLoadError,
-    UnreadableFileError,
-    UnsupportedFileTypeError,
-)
+from cora.domain.errors import CoreError, PluginLoadError
 
 
 def test_base_error_exposes_user_presentable_message() -> None:
     error = CoreError("Something went wrong. Please try again.")
 
     assert error.user_message == "Something went wrong. Please try again."
-
-
-INGESTION_ERRORS = [
-    UnsupportedFileTypeError,
-    FileTooLargeError,
-    EmptyDocumentError,
-    UnreadableFileError,
-]
-
-
-@pytest.mark.parametrize("error_type", INGESTION_ERRORS)
-def test_ingestion_error_message_names_the_offending_file(
-    error_type: type[IngestionError],
-) -> None:
-    error = error_type("budget.xlsx")
-
-    assert "budget.xlsx" in error.user_message
 
 
 def test_plugin_load_error_names_plugin_and_reason() -> None:

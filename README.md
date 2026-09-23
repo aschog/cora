@@ -10,9 +10,11 @@ the part you build yourself — a fitness coach, a trip, a lab notebook.
 
 ## With nothing loaded
 
-It still answers: it searches its documents, remembers what it is told, asks when it
-cannot tell, and cites what it used. It changes nothing outside itself unless a plugin
-gave it something that does.
+It answers, and it works in its field: it reads a file there, writes one, and runs a
+command in that directory. That is all it has of its own. Searching your documents,
+remembering what you tell it, stopping to ask you — each of those arrives as a plugin,
+and the three cora ships are the first three in the loop below. It changes nothing
+outside its field unless a plugin gave it something that does.
 
 ## A field can bring a screen
 
@@ -25,9 +27,10 @@ with the conversation beside it.
 
 A plugin's things live in a field of its own. One SQLite file holds cora's own
 bookkeeping and partitions a field's vectors apart from every other field's,
-`.cora/documents` is a directory per field holding one Markdown file per upload, and
-`.cora/fields` is a directory per field holding the files that field's plugin keeps. A
-second subject is a second directory, not a second store. That is the whole layout.
+`.cora/fields` is a directory per field holding what lands there — every upload, as the
+file it arrived as, beside whatever that field's plugin keeps — and `.cora/documents` is
+a directory per field holding the cleaned text a citation opens onto. A second subject
+is a second directory, not a second store. That is the whole layout.
 
 ## Start here
 
@@ -41,7 +44,8 @@ Symlink the plugins you want into `.cora/plugins`, then run it:
 
 ```sh
 mkdir -p .cora/plugins
-for each in security fitness interview travel vocab; do
+# The first three are what a bare cora has none of: searching, remembering, asking.
+for each in documents memory ask security fitness interview travel vocab; do
   ln -s "$(pwd)"/plugins/$each/src/cora/plugins/$each .cora/plugins/$each
 done
 
@@ -81,11 +85,19 @@ def extend(cora: Host) -> None:
     cora.register_tool(name=..., description=..., parameter_schema=..., run=..., scope=SCOPE)
     cora.register_handler(event=SCREENING, handle=...)
     cora.register_page(pathlib.Path(__file__).parent / "page", scope=SCOPE)
+    cora.register_files(scope=SCOPE)   # the field's files are yours, not a workspace
 ```
 
 Register what you need and nothing else — `plugins/security` is a handler alone,
-`plugins/fitness` is all four. Settings arrive by name: `CORA_PLUGIN_RECIPES_API_KEY`
-reaches it as `api_key`. `make plugins` prints what loaded and what each one registered.
+`plugins/fitness` is four of the five. Settings arrive by name:
+`CORA_PLUGIN_RECIPES_API_KEY` reaches it as `api_key`. `make plugins` prints what loaded
+and what each one registered.
+
+A field is a workspace: cora reads, writes and runs a command in its directory without
+asking. Claim it with `register_files` where the files are your plugin's data rather
+than the reader's notes — `plugins/vocab` does, so nothing but its own tools reaches the
+word lists. A plugin declares the contract it was written against with `CONTRACT`, and
+cora offers 2.
 
 ## Stack
 

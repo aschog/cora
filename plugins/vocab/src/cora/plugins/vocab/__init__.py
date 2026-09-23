@@ -203,7 +203,13 @@ left. The reader knows what a drill is. One word, then wait.
 def extend(cora: Host) -> None:
     """A field that answers from the word lists it holds and drills from a schedule it
     keeps: searching the lists is cora's own tool, and reading a screenshot into one is
-    cora's own screen."""
+    cora's own screen.
+
+    The field's files are claimed, because they are the lists: a drill that puts a word
+    and waits has to be the only way to the answer column, and cora's own read would
+    hand it over. The tools below are the way in, and `show_list` says in its own
+    description not to call it while drilling."""
+    cora.register_files(scope=SCOPE)
     cora.register_instructions(INSTRUCTIONS, scope=SCOPE)
     drill = Drill(cora)
     words = Lists(cora)

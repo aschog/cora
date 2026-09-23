@@ -13,31 +13,35 @@ from typing import Any, overload
 from jsonschema import Draft202012Validator, SchemaError
 
 from cora.domain.card import Card
+from cora.domain.chunk import Chunk
 from cora.domain.citations import Citable
-from cora.domain.errors import PluginLoadError, UnsettledFieldError
+from cora.domain.errors import PluginLoadError
 from cora.domain.trace import WorkShown
 from cora.engine import keeping
 from cora.engine.events import EVENTS
+from cora.engine.field_tools import READ_TOOL_NAME, read_tool
 from cora.engine.nesting import collecting, read_untrusted, took
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME, search_tool
 from cora.engine.rounds import Read, decided, told, used
-from cora.engine.scoping import here
+from cora.engine.scoping import here, the_field
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import ChatModel, Message
 from cora.ports.context_source import ContextSource, Document
 from cora.ports.files import Files
 from cora.ports.host import (
+    FILES,
     HANDLER,
     INSTRUCTIONS,
     PAGE,
     TOOL,
     FieldFiles,
     Handler,
+    Index,
     Registration,
     State,
     Subscription,
     name_of,
 )
+from cora.ports.indexing import Indexing
 from cora.ports.memory import Memory
 from cora.ports.output import Output
 from cora.ports.plugin import Tool, ToolRefusal, ToolResult
@@ -107,17 +111,22 @@ class PluginHost:
     One host per plugin, so a log line and a setting are named for the plugin that read
     them, and so a registration knows which module made it. The ports are cora's own:
     a plugin searching the documents searches the index the uploads went into.
+
+    `offered` reads what every plugin registered system-wide, at the time a loop is
+    delegated rather than at construction: hosts register before the registry exists,
+    so the composition root hands this in once the registry does.
     """
 
     module: str
-    index: ContextSource
+    searched: ContextSource
     model: ChatModel
     memory: Memory | None = None
     output: Output | None = None
     kept: Store | None = None
     kept_files: Files | None = None
+    indexing: Indexing | None = None
+    offered: Callable[[], tuple[Tool, ...]] = tuple
     settings: Mapping[str, str] = field(default_factory=dict)
-    top_k: int = 5
     registered: list[Registration] = field(default_factory=list)
 
     @property
@@ -129,7 +138,7 @@ class PluginHost:
         for its own reasons, and whatever it does with them, the call it did it in
         answers for material cora does not vouch for.
         """
-        return _Reading(self.index)
+        return _Reading(self.searched)
 
     @property
     def store(self) -> Kept | None:
@@ -151,6 +160,15 @@ class PluginHost:
         and outside one it reads nothing and keeps nothing.
         """
         return _Keeping(name_of(self.module))
+
+    @property
+    def index(self) -> Index:
+        """Where a plugin puts a document of the field this turn runs in.
+
+        Bound to the field the way `files` is. A deployment indexing nothing answers
+        as a field that holds nothing, and takes nothing.
+        """
+        return _Indexing(self.indexing)
 
     @property
     def files(self) -> FieldFiles:
@@ -182,6 +200,7 @@ class PluginHost:
         scope: str | None = None,
         untrusted: bool = False,
         effect: bool = False,
+        writes: bool = False,
         asks: Callable[[dict[str, Any]], Card | None] | None = None,
     ) -> None:
         """Offer the model one more thing it can do.
@@ -212,6 +231,7 @@ class PluginHost:
                 run=run,
                 untrusted=untrusted,
                 effect=effect,
+                writes=writes,
                 asks=asks,
             ),
             scope,
@@ -274,6 +294,19 @@ class PluginHost:
             )
         self._record(PAGE, pathlib.Path(directory), scope)
 
+    def register_files(self, *, scope: str) -> None:
+        """Claim this field's files as this plugin's own, not a workspace.
+
+        Raises:
+            PluginLoadError: No field was named. Claiming every field is not a claim
+                a plugin may make: the workspace is cora's, and a field is one plugin's.
+        """
+        if not scope or not scope.strip():
+            raise PluginLoadError(
+                self.module, "files were claimed under no field to claim them in"
+            )
+        self._record(FILES, None, scope)
+
     def show(self, did: str, detail: str = "", failed: bool = False) -> None:
         """Put one line of this plugin's own work on the trace of the call it is in.
 
@@ -308,15 +341,16 @@ class PluginHost:
     ) -> str | dict[str, Any]:
         """Run a bounded loop of the model's own, and answer with what it wrote.
 
-        Offered the tools given plus cora's document search, and none of cora's own
-        tools that write or stop the turn. Every round is reported to the call this ran
+        Offered the tools given, cora's read of the field's files, and every tool a
+        plugin registered system-wide that neither acts nor asks — and none of cora's
+        own that write or run a command. Every round is reported to the call this ran
         inside, so a reader sees the loop's work under the tool that ran it. What comes
         back cites nothing: the numbers a reader can click belong to the turn.
 
         Args:
             task: What the loop is being asked to do, as its first message.
-            tools: What it may call, on top of searching the documents. One that waits
-                for the user is withheld, and the plugin's logger says which.
+            tools: What it may call, on top of what is offered every loop. One that
+                waits for the user is withheld, and the plugin's logger says which.
             rounds: How many rounds it may spend, up to `MAX_DELEGATED_ROUNDS`. One
                 more than this reaches the model, the last with the tools still on the
                 table so a loop can answer in it. Ignored in a loop delegated from
@@ -401,20 +435,29 @@ class PluginHost:
     def _offered(
         self, tools: tuple[Tool, ...], shape: Mapping[str, Any] | None = None
     ) -> tuple[Tool, ...]:
-        own = {SEARCH_TOOL_NAME} | ({ANSWER_TOOL_NAME} if shape is not None else set())
+        own = {ANSWER_TOOL_NAME} if shape is not None else set()
         taken = [tool.name for tool in tools if tool.name in own]
         if taken:
             raise ToolRefusal(TAKEN.format(name=taken[0]))
-        withheld = [tool.name for tool in tools if tool.effect or tool.asks]
+        withheld = [tool.name for tool in tools if _acts(tool)]
         if withheld:
             self.log.info(WITHHELD, ", ".join(withheld))
-        reading = tuple(tool for tool in tools if not (tool.effect or tool.asks))
-        answering = (_answering(shape),) if shape is not None else ()
-        return (
-            search_tool(self.documents, self.top_k, cites=False),
-            *reading,
-            *answering,
+        reading = tuple(tool for tool in tools if not _acts(tool))
+        named = {tool.name for tool in reading} | own
+        # System-wide tools are read here rather than held, because the registry is
+        # built after every host registered — and a loop is delegated long after.
+        wide = tuple(
+            tool
+            for tool in self.offered()
+            if not _acts(tool) and tool.name not in named
         )
+        filing = (
+            (read_tool(self.kept_files),)
+            if self.kept_files is not None and READ_TOOL_NAME not in named
+            else ()
+        )
+        answering = (_answering(shape),) if shape is not None else ()
+        return (*reading, *wide, *filing, *answering)
 
     def _registered_tools(self) -> tuple[Tool, ...]:
         return tuple(entry.value for entry in self._of(TOOL))
@@ -430,6 +473,11 @@ class PluginHost:
         self.registered.append(
             Registration(module=self.module, kind=kind, value=value, scope=scope)
         )
+
+
+# More than reading, which is all a delegated loop may do.
+def _acts(tool: Tool) -> bool:
+    return tool.effect or tool.writes or tool.asks is not None
 
 
 @dataclass(frozen=True)
@@ -476,23 +524,36 @@ class _Filing:
 
     def names(self) -> tuple[str, ...]:
         """The names this field holds, sorted, or nothing where it holds none."""
-        return () if self.kept is None else self.kept.names(_the_field())
+        return () if self.kept is None else self.kept.names(the_field())
 
     def read(self, name: str) -> str | None:
         """The text kept under this name in this field, or nothing where none was."""
-        return None if self.kept is None else self.kept.read(_the_field(), name)
+        return None if self.kept is None else self.kept.read(the_field(), name)
 
-    def write(self, name: str, text: str | None) -> None:
-        """Keep this text under this name in this field, or drop the name given none."""
+    def read_bytes(self, name: str) -> bytes | None:
+        """The bytes kept under this name in this field, or nothing where none was."""
+        return None if self.kept is None else self.kept.read_bytes(the_field(), name)
+
+    def write(self, name: str, text: str | bytes | None) -> None:
+        """Keep this under this name in this field, or drop the name given none."""
         if self.kept is not None:
-            self.kept.write(_the_field(), name, text)
+            self.kept.write(the_field(), name, text)
 
 
-def _the_field() -> str:
-    fields = here()
-    if len(fields) != 1:
-        raise UnsettledFieldError(fields)
-    return next(iter(fields))
+@dataclass(frozen=True)
+# The field is the turn's, read the way `_Filing` reads it and for the same reason.
+class _Indexing:
+    kept: Indexing | None
+
+    def add(self, upload: str, filename: str, text: str, chunks: list[Chunk]) -> bool:
+        """Put the upload into this field, or take nothing where nothing indexes."""
+        if self.kept is None:
+            return False
+        return self.kept.add(the_field(), upload, filename, text, chunks)
+
+    def holds(self, upload: str) -> bool:
+        """Whether this field already indexed this upload."""
+        return self.kept is not None and self.kept.holds(the_field(), upload)
 
 
 @dataclass(frozen=True)

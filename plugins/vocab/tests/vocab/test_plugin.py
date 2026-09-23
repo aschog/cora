@@ -1,15 +1,16 @@
 from cora.plugins.vocab import INSTRUCTIONS, SCOPE, extend
-from cora.ports.host import ANSWERING, HANDLER, TAKING, TOOL
+from cora.ports.host import ANSWERING, FILES, HANDLER, TAKING, TOOL
 from cora.ports.host import INSTRUCTIONS as SAYS
 from fakes import host_for
 
 
-def test_the_field_is_a_voice_five_calls_and_two_hands_on_the_turn() -> None:
+def test_the_field_is_its_own_a_voice_five_calls_and_two_hands_on_the_turn() -> None:
     host = host_for("cora.plugins.vocab")
 
     extend(host)
 
     assert [(entry.kind, entry.scope) for entry in host.registered] == [
+        (FILES, SCOPE),
         (SAYS, SCOPE),
         *[(TOOL, SCOPE)] * 4,
         (HANDLER, SCOPE),

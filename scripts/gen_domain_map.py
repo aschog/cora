@@ -328,7 +328,6 @@ GROUPS: tuple[tuple[str, tuple[str, ...]], ...] = (
             "TraceStep",
             "StepEntered",
             "ModelDecision",
-            "MemoryUnread",
             "HandlerRan",
             "WorkShown",
             "CardFilled",

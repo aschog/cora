@@ -18,8 +18,11 @@ members = [
     "cora",
     "cora-frontend-react",
     "cora-frontend-telegram",
+    "cora-plugin-ask",
+    "cora-plugin-documents",
     "cora-plugin-fitness",
     "cora-plugin-interview",
+    "cora-plugin-memory",
     "cora-plugin-security",
     "cora-plugin-travel",
     "cora-plugin-vocab",
@@ -184,7 +187,6 @@ dependencies = [
     { name = "langgraph" },
     { name = "langgraph-checkpoint-sqlite" },
     { name = "openai" },
-    { name = "pypdf" },
     { name = "sentence-transformers" },
     { name = "sqlite-vec" },
 ]
@@ -193,8 +195,11 @@ dependencies = [
 dev = [
     { name = "cora-frontend-react" },
     { name = "cora-frontend-telegram" },
+    { name = "cora-plugin-ask" },
+    { name = "cora-plugin-documents" },
     { name = "cora-plugin-fitness" },
     { name = "cora-plugin-interview" },
+    { name = "cora-plugin-memory" },
     { name = "cora-plugin-security" },
     { name = "cora-plugin-travel" },
     { name = "cora-plugin-vocab" },
@@ -213,7 +218,6 @@ requires-dist = [
     { name = "langgraph", specifier = ">=1.2.10,<2" },
     { name = "langgraph-checkpoint-sqlite", specifier = ">=3.1.1,<4" },
     { name = "openai", specifier = ">=2.48.0" },
-    { name = "pypdf", specifier = ">=6.14,<7" },
     { name = "sentence-transformers", specifier = ">=5.3,<6" },
     { name = "sqlite-vec", specifier = ">=0.1.9" },
 ]
@@ -222,8 +226,11 @@ requires-dist = [
 dev = [
     { name = "cora-frontend-react", editable = "frontends/react" },
     { name = "cora-frontend-telegram", editable = "frontends/telegram" },
+    { name = "cora-plugin-ask", editable = "plugins/ask" },
+    { name = "cora-plugin-documents", editable = "plugins/documents" },
     { name = "cora-plugin-fitness", editable = "plugins/fitness" },
     { name = "cora-plugin-interview", editable = "plugins/interview" },
+    { name = "cora-plugin-memory", editable = "plugins/memory" },
     { name = "cora-plugin-security", editable = "plugins/security" },
     { name = "cora-plugin-travel", editable = "plugins/travel" },
     { name = "cora-plugin-vocab", editable = "plugins/vocab" },
@@ -270,6 +277,32 @@ requires-dist = [
 ]
 
 [[package]]
+name = "cora-plugin-ask"
+version = "0.1.0"
+source = { editable = "plugins/ask" }
+dependencies = [
+    { name = "cora" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "cora", editable = "." }]
+
+[[package]]
+name = "cora-plugin-documents"
+version = "0.1.0"
+source = { editable = "plugins/documents" }
+dependencies = [
+    { name = "cora" },
+    { name = "pypdf" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "cora", editable = "." },
+    { name = "pypdf", specifier = ">=6.14,<7" },
+]
+
+[[package]]
 name = "cora-plugin-fitness"
 version = "0.1.0"
 source = { editable = "plugins/fitness" }
@@ -284,6 +317,17 @@ requires-dist = [{ name = "cora", editable = "." }]
 name = "cora-plugin-interview"
 version = "0.1.0"
 source = { editable = "plugins/interview" }
+dependencies = [
+    { name = "cora" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "cora", editable = "." }]
+
+[[package]]
+name = "cora-plugin-memory"
+version = "0.1.0"
+source = { editable = "plugins/memory" }
 dependencies = [
     { name = "cora" },
 ]

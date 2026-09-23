@@ -2,7 +2,7 @@ from cora.domain.chat_result import ChatResult
 from cora.domain.citations import Citation
 from cora.domain.conversation import Conversation
 from cora.domain.trace import ModelDecision, ToolUse
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.engine.field_tools import READ_TOOL_NAME
 from cora.frontends.react import payloads
 from cora.ports.memory import Fact
 
@@ -24,7 +24,7 @@ def test_a_citation_carries_the_field_and_upload_its_span_was_measured_in() -> N
 
 def test_every_kind_of_step_renders_the_same_keys() -> None:
     decision = payloads.step(ModelDecision(detail="thinking", tools=("search",)))
-    ours = payloads.step(ToolUse(name=SEARCH_TOOL_NAME, outcome="1 passage"))
+    ours = payloads.step(ToolUse(name=READ_TOOL_NAME, outcome="1 passage"))
     theirs = payloads.step(ToolUse(name="book_a_flight", outcome="booked"))
 
     assert decision == {

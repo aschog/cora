@@ -155,3 +155,15 @@ def test_a_symlinked_package_is_a_plugin_like_any_other(
     before = folder_signature(folder)
     (target / "__init__.py").write_text(f"{DROPPED}\n# revised\n")
     assert folder_signature(folder) != before
+
+
+def test_the_contract_is_two_and_a_plugin_written_to_one_is_refused_naming_both() -> (
+    None
+):
+    assert CONTRACT == 2
+    with pytest.raises(PluginLoadError) as refused:
+        load_plugin("fixture_plugins.old_contract")
+
+    assert "fixture_plugins.old_contract" in refused.value.user_message
+    assert "version 1" in refused.value.user_message
+    assert "offers 2" in refused.value.user_message

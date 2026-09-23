@@ -5,11 +5,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 from cora.domain.errors import ConfigurationError
-from cora.engine.ask_tool import ASK_FOR_TOOL_NAME, ASK_TOOL_NAME
-from cora.engine.memory_tool import REMEMBER_TOOL_NAME
-from cora.engine.retrieval_tool import SEARCH_TOOL_NAME
+from cora.engine.field_tools import BASH_TOOL_NAME, READ_TOOL_NAME, WRITE_TOOL_NAME
 from cora.engine.validation import CORA
 from cora.ports.host import (
+    FILES,
     HANDLER,
     HAS_AN_EFFECT,
     INSTRUCTIONS,
@@ -25,10 +24,9 @@ from cora.ports.host import (
 from cora.ports.plugin import Tool
 
 RESERVED_TOOL_NAMES = {
-    SEARCH_TOOL_NAME: "document search",
-    REMEMBER_TOOL_NAME: "what the agent keeps about the user",
-    ASK_TOOL_NAME: "stopping to ask the user",
-    ASK_FOR_TOOL_NAME: "stopping to ask the user for values",
+    READ_TOOL_NAME: "reading a file of the field",
+    WRITE_TOOL_NAME: "writing a file of the field",
+    BASH_TOOL_NAME: "running a command in the field",
 }
 
 
@@ -167,6 +165,28 @@ class Registry:
             )
             for plugin in plugins
         )
+
+    def offering(
+        self, own: tuple[Tool, ...], scopes: frozenset[str] = frozenset()
+    ) -> tuple[Tool, ...]:
+        """What a turn in these fields may call: cora's own tools, then the plugins'.
+
+        One rule in one place, because three parts of a turn ask it — what the model is
+        offered, what the gate reads an effect off, and what the runtime will run — and
+        three readings of it are three that can disagree about what is callable.
+
+        Cora's own are withheld where a field in reach claimed its files: they are a
+        workspace over the field's directory, and a field whose files are its plugin's
+        is not one. Withheld wherever such a field is among the scopes rather than only
+        where it is the single one, because a turn reaching two fields has no one
+        directory to work in anyway.
+        """
+        if self._claimed(scopes):
+            return self.tools(scopes)
+        return (*own, *self.tools(scopes))
+
+    def _claimed(self, scopes: frozenset[str]) -> bool:
+        return any(entry.scope in scopes for entry in self._of(FILES))
 
     def pages(self) -> dict[str, pathlib.Path]:
         """The directory to serve for each field a plugin brought a page for.

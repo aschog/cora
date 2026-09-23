@@ -1,200 +1,174 @@
 from hashlib import sha256
 
 from cora.domain.chunk import Chunk
-from cora.engine.ingestion import ingest
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.scoping import running_in
 from cora.ports.host import DEFAULT_SCOPE
-from fakes import (
-    TEXT_LOADERS,
-    FakeDocuments,
-    FakeEmbedder,
-    FakeRetriever,
-)
+from fakes import FakeDocuments, FakeEmbedder, FakeRetriever
+
+FITNESS, TRAVEL = "fitness", "travel"
+PLAN = "The block holds intensity and drops volume in the fourth week."
+KYOTO = "The sleeper to Kyoto sells out a month before the maples turn."
+LIFTS = ("# Deadlift 14 kg\n3 sets of 10", "# Swing 14 kg\n2 sets of 10")
 
 
-def test_add_file_embeds_and_stores_one_record_per_chunk(
-    kb: KnowledgeBase, embedder: FakeEmbedder, retriever: FakeRetriever
-) -> None:
-    data = ("lorem ipsum dolor sit amet " * 100).encode()
-
-    added = kb.add_file(data, "doc.txt")
-
-    assert added == len(ingest(data, "doc.txt", TEXT_LOADERS).chunks)
-    assert added >= 2
-    assert retriever.sources(DEFAULT_SCOPE) == ["doc.txt"]
-
-    stored = retriever.query(DEFAULT_SCOPE, embedder.embed(["probe"])[0], k=added + 5)
-    assert len(stored) == added
-    assert all(hit.chunk.source == "doc.txt" for hit in stored)
-
-
-class _CountingEmbedder:
-    def __init__(self) -> None:
-        self._inner = FakeEmbedder()
-        self.calls = 0
-
-    def embed(self, texts: list[str]) -> list[list[float]]:
-        self.calls += 1
-        return self._inner.embed(texts)
-
-
-def test_re_adding_identical_bytes_is_a_no_op(retriever: FakeRetriever) -> None:
-    data = ("same content " * 100).encode()
-    embedder = _CountingEmbedder()
-    kb = KnowledgeBase(
-        embedder=embedder,
-        retriever=retriever,
-        loaders=TEXT_LOADERS,
+def _library(retriever: FakeRetriever | None = None) -> KnowledgeBase:
+    return KnowledgeBase(
+        embedder=FakeEmbedder(),
+        retriever=retriever or FakeRetriever(),
         documents=FakeDocuments(),
     )
 
-    first = kb.add_file(data, "doc.txt")
-    second = kb.add_file(data, "doc.txt")
 
-    assert first >= 1
-    assert second == 0
-    assert embedder.calls == 1
-    assert kb.list_sources() == ["doc.txt"]
+def _cut(text: str, name: str, size: int = 40) -> list[Chunk]:
+    return [
+        Chunk(text=text[at : at + size], source=name, index=index, offset=at)
+        for index, at in enumerate(range(0, len(text), size))
+    ]
 
-    stored = retriever.query(
-        DEFAULT_SCOPE, FakeEmbedder().embed(["probe"])[0], k=first + 5
+
+def _added(
+    kb: KnowledgeBase, text: str, name: str, scope: str = DEFAULT_SCOPE
+) -> tuple[str, bool]:
+    upload = sha256(text.encode()).hexdigest()
+    return upload, kb.add(scope, upload, name, text, _cut(text, name))
+
+
+def test_add_embeds_and_stores_one_record_per_chunk() -> None:
+    retriever = FakeRetriever()
+    kb = _library(retriever)
+    text = "lorem ipsum dolor sit amet " * 20
+
+    _added(kb, text, "doc.txt")
+
+    assert retriever.sources(DEFAULT_SCOPE) == ["doc.txt"]
+    stored = retriever.query(DEFAULT_SCOPE, FakeEmbedder().embed(["probe"])[0], k=99)
+    assert len(stored) == len(_cut(text, "doc.txt")) >= 2
+    assert all(hit.chunk.source == "doc.txt" for hit in stored)
+
+
+class _CountingEmbedder(FakeEmbedder):
+    calls = 0
+
+    def embed(self, texts: list[str]) -> list[list[float]]:
+        self.calls += 1
+        return super().embed(texts)
+
+
+def test_adding_an_upload_the_field_holds_is_a_no_op() -> None:
+    embedder = _CountingEmbedder()
+    kb = KnowledgeBase(
+        embedder=embedder, retriever=FakeRetriever(), documents=FakeDocuments()
     )
-    assert len(stored) == first
+
+    _, first = _added(kb, PLAN, "plan.md")
+    _, second = _added(kb, PLAN, "plan.md")
+
+    assert (first, second) == (True, False)
+    assert embedder.calls == 1
+    assert kb.list_sources() == ["plan.md"]
 
 
-def test_add_file_keeps_the_cleaned_text_of_the_upload(kb: KnowledgeBase) -> None:
-    kb.add_file(b"# Protein\n\n\n\nAim for 1.6 g per kg.", "protein.md")
+def test_a_text_that_went_missing_under_cora_is_put_back_on_the_next_add() -> None:
+    kb = _library()
+    documents = kb.documents
+    assert isinstance(documents, FakeDocuments)
+    upload, _ = _added(kb, PLAN, "plan.md")
+    documents.forget(DEFAULT_SCOPE, upload)
 
-    [hit] = kb.search("protein", k=1)
-    kept = kb.text(DEFAULT_SCOPE, hit.chunk.upload)
-    assert kept is not None
-    assert "Aim for 1.6 g per kg." in kept
+    _, added = _added(kb, PLAN, "plan.md")
+
+    assert added is False
+    assert kb.text(DEFAULT_SCOPE, upload) == PLAN
 
 
-V1 = b"Version one says: aim for 1.6 g of protein per kg of bodyweight every day."
-V2 = b"PREFACE ADDED LATER. Version two says: aim for 2.0 g of protein per kg."
+def test_a_passage_reads_back_the_text_it_was_cut_from() -> None:
+    kb = _library()
+    first, _ = _added(kb, PLAN, "report.md")
+    _added(kb, "PREFACE ADDED LATER. " + PLAN, "report.md")
 
+    [hit] = [hit for hit in kb.search("intensity", k=5) if hit.chunk.upload == first][
+        :1
+    ]
+    text = kb.text(DEFAULT_SCOPE, first)
 
-def test_a_passage_reads_back_the_text_it_was_cut_from(kb: KnowledgeBase) -> None:
-    kb.add_file(V1, "report.md")
-    [first] = kb.search("protein", k=1)
-
-    kb.add_file(V2, "report.md")
-
-    text = kb.text(DEFAULT_SCOPE, first.chunk.upload)
     assert text is not None
-    chunk = first.chunk
-    assert text[chunk.offset : chunk.offset + len(chunk.text)] == chunk.text
-    assert "Version one" in text
+    assert text[hit.chunk.offset : hit.chunk.offset + len(hit.chunk.text)] == (
+        hit.chunk.text
+    )
 
 
-FITNESS, TRAVEL = "fitness", "travel"
-PLAN = b"The block holds intensity and drops volume in the fourth week."
-KYOTO = b"The sleeper to Kyoto sells out a month before the maples turn."
-
-
-def test_a_field_retrieves_its_own_documents_and_no_others(kb: KnowledgeBase) -> None:
-    kb.add_file(PLAN, "plan.md", scope=FITNESS)
-    kb.add_file(KYOTO, "kyoto.md", scope=TRAVEL)
+def test_a_field_retrieves_its_own_documents_and_no_others() -> None:
+    kb = _library()
+    _added(kb, PLAN, "plan.md", FITNESS)
+    _added(kb, KYOTO, "kyoto.md", TRAVEL)
 
     with running_in(frozenset({TRAVEL})):
         hits = kb.search("what do my notes say", k=5)
 
-    assert [hit.chunk.source for hit in hits] == ["kyoto.md"]
+    assert {hit.chunk.source for hit in hits} == {"kyoto.md"}
     assert all(hit.chunk.scope == TRAVEL for hit in hits)
 
 
-def test_a_field_is_read_whole_by_name_and_text_in_upload_order(
-    kb: KnowledgeBase,
-) -> None:
-    kb.add_file(PLAN, "plan.md", scope=FITNESS)
-    kb.add_file(b"Rest a week between blocks.", "rest.md", scope=FITNESS)
+def test_a_field_is_read_whole_by_name_and_text_in_upload_order() -> None:
+    kb = _library()
+    _added(kb, PLAN, "plan.md", FITNESS)
+    _added(kb, "Rest a week between blocks.", "rest.md", FITNESS)
 
     with running_in(frozenset({FITNESS})):
         held = kb.all()
 
     assert [(each.name, each.text) for each in held] == [
-        ("plan.md", PLAN.decode()),
+        ("plan.md", PLAN),
         ("rest.md", "Rest a week between blocks."),
     ]
 
 
-def test_two_uploads_of_one_name_are_two_documents(kb: KnowledgeBase) -> None:
-    kb.add_file(b"# Deadlift 14 kg\n3 sets of 10", "2026-09-18.md", scope=FITNESS)
-    kb.add_file(b"# Swing 14 kg\n2 sets of 10", "2026-09-18.md", scope=FITNESS)
+def test_two_uploads_of_one_name_are_two_documents() -> None:
+    kb = _library()
+    for text in LIFTS:
+        _added(kb, text, "2026-09-18.md", FITNESS)
 
     with running_in(frozenset({FITNESS})):
         held = kb.all()
 
     assert [(each.name, each.text) for each in held] == [
-        ("2026-09-18.md", "# Deadlift 14 kg\n3 sets of 10"),
-        ("2026-09-18.md", "# Swing 14 kg\n2 sets of 10"),
+        ("2026-09-18.md", LIFTS[0]),
+        ("2026-09-18.md", LIFTS[1]),
     ]
-
-
-def test_a_name_is_read_back_with_every_upload_oldest_first(kb: KnowledgeBase) -> None:
-    kb.add_file(b"# Deadlift 14 kg\n3 sets of 10", "2026-09-18.md", scope=FITNESS)
-    kb.add_file(b"# Swing 14 kg\n2 sets of 10", "2026-09-18.md", scope=FITNESS)
-
-    assert [each.text for each in kb.read(FITNESS, "2026-09-18.md")] == [
-        "# Deadlift 14 kg\n3 sets of 10",
-        "# Swing 14 kg\n2 sets of 10",
-    ]
+    assert [each.text for each in kb.read(FITNESS, "2026-09-18.md")] == list(LIFTS)
     assert kb.read(FITNESS, "never.md") == []
 
 
-def test_a_name_whose_file_is_gone_reads_back_the_uploads_still_there(
-    kb: KnowledgeBase, retriever: FakeRetriever, documents: FakeDocuments
-) -> None:
-    kb.add_file(b"# Deadlift 14 kg\n3 sets of 10", "2026-09-18.md", scope=FITNESS)
-    kb.add_file(b"# Swing 14 kg\n2 sets of 10", "2026-09-18.md", scope=FITNESS)
-    gone, _ = retriever.uploads(FITNESS, "2026-09-18.md")
+def test_a_name_whose_file_is_gone_reads_back_the_uploads_still_there() -> None:
+    kb = _library()
+    documents = kb.documents
+    assert isinstance(documents, FakeDocuments)
+    gone, _ = _added(kb, LIFTS[0], "2026-09-18.md", FITNESS)
+    _added(kb, LIFTS[1], "2026-09-18.md", FITNESS)
     documents.forget(FITNESS, gone)
 
-    assert [each.text for each in kb.read(FITNESS, "2026-09-18.md")] == [
-        "# Swing 14 kg\n2 sets of 10"
-    ]
+    assert [each.text for each in kb.read(FITNESS, "2026-09-18.md")] == [LIFTS[1]]
+    with running_in(frozenset({FITNESS})):
+        assert [each.text for each in kb.all()] == [LIFTS[1]]
 
 
-def test_a_name_reads_only_the_field_it_is_asked_of(kb: KnowledgeBase) -> None:
-    kb.add_file(PLAN, "plan.md", scope=FITNESS)
-    kb.add_file(KYOTO, "plan.md", scope=TRAVEL)
+def test_a_name_reads_only_the_field_it_is_asked_of() -> None:
+    kb = _library()
+    _added(kb, PLAN, "plan.md", FITNESS)
+    _added(kb, KYOTO, "plan.md", TRAVEL)
 
     assert [(each.text, each.scope) for each in kb.read(TRAVEL, "plan.md")] == [
-        (KYOTO.decode(), TRAVEL)
+        (KYOTO, TRAVEL)
     ]
-
-
-def test_a_document_whose_file_is_gone_is_left_out(
-    kb: KnowledgeBase, retriever: FakeRetriever, documents: FakeDocuments
-) -> None:
-    kb.add_file(PLAN, "plan.md", scope=FITNESS)
-    kb.add_file(b"Rest a week between blocks.", "rest.md", scope=FITNESS)
-    [gone] = retriever.uploads(FITNESS, "plan.md")
-    documents.forget(FITNESS, gone)
-
-    with running_in(frozenset({FITNESS})):
-        held = kb.all()
-
-    assert [each.name for each in held] == ["rest.md"]
-
-
-def test_another_fields_document_is_not_listed(kb: KnowledgeBase) -> None:
-    kb.add_file(PLAN, "plan.md", scope=FITNESS)
-    kb.add_file(KYOTO, "kyoto.md", scope=TRAVEL)
-
     with running_in(frozenset({TRAVEL})):
-        held = kb.all()
-
-    assert [(each.name, each.scope) for each in held] == [("kyoto.md", TRAVEL)]
+        assert [(each.name, each.scope) for each in kb.all()] == [("plan.md", TRAVEL)]
 
 
-def test_a_turn_in_two_fields_is_handed_both_each_saying_which(
-    kb: KnowledgeBase,
-) -> None:
-    kb.add_file(PLAN, "plan.md", scope=FITNESS)
-    kb.add_file(KYOTO, "kyoto.md", scope=TRAVEL)
+def test_a_turn_in_two_fields_is_handed_both_each_saying_which() -> None:
+    kb = _library()
+    _added(kb, PLAN, "plan.md", FITNESS)
+    _added(kb, KYOTO, "kyoto.md", TRAVEL)
 
     with running_in(frozenset({FITNESS, TRAVEL})):
         held = kb.all()
@@ -205,7 +179,6 @@ def test_a_turn_in_two_fields_is_handed_both_each_saying_which(
     ]
 
 
-# What the index was handed, as the port promises it: the span, and no words.
 class _RecordingRetriever(FakeRetriever):
     def __init__(self) -> None:
         super().__init__()
@@ -222,33 +195,26 @@ class _RecordingRetriever(FakeRetriever):
         super().add(scope, chunks, vectors, file_hash)
 
 
-def test_the_index_is_handed_the_span_and_none_of_the_words(
-    documents: FakeDocuments, embedder: FakeEmbedder
-) -> None:
+def test_the_index_is_handed_the_span_and_none_of_the_words() -> None:
     retriever = _RecordingRetriever()
-    kb = KnowledgeBase(
-        embedder=embedder,
-        retriever=retriever,
-        loaders=TEXT_LOADERS,
-        documents=documents,
-    )
 
-    kb.add_file(PLAN, "plan.md", scope=FITNESS)
+    _added(_library(retriever), PLAN, "plan.md", FITNESS)
 
     assert retriever.given
     assert all(chunk.text == "" for chunk in retriever.given)
-    assert sum(chunk.length for chunk in retriever.given) >= len(PLAN.decode())
+    assert sum(chunk.length for chunk in retriever.given) >= len(PLAN)
 
 
-def test_forgetting_a_document_drops_its_passages_and_its_file(
-    kb: KnowledgeBase, documents: FakeDocuments, retriever: FakeRetriever
-) -> None:
-    kb.add_file(PLAN, "plan.md", scope=FITNESS)
-    kb.add_file(KYOTO, "kyoto.md", scope=FITNESS)
+def test_forgetting_a_document_drops_its_passages_and_its_file() -> None:
+    kb = _library()
+    documents = kb.documents
+    assert isinstance(documents, FakeDocuments)
+    upload, _ = _added(kb, PLAN, "plan.md", FITNESS)
+    _added(kb, KYOTO, "kyoto.md", FITNESS)
 
     kb.forget(FITNESS, "plan.md")
 
     assert kb.list_sources(FITNESS) == ["kyoto.md"]
-    assert documents.read(FITNESS, sha256(PLAN).hexdigest()) is None
+    assert documents.read(FITNESS, upload) is None
     with running_in(frozenset({FITNESS})):
-        assert [hit.chunk.source for hit in kb.search("intensity", k=5)] == ["kyoto.md"]
+        assert {hit.chunk.source for hit in kb.search("intensity", k=5)} == {"kyoto.md"}

@@ -1,8 +1,9 @@
 from cora.domain.approval import APPROVE, DECLINE, TOOL
 from cora.domain.card import ActionOffered, Card, FieldAsked
 from cora.domain.decision import NO_OPTION
-from cora.engine.ask_tool import ASK_FOR_TOOL_NAME, ASK_TOOL_NAME, NOT_NOW, SEND
 from cora.frontends.telegram.bot import Message, answering, taken
+from cora.plugins.ask.fork import ASK_TOOL_NAME
+from cora.plugins.ask.form import ASK_FOR_TOOL_NAME, NOT_NOW, SEND
 from cora.ports.chat_model import ModelReply
 from cora.ports.host import Extension, Host
 from cora.ports.plugin import ToolCall
@@ -54,7 +55,9 @@ def _deciding() -> ScriptedChatModel:
 def test_a_paused_turn_puts_the_card_with_its_ways_off_numbered() -> None:
     telegram = FakeTelegram(Message(ALLOWED, "How heavy am I?"))
 
-    answering(chatting(chat_model=_deciding()), telegram, allowed=(ALLOWED,))
+    answering(
+        chatting(asking=True, chat_model=_deciding()), telegram, allowed=(ALLOWED,)
+    )
 
     [sent] = telegram.texts
     assert QUESTION in sent
@@ -67,13 +70,15 @@ def test_a_paused_turn_puts_the_card_with_its_ways_off_numbered() -> None:
 def test_a_number_finishes_the_turn_on_that_way_off() -> None:
     telegram = FakeTelegram(Message(ALLOWED, "How heavy am I?"), Message(ALLOWED, "1"))
 
-    answering(chatting(chat_model=_deciding()), telegram, allowed=(ALLOWED,))
+    answering(
+        chatting(asking=True, chat_model=_deciding()), telegram, allowed=(ALLOWED,)
+    )
 
     assert telegram.texts[-1] == SETTLED
 
 
 def test_a_reply_naming_no_way_off_leaves_the_turn_parked() -> None:
-    app = chatting(chat_model=_deciding())
+    app = chatting(asking=True, chat_model=_deciding())
     telegram = FakeTelegram(
         Message(ALLOWED, "How heavy am I?"), Message(ALLOWED, "the heavier one")
     )
@@ -88,7 +93,10 @@ def test_a_way_off_waiting_on_a_value_the_chat_cannot_write_is_not_offered() -> 
     telegram = FakeTelegram(Message(ALLOWED, "Plan me a trip"))
 
     answering(
-        chatting(chat_model=ScriptedChatModel([ASKING_FOR, ModelReply(text="ok")])),
+        chatting(
+            asking=True,
+            chat_model=ScriptedChatModel([ASKING_FOR, ModelReply(text="ok")]),
+        ),
         telegram,
         allowed=(ALLOWED,),
     )
@@ -136,7 +144,7 @@ def test_a_reply_that_names_nothing_settles_nothing() -> None:
 
 
 def test_a_bot_started_while_a_chat_is_parked_reads_the_card_off_the_agent() -> None:
-    app = chatting(chat_model=_deciding())
+    app = chatting(asking=True, chat_model=_deciding())
     answering(
         app, FakeTelegram(Message(ALLOWED, "How heavy am I?")), allowed=(ALLOWED,)
     )
@@ -179,6 +187,7 @@ def test_an_effect_is_approved_from_the_chat() -> None:
 
     answering(
         chatting(
+            asking=True,
             chat_model=model,
             plugin=Extension(module="fixture_plugins.effecting", extend=extend),
         ),

@@ -1,12 +1,12 @@
 import pytest
 
+from cora.domain.chunk import Chunk
 from cora.domain.errors import RetrievalError
 from cora.engine.host import PluginHost
 from cora.engine.knowledge_base import KnowledgeBase
 from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.plugin import Tool, ToolCall
 from fakes import (
-    TEXT_LOADERS,
     FakeDocuments,
     FakeEmbedder,
     FakeRetriever,
@@ -98,13 +98,13 @@ KYOTO = b"The sleeper to Kyoto sells out a month before the maples turn."
 
 def _two_fields() -> KnowledgeBase:
     kb = KnowledgeBase(
-        embedder=FakeEmbedder(),
-        retriever=FakeRetriever(),
-        loaders=TEXT_LOADERS,
-        documents=FakeDocuments(),
+        embedder=FakeEmbedder(), retriever=FakeRetriever(), documents=FakeDocuments()
     )
-    kb.add_file(PLAN, "plan.md", FITNESS)
-    kb.add_file(KYOTO, "kyoto.md", TRAVEL)
+    for scope, name, data in ((FITNESS, "plan.md", PLAN), (TRAVEL, "kyoto.md", KYOTO)):
+        text = data.decode()
+        kb.add(
+            scope, name, name, text, [Chunk(text=text, source=name, index=0, offset=0)]
+        )
     return kb
 
 

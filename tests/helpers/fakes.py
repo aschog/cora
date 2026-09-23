@@ -1,5 +1,6 @@
 import hashlib
 import math
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from typing import NamedTuple
 
@@ -21,11 +22,12 @@ from cora.ports.chat_model import (
 )
 from cora.ports.context_source import ContextSource, Document
 from cora.ports.files import MOST_BYTES, Files, plain_name
-from cora.ports.loading import Loaders
+from cora.ports.indexing import Indexing
 from cora.ports.memory import Fact, Memory
 from cora.ports.output import Output
 from cora.ports.plugin import Tool
 from cora.ports.retrieval import RetrievedChunk
+from cora.ports.shell import Ran
 from cora.ports.store import Store
 
 
@@ -254,13 +256,6 @@ class FakeContextSource:
         return self.held
 
 
-def _decode(data: bytes, filename: str) -> str:
-    return data.decode("utf-8")
-
-
-TEXT_LOADERS: Loaders = {".txt": _decode, ".md": _decode}
-
-
 class FakeConversations:
     def __init__(self) -> None:
         self._recorded: dict[str, list[Turn]] = {}
@@ -335,23 +330,38 @@ class FakeStore:
                 del self.kept[(held, name)]
 
 
-@dataclass
 class FakeFiles:
-    kept: dict[tuple[str, str], str] = field(default_factory=dict)
-    cap: int = MOST_BYTES
+    def __init__(
+        self,
+        kept: Mapping[tuple[str, str], str | bytes] | None = None,
+        cap: int = MOST_BYTES,
+    ) -> None:
+        self.kept: dict[tuple[str, str], str | bytes] = dict(kept or {})
+        self.cap = cap
 
     def names(self, scope: str) -> tuple[str, ...]:
         return tuple(sorted(name for held, name in self.kept if held == scope))
 
     def read(self, scope: str, name: str) -> str | None:
-        return self.kept.get((_plain(scope), _plain(name)))
+        held = self.kept.get((_plain(scope), _plain(name)))
+        if isinstance(held, bytes):
+            try:
+                return held.decode("utf-8")
+            except UnicodeDecodeError:
+                return None
+        return held
 
-    def write(self, scope: str, name: str, text: str | None) -> None:
+    def read_bytes(self, scope: str, name: str) -> bytes | None:
+        held = self.kept.get((_plain(scope), _plain(name)))
+        return held.encode("utf-8") if isinstance(held, str) else held
+
+    def write(self, scope: str, name: str, text: str | bytes | None) -> None:
         held = (_plain(scope), _plain(name))
         if text is None:
             self.kept.pop(held, None)
             return
-        if len(text.encode("utf-8")) > self.cap:
+        written = text.encode("utf-8") if isinstance(text, str) else text
+        if len(written) > self.cap:
             raise FileTooLargeToKeepError(self.cap)
         self.kept[held] = text
 
@@ -371,15 +381,29 @@ def host_for(
     output: Output | None = None,
     store: Store | None = None,
     files: Files | None = None,
+    indexing: Indexing | None = None,
     settings: dict[str, str] | None = None,
+    offered: tuple[Tool, ...] = (),
 ) -> PluginHost:
     return PluginHost(
         module=module,
-        index=documents or FakeContextSource(),
+        searched=documents or FakeContextSource(),
         model=model or ScriptedChatModel([ModelReply(text="ok")]),
         memory=memory,
         output=output,
         kept=store,
         kept_files=files,
+        indexing=indexing,
+        offered=lambda: offered,
         settings=settings or {},
     )
+
+
+@dataclass
+class FakeShell:
+    answers: list[Ran] = field(default_factory=list)
+    ran: list[tuple[str, str]] = field(default_factory=list)
+
+    def run(self, scope: str, command: str) -> Ran:
+        self.ran.append((scope, command))
+        return self.answers.pop(0) if self.answers else Ran(output=f"ran {command}")

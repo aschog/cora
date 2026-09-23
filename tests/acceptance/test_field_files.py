@@ -9,6 +9,7 @@ from cora.domain.errors import UnsettledFieldError
 from cora.engine import keeping
 from cora.engine.scoping import running_in
 from cora.frontends.react.api import api
+from cora.ports.files import MOST_BYTES
 from cora.ports.host import Extension, Host
 from fakes import FakeConversations
 
@@ -116,7 +117,7 @@ def test_a_name_that_is_not_one_plain_name_is_refused(tmp_path: Path) -> None:
 def test_a_file_over_the_cap_is_refused(tmp_path: Path) -> None:
     page, _ = _served(tmp_path)
 
-    too_big = page.put(f"{FILES}/{NAME}", json={"text": "x" * 1_000_001})
+    too_big = page.put(f"{FILES}/{NAME}", json={"text": "x" * (MOST_BYTES + 1)})
 
     assert too_big.status_code in (400, 413)
     assert page.get(FILES).json() == {"names": []}

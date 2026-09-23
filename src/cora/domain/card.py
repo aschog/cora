@@ -56,11 +56,17 @@ class Card:
     Data alone, so a plugin adds a card without adding a component. What varies between
     a decision, a proposal and a form is which fields are writable and which actions
     are offered — not three shapes, and so not three renderers.
+
+    `lands` names the argument of the call the reader's action is written into, so a
+    tool put behind a card of options is handed the one taken. Blank, the card settles
+    on the action alone. Where it is named, the way out is an action with an answer of
+    its own, so the tool runs and words the decline itself.
     """
 
     prompt: str
     fields: tuple[FieldAsked, ...] = ()
     actions: tuple[ActionOffered, ...] = ()
+    lands: str = ""
 
     @property
     def card(self) -> "Card":

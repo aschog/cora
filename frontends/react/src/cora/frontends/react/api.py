@@ -33,7 +33,6 @@ from cora.domain.decision import TurnPaused
 from cora.domain.errors import AdapterError, CoreError, NothingToResumeError
 from cora.domain.trace import TraceStep
 from cora.engine.agent import Agent
-from cora.engine.ingestion import DEFAULT_MAX_BYTES
 from cora.engine.removal import deletable, fields_going
 from cora.engine.validation import MAX_INPUT_CHARS
 from cora.frontends.react import payloads
@@ -51,7 +50,7 @@ TOO_LARGE = 413
 NO_LENGTH_GIVEN = 411
 
 MULTIPART_FRAMING = 64 * 1024
-MAX_REQUEST_BYTES = DEFAULT_MAX_BYTES + MULTIPART_FRAMING
+MAX_REQUEST_BYTES = MOST_BYTES + MULTIPART_FRAMING
 
 PAGES = "/pages"
 # The plugins folder is live, so a page file may differ from the one already served. The
@@ -233,10 +232,10 @@ def _ingest(apps: Apps) -> Callable[[Request], Any]:
         scope = _field(named, app.scopes)
         if scope is None:
             return _refusal(named, app.scopes)
-        chunks = await run_in_threadpool(
-            app.knowledge_base.add_file, data, filename, scope
-        )
-        return JSONResponse({"document": filename, "chunks": chunks, "scope": scope})
+        if app.intake is None:
+            return JSONResponse({"error": NO_FILES_KEPT}, status_code=UNAVAILABLE)
+        kept = await run_in_threadpool(app.intake.take, scope, filename, data)
+        return JSONResponse({"document": kept, "scope": scope})
 
     return add
 
@@ -253,9 +252,7 @@ def _no_such_field(named: str, scopes: tuple[str, ...]) -> str:
 NO_FILE = "No file was uploaded."
 UNREADABLE_UPLOAD = "That upload did not arrive as a file cora could read."
 MEGABYTE = 1024 * 1024
-OVER_CEILING = (
-    f"That upload is larger than the {DEFAULT_MAX_BYTES // MEGABYTE} MB cora reads."
-)
+OVER_CEILING = f"That upload is larger than the {MOST_BYTES // MEGABYTE} MB cora keeps."
 NO_LENGTH = "An upload has to say how large it is."
 
 

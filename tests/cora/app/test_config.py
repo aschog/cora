@@ -14,7 +14,8 @@ from cora.domain.errors import ConfigurationError
 
 KEY = {"OPENROUTER_API_KEY": "k"}
 COUNTS = (
-    "CORA_TOP_K",
+    "CORA_COMMAND_SECONDS",
+    "CORA_COMMAND_OUTPUT_CHARS",
     "CORA_MAX_TOOL_ROUNDS",
     "CORA_HISTORY_TURNS",
     "CORA_MAX_OUTPUT_TOKENS",
@@ -44,11 +45,12 @@ def test_from_env_reads_every_field() -> None:
             "CORA_MODEL": "anthropic/claude",
             "OPENROUTER_BASE_URL": "https://example/api",
             "CORA_PLUGINS": "cora.plugins.custom",
-            "CORA_TOP_K": "7",
             "CORA_MAX_TOOL_ROUNDS": "3",
             "CORA_HISTORY_TURNS": "9",
             "CORA_MAX_OUTPUT_TOKENS": "500",
             "CORA_REQUEST_TIMEOUT": "45",
+            "CORA_COMMAND_SECONDS": "5",
+            "CORA_COMMAND_OUTPUT_CHARS": "100",
             "CORA_REASONING_EFFORT": "high",
             "CORA_LOG_PATH": "/tmp/cora.log",
             "CORA_DB_PATH": "/tmp/cora.sqlite",
@@ -65,11 +67,12 @@ def test_from_env_reads_every_field() -> None:
         base_url="https://example/api",
         plugin_modules=("cora.plugins.custom",),
         scopes=("fitness", "cooking"),
-        top_k=7,
         max_tool_rounds=3,
         history_turns=9,
         max_output_tokens=500,
         request_timeout_seconds=45,
+        command_seconds=5,
+        command_output_chars=100,
         reasoning_effort="high",
         log_path="/tmp/cora.log",
         db_path="/tmp/cora.sqlite",
@@ -87,7 +90,8 @@ def test_from_env_applies_defaults_for_optional_fields() -> None:
     assert config.scopes == DEFAULT_SCOPES
     assert config.plugins_path == DEFAULT_PLUGINS_PATH
     assert config.model and config.base_url and config.log_path
-    assert config.top_k > 0 and config.max_tool_rounds > 0 and config.history_turns > 0
+    assert config.max_tool_rounds > 0 and config.history_turns > 0
+    assert config.command_seconds > 0 and config.command_output_chars > 0
 
 
 @pytest.mark.parametrize(("variable", "field"), TEXT)
@@ -141,6 +145,7 @@ def test_several_plugins_are_read_in_the_order_they_were_named() -> None:
         # What the facts and the turns used to be moved by, before one file held both,
         # and what used to choose between two ways of searching.
         "CORA_MEMORY_PATH",
+        "CORA_TOP_K",
         "CORA_CONVERSATIONS_PATH",
         "CORA_RETRIEVAL",
         "CORA_FUSION_QUERIES",

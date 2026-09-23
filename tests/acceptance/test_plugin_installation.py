@@ -37,7 +37,11 @@ def test_a_named_module_and_a_dropped_file_are_both_loaded_and_both_listed(
     dropped = folder / "field_notes.py"
     dropped.write_text(DROPPED)
 
-    app = assembled(plugins=load_plugins([NAMED], folder=folder), scopes=("birds",))
+    app = assembled(
+        plugins=load_plugins([NAMED], folder=folder),
+        scopes=("birds",),
+        searching=False,
+    )
 
     listed = {each.name: each for each in app.plugins}
     assert sorted(listed) == ["field_notes", "taking_part"]

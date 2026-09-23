@@ -140,21 +140,6 @@ class ScopeSettled(TraceStep):
 
 
 @dataclass(frozen=True)
-class MemoryUnread(TraceStep):
-    """The turn could not read what cora remembers, and answered without it."""
-
-    @property
-    def summary(self) -> str:
-        """That memory could not be read, and the turn went on without it."""
-        return "Could not read what I remember about you — answering without it"
-
-    @property
-    def failed(self) -> bool:
-        """Always true: this step exists only because something went wrong."""
-        return True
-
-
-@dataclass(frozen=True)
 class HandlerRan(TraceStep):
     """One plugin's handler took part in the turn, and this is what came of it.
 

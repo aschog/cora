@@ -6,8 +6,6 @@ from typing import TYPE_CHECKING
 import pytest
 
 from cora.domain.chunk import Chunk
-from cora.engine.knowledge_base import KnowledgeBase
-from fakes import TEXT_LOADERS, FakeDocuments, FakeEmbedder, FakeRetriever
 
 if TYPE_CHECKING:
     from cora.adapters.sqlite_vec_retriever import SqliteVecRetriever
@@ -24,33 +22,6 @@ def clean_cora_logger() -> Iterator[logging.Logger]:
         handler.close()
     logger.setLevel(level)
     logger.handlers = handlers
-
-
-@pytest.fixture
-def embedder() -> FakeEmbedder:
-    return FakeEmbedder()
-
-
-@pytest.fixture
-def retriever() -> FakeRetriever:
-    return FakeRetriever()
-
-
-@pytest.fixture
-def documents() -> FakeDocuments:
-    return FakeDocuments()
-
-
-@pytest.fixture
-def kb(
-    embedder: FakeEmbedder, retriever: FakeRetriever, documents: FakeDocuments
-) -> KnowledgeBase:
-    return KnowledgeBase(
-        embedder=embedder,
-        retriever=retriever,
-        loaders=TEXT_LOADERS,
-        documents=documents,
-    )
 
 
 @pytest.fixture

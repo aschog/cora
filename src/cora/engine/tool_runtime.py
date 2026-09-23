@@ -55,7 +55,7 @@ class ToolRuntime:
                 next call either, so it ends the turn instead of being reported to the
                 model as a bad call.
         """
-        offered = (*self.tools, *self.registry.tools(scopes))
+        offered = self.registry.offering(self.tools, scopes)
         tool = next((tool for tool in offered if tool.name == call.name), None)
         if tool is None:
             return ToolResult(call_id=call.call_id, error=f"unknown tool '{call.name}'")

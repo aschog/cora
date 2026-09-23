@@ -11,33 +11,32 @@ from cora.adapters.langgraph_runner import (
     recursion_limit_for,
 )
 from cora.domain.agent_state import AgentState
-from cora.domain.card import Answer
+from cora.domain.card import ActionOffered, Answer, Card
 from cora.domain.citations import Citation
 from cora.domain.errors import (
     ToolLoopLimitError,
 )
 from cora.domain.trace import (
     HandlerRan,
-    MemoryUnread,
     ModelDecision,
     StepEntered,
     ToolUse,
     TraceStep,
     step_kinds,
 )
-from cora.engine.ask_tool import ASK_TOOL_NAME
 from cora.engine.plugin_set import Registry
 from cora.engine.steps import (
     ANSWER,
     SCREEN,
     WORK,
     AnswerStep,
-    AskStep,
     GateStep,
     Named,
     Router,
+    ToolStep,
     opening,
 )
+from cora.engine.tool_runtime import ToolRuntime
 from cora.ports.chat_model import (
     Message,
     Role,
@@ -45,7 +44,7 @@ from cora.ports.chat_model import (
     unheard,
 )
 from cora.ports.graph import Loop, ModelFor, NamedStep, Step
-from cora.ports.host import ANSWERING, HANDLER, Registration, Subscription
+from cora.ports.host import ANSWERING, HANDLER, TOOL, Registration, Subscription
 from cora.ports.plugin import Tool, ToolCall
 
 ROUNDS = 8
@@ -110,7 +109,6 @@ def _walk(
     screen: Step = _screen,
     gate: Step | None = None,
     tools: Step = _ran,
-    ask: Step = _nothing,
     rounds: int = ROUNDS,
     after: tuple[NamedStep, ...] = (Named(ANSWER, AnswerStep()),),
     marker: NamedStep = WORKING,
@@ -123,7 +121,6 @@ def _walk(
             model=model,
             gate=GateStep() if gate is None else gate,
             tools=tools,
-            ask=ask,
             router=Router(max_tool_rounds=rounds),
         ),
         "after": after,
@@ -136,7 +133,6 @@ def _runner(
     model: ModelFor,
     gate: Step | None = None,
     tools: Step = _ran,
-    ask: Step = _nothing,
     rounds: int = ROUNDS,
     recursion_limit: int | None = None,
     marker: NamedStep = WORKING,
@@ -147,7 +143,6 @@ def _runner(
             screen=screen,
             gate=gate,
             tools=tools,
-            ask=ask,
             rounds=rounds,
             marker=marker,
         ),
@@ -275,7 +270,6 @@ def test_a_second_turn_round_trips_every_type_the_state_carries() -> None:
     every_kind: list[TraceStep] = [
         ModelDecision(detail="thinking", tools=("add",)),
         ToolUse(name="add", arguments={"a": 1}, outcome="3"),
-        MemoryUnread(),
         HandlerRan(plugin="plug", event="brief", outcome="amended the brief"),
     ]
 
@@ -314,7 +308,6 @@ def test_the_allowlist_covers_every_kind_of_step_a_trace_can_hold() -> None:
     assert {kind.__name__ for kind in step_kinds()} >= {
         "StepEntered",
         "ModelDecision",
-        "MemoryUnread",
         "ToolUse",
         "WorkShown",
     }, "the walk found fewer kinds than the engine ships"
@@ -326,26 +319,44 @@ ASKED_AT_THE_NODE = "Which bodyweight should I treat as current?"
 WANTED = "What is my BMR?"
 
 
+FORK = Card(
+    prompt=ASKED_AT_THE_NODE,
+    actions=(
+        ActionOffered(label="77 kg", answer="77 kg"),
+        ActionOffered(label="75 kg", answer="75 kg", note="February"),
+        ActionOffered(label="Neither", answer="(none)"),
+    ),
+    lands="chosen",
+)
+SETTLING = Tool(
+    name="settle",
+    description="Settle which value was meant.",
+    parameter_schema={
+        "type": "object",
+        "properties": {"question": {"type": "string"}, "chosen": {"type": "string"}},
+    },
+    run=lambda question, chosen="": chosen,
+    asks=lambda _: FORK,
+)
+
+
 def _asks_then_answers(state: AgentState) -> AgentState:
     if _answered(state):
         return {"messages": _said("assistant", "done")}
     call = ToolCall(
-        name=ASK_TOOL_NAME,
-        arguments={
-            "question": ASKED_AT_THE_NODE,
-            "options": [{"label": "77 kg"}, {"label": "75 kg", "note": "February"}],
-            "decline": "Neither",
-        },
-        call_id="a1",
+        name=SETTLING.name, arguments={"question": ASKED_AT_THE_NODE}, call_id="a1"
     )
     return {"messages": [Message(role="assistant", content="", tool_calls=(call,))]}
 
 
 def _stopping(rounds: int = ROUNDS) -> LangGraphRunner:
+    registry = Registry(
+        (Registration(module="settler", kind=TOOL, value=SETTLING, scope=None),)
+    )
     return _runner(
         model=_always(_asks_then_answers),
-        tools=_nothing,
-        ask=AskStep(pause=interrupting),
+        gate=GateStep(registry=registry, approve=interrupting),
+        tools=ToolStep(ToolRuntime(tools=(), registry=registry), registry=registry),
         rounds=rounds,
     )
 
@@ -381,7 +392,8 @@ def test_resuming_hands_the_answer_back_into_the_step_that_asked() -> None:
     final = list(runner.resume(Answer(action="75 kg"), THREAD))[-1]
 
     assert final["answer"] == "done"
-    assert _answers(final) == ("75 kg",)
+    [told] = _answers(final)
+    assert told.endswith("75 kg")
     assert runner.pending(THREAD) is None, "the thread is waiting on nothing now"
 
 
@@ -462,7 +474,6 @@ def _gated(*names: str) -> tuple[LangGraphRunner, list[str]]:
             model=_always(_proposes(*names)),
             gate=GateStep(tools=tools, approve=interrupting),
             tools=running,
-            ask=_nothing,
             router=Router(max_tool_rounds=ROUNDS),
         ),
         after=(Named(ANSWER, AnswerStep()),),

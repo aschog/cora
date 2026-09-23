@@ -6,6 +6,7 @@ it did. Nothing here draws: `gen_turn_maps.py` is what turns a `Sequence` into U
 """
 
 import ast
+import importlib.util
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -97,7 +98,12 @@ def speaks(lines: tuple[Line, ...]) -> bool:
 
 
 def _module(dotted: str) -> Path:
-    return SRC.joinpath(*dotted.split(".")).with_suffix(".py")
+    # Resolved as Python would, so a module a plugin ships is read where it is
+    # installed rather than looked for under the app's own source tree.
+    found = importlib.util.find_spec(dotted)
+    if found is None or not found.origin:
+        raise SystemExit(f"no module {dotted} to read")
+    return Path(found.origin)
 
 
 def _klass(tree: ast.Module, name: str) -> ast.ClassDef:
@@ -679,8 +685,8 @@ def _entered(
 
 
 def upload() -> Sequence:
-    """A document going in, off `KnowledgeBase.add_file`."""
-    return _entered(KNOWLEDGE, "KnowledgeBase", "add_file", "knowledge_base")
+    """An upload landing, off `Intake.take`: the file kept, and the plugins told."""
+    return _entered(INTAKE, "Intake", "take", "intake")
 
 
 def _constant(tree: ast.Module, name: str) -> str:
@@ -722,22 +728,22 @@ def _called_class(node: ast.expr) -> str:
     return _argument(node)
 
 
-KNOWLEDGE = "cora.engine.knowledge_base"
-RETRIEVAL = "cora.engine.retrieval_tool"
+INTAKE = "cora.engine.intake"
+SEARCHING = "cora.plugins.documents.search"
 
 
 def search() -> Sequence:
-    """The one tool that reaches the documents, off the class the tool is built around.
+    """The search a plugin brings, off the class its tool is built around.
 
     The runtime opens it: a tool is held as a `Tool` and called through its `run` slot,
     so the class about to run is named nowhere the call is made.
     """
-    named, runs = tool_built_in(RETRIEVAL)
+    tree = reading.parsed(_module(SEARCHING))
     return _entered(
-        RETRIEVAL,
-        runs,
+        SEARCHING,
+        "DocumentSearch",
         "__call__",
-        named,
+        _constant(tree, "SEARCH_TOOL_NAME"),
         name="search",
         by=("tool_runtime", "ToolRuntime"),
         asked="run(**arguments)",
