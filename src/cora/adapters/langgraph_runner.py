@@ -1,3 +1,6 @@
+import contextlib
+import copy
+import uuid
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from itertools import pairwise
@@ -16,7 +19,7 @@ from cora.adapters.sqlite_store import connect
 from cora.domain.agent_state import AgentState
 from cora.domain.card import Answer, Asks
 from cora.domain.decision import Pending
-from cora.domain.errors import NothingToResumeError, ToolLoopLimitError
+from cora.domain.errors import NothingToResumeError, ToolLoopLimitError, TurnStopped
 from cora.domain.trace import step_kinds
 from cora.ports.chat_model import TextSink, unheard
 from cora.ports.graph import (
@@ -68,6 +71,60 @@ def saver_at(path: str) -> SqliteSaver:
     saver = SqliteSaver(connect(path), serde=_serde())
     saver.setup()
     return saver
+
+
+# The installed LangGraph saver base declares copy_thread, but the savers cora uses do
+# not implement it yet. A stopped turn needs exactly that operation: keep the checkpoint
+# the thread had before the streamed run, then put it back if the reader disappears.
+def _copy_thread(checkpointer: BaseCheckpointSaver, source: str, target: str) -> None:
+    try:
+        checkpointer.copy_thread(source, target)
+        return
+    except NotImplementedError:
+        pass
+    _delete_thread(checkpointer, target)
+    if isinstance(checkpointer, InMemorySaver):
+        if source in checkpointer.storage:
+            checkpointer.storage[target] = copy.deepcopy(checkpointer.storage[source])
+        for (thread, namespace, checkpoint), value in list(checkpointer.writes.items()):
+            if thread == source:
+                checkpointer.writes[(target, namespace, checkpoint)] = copy.deepcopy(
+                    value
+                )
+        for (thread, namespace, channel, version), value in list(
+            checkpointer.blobs.items()
+        ):
+            if thread == source:
+                checkpointer.blobs[(target, namespace, channel, version)] = (
+                    copy.deepcopy(value)
+                )
+        return
+    if isinstance(checkpointer, SqliteSaver):
+        with checkpointer.lock, checkpointer.cursor(transaction=True) as cursor:
+            cursor.execute(
+                """
+                INSERT INTO checkpoints
+                SELECT ?, checkpoint_ns, checkpoint_id, parent_checkpoint_id,
+                       type, checkpoint, metadata
+                FROM checkpoints WHERE thread_id = ?
+                """,
+                (target, source),
+            )
+            cursor.execute(
+                """
+                INSERT INTO writes
+                SELECT ?, checkpoint_ns, checkpoint_id, task_id, idx,
+                       channel, type, value
+                FROM writes WHERE thread_id = ?
+                """,
+                (target, source),
+            )
+        return
+    raise NotImplementedError
+
+
+def _delete_thread(checkpointer: BaseCheckpointSaver, thread_id: str) -> None:
+    checkpointer.delete_thread(thread_id)
 
 
 def recursion_limit_for(max_tool_rounds: int, steps: int) -> int:
@@ -169,12 +226,24 @@ class LangGraphRunner:
     def _streamed(
         self, opening: Any, thread_id: str, on_text: TextSink
     ) -> Iterator[AgentState]:
+        kept = self.checkpointer.get(self._config(thread_id)) is not None
+        before = f"{thread_id}.before-stopped-turn.{uuid.uuid4().hex}"
+        if kept:
+            _copy_thread(self.checkpointer, thread_id, before)
         try:
             yield from self._graph(on_text).stream(
                 opening, self._config(thread_id), stream_mode="values"
             )
+        except TurnStopped:
+            _delete_thread(self.checkpointer, thread_id)
+            if kept:
+                _copy_thread(self.checkpointer, before, thread_id)
+            raise
         except GraphRecursionError as exhausted:
             raise ToolLoopLimitError from exhausted
+        finally:
+            with contextlib.suppress(Exception):
+                _delete_thread(self.checkpointer, before)
 
     def _config(self, thread_id: str) -> RunnableConfig:
         return {

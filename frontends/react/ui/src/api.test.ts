@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from 'vitest'
-import { ask, forget, forgetEverything, paused } from './api'
+import { STOPPED, ask, forget, forgetEverything, paused, resume } from './api'
 import type { Reply, Result } from './api'
 
 /** A turn that answered. A turn may end with a question for the reader instead, and
@@ -151,4 +151,52 @@ test('each piece of the answer is reported as it arrives, and the turn still res
 
   expect(written).toEqual(['Sleep, ', 'not volume.'])
   expect(result.answer).toBe('Sleep, not volume.')
+})
+
+test('a turn the reader stopped rejects saying so, rather than as a failure', async () => {
+  /* The reader pressed stop, so the sentence the conversation is left with is theirs —
+     not the browser's word for a request that went away. */
+  const stopping = new AbortController()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({
+      ok: true,
+      body: {
+        getReader: () => ({
+          cancel: async () => {},
+          read: async () => {
+            stopping.abort()
+            throw new DOMException('The user aborted a request.', 'AbortError')
+          },
+        }),
+      },
+    }) as unknown as Response),
+  )
+
+  await expect(
+    ask('why?', 't1', () => {}, undefined, undefined, null, stopping.signal),
+  ).rejects.toThrow(STOPPED)
+})
+
+test('a resume the reader stopped rejects saying so, rather than as a failure', async () => {
+  const stopping = new AbortController()
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => ({
+      ok: true,
+      body: {
+        getReader: () => ({
+          cancel: async () => {},
+          read: async () => {
+            stopping.abort()
+            throw new DOMException('The user aborted a request.', 'AbortError')
+          },
+        }),
+      },
+    }) as unknown as Response),
+  )
+
+  await expect(
+    resume('t1', 'yes', {}, () => {}, undefined, undefined, stopping.signal),
+  ).rejects.toThrow(STOPPED)
 })

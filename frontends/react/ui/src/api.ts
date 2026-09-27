@@ -1,3 +1,5 @@
+import { aborted } from './fail'
+
 export type Citation = {
   number: number
   document: string
@@ -104,6 +106,9 @@ export type Plugin = {
 }
 
 const UNREADABLE = 'cora could not be reached.'
+/** What a turn the reader stopped is left saying. A stop is not a failure, and the
+ *  browser's word for a request that went away is not what they did. */
+export const STOPPED = 'You stopped that answer.'
 const NO_CONTENT = 204
 
 async function read<T>(path: string, init?: RequestInit): Promise<T> {
@@ -241,6 +246,10 @@ export async function upload(
  *
  * `pin` is the field this conversation is fixed to, sent on every question while it holds
  * one: the pin lives in the thread's state and only a turn writes it there.
+ *
+ * `signal` is how the reader stops the turn. Aborting it drops the connection, which is
+ * what tells cora nobody is reading: the turn is let go of rather than walked on to an
+ * answer with nowhere to land.
  */
 export async function ask(
   question: string,
@@ -249,17 +258,33 @@ export async function ask(
   onText: (piece: string) => void = () => {},
   onAside: () => void = () => {},
   pin: string | null = null,
+  signal?: AbortSignal,
 ): Promise<Reply> {
-  return streamed(
-    await post('/api/ask', {
-      question,
-      thread_id: thread,
-      ...(pin === null ? {} : { pin }),
-    }),
-    onStep,
-    onText,
-    onAside,
+  return stoppable(async () =>
+    streamed(
+      await post(
+        '/api/ask',
+        { question, thread_id: thread, ...(pin === null ? {} : { pin }) },
+        signal,
+      ),
+      onStep,
+      onText,
+      onAside,
+    ),
   )
+}
+
+/* An abort is the reader pressing stop, and a stop is not a failure: what the page is
+   left saying is theirs, rather than the browser's word for a request that went away. */
+async function stoppable(turn: () => Promise<Reply>): Promise<Reply> {
+  try {
+    return await turn()
+  } catch (failed) {
+    if (aborted(failed)) {
+      throw new Error(STOPPED, { cause: failed })
+    }
+    throw failed
+  }
 }
 
 /**
@@ -278,12 +303,15 @@ export async function resume(
   onStep: (step: Step) => void = () => {},
   onText: (piece: string) => void = () => {},
   onAside: () => void = () => {},
+  signal?: AbortSignal,
 ): Promise<Reply> {
-  return streamed(
-    await post('/api/resume', { thread_id: thread, answer: action, values }),
-    onStep,
-    onText,
-    onAside,
+  return stoppable(async () =>
+    streamed(
+      await post('/api/resume', { thread_id: thread, answer: action, values }, signal),
+      onStep,
+      onText,
+      onAside,
+    ),
   )
 }
 
@@ -301,11 +329,12 @@ export const pinned = (thread: string, signal?: AbortSignal) =>
 export const pending = (thread: string, signal?: AbortSignal) =>
   read<Pending | null>(`/api/conversations/${encodeURIComponent(thread)}/pending`, { signal })
 
-const post = (path: string, body: unknown) =>
+const post = (path: string, body: unknown, signal?: AbortSignal) =>
   fetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
+    signal,
   })
 
 async function streamed(

@@ -5,4 +5,4 @@ export const message = (failed: unknown) =>
  *  telling them "the operation was aborted" would report their own navigation as a
  *  failure, and a request that lost its race says nothing either way. */
 export const aborted = (failed: unknown) =>
-  failed instanceof DOMException && failed.name === 'AbortError'
+  (failed as { name?: unknown } | null)?.name === 'AbortError'

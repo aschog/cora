@@ -7,6 +7,9 @@ export const CHOOSE = 'choose between them'
 export const WRITE = 'write it down'
 export const REMEMBER = 'remember this about me'
 export const PROSE = 'hello there'
+/** Prose the stub model paces a word at a time, so the turn is still running when the
+ *  reader presses stop. A fast answer is already over by then. */
+export const SLOW = 'a slow hello'
 
 /** A fresh page on a conversation of its own. Every spec starts from one: the store is
  *  shared across the run, and a spec landing in the conversation another left behind

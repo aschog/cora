@@ -41,6 +41,9 @@ type Props = {
    *  time, so this page cannot be asked in either, and nothing on it would say why. */
   askingElsewhere: boolean
   onAsk: (question: string) => void
+  /** Called off while a turn runs. The ask control is the stop control then — one
+   *  control because asking and stopping are never both available. */
+  onStop: () => void
   onCite: (citation: Citation) => void
   onTake: (
     entry: Entry,
@@ -68,6 +71,7 @@ export default function Answer({
   asking,
   askingElsewhere,
   onAsk,
+  onStop,
   onCite,
   onTake,
   onChange,
@@ -262,11 +266,11 @@ export default function Answer({
           />
           <button
             className={styles.composerAsk}
-            aria-label="Ask"
-            onClick={send}
-            disabled={asking || parked}
+            aria-label={asking ? 'Stop' : 'Ask'}
+            onClick={asking ? onStop : send}
+            disabled={!asking && parked}
           >
-            →
+            {asking ? '■' : '→'}
           </button>
         </div>
         {askingElsewhere && <p className={styles.composerNote}>{ELSEWHERE}</p>}

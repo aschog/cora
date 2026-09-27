@@ -194,7 +194,7 @@ function Page() {
     setTrouble,
     setRead,
   })
-  const { flight, live, working, lost, ask, take, change } = useTurn({
+  const { flight, live, working, lost, ask, stop, take, change } = useTurn({
     thread,
     here,
     loads,
@@ -392,6 +392,7 @@ function Page() {
       asking={asking}
       askingElsewhere={working !== null && working !== thread}
       onAsk={ask}
+      onStop={stop}
       onCite={setOpened}
       onTake={take}
       onChange={change}

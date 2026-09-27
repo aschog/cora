@@ -1,7 +1,7 @@
 from cora.ports.host import Host
 from cora.ports.plugin import ToolRefusal
 
-CONTRACT = 1
+CONTRACT = 2
 SCOPE = "kit"
 INSTRUCTIONS = "You are a note-keeper. Keep what the user worked out, when asked."
 NOTE = {

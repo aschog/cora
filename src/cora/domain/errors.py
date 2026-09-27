@@ -255,6 +255,14 @@ class GraphRunError(AdapterError):
     message = "The assistant could not answer that. Please try again."
 
 
+class TurnStopped(Exception):
+    """The reader left the streamed turn before it answered.
+
+    It is not a failure and carries no user-facing sentence from the core: the shell
+    that lost its reader decides what, if anything, remains visible there.
+    """
+
+
 class NothingToResumeError(CoreError):
     """A decision was answered for a thread that is not waiting on one.
 

@@ -69,6 +69,11 @@ export function useTurn({
      until they ask their next question. */
   const [lost, setLost] = useState<{ thread: string; said: string } | null>(null)
   const asked = useRef(0)
+  /* The turn on the wire, and how the reader lets go of it. One slot because cora
+     answers one question at a time: starting another calls off the one before it, and
+     aborting drops the connection, which is what tells cora nobody is reading. */
+  const stopping = useRef<AbortController | null>(null)
+  const stop = () => stopping.current?.abort()
 
   /** The question joins the thread the moment it is asked, so it is on the page while
    *  the answer is being written; what comes back takes its place rather than following
@@ -87,6 +92,9 @@ export function useTurn({
     setLive({ thread: on, steps: taken })
     setTab('STEPS')
     const id = ++asked.current
+    stopping.current?.abort()
+    const halt = new AbortController()
+    stopping.current = halt
     setFlight({
       thread: on,
       entry: { id, question, citations: [], trace: [], pending: true },
@@ -119,6 +127,7 @@ export function useTurn({
           )
         },
         pin,
+        halt.signal,
       )
       if (cora.paused(reply)) {
         // The turn is on the page now rather than in flight: it is waiting on the
@@ -168,14 +177,18 @@ export function useTurn({
       // would have been — and it is remembered either way, because a load already on the
       // wire replaces those turns when it lands and takes the failure with it. Which of
       // the two the reader sees is one question, asked once, when the page is drawn.
+      const said = message(failed)
       if (here.current === on) {
-        setEntries((said) => [
-          ...said,
-          { id, question, error: message(failed), citations: [], trace: taken },
+        setEntries((kept) => [
+          ...kept,
+          { id, question, error: said, citations: [], trace: taken },
         ])
       }
-      setLost({ thread: on, said: `In the conversation you left: ${message(failed)}` })
+      if (said !== cora.STOPPED) {
+        setLost({ thread: on, said: `In the conversation you left: ${said}` })
+      }
     } finally {
+      if (stopping.current === halt) stopping.current = null
       setFlight((running) => (running?.entry.id === id ? null : running))
       setWorking(null)
       setLive(null)
@@ -210,6 +223,7 @@ export function useTurn({
       onStep: (step: Step) => void,
       onText: (piece: string) => void,
       onAside: () => void,
+      signal: AbortSignal,
     ) => Promise<cora.Reply>,
   ) => {
     const on = thread
@@ -227,6 +241,9 @@ export function useTurn({
     setWorking(on)
     setLive({ thread: on, steps: taken })
     setTab('STEPS')
+    stopping.current?.abort()
+    const halt = new AbortController()
+    stopping.current = halt
     at((found) => ({
       ...answering(found),
       changing: undefined,
@@ -247,6 +264,7 @@ export function useTurn({
           written = ''
           at((found) => ({ ...found, answer: undefined }))
         },
+        halt.signal,
       )
       if (cora.paused(reply)) {
         if (parkedOn(reply)) {
@@ -270,6 +288,7 @@ export function useTurn({
         pending: false,
       }))
     } finally {
+      if (stopping.current === halt) stopping.current = null
       setWorking(null)
       setLive(null)
       refresh()
@@ -288,8 +307,8 @@ export function useTurn({
       entry,
       (found) => ({ ...found, cards: takenAt(found, at, action) }),
       (found) => ({ ...found, cards: takenAt(found, at) }),
-      (onStep, onText, onAside) =>
-        cora.resume(thread, action.answer, values, onStep, onText, onAside),
+      (onStep, onText, onAside, signal) =>
+        cora.resume(thread, action.answer, values, onStep, onText, onAside, signal),
     )
 
   /** An action taken. On a card still waiting it finishes the turn; on one the reader
@@ -318,5 +337,5 @@ export function useTurn({
       said.map((each) => (each.id === entry.id ? { ...each, changing: at } : each)),
     )
 
-  return { flight, live, working, lost, ask, take, change }
+  return { flight, live, working, lost, ask, stop, take, change }
 }

@@ -1472,3 +1472,72 @@ test('a pinned conversation in the middle still says which field it is in', asyn
   expect(within(centre()).getByRole('group', { name: 'Answer in' })).toBeTruthy()
   expect(within(centre()).getByText(/keeps the field it is pinned to/)).toBeTruthy()
 })
+
+/* While a turn runs the composer's one control stops it, and stopping leaves the
+   question under the reader's own sentence — with no answer beside it, because a
+   stopped turn is recorded nowhere. */
+test('stopping a turn leaves the question under a sentence saying so, and the composer asks again', async () => {
+  /* The turn hangs until it is let go of, so what is asserted can only have come
+     from the stop rather than from an answer. */
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (path: string, init?: RequestInit) => {
+      if (path === '/api/ask') {
+        const signal = init?.signal as AbortSignal | undefined
+        return {
+          ok: true,
+          body: {
+            getReader: () => ({
+              cancel: async () => {},
+              read: async () => {
+                if (signal?.aborted)
+                  throw new DOMException('The user aborted a request.', 'AbortError')
+                await new Promise<void>((_resolve, reject) => {
+                  signal?.addEventListener(
+                    'abort',
+                    () => reject(new DOMException('The user aborted a request.', 'AbortError')),
+                    { once: true },
+                  )
+                })
+                throw new DOMException('The user aborted a request.', 'AbortError')
+              },
+            }),
+          },
+        } as unknown as Response
+      }
+      if (path.endsWith('/scope') && !(path in served)) {
+        return { ok: true, json: async () => ({ pin: null }) } as unknown as Response
+      }
+      return {
+        ok: true,
+        json: async () => served[route(path)] ?? [],
+      } as unknown as Response
+    }),
+  )
+  render(<App />)
+  await screen.findByText('notes.md')
+
+  fireEvent.change(screen.getByPlaceholderText(/Ask a question/), {
+    target: { value: 'Why am I stalling?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Ask' }))
+
+  /* The same control, now saying what it does. */
+  const stopping = await screen.findByRole('button', { name: 'Stop' })
+  expect(screen.queryByRole('button', { name: 'Ask' })).toBeNull()
+  fireEvent.click(stopping)
+
+  expect(await screen.findByText('You stopped that answer.')).toBeTruthy()
+  expect(screen.getByText('Why am I stalling?')).toBeTruthy()
+  expect(screen.queryByText(/Sleep, not volume/)).toBeNull()
+  expect(screen.queryByText(/Working/)).toBeNull()
+
+  /* And the composer takes the next question as it always did. */
+  expect(screen.getByRole('button', { name: 'Ask' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull()
+
+  fireEvent.click(screen.getByRole('tab', { name: 'CONVERSATIONS' }))
+  fireEvent.click(await screen.findByRole('button', { name: OLDER.question }))
+
+  expect(screen.queryByText(/In the conversation you left/)).toBeNull()
+})

@@ -30,7 +30,12 @@ from cora.app.assembly import App, LiveApp
 from cora.domain.card import Answer
 from cora.domain.chat_result import ChatResult
 from cora.domain.decision import TurnPaused
-from cora.domain.errors import AdapterError, CoreError, NothingToResumeError
+from cora.domain.errors import (
+    AdapterError,
+    CoreError,
+    NothingToResumeError,
+    TurnStopped,
+)
 from cora.domain.trace import TraceStep
 from cora.engine.agent import Agent
 from cora.engine.removal import deletable, fields_going
@@ -265,6 +270,7 @@ def _over_ceiling(request: Request) -> JSONResponse | None:
     return None
 
 
+TURN_THREAD = "cora-turn"
 STREAM = "text/event-stream"
 UNBUFFERED = {"Cache-Control": "no-cache", "X-Accel-Buffering": "no"}
 NOT_A_QUESTION = "Ask with a question and the thread it belongs to."
@@ -363,6 +369,10 @@ def _pending(apps: Apps) -> Callable[[Request], Any]:
 def _streaming(turning: "Turning") -> StreamingResponse:
     events: asyncio.Queue[str | None] = asyncio.Queue()
     loop = asyncio.get_running_loop()
+    # Set the moment nobody is reading any more — the reader took the stop control, the
+    # page went away, the connection dropped. One flag for all three, because the
+    # connection is the only thing that knows a turn is still wanted.
+    stopped = threading.Event()
 
     def deliver(event: str | None) -> None:
         """The worker's only reach into the loop. A page closed mid-turn takes the
@@ -370,12 +380,17 @@ def _streaming(turning: "Turning") -> StreamingResponse:
         with contextlib.suppress(RuntimeError):
             loop.call_soon_threadsafe(events.put_nowait, event)
 
-    turn = threading.Thread(target=_run, args=(turning, deliver), daemon=True)
+    turn = threading.Thread(
+        target=_run, args=(turning, deliver, stopped), daemon=True, name=TURN_THREAD
+    )
 
     async def body() -> AsyncIterator[str]:
         turn.start()
-        while (event := await events.get()) is not DONE:
-            yield event
+        try:
+            while (event := await events.get()) is not DONE:
+                yield event
+        finally:
+            stopped.set()
 
     return StreamingResponse(body(), media_type=STREAM, headers=UNBUFFERED)
 
@@ -415,11 +430,26 @@ def _said(half: Any) -> bool:
 Turning = Callable[[Callable[[TraceStep], None], TextSink], ChatResult]
 
 
-def _run(turning: Turning, deliver: Callable[[str | None], None]) -> None:
+def _run(
+    turning: Turning,
+    deliver: Callable[[str | None], None],
+    stopped: threading.Event,
+) -> None:
+    def letting_go() -> None:
+        # Raised out of the worker's own callbacks, so the round unwinds, the walk
+        # closes and the thread ends — the path a failed turn already takes. Which
+        # means a turn is let go of at the next step or the next piece it writes.
+        # ponytail: a turn inside one slow tool notices when that tool returns; closing
+        # that gap means a cancellation the tool port would have to carry.
+        if stopped.is_set():
+            raise TurnStopped
+
     def report(step: TraceStep) -> None:
+        letting_go()
         deliver(_event("step", payloads.step(step)))
 
     def write(written: Written) -> None:
+        letting_go()
         if isinstance(written, Piece):
             deliver(_event("text", {"text": written.text}))
         else:
@@ -428,6 +458,8 @@ def _run(turning: Turning, deliver: Callable[[str | None], None]) -> None:
     try:
         result = turning(report, write)
         deliver(_event("turn", payloads.result(result)))
+    except TurnStopped:
+        log.info("the turn was let go of: nobody was reading it")
     except TurnPaused as waiting:
         deliver(_event("paused", payloads.pending(waiting.pending)))
     except CoreError as refused:

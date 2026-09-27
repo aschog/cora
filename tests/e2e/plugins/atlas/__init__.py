@@ -2,7 +2,7 @@ import pathlib
 
 from cora.ports.host import Host
 
-CONTRACT = 1
+CONTRACT = 2
 SCOPE = "atlas"
 
 

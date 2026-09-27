@@ -4,15 +4,16 @@ import Answer from './Answer'
 
 afterEach(cleanup)
 
-const composer = (onUpload = vi.fn(), uploading = false) => {
+const composer = (onUpload = vi.fn(), uploading = false, asking = false) => {
   const drawn = render(
     <Answer
       mode={null}
       thread="t1"
       entries={[]}
-      asking={false}
+      asking={asking}
       askingElsewhere={false}
       onAsk={vi.fn()}
+      onStop={vi.fn()}
       onCite={vi.fn()}
       onTake={vi.fn()}
       onChange={vi.fn()}
@@ -66,4 +67,48 @@ test('it offers what cora reads, and photos', () => {
 
   const picked = screen.getByLabelText(PICKER) as HTMLInputElement
   expect(picked.accept).toBe('.txt,.md,.pdf,image/*')
+})
+
+/* While a turn runs the one control stops it rather than asks one: the reader cannot
+   ask and stop at once. */
+test('while a turn runs the control stops it, and while none does it asks', () => {
+  const onStop = vi.fn()
+  const onAsk = vi.fn()
+  const { rerender } = render(
+    <Answer
+      mode={null}
+      thread="t1"
+      entries={[]}
+      asking={true}
+      askingElsewhere={false}
+      onAsk={onAsk}
+      onStop={onStop}
+      onCite={vi.fn()}
+      onTake={vi.fn()}
+      onChange={vi.fn()}
+    />,
+  )
+
+  const stopping = screen.getByRole('button', { name: 'Stop' })
+  expect(screen.queryByRole('button', { name: 'Ask' })).toBeNull()
+  fireEvent.click(stopping)
+  expect(onStop).toHaveBeenCalledTimes(1)
+  expect(onAsk).not.toHaveBeenCalled()
+
+  rerender(
+    <Answer
+      mode={null}
+      thread="t1"
+      entries={[]}
+      asking={false}
+      askingElsewhere={false}
+      onAsk={onAsk}
+      onStop={onStop}
+      onCite={vi.fn()}
+      onTake={vi.fn()}
+      onChange={vi.fn()}
+    />,
+  )
+  expect(screen.getByRole('button', { name: 'Ask' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: 'Stop' })).toBeNull()
 })

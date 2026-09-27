@@ -12,6 +12,8 @@ every time. What the browser suite types is what steers it:
     choose …   stop the turn and ask which of two values was meant
     remember … keep a fact about the user
     write …    call a tool that changes something outside cora, so the gate stops it
+    slow …     answer in prose paced a word at a time, so a turn is still running
+               when the reader presses stop
     anything   answer in prose, streamed a word at a time
 
 A tool it was not offered is never called: the reply falls back to prose, so a
@@ -22,6 +24,7 @@ deployment loading none of them still answers.
 
 import json
 import re
+import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 
@@ -29,6 +32,12 @@ HOST = "127.0.0.1"
 PORT = 8911
 CITED = "The note says protein builds muscle [1]."
 PROSE = "Hello. Ask me about your documents and I will search them."
+# Prose long enough to still be arriving when the reader presses stop: a fast answer
+# is already over by then, and there is no turn left to stop.
+SLOW = (
+    "Hello. This answer arrives one word at a time, so it is still being written "
+    "while you read this sentence, and the turn is still running when you stop it."
+)
 KEPT = "Noted."
 WROTE = "Done — it is written."
 READY = b"the fake model is up\n"
@@ -132,14 +141,25 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         length = int(self.headers.get("Content-Length", 0))
         body = json.loads(self.rfile.read(length) or b"{}")
+        tool, text, arguments = reply_to(body)
+        # A turn the reader means to stop has to still be running when they press
+        # the control, so paced prose is held a beat between words. Anything else
+        # answers at once, as it always did.
+        paced = tool is None and (
+            re.search(r"\bslow\b", last_question(body.get("messages", []))) is not None
+        )
+        if paced:
+            text = SLOW
         self.send_response(200)
         self.send_header("Content-Type", "text/event-stream")
         self.send_header("Transfer-Encoding", "chunked")
         self.end_headers()
-        for frame in chunks(*reply_to(body)):
+        for frame in chunks(tool, text, arguments):
             encoded = frame.encode()
             self.wfile.write(f"{len(encoded):x}\r\n".encode() + encoded + b"\r\n")
             self.wfile.flush()
+            if paced:
+                time.sleep(0.2)
         self.wfile.write(b"0\r\n\r\n")
 
     def log_message(self, format: str, *args: Any) -> None:
