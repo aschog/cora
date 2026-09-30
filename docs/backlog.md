@@ -1,6 +1,6 @@
 # Backlog
 
-This is the prioritized parking lot for planned work outside a sprint cycle.
+This is the prioritized parking lot for work not yet started.
 When an item starts, open one OpenSpec change under `openspec/changes/`.
 
 ## Now
@@ -121,6 +121,14 @@ Acceptance:
 Suggested tests:
 - Existing host and plugin tests pass unchanged before code movement.
 - Contract compatibility is guarded where public host names are moved.
+
+### 9. check-sqlite-concurrency
+
+**Goal:** check whether simultaneous turns and uploads cause SQLite locking or inconsistent data.
+
+Check:
+- Run concurrent turns and uploads against the shared store.
+- Record what happened; if a bug appears, open a separate OpenSpec change to fix it.
 
 ## Operating rule
 

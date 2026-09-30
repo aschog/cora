@@ -10,20 +10,8 @@ AI is a pair partner, not an autopilot. Every phase should be an atomic commit.
 
 ## Where the docs live
 
-Two places, and the split is *when*. A sprint folder holds what a sprint was asked to
-do; `openspec/` holds what the product must do — the first is dated, the second is
-current.
-
-Everything about a sprint lives in `docs/sprints/<n>/`:
-
-```
-docs/sprints/5/
-  assignment.md           the brief, verbatim
-  spec.md                 the story cut, requirement coverage, out of scope — minus
-                          every story a change has been opened for
-  sprint-5-feedback.md    last review's findings, as a tracked backlog
-  review-feedback.md      the reviewer's write-up, verbatim — the record, not the backlog
-```
+Two places, and the split is *when*. `docs/backlog.md` holds prioritized work not
+yet started; `openspec/` holds product requirements and changes in flight.
 
 Everything about a story in flight lives in an OpenSpec change:
 
@@ -42,11 +30,13 @@ openspec/
 
 ---
 
-## Sprint preparation
+## From backlog to change
 
-- [ ] **Day one — read the assignment**, then cut it into stories with acceptance
-      criteria. Anything that maps to no story is out of scope. The criteria come
-      *with* the story, not after it:
+- [ ] **Prioritize work** in `docs/backlog.md`. Add findings from reviews there so
+      they are tracked, not remembered informally. An investigation can stay a reminder
+      until it identifies a product change.
+- [ ] **Cut the next product change into one story with acceptance criteria.** Anything
+      that maps to no story is out of scope. The criteria come with the story:
 
   > As a researcher,\
   > I want to ask a question about my uploaded papers,\
@@ -58,17 +48,13 @@ openspec/
   > - **When** I ask "How does BM25 handle term saturation?"
   > - **Then** I receive an answer citing that paper
 
-- [ ] **Day one — turn the last review's findings into a backlog**: each one becomes
-      a tracked checklist item in `docs/sprints/<n>/sprint-<n>-feedback.md`, so feedback
-      is "tracked and ticked" instead of "in my head"
-
-- [ ] **Open a change for each story in flight** — `/opsx:propose`, kebab-case, opened
-      in merge order — and **move the story out of `spec.md` as you do**: it goes to the
-      change's delta spec, which every change has, whether it ships code or a written
-      page. It leaves `spec.md` entirely — not a heading, not a link, not a summary.
-      A story is in one file, and the file is the change's;
-      `spec.md` is the cut of what has *not* been opened yet, so its numbering thins as
-      the sprint runs and the changes are where the sprint reads back from
+- [ ] **Open an OpenSpec change for each product story in flight**, in merge order.
+      `/opsx:propose` puts its criteria in the change's delta spec. Remove the story's
+      detailed criteria from the backlog; leave its short title marked in progress or
+      link to the change. The story lives in one place, in the change's spec.
+- [ ] **Treat process maintenance separately from product requirements.** Update
+      workflow and tooling instructions directly when they change; they do not describe
+      a capability of cora in `openspec/specs/`.
 
 ---
 
@@ -104,7 +90,8 @@ openspec/
 - [ ] Draft the change with `/opsx:propose` — the story and its criteria as a delta on
       `openspec/specs/`, the architecture into `design.md`, and why / what changes /
       impact into `proposal.md`. `ai-architect` is the second opinion on the design, not
-      a second document
+      a second document. For a docs-only product story, document only the design it
+      actually needs
 - [ ] **Write the outer functional test** — one failing test per slice, straight
       from the acceptance criterion. Written up front it catches design mistakes a
       retrofitted test can't, and it is what stops out-of-scope work: no story, no
@@ -221,7 +208,8 @@ functional test goes green  →  feature done
 ## Phase 4 — Merge (manual, human decision)
 
 - [ ] **Run the feature for real** and check it against the Phase 1 acceptance
-      criteria — green tests alone don't prove the feature works
+      criteria — green tests alone don't prove the feature works. For a written page,
+      read it as the reader would; prose is not test-backed
 - [ ] Final sanity check: format, lint, type check, full test suite — and CI green
 - [ ] Every item in the change's `tasks.md` ticked — a docs-only change has none
 - [ ] Update project docs the feature touched (`README`, `CLAUDE.md`, `docs/`)
@@ -246,30 +234,23 @@ functional test goes green  →  feature done
 
 ---
 
-## Phase 5 — Sprint close (once per sprint)
+## Phase 5 — Release (when there is one)
 
-- [ ] **Tag the reviewed commit on trunk** — the sprint's submitted state gets a
-      permanent name, so "the version the reviewer saw" survives every later
-      merge:
+- [ ] **Tag the reviewed commit on trunk** when making a release, so the state that
+      was released has a permanent name:
 
   ```bash
-  git tag -a v1.0.0 <commit> -m "Sprint 3 submission — cora
-
-  <one paragraph: what shipped, review date and outcome>"
+  git tag -a v1.0.0 <commit> -m "cora v1.0.0 — <what shipped>"
   git push origin v1.0.0
   ```
 
-  - **Annotated (`-a`), never lightweight** — an annotated tag is a real object
-    carrying tagger, date and message, so it records provenance and
-    `git describe` can anchor later work to it. A lightweight tag is a bare
-    pointer with none of that. Use `-s` instead of `-a` once commit signing is
+  - **Annotated (`-a`), never lightweight** — an annotated tag records provenance
+    and `git describe` can anchor later work to it. Use `-s` once commit signing is
     set up.
-  - **Semantic name** — `v1.0.0` for the first reviewed release; a sprint that
-    reshapes the app is the next major. Sprint names don't order or compare, so
-    the *message* says which sprint, not the tag.
-  - **Name the commit explicitly.** Tags default to `HEAD`, which is usually a
-    working branch by the time the sprint closes — pass the trunk commit that
-    was actually reviewed.
+  - **Semantic name** — choose the next version for what changed, not for when it
+    changed.
+  - **Name the commit explicitly.** Tags default to `HEAD`, which might not be
+    the trunk commit that was reviewed.
   - **Push the tag on its own.** Tags do not travel with a normal `git push`.
   - No GitHub Release: the tag is the marker, and a release adds a second thing
     to keep true.
