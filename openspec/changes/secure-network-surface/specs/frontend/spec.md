@@ -1,6 +1,6 @@
 As an operator,\
 I want deliberate, authenticated network access to cora,\
-so that connecting my watch does not expose my data or tools.\
+so that remote access does not expose my data or tools.\
 
 ## ADDED Requirements
 
@@ -105,67 +105,17 @@ Same-origin requests and native clients without an Origin SHALL retain authentic
 - **WHEN** a client writes a notice
 - **THEN** the notice is accepted
 
-### Requirement: A watch credential writes only its configured notice
-
-An optional `CORA_WATCH_TOKEN` SHALL authorize only `PUT /api/scopes/{scope}/notice` for its configured field.
-`CORA_WATCH_SCOPE` SHALL select that field, defaulting to `fitness`.
-The watch token SHALL differ from the API token, and incomplete watch configuration SHALL refuse startup.
-Watch credentials SHALL NOT authorize reads, other fields, other methods, or unrelated routes.
-
-#### Scenario: Watch notice
-
-- **GIVEN** network mode, distinct tokens, and a configured watch field
-- **WHEN** the watch writes that field's notice using its Bearer token
-- **THEN** the notice is accepted and readable using API credentials
-
-#### Scenario: Watch credential used elsewhere
-
-- **GIVEN** a valid watch token
-- **WHEN** it requests a read, another field, another method, or an unrelated route
-- **THEN** it returns `403` without disclosing data or performing mutations
-
-#### Scenario: Watch credential configuration is unsafe
-
-- **GIVEN** matching API and watch tokens, or a watch field configured without its token
-- **WHEN** the HTTP server starts
-- **THEN** it refuses startup without printing either token
-
-### Requirement: Watch commands preserve authenticated notice delivery
-
-`make run-watch` SHALL opt into network mode while retaining its keep-awake behavior.
-`make watch` SHALL read its notice credential from the environment, including an ignored `.env` file.
-The generated watch configuration SHALL remain ignored and SHALL NOT contain the API token.
-Watch builds SHALL refuse a missing notice credential and SHALL NOT print that credential.
-
-#### Scenario: Watch server startup
-
-- **GIVEN** API and watch credentials configured in the environment or `.env`
-- **WHEN** the operator runs `make run-watch`
-- **THEN** cora starts in authenticated network mode with its existing keep-awake behavior
-
-#### Scenario: Watch build
-
-- **GIVEN** a watch token, selected field, server address, and installed Zepp tooling
-- **WHEN** the operator runs `make watch`
-- **THEN** it builds an extension sending the notice-only credential in an Authorization header
-- **AND** neither build output nor tracked files contain credentials
-
-#### Scenario: Watch build without credentials
-
-- **GIVEN** no watch token
-- **WHEN** the operator runs `make watch`
-- **THEN** the build refuses and names the missing setting without printing credentials
-
 ### Requirement: Network operators know what they expose
 
-The README SHALL explain network opt-in, token configuration, native browser login, and watch-specific credentials.
+The README SHALL explain network opt-in, token configuration, native browser login, and deferred watch compatibility.
 It SHALL name the exposed data, plugin pages, mutations, and model-driven shell access available to API-token holders.
 It SHALL warn that HTTP exposes credentials in transit and recommend trusted networks or HTTPS termination.
-It SHALL explain that changing credentials requires restarting cora and rebuilding the watch when its token changes.
+It SHALL explain that changing credentials requires restarting cora.
+It SHALL state that existing watch commands and requests lack the required network opt-in or authentication.
 
 #### Scenario: Operator reads network setup
 
-- **WHEN** an operator reads the README's network and watch instructions
+- **WHEN** an operator reads the README's network instructions
 - **THEN** they can configure access and understand its reach, credential rotation, and transport limits
 
 ## MODIFIED Requirements
