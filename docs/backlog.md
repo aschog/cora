@@ -1,7 +1,8 @@
 # Backlog
 
 This is the prioritized parking lot for work not yet started.
-When an item starts, open one OpenSpec change under `openspec/changes/`.
+Open one OpenSpec change for each product story when it starts.
+An investigation can stay a reminder until it identifies a product change.
 
 ## Now
 
@@ -13,12 +14,14 @@ Acceptance:
 - Loopback startup remains the default and needs no token.
 - Non-loopback startup refuses unless explicit network mode is enabled.
 - Network mode requires an API token or equivalent protection.
+- `make run-watch` and its watch notice still work in network mode.
 - README or operator docs state what network mode exposes.
 
 Suggested tests:
 - Startup allows default loopback binding.
 - Startup refuses public binding without explicit opt-in.
 - API refuses missing or invalid credentials in network mode.
+- The watch can write its notice in network mode without exposing other routes.
 
 ### 2. confirm-dangerous-tools
 
@@ -132,5 +135,5 @@ Check:
 
 ## Operating rule
 
-Open one OpenSpec change at a time, starting with `secure-network-surface`.
+Open one product change at a time, starting with `secure-network-surface`.
 Do not batch these into one cleanup branch.
