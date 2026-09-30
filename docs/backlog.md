@@ -8,20 +8,7 @@ An investigation can stay a reminder until it identifies a product change.
 
 ### 1. secure-network-surface
 
-**Goal:** prevent accidental remote exposure.
-
-Acceptance:
-- Loopback startup remains the default and needs no token.
-- Non-loopback startup refuses unless explicit network mode is enabled.
-- Network mode requires an API token or equivalent protection.
-- `make run-watch` and its watch notice still work in network mode.
-- README or operator docs state what network mode exposes.
-
-Suggested tests:
-- Startup allows default loopback binding.
-- Startup refuses public binding without explicit opt-in.
-- API refuses missing or invalid credentials in network mode.
-- The watch can write its notice in network mode without exposing other routes.
+**In progress:** [OpenSpec change](../openspec/changes/secure-network-surface/) — planning ready for review.
 
 ### 2. confirm-dangerous-tools
 
