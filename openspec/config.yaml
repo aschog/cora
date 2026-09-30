@@ -25,9 +25,9 @@ rules:
       alone.
     - >-
       The story and its acceptance criteria are not here. They live once, in the delta
-      spec — every change has one, and a change is out of the sprint's spec.md the moment
-      it is opened. Neither is the design rationale, which lives in design.md, the
-      conversation, the commit messages and the tests.
+      spec — every product change has one. Move the story's criteria from
+      docs/backlog.md into it when opened; leave only its title and status behind.
+      Design rationale lives in design.md, the conversation, commits and tests.
     - >-
       One story per change. If it needs two stories, it is two changes.
     - >-
@@ -44,7 +44,7 @@ rules:
       on its own line, ended with a backslash, above the Purpose.
     - >-
       Its requirements are the acceptance criteria, in the product's voice rather than
-      the sprint's. Material the story produces — text to be written, a list to be shown
+      the backlog's. Material the story produces — text to be written, a list to be shown
       — belongs in the requirement that asks for it, so the change carries it once.
     - >-
       Write requirements as SHALL statements with concrete scenarios, observable from
@@ -73,13 +73,14 @@ rules:
     - >-
       **Every item is one failing test.** This overrides the default guidance — an item
       is not a session of work, it is a test. If it cannot be phrased as "write a test
-      that shows X", it does not belong on the list: split it or drop it.
+      that shows X", it does not belong on the list: split it or drop it. A docs-only
+      product change has no test list; a person reads its prose.
     - >-
-      Item 1.1 is always the outer functional test, taken straight from the proposal's
-      acceptance criterion and marked `@pytest.mark.xfail(strict=True)` so CI stays
-      green while the change is in flight.
+      For a code change, item 1.1 is the outer functional test, taken straight from
+      the acceptance criterion and marked `@pytest.mark.xfail(strict=True)` so CI
+      stays green while the change is in flight.
     - >-
-      The last item is always dropping that marker and watching the outer test pass.
+      For a code change, the last item drops that marker and watches the outer test pass.
     - >-
       Tests drive behaviour through the public API with real objects and hand-written
       fakes, and assert on resulting state — not on how collaborators were called.
@@ -120,9 +121,9 @@ operations:
   archive:
     guidance:
       - >-
-        Archive only once the outer functional test passes with its xfail marker gone,
-        the whole list is ticked, and format, lint, type check and the full suite are
-        green.
+        Archive code changes only once the outer test passes without xfail, every task
+        is ticked, and all gates are green. For docs-only product changes, read the
+        page and archive after review; prose has no test gate.
       - >-
         The change merges to main as one squashed atomic commit, and the branch is kept
         as the record of the TDD trail.
