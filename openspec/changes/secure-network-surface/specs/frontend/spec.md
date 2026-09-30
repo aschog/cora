@@ -61,7 +61,7 @@ Invalid network settings SHALL refuse startup before assembling the app, without
 
 In network mode, every HTTP route SHALL require valid credentials before reading data or running app operations.
 Missing, malformed, or incorrect credentials SHALL return `401` without disclosing protected content.
-The API token SHALL grant access through Bearer authentication or Basic authentication with username `cora`.
+The system SHALL accept only HTTP Basic authentication with username `cora` and the API token as its password.
 The served browser page SHALL offer native HTTP login, without putting credentials into URLs or page content.
 
 #### Scenario: Missing or invalid credentials
@@ -72,7 +72,7 @@ The served browser page SHALL offer native HTTP login, without putting credentia
 
 #### Scenario: API access
 
-- **GIVEN** network mode and a valid Bearer API token
+- **GIVEN** network mode and valid Basic credentials using the API token
 - **WHEN** a client lists fields or writes a notice
 - **THEN** the request follows the normal route contract
 

@@ -6,6 +6,7 @@ Binding cora beyond loopback currently exposes private data and model-driven com
 
 - Extend `frontend` with explicit network opt-in and authentication across its HTTP surface.
 - **BREAKING**: refuse non-loopback startup unless network mode and an API token are configured.
+- Use HTTP Basic authentication for browsers and API clients, without a login screen or authentication registry.
 - Keep default loopback startup token-free and preserve authenticated browser access through native HTTP login.
 - Defer authenticated watch support and document that existing watch requests will be refused.
 - Document exposed capabilities, credential handling, and transport limits for operators.

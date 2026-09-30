@@ -13,13 +13,15 @@ The React frontend owns HTTP startup, static serving, streaming routes, and the 
 ## Decisions
 
 - Place a frontend-owned access policy at the startup and HTTP-dispatch seams.
-- Parse host, port, network mode, and credentials before assembling models or opening stores.
+- Parse host, port, network mode, and credentials once before assembling models or opening stores.
+- Pass the validated access policy into middleware instead of rereading settings during requests.
 - Recognize `localhost` and numeric loopback addresses locally, treating other names conservatively without DNS lookups.
 - Enable authentication whenever network mode is selected, including deployments behind a loopback-bound reverse proxy.
-- Compose pure ASGI middleware around the route surface, avoiding request buffering and streaming lifecycle changes.
+- Use one pure ASGI middleware for authentication and origin checks across all routes, without buffering requests.
+- Keep route handlers free of duplicate authentication checks and preserve streaming lifecycle behavior.
 - Keep the same middleware boundary available to in-process API tests without reading ambient environment variables.
-- Register authentication decoders for Bearer and Basic credentials rather than extending a scheme-selection switch.
-- Authenticate both schemes against one operator token, using username `cora` for Basic access.
+- Accept HTTP Basic authentication only, using username `cora` and the operator token as its password.
+- Parse Basic credentials directly, without a decoder registry or authentication extension framework.
 - Challenge unauthorized requests with a stable Basic realm so browsers authenticate before loading any protected assets.
 - Use constant-time secret comparison, uniform authentication errors, and no token-bearing response content or URLs.
 - Apply the access gate before static serving, route lookup, app composition refresh, and request-body parsing.
