@@ -11,7 +11,6 @@ from fakes import FakeMemory
 TOKEN = "acceptance-only-token"
 
 
-@pytest.mark.xfail(strict=True, reason="Network access is not protected yet")
 def test_network_startup_protects_data_and_allows_authenticated_mutations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

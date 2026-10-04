@@ -23,4 +23,4 @@
 
 ## 4. Outer Green
 
-- [ ] 4.1 Remove the strict-xfail marker and watch the network-access outer test pass.
+- [x] 4.1 Remove the strict-xfail marker and watch the network-access outer test pass.

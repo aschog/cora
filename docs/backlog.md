@@ -8,7 +8,7 @@ An investigation can stay a reminder until it identifies a product change.
 
 ### 1. secure-network-surface
 
-**In progress:** [OpenSpec change](../openspec/changes/secure-network-surface/) — planning ready for review.
+**In progress:** [OpenSpec change](../openspec/changes/secure-network-surface/) — implemented, awaiting review.
 
 ### 2. confirm-dangerous-tools
 

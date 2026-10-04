@@ -64,6 +64,61 @@ uv run ruff format . && uv run ruff check . && uv run ty check
 npm --prefix frontends/react/ui run lint && npm --prefix frontends/react/ui test
 ```
 
+## Network access
+
+Local startup stays on loopback and needs no access token. Binding beyond loopback
+requires `CORA_NETWORK=1` and a nonblank `CORA_API_TOKEN`; setting a token alone does
+not enable network access. `CORA_NETWORK` accepts only `1`, `0`, or an unset/blank value.
+
+Set a long, random `CORA_API_TOKEN` in your environment first, then run:
+
+```sh
+export CORA_NETWORK=1
+export CORA_HOST=0.0.0.0
+make run
+```
+
+Alternatively, put these settings alongside the model key in your ignored `.env` and
+use `make run-env`. Never commit that file, print the token, or put it in a URL.
+`CORA_PORT` selects the port, defaulting to 8000.
+
+Opening cora from another device brings up the browser's native login prompt. Use
+`cora` as the username and the API token as the password. API clients use the same
+HTTP Basic credentials; Bearer tokens are not accepted. For example, this asks for
+the token rather than including it in the command:
+
+```sh
+curl --user cora http://your-machine:8000/api/scopes
+```
+
+Every HTTP route is protected, including the built page, plugin pages, documents,
+uploads, field files, memory, conversations, and notices. The token grants full
+operator access: holders can upload, write, delete, and ask the model to run shell
+commands. This is one shared operator credential, not accounts or a multi-user
+permission system. Browser mutations must come from the same origin; authenticated
+native clients without an Origin header still work.
+
+**Use HTTPS for production.** Basic authentication does not encrypt the token or
+traffic over HTTP; use plain HTTP only on a network you trust. For HTTPS termination,
+keep cora behind a trusted proxy, preserve the original Host, and forward the public
+scheme. Uvicorn trusts forwarded headers from `127.0.0.1` by default; if your proxy
+is elsewhere, set `FORWARDED_ALLOW_IPS` to only its addresses, never `*`. Enable
+`CORA_NETWORK=1` even when the proxy reaches a loopback-bound cora, or that upstream
+will remain unauthenticated.
+
+Changing the token requires restarting cora. Browsers may cache Basic credentials;
+clear them or use a fresh browser session when switching tokens. The server itself
+keeps no login sessions.
+
+### Watch support is deferred
+
+The existing `make run-watch` selects a public binding but does not opt into network
+mode, so it now refuses startup unless network settings are supplied explicitly.
+The current watch extension sends no credentials, so its notice requests are refused
+in network mode even if the server is started. Restricted watch credentials and build
+support are tracked separately in `docs/backlog.md`; there is no unprotected notice
+exception and no change to the watch extension in this feature.
+
 ## Write a plugin
 
 Drop a `.py` file, or a folder with an `__init__.py`, into `.cora/plugins/`. It is named

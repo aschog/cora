@@ -80,7 +80,9 @@ def api(
     the menu and a terminal say one thing.
 
     Handed a `LiveApp`, every request reads the composition the plugins folder
-    describes by then; handed an `App`, the page serves that one for good."""
+    describes by then; handed an `App`, the page serves that one for good.
+    A token protects every HTTP route with Basic authentication; None leaves local
+    access open, and deployment settings are validated by startup rather than here."""
     apps = app.current if isinstance(app, LiveApp) else (lambda: app)
     notices: dict[str, Notice] = {}
     routes: list[Route | Mount] = [
