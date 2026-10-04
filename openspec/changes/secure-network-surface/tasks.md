@@ -1,6 +1,6 @@
 ## 1. Outer Acceptance
 
-- [ ] 1.1 Write a strict-xfail outer test proving network startup blocks anonymous access while allowing authenticated API reads and mutations.
+- [x] 1.1 Write a strict-xfail outer test proving network startup blocks anonymous access while allowing authenticated API reads and mutations.
 
 ## 2. Startup Policy
 
