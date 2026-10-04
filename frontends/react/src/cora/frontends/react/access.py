@@ -55,8 +55,24 @@ def _same_origin(scope: Scope, headers: Headers) -> bool:
     origins = headers.getlist("origin")
     if not origins:
         return True
-    return len(origins) == 1 and origins[0] == _origin(URL(scope=scope))
+    if len(origins) != 1:
+        return False
+    try:
+        source = URL(origins[0])
+        if (
+            source.scheme not in {"http", "https"}
+            or source.path
+            or source.query
+            or source.fragment
+            or source.username is not None
+            or source.password is not None
+        ):
+            return False
+        return _origin(source) == _origin(URL(scope=scope))
+    except ValueError:
+        return False
 
 
-def _origin(url: URL) -> str:
-    return f"{url.scheme}://{url.netloc}"
+def _origin(url: URL) -> tuple[str, str | None, int]:
+    port = url.port if url.port is not None else (443 if url.scheme == "https" else 80)
+    return url.scheme, url.hostname, port

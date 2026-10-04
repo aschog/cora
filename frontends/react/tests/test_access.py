@@ -173,6 +173,32 @@ def test_foreign_and_null_origins_cannot_upload_or_mutate_state(origin: str) -> 
     assert app.files.names(DEFAULT_SCOPE) == ()
 
 
+@pytest.mark.parametrize(
+    ("base", "host", "origin"),
+    [
+        ("http://testserver", "testserver", None),
+        ("http://testserver", "testserver", "http://testserver"),
+        ("http://testserver", "testserver:80", "http://testserver"),
+        ("http://testserver", "TESTSERVER", "http://testserver"),
+        ("http://testserver", "[::1]:80", "http://[::1]"),
+        ("https://testserver", "testserver:443", "https://testserver"),
+        ("https://testserver:8443", "testserver:8443", "https://testserver:8443"),
+    ],
+)
+def test_same_origin_and_native_clients_can_write_notices(
+    base: str, host: str, origin: str | None
+) -> None:
+    app = assembled()
+    with TestClient(api(app, token=TOKEN), base_url=base) as reader:
+        reader.auth = ("cora", TOKEN)
+        reader.headers["Host"] = host
+        if origin is not None:
+            reader.headers["Origin"] = origin
+        where = f"/api/scopes/{DEFAULT_SCOPE}/notice"
+        assert reader.put(where, json={"ready": True}).status_code == 200
+        assert reader.get(where).json()["notice"] == {"ready": True}
+
+
 def test_missing_credentials_protect_data_assets_and_mutations(
     tmp_path: pathlib.Path,
 ) -> None:
