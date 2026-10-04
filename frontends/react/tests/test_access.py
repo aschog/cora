@@ -1,6 +1,8 @@
+import base64
 import hashlib
 import pathlib
 
+import pytest
 from starlette.testclient import TestClient
 
 from app_builder import assembled, indexed
@@ -13,6 +15,33 @@ TOKEN = "test-only-operator-token"
 FIELD = "training"
 NOTICE = f"/api/scopes/{FIELD}/notice"
 PRIVATE = b"Private uploaded notes."
+
+
+@pytest.mark.parametrize(
+    "authorization",
+    [
+        "Basic",
+        "Basic !not-base64!",
+        "Basic " + base64.b64encode(b"cora").decode(),
+        "Basic " + base64.b64encode(b"somebody:" + TOKEN.encode()).decode(),
+        "Basic " + base64.b64encode(b"cora:incorrect").decode(),
+        "Basic " + base64.b64encode(b"cora:\xff").decode(),
+        "Bearer " + TOKEN,
+        "Digest " + TOKEN,
+    ],
+)
+def test_bad_authentication_is_uniform_and_changes_no_state(authorization: str) -> None:
+    memory = FakeMemory(("A private fact.",))
+    with TestClient(api(assembled(memory=memory), token=TOKEN)) as reader:
+        for method in ("GET", "DELETE"):
+            refused = reader.request(
+                method, "/api/memory", headers={"Authorization": authorization}
+            )
+            assert refused.status_code == 401
+            assert refused.json() == {"error": "Authentication required."}
+            assert refused.headers["www-authenticate"] == 'Basic realm="cora"'
+            assert TOKEN not in refused.text
+    assert [fact.text for fact in memory.recall()] == ["A private fact."]
 
 
 def _surface(root: pathlib.Path) -> tuple[App, pathlib.Path]:

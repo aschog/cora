@@ -13,7 +13,7 @@
 ## 3. HTTP Access
 
 - [x] 3.1 Write a test showing missing credentials protect API data, mutations, plugin pages, uploads, field files, and static assets.
-- [ ] 3.2 Write a test showing malformed, incorrect, and unsupported authentication returns uniform `401` responses without changing app state.
+- [x] 3.2 Write a test showing malformed, incorrect, and unsupported authentication returns uniform `401` responses without changing app state.
 - [ ] 3.3 Write a test showing API clients using valid Basic credentials can perform normal reads and mutations.
 - [ ] 3.4 Write a test showing valid Basic credentials unlock the page, its assets, plugin frames, and same-origin API requests.
 - [ ] 3.5 Write a test showing network mode protects loopback-bound deployments too.
