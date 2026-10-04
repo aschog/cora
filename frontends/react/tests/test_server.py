@@ -66,6 +66,35 @@ def test_public_bindings_refuse_startup_without_network_opt_in(
     assert "must-not-be-printed" not in diagnostic
 
 
+@pytest.mark.parametrize("host", ["0.0.0.0", "127.0.0.1"])
+@pytest.mark.parametrize("token", [None, "", "   "])
+def test_network_mode_requires_a_token_before_assembling_the_app(
+    host: str,
+    token: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "unused-model-key")
+    monkeypatch.setenv("CORA_HOST", host)
+    monkeypatch.setenv("CORA_NETWORK", "1")
+    monkeypatch.delenv("CORA_PORT", raising=False)
+    if token is None:
+        monkeypatch.delenv("CORA_API_TOKEN", raising=False)
+    else:
+        monkeypatch.setenv("CORA_API_TOKEN", token)
+    monkeypatch.setattr(
+        server,
+        "live",
+        lambda config: pytest.fail("missing access credentials built the app"),
+    )
+
+    with pytest.raises(SystemExit) as refused:
+        server.serve()
+
+    assert refused.value.code == 1
+    assert "CORA_API_TOKEN" in capsys.readouterr().err
+
+
 def test_the_build_is_looked_for_beside_the_package() -> None:
     assert server.DEFAULT_UI.parts[-2:] == ("ui", "dist")
     assert server.DEFAULT_UI.parent.is_dir(), (

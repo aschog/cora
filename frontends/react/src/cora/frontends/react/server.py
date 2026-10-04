@@ -53,7 +53,10 @@ def settings(env: Mapping[str, str]) -> Serving:
         raise ConfigurationError(
             "Non-loopback binding requires CORA_NETWORK=1 and CORA_API_TOKEN."
         )
-    return Serving(host=host, port=port(env))
+    token = env.get("CORA_API_TOKEN", "").strip() if network else None
+    if network and not token:
+        raise ConfigurationError("CORA_API_TOKEN is required when CORA_NETWORK=1.")
+    return Serving(host=host, port=port(env), token=token)
 
 
 def _loopback(host: str) -> bool:
