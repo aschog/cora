@@ -7,6 +7,7 @@ from starlette.testclient import TestClient
 
 from app_builder import assembled, indexed
 from cora.app.assembly import App
+from cora.frontends.react import server
 from cora.frontends.react.api import api
 from cora.ports.host import DEFAULT_SCOPE, Extension, Host
 from fakes import FakeMemory
@@ -120,6 +121,17 @@ def test_basic_browser_credentials_unlock_the_shell_assets_and_plugin_frame(
             == 200
         )
         assert reader.get(NOTICE).json()["notice"] == {"ready": True}
+
+
+def test_network_policy_protects_even_a_loopback_bound_app() -> None:
+    chosen = server.settings(
+        {"CORA_HOST": "127.0.0.1", "CORA_NETWORK": "1", "CORA_API_TOKEN": TOKEN}
+    )
+    assert chosen.host == "127.0.0.1"
+    assert TOKEN not in repr(chosen)
+    with TestClient(api(assembled(), token=chosen.token)) as reader:
+        assert reader.get("/api/scopes").status_code == 401
+        assert reader.get("/api/scopes", auth=("cora", TOKEN)).status_code == 200
 
 
 def test_missing_credentials_protect_data_assets_and_mutations(
