@@ -4,7 +4,7 @@
 
 ## 2. Startup Policy
 
-- [ ] 2.1 Write a test showing default startup serves loopback without credentials.
+- [x] 2.1 Write a test showing default startup serves loopback without credentials.
 - [ ] 2.2 Write a test showing explicit IPv4, IPv6, and localhost loopback bindings need no token.
 - [ ] 2.3 Write a test showing non-loopback addresses and hostnames refuse startup without explicit network opt-in.
 - [ ] 2.4 Write a test showing network mode refuses missing or blank API tokens before assembling the app.

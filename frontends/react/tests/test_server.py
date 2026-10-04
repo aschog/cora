@@ -1,9 +1,31 @@
 import pathlib
+from typing import Any
 
 import pytest
+from starlette.testclient import TestClient
 
+from app_builder import assembled
 from cora.domain.errors import ConfigurationError
 from cora.frontends.react import server
+
+
+def test_default_startup_serves_loopback_without_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    chosen = server.settings({})
+    assert (chosen.host, chosen.port, chosen.token) == ("127.0.0.1", 8000, None)
+    for key in ("CORA_HOST", "CORA_PORT", "CORA_NETWORK", "CORA_API_TOKEN"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "unused-model-key")
+    monkeypatch.setattr(server, "live", lambda config: assembled())
+
+    def run(served: Any, *, host: str, port: int) -> None:
+        assert (host, port) == (chosen.host, chosen.port)
+        with TestClient(served) as reader:
+            assert reader.get("/api/scopes").status_code == 200
+
+    monkeypatch.setattr(server.uvicorn, "run", run)
+    server.serve()
 
 
 def test_the_build_is_looked_for_beside_the_package() -> None:
