@@ -28,6 +28,14 @@ def test_default_startup_serves_loopback_without_credentials(
     server.serve()
 
 
+@pytest.mark.parametrize("host", ["127.0.0.1", "127.23.45.67", "::1", "localhost"])
+def test_explicit_loopback_bindings_need_no_token(host: str) -> None:
+    chosen = server.settings({"CORA_HOST": host, "CORA_NETWORK": "0"})
+
+    assert chosen.host == host
+    assert chosen.token is None
+
+
 def test_the_build_is_looked_for_beside_the_package() -> None:
     assert server.DEFAULT_UI.parts[-2:] == ("ui", "dist")
     assert server.DEFAULT_UI.parent.is_dir(), (

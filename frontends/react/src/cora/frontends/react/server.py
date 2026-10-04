@@ -46,7 +46,8 @@ class Serving:
 
 
 def settings(env: Mapping[str, str]) -> Serving:
-    return Serving(host=DEFAULT_HOST, port=port(env))
+    host = env.get("CORA_HOST", "").strip() or DEFAULT_HOST
+    return Serving(host=host, port=port(env))
 
 
 def serve() -> None:
