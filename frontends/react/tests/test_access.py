@@ -44,6 +44,27 @@ def test_bad_authentication_is_uniform_and_changes_no_state(authorization: str) 
     assert [fact.text for fact in memory.recall()] == ["A private fact."]
 
 
+@pytest.mark.parametrize("token", [TOKEN, "utf8-café:with-a-colon"])
+def test_basic_api_clients_can_read_and_change_state(token: str) -> None:
+    memory = FakeMemory(("A private fact.",))
+    app = assembled(memory=memory)
+    with TestClient(api(app, token=token)) as reader:
+        reader.auth = ("cora", token)
+        assert reader.get("/api/memory").json() == [
+            {"key": "f1", "text": "A private fact."}
+        ]
+        uploaded = reader.post(
+            "/api/documents", files={"file": ("notes.md", PRIVATE, "text/markdown")}
+        )
+        assert uploaded.status_code == 200
+        assert app.knowledge_base.list_sources() == ["notes.md"]
+        assert reader.delete("/api/memory").status_code == 204
+        assert memory.recall() == ()
+        where = f"/api/scopes/{DEFAULT_SCOPE}/notice"
+        assert reader.put(where, json={"ready": True}).status_code == 200
+        assert reader.get(where).json()["notice"] == {"ready": True}
+
+
 def _surface(root: pathlib.Path) -> tuple[App, pathlib.Path]:
     page = root / "page"
     page.mkdir()
