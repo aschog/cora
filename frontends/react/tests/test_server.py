@@ -95,6 +95,34 @@ def test_network_mode_requires_a_token_before_assembling_the_app(
     assert "CORA_API_TOKEN" in capsys.readouterr().err
 
 
+@pytest.mark.parametrize(
+    "network", ["true", "false", "2", "yes", "must-not-be-printed"]
+)
+def test_invalid_network_opt_in_refuses_startup_without_printing_secrets(
+    network: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "unused-model-key")
+    monkeypatch.setenv("CORA_HOST", "127.0.0.1")
+    monkeypatch.setenv("CORA_NETWORK", network)
+    monkeypatch.setenv("CORA_API_TOKEN", "must-not-be-printed")
+    monkeypatch.delenv("CORA_PORT", raising=False)
+    monkeypatch.setattr(
+        server,
+        "live",
+        lambda config: pytest.fail("invalid network settings built the app"),
+    )
+
+    with pytest.raises(SystemExit) as refused:
+        server.serve()
+
+    assert refused.value.code == 1
+    diagnostic = capsys.readouterr().err
+    assert "CORA_NETWORK" in diagnostic
+    assert "must-not-be-printed" not in diagnostic
+
+
 def test_the_build_is_looked_for_beside_the_package() -> None:
     assert server.DEFAULT_UI.parts[-2:] == ("ui", "dist")
     assert server.DEFAULT_UI.parent.is_dir(), (

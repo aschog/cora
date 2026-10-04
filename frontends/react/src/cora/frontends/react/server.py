@@ -48,7 +48,10 @@ class Serving:
 
 def settings(env: Mapping[str, str]) -> Serving:
     host = env.get("CORA_HOST", "").strip() or DEFAULT_HOST
-    network = env.get("CORA_NETWORK", "").strip() == "1"
+    opt_in = env.get("CORA_NETWORK", "").strip()
+    if opt_in not in {"", "0", "1"}:
+        raise ConfigurationError("CORA_NETWORK must be 0 or 1 (or unset).")
+    network = opt_in == "1"
     if not network and not _loopback(host):
         raise ConfigurationError(
             "Non-loopback binding requires CORA_NETWORK=1 and CORA_API_TOKEN."
