@@ -6,6 +6,7 @@ The build it serves is looked for beside the package rather than shipped inside 
 which is a dev machine running the page on Vite instead.
 """
 
+import ipaddress
 import os
 import pathlib
 import sys
@@ -16,7 +17,7 @@ import uvicorn
 
 from cora.app.assembly import live
 from cora.app.config import Config, int_setting
-from cora.domain.errors import CoreError
+from cora.domain.errors import ConfigurationError, CoreError
 from cora.frontends.react.api import api
 
 DEFAULT_UI = pathlib.Path(__file__).resolve().parents[4] / "ui" / "dist"
@@ -47,7 +48,21 @@ class Serving:
 
 def settings(env: Mapping[str, str]) -> Serving:
     host = env.get("CORA_HOST", "").strip() or DEFAULT_HOST
+    network = env.get("CORA_NETWORK", "").strip() == "1"
+    if not network and not _loopback(host):
+        raise ConfigurationError(
+            "Non-loopback binding requires CORA_NETWORK=1 and CORA_API_TOKEN."
+        )
     return Serving(host=host, port=port(env))
+
+
+def _loopback(host: str) -> bool:
+    if host.lower() == "localhost":
+        return True
+    try:
+        return ipaddress.ip_address(host).is_loopback
+    except ValueError:
+        return False
 
 
 def serve() -> None:
