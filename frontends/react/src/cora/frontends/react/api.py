@@ -21,6 +21,7 @@ from starlette.applications import Starlette
 from starlette.concurrency import run_in_threadpool
 from starlette.datastructures import UploadFile
 from starlette.exceptions import HTTPException
+from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Match, Mount, Route
@@ -41,6 +42,7 @@ from cora.engine.agent import Agent
 from cora.engine.removal import deletable, fields_going
 from cora.engine.validation import MAX_INPUT_CHARS
 from cora.frontends.react import payloads
+from cora.frontends.react.access import Access
 from cora.ports.chat_model import Piece, TextSink, Written
 from cora.ports.files import MOST_BYTES
 from cora.ports.host import DEFAULT_SCOPE
@@ -70,6 +72,7 @@ def api(
     app: App | LiveApp,
     *,
     ui: pathlib.Path | None = None,
+    token: str | None = None,
 ) -> Starlette:
     """One HTTP surface over the app, reading everything off the composition itself —
     the fields it offers included, because a live plugins folder makes those a fact of
@@ -77,7 +80,9 @@ def api(
     the menu and a terminal say one thing.
 
     Handed a `LiveApp`, every request reads the composition the plugins folder
-    describes by then; handed an `App`, the page serves that one for good."""
+    describes by then; handed an `App`, the page serves that one for good.
+    A token protects every HTTP route with Basic authentication; None leaves local
+    access open, and deployment settings are validated by startup rather than here."""
     apps = app.current if isinstance(app, LiveApp) else (lambda: app)
     notices: dict[str, Notice] = {}
     routes: list[Route | Mount] = [
@@ -121,7 +126,8 @@ def api(
     ]
     if ui is not None and ui.is_dir():
         routes.append(Mount("/", StaticFiles(directory=ui, html=True)))
-    return Starlette(routes=routes, exception_handlers=REFUSALS)
+    middleware = [Middleware(Access, token=token)] if token is not None else []
+    return Starlette(routes=routes, exception_handlers=REFUSALS, middleware=middleware)
 
 
 async def _refused(request: Request, error: Exception) -> JSONResponse:

@@ -1,4 +1,7 @@
+import base64
 import threading
+
+import pytest
 
 from app_builder import assembled
 from cora.frontends.react.api import api
@@ -52,6 +55,50 @@ class StoppedThenAnswers:
             return ModelReply(text="Half too late.")
         on_text(Piece("Second."))
         return ModelReply(text="Second.")
+
+
+@pytest.mark.parametrize("stop", [False, True])
+def test_authenticated_streaming_preserves_answers_and_disconnect(stop: bool) -> None:
+    token = "test-only-stream-token"
+    released = threading.Event()
+    if not stop:
+        released.set()
+    model = WritesInTwo(released)
+    conversations = FakeConversations()
+    app = assembled(
+        chat_model=model,
+        plugin=make_plugin(),
+        searching=False,
+        conversations=conversations,
+    )
+    authorization = b"Basic " + base64.b64encode(f"cora:{token}".encode())
+
+    read = driven(
+        api(app, token=token),
+        "/api/ask",
+        ASKED,
+        until=_wrote_something if stop else lambda _: False,
+        headers=((b"authorization", authorization), (b"origin", b"http://testserver")),
+    )
+
+    if stop:
+        turn = turn_thread()
+        released.set()
+        turn.join(TURN_ENDS)
+        assert not turn.is_alive()
+        assert not model.finished.is_set()
+        assert [data["text"] for name, data in read if name == "text"] == ["Half "]
+        assert conversations.turns("t1") == ()
+    else:
+        assert model.finished.is_set()
+        assert [data["text"] for name, data in read if name == "text"] == [
+            "Half ",
+            "an answer.",
+        ]
+        assert [data["answer"] for name, data in read if name == "turn"] == [
+            "Half an answer."
+        ]
+        assert [turn.question for turn in conversations.turns("t1")] == ["Why?"]
 
 
 def test_a_turn_stopped_mid_prose_ends_at_the_next_piece() -> None:

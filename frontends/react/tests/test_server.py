@@ -1,9 +1,126 @@
 import pathlib
+from typing import Any
 
 import pytest
+from starlette.testclient import TestClient
 
+from app_builder import assembled
 from cora.domain.errors import ConfigurationError
 from cora.frontends.react import server
+
+
+def test_default_startup_serves_loopback_without_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    chosen = server.settings({})
+    assert (chosen.host, chosen.port, chosen.token) == ("127.0.0.1", 8000, None)
+    for key in ("CORA_HOST", "CORA_PORT", "CORA_NETWORK", "CORA_API_TOKEN"):
+        monkeypatch.delenv(key, raising=False)
+    monkeypatch.setenv("OPENROUTER_API_KEY", "unused-model-key")
+    monkeypatch.setattr(server, "live", lambda config: assembled())
+
+    def run(served: Any, *, host: str, port: int) -> None:
+        assert (host, port) == (chosen.host, chosen.port)
+        with TestClient(served) as reader:
+            assert reader.get("/api/scopes").status_code == 200
+
+    monkeypatch.setattr(server.uvicorn, "run", run)
+    server.serve()
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "127.23.45.67", "::1", "localhost"])
+def test_explicit_loopback_bindings_need_no_token(host: str) -> None:
+    chosen = server.settings({"CORA_HOST": host, "CORA_NETWORK": "0"})
+
+    assert chosen.host == host
+    assert chosen.token is None
+
+
+@pytest.mark.parametrize(
+    "host", ["0.0.0.0", "::", "192.0.2.1", "example.org", "127.0.0.1.example.org"]
+)
+@pytest.mark.parametrize("network", ["", "0"])
+def test_public_bindings_refuse_startup_without_network_opt_in(
+    host: str,
+    network: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "unused-model-key")
+    monkeypatch.setenv("CORA_HOST", host)
+    monkeypatch.setenv("CORA_NETWORK", network)
+    monkeypatch.setenv("CORA_API_TOKEN", "must-not-be-printed")
+    monkeypatch.delenv("CORA_PORT", raising=False)
+    monkeypatch.setattr(
+        server,
+        "live",
+        lambda config: pytest.fail("a refused binding assembled the app"),
+    )
+
+    with pytest.raises(SystemExit) as refused:
+        server.serve()
+
+    assert refused.value.code == 1
+    diagnostic = capsys.readouterr().err
+    assert "CORA_NETWORK" in diagnostic
+    assert "must-not-be-printed" not in diagnostic
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "127.0.0.1"])
+@pytest.mark.parametrize("token", [None, "", "   "])
+def test_network_mode_requires_a_token_before_assembling_the_app(
+    host: str,
+    token: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "unused-model-key")
+    monkeypatch.setenv("CORA_HOST", host)
+    monkeypatch.setenv("CORA_NETWORK", "1")
+    monkeypatch.delenv("CORA_PORT", raising=False)
+    if token is None:
+        monkeypatch.delenv("CORA_API_TOKEN", raising=False)
+    else:
+        monkeypatch.setenv("CORA_API_TOKEN", token)
+    monkeypatch.setattr(
+        server,
+        "live",
+        lambda config: pytest.fail("missing access credentials built the app"),
+    )
+
+    with pytest.raises(SystemExit) as refused:
+        server.serve()
+
+    assert refused.value.code == 1
+    assert "CORA_API_TOKEN" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
+    "network", ["true", "false", "2", "yes", "must-not-be-printed"]
+)
+def test_invalid_network_opt_in_refuses_startup_without_printing_secrets(
+    network: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setenv("OPENROUTER_API_KEY", "unused-model-key")
+    monkeypatch.setenv("CORA_HOST", "127.0.0.1")
+    monkeypatch.setenv("CORA_NETWORK", network)
+    monkeypatch.setenv("CORA_API_TOKEN", "must-not-be-printed")
+    monkeypatch.delenv("CORA_PORT", raising=False)
+    monkeypatch.setattr(
+        server,
+        "live",
+        lambda config: pytest.fail("invalid network settings built the app"),
+    )
+
+    with pytest.raises(SystemExit) as refused:
+        server.serve()
+
+    assert refused.value.code == 1
+    diagnostic = capsys.readouterr().err
+    assert "CORA_NETWORK" in diagnostic
+    assert "must-not-be-printed" not in diagnostic
 
 
 def test_the_build_is_looked_for_beside_the_package() -> None:

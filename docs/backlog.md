@@ -8,20 +8,7 @@ An investigation can stay a reminder until it identifies a product change.
 
 ### 1. secure-network-surface
 
-**Goal:** prevent accidental remote exposure.
-
-Acceptance:
-- Loopback startup remains the default and needs no token.
-- Non-loopback startup refuses unless explicit network mode is enabled.
-- Network mode requires an API token or equivalent protection.
-- `make run-watch` and its watch notice still work in network mode.
-- README or operator docs state what network mode exposes.
-
-Suggested tests:
-- Startup allows default loopback binding.
-- Startup refuses public binding without explicit opt-in.
-- API refuses missing or invalid credentials in network mode.
-- The watch can write its notice in network mode without exposing other routes.
+**In progress:** [OpenSpec change](../openspec/changes/secure-network-surface/) — implemented, awaiting review.
 
 ### 2. confirm-dangerous-tools
 
@@ -132,6 +119,33 @@ Suggested tests:
 Check:
 - Run concurrent turns and uploads against the shared store.
 - Record what happened; if a bug appears, open a separate OpenSpec change to fix it.
+
+### 10. authenticated-watch-notices
+
+**Goal:** restore watch notice delivery after network access requires authentication.
+
+Deferred from `secure-network-surface`; the watch is not currently used.
+After network security ships, existing watch startup needs explicit network settings and unauthenticated notices are refused.
+
+Acceptance:
+- The watch receives a separate credential limited to writing one configured field's notice.
+- Watch credentials cannot read data, access other routes, or write another field's notice.
+- The watch credential differs from the full-access API token.
+- `make run-watch` enables authenticated network mode and retains keep-awake behavior.
+- `make watch` reads credentials from the environment or ignored `.env` settings.
+- Generated configuration and build packages remain ignored; credentials are never printed.
+- The extension sends its notice-only credential in an Authorization header, never in the URL.
+- The extension contains only its notice credential, never the full-access API token.
+- Delivery is checked on the phone and wrist before merge.
+- Operator docs explain setup, exposed capabilities, credential rotation, and transport limits.
+
+Suggested tests:
+- A watch-authenticated notice is accepted and readable with API credentials.
+- Watch credentials refuse reads, other methods, other fields, and unrelated routes.
+- Matching API and watch tokens refuse startup without leaking credentials.
+- Watch builds refuse missing credentials without overwriting existing configuration.
+- Build output contains no credentials and tracked files contain no generated secrets.
+- Existing notice validation, replacement, and timestamp behavior remains unchanged.
 
 ## Operating rule
 
