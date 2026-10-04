@@ -134,6 +134,45 @@ def test_network_policy_protects_even_a_loopback_bound_app() -> None:
         assert reader.get("/api/scopes", auth=("cora", TOKEN)).status_code == 200
 
 
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "https://foreign.example",
+        "http://testserver.attacker.example",
+        "https://testserver",
+        "http://testserver:81",
+        "null",
+        "",
+        "http://[broken",
+        "http://testserver:invalid",
+        "http://user@testserver",
+        "http://testserver/path",
+    ],
+)
+def test_foreign_and_null_origins_cannot_upload_or_mutate_state(origin: str) -> None:
+    memory = FakeMemory(("A private fact.",))
+    app = assembled(memory=memory)
+    with TestClient(api(app, token=TOKEN)) as reader:
+        reader.auth = ("cora", TOKEN)
+        reader.headers["Origin"] = origin
+        refused = reader.post(
+            "/api/documents", files={"file": ("notes.md", PRIVATE, "text/markdown")}
+        )
+        assert refused.status_code == 403
+        assert refused.json() == {"error": "Same-origin requests required."}
+        assert reader.delete("/api/memory").status_code == 403
+        assert (
+            reader.put(
+                f"/api/scopes/{DEFAULT_SCOPE}/notice", json={"ready": True}
+            ).status_code
+            == 403
+        )
+    assert app.knowledge_base.list_sources() == []
+    assert memory.recall()[0].text == "A private fact."
+    assert app.files is not None
+    assert app.files.names(DEFAULT_SCOPE) == ()
+
+
 def test_missing_credentials_protect_data_assets_and_mutations(
     tmp_path: pathlib.Path,
 ) -> None:
