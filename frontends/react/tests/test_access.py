@@ -91,6 +91,37 @@ def _surface(root: pathlib.Path) -> tuple[App, pathlib.Path]:
     return app, ui
 
 
+def test_basic_browser_credentials_unlock_the_shell_assets_and_plugin_frame(
+    tmp_path: pathlib.Path,
+) -> None:
+    app, ui = _surface(tmp_path)
+    origin = "https://cora.example:8443"
+    with TestClient(api(app, ui=ui, token=TOKEN), base_url=origin) as reader:
+        challenge = reader.get("/")
+        assert challenge.status_code == 401
+        assert challenge.headers["www-authenticate"] == 'Basic realm="cora"'
+        reader.auth = ("cora", TOKEN)
+        for path, content in (
+            ("/", "<title>Private cora</title>"),
+            ("/app.js", "const privateCora = true"),
+            (f"/pages/{FIELD}/", "<title>Private trainer</title>"),
+            (f"/pages/{FIELD}/app.js", "const privateTraining = true"),
+        ):
+            opened = reader.get(path)
+            assert opened.status_code == 200
+            assert opened.text == content
+            assert TOKEN not in opened.text
+        offered = reader.get("/api/scopes", headers={"Origin": origin}).json()
+        assert offered["pages"][FIELD] == f"/pages/{FIELD}/"
+        assert (
+            reader.put(
+                NOTICE, json={"ready": True}, headers={"Origin": origin}
+            ).status_code
+            == 200
+        )
+        assert reader.get(NOTICE).json()["notice"] == {"ready": True}
+
+
 def test_missing_credentials_protect_data_assets_and_mutations(
     tmp_path: pathlib.Path,
 ) -> None:
