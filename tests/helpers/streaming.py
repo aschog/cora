@@ -20,13 +20,22 @@ def turn_thread() -> threading.Thread:
 # Drives an ASGI app the way a server does, and goes away at the frame `until` names —
 # which `TestClient` cannot do, reading a response whole before it hands one back.
 def driven(
-    app: Any, path: str, asked: dict[str, Any], *, until: Callable[[str], bool]
+    app: Any,
+    path: str,
+    asked: dict[str, Any],
+    *,
+    until: Callable[[str], bool],
+    headers: tuple[tuple[bytes, bytes], ...] = (),
 ) -> Frames:
-    return asyncio.run(_drive(app, path, asked, until))
+    return asyncio.run(_drive(app, path, asked, until, headers))
 
 
 async def _drive(
-    app: Any, path: str, asked: dict[str, Any], until: Callable[[str], bool]
+    app: Any,
+    path: str,
+    asked: dict[str, Any],
+    until: Callable[[str], bool],
+    headers: tuple[tuple[bytes, bytes], ...],
 ) -> Frames:
     body = json.dumps(asked).encode()
     gone = asyncio.Event()
@@ -48,7 +57,9 @@ async def _drive(
         if until("".join(read)):
             gone.set()
 
-    await app(_posting(path, len(body)), receive, send)
+    posted_scope = _posting(path, len(body))
+    posted_scope["headers"].extend(headers)
+    await app(posted_scope, receive, send)
     return frames("".join(read))
 
 
